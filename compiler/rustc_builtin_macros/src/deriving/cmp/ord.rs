@@ -30,7 +30,7 @@ pub(crate) fn expand_deriving_ord(
             ret_ty: Path(path_std!(cmp::Ordering)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| cs_cmp(a, b, c))),
+            combine_substructure: combine_substructure(Box::new(cs_cmp)),
         }],
         associated_types: Vec::new(),
         is_const,

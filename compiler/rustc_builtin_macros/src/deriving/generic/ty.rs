@@ -119,7 +119,7 @@ impl Ty {
                     .params
                     .iter()
                     .map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
+                        GenericParamKind::Lifetime => {
                             GenericArg::Lifetime(ast::Lifetime { id: param.id, ident: param.ident })
                         }
                         GenericParamKind::Type { .. } => {

@@ -225,7 +225,7 @@ fn make_format_args(
 
                                 let mut sugg_fmt = String::new();
                                 for kind in std::iter::once(&efmt.kind)
-                                    .chain(args.explicit_args().into_iter().map(|a| &a.expr.kind))
+                                    .chain(args.explicit_args().iter().map(|a| &a.expr.kind))
                                 {
                                     sugg_fmt.push_str(if should_suggest(kind) {
                                         "{:?} "
@@ -928,7 +928,7 @@ fn report_redundant_format_arguments<'a>(
             suggestion_spans.push(span);
         }
 
-        let sugg = if args.named_args().len() == 0 {
+        let sugg = if args.named_args().is_empty() {
             Some(diagnostics::FormatRedundantArgsSugg { spans: suggestion_spans })
         } else {
             None

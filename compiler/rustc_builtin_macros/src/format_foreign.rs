@@ -185,17 +185,7 @@ pub(crate) mod printf {
             s.push('{');
 
             if let Some(arg) = self.parameter {
-                match write!(
-                    s,
-                    "{}",
-                    match arg.checked_sub(1) {
-                        Some(a) => a,
-                        None => return Err(None),
-                    }
-                ) {
-                    Err(_) => return Err(None),
-                    _ => {}
-                }
+                write!(s, "{}", arg.checked_sub(1).ok_or(None)?).map_err(|_| None)?;
             }
 
             if has_options {
@@ -225,18 +215,12 @@ pub(crate) mod printf {
                 }
 
                 if let Some(width) = width {
-                    match width.translate(&mut s) {
-                        Err(_) => return Err(None),
-                        _ => {}
-                    }
+                    width.translate(&mut s).map_err(|_| None)?;
                 }
 
                 if let Some(precision) = precision {
                     s.push('.');
-                    match precision.translate(&mut s) {
-                        Err(_) => return Err(None),
-                        _ => {}
-                    }
+                    precision.translate(&mut s).map_err(|_| None)?;
                 }
 
                 if let Some(type_) = type_ {
@@ -268,11 +252,11 @@ pub(crate) mod printf {
     impl Num {
         fn from_str(s: &str, arg: Option<&str>) -> Option<Self> {
             if let Some(arg) = arg {
-                arg.parse().ok().map(|arg| Num::Arg(arg))
+                arg.parse().ok().map(Num::Arg)
             } else if s == "*" {
                 Some(Num::Next)
             } else {
-                s.parse().ok().map(|num| Num::Num(num))
+                s.parse().ok().map(Num::Num)
             }
         }
 
@@ -597,14 +581,10 @@ pub(crate) mod printf {
     {
         loop {
             match cur.next_cp() {
-                Some((c, next)) => {
-                    if pred(&c) {
-                        cur = next;
-                    } else {
-                        return cur;
-                    }
+                Some((c, next)) if pred(&c) => {
+                    cur = next;
                 }
-                None => return cur,
+                _ => return cur,
             }
         }
     }
@@ -722,14 +702,10 @@ pub(crate) mod shell {
     {
         loop {
             match cur.next_cp() {
-                Some((c, next)) => {
-                    if pred(c) {
-                        cur = next;
-                    } else {
-                        return cur;
-                    }
+                Some((c, next)) if pred(c) => {
+                    cur = next;
                 }
-                None => return cur,
+                _ => return cur,
             }
         }
     }

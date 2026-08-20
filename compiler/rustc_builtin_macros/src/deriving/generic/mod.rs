@@ -632,7 +632,7 @@ impl<'a> TraitDef<'a> {
             .params
             .iter()
             .map(|param| match &param.kind {
-                GenericParamKind::Lifetime { .. } => param.clone(),
+                GenericParamKind::Lifetime => param.clone(),
                 GenericParamKind::Type { .. } => {
                     // Extra restrictions on the generics parameters to the
                     // type being derived upon.
@@ -711,7 +711,7 @@ impl<'a> TraitDef<'a> {
 
         if !ty_param_names.is_empty() {
             for field_ty in field_tys {
-                let field_ty_params = find_type_parameters(&field_ty, &ty_param_names, cx);
+                let field_ty_params = find_type_parameters(field_ty, &ty_param_names, cx);
 
                 for field_ty_param in field_ty_params {
                     // if we have already handled this type, skip it
@@ -776,7 +776,7 @@ impl<'a> TraitDef<'a> {
             .params
             .iter()
             .map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => {
+                GenericParamKind::Lifetime => {
                     GenericArg::Lifetime(cx.lifetime(param.ident.span.with_ctxt(ctxt), param.ident))
                 }
                 GenericParamKind::Type { .. } => {

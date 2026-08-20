@@ -206,7 +206,7 @@ fn get_field_equality_expr(cx: &ExtCtxt<'_>, field: &FieldInfo) -> Box<Expr> {
 /// references are preserved.
 fn peel_refs(mut expr: &Box<Expr>) -> Box<Expr> {
     while let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = &expr.kind {
-        expr = &inner;
+        expr = inner;
     }
     expr.clone()
 }
