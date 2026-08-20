@@ -295,9 +295,10 @@ pub fn sleep(dur: Duration) {
 
 /// Puts the current thread to sleep until the specified deadline has passed.
 ///
-/// The thread may still be asleep after the deadline specified due to
-/// scheduling specifics or platform-dependent functionality. It will never
-/// wake before.
+/// If the deadline has already passed at the time this function is called, it
+/// will return immediately. Note that the thread may still be asleep after the
+/// deadline specified due to scheduling specifics or platform-dependent
+/// functionality. It will never wake before.
 ///
 /// This function is blocking, and should not be used in `async` functions.
 ///
