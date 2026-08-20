@@ -54,29 +54,27 @@ pub(crate) fn expand_deriving_partial_ord(
     let simple_substructure = combine_substructure(|cx, span, _| {
         cs_partial_cmp_simple(cx, span, cx.expr_ident(span, Ident::new(sym::other, span)))
     });
-    let (is_simple, substructure) = match item {
+    let is_simple = match item {
         Annotatable::Item(annitem) => match &annitem.kind {
             // For unit structs/zero-variant enums, the default generated code is better.
-            ItemKind::Struct(.., ast::VariantData::Unit(..)) => (false, default_substructure),
+            ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
             // Also for single fieldless variant enum
-            ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => {
-                (false, default_substructure)
-            }
+            ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => false,
             ItemKind::Enum(.., enum_def)
                 if enum_def.variants.len() == 1
                     && matches!(enum_def.variants[0].data, ast::VariantData::Unit(..)) =>
             {
-                (false, default_substructure)
+                false
             }
             ItemKind::Struct(_, ast::Generics { params, .. }, _)
             | ItemKind::Enum(_, ast::Generics { params, .. }, _)
                 if is_simple_candidate(params) =>
             {
-                (true, simple_substructure)
+                true
             }
-            _ => (false, default_substructure),
+            _ => false,
         },
-        _ => (false, default_substructure),
+        _ => false,
     };
 
     let partial_cmp_def = MethodDef {
@@ -87,7 +85,7 @@ pub(crate) fn expand_deriving_partial_ord(
         ret_ty,
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: substructure,
+        combine_substructure: if is_simple { simple_substructure } else { default_substructure },
     };
 
     let trait_def = TraitDef {
