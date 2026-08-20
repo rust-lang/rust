@@ -34,6 +34,7 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
         },
         Primitive::Float(float) => match float {
             Float::F16 => types::F16,
+            Float::F16B => bug!("f16b is not supported by the Cranelift codegen backend"),
             Float::F32 => types::F32,
             Float::F64 => types::F64,
             Float::F128 => types::F128,
