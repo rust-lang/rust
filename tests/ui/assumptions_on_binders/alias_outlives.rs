@@ -23,7 +23,7 @@ where
 }
 
 fn borrowck_env_fail<'a, T: AliasHaver>()
-// FIXME: ^ this should raise an ERROR: unsatisfied lifetime constraint from -Zassumptions-on-binders
+//~^ ERROR: unsatisfied lifetime constraint from -Zassumptions-on-binders
 where
     <T as AliasHaver>::Assoc: 'a,
 {
