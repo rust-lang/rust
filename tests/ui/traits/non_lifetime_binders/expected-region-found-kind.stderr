@@ -1,0 +1,45 @@
+error[E0283]: type annotations needed: cannot satisfy `Self: E<'a>`
+  --> $DIR/expected-region-found-kind.rs:9:14
+   |
+LL | trait F<'a>: for<F> E<'a> + for<'e> E<'e> {}
+   |              ^^^^^^^^^^^^
+   |
+note: multiple `impl`s or `where` clauses satisfying `Self: E<'a>` found
+  --> $DIR/expected-region-found-kind.rs:9:14
+   |
+LL | trait F<'a>: for<F> E<'a> + for<'e> E<'e> {}
+   |              ^^^^^^^^^^^^   ^^^^^^^^^^^^^
+
+error[E0221]: ambiguous associated type `As` in bounds of `F`
+  --> $DIR/expected-region-found-kind.rs:14:14
+   |
+LL |     type As;
+   |     -------
+   |     |
+   |     ambiguous `As` from `for<'e> E<'e>`
+   |     ambiguous `As` from `E<'a>`
+...
+LL |     T: F<'a, As: E<'a>>,
+   |              ^^^^^^^^^ ambiguous associated type `As`
+
+error[E0283]: type annotations needed: cannot satisfy `T: E<'a>`
+  --> $DIR/expected-region-found-kind.rs:14:8
+   |
+LL |     T: F<'a, As: E<'a>>,
+   |        ^^^^^^^^^^^^^^^^
+   |
+note: multiple `impl`s or `where` clauses satisfying `T: E<'a>` found
+  --> $DIR/expected-region-found-kind.rs:14:8
+   |
+LL |     T: F<'a, As: E<'a>>,
+   |        ^^^^^^^^^^^^^^^^
+note: required by a bound in `F`
+  --> $DIR/expected-region-found-kind.rs:9:14
+   |
+LL | trait F<'a>: for<F> E<'a> + for<'e> E<'e> {}
+   |              ^^^^^^^^^^^^ required by this bound in `F`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0221, E0283.
+For more information about an error, try `rustc --explain E0221`.
