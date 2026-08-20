@@ -10,7 +10,7 @@ use std::path::Path;
 
 use super::exec::ExecutionContext;
 use super::helpers;
-use crate::Build;
+use crate::core::session::Build;
 use crate::utils::helpers::t;
 
 #[derive(Clone, Default)]

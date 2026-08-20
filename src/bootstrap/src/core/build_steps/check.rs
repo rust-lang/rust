@@ -3,7 +3,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::Mode;
 use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{
     ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
@@ -20,6 +19,7 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
+use crate::core::session::Mode;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::helpers::t;
 
