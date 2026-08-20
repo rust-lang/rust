@@ -9,6 +9,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::typetree::typetree_from_ty;
 use rustc_middle::ty::{AtomicOrdering, Instance, Ty};
+use rustc_sanitizers::alloc_token::AllocTokenHint;
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
@@ -667,6 +668,16 @@ pub trait BuilderMethods<'a, 'tcx>:
         funclet: Option<&Self::Funclet>,
         callee_instance: Option<Instance<'tcx>>,
     );
+
+    /// Attaches an allocation token hint to an allocation call. Backends that do not support
+    /// allocation token instrumentation may ignore it.
+    fn set_alloc_token_hint(&mut self, _call: Self::Value, _hint: &AllocTokenHint) {}
+
+    /// Returns the token identifier for the given allocation token hint. Backends that do not
+    /// support allocation token instrumentation may return a constant zero.
+    fn get_alloc_token_id(&mut self, _hint: &AllocTokenHint) -> Self::Value {
+        self.const_usize(0)
+    }
 
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 

@@ -143,6 +143,9 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     if enabled.contains(SanitizerSet::ADDRESS) || enabled.contains(SanitizerSet::KERNELADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
+    if enabled.contains(SanitizerSet::ALLOCTOKEN) {
+        attrs.push(llvm::AttributeKind::SanitizeAllocToken.create_attr(cx.llcx));
+    }
     if enabled.contains(SanitizerSet::MEMORY) {
         attrs.push(llvm::AttributeKind::SanitizeMemory.create_attr(cx.llcx));
     }

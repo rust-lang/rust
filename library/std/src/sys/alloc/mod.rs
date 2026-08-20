@@ -127,3 +127,38 @@ cfg_select! {
         pub use imp::alloc_zeroed;
     }
 }
+
+// Token-enabled versions of the allocation functions for LLVM AllocToken and heap partitioning
+// support. The unix implementation forwards to the token-enabled C allocator interface; other
+// platforms ignore the token identifier and call the non-token-enabled allocation functions.
+cfg_select! {
+    any(
+        target_family = "unix",
+        target_os = "wasi",
+        target_os = "teeos",
+        target_os = "trusty",
+    ) => {
+        pub use imp::{alloc_with_token, alloc_zeroed_with_token, realloc_with_token};
+    }
+    _ => {
+        #[inline]
+        pub unsafe fn alloc_with_token(layout: Layout, _token: usize) -> *mut u8 {
+            unsafe { alloc(layout) }
+        }
+
+        #[inline]
+        pub unsafe fn alloc_zeroed_with_token(layout: Layout, _token: usize) -> *mut u8 {
+            unsafe { alloc_zeroed(layout) }
+        }
+
+        #[inline]
+        pub unsafe fn realloc_with_token(
+            ptr: *mut u8,
+            layout: Layout,
+            new_size: usize,
+            _token: usize,
+        ) -> *mut u8 {
+            unsafe { realloc(ptr, layout, new_size) }
+        }
+    }
+}

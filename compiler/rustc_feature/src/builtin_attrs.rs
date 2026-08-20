@@ -190,6 +190,8 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::register_tool,
     // `#[cfi_encoding = ""]`
     sym::cfi_encoding,
+    // `#[alloc_token_hint(contains_pointers = ..., type_name = "...")]`
+    sym::alloc_token_hint,
 
     // `#[coroutine]` attribute to be applied to closures to make them coroutines instead
     sym::coroutine,
@@ -263,6 +265,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // Internal attributes: Runtime related:
     // ==========================================================================
 
+    sym::rustc_alloc_token_hint,
     sym::rustc_allocator,
     sym::rustc_nounwind,
     sym::rustc_reallocator,

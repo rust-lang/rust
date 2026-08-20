@@ -6,5 +6,6 @@
 // tidy-alphabetical-start
 // tidy-alphabetical-end
 
+pub mod alloc_token;
 pub mod cfi;
 pub mod kcfi;

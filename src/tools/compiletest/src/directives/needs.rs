@@ -165,6 +165,11 @@ pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditio
             ignore_reason: "ignored on targets without address sanitizer",
         },
         Need {
+            name: "needs-sanitizer-alloc-token",
+            condition: sanitizers.contains(&Sanitizer::AllocToken),
+            ignore_reason: "ignored on targets without allocation token support",
+        },
+        Need {
             name: "needs-sanitizer-cfi",
             condition: sanitizers.contains(&Sanitizer::Cfi),
             ignore_reason: "ignored on targets without CFI sanitizer",

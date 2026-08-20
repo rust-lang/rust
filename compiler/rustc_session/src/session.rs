@@ -35,9 +35,10 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
-    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
-    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
+    self, AllocTokenScheme, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions,
+    CrateType, DebugInfo, ErrorOutputType, FunctionReturn, Input, InstrumentCoverage,
+    InstrumentMcount, NATIVE_CPU, OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption,
+    SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -579,6 +580,19 @@ impl Session {
     /// need separate accessors.
     pub fn coverage_options(&self) -> &CoverageOptions {
         &self.opts.unstable_opts.coverage_options
+    }
+
+    pub fn is_sanitizer_alloc_token_enabled(&self) -> bool {
+        self.sanitizers().contains(SanitizerSet::ALLOCTOKEN)
+    }
+
+    pub fn alloc_token_max(&self) -> Option<u32> {
+        match self.opts.unstable_opts.sanitizer_alloc_token_scheme {
+            None | Some(AllocTokenScheme::PointerSplit) => Some(2),
+            Some(AllocTokenScheme::TypeHashPointerSplit) => {
+                self.opts.unstable_opts.sanitizer_alloc_token_max
+            }
+        }
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
@@ -1535,6 +1549,35 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // KCFI arity indicator requires KCFI.
     if sess.is_sanitizer_kcfi_arity_enabled() && !sess.is_sanitizer_kcfi_enabled() {
         sess.dcx().emit_err(diagnostics::SanitizerKcfiArityRequiresKcfi);
+    }
+
+    // Maximum number of tokens requires AllocToken.
+    if sess.opts.unstable_opts.sanitizer_alloc_token_max.is_some()
+        && !sess.is_sanitizer_alloc_token_enabled()
+    {
+        sess.dcx().emit_err(diagnostics::SanitizerAllocTokenMaxRequiresAllocToken);
+    }
+
+    // Heap partitioning scheme requires AllocToken.
+    if sess.opts.unstable_opts.sanitizer_alloc_token_scheme.is_some()
+        && !sess.is_sanitizer_alloc_token_enabled()
+    {
+        sess.dcx().emit_err(diagnostics::SanitizerAllocTokenSchemeRequiresAllocToken);
+    }
+
+    // Fast ABI requires AllocToken.
+    if sess.opts.unstable_opts.sanitizer_alloc_token_fast_abi.is_some()
+        && !sess.is_sanitizer_alloc_token_enabled()
+    {
+        sess.dcx().emit_err(diagnostics::SanitizerAllocTokenFastAbiRequiresAllocToken);
+    }
+
+    // Fast ABI requires a maximum number of tokens.
+    if sess.opts.unstable_opts.sanitizer_alloc_token_fast_abi == Some(true)
+        && sess.is_sanitizer_alloc_token_enabled()
+        && sess.alloc_token_max().is_none()
+    {
+        sess.dcx().emit_err(diagnostics::SanitizerAllocTokenFastAbiRequiresMax);
     }
 
     // LLVM CFI pointer generalization requires CFI or KCFI.

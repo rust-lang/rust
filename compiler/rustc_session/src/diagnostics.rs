@@ -346,6 +346,24 @@ pub(crate) struct SanitizerKcfiArityRequiresKcfi;
 pub(crate) struct SanitizerKcfiRequiresPanicAbort;
 
 #[derive(Diagnostic)]
+#[diag("`-Zsanitizer-alloc-token-max` requires `-Zsanitizer=alloc-token`")]
+pub(crate) struct SanitizerAllocTokenMaxRequiresAllocToken;
+
+#[derive(Diagnostic)]
+#[diag("`-Zsanitizer-alloc-token-scheme` requires `-Zsanitizer=alloc-token`")]
+pub(crate) struct SanitizerAllocTokenSchemeRequiresAllocToken;
+
+#[derive(Diagnostic)]
+#[diag("`-Zsanitizer-alloc-token-fast-abi` requires `-Zsanitizer=alloc-token`")]
+pub(crate) struct SanitizerAllocTokenFastAbiRequiresAllocToken;
+
+#[derive(Diagnostic)]
+#[diag(
+    "`-Zsanitizer-alloc-token-fast-abi` requires a maximum number of tokens (i.e., `-Zsanitizer-alloc-token-max`)"
+)]
+pub(crate) struct SanitizerAllocTokenFastAbiRequiresMax;
+
+#[derive(Diagnostic)]
 #[diag("`-Zsplit-lto-unit` requires `-Clto`, `-Clto=thin`, or `-Clinker-plugin-lto`")]
 pub(crate) struct SplitLtoUnitRequiresLto;
 

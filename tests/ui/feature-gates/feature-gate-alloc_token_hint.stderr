@@ -1,0 +1,13 @@
+error[E0658]: the `alloc_token_hint` attribute is an experimental feature
+  --> $DIR/feature-gate-alloc_token_hint.rs:3:3
+   |
+LL | #[alloc_token_hint(contains_pointers = false)]
+   |   ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #159111 <https://github.com/rust-lang/rust/issues/159111> for more information
+   = help: add `#![feature(alloc_token_hint)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

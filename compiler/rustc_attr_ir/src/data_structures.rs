@@ -993,6 +993,12 @@ pub struct UnstableRemovedFeature {
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum AttributeKind {
     // tidy-alphabetical-start
+    /// Represents `#[alloc_token_hint]`.
+    AllocTokenHint {
+        contains_pointers: Option<bool>,
+        type_name: Option<Symbol>,
+    },
+
     /// Represents `#[allow_internal_unsafe]`.
     AllowInternalUnsafe(Span),
 
@@ -1333,6 +1339,9 @@ pub enum AttributeKind {
         align: Align,
         span: Span,
     },
+
+    /// Represents `#[rustc_alloc_token_hint]`
+    RustcAllocTokenHint,
 
     /// Represents `#[rustc_allocator]`
     RustcAllocator,

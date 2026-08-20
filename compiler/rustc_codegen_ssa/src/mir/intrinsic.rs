@@ -135,7 +135,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::atomic_fence
                 | sym::atomic_singlethreadfence
                 | sym::caller_location
-                | sym::return_address => {}
+                | sym::return_address
+                | sym::alloc_token_infer => {}
                 _ => {
                     span_bug!(
                         span,
@@ -172,6 +173,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let (_, meta) = args[0].val.pointer_parts();
                 let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llalign)
+            }
+            sym::alloc_token_infer => {
+                // Compute the allocation token hint (i.e., the contents of the `!alloc_token`
+                // metadata) for the type parameter `T`, for LLVM AllocToken and heap partitioning
+                // support.
+                let tp_ty = fn_args.type_at(0);
+                let hint = rustc_sanitizers::alloc_token::hint_for_ty(
+                    bx.tcx(),
+                    tp_ty,
+                    rustc_sanitizers::alloc_token::AllocTokenHintOptions::empty(),
+                );
+                OperandValue::Immediate(bx.get_alloc_token_id(&hint))
             }
             sym::vtable_size | sym::vtable_align => {
                 let vtable = args[0].immediate();

@@ -345,6 +345,63 @@ pub unsafe trait GlobalAlloc {
         }
         new_ptr
     }
+
+    /// Behaves like `alloc`, but also passes a token identifier, for LLVM AllocToken and heap
+    /// partitioning support (i.e., for token-enabled memory allocators that use token
+    /// identifiers to separate allocations into partitions).
+    ///
+    /// The default implementation ignores `token` and calls `alloc`, for backward compatibility
+    /// with existing allocators.
+    ///
+    /// # Safety
+    ///
+    /// Same as `alloc`.
+    #[unstable(feature = "alloc_with_token", issue = "159111")]
+    unsafe fn alloc_with_token(&self, layout: Layout, token: usize) -> *mut u8 {
+        let _ = token;
+        // SAFETY: the safety contract for `alloc` must be upheld by the caller.
+        unsafe { self.alloc(layout) }
+    }
+
+    /// Behaves like `alloc_zeroed`, but also passes a token identifier, for LLVM AllocToken and
+    /// heap partitioning support (i.e., for token-enabled memory allocators that use token
+    /// identifiers to separate allocations into partitions).
+    ///
+    /// The default implementation ignores `token` and calls `alloc_zeroed`, for backward
+    /// compatibility with existing allocators.
+    ///
+    /// # Safety
+    ///
+    /// Same as `alloc_zeroed`.
+    #[unstable(feature = "alloc_with_token", issue = "159111")]
+    unsafe fn alloc_zeroed_with_token(&self, layout: Layout, token: usize) -> *mut u8 {
+        let _ = token;
+        // SAFETY: the safety contract for `alloc_zeroed` must be upheld by the caller.
+        unsafe { self.alloc_zeroed(layout) }
+    }
+
+    /// Behaves like `realloc`, but also passes a token identifier, for LLVM AllocToken and heap
+    /// partitioning support (i.e., for token-enabled memory allocators that use token
+    /// identifiers to separate allocations into partitions).
+    ///
+    /// The default implementation ignores `token` and calls `realloc`, for backward compatibility
+    /// with existing allocators.
+    ///
+    /// # Safety
+    ///
+    /// Same as `realloc`.
+    #[unstable(feature = "alloc_with_token", issue = "159111")]
+    unsafe fn realloc_with_token(
+        &self,
+        ptr: *mut u8,
+        layout: Layout,
+        new_size: usize,
+        token: usize,
+    ) -> *mut u8 {
+        let _ = token;
+        // SAFETY: the safety contract for `realloc` must be upheld by the caller.
+        unsafe { self.realloc(ptr, layout, new_size) }
+    }
 }
 
 /// Allows all [`GlobalAllocator`]s to be used with the legacy [`GlobalAlloc`] interface.

@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
@@ -814,6 +814,12 @@ fn check_codegen_attributes<'tcx, I: Inliner<'tcx>>(
 
     if let OptimizeAttr::DoNotOptimize = callee_attrs.optimize {
         return Err("has DoNotOptimize attribute");
+    }
+
+    if tcx.sess.is_sanitizer_alloc_token_enabled()
+        && callee_attrs.flags.contains(CodegenFnAttrFlags::ALLOC_TOKEN_HINT)
+    {
+        return Err("typed allocation function with allocation token instrumentation enabled");
     }
 
     inliner.check_codegen_attributes_extra(callee_attrs)?;
