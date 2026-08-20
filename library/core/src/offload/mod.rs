@@ -19,6 +19,9 @@ pub use crate::offload;
 ///   Defaults to `[1, 1, 1]`.
 /// - `dyn_cache`: The amount of dynamic shared memory, in bytes, to allocate for the kernel.
 ///   Defaults to `0`.
+/// - `device`: The index of the device to offload to. Must be `>= 0`. If omitted, the
+///   default device is used. Use [`crate::intrinsics::offload_get_num_devices`] to discover
+///   which device ids are valid.
 ///
 /// Each argument may only be specified once.
 ///
@@ -43,61 +46,82 @@ macro_rules! offload {
             workgroup_dim = ([1, 1, 1]);
             thread_dim = ([1, 1, 1]);
             dyn_cache = (0);
+            device = NONE;
             args = NONE
         )
     };
 
-    (@munch [kernel = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = NONE; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; args = $a:tt) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = (SOME $val); workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; args = $a)
+    (@munch [kernel = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = NONE; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = (SOME $val); workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = $device; args = $a)
     };
-    (@munch [kernel = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = (SOME $old:expr); workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; args = $a:tt) => {
+    (@munch [kernel = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = (SOME $old:expr); workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
         compile_error!("duplicate field `kernel`")
     };
-    (@munch [workgroup_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = ([1, 1, 1]); thread_dim = $t:tt; dyn_cache = $d:tt; args = $a:tt) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = (SOME $val); thread_dim = $t; dyn_cache = $d; args = $a)
+    (@munch [workgroup_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = ([1, 1, 1]); thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = (SOME $val); thread_dim = $t; dyn_cache = $d; device = $device; args = $a)
     };
-    (@munch [workgroup_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = (SOME $old:expr); thread_dim = $t:tt; dyn_cache = $d:tt; args = $a:tt) => {
+    (@munch [workgroup_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = (SOME $old:expr); thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
         compile_error!("duplicate field `workgroup_dim`")
     };
-    (@munch [thread_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = ([1, 1, 1]); dyn_cache = $d:tt; args = $a:tt) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = (SOME $val); dyn_cache = $d; args = $a)
+    (@munch [thread_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = ([1, 1, 1]); dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
+        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = (SOME $val); dyn_cache = $d; device = $device; args = $a)
     };
-    (@munch [thread_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = (SOME $old:expr); dyn_cache = $d:tt; args = $a:tt) => {
+    (@munch [thread_dim = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = (SOME $old:expr); dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
         compile_error!("duplicate field `thread_dim`")
     };
-    (@munch [dyn_cache = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = (0); args = $a:tt) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = (SOME $val); args = $a)
+    (@munch [dyn_cache = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = (0); device = $device:tt; args = $a:tt) => {
+        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = (SOME $val); device = $device; args = $a)
     };
-    (@munch [dyn_cache = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = (SOME $old:expr); args = $a:tt) => {
+    (@munch [dyn_cache = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = (SOME $old:expr); device = $device:tt; args = $a:tt) => {
         compile_error!("duplicate field `dyn_cache`")
     };
-    (@munch [args = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; args = NONE) => {
-        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; args = (SOME $val))
+    (@munch [device = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = NONE; args = $a:tt) => {
+        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = (SOME $val); args = $a)
     };
-    (@munch [args = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; args = (SOME $old:expr)) => {
+    (@munch [device = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = (SOME $old:expr); args = $a:tt) => {
+        compile_error!("duplicate field `device`")
+    };
+    (@munch [args = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = NONE) => {
+        $crate::offload!(@munch [$($rest_f = $rest_v),*]; kernel = $k; workgroup_dim = $w; thread_dim = $t; dyn_cache = $d; device = $device; args = (SOME $val))
+    };
+    (@munch [args = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = (SOME $old:expr)) => {
         compile_error!("duplicate field `args`")
     };
 
-    (@munch [$invalid:ident = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; args = $a:tt) => {
+    (@munch [$invalid:ident = $val:expr $(, $rest_f:ident = $rest_v:expr)*]; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
         compile_error!(concat!("unknown field `", stringify!($invalid), "`"))
     };
 
-    (@munch []; kernel = NONE; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; args = $a:tt) => {
+    (@munch []; kernel = NONE; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = $a:tt) => {
         compile_error!("missing `kernel`")
     };
-    (@munch []; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; args = NONE) => {
+    (@munch []; kernel = $k:tt; workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = NONE) => {
         compile_error!("missing `args`")
     };
-    (@munch []; kernel = (SOME $kernel:expr); workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; args = (SOME $args:expr)) => {
+    (@munch []; kernel = (SOME $kernel:expr); workgroup_dim = $w:tt; thread_dim = $t:tt; dyn_cache = $d:tt; device = $device:tt; args = (SOME $args:expr)) => {
         $crate::intrinsics::offload::<_, _, ()>(
             $kernel,
             $crate::offload!(@value $w),
             $crate::offload!(@value $t),
             $crate::offload!(@value $d),
+            $crate::offload!(@device $device),
             $args,
         )
     };
 
     (@value (SOME $val:expr)) => { $val };
     (@value ($val:expr)) => { $val };
+
+    // if `device` is omitted (`NONE), we use the OpenMP default device (`-1`)
+    (@device NONE) => { -1 };
+    (@device (SOME $val:expr)) => { {
+        const { $crate::assert!($val >= 0, "offload device must be non-negative; omit `device` to use the default device") };
+        let device: i32 = $val;
+        $crate::assert!(
+            device < $crate::intrinsics::offload_get_num_devices(),
+            "offload device {} is not available",
+            device,
+        );
+        device
+    } };
 }
