@@ -7,10 +7,8 @@ pub use self::job::{
     QueryWaiter,
 };
 pub use self::keys::{LocalCrate, QueryKey};
-pub use self::plumbing::{
-    QueryMode, QuerySystem, QueryVTable, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk,
-    TyCtxtEnsureResult,
-};
+pub use self::plumbing::{TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult};
+pub use self::system::{QueryMode, QuerySystem, QueryVTable};
 pub use crate::queries::Providers;
 use crate::ty::TyCtxt;
 
@@ -24,6 +22,7 @@ mod keys;
 pub(crate) mod modifiers;
 pub mod on_disk_cache;
 pub(crate) mod plumbing;
+mod system;
 
 pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
     let def_id = def_id.into();
