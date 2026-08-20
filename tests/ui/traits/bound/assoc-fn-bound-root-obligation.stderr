@@ -12,10 +12,10 @@ LL |     s.strip_suffix(b'\n').unwrap_or(s)
              `&'b [char]` implements `Pattern<&'a str>`
              `&'b str` implements `Pattern<&'a str>`
              `&'c &'b str` implements `Pattern<&'a str>`
+             `&'p [char; N]` implements `Pattern<&'a OsStr>`
+             `&'p [char]` implements `Pattern<&'a OsStr>`
              `&'p str` implements `Pattern<&'hs OsStr>`
-             `Predicate<F>` implements `Pattern<&'hs OsStr>`
-             `[char; N]` implements `Pattern<&'a str>`
-           and 2 others
+           and 5 others
    = note: required for `u8` to implement `Pattern<&str>`
 note: required by a bound in `core::str::<impl str>::strip_suffix`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
