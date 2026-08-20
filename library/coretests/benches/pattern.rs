@@ -363,6 +363,38 @@ fn split_char_dense_os(b: &mut Bencher) {
     b.iter(|| black_box(haystack.split(',').count()))
 }
 
+#[bench]
+fn split_char_dense_os_char(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(',').count()))
+}
+
+#[bench]
+fn split_char_dense_os_char_arr(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split([',']).count()))
+}
+
+#[bench]
+fn split_char_dense_os_char_arr_ref(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(&[',']).count()))
+}
+
+#[bench]
+fn split_char_dense_os_char_slice(b: &mut Bencher) {
+    let s = OsString::from("ab,".repeat(8 * 1024));
+    let haystack = black_box(s.as_os_str());
+    b.bytes = haystack.len() as u64;
+    b.iter(|| black_box(haystack.split(&[','][..]).count()))
+}
+
 // A match every 65 bytes, resembling line splitting.
 #[bench]
 fn split_1byte_str_sparse_os(b: &mut Bencher) {
