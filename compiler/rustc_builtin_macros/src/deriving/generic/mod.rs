@@ -174,7 +174,6 @@
 //! )
 //! ```
 
-use std::cell::RefCell;
 use std::ops::Not;
 use std::{iter, vec};
 
@@ -249,7 +248,7 @@ pub(crate) struct MethodDef<'a> {
 
     pub fieldless_variants_strategy: FieldlessVariantsStrategy,
 
-    pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
+    pub combine_substructure: CombineSubstructureFunc<'a>,
 }
 
 /// How to handle fieldless enum variants.
@@ -337,12 +336,12 @@ pub(crate) enum SubstructureFields<'a> {
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
 pub(crate) type CombineSubstructureFunc<'a> =
-    Box<dyn FnMut(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
+    Box<dyn Fn(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
 
 pub(crate) fn combine_substructure<'a>(
-    f: impl FnMut(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a,
-) -> RefCell<CombineSubstructureFunc<'a>> {
-    RefCell::new(Box::new(f))
+    f: impl Fn(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a,
+) -> CombineSubstructureFunc<'a> {
+    Box::new(f)
 }
 
 struct TypeParameter {
@@ -974,8 +973,7 @@ impl<'a> MethodDef<'a> {
     ) -> BlockOrExpr {
         let span = trait_.span;
         let substructure = Substructure { type_ident, nonselflike_args, fields };
-        let mut f = self.combine_substructure.borrow_mut();
-        let f: &mut CombineSubstructureFunc<'_> = &mut *f;
+        let f: &CombineSubstructureFunc<'_> = &self.combine_substructure;
         f(cx, span, &substructure)
     }
 
