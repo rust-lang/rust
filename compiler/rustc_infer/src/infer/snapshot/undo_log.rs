@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
-use rustc_middle::ty::{self, OpaqueTypeKey, ProvisionalHiddenType};
+use rustc_middle::ty::{self, OpaqueTypeKey, ProvisionalHiddenType, Ty};
 use tracing::debug;
 
 use crate::infer::unify_key::{ConstVidKey, RegionVidKey};
@@ -20,6 +20,7 @@ pub struct Snapshot<'tcx> {
 pub(crate) enum UndoLog<'tcx> {
     DuplicateOpaqueType,
     OpaqueTypes(OpaqueTypeKey<'tcx>, Option<ProvisionalHiddenType<'tcx>>),
+    HiddenTypesOfOpaques(Ty<'tcx>, Option<usize>),
     TypeVariables(type_variable::UndoLog<'tcx>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
@@ -68,6 +69,9 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
         match undo {
             UndoLog::DuplicateOpaqueType => self.opaque_type_storage.pop_duplicate_entry(),
             UndoLog::OpaqueTypes(key, idx) => self.opaque_type_storage.remove(key, idx),
+            UndoLog::HiddenTypesOfOpaques(ty, len) => {
+                self.opaque_type_storage.truncate_hidden_types_of_opaques(ty, len)
+            }
             UndoLog::TypeVariables(undo) => self.type_variable_storage.reverse(undo),
             UndoLog::ConstUnificationTable(undo) => self.const_unification_storage.reverse(undo),
             UndoLog::IntUnificationTable(undo) => self.int_unification_storage.reverse(undo),

@@ -70,6 +70,7 @@ pub struct MethodAutoderefSteps<'tcx> {
     ///
     /// Only used by the new solver for now.
     pub predefined_opaques_in_body: solve::PredefinedOpaques<'tcx>,
+    pub hidden_types_of_opaques_in_body: solve::HiddenTypesOfOpaques<'tcx>,
     pub self_ty: Ty<'tcx>,
 }
 
