@@ -321,11 +321,11 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             );
         }
 
-        if !e.span.in_external_macro(cx.sess().source_map())
-            && let ExprKind::MethodCall(path, receiver, ..) = &e.kind
+        if let ExprKind::MethodCall(path, receiver, ..) = &e.kind
             && path.ident.name == sym::as_bytes
             && let ExprKind::Lit(lit) = &receiver.kind
             && let LitKind::Str(lit_content, _) = &lit.node
+            && !e.span.in_external_macro(cx.sess().source_map())
         {
             let callsite = snippet(cx, receiver.span.source_callsite(), r#""foo""#);
             let mut applicability = Applicability::MachineApplicable;

@@ -92,8 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for RestWhenDestructuringStruct {
             && let qty = cx.typeck_results().qpath_res(&path, pat.hir_id)
             && let ty = cx.typeck_results().pat_ty(pat)
             && let ty::Adt(a, _) = ty.kind()
-            && let Some(vid) = qty.opt_def_id().map(|x| a.variant_index_with_id(x))
-            && let Some(variant) = a.variants().get(vid)
+            && let variant = a.variant_of_res(qty)
         {
             let mut missing_suggestions = String::new();
             let mut needs_dotdot = variant.field_list_has_applicable_non_exhaustive();

@@ -160,3 +160,6 @@ mod issue12123 {
         async fn main() {}
     }
 }
+
+#[derive(Debug, Clone)]
+struct DerivedStruct(i32);

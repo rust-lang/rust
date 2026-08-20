@@ -35,7 +35,7 @@ declare_lint_pass!(OptionEnvUnwrap => [OPTION_ENV_UNWRAP]);
 
 impl EarlyLintPass for OptionEnvUnwrap {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if let ExprKind::MethodCall(box MethodCall { seg, receiver, .. }) = &expr.kind
+        if let ExprKind::MethodCall(MethodCall { seg, receiver, .. }) = &expr.kind
             && matches!(seg.ident.name, sym::expect | sym::unwrap)
             && is_direct_expn_of(receiver.span, sym::option_env).is_some()
         {

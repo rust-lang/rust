@@ -404,7 +404,7 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let ItemKind::Fn(box ast::Fn {
+        if let ItemKind::Fn(ast::Fn {
             ref sig,
             body: Some(ref blk),
             ..
@@ -419,7 +419,7 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let AssocItemKind::Fn(box ast::Fn {
+        if let AssocItemKind::Fn(ast::Fn {
             ref sig,
             body: Some(ref blk),
             ..
