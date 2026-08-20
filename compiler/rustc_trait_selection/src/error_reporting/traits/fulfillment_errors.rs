@@ -996,18 +996,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        let self_ty = trait_pred.self_ty().skip_binder();
+        let original_self_ty = trait_pred.self_ty().skip_binder();
+        let peeled_self_ty = original_self_ty.peel_refs();
 
-        let (expected_kind, trait_prefix) =
+        let is_ref_to_closure = matches!(original_self_ty.kind(), ty::Ref(..))
+            && matches!(peeled_self_ty.kind(), ty::Closure(..));
+
+        let self_ty = if is_ref_to_closure { peeled_self_ty } else { original_self_ty };
+
+        let (expected_kind, is_async) =
             if let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id()) {
-                (expected_kind, "")
+                (expected_kind, false)
             } else if let Some(expected_kind) =
                 self.tcx.async_fn_trait_kind_from_def_id(trait_pred.def_id())
             {
-                (expected_kind, "Async")
+                (expected_kind, true)
             } else {
                 return None;
             };
+        let trait_prefix = if is_async { "Async" } else { "" };
 
         let (closure_def_id, found_args, has_self_borrows) = match *self_ty.kind() {
             ty::Closure(def_id, args) => {
@@ -1036,7 +1043,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return None;
         }
 
-        if let Some(found_kind) = self.closure_kind(self_ty)
+        let mut found_kind = self.closure_kind(self_ty);
+        let mut kind_origin = None;
+
+        if found_kind.is_none()
+            && is_ref_to_closure
+            && !is_async
+            && let Some(local_def_id) = closure_def_id.as_local()
+            && let Some((inferred_kind, origin)) = (self.infer_closure_kind)(local_def_id)
+        {
+            found_kind = Some(inferred_kind);
+            kind_origin = origin;
+        }
+
+        if let Some(found_kind) = found_kind
             && !found_kind.extends(expected_kind)
         {
             let mut err = self.report_closure_error(
@@ -1045,6 +1065,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 found_kind,
                 expected_kind,
                 trait_prefix,
+                kind_origin,
             );
             self.note_obligation_cause(&mut err, &obligation);
             return Some(err.emit());
@@ -3526,6 +3547,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         found_kind: ty::ClosureKind,
         kind: ty::ClosureKind,
         trait_prefix: &'static str,
+        kind_origin: Option<(Span, rustc_middle::hir::place::Place<'tcx>)>,
     ) -> Diag<'a> {
         let closure_span = self.tcx.def_span(closure_def_id);
 
@@ -3541,25 +3563,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Additional context information explaining why the closure only implements
         // a particular trait.
-        if let Some(typeck_results) = &self.typeck_results {
-            let hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id.expect_local());
-            match (found_kind, typeck_results.closure_kind_origins().get(hir_id)) {
-                (ty::ClosureKind::FnOnce, Some((span, place))) => {
-                    err.fn_once_label = Some(ClosureFnOnceLabel {
-                        span: *span,
-                        place: ty::place_to_string_for_capture(self.tcx, place),
-                        trait_prefix,
-                    })
-                }
-                (ty::ClosureKind::FnMut, Some((span, place))) => {
-                    err.fn_mut_label = Some(ClosureFnMutLabel {
-                        span: *span,
-                        place: ty::place_to_string_for_capture(self.tcx, place),
-                        trait_prefix,
-                    })
-                }
-                _ => {}
+        let origin = kind_origin.or_else(|| {
+            let typeck_results = self.typeck_results.as_ref()?;
+            let local_def_id = closure_def_id.as_local()?;
+            let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
+            typeck_results.closure_kind_origins().get(hir_id).cloned()
+        });
+
+        match (found_kind, origin) {
+            (ty::ClosureKind::FnOnce, Some((span, place))) => {
+                err.fn_once_label = Some(ClosureFnOnceLabel {
+                    span,
+                    place: ty::place_to_string_for_capture(self.tcx, &place),
+                    trait_prefix,
+                })
             }
+            (ty::ClosureKind::FnMut, Some((span, place))) => {
+                err.fn_mut_label = Some(ClosureFnMutLabel {
+                    span,
+                    place: ty::place_to_string_for_capture(self.tcx, &place),
+                    trait_prefix,
+                })
+            }
+            _ => {}
         }
 
         self.dcx().create_err(err)

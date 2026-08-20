@@ -210,6 +210,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 steps
             }),
+            infer_closure_kind: Box::new(|closure_def_id| {
+                self.infer_closure_kind_for_diagnostic(closure_def_id)
+            }),
         }
     }
 }
