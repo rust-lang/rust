@@ -325,7 +325,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 | Primitive::Float(Float::F16 | Float::F32 | Float::F64 | Float::F128) => {
                     Some(primitive)
                 }
-                Primitive::Pointer(..) => None,
+                Primitive::Pointer(..) | Primitive::Float(Float::F16B) => None,
             }
         } else {
             None

@@ -95,7 +95,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
                 Integer::I128 => return Align::EIGHT,
             },
             Primitive::Float(float) => match float {
-                Float::F16 | Float::F32 => unreachable!(),
+                Float::F16 | Float::F16B | Float::F32 => unreachable!(),
                 Float::F64 => { /* fall through */ }
                 Float::F128 => return Align::from_bytes(16).unwrap(),
             },
