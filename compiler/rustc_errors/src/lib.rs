@@ -3,11 +3,11 @@
 //! This module contains the code for creating and emitting diagnostics.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(associated_type_defaults)]
 #![feature(default_field_values)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_errors;

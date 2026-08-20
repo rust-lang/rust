@@ -1,5 +1,4 @@
 #![warn(clippy::uninhabited_references)]
-#![feature(never_type)]
 
 fn ret_uninh_ref() -> &'static std::convert::Infallible {
     //~^ uninhabited_references
