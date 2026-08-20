@@ -4,8 +4,8 @@ use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
-use crate::deriving::generic::*;
-use crate::deriving::{path_local, path_std};
+use crate::deriving::generic::{self, *};
+use crate::deriving::path_std;
 
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
 /// target item.
@@ -44,7 +44,7 @@ pub(crate) fn expand_deriving_partial_eq(
         generics: Bounds::empty(),
         explicit_self: true,
         nonself_args: smallvec![(self_ref(), sym::other)],
-        ret_ty: Path(path_local!(bool)),
+        ret_ty: Path(generic::ty::Path::new_local(sym::bool)),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(|a, b, c| {

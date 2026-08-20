@@ -6,10 +6,6 @@ use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-macro path_local($x:ident) {
-    generic::ty::Path::new_local(sym::$x)
-}
-
 macro pathvec_std($($rest:ident)::+) {{
     vec![ $( sym::$rest ),+ ]
 }}
