@@ -66,7 +66,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Const checking relies on uninitialized drops being removed before drop elaboration.
         PassPolicy::Required
     }
