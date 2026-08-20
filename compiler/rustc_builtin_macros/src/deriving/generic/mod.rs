@@ -1230,13 +1230,7 @@ impl<'a> MethodDef<'a> {
         }
 
         let prefixes = iter::once("__self".to_string())
-            .chain(
-                selflike_args
-                    .iter()
-                    .enumerate()
-                    .skip(1)
-                    .map(|(arg_count, _selflike_arg)| format!("__arg{arg_count}")),
-            )
+            .chain((1..selflike_args.len()).map(|arg_count| format!("__arg{arg_count}")))
             .collect::<Vec<String>>();
 
         // Build a series of let statements mapping each selflike_arg
