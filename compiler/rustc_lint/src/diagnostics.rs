@@ -716,7 +716,7 @@ pub(crate) enum BuiltinSpecialModuleNameUsed {
     Main,
 }
 
-// c_void_return.rs
+// c_void.rs
 #[derive(Diagnostic)]
 #[diag("`c_void` should not be used as a return type")]
 #[help("returning `()` in Rust is equivalent to returning `void` in C")]
@@ -729,7 +729,7 @@ pub(crate) struct CVoidReturn {
     pub suggestion: Span,
 }
 
-// c_void_return.rs
+// c_void.rs
 #[derive(Diagnostic)]
 #[diag("declarations returning `c_void` are not compatible with C functions returning `void`")]
 #[help("returning `()` in Rust is equivalent to returning `void` in C")]
@@ -742,6 +742,37 @@ pub(crate) struct ExternCVoidReturn {
     )]
     pub suggestion: Span,
 }
+
+// c_void.rs
+#[derive(Diagnostic)]
+#[diag("`c_void` should not be used as the referent of an `&` or `&mut` reference")]
+#[help("use a raw pointer, or a reference to `()`, instead")]
+#[note(
+    "for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior"
+)]
+pub(crate) struct CVoidReference;
+
+// c_void.rs
+#[derive(Diagnostic)]
+#[diag("`static` items should not have type `c_void`")]
+#[help("for a `static` used only for its address, use `()` instead")]
+#[note("`c_void` is only used through raw pointers, for compatibility with C `void` pointers")]
+pub(crate) struct CVoidStatic {
+    #[suggestion("use `()` instead", code = "()", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`const` items should not have type `c_void`")]
+#[note("`c_void` is only used through raw pointers, for compatibility with C `void` pointers")]
+pub(crate) struct CVoidConst;
+
+// c_void.rs
+#[derive(Diagnostic)]
+#[diag("`c_void` should not be used directly as the type of a function parameter")]
+#[help("did you mean `*mut c_void` or `*const c_void`?")]
+#[note("`c_void` is only used through raw pointers, for compatibility with `void` pointers")]
+pub(crate) struct CVoidParameter;
 
 // deref_into_dyn_supertrait.rs
 #[derive(Diagnostic)]

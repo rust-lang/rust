@@ -1,10 +1,18 @@
+//@ revisions: direct alias
+
 #![allow(unused)]
 #![deny(c_void_returns)]
 
+#[cfg(direct)]
 use std::ffi::c_void;
+#[cfg(alias)]
+#[expect(non_camel_case_types)]
+type c_void = std::ffi::c_void;
+
 use std::ptr;
 
-fn foo() -> c_void { //~ ERROR c_void
+fn foo() -> c_void {
+    //~^ ERROR c_void
     unreachable!()
 }
 
@@ -18,5 +26,9 @@ unsafe extern "C" {
 }
 
 type Xyzzy = fn() -> c_void; //~ ERROR c_void
+
+trait Trait {
+    fn foo() -> c_void; //~ ERROR c_void
+}
 
 fn main() {}
