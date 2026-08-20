@@ -54,9 +54,9 @@ jobs:
       - name: Install Dependencies
         if: steps.mdbook-cache.outputs.cache-hit != 'true'
         run: |
-          cargo install --locked mdbook --version ${{ env.MDBOOK_VERSION }}
-          cargo install --locked mdbook-linkcheck2 --version ${{ env.MDBOOK_LINKCHECK2_VERSION }}
-          cargo install --locked mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
+          cargo install mdbook --version ${{ env.MDBOOK_VERSION }}
+          cargo install mdbook-linkcheck2 --version ${{ env.MDBOOK_LINKCHECK2_VERSION }}
+          cargo install mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
 
       - name: Check build
         run: ENABLE_LINKCHECK=1 mdbook build

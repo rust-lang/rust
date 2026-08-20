@@ -215,7 +215,7 @@ jobs:
       - name: Install Cross
         # Install the latest git version for newer targets.
         run: |
-          cargo install --locked cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3
+          cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3
 
       - name: Configure Emulated CPUs
         run: |

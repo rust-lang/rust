@@ -41,7 +41,7 @@ It is stored in files with `*.no-opt.bc` extension in LLVM bitcode format.
 
 Example usage:
 ```
-cargo install --locked cargo-llvm-lines
+cargo install cargo-llvm-lines
 # On a normal crate you could now run `cargo llvm-lines`, but `x` isn't normal :P
 
 # Do a clean before every run, to not mix in the results from previous runs.

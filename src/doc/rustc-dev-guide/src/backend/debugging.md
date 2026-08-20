@@ -71,7 +71,7 @@ use the `RUSTFLAGS` environment variable (e.g. `RUSTFLAGS='--emit=llvm-ir'`).
 This causes rustc to spit out LLVM IR into the target directory.
 
 `cargo llvm-ir [options] path` spits out the LLVM IR for a particular function at `path`.
-(`cargo install --locked cargo-asm` installs `cargo asm` and `cargo llvm-ir`).
+(`cargo install cargo-asm` installs `cargo asm` and `cargo llvm-ir`).
 `--build-type=debug` emits code for debug builds.
 There are also other useful options.
 Also, debug info in LLVM IR can clutter the output a lot:
