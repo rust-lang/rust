@@ -1581,6 +1581,7 @@ cc = ["@rust-lang/wg-const-eval"]
 [assign]
 warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
+llm_policy_url = "https://forge.rust-lang.org/policies/llm-usage.html"
 
 [[assign.warn_non_default_branch.exceptions]]
 title = "[beta"
