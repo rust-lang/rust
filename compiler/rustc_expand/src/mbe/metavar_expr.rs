@@ -9,7 +9,6 @@ use rustc_span::{Ident, Span, Symbol, sym};
 
 use crate::diagnostics;
 
-pub(crate) const RAW_IDENT_ERR: &str = "`${concat(..)}` currently does not support raw identifiers";
 pub(crate) const UNSUPPORTED_CONCAT_ELEM_ERR: &str = "expected identifier or string literal";
 
 /// A meta-variable expression, for expansions based on properties of meta-variables.
@@ -189,6 +188,10 @@ fn parse_concat<'psess>(
         } else {
             match parse_ident_from_token(psess, token) {
                 Err(err) => {
+                    // FIXME: Canceling this error means we emit a worse message when encountering
+                    //        raw identifiers (`r#ident`). However, we also don't want to forward
+                    //        (the current version of) this error as is since we also want to
+                    //        mentioning string literals as a valid token kind.
                     err.cancel();
                     return Err(psess
                         .dcx()
@@ -273,9 +276,7 @@ fn parse_ident_from_token<'psess>(
     token: &Token,
 ) -> PResult<'psess, Ident> {
     if let Some((elem, kind)) = token.ident() {
-        if let IdentKind::Raw = kind {
-            return Err(psess.dcx().struct_span_err(elem.span, RAW_IDENT_ERR));
-        }
+        validate_ident_kind(psess.dcx(), kind, elem.span)?;
         return Ok(elem);
     }
     let token_str = pprust::token_to_string(token);
@@ -337,5 +338,23 @@ fn eat_dollar<'psess>(
     Err(psess.dcx().struct_span_err(
         span,
         "meta-variables within meta-variable expressions must be referenced using a dollar sign",
+    ))
+}
+
+pub(crate) fn validate_ident_kind<'a>(
+    dcx: rustc_errors::DiagCtxtHandle<'a>,
+    kind: IdentKind,
+    span: Span,
+) -> PResult<'a, ()> {
+    Err(dcx.struct_span_err(
+        span,
+        format!(
+            "`${{concat(..)}}` currently does not support {}",
+            match kind {
+                IdentKind::Normal => return Ok(()),
+                IdentKind::Raw => "raw identifiers",
+                IdentKind::ForcedKeyword => "forced keywords",
+            }
+        ),
     ))
 }
