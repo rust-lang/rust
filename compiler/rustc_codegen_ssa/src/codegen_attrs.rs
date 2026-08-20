@@ -94,7 +94,15 @@ fn process_builtin_attrs(
             AttributeKind::NoMangle(attr_span) => {
                 interesting_spans.no_mangle = Some(*attr_span);
                 if let Some(name) = tcx.opt_item_name(did.to_def_id()) {
-                    // Don't override #[link_name] or #[export_name]
+                    // Don't override #[export_name].
+
+                    // Also don't override #[link_name]. All places where #[link_name] is allowed
+                    // shouldn't allow #[no_mangle], so #[link_name] shouldn't be a concern here,
+                    // however currently #[no_mangle] is currently merely a warning on foreign
+                    // items rather than a hard error, so we still need to take #[no_mangle] +
+                    // #[link_name] into account.
+                    // FIXME remove this comment once #[no_mangle] on foreign items is a hard error.
+
                     if codegen_fn_attrs.symbol_name.is_none() {
                         codegen_fn_attrs.symbol_name = Some(name);
                     }
