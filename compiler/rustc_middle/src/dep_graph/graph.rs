@@ -1230,8 +1230,7 @@ impl CurrentDepGraph {
         CurrentDepGraph {
             encoder: GraphEncoder::new(session, encoder, prev_index_space_len, previous),
             anon_node_to_index: ShardedHashMap::with_capacity(
-                // FIXME: The count estimate is off as anon nodes are only a portion of the nodes.
-                new_node_count_estimate,
+                3 * new_node_count_estimate / 100, // Reserve capacity for 3% anon nodes
             ),
             anon_id_seed,
             #[cfg(debug_assertions)]
