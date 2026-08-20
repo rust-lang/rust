@@ -353,6 +353,7 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
         internal_target_features,
         has_reliable_f16: true,
         has_reliable_f16_math: true,
+        has_reliable_f16b: true,
         has_reliable_f128: true,
         has_reliable_f128_math: true,
     };
@@ -388,6 +389,21 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // provide these in `compiler-builtins`, so `f16` should be available on all platforms that
         // do not have other ABI issues or LLVM crashes.
         _ => true,
+    };
+
+    // The heuristic for evaluating to true is twofold, namely;
+    //
+    // 1. Can LLVM compile an IR snippet containing `fpext bfloat %<var> to float`
+    // 2. Does the documentation indicate `bf16` support, can be seen in the
+    //    tracking issue; <https://github.com/rust-lang/rust/issues/160630>
+    cfg.has_reliable_f16b = match (target_arch, target_os) {
+        // This is similar to <https://github.com/llvm/llvm-project/issues/94434>, however
+        // does not work until LLVM 23 on Windows.
+        (Arch::Arm64EC, _) => major >= 23,
+        (Arch::AArch64, _) | (Arch::X86_64, _) | (Arch::RiscV64, _) | (Arch::LoongArch64, _) => {
+            major >= 21
+        }
+        _ => false,
     };
 
     cfg.has_reliable_f128 = match (target_arch, target_os) {
