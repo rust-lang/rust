@@ -67,7 +67,7 @@ pub(crate) fn clone_and_resolve_opaque_types<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
-) -> (OpaqueTypeStorageEntries, Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>) {
+) -> (OpaqueTypeStorageEntries<'tcx>, Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>) {
     let opaque_types = infcx.clone_opaque_types();
     let opaque_types_storage_num_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
     let opaque_types = opaque_types
@@ -665,7 +665,7 @@ pub(crate) fn handle_unconstrained_hidden_type_errors<'tcx>(
 /// See the related comment in `FnCtxt::detect_opaque_types_added_during_writeback`.
 pub(crate) fn detect_opaque_types_added_while_handling_opaque_types<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    opaque_types_storage_num_entries: OpaqueTypeStorageEntries,
+    opaque_types_storage_num_entries: &OpaqueTypeStorageEntries<'tcx>,
 ) {
     for (key, hidden_type) in infcx
         .inner

@@ -143,7 +143,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
 
             detect_opaque_types_added_while_handling_opaque_types(
                 &input.infcx,
-                opaque_types_storage_num_entries,
+                &opaque_types_storage_num_entries,
             )
         }
     }

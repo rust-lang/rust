@@ -208,6 +208,14 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty)
     }
 
+    pub fn add_hidden_type_of_opaque_in_storage(
+        &self,
+        hidden_ty: Ty<'tcx>,
+        bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<'tcx>>,
+    ) {
+        self.inner.borrow_mut().opaque_types().add_hidden_type_of_opaque(hidden_ty, bounds);
+    }
+
     /// Insert a hidden type into the opaque type storage, equating it
     /// with any previous entries if necessary.
     ///
