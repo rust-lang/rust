@@ -353,6 +353,7 @@ pub enum IntegerLength {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize)]
 pub enum FloatLength {
     F16,
+    F16B,
     F32,
     F64,
     F128,
@@ -373,7 +374,7 @@ impl IntegerLength {
 impl FloatLength {
     pub fn bits(self) -> usize {
         match self {
-            FloatLength::F16 => 16,
+            FloatLength::F16 | FloatLength::F16B => 16,
             FloatLength::F32 => 32,
             FloatLength::F64 => 64,
             FloatLength::F128 => 128,
