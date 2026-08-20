@@ -129,7 +129,7 @@ warning: the `link_section` attribute cannot be used on macro calls
 LL |     #[link_section = "__TEXT,__text"]
    |       ^^^^^^^^^^^^
    |
-   = help: the `link_section` attribute can be applied to functions and statics
+   = help: the `link_section` attribute can be applied to foreign statics, functions, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
 

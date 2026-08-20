@@ -1236,6 +1236,13 @@ pub(crate) struct NullOnLinkSection {
 }
 
 #[derive(Diagnostic)]
+#[diag("`link_section` on foreign items is only supported on BPF targets")]
+pub(crate) struct LinkSectionForeignBpfOnly {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("link name may not contain null characters", code = E0648)]
 pub(crate) struct NullOnLinkName {
     #[primary_span]

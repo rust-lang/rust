@@ -17,8 +17,8 @@ use crate::diagnostics::{
     AsNeededCompatibility, BothFfiConstAndPure, BundleNeedsStatic, EmptyLinkName,
     ExportSymbolsNeedsStatic, ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink,
     InvalidLinkModifier, InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple,
-    LinkOrdinalOutOfRange, LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection,
-    RawDylibOnlyWindows, WholeArchiveNeedsStatic,
+    LinkOrdinalOutOfRange, LinkRequiresName, LinkSectionForeignBpfOnly, MultipleModifiers,
+    NullOnLinkName, NullOnLinkSection, RawDylibOnlyWindows, WholeArchiveNeedsStatic,
 };
 
 pub(crate) struct LinkNameParser;
@@ -505,6 +505,8 @@ impl SingleAttributeParser for LinkSectionParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignFn),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
@@ -512,6 +514,13 @@ impl SingleAttributeParser for LinkSectionParser {
     );
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        if matches!(cx.target, Target::ForeignStatic | Target::ForeignFn)
+            && cx.sess.target.arch != Arch::Bpf
+        {
+            cx.emit_err(LinkSectionForeignBpfOnly { span: cx.attr_span });
+            return None;
+        }
+
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let name = cx.expect_string_literal(nv)?;
         if name.as_str().contains('\0') {
