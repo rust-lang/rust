@@ -324,7 +324,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match bin_op {
             // Pointer ops that are always supported.
             Offset => {
-                let ptr = left.to_scalar().to_pointer(self)?;
+                let ptr = left.to_scalar().to_pointer(self);
                 let pointee_ty = left.layout.ty.builtin_deref(true).unwrap();
                 let pointee_layout = self.layout_of(pointee_ty)?;
                 assert!(pointee_layout.is_sized());

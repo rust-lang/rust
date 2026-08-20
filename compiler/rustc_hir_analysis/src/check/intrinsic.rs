@@ -229,6 +229,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::ub_checks
         | sym::va_copy
         | sym::variant_count
+        | sym::variant_name
+        | sym::variant_non_exhaustive
         | sym::wrapping_add
         | sym::wrapping_mul
         | sym::wrapping_sub
@@ -335,6 +337,8 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_fields => (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.usize),
         sym::type_id_is_signed => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_variants => (0, 0, vec![type_id_ty()], tcx.types.usize),
+        sym::variant_name => (0, 0, vec![type_id_ty(), tcx.types.usize], Ty::new_static_str(tcx)),
+        sym::variant_non_exhaustive => (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.bool),
         sym::type_id_vtable => {
             let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
             let dyn_metadata_adt_ref = tcx.adt_def(dyn_metadata);
@@ -812,8 +816,8 @@ pub(crate) fn check_intrinsic_type(
             vec![Ty::new_mut_ptr(tcx, param(0)), param(0), param(0)],
             Ty::new_tup(tcx, &[param(0), tcx.types.bool]),
         ),
-        sym::atomic_load => (1, 1, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
-        sym::atomic_store => (1, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit),
+        sym::atomic_load => (1, 2, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
+        sym::atomic_store => (1, 2, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit),
 
         sym::atomic_xchg
         | sym::atomic_max

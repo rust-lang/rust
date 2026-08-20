@@ -163,6 +163,8 @@ Steps for this can be [found here][r-a nvim lsp].
 2. Run `./x setup editor`, and select `vscode` to create a `.vscode/settings.json` file.
    `neoconf` is able to read and update
    rust-analyzer settings automatically when the project is opened when this file is detected.
+   Neovim does not expand VS Code's `${workspaceFolder}` variable, so replace each occurrence
+   in the generated file with the absolute path to your rust repository.
 
 #### coc.nvim
 
@@ -346,7 +348,7 @@ into the `rlib` files, or if you are editing things that wind up in the metadata
 (such as the definition of the MIR).
 
 That is, you might get weird behavior from a compile when using
-`--keep-stage-std=1`, for example, strange [ICEs](../appendix/glossary.html#ice) or other panics.
+`--keep-stage-std=1`, for example, strange [ICEs](../appendix/glossary.md#ice) or other panics.
 In that case, you should simply remove the `--keep-stage-std=1` from the command and rebuild.
 
 You can also use `--keep-stage-std=1` when running tests.
@@ -473,11 +475,11 @@ pkgs.mkShell {
 ## Shell Completions
 
 If you use Bash, Zsh, Fish or PowerShell, you can find automatically-generated shell
-completion scripts for `x.py` in
+completion scripts for `./x` in
 [`src/etc/completions`](https://github.com/rust-lang/rust/tree/HEAD/src/etc/completions).
 
-You can use `source ./src/etc/completions/x.py.<extension>` to load completions
-for your shell of choice, or `& .\src\etc\completions\x.py.ps1` for PowerShell.
+You can use `source ./src/etc/completions/x.<extension>` to load completions
+for your shell of choice, or `& .\src\etc\completions\x.ps1` for PowerShell.
 Adding this to your shell's startup script (e.g. `.bashrc`) will automatically
 load this completion.
 

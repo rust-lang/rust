@@ -31,7 +31,7 @@ There are several parts to this guide:
 1. [Appendices][p9] at the end with useful reference information.
    There are a few of these with different information, including a glossary.
 
-[p1]: ./building/how-to-build-and-run.html
+[p1]: ./building/how-to-build-and-run.md
 [p2]: ./contributing.md
 [p3]: ./building/bootstrapping/intro.md
 [p4]: ./part-2-intro.md

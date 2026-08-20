@@ -1641,7 +1641,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Ok(int) => interp_ok(int.is_null()),
             Err(_) => {
                 // We can't cast this pointer to an integer. Can only happen during CTFE.
-                let ptr = scalar.to_pointer(self)?;
+                let ptr = scalar.to_pointer(self);
                 match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
                         let info = self.get_alloc_info(alloc_id);

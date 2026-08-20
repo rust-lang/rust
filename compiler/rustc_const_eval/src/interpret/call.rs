@@ -743,7 +743,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(..))
             | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
             | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
-            | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(..))
             | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))
             | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(..))
             | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..))
@@ -848,7 +849,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 assert!(receiver_place.layout.is_unsized());
 
                 // Get the required information from the vtable.
-                let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
+                let vptr = receiver_place.meta().unwrap_meta().to_pointer(self);
                 let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
                 let adjusted_recv = receiver_place.ptr();
 

@@ -1,8 +1,4 @@
 error: mixing `-Ctarget-cpu` will cause an ABI mismatch in crate `target_cpu_default`
-  --> $DIR/target_cpu_default.rs:25:1
-   |
-LL | #![feature(no_core)]
-   | ^
    |
    = help: the `-Ctarget-cpu` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
    = note: `-Ctarget-cpu` is unset in this crate which is incompatible with `-Ctarget-cpu=sm_80` in dependency `target_cpu_non_default`

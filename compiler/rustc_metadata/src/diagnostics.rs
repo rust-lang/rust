@@ -550,8 +550,6 @@ pub(crate) struct WasmCAbi {
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
 )]
 pub(crate) struct IncompatibleTargetModifiers {
-    #[primary_span]
-    pub span: Span,
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
     pub flag_name: String,
@@ -581,8 +579,6 @@ pub(crate) struct IncompatibleTargetModifiers {
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
 )]
 pub(crate) struct IncompatibleTargetModifiersLMissed {
-    #[primary_span]
-    pub span: Span,
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
     pub flag_name: String,
@@ -612,8 +608,6 @@ pub(crate) struct IncompatibleTargetModifiersLMissed {
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
 )]
 pub(crate) struct IncompatibleTargetModifiersRMissed {
-    #[primary_span]
-    pub span: Span,
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
     pub flag_name: String,
@@ -627,8 +621,6 @@ pub(crate) struct IncompatibleTargetModifiersRMissed {
     "unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`"
 )]
 pub(crate) struct UnknownTargetModifierUnsafeAllowed {
-    #[primary_span]
-    pub span: Span,
     pub flag_name: String,
 }
 
@@ -672,8 +664,6 @@ pub(crate) struct UnusedCrateDependency {
     "it is possible to disable `-Z allow-partial-mitigations={$mitigation_name}` via `-Z deny-partial-mitigations={$mitigation_name}`"
 )]
 pub(crate) struct MitigationLessStrictInDependency {
-    #[primary_span]
-    pub span: Span,
     pub mitigation_name: String,
     pub mitigation_level: String,
     pub extern_crate: Symbol,

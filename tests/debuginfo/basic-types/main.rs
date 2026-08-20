@@ -7,7 +7,7 @@
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
-//@ min-llvm-lldb-version: 22.1.0
+//@ min-llvm-lldb-version: 21.1.0
 
 // This version corresponds to swift 6.2.3/lldb 19.1.5
 //@ min-apple-lldb-version: 1703.0.236.21
