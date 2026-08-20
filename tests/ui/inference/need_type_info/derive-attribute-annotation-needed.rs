@@ -10,7 +10,6 @@ fn f<T>() {}
 pub struct Matrix {
     #[serde(serialize_with = "f")]
     //~^ ERROR type annotations needed
-    //~| HELP consider specifying a concrete type for the type parameter `T`
     matrix: (),
 }
 

@@ -3,14 +3,9 @@ error[E0282]: type annotations needed
    |
 LL |     #[serde(serialize_with = "f")]
    |                              ^^^ cannot infer type of the type parameter `T` declared on the function `f`
-   |
-help: consider specifying a concrete type for the type parameter `T`
-   |
-LL |     #[serde(serialize_with = "f"::</* Type */>)]
-   |                                 ++++++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/derive-attribute-annotation-needed.rs:18:5
+  --> $DIR/derive-attribute-annotation-needed.rs:17:5
    |
 LL |     f();
    |     ^ cannot infer type of the type parameter `T` declared on the function `f`
