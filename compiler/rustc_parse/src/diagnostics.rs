@@ -2664,6 +2664,14 @@ pub(crate) struct CannotBeRawIdent {
 }
 
 #[derive(Diagnostic)]
+#[diag("`{$ident}` is not a valid keyword")]
+pub(crate) struct CannotBeForcedKeywordIdent {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("`{$ident}` cannot be a raw lifetime")]
 pub(crate) struct CannotBeRawLifetime {
     #[primary_span]

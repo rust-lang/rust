@@ -577,35 +577,33 @@ impl<'a> Parser<'a> {
                 let parser_snapshot_after_type = mem::replace(self, parser_snapshot_before_type);
 
                 // Check for typo of `'a: loop { break 'a }` with a missing `'`.
-                match (&lhs.kind, &self.token.kind) {
-                    (
-                        // `foo: `
-                        ExprKind::Path(None, ast::Path { segments, .. }),
-                        token::Ident(kw::For | kw::Loop | kw::While, IdentKind::Normal),
-                    ) if let [segment] = segments.as_slice() => {
-                        let snapshot = self.create_snapshot_for_diagnostic();
-                        let label = Label {
-                            ident: Ident::from_str_and_span(
-                                &format!("'{}", segment.ident),
-                                segment.ident.span,
-                            ),
-                        };
-                        match self.parse_expr_labeled(label, false) {
-                            Ok(expr) => {
-                                type_err.cancel();
-                                self.dcx().emit_err(crate::diagnostics::MalformedLoopLabel {
-                                    span: label.ident.span,
-                                    suggestion: label.ident.span.shrink_to_lo(),
-                                });
-                                return Ok(expr);
-                            }
-                            Err(err) => {
-                                err.cancel();
-                                self.restore_snapshot(snapshot);
-                            }
+                if let ExprKind::Path(None, ast::Path { segments, .. }) = &lhs.kind
+                    && let [segment] = segments.as_slice()
+                    && self.token.is_non_raw_ident_where(|id| {
+                        matches!(id.name, kw::For | kw::Loop | kw::While)
+                    })
+                {
+                    let snapshot = self.create_snapshot_for_diagnostic();
+                    let label = Label {
+                        ident: Ident::from_str_and_span(
+                            &format!("'{}", segment.ident),
+                            segment.ident.span,
+                        ),
+                    };
+                    match self.parse_expr_labeled(label, false) {
+                        Ok(expr) => {
+                            type_err.cancel();
+                            self.dcx().emit_err(crate::diagnostics::MalformedLoopLabel {
+                                span: label.ident.span,
+                                suggestion: label.ident.span.shrink_to_lo(),
+                            });
+                            return Ok(expr);
+                        }
+                        Err(err) => {
+                            err.cancel();
+                            self.restore_snapshot(snapshot);
                         }
                     }
-                    _ => {}
                 }
 
                 match self.parse_path(PathStyle::Expr) {
@@ -788,8 +786,7 @@ impl<'a> Parser<'a> {
         lo: Span,
     ) -> PResult<'a, Box<Expr>> {
         let mut res = loop {
-            let has_question = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal)
-            {
+            let has_question = if self.prev_token.is_keyword(kw::Return) {
                 // We are using noexpect here because we don't expect a `?` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Question)
@@ -801,7 +798,7 @@ impl<'a> Parser<'a> {
                 e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
                 continue;
             }
-            let has_dot = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal) {
+            let has_dot = if self.prev_token.is_keyword(kw::Return) {
                 // We are using noexpect here because we don't expect a `.` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Dot)
@@ -1489,6 +1486,7 @@ impl<'a> Parser<'a> {
                 // or `async gen {}` and `async gen move {}`
                 // FIXME: (async) gen closures aren't yet parsed.
                 // FIXME(gen_blocks): Parse `gen async` and suggest swap
+                // FIXME(forced_keywords): Allow k#gen blocks prior to Rust 2024, too!
                 if this.token_uninterpolated_span().at_least_rust_2024()
                     && this.is_gen_block(kw::Gen, at_async as usize)
                 {
@@ -2134,7 +2132,9 @@ impl<'a> Parser<'a> {
             }
         };
         match self.token.uninterpolate().kind {
-            token::Ident(name, IdentKind::Normal) if name.is_bool_lit() => {
+            token::Ident(name, IdentKind::Normal | IdentKind::ForcedKeyword)
+                if name.is_bool_lit() =>
+            {
                 self.bump();
                 Some(token::Lit::new(token::Bool, name, None))
             }

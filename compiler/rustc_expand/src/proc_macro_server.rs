@@ -11,7 +11,8 @@ use rustc_parse::lexer::{StripTokens, nfc_normalize};
 use rustc_parse::parser::Parser;
 use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream};
 use rustc_proc_macro::bridge::{
-    DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree, server,
+    DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, IdentKind, LitKind, Literal, Punct,
+    TokenTree, server,
 };
 use rustc_proc_macro::{Delimiter, Level};
 use rustc_session::Session;
@@ -103,6 +104,26 @@ impl ToInternal<tk::LitKind> for LitKind {
     }
 }
 
+impl FromInternal<tk::IdentKind> for IdentKind {
+    fn from_internal(kind: tk::IdentKind) -> Self {
+        match kind {
+            tk::IdentKind::Normal => IdentKind::Normal,
+            tk::IdentKind::Raw => IdentKind::Raw,
+            tk::IdentKind::ForcedKeyword => IdentKind::ForcedKeyword,
+        }
+    }
+}
+
+impl ToInternal<tk::IdentKind> for IdentKind {
+    fn to_internal(self) -> tk::IdentKind {
+        match self {
+            IdentKind::Normal => tk::IdentKind::Normal,
+            IdentKind::Raw => tk::IdentKind::Raw,
+            IdentKind::ForcedKeyword => tk::IdentKind::ForcedKeyword,
+        }
+    }
+}
+
 impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
     fn from_internal(stream: TokenStream) -> Self {
         // Estimate the capacity as `stream.len()` rounded up to the next power
@@ -127,7 +148,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                     }
 
                     trees.push(TokenTree::Group(Group {
-                        delimiter: rustc_proc_macro::Delimiter::from_internal(delim),
+                        delimiter: Delimiter::from_internal(delim),
                         stream: Some(stream),
                         span: DelimSpan {
                             open: span.open,
@@ -230,12 +251,12 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
 
                 tk::Ident(sym, kind) => trees.push(TokenTree::Ident(Ident {
                     sym,
-                    is_raw: matches!(kind, tk::IdentKind::Raw),
+                    kind: IdentKind::from_internal(kind),
                     span,
                 })),
                 tk::NtIdent(ident, kind) => trees.push(TokenTree::Ident(Ident {
                     sym: ident.name,
-                    is_raw: matches!(kind, tk::IdentKind::Raw),
+                    kind: IdentKind::from_internal(kind),
                     span: ident.span,
                 })),
 
@@ -245,7 +266,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
                         TokenTree::Ident(Ident {
                             sym: ident.name,
-                            is_raw: matches!(kind, tk::IdentKind::Raw),
+                            kind: IdentKind::from_internal(kind),
                             span,
                         }),
                     ]);
@@ -254,7 +275,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                     let stream =
                         TokenStream::token_alone(tk::Lifetime(ident.name, kind), ident.span);
                     trees.push(TokenTree::Group(Group {
-                        delimiter: rustc_proc_macro::Delimiter::None,
+                        delimiter: Delimiter::None,
                         stream: Some(stream),
                         span: DelimSpan::from_single(span),
                     }))
@@ -286,7 +307,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                         trees.push(TokenTree::Punct(Punct { ch: b'!', joint: false, span }));
                     }
                     trees.push(TokenTree::Group(Group {
-                        delimiter: rustc_proc_macro::Delimiter::Bracket,
+                        delimiter: Delimiter::Bracket,
                         stream: Some(stream),
                         span: DelimSpan::from_single(span),
                     }));
@@ -364,16 +385,16 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                     stream.unwrap_or_default(),
                 )]
             }
-            TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
+            TokenTree::Ident(Ident { sym, kind, span }) => {
                 rustc.psess().symbol_gallery.insert(sym, span);
-                smallvec![tokenstream::TokenTree::token_alone(tk::Ident(sym, is_raw.into()), span)]
+                smallvec![tokenstream::TokenTree::token_alone(
+                    tk::Ident(sym, kind.to_internal()),
+                    span
+                )]
             }
-            TokenTree::Literal(self::Literal {
-                kind: self::LitKind::Integer,
-                symbol,
-                suffix,
-                span,
-            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+            TokenTree::Literal(self::Literal { kind: LitKind::Integer, symbol, suffix, span })
+                if let Some(symbol) = symbol.as_str().strip_prefix('-') =>
+            {
                 let symbol = Symbol::intern(symbol);
                 let integer = tk::TokenKind::lit(tk::Integer, symbol, suffix);
                 let a = tokenstream::TokenTree::token_joint_hidden(tk::Minus, span);

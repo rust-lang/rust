@@ -243,17 +243,18 @@ impl<'a> Parser<'a> {
             None
         };
 
-        let suggest_remove_comma =
-            if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
-                if recover {
-                    self.bump();
-                    recovered_ident = self.ident_or_err(false).ok();
-                };
-
-                Some(SuggRemoveComma { span: bad_token.span })
-            } else {
-                None
+        let suggest_remove_comma = if self.token == token::Comma
+            && let Some(ident) = self.look_ahead(1, Token::ident)
+        {
+            if recover {
+                self.bump();
+                recovered_ident = Some(ident);
             };
+
+            Some(SuggRemoveComma { span: bad_token.span })
+        } else {
+            None
+        };
 
         let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, valid_portion)| {
             let (invalid, valid) = self.token.span.split_at(len as u32);
@@ -277,7 +278,8 @@ impl<'a> Parser<'a> {
         if self.token == token::Lt {
             // Let's check if the previous token could denote the start of an item
             // whose kind can have generics.
-            if let Some((Ident { name, .. }, IdentKind::Normal)) = self.prev_token.ident()
+            if let Some((Ident { name, .. }, IdentKind::Normal | IdentKind::ForcedKeyword)) =
+                self.prev_token.ident()
                 && let kw::Fn | kw::Type | kw::Struct | kw::Enum | kw::Union | kw::Trait = name
             {
                 match self.parse_generics() {
@@ -508,7 +510,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        if let Some((ident, IdentKind::Normal)) = self.prev_token.ident()
+        if let Some((ident, IdentKind::Normal | IdentKind::ForcedKeyword)) = self.prev_token.ident()
             && let "def" | "fun" | "func" | "function" = ident.name.as_str()
         {
             err.span_suggestion_short(
