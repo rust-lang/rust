@@ -1656,8 +1656,8 @@ impl CommandLineStep for Lld {
             // Use the host llvm-tblgen binary.
             cfg.define(
                 "LLVM_TABLEGEN_EXE",
-                llvm_output
-                    .llvm_config()
+                builder
+                    .host_llvm_config()
                     .with_file_name("llvm-tblgen")
                     .with_extension(EXE_EXTENSION),
             );
