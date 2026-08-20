@@ -397,6 +397,12 @@ impl Rustc {
         self
     }
 
+    /// Specify `-C link-self-contained={y,n}`.
+    pub fn link_self_contained(&mut self, enabled: &str) -> &mut Self {
+        self.cmd.arg(format!("-Clink-self-contained={enabled}"));
+        self
+    }
+
     pub fn split_dwarf_out_dir(&mut self, out_dir: Option<&str>) -> &mut Self {
         if let Some(out_dir) = out_dir {
             self.cmd.arg(format!("-Zsplit-dwarf-out-dir={out_dir}"));

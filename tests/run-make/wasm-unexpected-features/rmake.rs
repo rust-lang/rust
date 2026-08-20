@@ -15,6 +15,7 @@ fn main() {
         .linker_plugin_lto("on")
         .link_arg("--import-memory")
         .extern_("minicore", path("libminicore.rlib"))
+        .link_self_contained("n")
         .run();
     verify_features(Path::new("foo.wasm"));
 }
