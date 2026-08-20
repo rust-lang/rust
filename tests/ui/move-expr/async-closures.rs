@@ -4,7 +4,26 @@
 #![feature(move_expr)]
 
 use std::cell::Cell;
+use std::future::Future;
+use std::pin::pin;
 use std::sync::Arc;
+use std::task::{Context, Poll, Waker};
+
+fn block_on<T>(future: impl Future<Output = T>) -> T {
+    let mut future = pin!(future);
+    let context = &mut Context::from_waker(Waker::noop());
+
+    loop {
+        match future.as_mut().poll(context) {
+            Poll::Ready(value) => return value,
+            Poll::Pending => {}
+        }
+    }
+}
+
+async fn call_once<T>(closure: impl AsyncFnOnce() -> T) -> T {
+    closure().await
+}
 
 fn main() {
     let created = Cell::new(0);
@@ -15,28 +34,26 @@ fn main() {
         });
         n
     };
-    assert_eq!(created.get(), 0);
-    let fut = c();
     assert_eq!(created.get(), 1);
-    drop(fut);
+    assert_eq!(block_on(c()), 1);
+    assert_eq!(block_on(c()), 1);
+    assert_eq!(created.get(), 1);
 
     let x = Arc::new(String::from("hello"));
     assert_eq!(Arc::strong_count(&x), 1);
 
     let c = async || move(x.clone());
-    assert_eq!(Arc::strong_count(&x), 1);
+    assert_eq!(Arc::strong_count(&x), 2);
     let fut = c();
     assert_eq!(Arc::strong_count(&x), 2);
     drop(fut);
     assert_eq!(Arc::strong_count(&x), 1);
 
-    let y = Arc::new(String::from("nested"));
-    assert_eq!(Arc::strong_count(&y), 1);
-    let c = async || move(move(y.clone()));
-    assert_eq!(Arc::strong_count(&y), 2);
-    let fut = c();
-    assert_eq!(Arc::strong_count(&y), 2);
-    drop(fut);
-    assert_eq!(Arc::strong_count(&y), 1);
-    assert_eq!(&*y, "nested");
+    let a = String::from("a");
+    let b = String::from("bbb");
+    let c = async || {
+        let moved = move(a.clone());
+        (moved, b.len())
+    };
+    assert_eq!(block_on(call_once(c)), (String::from("a"), 3));
 }

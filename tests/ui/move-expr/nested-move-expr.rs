@@ -12,6 +12,9 @@ fn main() {
     let inner = outer();
     assert_eq!(Arc::strong_count(&v), 2);
     assert_eq!(inner(), v.len());
+    assert_eq!(inner(), v.len());
+    assert_eq!(Arc::strong_count(&v), 2);
+    drop(inner);
     assert_eq!(Arc::strong_count(&v), 1);
 
     println!("{v}");

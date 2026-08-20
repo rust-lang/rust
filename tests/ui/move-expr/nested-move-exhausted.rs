@@ -6,6 +6,9 @@ fn main() {
     let _ = || move(move(0));
     //~^ ERROR nested `move(expr)` requires another enclosing closure
 
+    let _ = async || move(move(0));
+    //~^ ERROR nested `move(expr)` requires another enclosing closure
+
     let _ = async { move(move(0)) };
     //~^ ERROR nested `move(expr)` requires another enclosing closure
 
