@@ -2,13 +2,12 @@
 
 mod proc_macros;
 
+use paths::{Utf8Path, Utf8PathBuf};
 use rustc_codegen_ssa::back::metadata::DefaultMetadataLoader;
 use rustc_interface::util::rustc_version_str;
 use rustc_proc_macro::bridge;
-use std::{fs, io, time::SystemTime};
-use temp_dir::TempDir;
-
-use paths::{Utf8Path, Utf8PathBuf};
+use std::{fs, io, path::Path, time::SystemTime};
+use stdx::tempfile::NamedTempFile;
 
 use crate::{
     PanicMessage, ProcMacroClientHandle, ProcMacroKind, ProcMacroSrvSpan, TrackedEnv,
@@ -18,19 +17,20 @@ use crate::{
 pub(crate) struct Expander {
     inner: ProcMacroLibrary,
     modified_time: SystemTime,
+    _file: NamedTempFile,
 }
 
 impl Expander {
-    pub(crate) fn new(temp_dir: &TempDir, lib: &Utf8Path) -> io::Result<Expander> {
+    pub(crate) fn new(lib: &Utf8Path) -> io::Result<Expander> {
         // Some libraries for dynamic loading require canonicalized path even when it is
         // already absolute
         let lib = lib.canonicalize_utf8()?;
         let modified_time = fs::metadata(&lib).and_then(|it| it.modified())?;
 
-        let path = ensure_file_with_lock_free_access(temp_dir, &lib)?;
-        let library = ProcMacroLibrary::open(path.as_ref())?;
+        let file = ensure_file_with_lock_free_access(lib)?;
+        let library = ProcMacroLibrary::open(file.path())?;
 
-        Ok(Expander { inner: library, modified_time })
+        Ok(Expander { inner: library, modified_time, _file: file })
     }
 
     pub(crate) fn expand<'a, S: ProcMacroSrvSpan + 'a>(
@@ -73,10 +73,10 @@ struct ProcMacroLibrary {
 }
 
 impl ProcMacroLibrary {
-    fn open(path: &Utf8Path) -> io::Result<Self> {
+    fn open(path: &Path) -> io::Result<Self> {
         let proc_macros = rustc_span::create_default_session_globals_then(|| {
             rustc_metadata::locator::get_proc_macros(
-                path.as_ref(),
+                path,
                 &DefaultMetadataLoader,
                 rustc_version_str().unwrap_or("unknown"),
             )
@@ -88,37 +88,19 @@ impl ProcMacroLibrary {
 
 /// Copy the dylib to temp directory to prevent locking in Windows
 #[cfg(windows)]
-fn ensure_file_with_lock_free_access(
-    temp_dir: &TempDir,
-    path: &Utf8Path,
-) -> io::Result<Utf8PathBuf> {
-    use std::collections::hash_map::RandomState;
-    use std::hash::{BuildHasher, Hasher};
-
+fn ensure_file_with_lock_free_access(path: Utf8PathBuf) -> io::Result<NamedTempFile> {
     if std::env::var("RA_DONT_COPY_PROC_MACRO_DLL").is_ok() {
-        return Ok(path.to_path_buf());
+        return Ok(NamedTempFile::from_path(path.into_std_path_buf()));
     }
-
-    let mut to = Utf8Path::from_path(temp_dir.path()).unwrap().to_owned();
 
     let file_name = path.file_stem().ok_or_else(|| {
         io::Error::new(io::ErrorKind::InvalidInput, format!("File path is invalid: {path}"))
     })?;
 
-    to.push({
-        // Generate a unique number by abusing `HashMap`'s hasher.
-        // Maybe this will also "inspire" a libs team member to finally put `rand` in libstd.
-        let unique_name = RandomState::new().build_hasher().finish();
-        format!("{file_name}-{unique_name}.dll")
-    });
-    fs::copy(path, &to)?;
-    Ok(to)
+    NamedTempFile::new_from_existing(&format!("proc-macro-srv-{file_name}.dll"), path.as_std_path())
 }
 
 #[cfg(unix)]
-fn ensure_file_with_lock_free_access(
-    _temp_dir: &TempDir,
-    path: &Utf8Path,
-) -> io::Result<Utf8PathBuf> {
-    Ok(path.to_owned())
+fn ensure_file_with_lock_free_access(path: Utf8PathBuf) -> io::Result<NamedTempFile> {
+    Ok(NamedTempFile::from_path(path.into_std_path_buf()))
 }
