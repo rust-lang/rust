@@ -723,7 +723,65 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
     new_constraints
 }
 
-/// Evaluate ANDs and ORs to true/false/ambiguous based on whether their arguments are true/false/ambiguous
+/// Already-evaluated OR member, used by [`combine_or`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum EvaluatedOrMember<T> {
+    True,
+    False,
+    Ambiguity,
+    Other(T),
+}
+
+/// Kleene OR of already-evaluated members.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum CombinedOr<T> {
+    True,
+    False,
+    Ambiguity,
+    /// Still-open candidates. `plus_ambiguity` means an unknown sibling must
+    /// stay beside them: unknown ∨ remaining must not drop the unknown.
+    Or {
+        remaining: Vec<T>,
+        plus_ambiguity: bool,
+    },
+}
+
+/// Combine already-evaluated OR members.
+///
+/// `true ∨ x = true`. `false` members are dropped. `unknown ∨ remaining` keeps
+/// both: collapsing to `Ambiguity` drops candidates a later universe may still
+/// satisfy, and dropping `Ambiguity` makes a later-false remaining collapse
+/// unknown ∨ false to false (spurious `NoSolution`).
+fn combine_or<T>(members: impl IntoIterator<Item = EvaluatedOrMember<T>>) -> CombinedOr<T> {
+    let mut remaining = Vec::new();
+    let mut plus_ambiguity = false;
+    for member in members {
+        match member {
+            EvaluatedOrMember::True => return CombinedOr::True,
+            EvaluatedOrMember::False => {}
+            EvaluatedOrMember::Ambiguity => plus_ambiguity = true,
+            EvaluatedOrMember::Other(c) => remaining.push(c),
+        }
+    }
+
+    if remaining.is_empty() {
+        if plus_ambiguity { CombinedOr::Ambiguity } else { CombinedOr::False }
+    } else {
+        CombinedOr::Or { remaining, plus_ambiguity }
+    }
+}
+
+/// Evaluate ANDs and ORs to true/false/ambiguous based on whether their arguments are
+/// true/false/ambiguous.
+///
+/// `Or(Ambiguity, remaining)` keeps both. Collapsing to `Ambiguity` drops
+/// candidates a later universe (or the root) may still satisfy. Dropping the
+/// `Ambiguity` sibling is also wrong: if `remaining` later becomes false,
+/// unknown ∨ false would become false.
+///
+/// `And` is the other way: one ambiguous conjunct makes the whole conjunction
+/// unknown, so we still collapse. That is deliberate, not an oversight relative
+/// to `Or`.
 #[instrument(level = "debug", ret)]
 pub fn evaluate_solver_constraint<I: Interner, S: Clone + std::fmt::Debug>(
     constraint: &RegionConstraint<I, S>,
@@ -756,25 +814,32 @@ pub fn evaluate_solver_constraint<I: Interner, S: Clone + std::fmt::Debug>(
             )
         }
         Or(or) => {
-            let mut or_constraints = Vec::new();
             let mut ambiguity = None;
-            for c in or.iter() {
+            let members = or.iter().map(|c| {
                 let evaluated_constraint = evaluate_solver_constraint(c);
-                if evaluated_constraint.is_false() {
-                    // do nothing
-                } else if evaluated_constraint.is_true() {
-                    return RegionConstraint::new_true();
+                if evaluated_constraint.is_true() {
+                    EvaluatedOrMember::True
+                } else if evaluated_constraint.is_false() {
+                    EvaluatedOrMember::False
                 } else if let Ambiguity(span) = evaluated_constraint {
                     ambiguity.get_or_insert(span);
+                    EvaluatedOrMember::Ambiguity
                 } else {
-                    or_constraints.push(evaluated_constraint);
+                    EvaluatedOrMember::Other(evaluated_constraint)
+                }
+            });
+
+            match combine_or(members) {
+                CombinedOr::True => RegionConstraint::new_true(),
+                CombinedOr::False => RegionConstraint::new_false(),
+                CombinedOr::Ambiguity => RegionConstraint::Ambiguity(ambiguity.unwrap()),
+                CombinedOr::Or { mut remaining, plus_ambiguity } => {
+                    if plus_ambiguity {
+                        remaining.push(RegionConstraint::Ambiguity(ambiguity.unwrap()));
+                    }
+                    RegionConstraint::Or(remaining.into_boxed_slice())
                 }
             }
-
-            ambiguity.map_or_else(
-                || RegionConstraint::Or(or_constraints.into_boxed_slice()),
-                RegionConstraint::Ambiguity,
-            )
         }
     }
 }
