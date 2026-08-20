@@ -1,14 +1,26 @@
 // see https://github.com/llvm/llvm-project/blob/main/llvm/lib/Target/BPF/BPFCallingConv.td
-use rustc_abi::TyAbiInterface;
+use rustc_abi::{Reg, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, FnAbi, Uniform};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
-    if ret.layout.is_aggregate() || ret.layout.size.bits() > 64 {
-        ret.make_indirect();
-    } else {
-        ret.extend_integer_width_to(32);
+    if !ret.layout.is_sized() {
+        return;
     }
+
+    let size = ret.layout.size;
+    if size.bits() > 128 {
+        ret.make_indirect();
+        return;
+    }
+
+    if ret.layout.is_aggregate() {
+        // Return small aggregates in up to two 64-bit registers.
+        ret.cast_to(Uniform::new(Reg::i64(), size));
+        return;
+    }
+
+    ret.extend_integer_width_to(32);
 }
 
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
