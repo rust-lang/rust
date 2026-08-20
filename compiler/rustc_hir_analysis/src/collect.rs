@@ -1709,14 +1709,6 @@ fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
         bug!()
     };
 
-    let body = tcx.hir_body(body).value;
-    // `move(...)` in coroutine closures wraps the generated coroutine in an
-    // outer block of synthetic initializer lets.
-    let body = match body.kind {
-        hir::ExprKind::Block(block, None) if let Some(tail) = block.expr => tail,
-        _ => body,
-    };
-
     let &hir::Expr {
         kind:
             hir::ExprKind::Closure(&rustc_hir::Closure {
@@ -1725,7 +1717,7 @@ fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
                 ..
             }),
         ..
-    } = body
+    } = tcx.hir_body(body).value
     else {
         bug!()
     };
