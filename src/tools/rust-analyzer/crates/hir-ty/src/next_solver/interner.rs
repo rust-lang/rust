@@ -1173,12 +1173,9 @@ impl<'db> Interner for DbInterner<'db> {
         def_id: Self::TraitAssocTermId,
         args: Self::GenericArgs,
     ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
-        let trait_def_id = self.projection_parent(def_id).0;
-        let trait_generics = crate::generics::generics(self.db, trait_def_id.into());
-        let trait_generics_len = trait_generics.len(true);
-        let trait_args = GenericArgs::new_from_slice(&args.as_slice()[..trait_generics_len]);
-        let alias_args = &args.as_slice()[trait_generics_len..];
-        (TraitRef::new_from_args(self, trait_def_id.into(), trait_args), alias_args)
+        let trait_def_id = self.projection_parent(def_id);
+        let trait_ref = TraitRef::from_assoc(self, trait_def_id, args);
+        (trait_ref, &args.as_slice()[trait_ref.args.len()..])
     }
 
     fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool {
