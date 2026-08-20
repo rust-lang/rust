@@ -2228,7 +2228,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // bundles.
         // Once this is resolved, we should analyze each call and skip direct calls. See the
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
-        let discriminator = fn_abi?.ptrauth_discriminator;
+        // If sess().pointer_authentication_fn_ptr_type_discrimination() is enabled, this contains
+        // the function pointer type discriminator; otherwise, it is None. LLVM expects a u64 here,
+        // so use 0 when no discriminator is present.
+        let discriminator = fn_abi?.ptrauth_discriminator.unwrap_or(0);
 
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
