@@ -2315,12 +2315,11 @@ impl<A: Allocator> Rc<dyn Any, A> {
     /// The contained value must be of type `T`. Calling this method
     /// with the incorrect type is *undefined behavior*.
     ///
-    ///
     /// [`downcast`]: Self::downcast
     #[inline]
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Rc<T, A> {
-        // SAFETY: Check ensures typecast is correct.
+        // SAFETY: Caller ensures typecast is correct.
         unsafe {
             let (ptr, alloc) = Rc::into_inner_with_allocator(self);
             Rc::from_inner_in(ptr.cast(), alloc)

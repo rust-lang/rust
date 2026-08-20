@@ -889,9 +889,10 @@ const impl<A: [const] Allocator> RawVecInner<A> {
     /// Ideally this function would take `self` by move, but it cannot because it exists to be
     /// called from a `Drop` impl.
     unsafe fn deallocate(&mut self, elem_layout: Layout) {
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: Caller ensures `elem_layout` is correct for `self`.
         if let Some((ptr, layout)) = unsafe { self.current_memory(elem_layout) } {
-            // SAFETY: Precondition passed to caller
+            // SAFETY: `current_memory` gives us a pointer with provenance for our allocation
+            // and a matching layout. Caller ensures we're not accessed again after deallocating.
             unsafe {
                 self.alloc.deallocate(ptr, layout);
             }

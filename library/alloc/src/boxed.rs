@@ -893,8 +893,8 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
             (ptr, Some(DeallocDropGuard(layout, &alloc, ptr)))
         };
         let ptr = ptr.as_ptr();
-        // SAFETY: `*ptr` is newly allocated, correctly aligned to `align_of_val(src)`,
-        // and is valid for writes for `size_of_val(src)`.
+        // SAFETY: `*ptr` is newly allocated (or a ZST), correctly aligned to
+        // `align_of_val(src)`, and is valid for writes for `size_of_val(src)`.
         // If this panics, then `guard` will deallocate for us (if allocation occuured)
         unsafe {
             <T as CloneToUninit>::clone_to_uninit(src, ptr);
@@ -2002,7 +2002,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     {
         // SAFETY: It's not possible to move or replace the insides of a
         // `Pin<Box<T>>` when `T: !Unpin`, so it's safe to pin it directly
-        // without any additional requirements.
+        // so long as the allocator promises to not break the pinning invariants.
         unsafe { Pin::new_unchecked(boxed) }
     }
 }
