@@ -3,8 +3,6 @@ use std::ops::Deref;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::hash_table::HashTable;
-use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
@@ -16,39 +14,8 @@ use crate::dep_graph::{
 use crate::ich::StableHashState;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryKey, QueryStackFrame};
+use crate::query::{IntoQueryKey, QueryCache, QueryKey, QueryStackFrame, QueryState};
 use crate::ty::{self, TyCtxt};
-
-/// For a particular query, keeps track of "active" keys, i.e. keys whose
-/// evaluation has started but has not yet finished successfully.
-///
-/// (Successful query evaluation for a key is represented by an entry in the
-/// query's in-memory cache.)
-pub struct QueryState<'tcx, K> {
-    pub active: Sharded<HashTable<(K, ActiveKeyStatus<'tcx>)>>,
-}
-
-impl<'tcx, K> Default for QueryState<'tcx, K> {
-    fn default() -> QueryState<'tcx, K> {
-        QueryState { active: Default::default() }
-    }
-}
-
-/// For a particular query and key, tracks the status of a query evaluation
-/// that has started, but has not yet finished successfully.
-///
-/// (Successful query evaluation for a key is represented by an entry in the
-/// query's in-memory cache.)
-pub enum ActiveKeyStatus<'tcx> {
-    /// Some thread is already evaluating the query for this key.
-    ///
-    /// The enclosed [`QueryJob`] can be used to wait for it to finish.
-    Started(QueryJob<'tcx>),
-
-    /// The query panicked. Queries trying to wait on this will raise a fatal error which will
-    /// silently panic.
-    Poisoned,
-}
 
 #[derive(Debug)]
 pub struct Cycle<'tcx> {
