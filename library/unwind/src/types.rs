@@ -43,6 +43,12 @@ pub const unwinder_private_data_size: usize =
     };
 
 #[repr(C)]
+// The Itanium C++ ABI requires this type to have "double-word" alignment,
+// which libunwind and libgcc interpret as the maximum alignment of any
+// scalar type on the current target.
+#[cfg_attr(target_pointer_width = "16", repr(align(4)))]
+#[cfg_attr(target_pointer_width = "32", repr(align(8)))]
+#[cfg_attr(target_pointer_width = "64", repr(align(16)))]
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,
     pub exception_cleanup: _Unwind_Exception_Cleanup_Fn,
