@@ -2055,3 +2055,21 @@ fn assoc_tag_str(assoc_tag: ty::AssocTag) -> &'static str {
         ty::AssocTag::Type => "type",
     }
 }
+
+/// Computes the `pat.between(ty)` span for the "use `=`" suggestion on `let pat: ty`.
+/// Returns `None` if `pat` and `ty` are in incompatible macro contexts (e.g. `pat` is a
+/// metavariable from the call site while `ty` lives in the macro body), in which case no
+/// suggestion is emitted.
+pub(crate) fn eq_ctxt_suggestion_span(pat: Span, ty: Span) -> Option<Span> {
+    if let Some(ty2) = ty.find_ancestor_in_same_ctxt(pat)
+        && pat.hi() <= ty2.lo()
+    {
+        return Some(pat.between(ty2));
+    }
+    if let Some(pat2) = pat.find_ancestor_in_same_ctxt(ty)
+        && pat2.hi() <= ty.lo()
+    {
+        return Some(pat2.between(ty));
+    }
+    None
+}
