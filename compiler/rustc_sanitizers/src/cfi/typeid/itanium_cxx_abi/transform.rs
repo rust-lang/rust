@@ -262,7 +262,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
                         ty::ExistentialPredicate::Projection(
                             ty::ExistentialProjection::erase_self_ty(
                                 tcx,
-                                ty::ProjectionPredicate { projection_term, term },
+                                ty::ProjectionClause { projection_term, term },
                             ),
                         )
                     })

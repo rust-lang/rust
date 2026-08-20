@@ -207,7 +207,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         if let Some((principal_trait, ref spans)) = principal_trait {
             let principal_trait = principal_trait.map_bound(|trait_pred| {
-                assert_eq!(trait_pred.polarity, ty::PredicatePolarity::Positive);
+                assert_eq!(trait_pred.polarity, ty::ClausePolarity::Positive);
                 trait_pred.trait_ref
             });
 
@@ -350,7 +350,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let principal_trait_ref = principal_trait.map(|(trait_pred, spans)| {
             trait_pred.map_bound(|trait_pred| {
                 let trait_ref = trait_pred.trait_ref;
-                assert_eq!(trait_pred.polarity, ty::PredicatePolarity::Positive);
+                assert_eq!(trait_pred.polarity, ty::ClausePolarity::Positive);
                 assert_eq!(trait_ref.self_ty(), dummy_self);
 
                 let span = *spans.first().unwrap();
@@ -423,7 +423,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut auto_trait_predicates: Vec<_> = auto_traits
             .into_iter()
             .map(|(trait_pred, _)| {
-                assert_eq!(trait_pred.polarity(), ty::PredicatePolarity::Positive);
+                assert_eq!(trait_pred.polarity(), ty::ClausePolarity::Positive);
                 assert_eq!(trait_pred.self_ty().skip_binder(), dummy_self);
 
                 ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_pred.def_id()))
@@ -476,7 +476,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// `elaborated-predicates-unconstrained-late-bound.rs` for a test.
     fn check_elaborated_projection_mentions_input_lifetimes(
         &self,
-        pred: ty::PolyProjectionPredicate<'tcx>,
+        pred: ty::PolyProjectionClause<'tcx>,
         span: Span,
         supertrait_span: Span,
     ) {

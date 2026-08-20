@@ -996,9 +996,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let polarity = match polarity {
             hir::BoundPolarity::Positive | hir::BoundPolarity::Maybe(_) => {
-                ty::PredicatePolarity::Positive
+                ty::ClausePolarity::Positive
             }
-            hir::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
+            hir::BoundPolarity::Negative(_) => ty::ClausePolarity::Negative,
         };
 
         let [leading_segments @ .., segment] = trait_ref.path.segments else { bug!() };
@@ -1047,7 +1047,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             | PredicateFilter::SelfTraitThatDefines(..)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
                 let bound = poly_trait_ref.map_bound(|trait_ref| {
-                    ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity })
+                    ty::ClauseKind::Trait(ty::TraitClause { trait_ref, polarity })
                 });
                 let bound = (bound.upcast(tcx), span);
                 // FIXME(-Znext-solver): We can likely remove this hack once the
@@ -1102,7 +1102,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 | PredicateFilter::SelfAndAssociatedTypeBounds => {
                     match constness {
                         hir::BoundConstness::Always(_) => {
-                            if polarity == ty::PredicatePolarity::Positive {
+                            if polarity == ty::ClausePolarity::Positive {
                                 bounds.push((
                                     poly_trait_ref
                                         .to_host_effect_clause(tcx, ty::BoundConstness::Const),
@@ -1128,7 +1128,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {
                     match constness {
                         hir::BoundConstness::Maybe(_) => {
-                            if polarity == ty::PredicatePolarity::Positive {
+                            if polarity == ty::ClausePolarity::Positive {
                                 bounds.push((
                                     poly_trait_ref
                                         .to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
@@ -1150,7 +1150,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Don't register any associated item constraints for negative bounds,
             // since we should have emitted an error for them earlier, and they
             // would not be well-formed!
-            if polarity == ty::PredicatePolarity::Negative {
+            if polarity == ty::ClausePolarity::Negative {
                 self.dcx().span_delayed_bug(
                     constraint.span,
                     "negative trait bounds should not have assoc item constraints",
