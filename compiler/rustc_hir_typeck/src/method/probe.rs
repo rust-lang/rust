@@ -13,7 +13,9 @@ use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, query};
-use rustc_lint::builtin::METHOD_CALL_ON_DIVERGING_INFER_VAR;
+use rustc_lint_defs::builtin::{
+    METHOD_CALL_ON_DIVERGING_INFER_VAR, TYVAR_BEHIND_RAW_POINTER, UNSTABLE_NAME_COLLISIONS,
+};
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
@@ -23,7 +25,6 @@ use rustc_middle::ty::{
     Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
     edit_distance_with_substrings, find_best_match_for_name_with_substrings,
@@ -502,7 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
                 self.tcx.emit_node_span_lint(
-                    lint::builtin::TYVAR_BEHIND_RAW_POINTER,
+                    TYVAR_BEHIND_RAW_POINTER,
                     scope_expr_id,
                     span,
                     MissingTypeAnnot,
@@ -1910,7 +1911,7 @@ impl<'tcx> Pick<'tcx> {
             return;
         }
         tcx.emit_node_span_lint(
-            lint::builtin::UNSTABLE_NAME_COLLISIONS,
+            UNSTABLE_NAME_COLLISIONS,
             scope_expr_id,
             span,
             ItemMaybeBeAddedToStd { this: self, tcx, span },

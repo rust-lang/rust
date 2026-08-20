@@ -9,8 +9,7 @@ use rustc_hir::{
     AssocItemConstraintKind, Body, Expr, ExprKind, FnDecl, FnRetTy, GenericArgsParentheses, PolyTraitRef, Term, Ty,
     TyKind,
 };
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, Pos as _, Span, sym};
 

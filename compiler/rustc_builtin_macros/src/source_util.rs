@@ -12,10 +12,10 @@ use rustc_expand::base::{
     DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult,
 };
 use rustc_expand::module::DirOwnership;
+use rustc_lint_defs::builtin::INCOMPLETE_INCLUDE;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
-use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ByteSymbol, Pos, Span, Symbol};

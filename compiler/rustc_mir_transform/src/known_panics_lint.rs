@@ -12,6 +12,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::{HirId, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
+use rustc_lint_defs::builtin::UNCONDITIONAL_PANIC;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -20,7 +21,6 @@ use rustc_middle::ty::{
     self, ConstInt, GenericArgKind, GenericParamDefKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
     Unnormalized,
 };
-use rustc_session::lint::builtin::UNCONDITIONAL_PANIC;
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 

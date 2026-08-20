@@ -24,7 +24,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
-use rustc_lint_defs::builtin::LINKER_INFO;
+use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_MESSAGES};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
@@ -38,7 +38,6 @@ use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, OutputType};
-use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_span::{Span, Symbol};
 
 pub mod assert_module_sources;

@@ -14,9 +14,8 @@ use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, Node};
-use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::ty::{self, ClauseKind, GenericArgKind, ClausePolarity, Ty};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, Lint, impl_lint_pass};
+use rustc_middle::ty::{self, ClauseKind, ClausePolarity, GenericArgKind, Ty};
 use rustc_span::{DesugaringKind, Span, Spanned, SyntaxContext};
 use std::cmp::Ordering;
 

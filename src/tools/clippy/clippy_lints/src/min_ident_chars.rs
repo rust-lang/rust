@@ -9,8 +9,7 @@ use rustc_hir::{
     FieldDef, HirId, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind, Node, Pat, PatKind, TraitFn, TraitItem,
     TraitItemKind, UseKind, Variant,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{Ident, Symbol};
 use std::borrow::Cow::{self, Borrowed, Owned};
 

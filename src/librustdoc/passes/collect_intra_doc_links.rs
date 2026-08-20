@@ -16,6 +16,7 @@ use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_hir::{Attribute, Mutability, Safety, find_attr};
+use rustc_lint::Lint;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
@@ -24,7 +25,6 @@ use rustc_resolve::rustdoc::{
     source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_session::config::CrateType;
-use rustc_session::lint::Lint;
 use rustc_span::BytePos;
 use rustc_span::def_id::ModId;
 use rustc_span::symbol::{Ident, Symbol, sym};

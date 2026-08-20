@@ -1,6 +1,6 @@
 use rustc_hir::{Expr, ExprKind, Stmt, StmtKind};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::diagnostics::MappingToUnit;

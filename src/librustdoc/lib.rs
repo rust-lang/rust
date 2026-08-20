@@ -43,7 +43,6 @@ extern crate rustc_infer;
 extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
-extern crate rustc_lint_defs;
 extern crate rustc_log;
 extern crate rustc_macros;
 extern crate rustc_metadata;

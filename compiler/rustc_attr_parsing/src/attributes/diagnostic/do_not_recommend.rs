@@ -1,7 +1,7 @@
 use rustc_attr_ir::AttributeKind;
 use rustc_attr_ir::target::Target;
 use rustc_feature::AttributeStability;
-use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_lint_defs::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::{Symbol, sym};
 
 use crate::attributes::prelude::Allow;

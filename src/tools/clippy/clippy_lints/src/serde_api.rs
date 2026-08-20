@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{paths, sym};
 use rustc_hir::{Impl, Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does

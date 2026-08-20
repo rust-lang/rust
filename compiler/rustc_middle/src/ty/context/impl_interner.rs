@@ -10,6 +10,7 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use rustc_lint_defs::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::{
@@ -677,7 +678,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn emit_next_solver_overflow_fcw(self, predicate: ty::Predicate<'tcx>, span: Span) {
         self.emit_node_span_lint(
-            rustc_session::lint::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT,
+        RECURSION_DEPTH_EXCEEDING_LIMIT,
             CRATE_HIR_ID,
             span,
             rustc_errors::DiagDecorator(|diag| {

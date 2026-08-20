@@ -7,8 +7,7 @@ use clippy_utils::{is_no_std_crate, sym};
 use rustc_ast::{LitIntType, LitKind, RangeLimits, UintTy};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use std::fmt::{self, Display, Formatter};
 
 declare_clippy_lint! {
