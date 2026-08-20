@@ -2189,9 +2189,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
 
         let key: u32 = self.sess().pointer_authentication_fn_ptr_key().unwrap() as u32;
-        // If sess().pointer_authentication_fn_ptr_type_discrimination() is true, this contains
-        // the function pointer type discriminator; otherwise, it is 0.
-        let discriminator = fn_abi?.ptrauth_discriminator;
+        // If sess().pointer_authentication_fn_ptr_type_discrimination() is enabled, this contains
+        // the function pointer type discriminator; otherwise, it is None. LLVM expects a u64 here,
+        // so use 0 when no discriminator is present.
+        let discriminator = fn_abi?.ptrauth_discriminator.unwrap_or(0);
 
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
