@@ -1319,6 +1319,214 @@ where
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Impl Pattern for [char; N], &[char; N] and &[char]
+////////////////////////////////////////////////////////////////////////////////
+
+/// Trait for checking whether a character is matched by a collection of
+/// characters.
+pub trait MultiCharEq {
+    /// Returns `true` if `c` is matched by this collection of characters.
+    fn matches(&mut self, c: char) -> bool;
+}
+
+impl<const N: usize> MultiCharEq for [char; N] {
+    #[inline]
+    fn matches(&mut self, c: char) -> bool {
+        self.contains(&c)
+    }
+}
+
+impl<const N: usize> MultiCharEq for &[char; N] {
+    #[inline]
+    fn matches(&mut self, c: char) -> bool {
+        self.contains(&c)
+    }
+}
+
+impl MultiCharEq for &[char] {
+    #[inline]
+    fn matches(&mut self, c: char) -> bool {
+        self.contains(&c)
+    }
+}
+
+/// Searcher looking for any of the characters in a collection of characters.
+#[derive(Clone)]
+pub struct MultiCharEqSearcher<'h, F, C> {
+    haystack: &'h Bytes<F>,
+    char_eq: C,
+    start: usize,
+    end: usize,
+    fwd_match_len: u8,
+    bwd_match_len: u8,
+}
+
+impl<'h, F, C> crate::fmt::Debug for MultiCharEqSearcher<'h, F, C> {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        f.debug_struct("MultiCharEqSearcher").finish_non_exhaustive()
+    }
+}
+
+impl<'h, F: Flavour, C: MultiCharEq> MultiCharEqSearcher<'h, F, C> {
+    /// Creates a new searcher for the given collection of characters.
+    #[inline]
+    pub fn new(haystack: &'h Bytes<F>, char_eq: C) -> Self {
+        Self {
+            haystack,
+            char_eq,
+            start: 0,
+            end: haystack.len(),
+            fwd_match_len: 0,
+            bwd_match_len: 0,
+        }
+    }
+
+    fn find_match_fwd(&mut self) -> Option<(usize, usize)> {
+        let mut start = self.start;
+        while start < self.end {
+            let (idx, chr, len) = self.haystack.find_code_point_fwd(start..self.end)?;
+            if self.char_eq.matches(chr) {
+                return Some((idx, len));
+            }
+            start = idx + len;
+        }
+        None
+    }
+
+    fn find_match_bwd(&mut self) -> Option<(usize, usize)> {
+        let mut end = self.end;
+        while self.start < end {
+            let (idx, chr, len) = self.haystack.find_code_point_bwd(self.start..end)?;
+            if self.char_eq.matches(chr) {
+                return Some((idx, len));
+            }
+            end = idx;
+        }
+        None
+    }
+
+    fn next_fwd<R: SearchResult>(&mut self) -> R {
+        while self.start < self.end {
+            if self.fwd_match_len == 0 {
+                let (pos, len) = self.find_match_fwd().unwrap_or((self.end, 0));
+                self.fwd_match_len = len as u8;
+                if pos != self.start {
+                    let start = self.start;
+                    self.start = pos;
+                    if let Some(ret) = R::rejecting(start, pos) {
+                        return ret;
+                    } else if pos >= self.end {
+                        break;
+                    }
+                }
+            }
+
+            let pos = self.start;
+            self.start += usize::from(take(&mut self.fwd_match_len));
+            if let Some(ret) = R::matching(pos, self.start) {
+                return ret;
+            }
+        }
+        R::DONE
+    }
+
+    fn next_bwd<R: SearchResult>(&mut self) -> R {
+        while self.start < self.end {
+            if self.bwd_match_len == 0 {
+                let (pos, len) = self.find_match_bwd().unwrap_or((self.start, 0));
+                self.bwd_match_len = len as u8;
+                let pos = pos + len;
+                let end = self.end;
+                if pos != self.end {
+                    self.end = pos;
+                    if let Some(ret) = R::rejecting(pos, end) {
+                        return ret;
+                    } else if self.start >= self.end {
+                        break;
+                    }
+                }
+            }
+
+            let end = self.end;
+            self.end -= usize::from(take(&mut self.bwd_match_len));
+            if let Some(ret) = R::matching(self.end, end) {
+                return ret;
+            }
+        }
+        R::DONE
+    }
+}
+
+unsafe impl<'h, F, C> pattern::Searcher<'h, Bytes<F>> for MultiCharEqSearcher<'h, F, C>
+where
+    F: Flavour,
+    C: MultiCharEq,
+{
+    fn haystack(&self) -> &'h Bytes<F> {
+        self.haystack
+    }
+    fn next(&mut self) -> SearchStep {
+        self.next_fwd()
+    }
+    fn next_match(&mut self) -> OptRange {
+        self.next_fwd::<MatchOnly>().0
+    }
+    fn next_reject(&mut self) -> OptRange {
+        self.next_fwd::<RejectOnly>().0
+    }
+}
+
+unsafe impl<'h, F, C> pattern::ReverseSearcher<'h, Bytes<F>> for MultiCharEqSearcher<'h, F, C>
+where
+    F: Flavour,
+    C: MultiCharEq,
+{
+    fn next_back(&mut self) -> SearchStep {
+        self.next_bwd()
+    }
+    fn next_match_back(&mut self) -> OptRange {
+        self.next_bwd::<MatchOnly>().0
+    }
+    fn next_reject_back(&mut self) -> OptRange {
+        self.next_bwd::<RejectOnly>().0
+    }
+}
+
+impl<'h, F, C> pattern::DoubleEndedSearcher<'h, Bytes<F>> for MultiCharEqSearcher<'h, F, C>
+where
+    F: Flavour,
+    C: MultiCharEq,
+{
+}
+
+#[diagnostic::do_not_recommend]
+impl<F: Flavour, const N: usize> pattern::Pattern<Bytes<F>> for [char; N] {
+    type Searcher<'h> = MultiCharEqSearcher<'h, F, [char; N]>;
+
+    fn into_searcher<'h>(self, haystack: &'h Bytes<F>) -> Self::Searcher<'h> {
+        MultiCharEqSearcher::new(haystack, self)
+    }
+}
+
+#[diagnostic::do_not_recommend]
+impl<'q, F: Flavour, const N: usize> pattern::Pattern<Bytes<F>> for &'q [char; N] {
+    type Searcher<'h> = MultiCharEqSearcher<'h, F, &'q [char; N]>;
+
+    fn into_searcher<'h>(self, haystack: &'h Bytes<F>) -> Self::Searcher<'h> {
+        MultiCharEqSearcher::new(haystack, self)
+    }
+}
+
+#[diagnostic::do_not_recommend]
+impl<'q, F: Flavour> pattern::Pattern<Bytes<F>> for &'q [char] {
+    type Searcher<'h> = MultiCharEqSearcher<'h, F, &'q [char]>;
+
+    fn into_searcher<'h>(self, haystack: &'h Bytes<F>) -> Self::Searcher<'h> {
+        MultiCharEqSearcher::new(haystack, self)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Impl Pattern for &str
 ////////////////////////////////////////////////////////////////////////////////
 

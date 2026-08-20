@@ -1549,6 +1549,18 @@ impl OsStr {
     /// assert_eq!(s.find(predicate(|c: char| c.is_whitespace() || c.is_lowercase())), Some(1));
     /// assert_eq!(s.find(predicate(|c: char| (c < 'o') && (c > 'a'))), Some(4));
     /// ```
+    /// Not finding the pattern:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard");
+    /// let x: &[_] = &['1', '2'];
+    ///
+    /// assert_eq!(s.find(x), None);
+    /// ```
+
     #[unstable(feature = "pattern", issue = "27721")]
     #[inline]
     pub fn find<'a>(&'a self, pat: impl Pattern<OsStr>) -> Option<usize> {
@@ -1592,6 +1604,17 @@ impl OsStr {
     ///
     /// assert_eq!(s.rfind(predicate(char::is_whitespace)), Some(12));
     /// assert_eq!(s.rfind(predicate(char::is_lowercase)), Some(20));
+    /// ```
+    /// Not finding the pattern:
+    ///
+    /// ```
+    /// # #![feature(pattern)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let s = OsStr::new("Löwe 老虎 Léopard");
+    /// let x: &[_] = &['1', '2'];
+    ///
+    /// assert_eq!(s.rfind(x), None);
     /// ```
     #[unstable(feature = "pattern", issue = "27721")]
     #[inline]
@@ -2557,3 +2580,200 @@ impl<'hs, S: DoubleEndedSearcher<'hs, OsStr>> DoubleEndedIterator for Split<'hs,
 
 #[unstable(feature = "pattern", issue = "27721")]
 impl<'hs, S: Searcher<'hs, OsStr>> core::iter::FusedIterator for Split<'hs, S> {}
+
+/// Associated type for `<[char; N] as Pattern<&'hs OsStr>>::Searcher`.
+#[derive(Clone, Debug)]
+#[unstable(feature = "pattern", issue = "27721")]
+pub struct CharArraySearcher<'hs, const N: usize>(
+    core::str_bytes::MultiCharEqSearcher<'hs, BytesFlavour, [char; N]>,
+);
+
+/// Associated type for `<&[char; N] as Pattern<&'hs OsStr>>::Searcher`.
+#[derive(Clone, Debug)]
+#[unstable(feature = "pattern", issue = "27721")]
+pub struct CharArrayRefSearcher<'hs, 'p, const N: usize>(
+    core::str_bytes::MultiCharEqSearcher<'hs, BytesFlavour, &'p [char; N]>,
+);
+
+/// Associated type for `<&[char] as Pattern<&'hs OsStr>>::Searcher`.
+#[derive(Clone, Debug)]
+#[unstable(feature = "pattern", issue = "27721")]
+pub struct CharSliceSearcher<'hs, 'p>(
+    core::str_bytes::MultiCharEqSearcher<'hs, BytesFlavour, &'p [char]>,
+);
+
+impl<'hs, const N: usize> CharArraySearcher<'hs, N> {
+    fn new(haystack: &'hs OsStr, chars: [char; N]) -> CharArraySearcher<'hs, N> {
+        Self(core::str_bytes::MultiCharEqSearcher::new(
+            <&core::str_bytes::Bytes<_>>::from(haystack),
+            chars,
+        ))
+    }
+}
+
+impl<'hs, 'p, const N: usize> CharArrayRefSearcher<'hs, 'p, N> {
+    fn new(haystack: &'hs OsStr, chars: &'p [char; N]) -> CharArrayRefSearcher<'hs, 'p, N> {
+        Self(core::str_bytes::MultiCharEqSearcher::new(
+            <&core::str_bytes::Bytes<_>>::from(haystack),
+            chars,
+        ))
+    }
+}
+
+impl<'hs, 'p> CharSliceSearcher<'hs, 'p> {
+    fn new(haystack: &'hs OsStr, chars: &'p [char]) -> CharSliceSearcher<'hs, 'p> {
+        Self(core::str_bytes::MultiCharEqSearcher::new(
+            <&core::str_bytes::Bytes<_>>::from(haystack),
+            chars,
+        ))
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, const N: usize> Searcher<'hs, OsStr> for CharArraySearcher<'hs, N> {
+    #[inline(always)]
+    fn haystack(&self) -> &'hs OsStr {
+        self.0.haystack().into()
+    }
+
+    #[inline(always)]
+    fn next(&mut self) -> SearchStep {
+        self.0.next()
+    }
+    #[inline(always)]
+    fn next_match(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match()
+    }
+    #[inline(always)]
+    fn next_reject(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, const N: usize> ReverseSearcher<'hs, OsStr> for CharArraySearcher<'hs, N> {
+    #[inline(always)]
+    fn next_back(&mut self) -> SearchStep {
+        self.0.next_back()
+    }
+    #[inline(always)]
+    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match_back()
+    }
+    #[inline(always)]
+    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject_back()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs, const N: usize> DoubleEndedSearcher<'hs, OsStr> for CharArraySearcher<'hs, N> {}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, 'p, const N: usize> Searcher<'hs, OsStr> for CharArrayRefSearcher<'hs, 'p, N> {
+    #[inline(always)]
+    fn haystack(&self) -> &'hs OsStr {
+        self.0.haystack().into()
+    }
+
+    #[inline(always)]
+    fn next(&mut self) -> SearchStep {
+        self.0.next()
+    }
+    #[inline(always)]
+    fn next_match(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match()
+    }
+    #[inline(always)]
+    fn next_reject(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, 'p, const N: usize> ReverseSearcher<'hs, OsStr>
+    for CharArrayRefSearcher<'hs, 'p, N>
+{
+    #[inline(always)]
+    fn next_back(&mut self) -> SearchStep {
+        self.0.next_back()
+    }
+    #[inline(always)]
+    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match_back()
+    }
+    #[inline(always)]
+    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject_back()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs, 'p, const N: usize> DoubleEndedSearcher<'hs, OsStr> for CharArrayRefSearcher<'hs, 'p, N> {}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, 'p> Searcher<'hs, OsStr> for CharSliceSearcher<'hs, 'p> {
+    #[inline(always)]
+    fn haystack(&self) -> &'hs OsStr {
+        self.0.haystack().into()
+    }
+
+    #[inline(always)]
+    fn next(&mut self) -> SearchStep {
+        self.0.next()
+    }
+    #[inline(always)]
+    fn next_match(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match()
+    }
+    #[inline(always)]
+    fn next_reject(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+unsafe impl<'hs, 'p> ReverseSearcher<'hs, OsStr> for CharSliceSearcher<'hs, 'p> {
+    #[inline(always)]
+    fn next_back(&mut self) -> SearchStep {
+        self.0.next_back()
+    }
+    #[inline(always)]
+    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match_back()
+    }
+    #[inline(always)]
+    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
+        self.0.next_reject_back()
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'hs, 'p> DoubleEndedSearcher<'hs, OsStr> for CharSliceSearcher<'hs, 'p> {}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<const N: usize> Pattern<OsStr> for [char; N] {
+    type Searcher<'h> = CharArraySearcher<'h, N>;
+
+    fn into_searcher<'h>(self, haystack: &'h OsStr) -> Self::Searcher<'h> {
+        CharArraySearcher::new(haystack, self)
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'p, const N: usize> Pattern<OsStr> for &'p [char; N] {
+    type Searcher<'h> = CharArrayRefSearcher<'h, 'p, N>;
+
+    fn into_searcher<'h>(self, haystack: &'h OsStr) -> Self::Searcher<'h> {
+        CharArrayRefSearcher::new(haystack, self)
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'p> Pattern<OsStr> for &'p [char] {
+    type Searcher<'h> = CharSliceSearcher<'h, 'p>;
+
+    fn into_searcher<'h>(self, haystack: &'h OsStr) -> Self::Searcher<'h> {
+        CharSliceSearcher::new(haystack, self)
+    }
+}

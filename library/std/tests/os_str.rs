@@ -398,6 +398,12 @@ fn test_find() {
     assert!(find("hello", predicate(|c: char| c == 'x')).is_none());
     assert_eq!(find("ประเทศไทย中华Việt Nam", '华'), Some(30));
     assert_eq!(find("ประเทศไทย中华Việt Nam", predicate(|c: char| c == '华')), Some(30));
+    assert_eq!(find("hello", ['l']), Some(2));
+    assert_eq!(find("hello", ['o', 'l']), Some(2));
+    assert_eq!(find("hello", &['o', 'l']), Some(2));
+    assert_eq!(find("hello", &['o', 'l'][..]), Some(2));
+    assert!(find("hello", ['x']).is_none());
+    assert_eq!(find("ประเทศไทย中华Việt Nam", ['华', 'ไ']), Some(18));
 }
 
 #[test]
@@ -408,6 +414,12 @@ fn test_rfind() {
     assert!(rfind("hello", predicate(|c: char| c == 'x')).is_none());
     assert_eq!(rfind("ประเทศไทย中华Việt Nam", '华'), Some(30));
     assert_eq!(rfind("ประเทศไทย中华Việt Nam", predicate(|c: char| c == '华')), Some(30));
+    assert_eq!(rfind("hello", ['l']), Some(3));
+    assert_eq!(rfind("hello", ['o', 'l']), Some(4));
+    assert_eq!(rfind("hello", &['o', 'l']), Some(4));
+    assert_eq!(rfind("hello", &['o', 'l'][..]), Some(4));
+    assert!(rfind("hello", ['x']).is_none());
+    assert_eq!(rfind("ประเทศไทย中华Việt Nam", ['华', 'ไ']), Some(30));
 }
 
 /*
