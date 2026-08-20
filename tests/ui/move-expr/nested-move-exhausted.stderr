@@ -5,22 +5,28 @@ LL |     let _ = || move(move(0));
    |                     ^^^^
 
 error: nested `move(expr)` requires another enclosing closure, `async`, `gen`, or `async gen` block
-  --> $DIR/nested-move-exhausted.rs:9:26
+  --> $DIR/nested-move-exhausted.rs:9:27
+   |
+LL |     let _ = async || move(move(0));
+   |                           ^^^^
+
+error: nested `move(expr)` requires another enclosing closure, `async`, `gen`, or `async gen` block
+  --> $DIR/nested-move-exhausted.rs:12:26
    |
 LL |     let _ = async { move(move(0)) };
    |                          ^^^^
 
 error: nested `move(expr)` requires another enclosing closure, `async`, `gen`, or `async gen` block
-  --> $DIR/nested-move-exhausted.rs:12:24
+  --> $DIR/nested-move-exhausted.rs:15:24
    |
 LL |     let _ = gen { move(move(0)) };
    |                        ^^^^
 
 error: nested `move(expr)` requires another enclosing closure, `async`, `gen`, or `async gen` block
-  --> $DIR/nested-move-exhausted.rs:15:30
+  --> $DIR/nested-move-exhausted.rs:18:30
    |
 LL |     let _ = async gen { move(move(0)) };
    |                              ^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
