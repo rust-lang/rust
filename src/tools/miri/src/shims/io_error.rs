@@ -94,7 +94,6 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ETXTBSY", ExecutableFileBusy),
         ("EXDEV", CrossesDevices),
         ("EINPROGRESS", InProgress),
-        #[cfg(not(bootstrap))]
         ("EIO", InputOutputError),
         // The following have two valid options. We have both for the forwards mapping; only the
         // first one will be used for the backwards mapping.
@@ -105,9 +104,7 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ENOSYS", Unsupported),
         ("EOPNOTSUPP", Unsupported),
         ("ENOTSUP", Unsupported),
-        #[cfg(not(bootstrap))]
         ("EMFILE", TooManyOpenFiles),
-        #[cfg(not(bootstrap))]
         ("ENFILE", TooManyOpenFiles),
     ]
 };
@@ -264,9 +261,7 @@ const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ERROR_TOO_MANY_LINKS", TooManyLinks),
         ("ERROR_CALL_NOT_IMPLEMENTED", Unsupported),
         ("WSAEWOULDBLOCK", WouldBlock),
-        #[cfg(not(bootstrap))]
         ("ERROR_TOO_MANY_OPEN_FILES", TooManyOpenFiles),
-        #[cfg(not(bootstrap))]
         ("ERROR_IO_DEVICE", InputOutputError),
     ]
 };

@@ -736,7 +736,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "box_vec_non_null", since = "1.99.0")]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const unsafe fn from_parts(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
@@ -871,7 +871,7 @@ impl<T> Vec<T> {
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
     #[must_use = "losing the pointer will leak memory"]
-    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "box_vec_non_null", since = "1.99.0")]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const fn into_parts(self) -> (NonNull<T>, usize, usize) {
         let (ptr, len, capacity) = self.into_raw_parts();
