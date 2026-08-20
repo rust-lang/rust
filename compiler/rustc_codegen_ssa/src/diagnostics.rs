@@ -1373,3 +1373,18 @@ impl<'a> MissingNativeLibrary<'a> {
 pub(crate) struct SuggestLibraryName<'a> {
     suggested_name: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(
+    "static archive `{$archive}` passed via `-Clink-arg` may be ordered before a dynamic \
+     library it references"
+)]
+#[note(
+    "rustc appends `-Clink-arg` arguments after its own native libraries; with `--as-needed`, \
+     linkers that resolve symbols strictly left-to-right (such as GNU `ld.bfd`) may drop a dynamic \
+     library that only a static archive to its left references"
+)]
+#[help("use `-l static={$archive}` so the archive is placed with the other native libraries")]
+pub(crate) struct LinkerStaticArchiveOrder<'a> {
+    pub archive: &'a str,
+}

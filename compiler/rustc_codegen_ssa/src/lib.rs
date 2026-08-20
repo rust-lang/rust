@@ -24,7 +24,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
-use rustc_lint_defs::builtin::LINKER_INFO;
+use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_STATIC_ARCHIVE_ORDER};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
@@ -418,6 +418,7 @@ impl CompiledModules {
 pub struct CodegenLintLevelSpecs {
     linker_messages: StableLevelSpec,
     linker_info: StableLevelSpec,
+    linker_static_archive_order: StableLevelSpec,
 }
 
 impl CodegenLintLevelSpecs {
@@ -425,6 +426,8 @@ impl CodegenLintLevelSpecs {
         Self {
             linker_messages: tcx.lint_level_spec_at_node(LINKER_MESSAGES, CRATE_HIR_ID),
             linker_info: tcx.lint_level_spec_at_node(LINKER_INFO, CRATE_HIR_ID),
+            linker_static_archive_order: tcx
+                .lint_level_spec_at_node(LINKER_STATIC_ARCHIVE_ORDER, CRATE_HIR_ID),
         }
     }
 }

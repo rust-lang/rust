@@ -23,7 +23,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::{TempDirBuilder, fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::attrs::NativeLibKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_lint_defs::builtin::LINKER_INFO;
+use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_STATIC_ARCHIVE_ORDER};
 use rustc_macros::Diagnostic;
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
@@ -1235,6 +1235,10 @@ fn link_natively(
     let (linker_path, flavor) = linker_and_flavor(sess);
     let self_contained_components = self_contained_components(sess, crate_type, &linker_path);
 
+    // Surface the `-Clink-arg` static-archive ordering issue before building the linker command
+    // line. See <https://github.com/rust-lang/rust/issues/154975>.
+    warn_static_archive_order(sess, crate_info, flavor);
+
     // On AIX, we ship all libraries as .a big_af archive
     // the expected format is lib<name>.a(libname.so) for the actual
     // dynamic library. So we link to a temporary .so file to be archived
@@ -2415,6 +2419,47 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_user_defined_link_args(cmd: &mut dyn Linker, sess: &Session) {
     cmd.verbatim_args(&sess.opts.cg.link_args);
+}
+
+/// Detect static archives (`.a`/`.o` paths) passed via `-Clink-arg`, which rustc appends after
+/// its own native libraries. With `--as-needed`, strict left-to-right linkers like GNU `ld.bfd`
+/// may then drop a dynamic library referenced only by that archive. rustc can't know whether the
+/// back-reference exists, so this is a suppressed-by-default lint. Even with `lld` (which tolerates
+/// back-references) the risky ordering is the same, so it is flagged too — that way the lint
+/// surfaces the latent issue before a switch back to `ld.bfd`. See
+/// <https://github.com/rust-lang/rust/issues/154975>.
+fn warn_static_archive_order(sess: &Session, crate_info: &CrateInfo, flavor: LinkerFlavor) {
+    // `--as-needed` is only emitted for GNU non-Windows linkers (`GccLinker::add_as_needed`);
+    // Darwin uses a different model.
+    if !flavor.is_gnu() || sess.target.is_like_windows || sess.target.is_like_darwin {
+        return;
+    }
+
+    let static_archives: Vec<&String> = sess
+        .opts
+        .cg
+        .link_args
+        .iter()
+        .filter(|arg| {
+            let p = Path::new(arg);
+            matches!(p.extension().and_then(|e| e.to_str()), Some("a" | "o"))
+        })
+        .collect();
+
+    if static_archives.is_empty() {
+        return;
+    }
+
+    let levels = &crate_info.lint_level_specs;
+    for archive in static_archives {
+        emit_lint_base(
+            sess,
+            LINKER_STATIC_ARCHIVE_ORDER,
+            levels.linker_static_archive_order,
+            None,
+            diagnostics::LinkerStaticArchiveOrder { archive: archive.as_str() },
+        );
+    }
 }
 
 /// Add arbitrary "late link" args defined by the target spec.
