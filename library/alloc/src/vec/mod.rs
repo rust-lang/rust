@@ -2534,6 +2534,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
         impl<T, A: Allocator> Drop for PanicGuard<'_, T, A> {
             #[cold]
+            #[inline(never)]
             fn drop(&mut self) {
                 let remaining = self.original_len - self.read;
                 // SAFETY: Trailing unchecked items must be valid since we never touch them.
