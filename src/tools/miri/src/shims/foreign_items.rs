@@ -652,6 +652,39 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_null(dest)?;
                 }
             }
+            "malloc_usable_size" => {
+                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
+
+                let [ptr] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _) -> usize),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let ptr = this.read_pointer(ptr)?;
+                let size = if this.ptr_is_null(ptr)? {
+                    0
+                } else {
+                    let (alloc_id, offset, _) = this.ptr_get_alloc_id(ptr, 0)?;
+                    if offset.bytes() != 0 {
+                        throw_ub_format!(
+                            "`malloc_usable_size` was called on a pointer that does not point to the beginning of its allocation"
+                        );
+                    }
+                    let Some((alloc_kind, _)) = this.memory.alloc_map().get(alloc_id) else {
+                        throw_ub_format!(
+                            "`malloc_usable_size` was called on a pointer to memory not managed by the C allocator"
+                        );
+                    };
+                    if *alloc_kind != MiriMemoryKind::C.into() {
+                        throw_ub_format!(
+                            "`malloc_usable_size` was called on a pointer to {alloc_kind} memory, which is not managed by the C allocator"
+                        );
+                    }
+                    this.get_alloc_info(alloc_id).size.bytes()
+                };
+                this.write_scalar(Scalar::from_target_usize(size, this), dest)?;
+            }
 
             // C memory handling functions
             "memcmp" => {

@@ -408,6 +408,24 @@ fn test_strnlen() {
     }
 }
 
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
+fn test_malloc_usable_size() {
+    unsafe {
+        // `malloc_usable_size(NULL)` returns 0.
+        assert_eq!(libc::malloc_usable_size(ptr::null_mut()), 0);
+
+        for size in [1, 2, 5, 16, 123, 1024] {
+            let p = libc::malloc(size);
+            if cfg!(miri) {
+                // Miri returns the exact size, but it doesn't need to.
+                assert_eq!(libc::malloc_usable_size(p), size);
+            }
+            assert!(libc::malloc_usable_size(p) >= size);
+            libc::free(p);
+        }
+    }
+}
+
 fn test_wcslen() {
     fn to_c_wchar_t_str(s: &str) -> Vec<libc::wchar_t> {
         let mut r = Vec::<libc::wchar_t>::new();
@@ -444,6 +462,8 @@ fn main() {
     test_reallocarray();
     #[cfg(not(target_os = "windows"))]
     test_aligned_alloc();
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
+    test_malloc_usable_size();
 
     test_memcpy();
     test_strcpy();
