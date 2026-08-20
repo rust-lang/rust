@@ -45,19 +45,17 @@ pub(crate) fn expand_deriving_clone(
                         .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
                 {
                     is_simple = true;
-                    substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone_simple(c, s, sub, false)
-                    }));
+                    substructure =
+                        combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, false));
                 } else {
                     is_simple = false;
-                    substructure = combine_substructure(Box::new(cs_clone));
+                    substructure = combine_substructure(cs_clone);
                 }
             }
             ItemKind::Union(..) => {
                 bounds = vec![Path(path_std!(marker::Copy))];
                 is_simple = true;
-                substructure =
-                    combine_substructure(Box::new(|c, s, sub| cs_clone_simple(c, s, sub, true)));
+                substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
             }
             _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
         },

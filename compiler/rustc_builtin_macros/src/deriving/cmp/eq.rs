@@ -39,9 +39,7 @@ pub(crate) fn expand_deriving_eq(
                 cx.attr_nested_word(sym::coverage, sym::off, span),
             ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                cs_total_eq_assert(a, b, c)
-            })),
+            combine_substructure: combine_substructure(cs_total_eq_assert),
         }],
         associated_types: Vec::new(),
         is_const,

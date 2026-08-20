@@ -341,10 +341,10 @@ pub(crate) enum SubstructureFields<'a> {
 pub(crate) type CombineSubstructureFunc<'a> =
     Box<dyn FnMut(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
 
-pub(crate) fn combine_substructure(
-    f: CombineSubstructureFunc<'_>,
-) -> RefCell<CombineSubstructureFunc<'_>> {
-    RefCell::new(f)
+pub(crate) fn combine_substructure<'a>(
+    f: impl FnMut(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a,
+) -> RefCell<CombineSubstructureFunc<'a>> {
+    RefCell::new(Box::new(f))
 }
 
 struct TypeParameter {

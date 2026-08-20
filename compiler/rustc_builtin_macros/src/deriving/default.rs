@@ -36,7 +36,7 @@ pub(crate) fn expand_deriving_default(
             ret_ty: Self_,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: combine_substructure(Box::new(|cx, trait_span, substr| {
+            combine_substructure: combine_substructure(|cx, trait_span, substr| {
                 match substr.fields {
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)
@@ -46,7 +46,7 @@ pub(crate) fn expand_deriving_default(
                     }
                     _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
                 }
-            })),
+            }),
         }],
         associated_types: Vec::new(),
         is_const,

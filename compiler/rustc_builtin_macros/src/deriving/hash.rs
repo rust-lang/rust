@@ -35,9 +35,7 @@ pub(crate) fn expand_deriving_hash(
             ret_ty: Unit,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                hash_substructure(a, b, c)
-            })),
+            combine_substructure: combine_substructure(hash_substructure),
         }],
         associated_types: Vec::new(),
         is_const,

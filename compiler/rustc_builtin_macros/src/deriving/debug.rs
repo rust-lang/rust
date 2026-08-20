@@ -35,9 +35,7 @@ pub(crate) fn expand_deriving_debug(
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                show_substructure(a, b, c)
-            })),
+            combine_substructure: combine_substructure(show_substructure),
         }],
         associated_types: Vec::new(),
         is_const,

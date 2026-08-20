@@ -88,7 +88,7 @@ pub(crate) fn expand_deriving_from(
             ret_ty: Ty::Self_,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: combine_substructure(Box::new(|cx, span, substructure| {
+            combine_substructure: combine_substructure(|cx, span, substructure| {
                 let field = match field {
                     Ok(ref field) => field,
                     Err(guar) => {
@@ -122,7 +122,7 @@ pub(crate) fn expand_deriving_from(
                     _ => cx.dcx().bug("Invalid derive(From) ADT input"),
                 };
                 BlockOrExpr::new_expr(expr)
-            })),
+            }),
         }],
         associated_types: Vec::new(),
         is_const,
