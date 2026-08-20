@@ -62,5 +62,13 @@ LL |     core::offload::offload! { kernel = kernel, args = (), dyn_cache = 0, dy
    |
    = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 8 previous errors
+error: duplicate field `device`
+  --> $DIR/offload_macro.rs:30:5
+   |
+LL |     core::offload::offload! { kernel = kernel, args = (), device = 0, device = 1 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 9 previous errors
 

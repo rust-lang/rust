@@ -197,6 +197,20 @@ fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, &'ll ll
     (tgt_decl, tgt_fn_ty)
 }
 
+/// Declares the `omp_get_num_devices` runtime function and returns the
+/// declaration together with its type.
+pub(crate) fn declare_omp_get_num_devices<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+) -> (&'ll llvm::Value, &'ll llvm::Type) {
+    let ti32 = cx.type_i32();
+    let tgt_fn_ty = cx.type_func(&[], ti32);
+    let name = "omp_get_num_devices";
+    let tgt_decl = declare_offload_fn(&cx, name, tgt_fn_ty);
+    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
+    attributes::apply_to_llfn(tgt_decl, Function, &[nounwind]);
+    (tgt_decl, tgt_fn_ty)
+}
+
 // What is our @1 here? A magic global, used in our data_{begin/update/end}_mapper:
 // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
 // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
@@ -591,6 +605,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     offload_globals: &OffloadGlobals<'ll>,
     offload_dims: &OffloadKernelDims<'ll>,
     dyn_cache: &'ll Value,
+    device_id: &'ll Value,
 ) {
     let cx = builder.cx;
     let OffloadKernelGlobals {
@@ -775,15 +790,8 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         builder.store(value.2, ptr, value.0);
     }
 
-    let args = vec![
-        s_ident_t,
-        // FIXME(offload) give users a way to select which GPU to use.
-        cx.get_const_i64(u64::MAX), // MAX == -1.
-        num_workgroups,
-        threads_per_block,
-        region_id,
-        a5,
-    ];
+    let device_id = builder.sext(device_id, cx.type_i64());
+    let args = vec![s_ident_t, device_id, num_workgroups, threads_per_block, region_id, a5];
     builder.call(tgt_target_kernel_ty, None, None, tgt_decl, &args, None, None);
     // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
 

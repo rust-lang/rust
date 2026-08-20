@@ -15,7 +15,7 @@ extern crate minicore;
 // CHECK: ; Function Attrs
 // nvptx-NEXT: define ptx_kernel void @foo
 // amdgpu-NEXT: define amdgpu_kernel void @foo
-// CHECK-SAME: ptr readnone captures(none) %dyn_ptr
+// CHECK-SAME: ptr nofree readnone captures(none) %dyn_ptr
 // nvptx-SAME: [2 x i64] %0
 // amdgpu-SAME: ptr noalias {{.*}} %0, i64 {{.*}} %1
 // CHECK-NEXT: entry:
