@@ -6,6 +6,7 @@ extern crate monovariants;
 
 use monovariants::NonExhaustiveMonovariant;
 
+#[expect(unused_attributes)]
 #[non_exhaustive]
 enum LocalNonExhaustive {
     Variant(u32),

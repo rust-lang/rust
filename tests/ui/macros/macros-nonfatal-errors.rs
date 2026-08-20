@@ -95,6 +95,7 @@ enum DefaultHasFields {
 #[derive(Default)]
 enum NonExhaustiveDefault {
     #[default]
+    #[expect(unused_attributes)]
     #[non_exhaustive]
     Foo, //~ ERROR default variant must be exhaustive
     Bar,
@@ -127,6 +128,7 @@ const _: () = {
     #[derive(Default)]
     enum NonExhaustiveDefaultGeneric<T> {
         #[default]
+        #[expect(unused_attributes)]
         #[non_exhaustive]
         Foo, //~ ERROR default variant must be exhaustive
         Bar(T),
