@@ -779,6 +779,7 @@ macro_rules! list_fold {
 list_fold! {
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> : mk_poly_existential_predicates,
     &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>: mk_predefined_opaques_in_body,
+    &'tcx ty::List<(Ty<'tcx>, Option<ty::OpaqueHiddenTyBound<'tcx>>)>: mk_hidden_types_of_opaques_in_body,
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
     &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,
     &'tcx ty::List<ty::ArgOutlivesClause<'tcx>> : mk_outlives,

@@ -456,6 +456,7 @@ pub enum GoalSource {
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
+    pub hidden_types_of_opaques_in_body: I::HiddenTypesOfOpaques,
 }
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
@@ -563,7 +564,7 @@ pub enum ParamEnvSource {
 pub enum AliasBoundKind {
     /// Alias bound from the self type of a projection
     SelfBounds,
-    // Alias bound having recursed on the self type of a projection
+    /// Alias bound having recursed on the self type of a projection
     NonSelfBounds,
 }
 
@@ -631,6 +632,7 @@ impl<I: Interner> ExternalRegionConstraints<I> {
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: ExternalRegionConstraints<I>,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    pub hidden_types_of_opaques: Vec<(I::Ty, Vec<ty::OpaqueHiddenTyBound<I>>)>,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
@@ -646,6 +648,7 @@ impl<I: Interner> ExternalConstraintsData<I> {
         Self {
             region_constraints,
             opaque_types: vec![],
+            hidden_types_of_opaques: vec![],
             normalization_nested_goals: NestedNormalizationGoals::default(),
         }
     }
@@ -654,10 +657,12 @@ impl<I: Interner> ExternalConstraintsData<I> {
         let ExternalConstraintsData {
             region_constraints,
             opaque_types,
+            hidden_types_of_opaques,
             normalization_nested_goals,
         } = self;
         region_constraints.is_empty()
             && opaque_types.is_empty()
+            && hidden_types_of_opaques.is_empty()
             && normalization_nested_goals.is_empty()
     }
 }

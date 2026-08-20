@@ -84,7 +84,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-        prev_entries: OpaqueTypeStorageEntries,
+        prev_entries: &OpaqueTypeStorageEntries<'tcx>,
     ) -> Canonical<'tcx, QueryResponse<'tcx, T>>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -160,6 +160,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .borrow_mut()
             .opaque_type_storage
             .take_opaque_types()
+            .0
             .map(|(k, v)| (k, v.ty))
             .collect();
 

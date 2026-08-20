@@ -273,7 +273,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     pub(super) fn detect_opaque_types_added_during_writeback(&self) {
         let num_entries = self.checked_opaque_types_storage_entries.take().unwrap();
         for (key, hidden_type) in
-            self.inner.borrow_mut().opaque_types().opaque_types_added_since(num_entries)
+            self.inner.borrow_mut().opaque_types().opaque_types_added_since(&num_entries)
         {
             let opaque_type_string = self.tcx.def_path_str(key.def_id);
             let msg = format!("unexpected cyclic definition of `{opaque_type_string}`");
