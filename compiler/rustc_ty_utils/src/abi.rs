@@ -613,9 +613,9 @@ fn fn_abi_new_uncached<'tcx>(
             sig.abi(),
         ),
         ptrauth_discriminator: if tcx.sess.pointer_authentication_fn_ptr_type_discrimination() {
-            ptrauth_compute_fn_ptr_type_discriminator_for(tcx, sig).unwrap_or(0).into()
+            Some(ptrauth_compute_fn_ptr_type_discriminator_for(tcx, sig).unwrap_or(0).into())
         } else {
-            0
+            None
         },
     };
     fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi());
