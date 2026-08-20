@@ -32,7 +32,6 @@ pub(crate) fn expand_deriving_partial_eq(
         methods: Vec::new(),
         associated_types: Vec::new(),
         is_const: false,
-        is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
         document: true,
     };
@@ -63,7 +62,6 @@ pub(crate) fn expand_deriving_partial_eq(
         methods,
         associated_types: Vec::new(),
         is_const,
-        is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
         document: true,
     };

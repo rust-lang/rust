@@ -223,8 +223,6 @@ pub(crate) struct TraitDef<'a> {
 
     pub is_const: bool,
 
-    pub is_staged_api_crate: bool,
-
     /// The safety of the `impl`.
     pub safety: Safety,
 
@@ -800,7 +798,7 @@ impl<'a> TraitDef<'a> {
         // Only add `rustc_const_unstable` attributes if `derive_const` is used within libcore/libstd,
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
-        if self.is_const && self.is_staged_api_crate {
+        if self.is_const && cx.ecfg.features.staged_api() {
             attrs.push(
                 cx.attr_nested(
                     rustc_ast::AttrItem {
