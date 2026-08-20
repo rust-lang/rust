@@ -536,6 +536,8 @@ declare_features! (
     (incomplete, fn_delegation, "1.76.0", Some(118212)),
     /// Traits for function pointers and items
     (unstable, fn_static, "CURRENT_RUSTC_VERSION", Some(148768)),
+    /// Allows using forced keywords `k#fn`.
+    (unstable, forced_keywords, "CURRENT_RUSTC_VERSION", Some(153839)),
     /// Allows impls for the Freeze trait.
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.

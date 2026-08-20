@@ -25,7 +25,7 @@ use crate::diagnostics::{
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
-use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
+use crate::mbe::metavar_expr::{MetaVarExprConcatElem, validate_ident_kind};
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
 
 /// Context needed to perform transcription of metavariable expressions.
@@ -996,21 +996,15 @@ fn extract_symbol_from_pnr<'a>(
 ) -> PResult<'a, Symbol> {
     match pnr {
         ParseNtResult::Ident(nt_ident, kind) => {
-            if let IdentKind::Raw = kind {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
-            } else {
-                Ok(nt_ident.name)
-            }
+            validate_ident_kind(dcx, *kind, span_err)?;
+            Ok(nt_ident.name)
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token { kind: TokenKind::Ident(symbol, kind), .. },
             _,
         )) => {
-            if let IdentKind::Raw = kind {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
-            } else {
-                Ok(*symbol)
-            }
+            validate_ident_kind(dcx, *kind, span_err)?;
+            Ok(*symbol)
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token {

@@ -838,7 +838,7 @@ impl<'a> Parser<'a> {
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
         let expect_self_ident = |this: &mut Self| match this.token.ident() {
-            Some((ident, IdentKind::Normal)) => {
+            Some((ident, IdentKind::Normal | IdentKind::ForcedKeyword)) => {
                 this.bump();
                 ident
             }

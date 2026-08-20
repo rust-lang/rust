@@ -1297,6 +1297,7 @@ impl<'src> Classifier<'src> {
             TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
                 Class::Ident(new_span(before, text, file_span))
             }
+            TokenKind::ForcedKeywordIdent => Class::KeyWord,
             TokenKind::Lifetime { .. }
             | TokenKind::RawLifetime
             | TokenKind::UnknownPrefixLifetime => Class::Lifetime,

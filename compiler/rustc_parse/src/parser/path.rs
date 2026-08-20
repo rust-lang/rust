@@ -459,7 +459,9 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
-            Some((ident, IdentKind::Normal)) if ident.is_path_segment_keyword() => {
+            Some((ident, IdentKind::Normal | IdentKind::ForcedKeyword))
+                if ident.is_path_segment_keyword() =>
+            {
                 self.bump();
                 Ok(ident)
             }

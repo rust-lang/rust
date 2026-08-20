@@ -238,6 +238,8 @@ impl<'a> Converter<'a> {
                 }
 
                 rustc_lexer::TokenKind::RawIdent => IDENT,
+                #[cfg(feature = "in-rust-tree")]
+                rustc_lexer::TokenKind::ForcedKeywordIdent => ERROR,
 
                 rustc_lexer::TokenKind::GuardedStrPrefix if self.edition.at_least_2024() => {
                     // FIXME: rustc does something better for recovery.

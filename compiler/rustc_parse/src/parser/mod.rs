@@ -456,7 +456,13 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, kind) = self.ident_or_err(recover)?;
 
-        if kind == IdentKind::Normal && ident.is_reserved() {
+        let (is_common, recover) = match kind {
+            IdentKind::Normal => (!ident.is_reserved(), recover),
+            IdentKind::Raw => (true, false),
+            IdentKind::ForcedKeyword => (false, false),
+        };
+
+        if !is_common {
             let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
@@ -464,7 +470,9 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
         }
+
         self.bump();
+
         Ok(ident)
     }
 
@@ -550,7 +558,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentKind::Normal)) = self.token.ident()
+            && let Some((ident, IdentKind::Normal | IdentKind::ForcedKeyword)) = self.token.ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
@@ -582,7 +590,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentKind::Normal)) = self.token.ident()
+            && let Some((ident, IdentKind::Normal | IdentKind::ForcedKeyword)) = self.token.ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
@@ -717,7 +725,10 @@ impl<'a> Parser<'a> {
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match &t.kind {
                 // async closures do not work with const closures, so we do not parse that here.
-                token::Ident(kw::Move | kw::Use | kw::Static, IdentKind::Normal)
+                token::Ident(
+                    kw::Move | kw::Use | kw::Static,
+                    IdentKind::Normal | IdentKind::ForcedKeyword,
+                )
                 | token::OrOr
                 | token::Or => true,
                 _ => false,

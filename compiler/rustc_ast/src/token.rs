@@ -231,7 +231,7 @@ impl Lit {
     /// `Parser::eat_token_lit` (excluding unary negation).
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
-            Ident(name, IdentKind::Normal) if name.is_bool_lit() => {
+            Ident(name, IdentKind::Normal | IdentKind::ForcedKeyword) if name.is_bool_lit() => {
                 Some(Lit::new(Bool, name, None))
             }
             Literal(token_lit) => Some(token_lit),
@@ -362,6 +362,7 @@ fn ident_can_begin_type(name: Symbol, span: Span, kind: IdentKind) -> bool {
 pub enum IdentKind {
     Normal,
     Raw,
+    ForcedKeyword,
 }
 
 impl IdentKind {
@@ -369,19 +370,16 @@ impl IdentKind {
         match self {
             IdentKind::Normal => IdentPrintMode::Normal,
             IdentKind::Raw => IdentPrintMode::RawIdent,
+            IdentKind::ForcedKeyword => IdentPrintMode::ForcedKeywordIdent,
         }
     }
+
     pub fn to_print_mode_lifetime(self) -> IdentPrintMode {
         match self {
             IdentKind::Normal => IdentPrintMode::Normal,
             IdentKind::Raw => IdentPrintMode::RawLifetime,
+            IdentKind::ForcedKeyword => unreachable!(),
         }
-    }
-}
-
-impl From<bool> for IdentKind {
-    fn from(b: bool) -> Self {
-        if b { Self::Raw } else { Self::Normal }
     }
 }
 
@@ -643,9 +641,13 @@ impl Token {
         Token::new(TokenKind::Question, DUMMY_SP)
     }
 
-    /// Recovers a `Token` from an `Ident`. This creates a raw identifier if necessary.
+    /// Recovers a `Token` from an `Ident`.
+    ///
+    /// This creates a raw identifier if necessary.
+    /// It will never create a forced keyword.
     pub fn from_ast_ident(ident: sp::Ident) -> Self {
-        Token::new(Ident(ident.name, ident.is_raw_guess().into()), ident.span)
+        let kind = if ident.is_raw_guess() { IdentKind::Raw } else { IdentKind::Normal };
+        Token::new(Ident(ident.name, kind), ident.span)
     }
 
     pub fn is_range_separator(&self) -> bool {
@@ -770,7 +772,7 @@ impl Token {
     pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
             OpenBrace | Literal(..) | Minus => true,
-            Ident(name, IdentKind::Normal) if name.is_bool_lit() => true,
+            Ident(name, IdentKind::Normal | IdentKind::ForcedKeyword) if name.is_bool_lit() => true,
             OpenInvisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } | MetaVarKind::Block | MetaVarKind::Literal,
             )) => true,
@@ -819,7 +821,7 @@ impl Token {
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | Minus => true,
-            Ident(name, IdentKind::Normal) if name.is_bool_lit() => true,
+            Ident(name, IdentKind::Normal | IdentKind::ForcedKeyword) if name.is_bool_lit() => true,
             OpenInvisible(InvisibleOrigin::MetaVar(mv_kind)) => match mv_kind {
                 MetaVarKind::Literal => true,
                 MetaVarKind::Expr { can_begin_literal_maybe_minus, .. } => {
@@ -973,7 +975,17 @@ impl Token {
     }
 
     pub fn is_non_reserved_ident(&self) -> bool {
-        self.ident().is_some_and(|(id, kind)| kind == IdentKind::Raw || !sp::Ident::is_reserved(id))
+        self.non_reserved_ident().is_some()
+    }
+
+    pub fn non_reserved_ident(&self) -> Option<sp::Ident> {
+        self.ident()
+            .filter(|&(id, kind)| match kind {
+                IdentKind::Normal => !sp::Ident::is_reserved(id),
+                IdentKind::Raw => true,
+                IdentKind::ForcedKeyword => false,
+            })
+            .map(|(id, _)| id)
     }
 
     /// Returns `true` if the token is the identifier `true` or `false`.
@@ -996,7 +1008,7 @@ impl Token {
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
     pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(sp::Ident) -> bool) -> bool {
         match self.ident() {
-            Some((id, IdentKind::Normal)) => pred(id),
+            Some((id, IdentKind::Normal | IdentKind::ForcedKeyword)) => pred(id),
             _ => false,
         }
     }
