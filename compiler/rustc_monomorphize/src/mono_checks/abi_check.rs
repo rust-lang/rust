@@ -65,9 +65,17 @@ fn do_check_simd_vector_abi<'tcx>(
         let size = arg_abi.layout.size;
         match passes_vectors_by_value(&arg_abi.mode, &arg_abi.layout.backend_repr) {
             UsesVectorRegisters::FixedVector => {
+                // Some targets use homogeneous aggregates, where the unit size counts.
+                let unit_size = match &arg_abi.mode {
+                    PassMode::Cast { pad_i32: _, cast } if cast.prefix.is_empty() => {
+                        cast.rest.unit.size
+                    }
+                    _ => size,
+                };
+
                 let feature_def = tcx.sess.target.features_for_correct_fixed_length_vector_abi();
                 // Find the first feature that provides at least this vector size.
-                let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
+                let feature = match feature_def.iter().find(|(bits, _)| unit_size.bits() <= *bits) {
                     Some((_, feature)) => feature,
                     None => {
                         let (span, _hir_id) = loc();
