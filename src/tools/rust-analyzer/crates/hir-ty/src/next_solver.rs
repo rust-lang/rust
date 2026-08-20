@@ -237,7 +237,7 @@ pub fn default_types<'db>() -> &'db DefaultAny<'db> {
             ty.as_ref()
         };
         let create_projection = |slice| {
-            let it = crate::mir::Projection::new_from_slice(slice);
+            let it = crate::mir::Projection::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let it = ManuallyDrop::new(it.store());
             it.as_ref()

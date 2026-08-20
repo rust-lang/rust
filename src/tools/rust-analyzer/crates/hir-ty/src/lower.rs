@@ -247,7 +247,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let in_binders = DebruijnIndex::ZERO;
         let interner = DbInterner::new_with(db, resolver.krate());
         let bound_vars =
-            vec![(Vec::new(), TyLoweringContext::bound_vars(db, interner, generic_def, generics))];
+            vec![(Vec::new(), TyLoweringContext::bound_vars(db, generic_def, generics))];
         Self {
             db,
             // Can provide no block since we don't use it for trait solving.
@@ -374,12 +374,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     }
 
     fn push_bound_vars(&mut self, binder: &[Name]) {
-        let bound_vars = BoundVarKinds::new_from_iter(
-            self.interner,
-            binder.iter().map(|_| {
+        let bound_vars =
+            BoundVarKinds::new_from_iter(binder.iter().map(|_| {
                 BoundVariableKind::Region(BoundRegionKind::Named(self.generic_def.into()))
-            }),
-        );
+            }));
         self.bound_vars.push((binder.to_vec(), bound_vars));
     }
 
@@ -393,7 +391,6 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
     fn bound_vars(
         db: &'db dyn HirDatabase,
-        interner: DbInterner<'db>,
         def: GenericDefId,
         generic: &'a OnceCell<Generics<'db>>,
     ) -> BoundVarKinds<'db> {
@@ -410,7 +407,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             }
         });
 
-        BoundVarKinds::new_from_iter(interner, args)
+        BoundVarKinds::new_from_iter(args)
     }
 
     fn take_defined_opaques(&mut self) -> Option<Box<Arena<ImplTrait>>> {
@@ -737,7 +734,6 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             hir_def::hir::Pat::NotNull => rustc_type_ir::PatternKind::NotNull,
             hir_def::hir::Pat::Or(ref pats) => rustc_type_ir::PatternKind::Or(
                 PatList::new_from_iter(
-                    self.interner,
                     pats.iter().map(|&pat| self.lower_pattern_type(pat, ty).ok_or(())),
                 )
                 .ok()?,
@@ -1263,7 +1259,6 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
             // N.b. principal, projections, auto traits
             Some(BoundExistentialPredicates::new_from_iter(
-                interner,
                 principal.into_iter().chain(projections).chain(auto_traits),
             ))
         };
@@ -2491,7 +2486,7 @@ pub(crate) fn param_env_from_predicates<'db>(
         interner,
         predicates.all_predicates().iter_identity().map(Unnormalized::skip_norm_wip),
     );
-    let clauses = Clauses::new_from_iter(interner, clauses);
+    let clauses = Clauses::new_from_iter(clauses);
 
     // FIXME: We should normalize projections here, like rustc does.
     ParamEnv { clauses }
@@ -2852,11 +2847,11 @@ pub(crate) fn fn_sig_for_fn<'db>(
     };
     let impl_traits = ctx_ret.take_defined_opaques();
 
-    let inputs_and_output = Tys::new_from_iter(interner, params.chain(Some(ret)));
+    let inputs_and_output = Tys::new_from_iter(params.chain(Some(ret)));
     ctx_params.diagnostics.extend(ctx_ret.diagnostics);
     ctx_params.defined_anon_consts.extend(ctx_ret.defined_anon_consts);
 
-    let binder = TyLoweringContext::bound_vars(db, interner, def.into(), &generics);
+    let binder = TyLoweringContext::bound_vars(db, def.into(), &generics);
     let result = StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::bind_with_vars(
         FnSig {
             inputs_and_output,
@@ -2887,8 +2882,7 @@ fn ctor_signature(
     let params = field_tys.iter().map(|(_, field)| field.ty().skip_binder());
     let ret = type_for_adt(db, adt).skip_binder();
 
-    let inputs_and_output =
-        Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret)));
+    let inputs_and_output = Tys::new_from_iter(params.chain(Some(ret)));
     StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::dummy(FnSig {
         fn_sig_kind: FnSigKind::new(ExternAbi::Rust, Safety::Safe, false),
         inputs_and_output,

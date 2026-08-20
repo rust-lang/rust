@@ -179,12 +179,12 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
             simple_trait_predicates(interner, loc, generic_params, adt_predicates, trait_id)
         }
         BuiltinDeriveImplTrait::Reborrow => {
-            explicit_own_predicates(interner, adt_predicates.own_explicit_predicates())
+            explicit_own_predicates(adt_predicates.own_explicit_predicates())
         }
         BuiltinDeriveImplTrait::Default => {
             if matches!(loc.adt, AdtId::EnumId(_)) {
                 // Enums don't have extra bounds.
-                explicit_own_predicates(interner, adt_predicates.own_explicit_predicates())
+                explicit_own_predicates(adt_predicates.own_explicit_predicates())
             } else {
                 simple_trait_predicates(interner, loc, generic_params, adt_predicates, trait_id)
             }
@@ -218,7 +218,6 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
             });
             GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
                 Clauses::new_from_iter(
-                    interner,
                     adt_predicates
                         .explicit_predicates()
                         .iter_identity()
@@ -233,11 +232,10 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
 }
 
 fn explicit_own_predicates<'db>(
-    interner: DbInterner<'db>,
     predicates: EarlyBinder<'db, impl Iterator<Item = Clause<'db>>>,
 ) -> GenericPredicates {
     GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
-        Clauses::new_from_iter(interner, predicates.skip_binder()).store(),
+        Clauses::new_from_iter(predicates.skip_binder()).store(),
     ))
 }
 
@@ -329,7 +327,6 @@ fn simple_trait_predicates<'db>(
     }
     GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
         Clauses::new_from_iter(
-            interner,
             adt_predicates
                 .explicit_predicates()
                 .iter_identity()

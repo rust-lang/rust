@@ -125,7 +125,6 @@ fn intern_const_ref<'db>(
         {
             let u8_values = &interner.default_types().consts.u8_values;
             ValTreeKind::Branch(Consts::new_from_iter(
-                interner,
                 value.as_str().as_bytes().iter().map(|&byte| u8_values[usize::from(byte)]),
             ))
         }

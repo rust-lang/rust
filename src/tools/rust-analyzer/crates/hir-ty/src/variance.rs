@@ -25,8 +25,8 @@ use crate::{
     db::HirDatabase,
     generics::{Generics, generics},
     next_solver::{
-        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArgKind, GenericArgs, Pattern,
-        PatternKind, Region, RegionKind, StoredVariancesOf, TermKind, Ty, TyKind, VariancesOf,
+        Const, ConstKind, ExistentialPredicate, GenericArgKind, GenericArgs, Pattern, PatternKind,
+        Region, RegionKind, StoredVariancesOf, TermKind, Ty, TyKind, VariancesOf,
     },
 };
 
@@ -106,11 +106,10 @@ pub(crate) fn variances_of_cycle_initial(
     _: salsa::Id,
     def: GenericDefId,
 ) -> StoredVariancesOf {
-    let interner = DbInterner::new_no_crate(db);
     let generics = generics(db, def);
     let count = generics.len(true);
 
-    VariancesOf::new_from_iter(interner, std::iter::repeat_n(Variance::Bivariant, count)).store()
+    VariancesOf::new_from_iter(std::iter::repeat_n(Variance::Bivariant, count)).store()
 }
 
 struct Context<'db> {

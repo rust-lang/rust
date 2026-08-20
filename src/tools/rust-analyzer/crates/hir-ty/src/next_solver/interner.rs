@@ -113,7 +113,7 @@ macro_rules! interned_slice {
             }
 
             #[inline]
-            pub fn new_from_iter<I, T>(_interner: DbInterner<'db>, args: I) -> T::Output
+            pub fn new_from_iter<I, T>(args: I) -> T::Output
             where
                 I: IntoIterator<Item = T>,
                 T: ::rustc_type_ir::CollectAndApply<$ty_db, Self>,
@@ -259,13 +259,13 @@ macro_rules! impl_foldable_for_interned_slice {
                 self,
                 folder: &mut F,
             ) -> Result<Self, F::Error> {
-                Self::new_from_iter(folder.cx(), self.iter().map(|it| it.try_fold_with(folder)))
+                Self::new_from_iter(self.iter().map(|it| it.try_fold_with(folder)))
             }
             fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
                 self,
                 folder: &mut F,
             ) -> Self {
-                Self::new_from_iter(folder.cx(), self.iter().map(|it| it.fold_with(folder)))
+                Self::new_from_iter(self.iter().map(|it| it.fold_with(folder)))
             }
         }
     };
@@ -859,7 +859,6 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
                     return Err(TypeError::Mismatch);
                 }
                 let pats = PatList::new_from_iter(
-                    relation.cx(),
                     std::iter::zip(a.iter(), b.iter()).map(|(a, b)| relation.relate(a, b)),
                 )?;
                 Ok(Pattern::new(tcx, PatternKind::Or(pats)))
@@ -1026,7 +1025,7 @@ impl<'db> Interner for DbInterner<'db> {
         I: Iterator<Item = T>,
         T: rustc_type_ir::CollectAndApply<Self::GenericArg, Self::GenericArgs>,
     {
-        GenericArgs::new_from_iter(self, args)
+        GenericArgs::new_from_iter(args)
     }
 
     type UnsizingParams = UnsizingParams;
@@ -1087,7 +1086,6 @@ impl<'db> Interner for DbInterner<'db> {
                 // We compute them based on the only `Ty` level info in rustc,
                 // move `variances_of_opaque` into `rustc_next_trait_solver` for reuse.
                 return VariancesOf::new_from_iter(
-                    self,
                     (0..self.generics_of(def_id).count()).map(|_| Variance::Invariant),
                 );
             }
@@ -1205,7 +1203,7 @@ impl<'db> Interner for DbInterner<'db> {
         I: Iterator<Item = T>,
         T: rustc_type_ir::CollectAndApply<Self::Ty, Self::Tys>,
     {
-        Tys::new_from_iter(self, args)
+        Tys::new_from_iter(args)
     }
 
     fn projection_parent(self, def_id: Self::TraitAssocTermId) -> Self::TraitId {
@@ -1356,10 +1354,7 @@ impl<'db> Interner for DbInterner<'db> {
         if all_bounds.len() == own_bounds.len() {
             EarlyBinder::bind(Clauses::empty())
         } else {
-            EarlyBinder::bind(Clauses::new_from_iter(
-                self,
-                all_bounds.difference(&own_bounds).cloned(),
-            ))
+            EarlyBinder::bind(Clauses::new_from_iter(all_bounds.difference(&own_bounds).cloned()))
         }
     }
 
@@ -1987,7 +1982,7 @@ impl<'db> Interner for DbInterner<'db> {
         let mut map = Default::default();
         let delegate = Anonymize { interner: self, map: &mut map };
         let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
-        let bound_vars = BoundVarKinds::new_from_iter(self, map.into_values());
+        let bound_vars = BoundVarKinds::new_from_iter(map.into_values());
         Binder::bind_with_vars(inner, bound_vars)
     }
 
@@ -2301,7 +2296,6 @@ impl<'db> DbInterner<'db> {
     {
         FnSig {
             inputs_and_output: Tys::new_from_iter(
-                self,
                 inputs.into_iter().chain(std::iter::once(output)),
             ),
             fn_sig_kind: FnSigKind::new(abi, safety, c_variadic),

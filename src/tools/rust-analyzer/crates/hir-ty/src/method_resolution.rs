@@ -450,10 +450,7 @@ pub(crate) fn lookup_impl_method_query<'db>(
 
     (
         impl_fn,
-        GenericArgs::new_from_iter(
-            interner,
-            impl_subst.iter().chain(fn_subst.iter().skip(trait_params)),
-        ),
+        GenericArgs::new_from_iter(impl_subst.iter().chain(fn_subst.iter().skip(trait_params))),
     )
 }
 

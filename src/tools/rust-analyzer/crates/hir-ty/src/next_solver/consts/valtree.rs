@@ -127,7 +127,6 @@ pub(super) fn allocation_to_const<'db>(
                 };
                 let u8_values = &interner.default_types().consts.u8_values;
                 ValTreeKind::Branch(Consts::new_from_iter(
-                    interner,
                     bytes.iter().map(|&byte| u8_values[usize::from(byte)]),
                 ))
             }
@@ -154,7 +153,7 @@ pub(super) fn allocation_to_const<'db>(
                     let bytes = &bytes[offset..offset + size_one];
                     allocation_to_const(interner, ty, bytes, memory_map, param_env)
                 });
-                ValTreeKind::Branch(Consts::new_from_iter(interner, items))
+                ValTreeKind::Branch(Consts::new_from_iter(items))
             }
             TyKind::Dynamic(_, _) => {
                 let addr = usize::from_le_bytes(memory[0..memory.len() / 2].try_into().unwrap());
@@ -215,7 +214,7 @@ pub(super) fn allocation_to_const<'db>(
                     param_env,
                 )
             });
-            ValTreeKind::Branch(Consts::new_from_iter(interner, items))
+            ValTreeKind::Branch(Consts::new_from_iter(items))
         }
         TyKind::Adt(..) => {
             // FIXME: This requires `adt_const_params`.
@@ -249,7 +248,7 @@ pub(super) fn allocation_to_const<'db>(
                     param_env,
                 )
             });
-            ValTreeKind::Branch(Consts::new_from_iter(interner, items))
+            ValTreeKind::Branch(Consts::new_from_iter(items))
         }
         TyKind::Never => return Const::error(interner),
         // FIXME:
