@@ -7,11 +7,11 @@
 // tidy-alphabetical-end
 
 use rustc_data_structures::sync::{AtomicU64, Lock};
+use rustc_middle::arena::Arena;
 use rustc_middle::queries::{ExternProviders, Providers};
 use rustc_middle::query::QuerySystem;
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 
-pub use crate::dep_kind_vtables::make_dep_kind_vtables;
 pub use crate::job::{
     CollectActiveJobsKind, QueryJobMap, break_query_cycle, collect_active_query_jobs,
     print_query_stack,
@@ -27,6 +27,7 @@ mod query_vtables;
 mod self_profile;
 
 pub fn query_system<'tcx>(
+    arena: &'tcx Arena<'tcx>,
     local_providers: Providers,
     extern_providers: ExternProviders,
     on_disk_cache: Option<OnDiskCache>,
@@ -34,8 +35,10 @@ pub fn query_system<'tcx>(
 ) -> QuerySystem<'tcx> {
     QuerySystem {
         arenas: Default::default(),
+        dep_kind_vtables: dep_kind_vtables::make_dep_kind_vtables(arena),
         query_vtables: query_vtables::make_query_vtables(incremental),
         side_effects: Default::default(),
+        used_features: Default::default(),
         on_disk_cache,
         local_providers,
         extern_providers,
