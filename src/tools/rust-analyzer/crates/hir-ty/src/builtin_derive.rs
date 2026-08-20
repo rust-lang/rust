@@ -292,8 +292,8 @@ fn simple_trait_predicates<'db>(
                 parent: loc.adt.into(),
                 local_id: param_idx,
             });
-            let param_idx =
-                param_idx.into_raw().into_u32() + (generic_params.len_lifetimes() as u32);
+            let param_idx = param_idx.into_raw().into_u32()
+                + (generic_params.len_early_bound_lifetimes() as u32);
             let param_ty = Ty::new_param(interner, param_id, param_idx);
             let trait_args = trait_args(loc.trait_, param_ty);
             let trait_ref = TraitRef::new_from_args(interner, trait_id.into(), trait_args);
@@ -413,7 +413,7 @@ fn coerce_pointee_params<'db>(
         local_id: pointee_param,
     });
     let pointee_param_idx =
-        pointee_param.into_raw().into_u32() + (generic_params.len_lifetimes() as u32);
+        pointee_param.into_raw().into_u32() + (generic_params.len_early_bound_lifetimes() as u32);
     let new_param_idx = generic_params.len() as u32;
     let new_param_id = coerce_pointee_new_type_param(trait_id);
     let new_param_ty = Ty::new_param(interner, new_param_id, new_param_idx);
