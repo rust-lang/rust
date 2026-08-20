@@ -236,6 +236,10 @@ datecheck() {
 datecheck
 trap datecheck EXIT
 
+# Bump this value if you need to invalidate sccache's cache, if some wrong
+# builds go into it
+export SCCACHE_C_CUSTOM_CACHE_BUSTER=57c589c2a3266d9733e2
+
 # We've had problems in the past of shell scripts leaking fds into the sccache
 # server (#48192) which causes Cargo to erroneously think that a build script
 # hasn't finished yet. Try to solve that problem by starting a very long-lived
