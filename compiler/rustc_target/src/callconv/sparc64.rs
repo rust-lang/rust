@@ -58,6 +58,7 @@ fn classify<'a, Ty, C>(
                         Float::F16 => {
                             // Match LLVM by passing `f16` in integer registers.
                         }
+                        Float::F16B => panic!("`f16b` unsupported on sparc64"),
                     }
                 } else {
                     /* pass unaligned floats in integer registers */
