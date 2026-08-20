@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&dyn Sub: CoerceUnsized<&dyn Super<for<'a> fn(&'a ())>>` is not satisfied
-  --> $DIR/principal-upcast-region-eq-issue-157859.rs:7:49
+  --> $DIR/principal-upcast-region-eq-issue-157859.rs:6:49
    |
 LL |         let b: &dyn Super<for<'a> fn(&'a ())> = a;
    |                                                 ^ the nightly-only, unstable trait `Unsize<dyn Super<for<'a> fn(&'a ())>>` is not implemented for `dyn Sub`
