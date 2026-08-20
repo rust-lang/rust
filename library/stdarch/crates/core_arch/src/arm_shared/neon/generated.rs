@@ -19307,7 +19307,7 @@ pub unsafe fn vld1q_f32_x4(a: *const f32) -> float32x4x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1_lane_f16<const LANE: i32>(ptr: *const f16, src: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_f16)"]
@@ -19327,7 +19327,7 @@ pub unsafe fn vld1_lane_f16<const LANE: i32>(ptr: *const f16, src: float16x4_t) 
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1q_lane_f16<const LANE: i32>(ptr: *const f16, src: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_f32)"]
@@ -19352,7 +19352,7 @@ pub unsafe fn vld1q_lane_f16<const LANE: i32>(ptr: *const f16, src: float16x8_t)
 )]
 pub unsafe fn vld1_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_p16)"]
@@ -19377,7 +19377,7 @@ pub unsafe fn vld1_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x2_t) 
 )]
 pub unsafe fn vld1_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_p8)"]
@@ -19402,7 +19402,7 @@ pub unsafe fn vld1_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x4_t) -
 )]
 pub unsafe fn vld1_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_s16)"]
@@ -19427,7 +19427,7 @@ pub unsafe fn vld1_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x8_t) -> p
 )]
 pub unsafe fn vld1_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_s32)"]
@@ -19452,7 +19452,7 @@ pub unsafe fn vld1_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x4_t) ->
 )]
 pub unsafe fn vld1_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_s64)"]
@@ -19462,7 +19462,7 @@ pub unsafe fn vld1_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x2_t) ->
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 0))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ldr, LANE = 0)
@@ -19477,7 +19477,7 @@ pub unsafe fn vld1_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x2_t) ->
 )]
 pub unsafe fn vld1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) -> int64x1_t {
     static_assert!(LANE == 0);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_s8)"]
@@ -19502,7 +19502,7 @@ pub unsafe fn vld1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) ->
 )]
 pub unsafe fn vld1_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_u16)"]
@@ -19527,7 +19527,7 @@ pub unsafe fn vld1_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x8_t) -> in
 )]
 pub unsafe fn vld1_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_u32)"]
@@ -19552,7 +19552,7 @@ pub unsafe fn vld1_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x4_t) -
 )]
 pub unsafe fn vld1_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_u64)"]
@@ -19562,7 +19562,7 @@ pub unsafe fn vld1_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x2_t) -
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 0))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ldr, LANE = 0)
@@ -19577,7 +19577,7 @@ pub unsafe fn vld1_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x2_t) -
 )]
 pub unsafe fn vld1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -> uint64x1_t {
     static_assert!(LANE == 0);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_u8)"]
@@ -19602,7 +19602,7 @@ pub unsafe fn vld1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -
 )]
 pub unsafe fn vld1_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_f32)"]
@@ -19627,7 +19627,7 @@ pub unsafe fn vld1_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x8_t) -> u
 )]
 pub unsafe fn vld1q_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_p16)"]
@@ -19652,7 +19652,7 @@ pub unsafe fn vld1q_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x4_t)
 )]
 pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) -> poly16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_p8)"]
@@ -19677,7 +19677,7 @@ pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) 
 )]
 pub unsafe fn vld1q_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x16_t) -> poly8x16_t {
     static_assert_uimm_bits!(LANE, 4);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_s16)"]
@@ -19702,7 +19702,7 @@ pub unsafe fn vld1q_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x16_t) ->
 )]
 pub unsafe fn vld1q_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_s32)"]
@@ -19727,7 +19727,7 @@ pub unsafe fn vld1q_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x8_t) -
 )]
 pub unsafe fn vld1q_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_s64)"]
@@ -19737,7 +19737,7 @@ pub unsafe fn vld1q_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x4_t) -
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr, LANE = 1))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 1))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1, LANE = 1)
@@ -19752,7 +19752,7 @@ pub unsafe fn vld1q_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x4_t) -
 )]
 pub unsafe fn vld1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_s8)"]
@@ -19777,7 +19777,7 @@ pub unsafe fn vld1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -
 )]
 pub unsafe fn vld1q_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(LANE, 4);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_u16)"]
@@ -19802,7 +19802,7 @@ pub unsafe fn vld1q_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x16_t) -> 
 )]
 pub unsafe fn vld1q_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_u32)"]
@@ -19827,7 +19827,7 @@ pub unsafe fn vld1q_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x8_t) 
 )]
 pub unsafe fn vld1q_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_u64)"]
@@ -19837,7 +19837,7 @@ pub unsafe fn vld1q_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x4_t) 
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr, LANE = 1))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 1))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1, LANE = 1)
@@ -19852,7 +19852,7 @@ pub unsafe fn vld1q_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x4_t) 
 )]
 pub unsafe fn vld1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_u8)"]
@@ -19877,7 +19877,7 @@ pub unsafe fn vld1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) 
 )]
 pub unsafe fn vld1q_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(LANE, 4);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_p64)"]
@@ -19887,7 +19887,7 @@ pub unsafe fn vld1q_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x16_t) ->
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 0))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ldr, LANE = 0)
@@ -19902,7 +19902,7 @@ pub unsafe fn vld1q_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x16_t) ->
 )]
 pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -> poly64x1_t {
     static_assert!(LANE == 0);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load one single-element structure to one lane of one register."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_p64)"]
@@ -19912,7 +19912,7 @@ pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr, LANE = 1))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 1))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1, LANE = 1)
@@ -19927,7 +19927,7 @@ pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -
 )]
 pub unsafe fn vld1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) -> poly64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64)"]
@@ -58579,7 +58579,7 @@ pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_f16)"]
@@ -58599,7 +58599,7 @@ pub unsafe fn vst1_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4_t) {
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_f32)"]
@@ -58624,7 +58624,7 @@ pub unsafe fn vst1q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8_t) {
 )]
 pub unsafe fn vst1_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_f32)"]
@@ -58649,7 +58649,7 @@ pub unsafe fn vst1_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2_t) {
 )]
 pub unsafe fn vst1q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s8)"]
@@ -58674,7 +58674,7 @@ pub unsafe fn vst1q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4_t) {
 )]
 pub unsafe fn vst1_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s8)"]
@@ -58699,7 +58699,7 @@ pub unsafe fn vst1_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8_t) {
 )]
 pub unsafe fn vst1q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s16)"]
@@ -58724,7 +58724,7 @@ pub unsafe fn vst1q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16_t) {
 )]
 pub unsafe fn vst1_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s16)"]
@@ -58749,7 +58749,7 @@ pub unsafe fn vst1_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4_t) {
 )]
 pub unsafe fn vst1q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s32)"]
@@ -58774,7 +58774,7 @@ pub unsafe fn vst1q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8_t) {
 )]
 pub unsafe fn vst1_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s32)"]
@@ -58799,7 +58799,7 @@ pub unsafe fn vst1_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2_t) {
 )]
 pub unsafe fn vst1q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s64)"]
@@ -58824,7 +58824,7 @@ pub unsafe fn vst1q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4_t) {
 )]
 pub unsafe fn vst1q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u8)"]
@@ -58849,7 +58849,7 @@ pub unsafe fn vst1q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2_t) {
 )]
 pub unsafe fn vst1_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u8)"]
@@ -58874,7 +58874,7 @@ pub unsafe fn vst1_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8_t) {
 )]
 pub unsafe fn vst1q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u16)"]
@@ -58899,7 +58899,7 @@ pub unsafe fn vst1q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16_t) {
 )]
 pub unsafe fn vst1_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u16)"]
@@ -58924,7 +58924,7 @@ pub unsafe fn vst1_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4_t) {
 )]
 pub unsafe fn vst1q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u32)"]
@@ -58949,7 +58949,7 @@ pub unsafe fn vst1q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8_t) {
 )]
 pub unsafe fn vst1_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u32)"]
@@ -58974,7 +58974,7 @@ pub unsafe fn vst1_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2_t) {
 )]
 pub unsafe fn vst1q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u64)"]
@@ -58999,7 +58999,7 @@ pub unsafe fn vst1q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4_t) {
 )]
 pub unsafe fn vst1q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p8)"]
@@ -59024,7 +59024,7 @@ pub unsafe fn vst1q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2_t) {
 )]
 pub unsafe fn vst1_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_p8)"]
@@ -59049,7 +59049,7 @@ pub unsafe fn vst1_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8_t) {
 )]
 pub unsafe fn vst1q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p16)"]
@@ -59074,7 +59074,7 @@ pub unsafe fn vst1q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16_t) {
 )]
 pub unsafe fn vst1_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_p16)"]
@@ -59099,7 +59099,7 @@ pub unsafe fn vst1_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4_t) {
 )]
 pub unsafe fn vst1q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p64)"]
@@ -59124,7 +59124,7 @@ pub unsafe fn vst1q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8_t) {
 )]
 pub unsafe fn vst1_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1_t) {
     static_assert!(LANE == 0);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s64)"]
@@ -59149,7 +59149,7 @@ pub unsafe fn vst1_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1_t) {
 )]
 pub unsafe fn vst1_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1_t) {
     static_assert!(LANE == 0);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u64)"]
@@ -59174,7 +59174,7 @@ pub unsafe fn vst1_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1_t) {
 )]
 pub unsafe fn vst1_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1_t) {
     static_assert!(LANE == 0);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x2)"]
@@ -61181,7 +61181,7 @@ unsafe fn vst1q_v8f16(addr: *const i8, val: float16x8_t, align: i32) {
 )]
 pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract!(b, LANE as u32);
+    crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_f16)"]

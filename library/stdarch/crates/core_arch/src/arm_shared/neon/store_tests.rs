@@ -473,3 +473,27 @@ fn test_vst1q_f32() {
     assert_eq!(vals[3], 3.);
     assert_eq!(vals[4], 4.);
 }
+
+#[simd_test(enable = "neon")]
+fn test_vst1q_lane_u32_unaligned() {
+    // st1 single-lane stores impose no alignment requirement: write to an odd byte offset.
+    let mut vals = [0_u8; 5];
+    let a = u32x4::new(1, 2, 3, 4);
+    unsafe {
+        vst1q_lane_u32::<2>(vals.as_mut_ptr().add(1) as *mut u32, a.into());
+    }
+    assert_eq!(vals[0], 0);
+    assert_eq!(u32::from_ne_bytes([vals[1], vals[2], vals[3], vals[4]]), 3);
+}
+
+#[simd_test(enable = "neon")]
+fn test_vst1q_lane_u64_unaligned() {
+    let mut vals = [0_u8; 9];
+    let a = u64x2::new(1, 2);
+    unsafe {
+        vst1q_lane_u64::<1>(vals.as_mut_ptr().add(1) as *mut u64, a.into());
+    }
+    assert_eq!(vals[0], 0);
+    let stored: [u8; 8] = vals[1..9].try_into().unwrap();
+    assert_eq!(u64::from_ne_bytes(stored), 2);
+}

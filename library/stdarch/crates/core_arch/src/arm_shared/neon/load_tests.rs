@@ -223,3 +223,32 @@ fn test_vld1q_f32() {
     let r = unsafe { f32x4::from(vld1q_f32(a[1..].as_ptr())) };
     assert_eq!(r, e)
 }
+
+#[simd_test(enable = "neon")]
+fn test_vld1q_lane_u32_unaligned() {
+    // ld1 single-lane loads impose no alignment requirement: read from an odd byte offset.
+    let a: [u8; 5] = [0, 1, 2, 3, 4];
+    let e = u32::from_ne_bytes([1, 2, 3, 4]);
+    let src = u32x4::new(10, 11, 12, 13);
+    let r = unsafe {
+        u32x4::from(vld1q_lane_u32::<2>(
+            a.as_ptr().add(1) as *const u32,
+            src.into(),
+        ))
+    };
+    assert_eq!(r, u32x4::new(10, 11, e, 13));
+}
+
+#[simd_test(enable = "neon")]
+fn test_vld1q_lane_u64_unaligned() {
+    let a: [u8; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let e = u64::from_ne_bytes([1, 2, 3, 4, 5, 6, 7, 8]);
+    let src = u64x2::new(10, 11);
+    let r = unsafe {
+        u64x2::from(vld1q_lane_u64::<1>(
+            a.as_ptr().add(1) as *const u64,
+            src.into(),
+        ))
+    };
+    assert_eq!(r, u64x2::new(10, e));
+}
