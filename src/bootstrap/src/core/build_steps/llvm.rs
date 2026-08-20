@@ -21,12 +21,13 @@ use crate::core::builder::{
     Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
 };
 use crate::core::config::{Config, LlvmCiMode, LlvmPgoGenerationMode, TargetSelection};
+use crate::core::session::{CLang, GitRepo};
+use crate::trace;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, trace};
 
 /// Path where a file containing the link type (dynamic or static) is stored in the LLVM CI tarball.
 pub const LLVM_CI_LINK_TYPE_PATH: &str = "link-type.txt";

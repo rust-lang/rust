@@ -11,10 +11,10 @@ use crate::core::compiler::Compiler;
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::toml::pgo::PgoConfig;
 use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
+use crate::core::session::{CLang, GitRepo, Mode, RemapScheme};
 use crate::utils::build_stamp;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, envify, linker_flags, t};
-use crate::{CLang, GitRepo, Mode, RemapScheme};
 
 /// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))

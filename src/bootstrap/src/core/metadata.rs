@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use serde_derive::Deserialize;
 
-use crate::Build;
+use crate::core::session::Build;
 use crate::utils::exec::command;
 use crate::utils::helpers::t;
 
