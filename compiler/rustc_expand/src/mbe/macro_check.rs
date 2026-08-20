@@ -397,7 +397,8 @@ fn check_nested_occurrences(
             (
                 NestedMacroState::Empty,
                 &TokenTree::Token(Token {
-                    kind: TokenKind::Ident(name, IdentKind::Normal), ..
+                    kind: TokenKind::Ident(name, IdentKind::Normal | IdentKind::ForcedKeyword),
+                    ..
                 }),
             ) => {
                 if name == kw::MacroRules {

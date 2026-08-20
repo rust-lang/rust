@@ -456,15 +456,17 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, kind) = self.ident_or_err(recover)?;
 
-        if kind == IdentKind::Normal && ident.is_reserved() {
+        if token::ident_of_kind_is_reserved(ident, kind) {
             let err = self.expected_ident_found_err();
-            if recover {
+            if recover && kind != IdentKind::ForcedKeyword {
                 err.emit();
             } else {
                 return Err(err);
             }
         }
+
         self.bump();
+
         Ok(ident)
     }
 
@@ -719,7 +721,10 @@ impl<'a> Parser<'a> {
 
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match t.uninterpolate().kind {
-                token::Ident(kw::Move | kw::Use | kw::Static, IdentKind::Normal)
+                token::Ident(
+                    kw::Move | kw::Use | kw::Static,
+                    IdentKind::Normal | IdentKind::ForcedKeyword,
+                )
                 | token::OrOr
                 | token::Or => true,
                 _ => false,
