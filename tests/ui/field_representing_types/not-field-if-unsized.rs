@@ -15,9 +15,9 @@ fn main() {
     // FIXME(FRTs): this requires relaxing the `Base: ?Sized` bound in the
     // `Field` trait & compiler changes.
     assert_field::<field_of!(MyStruct, 0)>();
-    //~^ ERROR: the trait bound `field_of!(MyStruct, 0): std::field::Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(MyStruct, 0): Field` is not satisfied [E0277]
 
     // FIXME(FRTs): improve this error message, point to the `dyn Trait` span.
     assert_field::<field_of!(MyStruct, 1)>();
-    //~^ ERROR: the trait bound `field_of!(MyStruct, 1): std::field::Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(MyStruct, 1): Field` is not satisfied [E0277]
 }

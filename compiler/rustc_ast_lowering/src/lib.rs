@@ -411,6 +411,9 @@ enum ImplTraitContext {
     FeatureGated(ImplTraitPosition, Symbol),
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
+
+    /// An error has already been emitted for this type.
+    AlreadyErrored(ErrorGuaranteed),
 }
 
 /// Position in which `impl Trait` is disallowed.
@@ -1318,11 +1321,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             span: data.span,
                         }
                     } else {
-                        self.emit_bad_parenthesized_trait_in_assoc_ty(data);
+                        let guar = self.emit_bad_parenthesized_trait_in_assoc_ty(data);
                         self.lower_angle_bracketed_parameter_data(
                             &data.as_angle_bracketed_args(),
                             ParamMode::Explicit,
-                            itctx,
+                            ImplTraitContext::AlreadyErrored(guar),
                         )
                         .0
                     }
@@ -1391,7 +1394,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn emit_bad_parenthesized_trait_in_assoc_ty(&self, data: &ParenthesizedArgs) {
+    fn emit_bad_parenthesized_trait_in_assoc_ty(
+        &self,
+        data: &ParenthesizedArgs,
+    ) -> ErrorGuaranteed {
         // Suggest removing empty parentheses: "Trait()" -> "Trait"
         let sub = if data.inputs.is_empty() {
             let parentheses_span =
@@ -1412,7 +1418,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 data.inputs.last().unwrap().span.shrink_to_hi().to(data.inputs_span.shrink_to_hi());
             AssocTyParenthesesSub::NotEmpty { open_param, close_param }
         };
-        self.dcx().emit_err(AssocTyParentheses { span: data.span, sub });
+        self.dcx().emit_err(AssocTyParentheses { span: data.span, sub })
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1735,6 +1741,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         });
                         hir::TyKind::Err(guar)
                     }
+                    ImplTraitContext::AlreadyErrored(guar) => {
+                        // `GenericArgs::Parenthesized` stores its inputs as `Param`s, so the def
+                        // collector visits `impl Trait` in a universal context and creates a
+                        // `DefKind::TyParam`. During recovery we reinterpret these arguments as
+                        // angle-bracketed, where lowering may otherwise expect an opaque type.
+                        // The parenthesized syntax has already been rejected, so avoid lowering
+                        // this `impl Trait` with the inconsistent `DefKind`.
+                        hir::TyKind::Err(guar)
+                    }
                 }
             }
             TyKind::Pat(ty, pat) => {
@@ -1948,7 +1963,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_node_id: NodeId,
         fn_span: Span,
         kind: FnDeclKind,
-        coro: Option<CoroutineKind>,
+        coro: Option<CoroutineMarker>,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
         let mut splatted = decl.splatted();
@@ -2069,16 +2084,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         output: &FnRetTy,
         fn_def_id: LocalDefId,
-        coro: CoroutineKind,
+        coro: CoroutineMarker,
         fn_kind: FnDeclKind,
     ) -> hir::FnRetTy<'hir> {
         let span = self.lower_span(output.span());
 
-        let (opaque_ty_node_id, allowed_features) = match coro {
-            CoroutineKind::Async { return_impl_trait_id, .. } => (return_impl_trait_id, None),
-            CoroutineKind::Gen { return_impl_trait_id, .. } => (return_impl_trait_id, None),
-            CoroutineKind::AsyncGen { return_impl_trait_id, .. } => {
-                (return_impl_trait_id, Some(Arc::clone(&self.allow_async_iterator)))
+        let (opaque_ty_node_id, allowed_features) = match coro.kind {
+            CoroutineKind::Async | CoroutineKind::Gen => (coro.return_impl_trait_id, None),
+            CoroutineKind::AsyncGen => {
+                (coro.return_impl_trait_id, Some(Arc::clone(&self.allow_async_iterator)))
             }
         };
 
@@ -2120,7 +2134,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_coroutine_fn_output_type_to_bound(
         &mut self,
         output: &FnRetTy,
-        coro: CoroutineKind,
+        coro: CoroutineMarker,
         opaque_ty_span: Span,
         itctx: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
@@ -2136,10 +2150,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // "<$assoc_ty_name = T>"
-        let (assoc_ty_name, trait_lang_item) = match coro {
-            CoroutineKind::Async { .. } => (sym::Output, LangItem::Future),
-            CoroutineKind::Gen { .. } => (sym::Item, LangItem::Iterator),
-            CoroutineKind::AsyncGen { .. } => (sym::Item, LangItem::AsyncIterator),
+        let (assoc_ty_name, trait_lang_item) = match coro.kind {
+            CoroutineKind::Async => (sym::Output, LangItem::Future),
+            CoroutineKind::Gen => (sym::Item, LangItem::Iterator),
+            CoroutineKind::AsyncGen => (sym::Item, LangItem::AsyncIterator),
         };
 
         let bound_args = self.arena.alloc(hir::GenericArgs {

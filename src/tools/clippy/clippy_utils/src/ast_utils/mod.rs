@@ -209,7 +209,7 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
             Closure(box ast::Closure {
                 binder: lb,
                 capture_clause: lc,
-                coroutine_kind: la,
+                coroutine_marker: lcm,
                 movability: lm,
                 fn_decl: lf,
                 body: le,
@@ -218,7 +218,7 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
             Closure(box ast::Closure {
                 binder: rb,
                 capture_clause: rc,
-                coroutine_kind: ra,
+                coroutine_marker: rcm,
                 movability: rm,
                 fn_decl: rf,
                 body: re,
@@ -227,7 +227,7 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
         ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc
-                && eq_coroutine_kind(*la, *ra)
+                && eq_opt_coroutine_marker(*lcm, *rcm)
                 && lm == rm
                 && eq_fn_decl(lf, rf)
                 && eq_expr(le, re)
@@ -247,19 +247,6 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
         },
         _ => false,
     }
-}
-
-fn eq_coroutine_kind(a: Option<CoroutineKind>, b: Option<CoroutineKind>) -> bool {
-    matches!(
-        (a, b),
-        (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
-            | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
-            | (
-                Some(CoroutineKind::AsyncGen { .. }),
-                Some(CoroutineKind::AsyncGen { .. })
-            )
-            | (None, None)
-    )
 }
 
 fn eq_field(l: &ExprField, r: &ExprField) -> bool {
@@ -734,22 +721,17 @@ fn eq_fn_sig(l: &FnSig, r: &FnSig) -> bool {
     eq_fn_decl(&l.decl, &r.decl) && eq_fn_header(&l.header, &r.header)
 }
 
-fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> bool {
-    matches!(
-        (l, r),
-        (Some(CoroutineKind::Async { .. }), Some(CoroutineKind::Async { .. }))
-            | (Some(CoroutineKind::Gen { .. }), Some(CoroutineKind::Gen { .. }))
-            | (
-                Some(CoroutineKind::AsyncGen { .. }),
-                Some(CoroutineKind::AsyncGen { .. })
-            )
-            | (None, None)
-    )
+fn eq_opt_coroutine_marker(l: Option<CoroutineMarker>, r: Option<CoroutineMarker>) -> bool {
+    match (l, r) {
+        (Some(lcm), Some(rcm)) => lcm.kind == rcm.kind,
+        (None, None) => true,
+        (Some(_), None) | (None, Some(_)) => false,
+    }
 }
 
 fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
     matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
-        && eq_opt_coroutine_kind(l.coroutine_kind, r.coroutine_kind)
+        && eq_opt_coroutine_marker(l.coroutine_marker, r.coroutine_marker)
         && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
         && eq_ext(&l.ext, &r.ext)
 }

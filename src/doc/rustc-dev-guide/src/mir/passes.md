@@ -167,7 +167,7 @@ would cause a panic.
 
 Therefore, with this stealing mechanism, `mir_promoted` should guarantee any `mir_const_qualif*`
 queries are called before it actually steals, thus ensuring that the reads have already happened
-(remember that [queries are memoized](../query.html), so executing a query twice
+(remember that [queries are memoized](../query.md), so executing a query twice
 simply loads from a cache the second time).
 
 [rust-lang/rust#41710]: https://github.com/rust-lang/rust/issues/41710
@@ -182,4 +182,4 @@ simply loads from a cache the second time).
 [cleanup-pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/cleanup_post_borrowck/struct.CleanupPostBorrowck.html
 [cleanup-source]: https://github.com/rust-lang/rust/blob/e2b52ff73edc8b0b7c74bc28760d618187731fe8/compiler/rustc_mir_transform/src/cleanup_post_borrowck.rs#L27
 [pass-register]: https://github.com/rust-lang/rust/blob/e2b52ff73edc8b0b7c74bc28760d618187731fe8/compiler/rustc_mir_transform/src/lib.rs#L413
-[MIR visitor]: ./visitor.html
+[MIR visitor]: ./visitor.md

@@ -126,6 +126,9 @@ struct Args {
     /// Path to rustc to use for querying target information.
     #[arg(long)]
     query_rustc_path: Option<Utf8PathBuf>,
+    /// Path to shared libraries for querying target information.
+    #[arg(long)]
+    query_rustc_lib_path: Option<Utf8PathBuf>,
     /// Path to rustdoc to use for compiling.
     #[arg(long)]
     rustdoc_path: Option<Utf8PathBuf>,
@@ -486,6 +489,7 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         profiler_runtime: args.profiler_runtime,
 
         python: args.python,
+        query_rustc_lib_path: args.query_rustc_lib_path,
         query_rustc_path: args.query_rustc_path,
         remote_test_client: args.remote_test_client,
         run,

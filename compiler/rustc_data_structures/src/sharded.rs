@@ -144,7 +144,8 @@ pub type ShardedHashMap<K, V> = Sharded<hash_table::HashTable<(K, V)>>;
 
 impl<K: Eq, V> ShardedHashMap<K, V> {
     pub fn with_capacity(cap: usize) -> Self {
-        Self::new(|| HashTable::with_capacity(cap))
+        let per_shard_cap = cap.div_ceil(shards());
+        Self::new(|| HashTable::with_capacity(per_shard_cap))
     }
     pub fn len(&self) -> usize {
         self.lock_shards().map(|shard| shard.len()).sum()

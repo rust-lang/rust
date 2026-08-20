@@ -7,7 +7,7 @@ members = [
     "crates/libm-macros",
     "crates/musl-math-sys",
     "crates/panic-handler",
-    "crates/symbol-check",
+    "crates/symcheck",
     "crates/update-api-list",
     "crates/util",
     "libm",
@@ -39,7 +39,6 @@ anyhow = "1.0.101"
 api-list-common = { path = "crates/api-list-common" }
 assert_cmd = "2.1.2"
 cc = "1.2.56"
-cfg-if = "1.0.4"
 compiler_builtins = { path = "builtins-shim", default-features = false }
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 getopts = "0.2.24"
@@ -55,7 +54,7 @@ libm-test = { path = "libm-test", default-features = false }
 libtest-mimic = "0.8.1"
 musl-math-sys = { path = "crates/musl-math-sys" }
 no-panic = "0.1.36"
-object = { version = "0.39.0", features = ["wasm"] }
+object = { version = "0.40.0", features = ["wasm"] }
 panic-handler = { path = "crates/panic-handler" }
 paste = "1.0.15"
 pretty_assertions = "1.4.1"
@@ -69,7 +68,7 @@ regex = "1.12.3"
 rug = { version = "1.28.1", default-features = false, features = ["float", "integer", "std"] }
 rustc_apfloat = "0.2.3"
 serde_json = "1.0.149"
-syn = "2.0.115"
+syn = "3.0.3"
 tempfile = "3.25.0"
 
 [profile.release]

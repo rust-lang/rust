@@ -393,13 +393,13 @@ where
                 })?;
             }
 
-            mir::TerminatorKind::Yield { resume, resume_arg, .. } => {
+            mir::TerminatorKind::Yield { resume_arg, .. } => {
                 self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
                     let state_on_coroutine_drop = this.cursor.get().clone();
                     this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
-                            resume,
+                            block,
                             CallReturnPlaces::Yield(resume_arg),
                         );
                     });

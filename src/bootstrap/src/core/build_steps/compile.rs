@@ -2354,14 +2354,9 @@ impl CommandLineStep for Assemble {
             let is_proc_macro = proc_macros.contains(&filename);
             let is_dylib_or_debug = is_dylib(&f.path()) || is_debug_info(&filename);
 
-            // If we link statically to stdlib, do not copy the libstd dynamic library file
+            // `rustc_driver` statically links to stdlib, so do not copy the libstd dynamic library file
             let can_be_rustc_dynamic_dep =
-                if builder.link_std_into_rustc_driver(target_compiler.host) {
-                    let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
-                    !is_std
-                } else {
-                    true
-                };
+                !(filename.starts_with("std-") || filename.starts_with("libstd-"));
 
             if is_dylib_or_debug && can_be_rustc_dynamic_dep && !is_proc_macro {
                 builder.copy_link(&f.path(), &rustc_libdir.join(&filename), FileType::Regular);

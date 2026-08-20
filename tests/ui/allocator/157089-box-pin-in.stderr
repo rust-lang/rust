@@ -15,6 +15,9 @@ help: the following other types implement trait `StaticAllocator`
   --> $SRC_DIR/core/src/alloc/mod.rs:LL:COL
    |
    = note: `&A`
+  ::: $SRC_DIR/core/src/alloc/mod.rs:LL:COL
+   |
+   = note: `&mut A`
   --> $SRC_DIR/std/src/alloc.rs:LL:COL
    |
    = note: `System`

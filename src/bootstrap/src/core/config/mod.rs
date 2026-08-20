@@ -22,7 +22,6 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub use config::*;
 use serde::de::Unexpected;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
@@ -32,6 +31,7 @@ pub use toml::change_id::ChangeId;
 pub use toml::rust::BootstrapOverrideLld;
 pub use toml::target::Target;
 
+pub(crate) use self::config::*;
 use crate::utils::helpers;
 
 pub(crate) trait Merge {

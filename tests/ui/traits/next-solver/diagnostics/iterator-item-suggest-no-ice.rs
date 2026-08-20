@@ -15,7 +15,6 @@ trait FooMut {
         //~^ ERROR: cannot find value `_I` in this scope
         self.bar(collection);
         //~^ ERROR: `&'b _` is not an iterator
-        //~| ERROR: type mismatch resolving `<&_ as Iterator>::Item == &()`
     }
 }
 

@@ -3,7 +3,7 @@
 The "start" of the trait system is the **canonical query** (these are
 both queries in the more general sense of the word – something you
 would like to know the answer to – and in the
-[rustc-specific sense](../query.html)).  The idea is that the type
+[rustc-specific sense](../query.md)).  The idea is that the type
 checker or other parts of the system, may in the course of doing their
 thing want to know whether some trait is implemented for some type
 (e.g., is `u32: Debug` true?). Or they may want to
@@ -243,5 +243,4 @@ don't know what that type is yet!).
 (In fact, as the function ends here, the type checker would give an
 error at this point, since the element types of `t` and `u` are still
 not yet known, even though they are known to be the same.)
-
 

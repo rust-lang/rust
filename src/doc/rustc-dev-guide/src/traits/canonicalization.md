@@ -1,7 +1,7 @@
 # Canonicalization
 
 > **NOTE**: FIXME: The content of this chapter has some overlap with
-> [Next-gen trait solving Canonicalization chapter](../solve/canonicalization.html).
+> [Next-gen trait solving Canonicalization chapter](../solve/canonicalization.md).
 > It is suggested to reorganize these contents in the future.
 
 Canonicalization is the process of **isolating** an inference value
@@ -10,7 +10,7 @@ from its context. It is a key part of implementing
 to get more context.
 
 Canonicalization is really based on a very simple concept: every
-[inference variable](../type-inference.html#vars) is always in one of
+[inference variable](../type-inference.md#vars) is always in one of
 two states: either it is **unbound**, in which case we don't know yet
 what type it is, or it is **bound**, in which case we do. So to
 isolate some data-structure T that contains types/regions from its
@@ -20,7 +20,7 @@ starting from zero and numbered in a fixed order (left to right, for
 the most part, but really it doesn't matter as long as it is
 consistent).
 
-[cq]: ./canonical-queries.html
+[cq]: ./canonical-queries.md
 
 So, for example, if we have the type `X = (?T, ?U)`, where `?T` and
 `?U` are distinct, unbound inference variables, then the canonical
@@ -45,7 +45,7 @@ trait query: `?A: Foo<'static, ?B>`, where `?A` and `?B` are unbound.
 This query contains two unbound variables, but it also contains the
 lifetime `'static`. The trait system generally ignores all lifetimes
 and treats them equally, so when canonicalizing, we will *also*
-replace any [free lifetime](../appendix/background.html#free-vs-bound) with a
+replace any [free lifetime](../appendix/background.md#free-vs-bound) with a
 canonical variable (Note that `'static` is actually a _free_ lifetime
 variable here. We are not considering it in the typing context of the whole
 program but only in the context of this trait reference. Mathematically, we
@@ -111,7 +111,7 @@ suffice to say that it will compute a [certainty value][cqqr] (`Proven` or
 `Ambiguous`) and have side-effects on the inference variables we've
 created. For example, if there were only one impl of `Foo`, like so:
 
-[cqqr]: ./canonical-queries.html#query-response
+[cqqr]: ./canonical-queries.md#query-response
 
 ```rust,ignore
 impl<'a, X> Foo<'a, X> for Vec<X>
@@ -257,4 +257,3 @@ cases where the value is just a canonical variable. In our example,
 `values[2]` is `?C`, so that means we can deduce that `?C := ?B` and
 `'?D := 'static`. This gives us a partial set of values. Anything for
 which we do not find a value, we create an inference variable.)
-

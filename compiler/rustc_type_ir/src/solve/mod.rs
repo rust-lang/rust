@@ -105,6 +105,21 @@ impl<T: Copy + Debug + Hash + Eq> SmallCopySet<T> {
     }
 
     /// Computes the union of two lists. Duplicates are removed.
+    ///
+    /// Since the set can hold at most 3 elements, returns `None` if the resulting set cannot be
+    /// represented.
+    ///
+    /// In the context of [`RerunCondition`], this means we fall back to rerunning unconditionally.
+    /// This can be beneficial, since at some point, tracking all the conditions under which a query
+    /// has to be rerun becomes slower than just rerunning unconditionally. This is especially so,
+    /// since as long as rerun conditions are tracked, we keep executing the current query. As soon as
+    /// we cannot track anymore, and unconditionally rerun, we also abort the current query.
+    /// By at some point opting to abort early, we may save a lot of time skipping further work
+    /// that will have to likely be redone anyway.
+    ///
+    /// note that *not* all cases are handled. you can union two lists of two elements with equal
+    /// elements, and still get `none` back. checking for all cases is more work than just rerunning
+    /// in some cases.
     fn union(self, other: Self) -> Option<Self> {
         match (self, other) {
             (Self::Empty, other) | (other, Self::Empty) => Some(other),
@@ -128,6 +143,9 @@ impl<T: Copy + Debug + Hash + Eq> SmallCopySet<T> {
             (Self::One([a]), Self::Two([b, c])) | (Self::Two([a, b]), Self::One([c])) => {
                 Some(Self::Three([a, b, c]))
             }
+            // There are some more cases we could handle, like 2 + 2 => 3 if there's one duplicate,
+            // But the check seems to be more expensive than the gain. Even then, the difference is
+            // tiny, and could just be noise. Not worth it regardless.
             _ => None,
         }
     }

@@ -1,8 +1,4 @@
 error: mixing `-Zsanitizer-cfi-normalize-integers` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
-  --> $DIR/sanitizer-kcfi-normalize-ints.rs:12:1
-   |
-LL | #![feature(no_core)]
-   | ^
    |
    = help: the `-Zsanitizer-cfi-normalize-integers` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
    = note: `-Zsanitizer-cfi-normalize-integers` is unset in this crate which is incompatible with `-Zsanitizer-cfi-normalize-integers` being set in dependency `kcfi_normalize_ints`

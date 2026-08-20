@@ -491,7 +491,7 @@ respect to incremental compilation:
    `Crate` object available), and then retrieve it as any other crate.
    Thus, function definitions for these queries do not exist.
 
-[mod]: ../query.html#adding-a-new-kind-of-query
+[mod]: ../query.md#adding-a-new-kind-of-query
 
 
 ## The projection query pattern
@@ -558,5 +558,5 @@ so including it in query result will increase the chance that the result won't b
 See <https://github.com/rust-lang/rust/issues/47389> for more information.
 
 
-[query-model]: ./query-evaluation-model-in-detail.html
+[query-model]: ./query-evaluation-model-in-detail.md
 [try_mark_green]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_middle/dep_graph/graph.rs.html
