@@ -99,9 +99,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// The lowering is split this way because `move(...)` initializers must be
     /// evaluated before the closure is created, but the closure body must still
     /// lower each `move(...)` occurrence as a use of the synthetic local that
-    /// will be introduced by that outer block. For example:
-    ///
-    /// For example, `|| move(foo.clone()).len()` becomes roughly:
+    /// will be introduced by that outer block. For example,
+    /// `|| move(foo.clone()).len()` becomes roughly:
     ///
     /// ```ignore (illustrative)
     /// {
@@ -270,9 +269,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     // Coroutine closures are lowered separately because they build a different
-    // body shape. The source body is still lowered with `MoveExprState` active,
-    // so `move(...)` occurrences are collected and then hoisted to the outer
-    // closure body, immediately before the generated coroutine is created.
+    // body shape. The source body is lowered with the caller's `MoveExprState`
+    // active, so `move(...)` occurrences are collected and hoisted into a block
+    // around the outer closure expression.
     fn lower_expr_coroutine_closure(
         &mut self,
         binder: &ClosureBinder,
@@ -308,27 +307,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // Transform `async |x: u8| -> X { ... }` into
             // `|x: u8| || -> X { ... }`.
             let body_id = this.lower_body(|this| {
-                let ((parameters, expr), move_expr_state) =
-                    this.with_move_expr_bindings(Some(MoveExprState::default()), |this| {
-                        this.lower_coroutine_body_with_moved_arguments(
-                            &inner_decl,
-                            |this| {
-                                this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body))
-                            },
-                            fn_decl_span,
-                            body.span,
-                            coroutine_marker,
-                            hir::CoroutineSource::Closure,
-                        )
-                    });
-                let Some(move_expr_state) = move_expr_state else {
-                    span_bug!(
-                        fn_decl_span,
-                        "coroutine closure lowering did not return `move(...)` state"
-                    );
-                };
-
-                let expr = this.lower_expr_with_move_exprs(expr, move_expr_state, body, body.span);
+                let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
+                    &inner_decl,
+                    |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
+                    fn_decl_span,
+                    body.span,
+                    coroutine_marker,
+                    hir::CoroutineSource::Closure,
+                );
 
                 this.maybe_forward_track_caller(body.span, closure_hir_id, expr.hir_id);
 

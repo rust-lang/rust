@@ -927,17 +927,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (params, res)
         });
 
-        let explicit_captures: &'hir [hir::ExplicitCapture] = if let Some(move_expr_state) =
-            self.move_expr_bindings.last().and_then(Option::as_ref)
-        {
-            self.arena.alloc_from_iter(
-                move_expr_state
-                    .occurrences
-                    .iter()
-                    .map(|occurrence| hir::ExplicitCapture { var_hir_id: occurrence.binding }),
-            )
-        } else {
-            &[]
+        let explicit_captures: &'hir [hir::ExplicitCapture] = match coroutine_source {
+            hir::CoroutineSource::Block
+                if let Some(move_expr_state) =
+                    self.move_expr_bindings.last().and_then(Option::as_ref) =>
+            {
+                self.arena.alloc_from_iter(
+                    move_expr_state
+                        .occurrences
+                        .iter()
+                        .map(|occurrence| hir::ExplicitCapture { var_hir_id: occurrence.binding }),
+                )
+            }
+            _ => &[],
         };
 
         // `static |<_task_context?>| -> <return_ty> { <body> }`:
