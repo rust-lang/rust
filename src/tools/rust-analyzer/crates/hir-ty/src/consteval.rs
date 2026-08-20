@@ -24,7 +24,7 @@ use crate::{
     display::DisplayTarget,
     generics::Generics,
     lower::LoweringMode,
-    mir::{MirEvalError, MirLowerError, pad16},
+    mir::{IsSigned, MirEvalError, MirLowerError, pad16},
     next_solver::{
         Allocation, Const, ConstKind, Consts, DbInterner, DefaultAny, GenericArgs, ParamConst,
         ScalarInt, StoredAllocation, StoredEarlyBinder, StoredGenericArgs, Ty, TyKind,
@@ -161,7 +161,7 @@ pub(crate) fn literal_ty<'db>(
         Literal::String(..) => types.types.static_str_ref,
         Literal::ByteString(bs) => {
             let byte_type = types.types.u8;
-            let array_type = Ty::new_array(interner, byte_type, bs.len() as u128);
+            let array_type = Ty::new_array(interner, byte_type, bs.len() as u64);
             Ty::new_ref(interner, types.regions.statik, array_type, Mutability::Not)
         }
         Literal::CString(..) => Ty::new_ref(
@@ -227,7 +227,7 @@ pub fn usize_const<'db>(db: &'db dyn HirDatabase, value: Option<u128>, krate: Cr
 }
 
 pub fn allocation_as_usize(ec: Allocation<'_>) -> u128 {
-    u128::from_le_bytes(pad16(&ec.memory, false))
+    u128::from_le_bytes(pad16(&ec.memory, IsSigned::No))
 }
 
 pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u128> {
@@ -265,7 +265,7 @@ pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u
 }
 
 pub fn allocation_as_isize(ec: Allocation<'_>) -> i128 {
-    i128::from_le_bytes(pad16(&ec.memory, true))
+    i128::from_le_bytes(pad16(&ec.memory, IsSigned::Yes))
 }
 
 pub fn try_const_isize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<i128> {

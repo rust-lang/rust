@@ -67,7 +67,9 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.dcx().span_bug(span, "evaluating `ConstKind::Expr` is not currently supported");
             }
             ty::ConstKind::Alias(_, _) => {
-                match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
+                match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env, |ty| {
+                    Ok::<_, !>(ty.skip_norm_wip())
+                }) {
                     Err(EvaluateConstErr::HasGenericsOrInfers) => {
                         Err(NotConstEvaluatable::Error(infcx.dcx().span_delayed_bug(
                             span,
@@ -98,7 +100,9 @@ pub fn is_const_evaluatable<'tcx>(
             _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
         };
 
-        match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
+        match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env, |ty| {
+            Ok::<_, !>(ty.skip_norm_wip())
+        }) {
             // If we're evaluating a generic foreign constant, under a nightly compiler while
             // the current crate does not enable `feature(generic_const_exprs)`, abort
             // compilation with a useful error.

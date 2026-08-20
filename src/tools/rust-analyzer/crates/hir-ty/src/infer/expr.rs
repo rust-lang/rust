@@ -23,7 +23,6 @@ use rustc_type_ir::{
     inherent::{IntoKind, Ty as _},
 };
 use stdx::never;
-use syntax::ast::RangeOp;
 use tracing::debug;
 
 use crate::{
@@ -33,7 +32,7 @@ use crate::{
     lower::lower_mutability,
     method_resolution::{self, CandidateId, MethodCallee, MethodError},
     next_solver::{
-        ClauseKind, FnSig, GenericArg, GenericArgs, Ty, TyKind, TypeError,
+        ClauseKind, FnSig, Ty, TyKind, TypeError,
         infer::{
             BoundRegionConversionTime, InferOk,
             traits::{Obligation, ObligationCause},
@@ -269,7 +268,6 @@ impl<'db> InferenceContext<'db> {
             | Expr::Unsafe { .. }
             | Expr::Await { .. }
             | Expr::Ref { .. }
-            | Expr::Range { .. }
             | Expr::RecordLit { .. }
             | Expr::Yeet { .. }
             | Expr::Missing
@@ -513,7 +511,7 @@ impl<'db> InferenceContext<'db> {
             }
             Expr::Path(p) => self.infer_expr_path(p, tgt_expr.into(), tgt_expr),
             &Expr::Continue { label } => {
-                if find_continuable(&mut self.breakables, label).is_none() {
+                if find_continuable(&self.breakables, label).is_none() {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                         expr: tgt_expr,
                         is_break: false,
@@ -523,9 +521,10 @@ impl<'db> InferenceContext<'db> {
                 self.types.types.never
             }
             &Expr::Break { expr, label } => {
+                let breakable_idx = find_breakable(&self.breakables, label);
                 let val_ty = if let Some(expr) = expr {
-                    let opt_coerce_to = match find_breakable(&mut self.breakables, label) {
-                        Some(ctxt) => match &ctxt.coerce {
+                    let opt_coerce_to = match breakable_idx {
+                        Some(breakable_idx) => match &self.breakables[breakable_idx].coerce {
                             Some(coerce) => coerce.expected_ty(),
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
@@ -547,9 +546,16 @@ impl<'db> InferenceContext<'db> {
                     self.types.types.unit
                 };
 
-                match find_breakable(&mut self.breakables, label) {
-                    Some(ctxt) => match ctxt.coerce.take() {
-                        Some(mut coerce) => {
+                match breakable_idx {
+                    Some(breakable_idx) => {
+                        let breakable = &mut self.breakables[breakable_idx];
+
+                        // If we encountered a `break`, then (no surprise) it may be possible to break from the
+                        // loop... unless the value being returned from the loop diverges itself, e.g.
+                        // `break return 5` or `break loop {}`.
+                        breakable.may_break |= !self.diverges.is_always();
+
+                        if let Some(mut coerce) = breakable.coerce.take() {
                             let expr = expr.unwrap_or(tgt_expr);
                             coerce.coerce(
                                 self,
@@ -558,15 +564,9 @@ impl<'db> InferenceContext<'db> {
                                 val_ty,
                                 ExprIsRead::Yes,
                             );
-
-                            // Avoiding borrowck
-                            let ctxt = find_breakable(&mut self.breakables, label)
-                                .expect("breakable stack changed during coercion");
-                            ctxt.may_break = true;
-                            ctxt.coerce = Some(coerce);
+                            self.breakables[breakable_idx].coerce = Some(coerce);
                         }
-                        None => ctxt.may_break = true,
-                    },
+                    }
                     None => {
                         self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                             expr: tgt_expr,
@@ -675,52 +675,6 @@ impl<'db> InferenceContext<'db> {
                     self.table.new_maybe_never_var(value.into())
                 } else {
                     self.types.types.unit
-                }
-            }
-            Expr::Range { lhs, rhs, range_type } => {
-                let lhs_ty =
-                    lhs.map(|e| self.infer_expr_inner(e, &Expectation::none(), ExprIsRead::Yes));
-                let rhs_expect = lhs_ty.map_or_else(Expectation::none, Expectation::has_type);
-                let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect, ExprIsRead::Yes));
-                let single_arg_adt = |adt, ty: Ty<'db>| {
-                    Ty::new_adt(
-                        self.interner(),
-                        adt,
-                        GenericArgs::new_from_slice(&[GenericArg::from(ty)]),
-                    )
-                };
-                match (range_type, lhs_ty, rhs_ty) {
-                    (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
-                        Some(adt) => {
-                            Ty::new_adt(self.interner(), adt, self.types.empty.generic_args)
-                        }
-                        None => self.err_ty(),
-                    },
-                    (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
-                        Some(adt) => single_arg_adt(adt, ty),
-                        None => self.err_ty(),
-                    },
-                    (RangeOp::Inclusive, None, Some(ty)) => {
-                        match self.resolve_range_to_inclusive() {
-                            Some(adt) => single_arg_adt(adt, ty),
-                            None => self.err_ty(),
-                        }
-                    }
-                    (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
-                        Some(adt) => single_arg_adt(adt, ty),
-                        None => self.err_ty(),
-                    },
-                    (RangeOp::Inclusive, Some(_), Some(ty)) => {
-                        match self.resolve_range_inclusive() {
-                            Some(adt) => single_arg_adt(adt, ty),
-                            None => self.err_ty(),
-                        }
-                    }
-                    (RangeOp::Exclusive, Some(ty), None) => match self.resolve_range_from() {
-                        Some(adt) => single_arg_adt(adt, ty),
-                        None => self.err_ty(),
-                    },
-                    (RangeOp::Inclusive, _, None) => self.err_ty(),
                 }
             }
             Expr::Index { base, index } => {
@@ -1418,7 +1372,7 @@ impl<'db> InferenceContext<'db> {
         } else {
             self.table.next_ty_var(expr.into())
         };
-        let array_len = args.len() as u128;
+        let array_len = args.len() as u64;
         Ty::new_array(self.interner(), element_ty, array_len)
     }
 

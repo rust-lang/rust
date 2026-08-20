@@ -13,7 +13,7 @@
 // ignore-tidy-linelength
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
-//@ min-llvm-lldb-version: 22.1.0
+//@ min-llvm-lldb-version: 21.1.0
 //@ min-apple-lldb-version: 1703.0.236.21
 //@ min-cdb-version: 10.0.18317.1001
 //@ ignore-backends: gcc

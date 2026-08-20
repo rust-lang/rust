@@ -344,12 +344,10 @@ impl CStore {
 
     fn report_target_modifiers_extended(
         tcx: TyCtxt<'_>,
-        krate: &Crate,
         mods: &TargetModifiers,
         dep_mods: &TargetModifiers,
         data: &CrateMetadata,
     ) {
-        let span = krate.spans.inner_span.shrink_to_lo();
         let allowed_flag_mismatches = &tcx.sess.opts.cg.unsafe_allow_abi_mismatch;
         let local_crate = tcx.crate_name(LOCAL_CRATE);
         let tmod_extender = |tmod: &TargetModifier| (tmod.extend(), tmod.clone());
@@ -367,7 +365,6 @@ impl CStore {
             match (flag_local_value, flag_extern_value) {
                 (Some(local_value), Some(extern_value)) => {
                     tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiers {
-                        span,
                         extern_crate,
                         local_crate,
                         flag_name,
@@ -378,7 +375,6 @@ impl CStore {
                 }
                 (None, Some(extern_value)) => {
                     tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersLMissed {
-                        span,
                         extern_crate,
                         local_crate,
                         flag_name,
@@ -389,7 +385,6 @@ impl CStore {
                 }
                 (Some(local_value), None) => {
                     tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersRMissed {
-                        span,
                         extern_crate,
                         local_crate,
                         flag_name,
@@ -453,16 +448,15 @@ impl CStore {
     }
 
     pub fn report_session_incompatibilities(&self, tcx: TyCtxt<'_>, krate: &Crate) {
-        self.report_incompatible_target_modifiers(tcx, krate);
-        self.report_incompatible_partial_mitigations(tcx, krate);
+        self.report_incompatible_target_modifiers(tcx);
+        self.report_incompatible_partial_mitigations(tcx);
         self.report_incompatible_async_drop_feature(tcx, krate);
     }
 
-    pub fn report_incompatible_target_modifiers(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+    pub fn report_incompatible_target_modifiers(&self, tcx: TyCtxt<'_>) {
         for flag_name in &tcx.sess.opts.cg.unsafe_allow_abi_mismatch {
             if !OptionsTargetModifiers::is_target_modifier(flag_name) {
                 tcx.dcx().emit_err(diagnostics::UnknownTargetModifierUnsafeAllowed {
-                    span: krate.spans.inner_span.shrink_to_lo(),
                     flag_name: flag_name.clone(),
                 });
             }
@@ -474,12 +468,12 @@ impl CStore {
             }
             let dep_mods = data.target_modifiers();
             if mods != dep_mods {
-                Self::report_target_modifiers_extended(tcx, krate, &mods, &dep_mods, data);
+                Self::report_target_modifiers_extended(tcx, &mods, &dep_mods, data);
             }
         }
     }
 
-    pub fn report_incompatible_partial_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+    pub fn report_incompatible_partial_mitigations(&self, tcx: TyCtxt<'_>) {
         let my_mitigations = tcx.sess.gather_enabled_denied_partial_mitigations();
         let mut my_mitigations: BTreeMap<_, _> =
             my_mitigations.iter().map(|mitigation| (mitigation.kind, mitigation)).collect();
@@ -506,7 +500,6 @@ impl CStore {
                     *errors += 1;
 
                     tcx.dcx().emit_err(diagnostics::MitigationLessStrictInDependency {
-                        span: krate.spans.inner_span.shrink_to_lo(),
                         mitigation_name: my_mitigation.kind.to_string(),
                         mitigation_level: my_mitigation.level.level_str().to_string(),
                         extern_crate: data.name(),

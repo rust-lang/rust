@@ -414,13 +414,14 @@ impl<'a> Parser<'a> {
         }
 
         let async_start_sp = self.token.span;
-        let coroutine_kind = self.parse_coroutine_kind(case);
+        let coroutine_marker = self.parse_coroutine_marker(case);
         if parsing_mode == FrontMatterParsingMode::FunctionPtrType
-            && let Some(ast::CoroutineKind::Async { span: async_span, .. }) = coroutine_kind
+            && let Some(coroutine_marker) = coroutine_marker
+            && coroutine_marker.kind == CoroutineKind::Async
         {
             self.dcx().emit_err(FnPointerCannotBeAsync {
-                span: async_span,
-                suggestion: async_span.until(self.token.span),
+                span: coroutine_marker.span,
+                suggestion: coroutine_marker.span.until(self.token.span),
             });
         }
         // FIXME(gen_blocks): emit a similar error for `gen fn()`
@@ -431,20 +432,20 @@ impl<'a> Parser<'a> {
         let ext_start_sp = self.token.span;
         let ext = self.parse_extern(case);
 
-        if let Some(CoroutineKind::Async { span, .. }) = coroutine_kind {
-            if span.is_rust_2015() {
-                self.dcx().emit_err(diagnostics::AsyncFnIn2015 {
-                    span,
-                    help: diagnostics::HelpUseLatestEdition::new(),
-                });
-            }
+        if let Some(coroutine_marker) = coroutine_marker
+            && let CoroutineKind::Async = coroutine_marker.kind
+            && coroutine_marker.span.is_rust_2015()
+        {
+            self.dcx().emit_err(diagnostics::AsyncFnIn2015 {
+                span: coroutine_marker.span,
+                help: diagnostics::HelpUseLatestEdition::new(),
+            });
         }
 
-        match coroutine_kind {
-            Some(CoroutineKind::Gen { span, .. }) | Some(CoroutineKind::AsyncGen { span, .. }) => {
-                self.psess.gated_spans.gate(sym::gen_blocks, span);
-            }
-            Some(CoroutineKind::Async { .. }) | None => {}
+        if let Some(coroutine_marker) = coroutine_marker
+            && coroutine_marker.kind.is_gen()
+        {
+            self.psess.gated_spans.gate(sym::gen_blocks, coroutine_marker.span);
         }
 
         if !self.eat_keyword_case(exp!(Fn), case) {
@@ -468,7 +469,7 @@ impl<'a> Parser<'a> {
 
                     // We may be able to recover
                     let mut recover_constness = constness;
-                    let mut recover_coroutine_kind = coroutine_kind;
+                    let mut recover_coroutine_marker = coroutine_marker;
                     let mut recover_safety = safety;
                     // This will allow the machine fix to directly place the keyword in the correct place or to indicate
                     // that the keyword is already present and the second instance should be removed.
@@ -495,28 +496,25 @@ impl<'a> Parser<'a> {
                             }
                         }
                     } else if self.check_keyword(exp!(Async)) {
-                        match coroutine_kind {
-                            Some(CoroutineKind::Async { span, .. }) => {
-                                Some(WrongKw::Duplicated(span))
-                            }
-                            Some(CoroutineKind::AsyncGen { span, .. }) => {
-                                Some(WrongKw::Duplicated(span))
-                            }
-                            Some(CoroutineKind::Gen { .. }) => {
-                                recover_coroutine_kind = Some(CoroutineKind::AsyncGen {
-                                    span: self.token.span,
-                                    closure_id: DUMMY_NODE_ID,
-                                    return_impl_trait_id: DUMMY_NODE_ID,
-                                });
+                        match coroutine_marker {
+                            Some(CoroutineMarker {
+                                kind: CoroutineKind::Async | CoroutineKind::AsyncGen,
+                                span,
+                                ..
+                            }) => Some(WrongKw::Duplicated(span)),
+                            Some(CoroutineMarker { kind: CoroutineKind::Gen, .. }) => {
+                                recover_coroutine_marker = Some(CoroutineMarker::new(
+                                    CoroutineKind::AsyncGen,
+                                    self.token.span,
+                                ));
                                 // FIXME(gen_blocks): This span is wrong, didn't want to think about it.
                                 Some(WrongKw::Misplaced(unsafe_start_sp))
                             }
                             None => {
-                                recover_coroutine_kind = Some(CoroutineKind::Async {
-                                    span: self.token.span,
-                                    closure_id: DUMMY_NODE_ID,
-                                    return_impl_trait_id: DUMMY_NODE_ID,
-                                });
+                                recover_coroutine_marker = Some(CoroutineMarker::new(
+                                    CoroutineKind::Async,
+                                    self.token.span,
+                                ));
                                 match parsing_mode {
                                     FrontMatterParsingMode::Function => {
                                         Some(WrongKw::Misplaced(async_start_sp))
@@ -646,7 +644,7 @@ impl<'a> Parser<'a> {
                         return Ok(FnHeader {
                             constness: recover_constness,
                             safety: recover_safety,
-                            coroutine_kind: recover_coroutine_kind,
+                            coroutine_marker: recover_coroutine_marker,
                             ext,
                         });
                     }
@@ -656,7 +654,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(FnHeader { constness, safety, coroutine_kind, ext })
+        Ok(FnHeader { constness, safety, coroutine_marker, ext })
     }
 
     /// Parses the parameter list and result type of a function declaration.

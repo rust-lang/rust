@@ -17,8 +17,6 @@ env:
   RUSTUP_MAX_RETRIES: 10
   FETCH_DEPTH: 0 # pull in the tags for the version string
   MACOSX_DEPLOYMENT_TARGET: 14.0
-  ZIG_VERSION: 0.13.0
-  ZIGBUILD_VERSION: 0.19.8
 
 jobs:
   dist:
@@ -55,7 +53,9 @@ jobs:
             pgo: clap-rs/clap@v4.5.36
           - os: ubuntu-latest
             target: arm-unknown-linux-gnueabihf
-            zig_target: arm-unknown-linux-gnueabihf.2.28
+            # Use a Debian 10 (EOL) container for glibc 2.28
+            # pypa/manylinux only has armv7l and glibc 2.31
+            container: debian:10
             code-target: linux-armhf
             allocator: system
           - os: macos-14
@@ -83,6 +83,14 @@ jobs:
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
+      - name: Install target dependencies
+        if: ${{ matrix.target == 'arm-unknown-linux-gnueabihf' }}
+        run: |
+          sed -i -e 's/deb.debian.org/archive.debian.org/g' -e 's/security.debian.org/archive.debian.org/g' -e '/buster-updates/d' /etc/apt/sources.list
+          apt-get update
+          apt-get dist-upgrade -y
+          apt-get install -y curl gcc gcc-8-arm-linux-gnueabihf
+
       - name: Install Node.js toolchain
         uses: actions/setup-node@v6
         with:
@@ -101,21 +109,8 @@ jobs:
           rustup component add rust-src ${{ matrix.pgo && 'llvm-tools' || '' }}
           rustup target add ${{ matrix.target }}
 
-      - name: Install Zig toolchain
-        if: ${{ matrix.zig_target }}
-        run: |
-          which cargo
-          curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-$(uname -m)-${ZIG_VERSION}.tar.xz" | sudo tar JxC /usr/local
-          sudo ln -s "/usr/local/zig-linux-$(uname -m)-${ZIG_VERSION}/zig" /usr/local/bin/zig
-          curl -L "https://github.com/rust-cross/cargo-zigbuild/releases/download/v${ZIGBUILD_VERSION}/cargo-zigbuild-v${ZIGBUILD_VERSION}.x86_64-unknown-linux-musl.tar.gz" | tar zxC ~/.cargo/bin
-
-      - name: Dist (plain)
-        if: ${{ !matrix.zig_target }}
+      - name: Dist
         run: cargo xtask dist --client-patch-version ${{ github.run_number }} ${{ env.ALLOCATOR_FLAG }} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
-
-      - name: Dist (using zigbuild)
-        if: ${{ matrix.zig_target }}
-        run: RA_TARGET=${{ matrix.zig_target}} cargo xtask dist --client-patch-version ${{ github.run_number }} --zig ${{ env.ALLOCATOR_FLAG }} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
 
       - run: npm ci
         working-directory: editors/code
@@ -214,16 +209,28 @@ jobs:
         with:
           node-version: 22
 
-      - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
-        if: github.ref == 'refs/heads/release'
-      - run: echo "TAG=nightly" >> $GITHUB_ENV
-        if: github.ref != 'refs/heads/release'
-      - run: 'echo "TAG: $TAG"'
-
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
+
+      - name: Set release tag
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/release" ]; then
+            git fetch --tags
+            today=$(date --iso -u)
+            last_tag=$(git tag -l "${today}*" | sort -V | tail -n1)
+            if [ -n "$last_tag" ]; then
+              last_v=$(echo "$last_tag" | grep -oP '(?<=\.)\d+' || echo 0)
+              new_v=$(($last_v + 1))
+              tag="${today}.${new_v}"
+            else
+              tag="$today"
+            fi
+            echo "TAG=$tag" >> $GITHUB_ENV
+          else
+            echo "TAG=nightly" >> $GITHUB_ENV
+          fi
 
       - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
       - run: 'echo "HEAD_SHA: $HEAD_SHA"'

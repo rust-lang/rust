@@ -167,7 +167,7 @@ fn add_or_fix_reference(
 
     let ampersands = format!("&{}", expected_mutability.as_keyword_for_ref());
 
-    let edit = TextEdit::insert(range.range.start(), ampersands);
+    let edit = insert_prefix(&expr, range.range, &ampersands);
     let source_change = SourceChange::from_text_edit(range.file_id, edit);
     acc.push(fix("add_reference_here", "Add reference here", source_change, range.range));
     Some(())
@@ -397,9 +397,7 @@ fn str_ref_to_owned(
     let expr = expr_ptr.value.to_node(&root);
     let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(expr.syntax())?;
 
-    let to_owned = ".to_owned()".to_owned();
-
-    let edit = TextEdit::insert(range.end(), to_owned);
+    let edit = insert_postfix(&expr, range, ".to_owned()");
     let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
     acc.push(fix("str_ref_to_owned", "Add .to_owned() here", source_change, range));
 
@@ -423,7 +421,7 @@ fn add_await(
     let expr = expr_ptr.value.to_node(&root);
     let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(expr.syntax())?;
 
-    let edit = TextEdit::insert(range.end(), ".await".to_owned());
+    let edit = insert_postfix(&expr, range, ".await");
     let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
     acc.push(fix("add_await", "Add .await here", source_change, range));
 
@@ -481,6 +479,28 @@ fn array_length(
     }
 
     Some(())
+}
+
+fn insert_prefix(expr: &Expr, range: syntax::TextRange, text: &str) -> TextEdit {
+    if expr.precedence().needs_parentheses_in(ast::prec::ExprPrecedence::Prefix) {
+        let mut builder = TextEdit::builder();
+        builder.insert(range.start(), format!("{text}("));
+        builder.insert(range.end(), ")".to_owned());
+        builder.finish()
+    } else {
+        TextEdit::insert(range.start(), text.to_owned())
+    }
+}
+
+fn insert_postfix(expr: &Expr, range: syntax::TextRange, text: &str) -> TextEdit {
+    if expr.precedence().needs_parentheses_in(ast::prec::ExprPrecedence::Postfix) {
+        let mut builder = TextEdit::builder();
+        builder.insert(range.start(), "(".to_owned());
+        builder.insert(range.end(), format!("){text}"));
+        builder.finish()
+    } else {
+        TextEdit::insert(range.end(), text.to_owned())
+    }
 }
 
 #[cfg(test)]
@@ -711,6 +731,37 @@ fn test(_arg: &Bar) {}
     }
 
     #[test]
+    fn add_reference_needs_parentheses() {
+        check_fix(
+            r#"
+//- minicore: add
+struct Foo;
+impl core::ops::Add<i32> for Foo {
+    type Output = Foo;
+    fn add(self, rhs: i32) -> Self::Output { loop {} }
+}
+
+fn main() {
+    test($0Foo + 2);
+}
+fn test(_arg: &Foo) {}
+            "#,
+            r#"
+struct Foo;
+impl core::ops::Add<i32> for Foo {
+    type Output = Foo;
+    fn add(self, rhs: i32) -> Self::Output { loop {} }
+}
+
+fn main() {
+    test(&(Foo + 2));
+}
+fn test(_arg: &Foo) {}
+            "#,
+        );
+    }
+
+    #[test]
     // FIXME: this should suggest making the reference mutable instead: `&Foo -> &mut Foo`.
     // Currently it doesn't, as the logic for that assist strips away references, and thus checks
     // whether `Foo` can be coerced to `Bar` (which it can't), instead of checking `&mut Foo` to
@@ -778,7 +829,7 @@ impl Test {
     }
 
     #[test]
-    fn add_reference_to_let_stmt() {
+    fn add_reference_in_let_stmt() {
         check_fix(
             r#"
 fn main() {
@@ -794,7 +845,7 @@ fn main() {
     }
 
     #[test]
-    fn add_mutable_reference_to_let_stmt() {
+    fn add_mutable_reference_in_let_stmt() {
         check_fix(
             r#"
 fn main() {
@@ -810,7 +861,7 @@ fn main() {
     }
 
     #[test]
-    fn fix_reference_to_let_stmt() {
+    fn fix_reference_in_let_stmt() {
         check_fix(
             r#"
 fn main() {
@@ -1472,6 +1523,25 @@ struct String;
 
 fn test() -> String {
     "a".to_owned()
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+struct String;
+
+fn test() -> String {
+    let s = &"a";
+    *s$0
+}
+            "#,
+            r#"
+struct String;
+
+fn test() -> String {
+    let s = &"a";
+    (*s).to_owned()
 }
             "#,
         );

@@ -198,10 +198,10 @@ impl NoArgsAttributeParser for RustcDumpObjectLifetimeDefaultsParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpObjectLifetimeDefaults;
 }
 
-pub(crate) struct RustcDumpPredicatesParser;
+pub(crate) struct RustcDumpClausesParser;
 
-impl NoArgsAttributeParser for RustcDumpPredicatesParser {
-    const PATH: &[Symbol] = &[sym::rustc_dump_predicates];
+impl NoArgsAttributeParser for RustcDumpClausesParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_clauses];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::AssocConst),
         Allow(Target::AssocTy),
@@ -223,7 +223,7 @@ impl NoArgsAttributeParser for RustcDumpPredicatesParser {
         Allow(Target::Union),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpPredicates;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpClauses;
 }
 
 pub(crate) struct RustcDumpSymbolNameParser;

@@ -120,7 +120,7 @@ struct MarkSymbolVisitor<'tcx> {
     scanned: FxHashSet<(LocalDefId, ComesFromAllowExpect)>,
     live_symbols: LocalDefIdSet,
     repr_unconditionally_treats_fields_as_live: bool,
-    repr_has_repr_simd: bool,
+    repr_has_repr_simd_or_scalable: bool,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
     // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
@@ -466,16 +466,17 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
         let unconditionally_treated_fields_as_live =
             self.repr_unconditionally_treats_fields_as_live;
-        let had_repr_simd = self.repr_has_repr_simd;
+        let had_repr_simd_or_scalable = self.repr_has_repr_simd_or_scalable;
         self.repr_unconditionally_treats_fields_as_live = false;
-        self.repr_has_repr_simd = false;
+        self.repr_has_repr_simd_or_scalable = false;
         let walk_result = match node {
             Node::Item(item) => match item.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                     let def = self.tcx.adt_def(item.owner_id);
                     self.repr_unconditionally_treats_fields_as_live =
                         def.repr().c() || def.repr().transparent();
-                    self.repr_has_repr_simd = def.repr().simd();
+                    self.repr_has_repr_simd_or_scalable =
+                        def.repr().simd() || def.repr().scalable();
 
                     intravisit::walk_item(self, item)
                 }
@@ -524,7 +525,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Node::OpaqueTy(opaq) => intravisit::walk_opaque_ty(self, opaq),
             _ => ControlFlow::Continue(()),
         };
-        self.repr_has_repr_simd = had_repr_simd;
+        self.repr_has_repr_simd_or_scalable = had_repr_simd_or_scalable;
         self.repr_unconditionally_treats_fields_as_live = unconditionally_treated_fields_as_live;
 
         walk_result
@@ -599,11 +600,13 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>) -> Self::Result {
         let tcx = self.tcx;
         let unconditionally_treat_fields_as_live = self.repr_unconditionally_treats_fields_as_live;
-        let has_repr_simd = self.repr_has_repr_simd;
+        let has_repr_simd_or_scalable = self.repr_has_repr_simd_or_scalable;
         let effective_visibilities = &tcx.effective_visibilities(());
         let live_fields = def.fields().iter().filter_map(|f| {
             let def_id = f.def_id;
-            if unconditionally_treat_fields_as_live || (f.is_positional() && has_repr_simd) {
+            if unconditionally_treat_fields_as_live
+                || (f.is_positional() && has_repr_simd_or_scalable)
+            {
                 return Some(def_id);
             }
             if !effective_visibilities.is_reachable(f.hir_id.owner.def_id) {
@@ -982,7 +985,7 @@ fn live_symbols_and_ignored_derived_traits(
         scanned: Default::default(),
         live_symbols: Default::default(),
         repr_unconditionally_treats_fields_as_live: false,
-        repr_has_repr_simd: false,
+        repr_has_repr_simd_or_scalable: false,
         in_pat: false,
         ignore_variant_stack: vec![],
         ignored_derived_traits: Default::default(),

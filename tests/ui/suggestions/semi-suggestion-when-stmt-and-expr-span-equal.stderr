@@ -20,7 +20,7 @@ LL |         .collect::<String>();
    |          required by a bound introduced by this call
    |
    = help: the trait `FromIterator<()>` is not implemented for `String`
-   = help: `String` implements trait `FromIterator<A>`:
+   = help: `String` implements trait `FromIterator<T>`:
              FromIterator<&char>
              FromIterator<&std::ascii::Char>
              FromIterator<&str>

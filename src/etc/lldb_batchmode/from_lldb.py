@@ -8,8 +8,8 @@ We primarily interface with the following LLDB classes:
 * [`SBTypeMember`](https://lldb.llvm.org/python_api/lldb.SBTypeMember.html)
 """
 
-from struct import unpack, calcsize
 from enum import Enum, IntFlag
+from struct import calcsize, unpack
 from typing import Optional, Union
 
 import lldb

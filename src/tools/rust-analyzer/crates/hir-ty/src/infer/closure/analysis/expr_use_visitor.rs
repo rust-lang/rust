@@ -684,15 +684,6 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
                 }
             }
 
-            Expr::Range { lhs, rhs, .. } => {
-                if let Some(lhs) = lhs {
-                    self.consume_expr(lhs)?;
-                }
-                if let Some(rhs) = rhs {
-                    self.consume_expr(rhs)?;
-                }
-            }
-
             Expr::IncludeBytes => {}
         }
         Ok(())

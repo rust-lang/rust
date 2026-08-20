@@ -537,30 +537,12 @@ fn check_test_signature(
         }));
     }
 
-    if let Some(coroutine_kind) = f.sig.header.coroutine_kind {
-        match coroutine_kind {
-            ast::CoroutineKind::Async { span, .. } => {
-                return Err(dcx.emit_err(diagnostics::TestBadFn {
-                    span: i.span,
-                    cause: span,
-                    kind: "async",
-                }));
-            }
-            ast::CoroutineKind::Gen { span, .. } => {
-                return Err(dcx.emit_err(diagnostics::TestBadFn {
-                    span: i.span,
-                    cause: span,
-                    kind: "gen",
-                }));
-            }
-            ast::CoroutineKind::AsyncGen { span, .. } => {
-                return Err(dcx.emit_err(diagnostics::TestBadFn {
-                    span: i.span,
-                    cause: span,
-                    kind: "async gen",
-                }));
-            }
-        }
+    if let Some(coroutine_marker) = f.sig.header.coroutine_marker {
+        return Err(dcx.emit_err(diagnostics::TestBadFn {
+            span: i.span,
+            cause: coroutine_marker.span,
+            kind: coroutine_marker.kind.as_str(),
+        }));
     }
 
     // If the termination trait is active, the compiler will check that the output

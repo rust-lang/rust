@@ -1783,6 +1783,30 @@ impl f32 {
     pub const fn algebraic_rem(self, rhs: f32) -> f32 {
         intrinsics::frem_algebraic(self, rhs)
     }
+
+    /// Returns `self` if the value is not NaN, otherwise returns `replacement`
+    /// if `self` is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_nan_to)]
+    ///
+    /// let n = f32::NAN;
+    /// let x = 2.0f32;
+    /// let y = f32::INFINITY;
+    ///
+    /// assert_eq!(n.nan_to(0.0f32), 0.0f32);
+    /// assert_eq!(x.nan_to(0.0f32), 2.0f32);
+    /// assert_eq!(y.nan_to(0.0f32), f32::INFINITY);
+    /// ```
+    #[must_use = "method returns a new float and does not mutate the original value"]
+    #[unstable(feature = "float_nan_to", issue = "161248")]
+    #[rustc_const_unstable(feature = "float_nan_to", issue = "161248")]
+    #[inline]
+    pub const fn nan_to(self, replacement: f32) -> f32 {
+        if self.is_nan() { replacement } else { self }
+    }
 }
 
 /// Experimental implementations of floating point functions in `core`.

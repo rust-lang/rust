@@ -130,7 +130,9 @@ pub const unsafe fn atomic_cxchgweak<
 /// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
+pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+    src: *const T,
+) -> T;
 
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
@@ -139,7 +141,10 @@ pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const 
 /// [`atomic`] types via the `store` method. For example, [`AtomicBool::store`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, val: T);
+pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+    dst: *mut T,
+    val: T,
+);
 
 /// Stores the value at the specified memory location, returning the old value.
 /// `T` must be an integer or pointer type.
@@ -3151,6 +3156,28 @@ pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize>;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn type_id_variants(_id: crate::any::TypeId) -> usize;
+
+/// Gets the name of the variant represented by the base `TypeId` and variant_idx.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::VariantId::name`].
+///
+/// [`TypeId`]: crate::any::TypeId
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn variant_name(_base: crate::any::TypeId, _variant_index: usize) -> &'static str;
+
+/// Returns true when the variant represented by the base `TypeId` and variant_idx is non
+/// exhaustive.
+///
+/// The more user-friendly version of this intrinsic is
+/// [`core::mem::type_info::VariantId::non_exhaustive`].
+///
+/// [`TypeId`]: crate::any::TypeId
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn variant_non_exhaustive(base: crate::any::TypeId, variant: usize) -> bool;
 
 /// Gets the number of fields at the given `variant_index` represented by this `TypeId`.
 ///
