@@ -35,6 +35,46 @@ pub struct MayBeErased;
 impl TypingModeErasedStatus for CantBeErased {}
 impl TypingModeErasedStatus for MayBeErased {}
 
+// TODO: clean the mess
+// use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash,)] // StableHash)]
+// #[derive(TypeVisitable, TypeFoldable)]
+pub struct TypingEnv<I: Interner> {
+    // #[type_foldable(identity)]
+    // #[type_visitable(ignore)]
+    typing_mode: TypingModeEqWrapper<I>,
+    pub param_env: I::ParamEnv,
+}
+
+
+
+// use crate::query::
+impl<I: Interner> TypingEnv<I> {
+    pub fn typing_mode(&self) -> TypingMode<I> {
+        self.typing_mode.0
+    }
+
+    pub fn new(param_env: I::ParamEnv, typing_mode: TypingMode<I>) -> Self {
+        Self { typing_mode: TypingModeEqWrapper(typing_mode), param_env }
+    }
+    //post_analysis
+
+    //fully_monomorphized
+    pub fn fully_monomorphized() -> Self {
+        Self::new(I::ParamEnv::empty(), TypingMode::Codegen)
+    }
+
+        // IntoQueryKey (DefId)?
+        pub fn post_analysis(cx: I, def_id: I::DefId) -> Self{
+        TypingEnv::new(
+            cx.param_env_normalized_for_post_analysis(def_id),
+            TypingMode::PostAnalysis)
+    }
+
+
+}
+
+
 /// The current typing mode of an inference context. We unfortunately have some
 /// slightly different typing rules depending on the current context. See the
 /// doc comment for each variant for how and why they are used.

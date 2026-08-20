@@ -159,6 +159,40 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         // See trait-system-refactor-initiative#234.
     }
 
+    fn param_env_normalized_for_post_analysis(self, defid: Self::DefId) -> Self::ParamEnv {
+        self.param_env_normalized_for_post_analysis(defid)
+    }
+
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T {
+        self.erase_and_anonymize_regions(value)
+    }
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: rustc_type_ir::TypingEnv<Self>,
+        ct: rustc_type_ir::AliasConst<Self>,
+        span: Self::Span,
+    ) -> rustc_type_ir::ConstToValTreeResult<Self>
+    {
+        // TODO: this is ugly and not right. Think how to resolve these TypingEnv stuff correctly.
+        let typing_env = ty::TypingEnv::new(typing_env.param_env, typing_env.typing_mode());
+        match self.const_eval_resolve_for_typeck(typing_env, ct, span) {
+            Ok(Ok(vt))  => Ok(Ok(vt)),
+            Ok(Err(ty)) => Ok(Err(ty)),
+            Err(ty::context::interpret::ErrorHandled::Reported(info, span)) => {
+                Err(rustc_type_ir::ErrorHandled::Reported(
+                    rustc_type_ir::ReportedErrorInfo {
+                        error: info.into(),
+                        allowed_in_infallible: info.is_allowed_in_infallible(),
+                    },
+                    span,
+                ))
+            }
+            Err(ty::context::interpret::ErrorHandled::TooGeneric(span)) => {
+                Err(rustc_type_ir::ErrorHandled::TooGeneric(span))
+            }
+        }
+    }
+
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
         self.expand_abstract_consts(t)
     }
