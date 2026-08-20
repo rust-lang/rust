@@ -23,9 +23,9 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
+use crate::core::session::{FileType, Mode};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, add_dylib_path, exe, t};
-use crate::{FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {

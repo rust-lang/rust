@@ -21,8 +21,8 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::{Config, TargetSelection};
+use crate::core::session::{FileType, Mode};
 use crate::utils::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
-use crate::{FileType, Mode};
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {

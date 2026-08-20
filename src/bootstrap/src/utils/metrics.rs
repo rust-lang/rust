@@ -16,8 +16,8 @@ use build_helper::metrics::{
 };
 use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
-use crate::Build;
 use crate::core::builder::{Builder, Step};
+use crate::core::session::Build;
 use crate::utils::helpers::t;
 
 // Update this number whenever a breaking change is made to the build metrics.
