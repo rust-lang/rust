@@ -38,6 +38,12 @@ note: this attribute does not have an `!`, which means it is applied to this mac
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
 
+error: attribute value must be a literal
+  --> $DIR/attr-on-mac-call.rs:113:20
+   |
+LL |     #[deprecated = concat!("woah", "dude")]
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^
+
 warning: the `export_name` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:8:7
    |
@@ -341,6 +347,65 @@ LL |     #[repr(Rust)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
 
-error: aborting due to 4 previous errors; 30 warnings emitted
+error: invalid expression in `doc` attribute on macro invocation
+  --> $DIR/attr-on-mac-call.rs:115:13
+   |
+LL |     #[doc = concat!("woah", "dude")]
+   |     --------^^^^^^^^^^^^^^^^^^^^^^^- help: remove the attribute
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: invalid expression in `doc` attribute on macro invocation
+  --> $DIR/attr-on-mac-call.rs:119:13
+   |
+LL |        #[doc = {
+   |  ______-       ^
+   | | _____________|
+LL | ||         let a = 1;
+LL | ||         let b = 1;
+LL | ||         let sum = a + b;
+LL | ||         assert_eq!(sum, 2);
+LL | ||     }]
+   | ||_____^- help: remove the attribute
+   |  |_____|
+   |
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
+error: aborting due to 7 previous errors; 30 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.
+Future incompatibility report: Future breakage diagnostic:
+error: invalid expression in `doc` attribute on macro invocation
+  --> $DIR/attr-on-mac-call.rs:115:13
+   |
+LL |     #[doc = concat!("woah", "dude")]
+   |     --------^^^^^^^^^^^^^^^^^^^^^^^- help: remove the attribute
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: invalid expression in `doc` attribute on macro invocation
+  --> $DIR/attr-on-mac-call.rs:119:13
+   |
+LL |        #[doc = {
+   |  ______-       ^
+   | | _____________|
+LL | ||         let a = 1;
+LL | ||         let b = 1;
+LL | ||         let sum = a + b;
+LL | ||         assert_eq!(sum, 2);
+LL | ||     }]
+   | ||_____^- help: remove the attribute
+   |  |_____|
+   |
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+

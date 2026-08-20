@@ -1346,6 +1346,15 @@ pub(crate) enum InvalidTargetHelp {
 }
 
 #[derive(Diagnostic)]
+#[diag("invalid expression in `doc` attribute on macro invocation")]
+pub(crate) struct InvalidExprInDocAttr {
+    #[primary_span]
+    pub expr_span: Span,
+    #[suggestion("remove the attribute", code = "", applicability = "machine-applicable")]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("invalid alignment value: {$error_part}", code = E0589)]
 pub(crate) struct InvalidAlignmentValue {
     #[primary_span]
