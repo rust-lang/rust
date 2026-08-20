@@ -190,6 +190,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             // available in Cranelift.
             has_reliable_f16: has_reliable_f16_f128,
             has_reliable_f16_math: has_reliable_f16_f128,
+            has_reliable_f16b: false,
             has_reliable_f128: has_reliable_f16_f128,
             has_reliable_f128_math,
         }
