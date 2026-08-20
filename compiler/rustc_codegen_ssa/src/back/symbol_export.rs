@@ -223,8 +223,8 @@ pub fn exported_non_generic_symbols_helper<'tcx>(
     }
 
     symbols.extend(sorted.iter().flat_map(|&(&def_id, &info)| {
-        tcx.codegen_fn_attrs(def_id).foreign_item_symbol_aliases.iter().map(
-            move |&(foreign_item, _linkage, _visibility)| {
+        tcx.codegen_fn_attrs(def_id).foreign_item_symbol_alias.map(
+            move |(foreign_item, _linkage, _visibility)| {
                 (ExportedSymbol::NonGeneric(foreign_item), info)
             },
         )
