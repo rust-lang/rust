@@ -639,7 +639,7 @@ fn set_get_permissions_nofollows() {
                 permission_bits.set_readonly(false);
                 check!(fs::set_permissions_nofollow(&filename, permission_bits));
             }
-        },
+        }
         _ => {
             let error_kind = result.unwrap_err().kind();
             assert_eq!(error_kind, crate::io::ErrorKind::Unsupported);
@@ -668,7 +668,15 @@ fn set_get_permissions_nofollows_symlink() {
     let result = fs::set_permissions_nofollow(&symlink_name, permission_bits);
 
     cfg_select! {
-        any(windows, target_os = "android", target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly") => {
+        any(
+            windows,
+            target_os = "android",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "openbsd",
+            target_os = "netbsd",
+            target_os = "dragonfly"
+        ) => {
             assert_eq!(result.unwrap(), ());
             let metadata0 = check!(fs::symlink_metadata(&symlink_name));
             // So seems like BSD-based systems trying to set permissions
@@ -689,7 +697,7 @@ fn set_get_permissions_nofollows_symlink() {
                 permission_bits.set_readonly(false);
                 check!(fs::set_permissions_nofollow(&symlink_name, permission_bits));
             }
-        },
+        }
         _ => {
             let error_kind = result.unwrap_err().kind();
             assert_eq!(error_kind, crate::io::ErrorKind::Unsupported);

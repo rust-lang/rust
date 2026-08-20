@@ -299,7 +299,7 @@ impl CommandLineStep for Std {
             if self.is_for_mir_opt_tests {
                 ArtifactKeepMode::OnlyRmeta
             } else {
-                // We use -Zno-embed-metadata for the standard library
+                // We use -Zembed-metadata=no for the standard library
                 ArtifactKeepMode::BothRlibAndRmeta
             },
         );
@@ -2620,7 +2620,7 @@ pub enum ArtifactKeepMode {
     /// Only keep .rmeta files, ignore .rlib files
     OnlyRmeta,
     /// Keep both .rlib and .rmeta files.
-    /// This is essentially only useful when using `-Zno-embed-metadata`, in which case both the
+    /// This is essentially only useful when using `-Zembed-metadata=no`, in which case both the
     /// .rlib and .rmeta files are needed for compilation/linking.
     BothRlibAndRmeta,
     /// Custom logic for keeping an artifact

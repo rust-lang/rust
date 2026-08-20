@@ -21,17 +21,17 @@ use crate::{fmt, mem, sys};
 
 cfg_select! {
     any(target_os = "nto", target_os = "qnx") => {
-        use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
-        use crate::time::Duration;
+
         use crate::sync::LazyLock;
+        use crate::thread;
+        use crate::time::Duration;
         // Get smallest amount of time we can sleep.
         // Return a common value if it cannot be determined.
         fn get_clock_resolution() -> Duration {
             static MIN_DELAY: LazyLock<Duration, fn() -> Duration> = LazyLock::new(|| {
                 let mut mindelay = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-                if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0
-                {
+                if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0 {
                     Duration::from_nanos(mindelay.tv_nsec as u64)
                 } else {
                     Duration::from_millis(1)
@@ -512,15 +512,22 @@ impl Command {
                                 support = FORK_EXEC;
                                 // but for the fast path we need both spawnp and the
                                 // pidfd -> pid conversion to work.
-                                if pidfd_spawnp.get().is_some() && let Ok(pid) = pidfd.pid() {
+                                if pidfd_spawnp.get().is_some()
+                                    && let Ok(pid) = pidfd.pid()
+                                {
                                     assert_eq!(pid, crate::process::id(), "sanity check");
                                     support = SPAWN;
                                 }
                             }
-                            Err(e) if matches!(e.raw_os_error(), Some(libc::EMFILE | libc::ENFILE | libc::ENOMEM)) => {
+                            Err(e)
+                                if matches!(
+                                    e.raw_os_error(),
+                                    Some(libc::EMFILE | libc::ENFILE | libc::ENOMEM)
+                                ) =>
+                            {
                                 // We're temporarily(?) out of file descriptors or memory. In this case pidfd_spawnp would also fail
                                 // Don't update the support flag so we can probe again later.
-                                return Err(e)
+                                return Err(e);
                             }
                             _ => {
                                 // pidfd_open not available? likely an old kernel without pidfd support.
