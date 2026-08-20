@@ -1,10 +1,65 @@
+error[E0283]: type annotations needed: cannot satisfy `B<T>: Trait<'a, 'b>`
+  --> $DIR/fixpoint-rerun-all-cycle-heads.rs:21:35
+   |
+LL | impl<'a, 'b, T> Trait<'a, 'b> for B<T>
+   |                                   ^^^^
+   |
+note: multiple `impl`s satisfying `B<T>: Trait<'a, 'b>` found
+  --> $DIR/fixpoint-rerun-all-cycle-heads.rs:21:1
+   |
+LL | / impl<'a, 'b, T> Trait<'a, 'b> for B<T>
+LL | |
+LL | | where
+LL | |     A<T>: Trait<'a, 'b>,
+LL | |     A<T>: NotImplemented,
+   | |_________________________^
+...
+LL | / impl<'a, 'b, T> Trait<'a, 'b> for B<T>
+LL | |
+LL | | where
+LL | |     A<T>: NotImplemented,
+   | |_________________________^
+...
+LL | / impl<'a, T> Trait<'a, 'static> for B<T>
+LL | | where
+LL | |     C<T>: Trait<'a, 'a>,
+   | |________________________^
+
+error[E0283]: type annotations needed: cannot satisfy `B<T>: Trait<'a, 'b>`
+  --> $DIR/fixpoint-rerun-all-cycle-heads.rs:36:35
+   |
+LL | impl<'a, 'b, T> Trait<'a, 'b> for B<T>
+   |                                   ^^^^
+   |
+note: multiple `impl`s satisfying `B<T>: Trait<'a, 'b>` found
+  --> $DIR/fixpoint-rerun-all-cycle-heads.rs:21:1
+   |
+LL | / impl<'a, 'b, T> Trait<'a, 'b> for B<T>
+LL | |
+LL | | where
+LL | |     A<T>: Trait<'a, 'b>,
+LL | |     A<T>: NotImplemented,
+   | |_________________________^
+...
+LL | / impl<'a, 'b, T> Trait<'a, 'b> for B<T>
+LL | |
+LL | | where
+LL | |     A<T>: NotImplemented,
+   | |_________________________^
+...
+LL | / impl<'a, T> Trait<'a, 'static> for B<T>
+LL | | where
+LL | |     C<T>: Trait<'a, 'a>,
+   | |________________________^
+
 error: lifetime may not live long enough
-  --> $DIR/fixpoint-rerun-all-cycle-heads.rs:60:5
+  --> $DIR/fixpoint-rerun-all-cycle-heads.rs:62:5
    |
 LL | fn check<'a, T>() {
    |          -- lifetime `'a` defined here
 LL |     impls_trait::<'a, 'static, A<T>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
-error: aborting due to 1 previous error
+error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0283`.
