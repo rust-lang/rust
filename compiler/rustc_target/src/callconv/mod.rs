@@ -626,7 +626,7 @@ pub struct FnAbi<'a, Ty> {
     /// Indicates if an unwind may happen across a call to this function.
     pub can_unwind: bool,
     /// Computed type discriminator for pointer authentication purpose.
-    pub ptrauth_discriminator: u64,
+    pub ptrauth_discriminator: Option<u64>,
 }
 
 // Needs to be a custom impl because of the bounds on the `TyAndLayout` debug impl.
@@ -954,6 +954,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ArgAbi<'_, usize>, 56);
-    static_assert_size!(FnAbi<'_, usize>, 88);
+    static_assert_size!(FnAbi<'_, usize>, 96);
     // tidy-alphabetical-end
 }
