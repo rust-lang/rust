@@ -161,7 +161,10 @@ pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> O
     if let Some(config) = builder.config.target_config.get(&target)
         && let Some(ref s) = config.llvm_config
     {
-        check_llvm_version(builder, s);
+        // We execute the llvm-config, and we can only do that on the host target
+        if target == builder.host_target {
+            check_llvm_version(builder, s);
+        }
         let llvm_config = s.to_path_buf();
         let mut llvm_root_dir = llvm_config.clone();
         llvm_root_dir.pop();
@@ -648,9 +651,9 @@ impl CommandLineStep for Llvm {
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if !builder.config.is_host_target(target) {
-            let llvm_output = builder.ensure(Llvm { target: builder.config.host_target });
+            let llvm_host = builder.ensure(Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
-                let llvm_bindir = command(llvm_output.llvm_config())
+                let llvm_bindir = command(llvm_host.llvm_config())
                     .arg("--bindir")
                     .cached()
                     .run_capture_stdout(builder)
@@ -663,9 +666,9 @@ impl CommandLineStep for Llvm {
                 // LLVM_NM is required for cross compiling using MSVC
                 cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
             }
-            cfg.define("LLVM_CONFIG_PATH", llvm_output.llvm_config());
+            cfg.define("LLVM_CONFIG_PATH", llvm_host.llvm_config());
             if builder.config.llvm_clang {
-                let build_bin = llvm_output.root_dir().join("bin");
+                let build_bin = llvm_host.root_dir().join("bin");
                 let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
                 if !builder.config.dry_run() && !clang_tblgen.exists() {
                     panic!("unable to find {}", clang_tblgen.display());
