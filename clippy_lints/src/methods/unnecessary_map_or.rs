@@ -37,21 +37,7 @@ impl Variant {
     }
 }
 
-#[derive(Clone, Copy)]
-enum MapOrKind {
-    Eager,
-    Lazy,
-}
-
-impl MapOrKind {
-    fn method_name(self) -> &'static str {
-        match self {
-            Self::Eager => "map_or",
-            Self::Lazy => "map_or_else",
-        }
-    }
-}
-
+/// Evaluates `expr` and returns its value if it is a constant boolean.
 fn bool_constant(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<bool> {
     let Some(Constant::Bool(value)) = ConstEvalCtxt::new(cx).eval(expr) else {
         return None;
@@ -59,6 +45,7 @@ fn bool_constant(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<bool> {
     Some(value)
 }
 
+/// Returns the constant boolean produced by a one-parameter closure.
 fn closure_bool_constant(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<bool> {
     let ExprKind::Closure(closure) = expr.kind else {
         return None;
@@ -70,13 +57,18 @@ fn closure_bool_constant(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<bool> 
     bool_constant(cx, body.value)
 }
 
+/// Checks whether a `Result::{map_or, map_or_else}` call is a variant query.
+///
+/// `expr` is the complete method call, `recv` is its `Result` receiver, `def` is the default
+/// argument, and `map` is the mapping closure. `check_if_bool` accounts for the eager default in
+/// `map_or` and the closure default in `map_or_else`.
 fn check_result_variant_query<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     recv: &'tcx Expr<'tcx>,
     def: &'tcx Expr<'tcx>,
     map: &'tcx Expr<'tcx>,
-    kind: MapOrKind,
+    check_if_bool: impl FnOnce(&LateContext<'tcx>, &'tcx Expr<'tcx>) -> Option<bool>,
 ) -> bool {
     let ExprKind::MethodCall(path, _, _, call_span) = expr.kind else {
         return false;
@@ -86,10 +78,7 @@ fn check_result_variant_query<'tcx>(
         return false;
     }
 
-    let def_bool = match kind {
-        MapOrKind::Eager => bool_constant(cx, def),
-        MapOrKind::Lazy => closure_bool_constant(cx, def),
-    };
+    let def_bool = check_if_bool(cx, def);
     let Some((def_bool, map_bool)) = def_bool.zip(closure_bool_constant(cx, map)) else {
         return false;
     };
@@ -109,7 +98,7 @@ fn check_result_variant_query<'tcx>(
         cx,
         UNNECESSARY_MAP_OR,
         path.ident.span,
-        format!("this `{}` can be simplified", kind.method_name()),
+        format!("this `{}` can be simplified", path.ident.name),
         |diag| {
             diag.span_suggestion(
                 call_span,
@@ -126,6 +115,12 @@ fn check_result_variant_query<'tcx>(
     true
 }
 
+/// Checks a `map_or` call for both `Result` variant queries and the existing `Option`/`Result`
+/// simplifications.
+///
+/// `expr` is the complete method call, `recv` is its receiver, `def` is the eager default, and
+/// `map` is the mapping closure. `method_span` identifies `map_or` in diagnostics, while `msrv`
+/// controls which replacement methods can be suggested.
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
@@ -135,7 +130,7 @@ pub(super) fn check<'tcx>(
     method_span: Span,
     msrv: Msrv,
 ) {
-    if check_result_variant_query(cx, expr, recv, def, map, MapOrKind::Eager) {
+    if check_result_variant_query(cx, expr, recv, def, map, bool_constant) {
         return;
     }
 
@@ -253,6 +248,10 @@ pub(super) fn check<'tcx>(
     );
 }
 
+/// Checks a `map_or_else` call for a `Result` variant query.
+///
+/// `expr` is the complete method call, `recv` is its `Result` receiver, `def` is the lazy default
+/// closure, and `map` is the mapping closure.
 pub(super) fn check_map_or_else<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
@@ -260,5 +259,5 @@ pub(super) fn check_map_or_else<'tcx>(
     def: &'tcx Expr<'tcx>,
     map: &'tcx Expr<'tcx>,
 ) {
-    check_result_variant_query(cx, expr, recv, def, map, MapOrKind::Lazy);
+    check_result_variant_query(cx, expr, recv, def, map, closure_bool_constant);
 }
