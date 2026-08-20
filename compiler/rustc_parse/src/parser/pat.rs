@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
             matches!(
                 &token.uninterpolate().kind,
                 token::FatArrow // e.g. `a | => 0,`.
-                | token::Ident(kw::If, token::IdentKind::Normal) // e.g. `a | if expr`.
+                | token::Ident(kw::If, token::IdentKind::Normal | token::IdentKind::ForcedKeyword) // e.g. `a | if expr`.
                 | token::Eq // e.g. `let a | = 0`.
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.

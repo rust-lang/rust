@@ -1474,7 +1474,10 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
-            Some((ident @ Ident { name: kw::Underscore, .. }, IdentKind::Normal)) => {
+            Some((
+                ident @ Ident { name: kw::Underscore, .. },
+                IdentKind::Normal | IdentKind::ForcedKeyword,
+            )) => {
                 self.bump();
                 Ok(ident)
             }
@@ -2492,9 +2495,11 @@ impl<'a> Parser<'a> {
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, kind) = self.ident_or_err(true)?;
-        if kind == IdentKind::Normal
-            && ident.is_reserved()
-            && !(ident.name == kw::Underscore && adt_ty == "enum")
+        if match kind {
+            IdentKind::Normal => ident.is_reserved(),
+            IdentKind::Raw => false,
+            IdentKind::ForcedKeyword => true,
+        } && !(ident.name == kw::Underscore && adt_ty == "enum")
         {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {

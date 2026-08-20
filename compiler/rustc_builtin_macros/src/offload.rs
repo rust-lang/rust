@@ -1,5 +1,5 @@
 use rustc_ast::ast;
-use rustc_ast::token::{Delimiter, Token, TokenKind};
+use rustc_ast::token::{Delimiter, IdentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::Offload;
@@ -149,7 +149,7 @@ pub(crate) fn expand_kernel(
 
     // inline(never) attr
     let ts: Vec<TokenTree> = vec![TokenTree::Token(
-        Token::new(TokenKind::Ident(sym::never, false.into()), span),
+        Token::new(TokenKind::Ident(sym::never, IdentKind::Normal), span),
         Spacing::Joint,
     )];
 

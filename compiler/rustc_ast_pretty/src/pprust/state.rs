@@ -370,12 +370,10 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
 
         // IDENT|`fn`|`Self`|`pub` + `(`: `f(3)`, `fn(x: u8)`, `Self()`, `pub(crate)`,
         //      but `let (a, b) = (1, 2)` needs a space after the `let`
-        (Tok(tk::Token { kind: tk::Ident(sym, kind), span }, _), Del(_, _, Parenthesis, _))
-            if !Ident::new(*sym, *span).is_reserved()
-                || *sym == kw::Fn
-                || *sym == kw::SelfUpper
-                || *sym == kw::Pub
-                || matches!(kind, tk::IdentKind::Raw) =>
+        (&Tok(tk::Token { kind: tk::Ident(sym, kind), span }, _), Del(_, _, Parenthesis, _))
+            if kind == tk::IdentKind::Raw
+                || matches!(sym, kw::Fn | kw::SelfUpper | kw::Pub)
+                || !Ident::new(sym, span).is_reserved() =>
         {
             false
         }

@@ -240,6 +240,36 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     self.psess.raw_identifier_spans.push(span);
                     token::Ident(sym, IdentKind::Raw)
                 }
+                rustc_lexer::TokenKind::ForcedKeywordIdent => {
+                    let span = self.mk_sp(start, self.pos);
+
+                    if span.edition().at_least_rust_2021() {
+                        let sym = nfc_normalize(self.str_from(start + BytePos(2)));
+                        self.psess.symbol_gallery.insert(sym, span);
+                        if !sym.can_be_forced_keyword() {
+                            self.dcx().emit_err(crate::diagnostics::CannotBeForcedKeywordIdent { span, ident: sym });
+                        }
+                        self.psess.gated_spans.gate(sym::forced_keywords, span);
+                        token::Ident(sym, IdentKind::ForcedKeyword)
+                    } else {
+                        // Reset the state so that only the `k` was consumed.
+                        self.pos = start + BytePos(1);
+                        self.cursor = Cursor::new(&str_before[1..], FrontmatterAllowed::No);
+
+                        self.psess.buffer_lint(
+                            RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
+                            span,
+                            ast::CRATE_NODE_ID,
+                            crate::diagnostics::ReservedPrefixLint {
+                                subject: "this".into(),
+                                kind: "forced keyword",
+                                edition: Edition::Edition2021,
+                                sugg: self.mk_sp(start, self.pos).shrink_to_hi(),
+                            }
+                        );
+                        self.ident(start)
+                    }
+                }
                 rustc_lexer::TokenKind::UnknownPrefix => {
                     self.report_unknown_prefix(start);
                     self.ident(start)
