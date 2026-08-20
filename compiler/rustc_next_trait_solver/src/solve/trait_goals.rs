@@ -1314,6 +1314,7 @@ where
         let ExternalConstraintsData {
             region_constraints: _,
             ref opaque_types,
+            ref opaque_hidden_ty_bounds,
             ref normalization_nested_goals,
         } = *candidate.result.value.external_constraints;
         debug_assert!(normalization_nested_goals.is_empty());
@@ -1322,7 +1323,7 @@ where
         // inference state. This is safe after typeck, where hidden types are already
         // fixed and only regions are inferred, but not during typeck while hidden
         // types may still contain inference variables.
-        if !opaque_types.is_empty() {
+        if !opaque_types.is_empty() || !opaque_hidden_ty_bounds.is_empty() {
             let typing_mode = self.typing_mode();
 
             match typing_mode {
