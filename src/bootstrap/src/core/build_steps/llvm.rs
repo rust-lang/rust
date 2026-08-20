@@ -178,7 +178,7 @@ pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> O
         });
     }
 
-    // If LLVM is not available from CI, not externally, it is still possible that it was already
+    // If LLVM is not available from CI nor externally, it is still possible that it was already
     // built locally before. In that case we still treat it as prebuilt config.
     match get_locally_built_llvm_build_status(builder, target) {
         LlvmBuildStatus::AlreadyBuilt(output) => Some(output),
@@ -1725,8 +1725,8 @@ impl CommandLineStep for Lld {
             // Use the host llvm-tblgen binary.
             cfg.define(
                 "LLVM_TABLEGEN_EXE",
-                llvm_output
-                    .llvm_config()
+                builder
+                    .host_llvm_config()
                     .with_file_name("llvm-tblgen")
                     .with_extension(EXE_EXTENSION),
             );
