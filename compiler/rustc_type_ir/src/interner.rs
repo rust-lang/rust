@@ -477,6 +477,8 @@ pub trait Interner:
 
     fn trait_is_auto(self, trait_def_id: Self::TraitId) -> bool;
 
+    fn trait_is_marker(self, trait_def_id: Self::TraitId) -> bool;
+
     fn trait_is_coinductive(self, trait_def_id: Self::TraitId) -> bool;
 
     fn trait_is_alias(self, trait_def_id: Self::TraitId) -> bool;

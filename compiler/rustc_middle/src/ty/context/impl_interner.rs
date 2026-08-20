@@ -622,6 +622,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_is_auto(trait_def_id)
     }
 
+    fn trait_is_marker(self, trait_def_id: DefId) -> bool {
+        self.trait_def(trait_def_id).is_marker
+    }
+
     fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
         self.trait_is_coinductive(trait_def_id)
     }
