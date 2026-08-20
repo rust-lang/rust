@@ -119,7 +119,6 @@ use raw_borrows_via_references::*;
 use redundant_semicolon::*;
 use reference_casting::*;
 use runtime_symbols::*;
-use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalModId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -769,7 +768,7 @@ fn register_internals(store: &mut LintStore) {
 ///
 /// Note: this is a conservative estimate intended for optimization purposes. It might return
 /// `true` for a pass that need not run, but it will never return `false` for a pass that must run.
-pub fn is_lint_pass_required(skippable: &UnordSet<LintId>, lints: &LintVec) -> bool {
+pub fn is_lint_pass_required(tcx: TyCtxt<'_>, lints: &LintVec) -> bool {
     // A pass without any lints? Clippy sometimes does this, to collect things while traversing.
     // Such a pass must always run.
     if lints.is_empty() {
@@ -777,7 +776,7 @@ pub fn is_lint_pass_required(skippable: &UnordSet<LintId>, lints: &LintVec) -> b
     }
 
     // Otherwise, the pass must run unless all lints within are skippable.
-    !lints.iter().all(|lint| skippable.contains(&LintId::of(lint)))
+    !lints.iter().all(|lint| tcx.lint_should_be_skipped(lint))
 }
 
 #[cfg(test)]

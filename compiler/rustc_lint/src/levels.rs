@@ -119,12 +119,6 @@ fn skippable_lints(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
         .get_lints()
         .into_iter()
         .filter(|lint| {
-            // Lints that show up in future-compat reports must always be run.
-            let has_future_breakage =
-                lint.future_incompatible.is_some_and(|fut| fut.report_in_deps);
-            !has_future_breakage && !lint.eval_always
-        })
-        .filter(|lint| {
             let level_spec =
                 root_map.lint_level_spec_at_node(tcx, LintId::of(lint), hir::CRATE_HIR_ID);
             // Only include lints that are allowed at crate root or by default.

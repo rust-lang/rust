@@ -545,6 +545,8 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
+    /// Gathers lints that are alloed in the whole crate and do not need to be computed.
+    /// Do not use this query directly, use `tcx.lint_should_be_skipped(lint)` instead.
     query skippable_lints(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
         // This depends on the lint store, which includes internal lints when the

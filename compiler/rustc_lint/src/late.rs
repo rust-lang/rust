@@ -348,8 +348,6 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         only_module: true,
     };
 
-    let skippable_lints = tcx.skippable_lints(());
-
     // Note: `passes` is often empty. In that case, it's faster to run
     // `builtin_lints` directly rather than bundling it up into the
     // `RuntimeCombinedLateLintPass`.
@@ -357,9 +355,9 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         .late_lint_mod_passes
         .iter()
         .map(|mk_pass| mk_pass(tcx))
-        .filter(|pass| is_lint_pass_required(skippable_lints, &pass.get_lints()))
+        .filter(|pass| is_lint_pass_required(tcx, &pass.get_lints()))
         .collect();
-    let builtin_lints_must_run = is_lint_pass_required(skippable_lints, &builtin_lints.get_lints());
+    let builtin_lints_must_run = is_lint_pass_required(tcx, &builtin_lints.get_lints());
     if passes.is_empty() {
         if builtin_lints_must_run {
             late_lint_mod_inner(tcx, mod_id, context, builtin_lints);
@@ -402,14 +400,12 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 }
 
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
-    let skippable_lints = tcx.skippable_lints(());
-
     // Note: `passes` is often empty after filtering.
     let passes: Vec<_> = unerased_lint_store(tcx.sess)
         .late_lint_passes
         .iter()
         .map(|mk_pass| mk_pass(tcx))
-        .filter(|pass| is_lint_pass_required(skippable_lints, &pass.get_lints()))
+        .filter(|pass| is_lint_pass_required(tcx, &pass.get_lints()))
         .collect();
     if passes.is_empty() {
         return;
