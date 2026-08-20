@@ -96,6 +96,18 @@ macro_rules! interned_slice {
 
             #[inline]
             pub fn new_from_slice(slice: &[$ty_db]) -> Self {
+                if slice.is_empty() {
+                    // Common case: avoid looking up the empty slice.
+                    Self::empty()
+                } else {
+                    Self::new_from_slice_no_empty_check(slice)
+                }
+            }
+
+            /// Same as [`Self::new_from_slice()`] but won't use the global empty slice `slice.is_empty()`, because someone
+            /// needs to intern the global slice as well.
+            #[inline]
+            pub(crate) fn new_from_slice_no_empty_check(slice: &[$ty_db]) -> Self {
                 let slice = unsafe { ::std::mem::transmute::<&[$ty_db], &[$ty_static]>(slice) };
                 Self { interned: ::intern::InternedSlice::from_header_and_slice((), slice) }
             }

@@ -280,6 +280,18 @@ impl<'db> Clauses<'db> {
 
     #[inline]
     pub fn new_from_slice(slice: &[Clause<'db>]) -> Self {
+        if slice.is_empty() {
+            // Common case: avoid looking up the empty slice.
+            Self::empty()
+        } else {
+            Self::new_from_slice_no_empty_check(slice)
+        }
+    }
+
+    /// Same as [`Self::new_from_slice()`] but won't use the global empty slice `slice.is_empty()`, because someone
+    /// needs to intern the global slice as well.
+    #[inline]
+    pub(crate) fn new_from_slice_no_empty_check(slice: &[Clause<'db>]) -> Self {
         let slice = unsafe { ::std::mem::transmute::<&[Clause<'db>], &[Clause<'static>]>(slice) };
         let flags = FlagComputation::<DbInterner<'db>>::for_clauses(slice);
         let flags = ClausesCachedTypeInfo(WithCachedTypeInfo {

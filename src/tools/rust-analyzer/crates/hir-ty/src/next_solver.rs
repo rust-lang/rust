@@ -165,73 +165,73 @@ pub fn default_types<'db>() -> &'db DefaultAny<'db> {
             ty.as_ref()
         };
         let create_generic_args = |slice| {
-            let ty = GenericArgs::new_from_slice(slice);
+            let ty = GenericArgs::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_bound_var_kinds = |slice| {
-            let ty = BoundVarKinds::new_from_slice(slice);
+            let ty = BoundVarKinds::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_canonical_vars = |slice| {
-            let ty = CanonicalVarKinds::new_from_slice(slice);
+            let ty = CanonicalVarKinds::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_variances_of = |slice| {
-            let ty = VariancesOf::new_from_slice(slice);
+            let ty = VariancesOf::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_pat_list = |slice| {
-            let ty = PatList::new_from_slice(slice);
+            let ty = PatList::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_predefined_opaques = |slice| {
-            let ty = PredefinedOpaques::new_from_slice(slice);
+            let ty = PredefinedOpaques::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_solver_def_ids = |slice| {
-            let ty = SolverDefIds::new_from_slice(slice);
+            let ty = SolverDefIds::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_bound_existential_predicates = |slice| {
-            let ty = BoundExistentialPredicates::new_from_slice(slice);
+            let ty = BoundExistentialPredicates::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_clauses = |slice| {
-            let ty = Clauses::new_from_slice(slice);
+            let ty = Clauses::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_region_assumptions = |slice| {
-            let ty = RegionAssumptions::new_from_slice(slice);
+            let ty = RegionAssumptions::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_tys = |slice| {
-            let ty = Tys::new_from_slice(slice);
+            let ty = Tys::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_consts = |slice| {
-            let ty = Consts::new_from_slice(slice);
+            let ty = Consts::new_from_slice_no_empty_check(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
