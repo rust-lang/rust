@@ -780,6 +780,7 @@ impl<'a> Builder<'a> {
                 llvm::Lld,
                 llvm::Enzyme,
                 llvm::RustOffload,
+                llvm::GpuLibc,
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
