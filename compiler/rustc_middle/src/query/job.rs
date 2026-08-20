@@ -8,7 +8,7 @@ use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_span::Span;
 
-use crate::query::Cycle;
+use crate::queries::TaggedQueryKey;
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -83,12 +83,36 @@ impl<'tcx, K> Default for QueryState<'tcx, K> {
     }
 }
 
+/// Description of a frame in the query stack.
+///
+/// This is mostly used in case of cycles for error reporting.
+#[derive(Debug)]
+pub struct QueryStackFrame<'tcx> {
+    pub span: Span,
+
+    /// The query and key of the query method call that this stack frame
+    /// corresponds to.
+    ///
+    /// Code that doesn't care about the specific key can still use this to
+    /// check which query it's for, or obtain the query's name.
+    pub tagged_key: TaggedQueryKey<'tcx>,
+}
+
+#[derive(Debug)]
+pub struct QueryCycle<'tcx> {
+    /// The query and related span that uses the cycle.
+    pub usage: Option<QueryStackFrame<'tcx>>,
+
+    /// The span here corresponds to the reason for which this query was required.
+    pub frames: Vec<QueryStackFrame<'tcx>>,
+}
+
 #[derive(Debug)]
 pub struct QueryWaiter<'tcx> {
     pub parent: Option<QueryJobId>,
     pub condvar: Condvar,
     pub span: Span,
-    pub cycle: Mutex<Option<Cycle<'tcx>>>,
+    pub cycle: Mutex<Option<QueryCycle<'tcx>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -103,7 +127,7 @@ impl<'tcx> QueryLatch<'tcx> {
     }
 
     /// Awaits for the query job to complete.
-    pub fn wait_on(&self, query: Option<QueryJobId>, span: Span) -> Result<(), Cycle<'tcx>> {
+    pub fn wait_on(&self, query: Option<QueryJobId>, span: Span) -> Result<(), QueryCycle<'tcx>> {
         let mut waiters_guard = self.waiters.lock();
         let Some(waiters) = &mut *waiters_guard else {
             return Ok(()); // already complete

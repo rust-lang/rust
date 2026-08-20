@@ -14,17 +14,8 @@ use crate::dep_graph::{
 use crate::ich::StableHashState;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{IntoQueryKey, QueryCache, QueryKey, QueryStackFrame, QueryState};
+use crate::query::{IntoQueryKey, QueryCache, QueryCycle, QueryKey, QueryState};
 use crate::ty::{self, TyCtxt};
-
-#[derive(Debug)]
-pub struct Cycle<'tcx> {
-    /// The query and related span that uses the cycle.
-    pub usage: Option<QueryStackFrame<'tcx>>,
-
-    /// The span here corresponds to the reason for which this query was required.
-    pub frames: Vec<QueryStackFrame<'tcx>>,
-}
 
 #[derive(Debug)]
 pub enum QueryMode {
@@ -75,7 +66,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// error is created and emitted). A value may be returned, or (more commonly) the function may
     /// just abort after emitting the error.
     pub handle_cycle_error_fn:
-        fn(tcx: TyCtxt<'tcx>, key: C::Key, cycle: Cycle<'tcx>, error: Diag<'_>) -> C::Value,
+        fn(tcx: TyCtxt<'tcx>, key: C::Key, cycle: QueryCycle<'tcx>, error: Diag<'_>) -> C::Value,
 
     pub format_value: fn(&C::Value) -> String,
 

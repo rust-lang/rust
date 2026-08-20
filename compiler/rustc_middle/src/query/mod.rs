@@ -2,13 +2,15 @@ use rustc_hir::def_id::LocalDefId;
 
 pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCache};
 pub use self::into_query_key::IntoQueryKey;
-pub use self::job::{ActiveKeyStatus, QueryJob, QueryJobId, QueryLatch, QueryState, QueryWaiter};
+pub use self::job::{
+    ActiveKeyStatus, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryStackFrame, QueryState,
+    QueryWaiter,
+};
 pub use self::keys::{LocalCrate, QueryKey};
 pub use self::plumbing::{
-    Cycle, QueryMode, QuerySystem, QueryVTable, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk,
+    QueryMode, QuerySystem, QueryVTable, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk,
     TyCtxtEnsureResult,
 };
-pub use self::stack::QueryStackFrame;
 pub use crate::queries::Providers;
 use crate::ty::TyCtxt;
 
@@ -22,7 +24,6 @@ mod keys;
 pub(crate) mod modifiers;
 pub mod on_disk_cache;
 pub(crate) mod plumbing;
-mod stack;
 
 pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
     let def_id = def_id.into();
