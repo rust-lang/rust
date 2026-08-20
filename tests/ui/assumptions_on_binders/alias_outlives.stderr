@@ -5,3 +5,4 @@ LL | const REGIONCK_ENV_FAIL<'a, T: AliasHaver>: ReqTrait<T::Assoc> = todo!()
    |                                             ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
+
