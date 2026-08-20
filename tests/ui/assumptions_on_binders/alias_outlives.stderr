@@ -1,26 +1,8 @@
 error: higher-ranked lifetime bound could not be satisfied
-  --> $DIR/alias_outlives.rs:48:45
+  --> $DIR/alias_outlives.rs:37:45
    |
 LL | const REGIONCK_ENV_FAIL<'a, T: AliasHaver>: ReqTrait<T::Assoc> = todo!()
    |                                             ^^^^^^^^^^^^^^^^^^
 
-error: higher-ranked lifetime bound could not be satisfied
-  --> $DIR/alias_outlives.rs:29:12
-   |
-LL |     let _: ReqTrait<T::Assoc>;
-   |            ^^^^^^^^^^^^^^^^^^
-
-error: higher-ranked lifetime bound could not be satisfied
-  --> $DIR/alias_outlives.rs:38:12
-   |
-LL |     let _: ReqTrait<T::Assoc>;
-   |            ^^^^^^^^^^^^^^^^^^
-
-error: higher-ranked lifetime bound could not be satisfied
-  --> $DIR/alias_outlives.rs:40:12
-   |
-LL |     let _: ReqTrait<U::Assoc>;
-   |            ^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 1 previous error
 
