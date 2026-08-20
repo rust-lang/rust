@@ -2,6 +2,7 @@
 //! analysis.
 
 use std::fmt;
+use std::ops::DerefMut;
 
 use rustc_index::Idx;
 use rustc_index::bit_set::{ChunkedBitSet, DenseBitSet, MixedBitSet};
@@ -73,9 +74,11 @@ where
 
 // Impls
 
-impl<T, C> DebugWithContext<C> for DenseBitSet<T>
+impl<T, C, S> DebugWithContext<C> for DenseBitSet<T, S>
 where
     T: Idx + DebugWithContext<C>,
+    S: DerefMut<Target = [u64]>,
+    DenseBitSet<T, S>: Eq,
 {
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter().map(|i| DebugWithAdapter { this: i, ctxt })).finish()

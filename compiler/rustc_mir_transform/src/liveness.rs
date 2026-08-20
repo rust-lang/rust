@@ -18,6 +18,7 @@ use rustc_session::lint;
 use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Symbol, kw, sym};
+use smallvec::SmallVec;
 
 use crate::diagnostics;
 
@@ -656,7 +657,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                                kind,
                                source_info: SourceInfo,
                                location: Location,
-                               live: &DenseBitSet<PlaceIndex>| {
+                               live: &DenseBitSet<PlaceIndex, _>| {
             if let Some((index, extra_projections)) = checked_places.get(place.as_ref()) {
                 if !is_indirect(extra_projections) {
                     let is_direct = extra_projections.is_empty();
@@ -1306,27 +1307,27 @@ pub struct MaybeLivePlaces<'a, 'tcx> {
 impl<'tcx> MaybeLivePlaces<'_, 'tcx> {
     fn transfer_function<'a>(
         &'a self,
-        trans: &'a mut DenseBitSet<PlaceIndex>,
+        trans: &'a mut <Self as Analysis<'tcx>>::Domain,
     ) -> TransferFunction<'a, 'tcx> {
         TransferFunction {
             tcx: self.tcx,
             checked_places: &self.checked_places,
             capture_kind: self.capture_kind,
-            trans,
+            trans: trans.borrow_as_mut_slice(),
             self_assignment: &self.self_assignment,
         }
     }
 }
 
 impl<'tcx> Analysis<'tcx> for MaybeLivePlaces<'_, 'tcx> {
-    type Domain = DenseBitSet<PlaceIndex>;
+    type Domain = DenseBitSet<PlaceIndex, SmallVec<[u64; 2]>>;
     type Direction = Backward;
 
     const NAME: &'static str = "liveness-lint";
 
     fn bottom_value(&self, _: &Body<'tcx>) -> Self::Domain {
         // bottom = not live
-        DenseBitSet::new_empty(self.checked_places.len())
+        DenseBitSet::new_empty_in_smallvec(self.checked_places.len())
     }
 
     fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut Self::Domain) {
@@ -1364,7 +1365,7 @@ impl<'tcx> Analysis<'tcx> for MaybeLivePlaces<'_, 'tcx> {
 struct TransferFunction<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     checked_places: &'a PlaceSet<'tcx>,
-    trans: &'a mut DenseBitSet<PlaceIndex>,
+    trans: DenseBitSet<PlaceIndex, &'a mut [u64]>,
     capture_kind: CaptureKind,
     self_assignment: &'a FxHashSet<Location>,
 }
