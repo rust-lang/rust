@@ -26,7 +26,8 @@ if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
         gcc
 
     gcc_path="./build/$HOSTS/gcc/$HOSTS/install/bin/gcc"
-    if echo 'int x __attribute__((used, retain));' | "$gcc_path" -S -x c -o - - | grep -i '"a.*R"'; then
+    if echo 'int x __attribute__((used, retain));' | \
+            "$gcc_path" -S -x c -o - - | grep -i '"a.*R"'; then
         echo "retain attribute is supported"
     else
         echo "retain attribute is not supported"
