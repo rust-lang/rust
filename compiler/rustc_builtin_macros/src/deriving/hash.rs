@@ -5,7 +5,7 @@ use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::{path_std, pathvec_std};
+use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_hash(
     cx: &ExtCtxt<'_>,
@@ -15,7 +15,7 @@ pub(crate) fn expand_deriving_hash(
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {
-    let path = Path::new_(pathvec_std!(hash::Hash), vec![], PathKind::Std);
+    let path = path_std!(hash::Hash);
 
     let typaram = sym::__H;
 

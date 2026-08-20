@@ -7,7 +7,7 @@ use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::{Bounds, Path, PathKind, Ty};
 use crate::deriving::generic::*;
-use crate::deriving::pathvec_std;
+use crate::deriving::pathvec;
 use crate::diagnostics;
 
 /// Generate an implementation of the `From` trait, provided that `item`
@@ -58,7 +58,7 @@ pub(crate) fn expand_deriving_from(
     });
 
     let path =
-        Path::new_(pathvec_std!(convert::From), vec![Box::new(from_type.clone())], PathKind::Std);
+        Path::new_(pathvec!(convert::From), vec![Box::new(from_type.clone())], PathKind::Std);
 
     // Generate code like this:
     //

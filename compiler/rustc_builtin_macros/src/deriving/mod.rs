@@ -6,12 +6,12 @@ use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-macro pathvec_std($($rest:ident)::+) {{
+macro pathvec($($rest:ident)::+) {{
     vec![ $( sym::$rest ),+ ]
 }}
 
 macro path_std($($x:tt)*) {
-    generic::ty::Path::new( pathvec_std!( $($x)* ) )
+    generic::ty::Path::new( pathvec!( $($x)* ) )
 }
 
 pub(crate) mod bounds;
