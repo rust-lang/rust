@@ -677,7 +677,7 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("b", Stable, &["zba", "zbb", "zbs"]),
     ("c", Stable, &["zca"]),
     ("d", CfgStableToggleUnstable(sym::riscv_target_feature), &["f"]),
-    ("e", CfgStableToggleUnstable(sym::riscv_target_feature), &[]),
+    ("e", Unstable(sym::riscv_target_feature), &[]), // negative feature! needs special care.
     ("f", CfgStableToggleUnstable(sym::riscv_target_feature), &["zicsr"]),
     (
         "forced-atomics",
