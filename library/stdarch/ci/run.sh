@@ -32,8 +32,14 @@ case ${TARGET} in
         ;;
     # Some x86_64 targets enable by default more features beyond SSE2,
     # which cause some instruction assertion checks to fail.
+    # (This does not disable tests that need more features, they get enabled based on
+    # what the host actually supports.)
     x86_64-*)
-        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=-sse3"
+        # We want frame pointers to be consistent across targets. On the ios_macabi target
+        # we cannot turn them off, so let's turn them on everywhere.
+        # If we ever turn these off, a bunch of `limit(...)` clauses should be reduced to
+        # avoid tests becoming less strict!
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=-sse3 -Cforce-frame-pointers=on"
         ;;
     #Unoptimized build uses fast-isel which breaks with msa
     mips-* | mipsel-*)
