@@ -7,7 +7,9 @@ use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_wi
 use clippy_utils::{get_parent_expr, is_expn_of, sym};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
+use rustc_hir::attrs::lang_items::LangItem::{
+    self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk,
+};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;

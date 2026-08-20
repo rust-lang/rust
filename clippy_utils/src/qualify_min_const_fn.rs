@@ -4,9 +4,9 @@
 // differ from the time of `rustc` even if the name stays the same.
 
 use crate::msrvs::{self, Msrv};
-use hir::LangItem;
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir::attrs::RustcVersion;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, StableSince};
 use rustc_infer::infer::TyCtxtInferExt as _;
@@ -194,7 +194,7 @@ fn check_rvalue<'tcx>(
             "transmute can attempt to turn pointers into integers, so is unstable in const fn".into(),
         )),
         // binops are fine on integers
-        Rvalue::BinaryOp(_, (lhs, rhs)) => {
+        Rvalue::BinaryOp(_, box (lhs, rhs)) => {
             check_operand(cx, lhs, span, body, msrv)?;
             check_operand(cx, rhs, span, body, msrv)?;
             let ty = lhs.ty(body, cx.tcx);
@@ -236,18 +236,18 @@ fn check_statement<'tcx>(
 ) -> McfResult {
     let span = statement.source_info.span;
     match &statement.kind {
-        StatementKind::Assign((place, rval)) => {
+        StatementKind::Assign(box (place, rval)) => {
             check_place(cx, *place, span, body, msrv)?;
             check_rvalue(cx, body, def_id, rval, span, msrv)
         },
 
-        StatementKind::FakeRead((_, place)) => check_place(cx, *place, span, body, msrv),
+        StatementKind::FakeRead(box (_, place)) => check_place(cx, *place, span, body, msrv),
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } => check_place(cx, **place, span, body, msrv),
 
-        StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(op)) => check_operand(cx, op, span, body, msrv),
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(cx, op, span, body, msrv),
 
-        StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
             rustc_middle::mir::CopyNonOverlapping { dst, src, count },
         )) => {
             check_operand(cx, dst, span, body, msrv)?;
@@ -371,7 +371,7 @@ fn check_terminator<'tcx>(
             let fn_ty = func.ty(body, cx.tcx);
             if let ty::FnDef(fn_def_id, fn_substs) = fn_ty.kind() {
                 // FIXME: when analyzing a function with generic parameters, we may not have enough information to
-                // resolve to an instance. However, we could check if a host effect predicate can guarantee that
+                // resolve to an instance. However, we could check if a host effect clause can guarantee that
                 // this can be made a `const` call.
                 let fn_def_id = match Instance::try_resolve(
                     cx.tcx,
@@ -492,7 +492,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
 
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligations(impl_src.nested_obligations());
-        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 
     !ty.needs_drop(tcx, ConstCx::new(tcx, body).typing_env)

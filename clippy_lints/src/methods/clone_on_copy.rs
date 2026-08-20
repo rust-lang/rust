@@ -3,6 +3,7 @@ use clippy_utils::peel_hir_expr_refs;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{BindingMode, ByRef, Expr, ExprKind, MatchSource, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -35,7 +36,7 @@ fn check_parent_is_suffix_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> ParentI
                 if matches!(
                     hir_callee.kind,
                     ExprKind::Path(qpath)
-                    if cx.tcx.qpath_is_lang_item(qpath, rustc_hir::LangItem::TryTraitBranch)
+                    if cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitBranch)
                 ) {
                     ParentIsSuffixExpr::Yes
                 } else {

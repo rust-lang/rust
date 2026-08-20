@@ -7,6 +7,7 @@ use hir::ExprKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::PatKind;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::LateContext;
 use rustc_span::{Span, Symbol};
 
@@ -101,7 +102,7 @@ pub(super) fn check<'tcx>(
     else if search_method == sym::find {
         let is_string_or_str_slice = |e| {
             let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
-            if self_ty.is_lang_item(cx, hir::LangItem::String) {
+            if self_ty.is_lang_item(cx, LangItem::String) {
                 true
             } else {
                 self_ty.is_str()

@@ -5,7 +5,8 @@ use clippy_utils::source::{SpanExt as _, indent_of, reindent_multiline};
 use clippy_utils::sym;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::{Span, Spanned};
 

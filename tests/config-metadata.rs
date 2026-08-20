@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![allow(unused_extern_crates)]
 
 extern crate rustc_driver;
 

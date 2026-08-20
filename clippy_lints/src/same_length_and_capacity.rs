@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::{eq_expr_value, sym};
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym as rustc_sym;

@@ -5,8 +5,9 @@ use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::visitors::find_all_ret_expressions;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::QPath;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{LangItem, QPath};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 

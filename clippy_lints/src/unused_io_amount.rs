@@ -4,6 +4,7 @@ use clippy_utils::res::MaybeDef as _;
 use clippy_utils::{paths, peel_blocks, sym};
 use hir::{ExprKind, HirId, PatKind};
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -139,7 +140,7 @@ fn non_consuming_err_arm<'a>(cx: &LateContext<'a>, arm: &hir::Arm<'a>) -> bool {
         return cx
             .qpath_res(path, inner_pat.hir_id)
             .ctor_parent(cx)
-            .is_lang_item(cx, hir::LangItem::ResultErr);
+            .is_lang_item(cx, LangItem::ResultErr);
     }
 
     false
@@ -203,7 +204,7 @@ fn is_ok_wild_or_dotdot_pattern<'a>(cx: &LateContext<'a>, pat: &hir::Pat<'a>) ->
 
     if let PatKind::TupleStruct(ref path, inner_pat, _) = pat.kind
         // we check against Result::Ok to avoid linting on Err(_) or something else.
-        && cx.qpath_res(path, pat.hir_id).ctor_parent(cx).is_lang_item(cx, hir::LangItem::ResultOk)
+        && cx.qpath_res(path, pat.hir_id).ctor_parent(cx).is_lang_item(cx, LangItem::ResultOk)
     {
         if matches!(inner_pat, []) {
             return true;
@@ -256,7 +257,7 @@ fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 fn unpack_try<'a>(cx: &LateContext<'_>, mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     while let ExprKind::Call(func, [arg_0]) = expr.kind
         && let ExprKind::Path(qpath) = func.kind
-        && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::TryTraitBranch)
+        && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitBranch)
     {
         expr = arg_0;
     }
@@ -276,7 +277,7 @@ fn unpack_await<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'a>) -> &'a hir::E
     if let ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind
         && let ExprKind::Call(func, [arg_0]) = expr.kind
         && let ExprKind::Path(qpath) = func.kind
-        && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::IntoFutureIntoFuture)
+        && cx.tcx.qpath_is_lang_item(qpath, LangItem::IntoFutureIntoFuture)
     {
         return arg_0;
     }

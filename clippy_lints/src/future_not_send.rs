@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             // This is to prevent emitting warnings for e.g. holding a `<Fut as Future>::Output` across await
             // points, where `Fut` is a type parameter.
 
-            let is_send = send_errors.iter().all(|err| {
+            let is_send = send_errors.as_slice().iter().all(|err| {
                 err.obligation
                     .predicate
                     .as_trait_clause()

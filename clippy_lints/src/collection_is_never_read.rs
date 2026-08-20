@@ -3,7 +3,8 @@ use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::visitors::{Visitable, for_each_expr};
 use clippy_utils::{get_enclosing_block, sym};
 use core::ops::ControlFlow;
-use rustc_hir::{Body, ExprKind, HirId, LangItem, LetStmt, Node, PatKind};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{Body, ExprKind, HirId, LetStmt, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 

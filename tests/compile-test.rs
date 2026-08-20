@@ -52,7 +52,9 @@ fn internal_extern_flags() -> Vec<String> {
         path.set_extension("d");
         fs::read_to_string(path).unwrap()
     };
-    let mut crates = BTreeMap::<&str, &str>::new();
+    // Map `crate_name` -> (`hash`, [`path1`, `path2`, ...]). Important for `rlib`s, as cargo now
+    // defaults to `-Zembed-metadata=no`, so the `rlib` only contains a metadata stub.
+    let mut crates = BTreeMap::<&str, (&str, Vec<&str>)>::new();
     for line in current_exe_depinfo.lines() {
         // each dependency is expected to have a Makefile rule like `/path/to/crate-hash.rlib:`
         let parse_name_path = || {
@@ -61,20 +63,25 @@ fn internal_extern_flags() -> Vec<String> {
             }
             let path_str = line.strip_suffix(':')?;
             let path = Path::new(path_str);
-            if !matches!(path.extension()?.to_str()?, "rlib" | "so" | "dylib" | "dll") {
+            if !matches!(path.extension()?.to_str()?, "rlib" | "so" | "dylib" | "dll" | "rmeta") {
                 return None;
             }
-            let (name, _hash) = path.file_stem()?.to_str()?.rsplit_once('-')?;
+            let (name, hash) = path.file_stem()?.to_str()?.rsplit_once('-')?;
             // the "lib" prefix is not present for dll files
             let name = name.strip_prefix("lib").unwrap_or(name);
-            Some((name, path_str))
+            Some((name, hash, path_str))
         };
-        if let Some((name, path)) = parse_name_path()
+        if let Some((name, hash, path)) = parse_name_path()
             && INTERNAL_TEST_DEPENDENCIES.contains(&name)
         {
-            // A dependency may be listed twice if it is available in sysroot,
-            // and the sysroot dependencies are listed first.
-            crates.insert(name, path);
+            // A dependency may be listed twice (identified by the hash) if it is available in sysroot,
+            // and the sysroot dependencies are listed first. So only keep the last dependency.
+            let (old_hash, items) = crates.entry(name).or_insert((hash, Vec::new()));
+            if *old_hash != hash {
+                *old_hash = hash;
+                items.clear();
+            }
+            items.push(path);
         }
     }
     let not_found: Vec<&str> = INTERNAL_TEST_DEPENDENCIES
@@ -93,7 +100,7 @@ fn internal_extern_flags() -> Vec<String> {
 
     let mut args: Vec<String> = crates
         .into_iter()
-        .map(|(name, path)| format!("--extern={name}={path}"))
+        .flat_map(|(name, (_, paths))| paths.into_iter().map(move |path| format!("--extern={name}={path}")))
         .collect();
 
     if deps_path.ends_with("deps") {

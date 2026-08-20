@@ -4,7 +4,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::{is_none_expr, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::LangItem::OptionSome;
+use rustc_hir::attrs::lang_items::LangItem::OptionSome;
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
