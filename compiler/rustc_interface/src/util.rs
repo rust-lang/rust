@@ -74,6 +74,9 @@ pub(crate) fn add_configuration(
     if target_config.has_reliable_f16_math {
         cfg.insert((sym::target_has_reliable_f16_math, None));
     }
+    if target_config.has_reliable_f16b {
+        cfg.insert((sym::target_has_reliable_f16b, None));
+    }
     if target_config.has_reliable_f128 {
         cfg.insert((sym::target_has_reliable_f128, None));
     }
@@ -397,6 +400,7 @@ impl CodegenBackend for DummyCodegenBackend {
             internal_target_features,
             has_reliable_f16: true,
             has_reliable_f16_math: true,
+            has_reliable_f16b: true,
             has_reliable_f128: true,
             has_reliable_f128_math: true,
         }
