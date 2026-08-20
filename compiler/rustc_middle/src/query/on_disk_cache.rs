@@ -114,11 +114,11 @@ struct Footer {
 struct SourceFileIndex(u32);
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Encodable, Decodable)]
-pub struct AbsoluteBytePos(u64);
+struct AbsoluteBytePos(u64);
 
 impl AbsoluteBytePos {
     #[inline]
-    pub fn new(pos: usize) -> AbsoluteBytePos {
+    fn new(pos: usize) -> AbsoluteBytePos {
         AbsoluteBytePos(pos.try_into().expect("Incremental cache file size overflowed u64."))
     }
 
