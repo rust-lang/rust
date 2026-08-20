@@ -77,6 +77,16 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Self::PredefinedOpaques {
         self.mk_predefined_opaques_in_body(data)
     }
+
+    type HiddenTypesOfOpaques = solve::HiddenTypesOfOpaques<'tcx>;
+
+    fn mk_hidden_types_of_opaques_in_body(
+        self,
+        data: &[(Ty<'tcx>, Option<ty::OpaqueHiddenTyBound<'tcx>>)],
+    ) -> Self::HiddenTypesOfOpaques {
+        self.mk_hidden_types_of_opaques_in_body(data)
+    }
+
     type LocalDefIds = &'tcx ty::List<LocalDefId>;
     type CanonicalVarKinds = CanonicalVarKinds<'tcx>;
     fn mk_canonical_var_kinds(

@@ -4,8 +4,8 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::{
-    FetchEligibleAssocItemResponse, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased,
-    RerunNonErased, RerunReason, RerunResultExt,
+    AliasBoundKind, FetchEligibleAssocItemResponse, NoSolutionOrRerunNonErased,
+    QueryResultOrRerunNonErased, RerunNonErased, RerunReason, RerunResultExt,
 };
 use rustc_type_ir::{
     self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Unnormalized, Upcast as _,
@@ -1082,6 +1082,46 @@ where
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         unreachable!("try_as_dyn helper trait doesn't have assoc types")
+    }
+
+    fn consider_hidden_types_of_opaques_bound_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        bound: ty::OpaqueHiddenTyBound<I>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        let NormalizesTo { alias, term } = goal.predicate;
+        let cx = ecx.cx();
+        let assumption = bound.instantiate(cx, alias.self_ty());
+        Self::probe_and_match_goal_against_assumption(
+            ecx,
+            CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
+            goal,
+            assumption,
+            |ecx| {
+                // Add self bounds for `<Hidden as Trait>::Assoc`. Those bounds should be added to
+                // storage if and only if `<Hidden as Trait>` is proven by
+                // `ty::OpaqueHiddenTyBound` of an opaque (or another assoc ty on it), otherwise
+                // it might make blaket impl candidate inapplicable.
+                // See `tests/ui/impl-trait/non-defining-uses/use-blanket-impl.rs` for such case.
+                if let ty::AliasTermKind::ProjectionTy { def_id } = alias.kind {
+                    ecx.add_hidden_type_of_opaque(
+                        term.expect_ty(),
+                        ty::OpaqueHiddenTyBound::iter_self_bounds_for_alias_ty(
+                            cx,
+                            ty::AliasTy::new_from_args(
+                                cx,
+                                ty::AliasTyKind::Projection { def_id },
+                                alias.args,
+                            ),
+                        ),
+                    );
+                }
+
+                // We want to reprove this goal once we've inferred the
+                // hidden type, so we force the certainty to `Maybe`.
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            },
+        )
     }
 }
 

@@ -22,7 +22,7 @@ use rustc_type_ir::{
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
 
-use super::has_only_region_constraints;
+use super::has_only_region_constraints_in_caller;
 use crate::canonical::{
     canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
     response_no_constraints_raw,
@@ -550,6 +550,21 @@ where
             assert!(delegate.clone_opaque_types_lookup_table().is_empty());
         }
 
+        for chunk in input.hidden_types_of_opaques_in_body.as_slice().chunk_by(|a, b| a.0 == b.0) {
+            debug_assert!(chunk.iter().filter(|(_hidden_ty, bound)| bound.is_none()).count() <= 1);
+
+            let (hidden_ty, bound) = chunk.first().unwrap();
+
+            if bound.is_none() {
+                delegate.add_hidden_type_of_opaque(*hidden_ty, None);
+            } else {
+                delegate.add_hidden_type_of_opaque(
+                    *hidden_ty,
+                    chunk.iter().flat_map(|(_, bound)| *bound),
+                );
+            }
+        }
+
         let mut ecx = EvalCtxt {
             delegate,
             var_kinds: canonical_input.canonical.var_kinds,
@@ -661,7 +676,9 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let (goal, opaque_types) = eager_resolve_vars(&**self.delegate, (goal, opaque_types));
+        let hidden_types_of_opaques = self.delegate.clone_hidden_types_of_opaques();
+        let (goal, opaque_types, hidden_types_of_opaques) =
+            eager_resolve_vars(&**self.delegate, (goal, opaque_types, hidden_types_of_opaques));
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
@@ -718,6 +735,7 @@ where
                     self.delegate,
                     goal,
                     &[],
+                    &[],
                     TypingMode::ErasedNotCoherence(MayBeErased),
                 );
 
@@ -758,8 +776,13 @@ where
                 }
             }
 
-            let (orig_values, canonical_goal) =
-                canonicalize_goal(self.delegate, goal, &opaque_types, typing_mode);
+            let (orig_values, canonical_goal) = canonicalize_goal(
+                self.delegate,
+                goal,
+                &opaque_types,
+                &hidden_types_of_opaques,
+                typing_mode,
+            );
 
             let (canonical_result, accessed_opaques) = self.search_graph.evaluate_goal(
                 self.cx(),
@@ -790,8 +813,11 @@ where
 
         drop(tracing_span);
 
-        let has_changed =
-            if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
+        let has_changed = if !self.response_has_only_region_constraints_in_caller(response) {
+            HasChanged::Yes
+        } else {
+            HasChanged::No
+        };
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
@@ -1384,6 +1410,14 @@ where
         self.delegate.register_hidden_type_in_storage(opaque_type_key, hidden_ty, self.origin_span)
     }
 
+    pub(super) fn add_hidden_type_of_opaque(
+        &self,
+        hidden_ty: I::Ty,
+        bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<I>>,
+    ) {
+        self.delegate.add_hidden_type_of_opaque(hidden_ty, bounds);
+    }
+
     pub(super) fn add_item_bounds_for_hidden_type(
         &mut self,
         opaque_def_id: I::OpaqueTyId,
@@ -1493,12 +1527,12 @@ where
         Ok(may_use_unstable_feature(&**self.delegate, param_env, symbol))
     }
 
-    pub(crate) fn opaques_with_sub_unified_hidden_type(
+    pub(crate) fn hidden_types_of_opaques_modulo_sub_unification(
         &self,
         self_ty: I::Ty,
-    ) -> Vec<ty::OpaqueAliasTy<I>> {
+    ) -> Vec<(I::Ty, Vec<ty::OpaqueHiddenTyBound<I>>)> {
         if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
-            self.delegate.opaques_with_sub_unified_hidden_type(vid)
+            self.delegate.hidden_types_of_opaques_modulo_sub_unification(vid)
         } else {
             vec![]
         }
@@ -1611,6 +1645,8 @@ where
             r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
         }
 
+        external_constraints.hidden_types_of_opaques.retain(|(hidden_ty, _)| hidden_ty.is_ty_var());
+
         let canonical = canonicalize_response(
             self.delegate,
             self.max_input_universe,
@@ -1684,15 +1720,21 @@ where
         //
         // Constraints for any existing opaque types are already tracked by changes
         // to the `var_values`.
-        let opaque_types = self
-            .delegate
-            .clone_opaque_types_added_since(self.initial_opaque_types_storage_num_entries);
+        let initial_entries = &self.initial_opaque_types_storage_num_entries;
+        let opaque_types = self.delegate.clone_opaque_types_added_since(initial_entries);
+        let hidden_types_of_opaques =
+            self.delegate.clone_hidden_types_of_opaques_added_since(initial_entries);
 
         if self.typing_mode().is_erased_not_coherence() {
-            assert!(opaque_types.is_empty());
+            assert!(opaque_types.is_empty() && hidden_types_of_opaques.is_empty());
         }
 
-        ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
+        ExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            hidden_types_of_opaques,
+            normalization_nested_goals,
+        }
     }
 
     pub(super) fn normalize<T: TypeFoldable<I>>(
@@ -1727,6 +1769,13 @@ where
             Ok((self.resolve_vars_if_possible(infer_term), normalization_was_ambiguous))
         });
         value.try_fold_with(&mut folder)
+    }
+
+    fn response_has_only_region_constraints_in_caller(
+        &self,
+        response: ty::Canonical<I, Response<I>>,
+    ) -> bool {
+        has_only_region_constraints_in_caller(self.delegate, response)
     }
 }
 
@@ -1857,11 +1906,18 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     root_depth: usize,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
-    let (goal, opaque_types) = eager_resolve_vars(&**delegate, (goal, opaque_types));
+    let hidden_types_of_opaques = delegate.clone_hidden_types_of_opaques();
+    let (goal, opaque_types, hidden_types_of_opaques) =
+        eager_resolve_vars(&**delegate, (goal, opaque_types, hidden_types_of_opaques));
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
 
-    let (orig_values, canonical_goal) =
-        canonicalize_goal(delegate, goal, &opaque_types, typing_mode.into());
+    let (orig_values, canonical_goal) = canonicalize_goal(
+        delegate,
+        goal,
+        &opaque_types,
+        &hidden_types_of_opaques,
+        typing_mode.into(),
+    );
 
     let (canonical_result, final_revision) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal, root_depth);
