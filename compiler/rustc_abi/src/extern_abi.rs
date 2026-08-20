@@ -54,8 +54,7 @@ pub enum ExternAbi {
     /// This ABI is not stable, and relies on LLVM implementation details.
     RustTail,
 
-    /// Unstable impl detail that directly uses Rust types to describe the ABI to LLVM.
-    /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
+    /// Unstable ABI used to call LLVM intrinsics.
     LlvmIntrinsic,
 
     /// An ABI that rustc does not know how to call or define. Functions with this ABI can
