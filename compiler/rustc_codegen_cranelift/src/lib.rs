@@ -31,7 +31,6 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::cell::OnceCell;
 use std::env;
 use std::sync::Arc;
 
@@ -43,7 +42,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::WorkProductMap;
 use rustc_session::config::{NATIVE_CPU, OutputFilenames};
-use rustc_session::{IncrCompSession, Session};
+use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, CfgAbi, Env, Os};
 
@@ -118,7 +117,8 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: OnceCell<BackendConfig>,
+    // `None` before `init`, `Some` after.
+    pub config: Option<BackendConfig>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -126,13 +126,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
         "cranelift"
     }
 
-    fn init(&self, sess: &Session) {
-        use rustc_session::config::{InstrumentCoverage, Lto};
-        match sess.lto() {
-            Lto::No | Lto::ThinLocal => {}
-            Lto::Thin | Lto::Fat => {
-                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift");
+    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
+        use rustc_session::config::{InstrumentCoverage, LtoCli};
+
+        match (sess.target.requires_lto, sess.early_lto()) {
+            (true, _) | (false, LtoCli::Yes | LtoCli::Fat | LtoCli::NoParam | LtoCli::Thin) => {
+                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift")
             }
+            (false, LtoCli::Unspecified | LtoCli::No) => {}
         }
 
         if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
@@ -140,18 +141,19 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
         }
 
-        let config = self.config.get_or_init(|| {
-            BackendConfig::from_opts(&sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| sess.dcx().fatal(err))
-        });
+        let config = BackendConfig::from_opts(&sess.opts.cg.llvm_args)
+            .unwrap_or_else(|err| sess.dcx().fatal(err));
 
         if config.jit_mode && !sess.opts.output_types.should_codegen() {
             sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
-    }
+        self.config = Some(config);
 
-    fn thin_lto_supported(&self) -> bool {
-        false
+        CodegenBackendInit {
+            replaced_intrinsics: vec![],
+            fallback_intrinsics: vec![sym::type_id_eq],
+            thin_lto_supported: false,
+        }
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
@@ -215,7 +217,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
-        let config = self.config.get().unwrap();
+        let config = self.config.as_ref().unwrap();
         if config.jit_mode {
             #[cfg(feature = "jit")]
             driver::jit::run_jit(tcx, self.target_cpu(tcx.sess), config.jit_args.clone());
@@ -239,10 +241,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<driver::aot::AotDriver>>()
             .unwrap()
             .join(sess, incr_comp_session, crate_info)
-    }
-
-    fn fallback_intrinsics(&self) -> Vec<Symbol> {
-        vec![sym::type_id_eq]
     }
 }
 
@@ -375,5 +373,5 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend { config: OnceCell::new() })
+    Box::new(CraneliftCodegenBackend { config: None })
 }

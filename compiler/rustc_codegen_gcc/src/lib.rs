@@ -69,12 +69,10 @@ mod type_of;
 
 use std::any::Any;
 use std::ffi::CString;
-use std::fmt::Debug;
 use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
@@ -95,7 +93,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_session::{IncrCompSession, Session};
+use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
@@ -116,7 +114,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 #[cfg(not(feature = "master"))]
 #[derive(Debug)]
 pub struct TargetInfo {
-    supports_128bit_integers: AtomicBool,
+    supports_128bit_integers: bool,
 }
 
 #[cfg(not(feature = "master"))]
@@ -128,7 +126,7 @@ impl TargetInfo {
     fn supports_target_dependent_type(&self, typ: CType) -> bool {
         match typ {
             CType::UInt128t | CType::Int128t => {
-                if self.supports_128bit_integers.load(Ordering::SeqCst) {
+                if self.supports_128bit_integers {
                     return true;
                 }
             }
@@ -138,41 +136,24 @@ impl TargetInfo {
     }
 }
 
+type SharedTargetInfo = Arc<IntoDynSyncSend<TargetInfo>>;
+
 #[derive(Clone)]
-pub struct LockedTargetInfo {
-    info: Arc<Mutex<IntoDynSyncSend<Option<TargetInfo>>>>,
-}
-
-impl Debug for LockedTargetInfo {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.info.lock().expect("lock").fmt(formatter)
-    }
-}
-
-impl LockedTargetInfo {
-    fn cpu_supports(&self, feature: &str) -> bool {
-        self.info
-            .lock()
-            .expect("lock")
-            .as_ref()
-            .expect("target info not initialized")
-            .cpu_supports(feature)
-    }
-
-    fn supports_target_dependent_type(&self, typ: CType) -> bool {
-        self.info
-            .lock()
-            .expect("lock")
-            .as_ref()
-            .expect("target info not initialized")
-            .supports_target_dependent_type(typ)
-    }
+pub struct BackendConfig {
+    target_info: SharedTargetInfo,
+    lto_supported: bool,
 }
 
 #[derive(Clone)]
 pub struct GccCodegenBackend {
-    target_info: LockedTargetInfo,
-    lto_supported: Arc<AtomicBool>,
+    // `None` before `init`, `Some` after.
+    pub config: Option<BackendConfig>,
+}
+
+impl GccCodegenBackend {
+    fn config(&self) -> &BackendConfig {
+        self.config.as_ref().expect("target info not initialized")
+    }
 }
 
 fn load_libgccjit_if_needed(libgccjit_target_lib_file: &Path) {
@@ -195,8 +176,8 @@ impl CodegenBackend for GccCodegenBackend {
         "gcc"
     }
 
-    fn init(&self, sess: &Session) {
-        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
+    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
+        fn file_path(sysroot_path: &Path, sess: &EarlySession) -> PathBuf {
             let rustlib_path =
                 rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
             sysroot_path
@@ -232,7 +213,7 @@ impl CodegenBackend for GccCodegenBackend {
         {
             gccjit::set_lang_name(c"GNU Rust");
 
-            let target_cpu = target_cpu(sess);
+            let target_cpu = target_cpu(&sess.opts, &sess.target);
 
             // Get the second TargetInfo with the correct CPU features by setting the arch.
             let context = Context::default();
@@ -240,14 +221,10 @@ impl CodegenBackend for GccCodegenBackend {
                 context.add_command_line_option(format!("-march={}", target_cpu));
             }
 
-            *self.target_info.info.lock().expect("lock") =
-                IntoDynSyncSend(Some(context.get_target_info()));
-        }
-
-        #[cfg(feature = "master")]
-        {
-            let lto_supported = gccjit::is_lto_supported();
-            self.lto_supported.store(lto_supported, Ordering::SeqCst);
+            self.config = Some(BackendConfig {
+                target_info: Arc::new(IntoDynSyncSend(context.get_target_info())),
+                lto_supported: gccjit::is_lto_supported(),
+            });
 
             gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
         }
@@ -264,20 +241,19 @@ impl CodegenBackend for GccCodegenBackend {
                 gccjit::OutputKind::Assembler,
                 temp_file.to_str().expect("path to str"),
             );
-            self.target_info
-                .info
-                .lock()
-                .expect("lock")
-                .0
-                .as_ref()
-                .expect("target info not initialized")
-                .supports_128bit_integers
-                .store(check_context.get_last_error() == Ok(None), Ordering::SeqCst);
+            let target_info =
+                TargetInfo { supports_128bit_integers: check_context.get_last_error() == Ok(None) };
+            self.config = Some(BackendConfig {
+                target_info: Arc::new(IntoDynSyncSend(target_info)),
+                lto_supported: false,
+            });
         }
-    }
 
-    fn thin_lto_supported(&self) -> bool {
-        false
+        CodegenBackendInit {
+            replaced_intrinsics: vec![],
+            fallback_intrinsics: vec![sym::type_id_eq],
+            thin_lto_supported: false,
+        }
     }
 
     fn provide(&self, providers: &mut Providers) {
@@ -286,7 +262,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn target_cpu(&self, sess: &Session) -> String {
-        target_cpu(sess).to_owned()
+        target_cpu(&sess.opts, &sess.target).to_owned()
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
@@ -308,11 +284,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
-        target_config(sess, &self.target_info)
-    }
-
-    fn fallback_intrinsics(&self) -> Vec<Symbol> {
-        vec![sym::type_id_eq]
+        target_config(sess, &self.config().target_info)
     }
 }
 
@@ -346,12 +318,11 @@ impl ExtraBackendMethods for GccCodegenBackend {
         module_name: &str,
         methods: &[AllocatorMethod],
     ) -> Self::Module {
-        let lto_supported = self.lto_supported.load(Ordering::SeqCst);
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
             relocation_model: tcx.sess.relocation_model(),
             lto_mode: LtoMode::None,
-            lto_supported,
+            lto_supported: self.config().lto_supported,
             temp_dir: None,
         };
 
@@ -366,12 +337,8 @@ impl ExtraBackendMethods for GccCodegenBackend {
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64) {
-        base::compile_codegen_unit(
-            tcx,
-            cgu_name,
-            self.target_info.clone(),
-            self.lto_supported.load(Ordering::SeqCst),
-        )
+        let config = self.config();
+        base::compile_codegen_unit(tcx, cgu_name, config.target_info.clone(), config.lto_supported)
     }
 }
 
@@ -500,21 +467,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 /// This is the entrypoint for a hot plugged rustc_codegen_gccjit
 #[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    #[cfg(feature = "master")]
-    let info = {
-        // Check whether the target supports 128-bit integers, and sized floating point types (like
-        // Float16).
-        Arc::new(Mutex::new(IntoDynSyncSend(None)))
-    };
-    #[cfg(not(feature = "master"))]
-    let info = Arc::new(Mutex::new(IntoDynSyncSend(Some(TargetInfo {
-        supports_128bit_integers: AtomicBool::new(false),
-    }))));
-
-    Box::new(GccCodegenBackend {
-        lto_supported: Arc::new(AtomicBool::new(false)),
-        target_info: LockedTargetInfo { info },
-    })
+    Box::new(GccCodegenBackend { config: None })
 }
 
 fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
@@ -531,7 +484,7 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 }
 
 /// Returns the features that should be set in `cfg(target_feature)`.
-fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig {
+fn target_config(sess: &Session, target_info: &SharedTargetInfo) -> TargetConfig {
     let internal_target_features = internal_target_features(
         sess,
         |feature| to_gcc_features(sess, feature),

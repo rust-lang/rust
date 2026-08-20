@@ -22,7 +22,10 @@ use rustc_session::config::{
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib};
-use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, getopts};
+use rustc_session::{
+    CodegenBackendInit, CompilerIO, EarlyDiagCtxt, Session, build_early_session, build_session,
+    getopts,
+};
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, sym};
@@ -66,13 +69,13 @@ where
 
         static USING_INTERNAL_FEATURES: AtomicBool = AtomicBool::new(false);
 
+        let sess = build_early_session(sessopts, target, None);
         let sess = build_session(
-            sessopts,
+            sess,
+            CodegenBackendInit::default(),
             io,
             Default::default(),
-            target,
             "",
-            None,
             &USING_INTERNAL_FEATURES,
         );
         let cfg = parse_cfg(sess.dcx(), matches.opt_strs("cfg"));

@@ -966,9 +966,9 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             return llpersonality;
         }
 
-        let name = if wants_msvc_seh(self.sess()) {
+        let name = if wants_msvc_seh(&self.sess().target) {
             Some("__CxxFrameHandler3")
-        } else if wants_wasm_eh(self.sess()) {
+        } else if wants_wasm_eh(&self.sess().target) {
             // LLVM specifically tests for the name of the personality function
             // There is no need for this function to exist anywhere, it will
             // not be called. However, its name has to be "__gxx_wasm_personality_v0"
