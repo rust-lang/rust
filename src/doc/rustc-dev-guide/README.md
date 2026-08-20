@@ -35,7 +35,7 @@ Check out the forge documentation for [our policy][forge_policy].
 To build a local static HTML site, install [`mdbook`](https://github.com/rust-lang/mdBook) with:
 
 ```
-cargo install mdbook mdbook-linkcheck2 mdbook-mermaid
+cargo install --locked mdbook mdbook-linkcheck2 mdbook-mermaid
 ```
 
 and execute the following command in the root of the repository:
