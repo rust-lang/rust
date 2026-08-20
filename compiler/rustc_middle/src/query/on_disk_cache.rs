@@ -335,13 +335,6 @@ impl OnDiskCache {
         side_effect
     }
 
-    /// Returns true if there is a disk-cached query return value for the given node.
-    #[inline]
-    pub fn loadable_from_disk(&self, dep_node_index: SerializedDepNodeIndex) -> bool {
-        self.query_values_index.contains_key(&dep_node_index)
-        // with_decoder is infallible, so we can stop here
-    }
-
     /// Returns the disk-cached query return value for the given node, if there is one.
     pub fn try_load_query_value<'tcx, T>(
         &self,
