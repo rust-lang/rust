@@ -252,3 +252,20 @@ fn test_vld1q_lane_u64_unaligned() {
     };
     assert_eq!(r, u64x2::new(10, e));
 }
+
+#[simd_test(enable = "neon")]
+fn test_vld1q_dup_u32_unaligned() {
+    // ld1r replicate loads impose no alignment requirement either.
+    let a: [u8; 5] = [0, 1, 2, 3, 4];
+    let e = u32::from_ne_bytes([1, 2, 3, 4]);
+    let r = unsafe { u32x4::from(vld1q_dup_u32(a.as_ptr().add(1) as *const u32)) };
+    assert_eq!(r, u32x4::new(e, e, e, e));
+}
+
+#[simd_test(enable = "neon")]
+fn test_vld1q_dup_u64_unaligned() {
+    let a: [u8; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let e = u64::from_ne_bytes([1, 2, 3, 4, 5, 6, 7, 8]);
+    let r = unsafe { u64x2::from(vld1q_dup_u64(a.as_ptr().add(1) as *const u64)) };
+    assert_eq!(r, u64x2::new(e, e));
+}

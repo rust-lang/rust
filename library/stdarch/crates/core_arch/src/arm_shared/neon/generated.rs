@@ -18279,7 +18279,7 @@ pub unsafe fn vld1q_dup_f16(ptr: *const f16) -> float16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
-    transmute(f32x2::splat(*ptr))
+    transmute(f32x2::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_p16)"]
@@ -18302,7 +18302,7 @@ pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_p16(ptr: *const p16) -> poly16x4_t {
-    transmute(u16x4::splat(*ptr))
+    transmute(u16x4::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_p8)"]
@@ -18325,7 +18325,7 @@ pub unsafe fn vld1_dup_p16(ptr: *const p16) -> poly16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_p8(ptr: *const p8) -> poly8x8_t {
-    transmute(u8x8::splat(*ptr))
+    transmute(u8x8::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_s16)"]
@@ -18348,7 +18348,7 @@ pub unsafe fn vld1_dup_p8(ptr: *const p8) -> poly8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_s16(ptr: *const i16) -> int16x4_t {
-    transmute(i16x4::splat(*ptr))
+    transmute(i16x4::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_s32)"]
@@ -18371,7 +18371,7 @@ pub unsafe fn vld1_dup_s16(ptr: *const i16) -> int16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_s32(ptr: *const i32) -> int32x2_t {
-    transmute(i32x2::splat(*ptr))
+    transmute(i32x2::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_s8)"]
@@ -18394,7 +18394,7 @@ pub unsafe fn vld1_dup_s32(ptr: *const i32) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_s8(ptr: *const i8) -> int8x8_t {
-    transmute(i8x8::splat(*ptr))
+    transmute(i8x8::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_u16)"]
@@ -18417,7 +18417,7 @@ pub unsafe fn vld1_dup_s8(ptr: *const i8) -> int8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_u16(ptr: *const u16) -> uint16x4_t {
-    transmute(u16x4::splat(*ptr))
+    transmute(u16x4::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_u32)"]
@@ -18440,7 +18440,7 @@ pub unsafe fn vld1_dup_u16(ptr: *const u16) -> uint16x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_u32(ptr: *const u32) -> uint32x2_t {
-    transmute(u32x2::splat(*ptr))
+    transmute(u32x2::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_u8)"]
@@ -18463,7 +18463,7 @@ pub unsafe fn vld1_dup_u32(ptr: *const u32) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1_dup_u8(ptr: *const u8) -> uint8x8_t {
-    transmute(u8x8::splat(*ptr))
+    transmute(u8x8::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_f32)"]
@@ -18486,7 +18486,7 @@ pub unsafe fn vld1_dup_u8(ptr: *const u8) -> uint8x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_f32(ptr: *const f32) -> float32x4_t {
-    transmute(f32x4::splat(*ptr))
+    transmute(f32x4::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_p16)"]
@@ -18509,7 +18509,7 @@ pub unsafe fn vld1q_dup_f32(ptr: *const f32) -> float32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_p16(ptr: *const p16) -> poly16x8_t {
-    transmute(u16x8::splat(*ptr))
+    transmute(u16x8::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_p8)"]
@@ -18532,7 +18532,7 @@ pub unsafe fn vld1q_dup_p16(ptr: *const p16) -> poly16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_p8(ptr: *const p8) -> poly8x16_t {
-    transmute(u8x16::splat(*ptr))
+    transmute(u8x16::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_s16)"]
@@ -18555,7 +18555,7 @@ pub unsafe fn vld1q_dup_p8(ptr: *const p8) -> poly8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_s16(ptr: *const i16) -> int16x8_t {
-    transmute(i16x8::splat(*ptr))
+    transmute(i16x8::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_s32)"]
@@ -18578,7 +18578,7 @@ pub unsafe fn vld1q_dup_s16(ptr: *const i16) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_s32(ptr: *const i32) -> int32x4_t {
-    transmute(i32x4::splat(*ptr))
+    transmute(i32x4::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_s64)"]
@@ -18587,7 +18587,7 @@ pub unsafe fn vld1q_dup_s32(ptr: *const i32) -> int32x4_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1r)
@@ -18601,7 +18601,7 @@ pub unsafe fn vld1q_dup_s32(ptr: *const i32) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_s64(ptr: *const i64) -> int64x2_t {
-    transmute(i64x2::splat(*ptr))
+    transmute(i64x2::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_s8)"]
@@ -18624,7 +18624,7 @@ pub unsafe fn vld1q_dup_s64(ptr: *const i64) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_s8(ptr: *const i8) -> int8x16_t {
-    transmute(i8x16::splat(*ptr))
+    transmute(i8x16::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_u16)"]
@@ -18647,7 +18647,7 @@ pub unsafe fn vld1q_dup_s8(ptr: *const i8) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_u16(ptr: *const u16) -> uint16x8_t {
-    transmute(u16x8::splat(*ptr))
+    transmute(u16x8::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_u32)"]
@@ -18670,7 +18670,7 @@ pub unsafe fn vld1q_dup_u16(ptr: *const u16) -> uint16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_u32(ptr: *const u32) -> uint32x4_t {
-    transmute(u32x4::splat(*ptr))
+    transmute(u32x4::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_u64)"]
@@ -18679,7 +18679,7 @@ pub unsafe fn vld1q_dup_u32(ptr: *const u32) -> uint32x4_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1r)
@@ -18693,7 +18693,7 @@ pub unsafe fn vld1q_dup_u32(ptr: *const u32) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_u64(ptr: *const u64) -> uint64x2_t {
-    transmute(u64x2::splat(*ptr))
+    transmute(u64x2::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_u8)"]
@@ -18716,7 +18716,7 @@ pub unsafe fn vld1q_dup_u64(ptr: *const u64) -> uint64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vld1q_dup_u8(ptr: *const u8) -> uint8x16_t {
-    transmute(u8x16::splat(*ptr))
+    transmute(u8x16::splat(crate::ptr::read_unaligned(ptr)))
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_p64)"]
@@ -21734,7 +21734,7 @@ unsafe fn vld1q_v8f16(a: *const i8, b: i32) -> float16x8_t {
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1r)
