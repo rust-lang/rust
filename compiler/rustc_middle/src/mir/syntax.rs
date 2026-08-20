@@ -945,6 +945,9 @@ pub enum TerminatorKind<'tcx> {
         template: &'tcx [InlineAsmTemplatePiece],
 
         /// The operands for the inline assembly, as `Operand`s or `Place`s.
+        ///
+        /// For the purposes of MIR analyzes, `out` and `inout` operands are only considered
+        /// written-to when execution continues with `targets`.
         operands: Box<[InlineAsmOperand<'tcx>]>,
 
         /// Miscellaneous options for the inline assembly.
