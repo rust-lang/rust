@@ -4453,37 +4453,41 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Converts some constructs mapping an Enum value for equality comparison.
+    /// Converts some constructs mapping an enum value for equality or variant checks.
     ///
     /// ### Why is this bad?
     /// Calls such as `opt.map_or(false, |val| val == 5)` are needlessly long and cumbersome,
     /// and can be reduced to, for example, `opt == Some(5)` assuming `opt` implements `PartialEq`.
     /// Also, calls such as `opt.map_or(true, |val| val == 5)` can be reduced to
     /// `opt.is_none_or(|val| val == 5)`.
+    /// Calls that map the two variants of a `Result` to opposite boolean constants can be
+    /// reduced to `is_ok()` or `is_err()`.
     /// This lint offers readability and conciseness improvements.
     ///
     /// ### Example
     /// ```no_run
-    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    /// pub fn a(x: Option<i32>, result: Result<i32, i32>) -> (bool, bool, bool) {
     ///     (
     ///         x.map_or(false, |n| n == 5),
     ///         x.map_or(true, |n| n > 5),
+    ///         result.map_or_else(|_| false, |_| true),
     ///     )
     /// }
     /// ```
     /// Use instead:
     /// ```no_run
-    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    /// pub fn a(x: Option<i32>, result: Result<i32, i32>) -> (bool, bool, bool) {
     ///     (
     ///         x == Some(5),
     ///         x.is_none_or(|n| n > 5),
+    ///         result.is_ok(),
     ///     )
     /// }
     /// ```
     #[clippy::version = "1.84.0"]
     pub UNNECESSARY_MAP_OR,
     style,
-    "reduce unnecessary calls to `.map_or(bool, …)`"
+    "reduce unnecessary calls to `.map_or(bool, …)` and `.map_or_else(…, …)`"
 }
 
 declare_clippy_lint! {
@@ -5664,6 +5668,7 @@ impl Methods {
                 (sym::map_or_else, [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
                     unnecessary_map_or_else::check(cx, expr, recv, def, map, call_span);
+                    unnecessary_map_or::check_map_or_else(cx, expr, recv, def, map);
                 },
                 (sym::next, []) => {
                     if let Some((name2, recv2, args2, _, _)) = method_call(recv) {
