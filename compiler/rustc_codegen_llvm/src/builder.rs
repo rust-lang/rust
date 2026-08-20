@@ -2228,7 +2228,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         // bundles.
         // Once this is resolved, we should analyze each call and skip direct calls. See the
         // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
-        let discriminator = fn_abi?.ptrauth_discriminator;
+        //
+        // If sess().pointer_authentication_fn_ptr_type_discrimination() is enabled, this contains
+        // the function pointer type discriminator; otherwise, it is None and we fall back to the
+        // schema's constant discriminator.
+        let discriminator =
+            fn_abi?.ptrauth_discriminator.unwrap_or(schema.constant_discriminator.into());
 
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
