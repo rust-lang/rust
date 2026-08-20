@@ -23,13 +23,13 @@ pub(crate) fn expand_deriving_eq(
         path: path_std!(cmp::Eq),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
-        additional_bounds: Vec::new(),
+        additional_bounds: SmallVec::new(),
         supports_unions: true,
-        methods: vec![MethodDef {
+        methods: smallvec![MethodDef {
             name: sym::assert_fields_are_eq,
             generics: Bounds::empty(),
             explicit_self: true,
-            nonself_args: vec![],
+            nonself_args: smallvec![],
             ret_ty: Unit,
             attributes: thin_vec![
                 // This method will never be called, so doing codegen etc. for it is unnecessary.
@@ -41,7 +41,7 @@ pub(crate) fn expand_deriving_eq(
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(cs_total_eq_assert),
         }],
-        associated_types: Vec::new(),
+        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

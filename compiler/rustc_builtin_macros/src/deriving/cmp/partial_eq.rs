@@ -25,12 +25,12 @@ pub(crate) fn expand_deriving_partial_eq(
         // The `StructuralPartialEq` impl must have the *same* bounds as the `PartialEq` impl,
         // or it will apply in situations where it should not, such as in the bug
         // <https://github.com/rust-lang/rust/issues/147714>.
-        additional_bounds: vec![ty::Ty::Path(path_std!(cmp::PartialEq))],
+        additional_bounds: smallvec![ty::Ty::Path(path_std!(cmp::PartialEq))],
         // We really don't support unions, but that's already checked by the impl generated below;
         // a second check here would lead to redundant error messages.
         supports_unions: true,
-        methods: Vec::new(),
-        associated_types: Vec::new(),
+        methods: SmallVec::new(),
+        associated_types: SmallVec::new(),
         is_const: false,
         safety: Safety::Default,
         document: true,
@@ -39,11 +39,11 @@ pub(crate) fn expand_deriving_partial_eq(
 
     // No need to generate `ne`, the default suffices, and not generating it is
     // faster.
-    let methods = vec![MethodDef {
+    let methods = smallvec![MethodDef {
         name: sym::eq,
         generics: Bounds::empty(),
         explicit_self: true,
-        nonself_args: vec![(self_ref(), sym::other)],
+        nonself_args: smallvec![(self_ref(), sym::other)],
         ret_ty: Path(path_local!(bool)),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
@@ -57,10 +57,10 @@ pub(crate) fn expand_deriving_partial_eq(
         path: path_std!(cmp::PartialEq),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
-        additional_bounds: Vec::new(),
+        additional_bounds: SmallVec::new(),
         supports_unions: false,
         methods,
-        associated_types: Vec::new(),
+        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

@@ -26,13 +26,13 @@ pub(crate) fn expand_deriving_default(
         path: Path::new(vec![kw::Default, sym::Default]),
         skip_path_as_bound: has_a_default_variant(item),
         needs_copy_as_bound_if_packed: false,
-        additional_bounds: Vec::new(),
+        additional_bounds: SmallVec::new(),
         supports_unions: false,
-        methods: vec![MethodDef {
+        methods: smallvec![MethodDef {
             name: kw::Default,
             generics: Bounds::empty(),
             explicit_self: false,
-            nonself_args: Vec::new(),
+            nonself_args: SmallVec::new(),
             ret_ty: Self_,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
@@ -48,7 +48,7 @@ pub(crate) fn expand_deriving_default(
                 }
             }),
         }],
-        associated_types: Vec::new(),
+        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

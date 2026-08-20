@@ -6,10 +6,7 @@ use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::{Bounds, Path, PathKind, Ty};
-use crate::deriving::generic::{
-    BlockOrExpr, FieldlessVariantsStrategy, MethodDef, SubstructureFields, TraitDef,
-    combine_substructure,
-};
+use crate::deriving::generic::*;
 use crate::deriving::pathvec_std;
 use crate::diagnostics;
 
@@ -78,13 +75,13 @@ pub(crate) fn expand_deriving_from(
         path,
         skip_path_as_bound: true,
         needs_copy_as_bound_if_packed: false,
-        additional_bounds: Vec::new(),
+        additional_bounds: SmallVec::new(),
         supports_unions: false,
-        methods: vec![MethodDef {
+        methods: smallvec![MethodDef {
             name: sym::from,
             generics: Bounds { bounds: vec![] },
             explicit_self: false,
-            nonself_args: vec![(from_type, sym::value)],
+            nonself_args: smallvec![(from_type, sym::value)],
             ret_ty: Ty::Self_,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
@@ -124,7 +121,7 @@ pub(crate) fn expand_deriving_from(
                 BlockOrExpr::new_expr(expr)
             }),
         }],
-        associated_types: Vec::new(),
+        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

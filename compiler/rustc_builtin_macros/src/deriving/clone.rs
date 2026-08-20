@@ -38,7 +38,7 @@ pub(crate) fn expand_deriving_clone(
             | ItemKind::Enum(_, Generics { params, .. }, _) => {
                 let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
                 let has_derive_copy = cx.resolver.has_derive_copy(container_id);
-                bounds = vec![];
+                bounds = smallvec![];
                 if has_derive_copy
                     && !params
                         .iter()
@@ -53,7 +53,7 @@ pub(crate) fn expand_deriving_clone(
                 }
             }
             ItemKind::Union(..) => {
-                bounds = vec![Path(path_std!(marker::Copy))];
+                bounds = smallvec![Path(path_std!(marker::Copy))];
                 is_simple = true;
                 substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
             }
@@ -73,8 +73,8 @@ pub(crate) fn expand_deriving_clone(
             needs_copy_as_bound_if_packed: true,
             additional_bounds: bounds.clone(),
             supports_unions: true,
-            methods: Vec::new(),
-            associated_types: Vec::new(),
+            methods: SmallVec::new(),
+            associated_types: SmallVec::new(),
             is_const,
             safety: Safety::Unsafe(DUMMY_SP),
             // `TrivialClone` is not part of an API guarantee, so it shouldn't
@@ -92,17 +92,17 @@ pub(crate) fn expand_deriving_clone(
         needs_copy_as_bound_if_packed: true,
         additional_bounds: bounds,
         supports_unions: true,
-        methods: vec![MethodDef {
+        methods: smallvec![MethodDef {
             name: sym::clone,
             generics: Bounds::empty(),
             explicit_self: true,
-            nonself_args: Vec::new(),
+            nonself_args: SmallVec::new(),
             ret_ty: Self_,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: substructure,
         }],
-        associated_types: Vec::new(),
+        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

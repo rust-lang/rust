@@ -189,6 +189,7 @@ use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
@@ -211,14 +212,14 @@ pub(crate) struct TraitDef<'a> {
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    pub additional_bounds: Vec<Ty>,
+    pub additional_bounds: SmallVec<[Ty; 1]>,
 
     /// Can this trait be derived for unions?
     pub supports_unions: bool,
 
-    pub methods: Vec<MethodDef<'a>>,
+    pub methods: SmallVec<[MethodDef<'a>; 1]>,
 
-    pub associated_types: Vec<(Ident, Ty)>,
+    pub associated_types: SmallVec<[(Ident, Ty); 1]>,
 
     pub is_const: bool,
 
@@ -239,7 +240,7 @@ pub(crate) struct MethodDef<'a> {
     pub explicit_self: bool,
 
     /// Arguments other than the self argument.
-    pub nonself_args: Vec<(Ty, Symbol)>,
+    pub nonself_args: SmallVec<[(Ty, Symbol); 1]>,
 
     /// Returns type
     pub ret_ty: Ty,
