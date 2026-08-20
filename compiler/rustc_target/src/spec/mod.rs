@@ -2651,8 +2651,8 @@ pub struct TargetOptions {
     /// Use LLVM intrinsic for mcount function name
     pub llvm_mcount_intrinsic: Option<StaticCow<str>>,
 
-    /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
-    /// and the `-target-abi` flag in llc. In the LLVM API this is `MCOptions.ABIName`.
+    /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers and
+    /// the `-target-abi` flag in llc. In the LLVM API this is `MCTargetOptions::ABIName`.
     pub llvm_abiname: LlvmAbi,
 
     /// Control the float ABI to use, for architectures that support it. The only architecture we
