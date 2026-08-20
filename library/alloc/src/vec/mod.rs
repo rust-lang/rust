@@ -2715,7 +2715,9 @@ impl<T, A: Allocator> Vec<T, A> {
             vec: &'a mut Vec<T, A>,
         }
 
-        impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
+        impl<'a, T, A: core::alloc::Allocator> Drop for PanicGuard<'a, T, A> {
+            #[cold]
+            #[inline(never)]
             fn drop(&mut self) {
                 /* This code gets executed when `same_bucket` panics */
 
