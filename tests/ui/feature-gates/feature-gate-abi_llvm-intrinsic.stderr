@@ -2,8 +2,9 @@ error[E0658]: the extern "llvm-intrinsic" ABI is an implementation detail and pe
   --> $DIR/feature-gate-abi_llvm-intrinsic.rs:1:8
    |
 LL | extern "llvm-intrinsic" fn foo() {
-   |        ^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^
    |
+   = note: see issue #29602 <https://github.com/rust-lang/rust/issues/29602> for more information
    = help: add `#![feature(link_llvm_intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
