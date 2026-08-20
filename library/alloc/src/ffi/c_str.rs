@@ -481,7 +481,7 @@ impl CString {
     pub fn into_string(self) -> Result<String, IntoStringError> {
         String::from_utf8(self.into_bytes()).map_err(|e| IntoStringError {
             error: e.utf8_error(),
-            // SAFETY: Strings never contain null bytes.
+            // SAFETY: `CString`s never contain null bytes.
             inner: unsafe { Self::_from_vec_unchecked(e.into_bytes()) },
         })
     }
@@ -604,7 +604,8 @@ impl CString {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_boxed_c_str(self) -> Box<CStr> {
-        // SAFETY: Typecast of [u8] to CStr is valid and we know contents have no nulls.
+        // SAFETY: Typecast of [u8] to CStr is valid and we know contents have
+        // no nulls except for the terminating byte.
         unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut CStr) }
     }
 

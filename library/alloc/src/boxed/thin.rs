@@ -146,7 +146,7 @@ impl<T: ?Sized> Deref for ThinBox<T> {
         let value = self.data();
         let metadata = self.meta();
         let pointer = ptr::from_raw_parts(value as *const (), metadata);
-        // SAFETY: &ThinBox<T> is also a valid pointer for T.
+        // SAFETY: &ThinBox<T> points to a valid pointer for T.
         unsafe { &*pointer }
     }
 }
@@ -157,7 +157,7 @@ impl<T: ?Sized> DerefMut for ThinBox<T> {
         let value = self.data();
         let metadata = self.meta();
         let pointer = ptr::from_raw_parts_mut::<T>(value as *mut (), metadata);
-        // SAFETY: &mut ThinBox<T> is also a valid pointer for T.
+        // SAFETY: &mut ThinBox<T> points to a valid and unique pointer for T.
         unsafe { &mut *pointer }
     }
 }

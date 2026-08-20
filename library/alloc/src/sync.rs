@@ -1154,9 +1154,11 @@ impl<T, A: Allocator> Arc<T, A> {
         acquire!(this.inner().strong);
 
         let this = ManuallyDrop::new(this);
-        // SAFETY: Pointer is valid for reads.
+        // SAFETY: Pointer is valid for reads, contains initialised memory,
+        // and not dropped multiple times (we return it).
         let elem: T = unsafe { ptr::read(&this.ptr.as_ref().data) };
-        // SAFETY: As above.
+        // SAFETY: As above, but we explicitly drop the allocator only once
+        // upon creating and dropping a weak pointer.
         let alloc: A = unsafe { ptr::read(&this.alloc) }; // copy the allocator
 
         // Make a weak pointer to clean up the implicit strong-weak reference
@@ -2170,7 +2172,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     fn inner(&self) -> &ArcInner<T> {
         // SAFETY: While this arc is alive we're guaranteed
         // that the inner pointer is valid. Furthermore, we know that the
-        // `ArcInner` structure itself is `Sync` because the inner data is
+        // `ArcInner` structure itself is `Sync` if the inner data is
         // `Sync` as well, so we're ok loaning out an immutable pointer to these
         // contents.
         unsafe { self.ptr.as_ref() }
