@@ -8,7 +8,7 @@ source shared.sh
 # too old, and they do not support `SHF_GNU_RETAIN`.
 BINUTILS="2.47"
 BINUTILS_ROOT_PATH="$(pwd)/binutils-install"
-export BINUTILS_PATH="$BINUTILS_ROOT_PATH/bin"
+BINUTILS_PATH="$BINUTILS_ROOT_PATH/bin"
 curl https://ci-mirrors.rust-lang.org/rustc/gcc/binutils-$BINUTILS.tar.xz | xzcat | tar xf -
 mkdir binutils-build
 mkdir "$BINUTILS_ROOT_PATH"
