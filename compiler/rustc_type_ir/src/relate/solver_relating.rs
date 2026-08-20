@@ -240,11 +240,11 @@ where
     #[instrument(skip(self), level = "trace")]
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if self.cx().assumptions_on_binders() {
-            if a == b {
-                return Ok(a);
-            }
-
             match self.ambient_variance {
+                ty::Bivariant => {
+                    unreachable!("Expected bivariance to be handled in relate_with_variance")
+                }
+                _ if a == b => return Ok(a),
                 ty::Covariant => self
                     .infcx
                     .register_solver_region_constraint(RegionConstraint::RegionOutlives(a, b)),
@@ -256,9 +256,6 @@ where
                         .register_solver_region_constraint(RegionConstraint::RegionOutlives(a, b));
                     self.infcx
                         .register_solver_region_constraint(RegionConstraint::RegionOutlives(b, a));
-                }
-                ty::Bivariant => {
-                    unreachable!("Expected bivariance to be handled in relate_with_variance")
                 }
             }
         } else {
