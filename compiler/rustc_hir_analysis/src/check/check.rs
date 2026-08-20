@@ -1566,6 +1566,8 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
             // bools
             match element_ty.kind() {
                 ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Bool => (),
+                // We need to treat a `bfloat` (`f16b`) as a primitive scalar
+                ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::F16B) => (),
                 _ => {
                     let mut err = tcx.dcx().struct_span_err(
                         span,

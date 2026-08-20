@@ -36,6 +36,7 @@ check-cfg = [
     # gate tests.
     'cfg(target_has_reliable_f16)',
     'cfg(target_has_reliable_f16_math)',
+    'cfg(target_has_reliable_f16b)',
     'cfg(target_has_reliable_f128)',
     'cfg(target_has_reliable_f128_math)',
     # Prevents use of a static variable for providing platform specific RawOsError
