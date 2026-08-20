@@ -168,6 +168,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::needs_drop
         | sym::non_exhaustive
         | sym::offload
+        | sym::offload_get_num_devices
         | sym::offset_of
         | sym::overflow_checks
         | sym::powf16
@@ -384,10 +385,12 @@ pub(crate) fn check_intrinsic_type(
                 Ty::new_array_with_const_len(tcx, tcx.types.u32, Const::from_target_usize(tcx, 3)),
                 Ty::new_array_with_const_len(tcx, tcx.types.u32, Const::from_target_usize(tcx, 3)),
                 tcx.types.u32,
+                tcx.types.i32,
                 param(1),
             ],
             param(2),
         ),
+        sym::offload_get_num_devices => (0, 0, vec![], tcx.types.i32),
         sym::offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::arith_offset => (
             1,

@@ -26,4 +26,7 @@ fn main() {
 
     core::offload::offload! { kernel = kernel, args = (), dyn_cache = 0, dyn_cache = 8 }
     //~^ ERROR duplicate field `dyn_cache`
+
+    core::offload::offload! { kernel = kernel, args = (), device = 0, device = 1 }
+    //~^ ERROR duplicate field `device`
 }
