@@ -335,6 +335,7 @@ provide! { tcx, def_id, other, cdata,
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_private_dep => { cdata.private_dep }
+    is_direct_public_dep => { cdata.direct_public_dep }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
 
@@ -437,6 +438,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
         alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
         is_private_dep: |_tcx, LocalCrate| false,
+        is_direct_public_dep: |_tcx, LocalCrate| false,
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
