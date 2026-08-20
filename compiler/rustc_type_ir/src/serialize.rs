@@ -47,7 +47,7 @@ macro_rules! impl_binder_encode_decode {
 impl_binder_encode_decode! {
     ty::FnSig<I>,
     ty::FnSigTys<I>,
-    ty::TraitPredicate<I>,
+    ty::TraitClause<I>,
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,
     ty::ExistentialTraitRef<I>,

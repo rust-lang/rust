@@ -557,7 +557,7 @@ fn type_implements_negative_copy_modulo_regions<'tcx>(
 ) -> bool {
     let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
     let trait_ref = ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Copy, DUMMY_SP), [ty]);
-    let pred = ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Negative };
+    let pred = ty::TraitClause { trait_ref, polarity: ty::ClausePolarity::Negative };
     let obligation = traits::Obligation {
         cause: traits::ObligationCause::dummy(),
         param_env,

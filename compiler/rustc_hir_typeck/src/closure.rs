@@ -483,7 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         cause_span: Option<Span>,
         closure_kind: hir::ClosureKind,
-        projection: ty::PolyProjectionPredicate<'tcx>,
+        projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
         let def_id = projection.item_def_id();
 
@@ -515,7 +515,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn extract_sig_from_projection(
         &self,
         cause_span: Option<Span>,
-        projection: ty::PolyProjectionPredicate<'tcx>,
+        projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
         let projection = self.resolve_vars_if_possible(projection);
 
@@ -560,7 +560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn extract_sig_from_projection_and_future_bound(
         &self,
         cause_span: Option<Span>,
-        projection: ty::PolyProjectionPredicate<'tcx>,
+        projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
         let projection = self.resolve_vars_if_possible(projection);
 
@@ -1031,7 +1031,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_future_output_from_projection(
         &self,
         cause_span: Span,
-        predicate: ty::PolyProjectionPredicate<'tcx>,
+        predicate: ty::PolyProjectionClause<'tcx>,
     ) -> Option<Ty<'tcx>> {
         debug!("deduce_future_output_from_projection(predicate={:?})", predicate);
 

@@ -180,14 +180,14 @@ where
         }
 
         (ty::ConstKind::Alias(ty::IsRigid::No, alias), _) if infcx.next_trait_solver() => {
-            relation.register_predicates([ty::ProjectionPredicate {
+            relation.register_predicates([ty::ProjectionClause {
                 projection_term: alias.into(),
                 term: b.into(),
             }]);
             Ok(b)
         }
         (_, ty::ConstKind::Alias(ty::IsRigid::No, alias)) if infcx.next_trait_solver() => {
-            relation.register_predicates([ty::ProjectionPredicate {
+            relation.register_predicates([ty::ProjectionClause {
                 projection_term: alias.into(),
                 term: a.into(),
             }]);

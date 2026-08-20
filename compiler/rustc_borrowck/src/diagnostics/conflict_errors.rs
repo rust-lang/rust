@@ -691,7 +691,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         if !clauses.instantiate_identity(tcx).clauses.iter().any(|clause| {
             clause.as_trait_clause().is_some_and(|tc| {
                 tc.self_ty().skip_binder().is_param(param.index)
-                    && tc.polarity() == ty::PredicatePolarity::Positive
+                    && tc.polarity() == ty::ClausePolarity::Positive
                     && supertrait_def_ids(tcx, tc.def_id())
                         .flat_map(|trait_did| tcx.associated_items(trait_did).in_definition_order())
                         .any(|item| item.is_method())

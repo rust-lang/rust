@@ -650,7 +650,6 @@ pub mod process;
 pub mod random;
 pub mod sync;
 pub mod time;
-#[cfg_attr(feature = "nightly", not(bootstrap))]
 #[unstable(feature = "view_type_macro", issue = "155938")]
 pub mod view;
 
