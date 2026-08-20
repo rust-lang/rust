@@ -38,29 +38,26 @@ pub(crate) fn expand_deriving_clone(
             | ItemKind::Enum(_, Generics { params, .. }, _) => {
                 let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
                 let has_derive_copy = cx.resolver.has_derive_copy(container_id);
+                bounds = vec![];
                 if has_derive_copy
                     && !params
                         .iter()
                         .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
                 {
-                    bounds = vec![];
                     is_simple = true;
                     substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone_simple("Clone", c, s, sub, false)
+                        cs_clone_simple(c, s, sub, false)
                     }));
                 } else {
-                    bounds = vec![];
                     is_simple = false;
-                    substructure =
-                        combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
+                    substructure = combine_substructure(Box::new(cs_clone));
                 }
             }
             ItemKind::Union(..) => {
                 bounds = vec![Path(path_std!(marker::Copy))];
                 is_simple = true;
-                substructure = combine_substructure(Box::new(|c, s, sub| {
-                    cs_clone_simple("Clone", c, s, sub, true)
-                }));
+                substructure =
+                    combine_substructure(Box::new(|c, s, sub| cs_clone_simple(c, s, sub, true)));
             }
             _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
         },
@@ -119,7 +116,6 @@ pub(crate) fn expand_deriving_clone(
 }
 
 fn cs_clone_simple(
-    name: &str,
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
@@ -172,21 +168,13 @@ fn cs_clone_simple(
                     process_variant(&variant.data);
                 }
             }
-            _ => cx.dcx().span_bug(
-                trait_span,
-                format!("unexpected substructure in simple `derive({name})`"),
-            ),
+            _ => cx.dcx().span_bug(trait_span, "unexpected substructure in simple `derive(Clone)`"),
         }
     }
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
-fn cs_clone(
-    name: &str,
-    cx: &ExtCtxt<'_>,
-    trait_span: Span,
-    substr: &Substructure<'_>,
-) -> BlockOrExpr {
+fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
     let ctor_path;
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
@@ -208,10 +196,10 @@ fn cs_clone(
             vdata = &variant.data;
         }
         EnumDiscr(..) | AllFieldlessEnum(..) => {
-            cx.dcx().span_bug(trait_span, format!("enum discriminants in `derive({name})`",))
+            cx.dcx().span_bug(trait_span, "enum discriminants in `derive(Clone)`")
         }
         StaticEnum(..) | StaticStruct(..) => {
-            cx.dcx().span_bug(trait_span, format!("associated function in `derive({name})`"))
+            cx.dcx().span_bug(trait_span, "associated function in `derive(Clone)`")
         }
     }
 
@@ -223,7 +211,7 @@ fn cs_clone(
                     let Some(ident) = field.name else {
                         cx.dcx().span_bug(
                             trait_span,
-                            format!("unnamed field in normal struct in `derive({name})`",),
+                            "unnamed field in normal struct in `derive(Clone)`",
                         );
                     };
                     let call = subcall(cx, field);
