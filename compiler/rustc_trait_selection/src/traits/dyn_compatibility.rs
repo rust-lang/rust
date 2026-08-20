@@ -564,9 +564,9 @@ fn virtual_call_violations_for_method<'tcx>(
         // only if the autotrait is one of the trait object's trait bounds, like
         // in `dyn Trait + AutoTrait`. This guarantees that trait objects only
         // implement auto traits if the underlying type does as well.
-        if let ty::ClauseKind::Trait(ty::TraitPredicate {
+        if let ty::ClauseKind::Trait(ty::TraitClause {
             trait_ref: pred_trait_ref,
-            polarity: ty::PredicatePolarity::Positive,
+            polarity: ty::ClausePolarity::Positive,
         }) = clause.kind().skip_binder()
             && pred_trait_ref.self_ty() == tcx.types.self_param
             && tcx.trait_is_auto(pred_trait_ref.def_id)
