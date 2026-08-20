@@ -254,6 +254,22 @@ fn test_vld1q_lane_u64_unaligned() {
 }
 
 #[simd_test(enable = "neon")]
+fn test_vld1q_lane_f32_unaligned() {
+    // Float loads legalize differently from integer ones under low alignment
+    // (armv7 uses ldr + vmov), so the type class needs its own coverage.
+    let a: [u8; 5] = [0, 1, 2, 3, 4];
+    let e = f32::from_ne_bytes([1, 2, 3, 4]);
+    let src = f32x4::new(10., 11., 12., 13.);
+    let r = unsafe {
+        f32x4::from(vld1q_lane_f32::<2>(
+            a.as_ptr().add(1) as *const f32,
+            src.into(),
+        ))
+    };
+    assert_eq!(r, f32x4::new(10., 11., e, 13.));
+}
+
+#[simd_test(enable = "neon")]
 fn test_vld1q_dup_u32_unaligned() {
     // ld1r replicate loads impose no alignment requirement either.
     let a: [u8; 5] = [0, 1, 2, 3, 4];

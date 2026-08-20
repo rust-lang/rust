@@ -14295,10 +14295,10 @@ intrinsics:
       - ['vld1q_lane_p16', '*const p16', 'poly16x8_t', '"vld1.16"', '7', 'ld1', 'static_assert_uimm_bits!', 'LANE, 3']
       - ['vld1_lane_s32', '*const i32', 'int32x2_t', '"vld1.32"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
       - ['vld1_lane_u32', '*const u32', 'uint32x2_t', '"vld1.32"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
-      - ['vld1_lane_f32', '*const f32', 'float32x2_t', '"vld1.32"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
+      - ['vld1_lane_f32', '*const f32', 'float32x2_t', 'ldr', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
       - ['vld1q_lane_s32', '*const i32', 'int32x4_t', '"vld1.32"', '3', 'ld1', 'static_assert_uimm_bits!', 'LANE, 2']
       - ['vld1q_lane_u32', '*const u32', 'uint32x4_t', '"vld1.32"', '3', 'ld1', 'static_assert_uimm_bits!', 'LANE, 2']
-      - ['vld1q_lane_f32', '*const f32', 'float32x4_t', '"vld1.32"', '3', 'ld1', 'static_assert_uimm_bits!', 'LANE, 2']
+      - ['vld1q_lane_f32', '*const f32', 'float32x4_t', 'ldr', '3', 'ld1', 'static_assert_uimm_bits!', 'LANE, 2']
       - ['vld1_lane_s64', '*const i64', 'int64x1_t', '"vld1.8"', '0', 'ldr', 'static_assert!', 'LANE == 0']
       - ['vld1_lane_u64', '*const u64', 'uint64x1_t', '"vld1.8"', '0', 'ldr', 'static_assert!', 'LANE == 0']
       - ['vld1q_lane_s64', '*const i64', 'int64x2_t', '"vld1.8"', '1', 'ld1', 'static_assert_uimm_bits!', 'LANE, 1']
@@ -14422,11 +14422,11 @@ intrinsics:
 
       - ['vld1_dup_s32', '*const i32', 'int32x2_t', 'vld1.32', 'ld1r', 'i32x2::splat']
       - ['vld1_dup_u32', '*const u32', 'uint32x2_t', 'vld1.32', 'ld1r', 'u32x2::splat']
-      - ['vld1_dup_f32', '*const f32', 'float32x2_t', 'vld1.32', 'ld1r', 'f32x2::splat']
+      - ['vld1_dup_f32', '*const f32', 'float32x2_t', 'ldr', 'ld1r', 'f32x2::splat']
 
       - ['vld1q_dup_s32', '*const i32', 'int32x4_t', 'vld1.32', 'ld1r', 'i32x4::splat']
       - ['vld1q_dup_u32', '*const u32', 'uint32x4_t', 'vld1.32', 'ld1r', 'u32x4::splat']
-      - ['vld1q_dup_f32', '*const f32', 'float32x4_t', 'vld1.32', 'ld1r', 'f32x4::splat']
+      - ['vld1q_dup_f32', '*const f32', 'float32x4_t', 'ldr', 'ld1r', 'f32x4::splat']
 
       - ['vld1q_dup_s64', '*const i64', 'int64x2_t', 'vld1.8', 'ld1r', 'i64x2::splat']
       - ['vld1q_dup_u64', '*const u64', 'uint64x2_t', 'vld1.8', 'ld1r', 'u64x2::splat']

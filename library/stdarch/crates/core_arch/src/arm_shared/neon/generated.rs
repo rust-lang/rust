@@ -18265,7 +18265,7 @@ pub unsafe fn vld1q_dup_f16(ptr: *const f16) -> float16x8_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1r)
@@ -18472,7 +18472,7 @@ pub unsafe fn vld1_dup_u8(ptr: *const u8) -> uint8x8_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1r)
@@ -19337,7 +19337,7 @@ pub unsafe fn vld1q_lane_f16<const LANE: i32>(ptr: *const f16, src: float16x8_t)
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 1))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(ldr, LANE = 1))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1, LANE = 1)
@@ -19612,7 +19612,7 @@ pub unsafe fn vld1_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x8_t) -> u
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 3))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(ldr, LANE = 3))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(ld1, LANE = 3)
