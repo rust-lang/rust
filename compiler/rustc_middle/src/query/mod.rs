@@ -21,7 +21,7 @@ mod job;
 mod keys;
 pub(crate) mod modifiers;
 pub mod on_disk_cache;
-pub(crate) mod plumbing;
+pub(crate) mod query_api;
 mod system;
 
 pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {

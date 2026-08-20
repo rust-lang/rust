@@ -4,7 +4,7 @@ macro_rules! maybe_into_query_key {
     ($K:ty) => { $K };
 }
 
-macro_rules! define_callbacks {
+macro_rules! define_query_api {
     (
         // You might expect the key to be `$K:ty`, but it needs to be `$($K:tt)*` so that
         // `maybe_into_query_key!` can match on specific type names.
@@ -237,7 +237,7 @@ macro_rules! define_callbacks {
                 Providers {
                     $(
                         $name: |_, key| {
-                            $crate::query::plumbing::default_query(stringify!($name), &key)
+                            $crate::query::query_api::default_query(stringify!($name), &key)
                         },
                     )*
                 }
@@ -249,7 +249,7 @@ macro_rules! define_callbacks {
                 ExternProviders {
                     $(
                         #[cfg($separate_provide_extern)]
-                        $name: |_, key| $crate::query::plumbing::default_extern_query(
+                        $name: |_, key| $crate::query::query_api::default_extern_query(
                             stringify!($name),
                             &key,
                         ),
@@ -361,7 +361,7 @@ macro_rules! define_callbacks {
 }
 
 // Re-export `macro_rules!` macros as normal items, so that they can be imported normally.
-pub(crate) use define_callbacks;
+pub(crate) use define_query_api;
 pub(crate) use maybe_into_query_key;
 
 #[cold]

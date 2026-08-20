@@ -98,7 +98,7 @@ use crate::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
 use crate::query::describe_as_module;
-use crate::query::plumbing::{define_callbacks, maybe_into_query_key};
+use crate::query::query_api::{define_query_api, maybe_into_query_key};
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
@@ -2835,4 +2835,4 @@ rustc_queries! {
     non_query Metadata
 }
 
-rustc_with_all_queries! { define_callbacks! }
+rustc_with_all_queries! { define_query_api! }
