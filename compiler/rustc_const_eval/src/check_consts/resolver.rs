@@ -2,7 +2,6 @@
 //!
 //! This contains the dataflow analysis used to track `Qualif`s on complex control-flow graphs.
 
-use std::fmt;
 use std::marker::PhantomData;
 
 use rustc_index::bit_set::MixedBitSet;
@@ -10,8 +9,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind,
 };
-use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::{Analysis, JoinSemiLattice};
+use rustc_mir_dataflow::Analysis;
 
 use super::{ConstCx, Qualif, qualifs};
 
@@ -24,7 +22,7 @@ use super::{ConstCx, Qualif, qualifs};
 /// borrowed place must contain the qualif.
 struct TransferFunction<'mir, 'tcx, Q> {
     ccx: &'mir ConstCx<'mir, 'tcx>,
-    state: &'mir mut State,
+    state: &'mir mut MixedBitSet<Local>,
     _qualif: PhantomData<Q>,
 }
 
@@ -32,18 +30,17 @@ impl<'mir, 'tcx, Q> TransferFunction<'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    fn new(ccx: &'mir ConstCx<'mir, 'tcx>, state: &'mir mut State) -> Self {
+    fn new(ccx: &'mir ConstCx<'mir, 'tcx>, state: &'mir mut MixedBitSet<Local>) -> Self {
         TransferFunction { ccx, state, _qualif: PhantomData }
     }
 
     fn initialize_state(&mut self) {
-        self.state.qualif.clear();
-        self.state.borrow.clear();
+        self.state.clear();
 
         for arg in self.ccx.body.args_iter() {
             let arg_ty = self.ccx.body.local_decls[arg].ty;
             if Q::in_any_value_of_ty(self.ccx, arg_ty) {
-                self.state.qualif.insert(arg);
+                self.state.insert(arg);
             }
         }
     }
@@ -63,7 +60,7 @@ where
 
         match (value, place.as_ref()) {
             (true, mir::PlaceRef { local, .. }) => {
-                self.state.qualif.insert(local);
+                self.state.insert(local);
             }
 
             // For now, we do not clear the qualif if a local is overwritten in full by
@@ -71,7 +68,7 @@ where
             // with aggregates where we overwrite all fields with assignments, which would not
             // get this feature.
             (false, mir::PlaceRef { local: _, projection: &[] }) => {
-                // self.state.qualif.remove(*local);
+                // self.state.remove(*local);
             }
 
             _ => {}
@@ -141,7 +138,7 @@ where
             && let Some(local) = place.as_local()
         {
             // The local is no longer initialized so we can remove the qualif.
-            self.state.qualif.remove(local);
+            self.state.remove(local);
         }
     }
 
@@ -151,8 +148,7 @@ where
         rvalue: &mir::Rvalue<'tcx>,
         location: Location,
     ) {
-        let qualif =
-            qualifs::in_rvalue::<Q, _>(self.ccx, &mut |l| self.state.qualif.contains(l), rvalue);
+        let qualif = qualifs::in_rvalue::<Q, _>(self.ccx, &mut |l| self.state.contains(l), rvalue);
         if !place.is_indirect() {
             self.assign_qualif_direct(place, qualif);
         }
@@ -170,8 +166,7 @@ where
                 if !borrowed_place.is_indirect() && self.address_of_allows_mutation() {
                     let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
                     if Q::in_any_value_of_ty(self.ccx, place_ty) {
-                        self.state.qualif.insert(borrowed_place.local);
-                        self.state.borrow.insert(borrowed_place.local);
+                        self.state.insert(borrowed_place.local);
                     }
                 }
             }
@@ -181,8 +176,7 @@ where
                 {
                     let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
                     if Q::in_any_value_of_ty(self.ccx, place_ty) {
-                        self.state.qualif.insert(borrowed_place.local);
-                        self.state.borrow.insert(borrowed_place.local);
+                        self.state.insert(borrowed_place.local);
                     }
                 }
             }
@@ -194,8 +188,7 @@ where
                     && (mutability.is_mut() || !target.is_freeze(self.ccx.tcx, self.ccx.typing_env))
                 {
                     if Q::in_any_value_of_ty(self.ccx, *target) {
-                        self.state.qualif.insert(borrowed_place.local);
-                        self.state.borrow.insert(borrowed_place.local);
+                        self.state.insert(borrowed_place.local);
                     }
                 }
             }
@@ -216,8 +209,7 @@ where
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::StorageDead(local) => {
-                self.state.qualif.remove(local);
-                self.state.borrow.remove(local);
+                self.state.remove(local);
             }
             _ => self.super_statement(statement, location),
         }
@@ -247,76 +239,11 @@ where
         FlowSensitiveAnalysis { ccx, _qualif: PhantomData }
     }
 
-    fn transfer_function(&self, state: &'mir mut State) -> TransferFunction<'mir, 'tcx, Q> {
+    fn transfer_function(
+        &self,
+        state: &'mir mut MixedBitSet<Local>,
+    ) -> TransferFunction<'mir, 'tcx, Q> {
         TransferFunction::<Q>::new(self.ccx, state)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-/// The state for the `FlowSensitiveAnalysis` dataflow analysis. This domain is likely homogeneous,
-/// and has a big size, so we use a bitset that can be sparse (c.f. issue #134404).
-pub(super) struct State {
-    /// Describes whether a local contains qualif.
-    pub qualif: MixedBitSet<Local>,
-    /// Describes whether a local's address escaped and it might become qualified as a result an
-    /// indirect mutation.
-    pub borrow: MixedBitSet<Local>,
-}
-
-impl Clone for State {
-    fn clone(&self) -> Self {
-        State { qualif: self.qualif.clone(), borrow: self.borrow.clone() }
-    }
-
-    // Data flow engine when possible uses `clone_from` for domain values.
-    // Providing an implementation will avoid some intermediate memory allocations.
-    fn clone_from(&mut self, other: &Self) {
-        self.qualif.clone_from(&other.qualif);
-        self.borrow.clone_from(&other.borrow);
-    }
-}
-
-impl State {
-    #[inline]
-    pub(super) fn contains(&self, local: Local) -> bool {
-        self.qualif.contains(local)
-    }
-}
-
-impl<C> DebugWithContext<C> for State {
-    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("qualif: ")?;
-        self.qualif.fmt_with(ctxt, f)?;
-        f.write_str(" borrow: ")?;
-        self.borrow.fmt_with(ctxt, f)?;
-        Ok(())
-    }
-
-    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self == old {
-            return Ok(());
-        }
-
-        if self.qualif != old.qualif {
-            f.write_str("qualif: ")?;
-            self.qualif.fmt_diff_with(&old.qualif, ctxt, f)?;
-            f.write_str("\n")?;
-        }
-
-        if self.borrow != old.borrow {
-            f.write_str("borrow: ")?;
-            self.borrow.fmt_diff_with(&old.borrow, ctxt, f)?;
-            f.write_str("\n")?;
-        }
-
-        Ok(())
-    }
-}
-
-impl JoinSemiLattice for State {
-    fn join(&mut self, other: &Self) -> bool {
-        // Use `|` not `||` here; we don't want short-circuiting.
-        self.qualif.join(&other.qualif) | self.borrow.join(&other.borrow)
     }
 }
 
@@ -324,15 +251,14 @@ impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, 'tcx, Q>
 where
     Q: Qualif,
 {
-    type Domain = State;
+    /// Describes whether a local contains qualif. This domain is likely homogeneous, and has a big
+    /// size, so we use a bitset that can be sparse (c.f. issue #134404).
+    type Domain = MixedBitSet<Local>;
 
     const NAME: &'static str = Q::ANALYSIS_NAME;
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        State {
-            qualif: MixedBitSet::new_empty(body.local_decls.len()),
-            borrow: MixedBitSet::new_empty(body.local_decls.len()),
-        }
+        MixedBitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut Self::Domain) {
