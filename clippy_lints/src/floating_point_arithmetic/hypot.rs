@@ -11,6 +11,8 @@ use rustc_span::Spanned;
 use super::IMPRECISE_FLOPS;
 
 pub(super) fn detect(cx: &LateContext<'_>, receiver: &Expr<'_>, app: &mut Applicability) -> Option<String> {
+    let ctxt = receiver.span.ctxt();
+
     if let ExprKind::Binary(
         Spanned {
             node: BinOpKind::Add, ..
@@ -19,7 +21,6 @@ pub(super) fn detect(cx: &LateContext<'_>, receiver: &Expr<'_>, app: &mut Applic
         add_rhs,
     ) = receiver.kind
     {
-        let ctxt = receiver.span.ctxt();
         // check if expression of the form x * x + y * y
         if let ExprKind::Binary(
             Spanned {
@@ -62,6 +63,26 @@ pub(super) fn detect(cx: &LateContext<'_>, receiver: &Expr<'_>, app: &mut Applic
                 Sugg::hir_with_applicability(cx, rargs_0, "_", app)
             ));
         }
+    }
+
+    // Check if expression is of the form x.mul_add(x, y * y)
+    if let ExprKind::MethodCall(PathSegment { ident: method, .. }, self_arg, [arg1, arg2], _) = receiver.kind
+        && method.name == sym::mul_add
+        && eq_expr_value(cx, ctxt, self_arg, arg1)
+        && let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Mul, ..
+            },
+            mul_lhs,
+            mul_rhs,
+        ) = arg2.kind
+        && eq_expr_value(cx, ctxt, mul_lhs, mul_rhs)
+    {
+        return Some(format!(
+            "{}.hypot({})",
+            Sugg::hir_with_applicability(cx, self_arg, "_", app).maybe_paren(),
+            Sugg::hir_with_applicability(cx, mul_lhs, "_", app)
+        ));
     }
 
     None
