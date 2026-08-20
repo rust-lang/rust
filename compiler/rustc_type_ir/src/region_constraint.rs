@@ -485,8 +485,10 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 
     let assumptions = infcx.get_placeholder_assumptions(u);
 
-    // Do this before rewriting type outlives constraints: alias/env matching below needs to
-    // see placeholders equated with current-universe region variables in the same `And` branch.
+    // Replace current-universe `'?x` with a non-var it's equated with in this `And`
+    // (`'?x: '!a` and `'!a: '?x` → `'!a`). Alias/env matching has to see that shape
+    // or `alias_outlives.rs` / `implied_higher_ranked_alias_outlives_assumption.rs`
+    // go ambiguous.
     let constraint = normalize_equated_region_vars(infcx, constraint, u);
 
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
@@ -891,7 +893,9 @@ fn pull_region_outlives_constraints_out_of_universe<
         }
         RegionOutlives(region_1, region_2, ()) => {
             if region_1 == region_2 {
-                // Reflexive constraints are always satisfied, even if the region is from `u`.
+                // `'r: 'r` is always true, including for current-universe regions.
+                // Relating a region to itself, component destructure, and normalize
+                // rewriting `'?x: '!a` + `'!a: '?x` into `'!a: '!a` can all produce this.
                 return RegionConstraint::new_true();
             }
             let region_1_u = max_universe(infcx, region_1);
