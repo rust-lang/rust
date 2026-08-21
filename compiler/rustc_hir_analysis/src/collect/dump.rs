@@ -3,6 +3,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{find_attr, intravisit};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::sym;
 
@@ -21,6 +22,30 @@ pub(crate) fn generics(tcx: TyCtxt<'_>) {
             let generics = tcx.generics_of(did);
             diag.span_note(tcx.def_span(did), format!("{generics:#?}"));
             diag.emit();
+        }
+    }
+}
+
+pub(crate) fn object_lifetime_defaults(tcx: TyCtxt<'_>) {
+    for def_id in tcx.hir_crate_items(()).definitions() {
+        if def_id == hir::def_id::CRATE_DEF_ID {
+            continue;
+        }
+
+        if !find_attr!(tcx, def_id, RustcDumpObjectLifetimeDefaults) {
+            continue;
+        }
+
+        for param in &tcx.generics_of(def_id).own_params {
+            let ty::GenericParamDefKind::Type { .. } = param.kind else { continue };
+            let default = tcx.object_lifetime_default(param.def_id);
+            let repr = match default {
+                ObjectLifetimeDefault::Empty => "Empty".to_owned(),
+                ObjectLifetimeDefault::Static => "'static".to_owned(),
+                ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
+                ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
+            };
+            tcx.dcx().span_err(tcx.def_span(param.def_id), repr);
         }
     }
 }
