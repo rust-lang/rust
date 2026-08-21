@@ -372,10 +372,10 @@ fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
     let slice = file.as_encoded_bytes();
     let start = stem_start(slice);
 
-    let i = match slice[start..].iter().position(|b| *b == b'.') {
-        Some(i) => start + i,
-        None => return (file, None),
+    let Some(i) = slice[start..].iter().position(|b| *b == b'.') else {
+        return (file, None),
     };
+    let i = start + i;
     let before = &slice[..i];
     let after = &slice[i + 1..];
 
