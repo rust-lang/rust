@@ -7,7 +7,6 @@ use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_crate_store::{ExternCrate, ExternCrateSource};
-use rustc_data_structures::Limit;
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
@@ -17,6 +16,7 @@ use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
+use rustc_structures::Limit;
 use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
 use smallvec::SmallVec;
 

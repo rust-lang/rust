@@ -27,13 +27,14 @@ use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::config::{CrateType, OptLevel, TargetModifier};
+use rustc_session::config::{OptLevel, TargetModifier};
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
     Symbol, SyntaxContext, sym,
 };
+use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
 
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};

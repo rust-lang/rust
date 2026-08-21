@@ -70,10 +70,10 @@ use rustc_middle::ty::{
     ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::CrateType;
 use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_structures::CrateType;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 

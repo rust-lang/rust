@@ -1,9 +1,9 @@
-use rustc_data_structures::Limit;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
+use rustc_structures::Limit;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 

@@ -23,8 +23,8 @@ use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::CrateType;
 use rustc_span::{Symbol, kw};
+use rustc_structures::CrateType;
 
 use crate::diagnostics::{
     ChangeFields, DeadCodePubInBinaryNote, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,

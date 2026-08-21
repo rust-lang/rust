@@ -3,9 +3,10 @@
 use std::path::Path;
 
 use rustc_span::{Span, Symbol};
+use rustc_structures::CrateType;
 
 use crate::Session;
-use crate::config::{CrateType, OutFileName, OutputFilenames, OutputType};
+use crate::config::{OutFileName, OutputFilenames, OutputType};
 use crate::diagnostics::{
     CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName,
     InvalidCharacterInCrateNameSuggestion,
