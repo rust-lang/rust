@@ -356,13 +356,10 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("x86_64-unknown-netbsd", false),
     ];
 
-    if !supported_platforms.contains(&(&*host_target.triple, asserts))
-        && (asserts || !supported_platforms.contains(&(&*host_target.triple, true)))
-    {
-        return false;
-    }
-
-    true
+    // Check if the host target is available with the requested assertions (true/false),
+    supported_platforms.contains(&(&*host_target.triple, asserts))
+        // if it is not available for the given `asserts`, check if it is available with assertions (superset).
+        || supported_platforms.contains(&(&*host_target.triple, true))
 }
 
 #[derive(Clone)]

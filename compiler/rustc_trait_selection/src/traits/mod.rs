@@ -859,12 +859,7 @@ pub fn impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, clauses: Vec<ty::Clause<'tcx>
     // vs user-written impls to AMBIGUOUS, this may return ambiguity even
     // with no infer vars. There may also be ways to encounter ambiguity due
     // to post-mono overflow.
-    let true_errors = ocx.try_evaluate_obligations();
-    if !true_errors.no_errors() {
-        return true;
-    }
-
-    false
+    !ocx.try_evaluate_obligations().no_errors()
 }
 
 fn instantiate_and_check_impossible_clauses<'tcx>(

@@ -401,12 +401,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 // Like for trait refs, verify that `dummy_self` did not leak inside default type
                 // parameters.
-                let references_self = b.projection_term.args.iter().skip(1).any(|arg| {
-                    if arg.walk().any(|arg| arg == dummy_self.into()) {
-                        return true;
-                    }
-                    false
-                });
+                let references_self = b
+                    .projection_term
+                    .args
+                    .iter()
+                    .skip(1)
+                    .any(|arg| arg.walk().any(|arg| arg == dummy_self.into()));
                 if references_self {
                     let guar = tcx
                         .dcx()
