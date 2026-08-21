@@ -384,7 +384,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // First push a stack frame so we have access to `instantiate_from_current_frame` and other
         // `self.frame()`-based functions.
         let dead_local = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
-        let locals = IndexVec::from_elem(dead_local, &body.local_decls);
+        let mut locals = IndexVec::from_elem(dead_local, &body.local_decls);
+        if let Some(cached) =
+            self.local_layout_cache.borrow().get(&(instance, body.source.promoted))
+        {
+            for (local, layout) in cached.iter_enumerated() {
+                if let Some(layout) = *layout {
+                    locals[local].layout.set(Some(layout));
+                }
+            }
+        }
         let pre_frame = Frame {
             body,
             loc: Right(self.tcx.def_span(body.source.def_id())), // Span used for errors caused during preamble.
@@ -624,6 +633,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return interp_ok(layout);
         }
 
+        let key = (frame.instance, frame.body.source.promoted);
+        if let Some(layout) = self
+            .local_layout_cache
+            .borrow()
+            .get(&key)
+            .and_then(|layouts| layouts.get(local).copied())
+            .flatten()
+        {
+            state.layout.set(Some(layout));
+            return interp_ok(layout);
+        }
+
         let layout = from_known_layout(self.tcx, self.typing_env, layout, || {
             let local_ty = frame.body.local_decls[local].ty;
             let local_ty =
@@ -633,6 +654,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Layouts of locals are requested a lot, so we cache them.
         state.layout.set(Some(layout));
+        let n_locals = frame.body.local_decls.len();
+        self.local_layout_cache
+            .borrow_mut()
+            .entry(key)
+            .or_insert_with(|| IndexVec::from_elem_n(None, n_locals))[local] = Some(layout);
         interp_ok(layout)
     }
 }

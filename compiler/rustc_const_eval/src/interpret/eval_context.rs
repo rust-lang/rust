@@ -6,6 +6,7 @@ use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_data_structures::Limit;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -44,6 +45,19 @@ pub struct InterpCx<'tcx, M: Machine<'tcx>> {
 
     /// The query cache is slow so we have our own cache in front of it.
     pub(super) layout_cache: RefCell<FxHashMap<Ty<'tcx>, rustc_abi::Layout<'tcx>>>,
+
+    /// Layouts of MIR locals, keyed by instance and promoted body.
+    ///
+    /// The per-frame `LocalState::layout` cell starts empty on every call, so
+    /// without this we re-instantiate and re-layout the same locals each time a
+    /// monomorphic function is invoked. That dominates const-eval of tables that
+    /// call small helpers (e.g. `f64::from_bits`) thousands of times.
+    pub(super) local_layout_cache: RefCell<
+        FxHashMap<
+            (ty::Instance<'tcx>, Option<mir::Promoted>),
+            IndexVec<mir::Local, Option<TyAndLayout<'tcx>>>,
+        >,
+    >,
 
     /// The virtual memory system.
     pub memory: Memory<'tcx, M>,
@@ -253,6 +267,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             tcx: tcx.at(root_span),
             typing_env,
             layout_cache: RefCell::new(FxHashMap::default()),
+            local_layout_cache: RefCell::new(FxHashMap::default()),
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
         }
