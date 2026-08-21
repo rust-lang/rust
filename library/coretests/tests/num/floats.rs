@@ -1321,10 +1321,10 @@ float_test! {
     name: clamp_min_greater_than_max,
     attrs: {
         const: #[cfg(false)],
-        f16: #[should_panic, cfg(target_has_reliable_f16)],
+        f16: #[should_panic, cfg(target_has_reliable_f16_math)],
         f32: #[should_panic],
         f64: #[should_panic],
-        f128: #[should_panic, cfg(target_has_reliable_f128)],
+        f128: #[should_panic, cfg(target_has_reliable_f128_math)],
     },
     test {
         let _ = Float::ONE.clamp(3.0, 1.0);
@@ -1335,10 +1335,10 @@ float_test! {
     name: clamp_min_is_nan,
     attrs: {
         const: #[cfg(false)],
-        f16: #[should_panic, cfg(target_has_reliable_f16)],
+        f16: #[should_panic, cfg(target_has_reliable_f16_math)],
         f32: #[should_panic],
         f64: #[should_panic],
-        f128: #[should_panic, cfg(target_has_reliable_f128)],
+        f128: #[should_panic, cfg(target_has_reliable_f128_math)],
     },
     test {
         let _ = Float::ONE.clamp(Float::NAN, 1.0);
@@ -1349,13 +1349,55 @@ float_test! {
     name: clamp_max_is_nan,
     attrs: {
         const: #[cfg(false)],
-        f16: #[should_panic, cfg(target_has_reliable_f16)],
+        f16: #[should_panic, cfg(target_has_reliable_f16_math)],
         f32: #[should_panic],
         f64: #[should_panic],
-        f128: #[should_panic, cfg(target_has_reliable_f128)],
+        f128: #[should_panic, cfg(target_has_reliable_f128_math)],
     },
     test {
         let _ = Float::ONE.clamp(3.0, Float::NAN);
+    }
+}
+
+float_test! {
+    name: clamp_to_min_greater_than_max,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[should_panic, cfg(target_has_reliable_f16_math)],
+        f32: #[should_panic],
+        f64: #[should_panic],
+        f128: #[should_panic, cfg(target_has_reliable_f128_math)],
+    },
+    test {
+        let _ = Float::ONE.clamp_to(3.0..=1.0);
+    }
+}
+
+float_test! {
+    name: clamp_to_min_is_nan,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[should_panic, cfg(target_has_reliable_f16_math)],
+        f32: #[should_panic],
+        f64: #[should_panic],
+        f128: #[should_panic, cfg(target_has_reliable_f128_math)],
+    },
+    test {
+        let _ = Float::ONE.clamp_to(Float::NAN..=1.0);
+    }
+}
+
+float_test! {
+    name: clamp_to_max_is_nan,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[should_panic, cfg(target_has_reliable_f16_math)],
+        f32: #[should_panic],
+        f64: #[should_panic],
+        f128: #[should_panic, cfg(target_has_reliable_f128_math)],
+    },
+    test {
+        let _ = Float::ONE.clamp_to(3.0..=Float::NAN);
     }
 }
 
