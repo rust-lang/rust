@@ -7,13 +7,19 @@ LL |     Opaque;
 error[E0423]: cannot find value `semiopaque` in this scope
   --> $DIR/rustc-macro-transparency.rs:29:5
    |
-LL |     struct SemiOpaque;
-   |     ------------------ similarly named unit struct `SemiOpaque` defined here
-...
 LL |     semiopaque;
    |     ^^^^^^^^^^ not found in this scope
    |
    = note: a macro named `semiopaque` exists in another namespace
+note: similarly named unit struct `SemiOpaque` defined here
+  --> $DIR/rustc-macro-transparency.rs:10:5
+   |
+LL |     struct SemiOpaque;
+   |     ^^^^^^^^^^^^^^^^^^
+...
+LL |     semiopaque!();
+   |     ------------- in this macro invocation
+   = note: this error originates in the macro `semiopaque` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a unit struct with a similar name exists (notice the capitalization)
    |
 LL -     semiopaque;
