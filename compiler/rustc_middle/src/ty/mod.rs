@@ -202,6 +202,8 @@ pub struct ResolverGlobalCtxt {
     // Information about delegations which is used when handling recursive delegations
     // and ensures easy access to delegation-only `LocalDefId`s.
     pub delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
+    pub delegation_inh_functions_map:
+        FxIndexMap<LocalDefId, FxIndexMap<Ident, DelegationInhFuncKind>>,
 }
 
 #[derive(Debug)]
@@ -279,7 +281,20 @@ pub struct DelegationInfo {
     /// Refers to the next element in a delegation resolution chain.
     /// Usually points to the final resolution, as most "chains" are just
     /// one step to a trait or an impl.
-    pub resolution_id: Result<DefId, ErrorGuaranteed>,
+    pub resolution_id: Option<DefId>,
+}
+
+#[derive(Debug, StableHash)]
+pub enum TypeRelativeDelegationRes {
+    Ok(DefId),
+    Ambig,
+    Error,
+}
+
+#[derive(Debug, StableHash)]
+pub enum DelegationInhFuncKind {
+    Single(LocalDefId),
+    Ambig,
 }
 
 #[derive(Clone, Copy, Debug, StableHash)]

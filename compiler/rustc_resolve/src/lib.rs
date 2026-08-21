@@ -66,8 +66,8 @@ use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, DelegationInfo, MainDefinition, PerOwnerResolverData, RegisteredTools,
-    ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
+    self, DelegationInfo, DelegationInhFuncKind, MainDefinition, PerOwnerResolverData,
+    RegisteredTools, ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
@@ -1503,6 +1503,7 @@ pub struct Resolver<'ra, 'tcx> {
     item_required_generic_args_suggestions: FxHashMap<LocalDefId, String> = default::fx_hash_map(),
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig> = Default::default(),
     delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
+    delegation_inh_functions_map: FxIndexMap<LocalDefId, FxIndexMap<Ident, DelegationInhFuncKind>>,
 
     main_def: Option<MainDefinition> = None,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1875,6 +1876,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
             delegation_infos: Default::default(),
+            delegation_inh_functions_map: Default::default(),
             features: tcx.features(),
             ..
         };
@@ -1979,6 +1981,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             all_macro_rules: self.all_macro_rules,
             stripped_cfg_items,
             delegation_infos: self.delegation_infos,
+            delegation_inh_functions_map: self.delegation_inh_functions_map,
         };
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,

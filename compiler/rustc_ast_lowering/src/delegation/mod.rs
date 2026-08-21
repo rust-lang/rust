@@ -47,7 +47,7 @@ use rustc_ast as ast;
 use rustc_ast::*;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, FnDeclFlags};
+use rustc_hir::{self as hir, FnDeclFlags, QPath};
 use rustc_middle::ty::Asyncness;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::kw;
@@ -62,7 +62,7 @@ use crate::{
 
 mod attributes;
 mod generics;
-mod resolution;
+pub(crate) mod resolution;
 
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
@@ -414,7 +414,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 hir::QPath::Resolved(ty, self.arena.alloc(new_path))
             }
-            hir::QPath::TypeRelative(..) => unreachable!("until inherent methods are supported"),
+            hir::QPath::TypeRelative(mut ty, segment) => {
+                let mut segment = self.process_segment(span, segment, &mut generics.child);
+                segment.res = Res::Def(self.tcx.def_kind(res.call_path_res), res.call_path_res);
+
+                let ty_hir_id = ty.hir_id;
+                ty = if let hir::TyKind::Path(QPath::Resolved(ty, path)) = ty.kind {
+                    let mut new_path = path.clone();
+
+                    new_path.segments = self.arena.alloc_from_iter(
+                        new_path.segments.iter().enumerate().map(|(idx, segment)| {
+                            if idx + 1 == new_path.segments.len() {
+                                self.process_segment(span, segment, &mut generics.parent)
+                            } else {
+                                segment.clone()
+                            }
+                        }),
+                    );
+
+                    self.arena.alloc(hir::Ty {
+                        hir_id: ty_hir_id,
+                        span,
+                        kind: hir::TyKind::Path(QPath::Resolved(ty, self.arena.alloc(new_path))),
+                    })
+                } else {
+                    ty
+                };
+
+                hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
+            }
         };
 
         if let Some(hir::DelegationSelfTyPropagationKind::SelfTy(id)) =
@@ -489,21 +517,63 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result.generics.into_hir_generics(self, span);
 
         let mut segment = segment.clone();
-        let mut args_iter = result.generics.create_args_iterator();
 
-        let new_args = segment
-            .args
-            .filter(|args| !args.is_empty())
-            .map(|args| {
-                self.arena.alloc_from_iter(args.args.iter().enumerate().map(|(idx, arg)| {
+        #[derive(Debug)]
+        enum NewArgsCreationKind {
+            Propagate(Vec<HirId> /* first `N` HIR ids to reuse */),
+            ExistingWithInfers,
+        }
+
+        impl NewArgsCreationKind {
+            fn new(segment: &hir::PathSegment<'_>) -> NewArgsCreationKind {
+                let Some(args) = segment.args else {
+                    return NewArgsCreationKind::Propagate(vec![]);
+                };
+
+                if args.is_empty() {
+                    return NewArgsCreationKind::Propagate(vec![]);
+                }
+
+                let ids_to_reuse = args
+                    .args
+                    .iter()
+                    .copied()
+                    .take_while(NewArgsCreationKind::should_reuse_id)
+                    .map(|a| a.hir_id())
+                    .collect::<Vec<_>>();
+
+                if ids_to_reuse.len() == args.args.len() {
+                    NewArgsCreationKind::Propagate(ids_to_reuse)
+                } else {
+                    NewArgsCreationKind::ExistingWithInfers
+                }
+            }
+
+            fn should_reuse_id(a: &hir::GenericArg<'_>) -> bool {
+                let hir::GenericArg::Lifetime(lt) = a else { return false };
+                lt.kind == hir::LifetimeKind::Infer && lt.syntax == hir::LifetimeSyntax::Implicit
+            }
+        }
+
+        let mut args_iter = result.generics.create_args_iterator();
+        let new_args = match NewArgsCreationKind::new(&segment) {
+            NewArgsCreationKind::Propagate(ids_to_reuse) => {
+                let consumed_args = args_iter.consume_all(self, ids_to_reuse);
+                match consumed_args.is_empty() {
+                    true => segment.args.map(|args| args.args).unwrap_or_default(),
+                    false => self.arena.alloc_from_iter(consumed_args),
+                }
+            }
+            NewArgsCreationKind::ExistingWithInfers => self.arena.alloc_from_iter(
+                segment.args.expect("must be Some").args.iter().enumerate().map(|(idx, arg)| {
                     if infer_indices.contains(&idx) {
                         args_iter.next(self, |_| arg.hir_id()).expect("arg must exist for infer")
                     } else {
                         *arg
                     }
-                }))
-            })
-            .unwrap_or_else(|| self.arena.alloc_from_iter(args_iter.consume_all(self)));
+                }),
+            ),
+        };
 
         // Do not omit constraints as there might be some and they must be present in HIR (#158812).
         let has_constraints = segment.args.is_some_and(|a| !a.constraints.is_empty());

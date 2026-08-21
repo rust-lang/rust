@@ -18,7 +18,8 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{
-    self as ir, BoundVar, CollectAndApply, MayBeErased, TypeVisitableExt, elaborate,
+    self as ir, BoundVar, CollectAndApply, MayBeErased, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt, elaborate,
 };
 use tracing::instrument;
 use ty::util::IntTypeExt;
@@ -1564,6 +1565,31 @@ impl<'tcx> Ty<'tcx> {
 
         let cf = self.visit_with(&mut ContainsTyVisitor(other));
         cf.is_break()
+    }
+
+    pub fn replace(
+        self,
+        tcx: TyCtxt<'tcx>,
+        to_replace: Ty<'tcx>,
+        replacement: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        struct Replacer<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            to_replace: Ty<'tcx>,
+            replacement: Ty<'tcx>,
+        }
+
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Replacer<'tcx> {
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                if t == self.to_replace { self.replacement } else { t.super_fold_with(self) }
+            }
+
+            fn cx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+        }
+
+        self.fold_with(&mut Replacer { tcx, to_replace, replacement })
     }
 
     /// Checks whether a type recursively contains any closure

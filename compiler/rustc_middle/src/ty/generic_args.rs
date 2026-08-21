@@ -16,9 +16,9 @@ use smallvec::SmallVec;
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::{
-    self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder, InlineConstArgs,
-    Lift, List, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, VisitorResult,
-    walk_visitable_list,
+    self, ClosureArgs, ConstKind, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder,
+    InlineConstArgs, Lift, List, RegionKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable,
+    TypeVisitor, VisitorResult, walk_visitable_list,
 };
 
 pub type GenericArgKind<'tcx> = rustc_type_ir::GenericArgKind<TyCtxt<'tcx>>;
@@ -314,6 +314,32 @@ impl<'tcx> GenericArg<'tcx> {
     /// ```
     pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
         TypeWalker::new(self)
+    }
+
+    pub fn opt_param_info(self) -> (Option<u32> /* index */, bool /* is ty or const */) {
+        match self.kind() {
+            GenericArgKind::Lifetime(r) => (
+                match r.kind() {
+                    RegionKind::ReEarlyParam(p) => Some(p.index),
+                    _ => None,
+                },
+                false,
+            ),
+            GenericArgKind::Type(t) => (
+                match t.kind() {
+                    ty::Param(p) => Some(p.index),
+                    _ => None,
+                },
+                true,
+            ),
+            GenericArgKind::Const(c) => (
+                match c.kind() {
+                    ConstKind::Param(p) => Some(p.index),
+                    _ => None,
+                },
+                true,
+            ),
+        }
     }
 }
 
