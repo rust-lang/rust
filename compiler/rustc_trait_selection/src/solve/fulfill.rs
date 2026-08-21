@@ -49,7 +49,7 @@ pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
     /// Int/float/const stalls and opaque-count mismatches force a full scan.
     all_pending_trackable: bool,
     /// Maximum type vid among pending `stalled_vars` / `sub_roots`.
-    /// Changes to strictly newer vids cannot unstall these goals.
+    /// Changes to strictly newer vids cannot make these goals unstalled.
     max_stalled_ty_vid: Option<u32>,
     /// Shared `GoalStalledOnOpaques::Yes` storage count, if any pending goal
     /// recorded one. `None` means no pending goal depends on opaques.

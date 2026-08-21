@@ -90,7 +90,7 @@ pub(crate) struct TypeVariableStorage<'tcx> {
     /// instantiated since the last [`TypeVariableTable::reset_min_changed_ty_vid`].
     ///
     /// Next-solver fulfillment uses this to skip walking pending goals that
-    /// can only be unstalled by changes to older vids (see rustc#159933).
+    /// can only become unstalled by changes to older vids (see rustc#159933).
     min_changed_ty_vid: Option<u32>,
 }
 
