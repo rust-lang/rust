@@ -518,6 +518,11 @@ impl<'tcx> GenericArgs<'tcx> {
         self.iter().filter_map(|k| k.as_const())
     }
 
+    #[inline]
+    pub fn terms(&self) -> impl DoubleEndedIterator<Item = ty::Term<'tcx>> {
+        self.iter().filter_map(|k| k.as_term())
+    }
+
     /// Returns generic arguments that are not lifetimes.
     #[inline]
     pub fn non_erasable_generics(&self) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> {
