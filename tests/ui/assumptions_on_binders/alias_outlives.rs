@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders -Znext-solver
 
 // test that a `<T as AliasHaver>::Assoc: '!a_u1` constraint is considered to be satisfied
 // if there's a `T::Assoc: 'static` assumption in the root universe and if not that it is

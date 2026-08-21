@@ -1,5 +1,5 @@
 //@ check-pass
-//@ compile-flags: -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders -Znext-solver
 
 #![feature(test_binder_constraints, non_lifetime_binders)]
 #![expect(incomplete_features)]

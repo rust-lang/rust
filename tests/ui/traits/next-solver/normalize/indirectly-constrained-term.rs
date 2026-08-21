@@ -1,6 +1,3 @@
-//@ revisions: current next
-//@[next] compile-flags: -Znext-solver=coherence
-//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
 
 // A regression test for `paperclip-core`. This previously failed to compile
