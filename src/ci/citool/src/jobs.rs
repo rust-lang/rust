@@ -44,7 +44,7 @@ impl Job {
     }
 
     fn is_linux(&self) -> bool {
-        self.os.contains("ubuntu")
+        self.os.contains("ubuntu") || self.os.contains("linux")
     }
 }
 
@@ -414,7 +414,10 @@ pub fn find_linux_job<'a>(jobs: &'a [Job], name: &str) -> anyhow::Result<&'a Job
         ));
     };
     if !job.is_linux() {
-        return Err(anyhow::anyhow!("Only Linux jobs can be executed locally"));
+        return Err(anyhow::anyhow!(
+            "Only Linux jobs can be executed locally, os `{}` is not linux",
+            job.os
+        ));
     }
 
     Ok(job)

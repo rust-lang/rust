@@ -56,7 +56,9 @@ use tracing::{debug, instrument};
 use crate::check::check_abi;
 use crate::check_c_variadic_abi;
 use crate::diagnostics::{self, BadReturnTypeNotation, NoFieldOnType, NoVariantNamed};
-use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
+use crate::hir_ty_lowering::errors::{
+    GenericsArgsErrExtend, eq_ctxt_suggestion_span, prohibit_assoc_item_constraint,
+};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
 
@@ -3302,18 +3304,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .next()
                 {
                     // `let x: S::new(valid_in_ty_ctxt);` -> `let x = S::new(valid_in_ty_ctxt);`
-                    let err = tcx
-                        .dcx()
-                        .struct_span_err(
-                            hir_ty.span,
-                            "expected type, found associated function call",
-                        )
-                        .with_span_suggestion_verbose(
-                            stmt.pat.span.between(hir_ty.span),
+                    let mut err = tcx.dcx().struct_span_err(
+                        hir_ty.span,
+                        "expected type, found associated function call",
+                    );
+                    if let Some(between) = eq_ctxt_suggestion_span(stmt.pat.span, hir_ty.span) {
+                        err.span_suggestion_verbose(
+                            between,
                             "use `=` if you meant to assign",
-                            " = ".to_string(),
+                            " = ",
                             Applicability::MaybeIncorrect,
                         );
+                    }
                     self.dcx().try_steal_replace_and_emit_err(
                         hir_ty.span,
                         StashKey::ReturnTypeNotation,
@@ -3328,18 +3330,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 {
                     // `let x: i32::something(valid_in_ty_ctxt);` -> `let x = i32::something(valid_in_ty_ctxt);`
                     // FIXME: Check that `something` is a valid function in `i32`.
-                    let err = tcx
-                        .dcx()
-                        .struct_span_err(
-                            hir_ty.span,
-                            "expected type, found associated function call",
-                        )
-                        .with_span_suggestion_verbose(
-                            stmt.pat.span.between(hir_ty.span),
+                    let mut err = tcx.dcx().struct_span_err(
+                        hir_ty.span,
+                        "expected type, found associated function call",
+                    );
+                    if let Some(between) = eq_ctxt_suggestion_span(stmt.pat.span, hir_ty.span) {
+                        err.span_suggestion_verbose(
+                            between,
                             "use `=` if you meant to assign",
-                            " = ".to_string(),
+                            " = ",
                             Applicability::MaybeIncorrect,
                         );
+                    }
                     self.dcx().try_steal_replace_and_emit_err(
                         hir_ty.span,
                         StashKey::ReturnTypeNotation,

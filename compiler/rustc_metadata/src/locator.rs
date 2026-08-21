@@ -360,6 +360,14 @@ impl<'a> CrateLocator<'a> {
         self.path_kind = path_kind;
     }
 
+    pub(crate) fn for_wasm_proc_macro(&mut self, sess: &'a Session, path_kind: PathKind) {
+        self.is_proc_macro = true;
+        self.target = &sess.wasm_proc_macro_target;
+        self.tuple = sess.wasm_proc_macro_tuple.clone();
+        self.filesearch = sess.wasm_proc_macro_filesearch();
+        self.path_kind = path_kind;
+    }
+
     pub(crate) fn maybe_load_library_crate(
         &self,
         crate_rejections: &mut CrateRejections,
@@ -734,6 +742,8 @@ impl<'a> CrateLocator<'a> {
         &self,
         crate_rejections: &mut CrateRejections,
     ) -> Result<Option<Library>, CrateError> {
+        debug!("find_commandline_library {}", self.crate_name);
+
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.

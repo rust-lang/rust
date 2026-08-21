@@ -203,13 +203,16 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
     if tcx.features().rustc_attrs() {
         tcx.sess.time("dumping_rustc_attr_data", || {
-            outlives::dump::inferred_outlives(tcx);
-            variance::dump::variances(tcx);
-            collect::dump::generics(tcx);
-            collect::dump::opaque_hidden_types(tcx);
+            // tidy-alphabetical-start
             collect::dump::clauses_and_item_bounds(tcx);
             collect::dump::def_parents(tcx);
+            collect::dump::generics(tcx);
+            collect::dump::object_lifetime_defaults(tcx);
+            collect::dump::opaque_hidden_types(tcx);
             collect::dump::vtables(tcx);
+            outlives::dump::inferred_outlives(tcx);
+            variance::dump::variances(tcx);
+            // tidy-alphabetical-end
         });
     }
 

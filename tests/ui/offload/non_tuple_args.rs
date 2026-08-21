@@ -4,7 +4,7 @@
 
 fn main() {
     // args_ty is not a tuple
-    core::intrinsics::offload::<_, _, ()>(kernel_0, [1, 1, 1], [1, 1, 1], 0, 42);
+    core::intrinsics::offload::<_, _, ()>(kernel_0, [1, 1, 1], [1, 1, 1], 0, -1, 42);
     //~^ ERROR `{integer}` is not a tuple
 }
 

@@ -668,6 +668,26 @@ pub fn sleep(dur: Duration) {
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;
 
+    let timespec = deadline.into_inner().into_timespec();
+    if timespec.tv_sec < 0 {
+        // `clock_nanosleep` fails with EINVAL if
+        // > The tp argument to clock_settime() is outside the range for the
+        // > given clock ID.
+        //
+        // This specification allows *any* clock range, which means we'd
+        // theoretically have to detect whether the time point is in the
+        // future (and block indefinitely) or the past (and return immediately)
+        // when encountering `EINVAL`. But since all existing implementations
+        // interpret this as saying that negative `tv_sec` values are unsupported,
+        // we can just test that and return – given that POSIX specifies that
+        // `CLOCK_MONOTONIC` measures the time "since an unspecified amount
+        // in the past" negative values are definitely in the past. If you
+        // observe any platform returning `EINVAL` for more cases, please
+        // file a bug; we'd need to  add logic handling `EINVAL` when it
+        // occurs.
+        return;
+    }
+
     #[cfg(all(
         target_os = "linux",
         target_env = "gnu",
@@ -690,7 +710,7 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         }
 
         if let Some(clock_nanosleep) = __clock_nanosleep_time64.get() {
-            let ts = deadline.into_inner().into_timespec().to_timespec64();
+            let ts = timespec.to_timespec64();
             loop {
                 let r = unsafe {
                     clock_nanosleep(
@@ -718,7 +738,7 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         }
     }
 
-    let Some(ts) = deadline.into_inner().into_timespec().to_timespec() else {
+    let Some(ts) = timespec.to_timespec() else {
         // The deadline is further in the future then can be passed to
         // clock_nanosleep. We have to use Self::sleep instead. This might
         // happen on 32 bit platforms, especially closer to 2038.
@@ -793,6 +813,16 @@ pub fn sleep_until(deadline: crate::time::Instant) {
                 panic!("mach_wait_until failed: {} (code {error})", description.display())
             }
         }
+    }
+}
+
+#[cfg(target_os = "fuchsia")]
+pub fn sleep_until(deadline: crate::time::Instant) {
+    use crate::sys::pal::fuchsia::{zx_cvt, zx_nanosleep};
+
+    let deadline = deadline.into_inner().into_deadline();
+    if let Err(error) = zx_cvt(zx_nanosleep(deadline)) {
+        panic!("zx_nanosleep failed: {error}");
     }
 }
 

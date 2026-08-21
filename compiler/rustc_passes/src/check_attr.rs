@@ -34,7 +34,6 @@ use rustc_lint_defs::builtin::{
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -194,9 +193,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Deprecated { span: attr_span, .. } => {
                 self.check_deprecated(hir_id, *attr_span, target)
             }
-            AttributeKind::RustcDumpObjectLifetimeDefaults => {
-                self.check_dump_object_lifetime_defaults(hir_id);
-            }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::NonExhaustive(attr_span) => {
                 self.check_non_exhaustive(*attr_span, span, target, item)
@@ -336,6 +332,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcDumpInferredOutlives => (),
             AttributeKind::RustcDumpItemBounds => (),
             AttributeKind::RustcDumpLayout(..) => (),
+            AttributeKind::RustcDumpObjectLifetimeDefaults => (),
             AttributeKind::RustcDumpSymbolName(..) => (),
             AttributeKind::RustcDumpUserArgs => (),
             AttributeKind::RustcDumpVariances => (),
@@ -781,23 +778,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
             _ => {}
-        }
-    }
-
-    /// Debugging aid for the `object_lifetime_default` query.
-    fn check_dump_object_lifetime_defaults(&self, hir_id: HirId) {
-        let tcx = self.tcx;
-        let Some(owner_id) = hir_id.as_owner() else { return };
-        for param in &tcx.generics_of(owner_id.def_id).own_params {
-            let ty::GenericParamDefKind::Type { .. } = param.kind else { continue };
-            let default = tcx.object_lifetime_default(param.def_id);
-            let repr = match default {
-                ObjectLifetimeDefault::Empty => "Empty".to_owned(),
-                ObjectLifetimeDefault::Static => "'static".to_owned(),
-                ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
-                ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
-            };
-            tcx.dcx().span_err(tcx.def_span(param.def_id), repr);
         }
     }
 
