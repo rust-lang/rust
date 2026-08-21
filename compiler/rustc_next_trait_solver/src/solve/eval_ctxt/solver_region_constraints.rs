@@ -9,7 +9,7 @@ use rustc_type_ir::outlives::{Component, push_outlives_components};
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
     And, Assumptions, LeafRegionConstraint, Or, eagerly_handle_placeholders_in_universe,
-    evaluate_solver_constraint,
+    propagate_ambiguity,
 };
 use rustc_type_ir::{
     AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesClause, Region, TypeVisitable,
@@ -137,7 +137,7 @@ where
             .fold(constraint, |constraint, u| {
                 eagerly_handle_placeholders_in_universe(&**self.delegate, constraint, u)
             });
-        let constraint = evaluate_solver_constraint(constraint);
+        let constraint = propagate_ambiguity(constraint);
 
         debug!("final constraint={:?}", constraint);
         self.delegate.overwrite_solver_region_constraint(constraint.clone(), self.origin_span);
