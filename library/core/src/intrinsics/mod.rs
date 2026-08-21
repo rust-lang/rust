@@ -869,6 +869,39 @@ pub const fn forget<T: ?Sized>(_: T);
 #[rustc_intrinsic]
 pub const unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 
+/// Copies the first `size_of::<Dst>()` bytes from the value referenced by src
+/// and interprets them as a value of type `Dst`.
+///
+/// Unlike [transmute], this operation does not require `Src` and `Dst` to have
+/// the same size. `Src` may be unsized, and its size is determined dynamically
+/// when necessary. The operation is undefined behavior if the dynamically
+/// determined size of `Src` is smaller than the size of `Dst`.
+///
+/// The source value is not moved or modified. The operation reads the bytes
+/// directly from the address referenced by `src`, so the first
+/// `size_of::<Dst>()` bytes must be readable and must contain a valid `Dst`.
+///
+/// The load is performed with an alignment no stronger than the alignment
+/// guaranteed by the source reference. In particular, this operation remains
+/// valid for a source whose alignment is weaker than the natural alignment of
+/// `Dst`; the implementation must not assume that the source address is
+/// aligned for `Dst`.
+///
+/// If `Src` is larger than `Dst`, the remaining bytes of `Src` are not read.
+///
+/// The resulting value must satisfy all validity requirements of `Dst`.
+/// Violating the size, readability, or validity requirements results in
+/// undefined behavior.
+///
+/// This intrinsic is the compiler-level implementation of
+/// [core::mem::transmute_copy]. It is intended for use by the standard
+/// library and compiler and should not be called directly.
+#[stable(feature = "transmute_copy", since = "1.0.0")]
+#[rustc_const_stable(feature = "const_transmute_copy", since = "1.74.0")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn transmute_copy<Src: ?Sized, Dst>(src: &Src) -> Dst;
+
 /// Like [`transmute`], but even less checked at compile-time: rather than
 /// giving an error for `size_of::<Src>() != size_of::<Dst>()`, it's
 /// **Undefined Behavior** at runtime.

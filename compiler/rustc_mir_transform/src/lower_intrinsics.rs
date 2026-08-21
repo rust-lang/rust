@@ -1,10 +1,12 @@
 //! Lowers intrinsic calls
 
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::sym;
+use rustc_span::{dummy_spanned, sym};
 
+use crate::patch::MirPatch;
 use crate::{PassPolicy, take_array};
 
 pub(super) struct LowerIntrinsics;
@@ -12,10 +14,13 @@ pub(super) struct LowerIntrinsics;
 impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let local_decls = &body.local_decls;
+        let mut patch = MirPatch::new(body);
         for block in body.basic_blocks.as_mut() {
+            let is_cleanup = block.is_cleanup;
             let terminator = block.terminator.as_mut().unwrap();
-            if let TerminatorKind::Call { func, args, destination, target, .. } =
-                &mut terminator.kind
+            if let TerminatorKind::Call {
+                func, args, destination, target, unwind, call_source, ..
+            } = &mut terminator.kind
                 && let ty::FnDef(def_id, generic_args) = *func.ty(local_decls, tcx).kind()
                 && let Some(intrinsic) = tcx.intrinsic(def_id)
             {
@@ -289,6 +294,117 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Unreachable;
                         }
                     }
+                    sym::transmute_copy => {
+                        let dst_ty = destination.ty(local_decls, tcx).ty;
+                        let Ok([arg]) = take_array(args) else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Wrong number of arguments for transmute_copy intrinsic",
+                            );
+                        };
+
+                        // The intrinsic argument must have type `&Src`. Extract `Src` so that we
+                        // can instantiate the precondition check shim as:
+                        // `transmute_copy_precondition_check::<Src, Dst>`.
+                        let src_ref_ty = arg.node.ty(local_decls, tcx);
+                        let ty::Ref(_, src_ty, _) = *src_ref_ty.kind() else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "transmute_copy argument was not a reference: {src_ref_ty:?}",
+                            );
+                        };
+                        let Some(src_place) = arg.node.place() else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "transmute_copy argument was not a place: {:?}",
+                                arg.node,
+                            );
+                        };
+
+                        let span = terminator.source_info.span;
+
+                        // The precondition check shim is supplied by: library/core/src/mem/mod.rs
+                        let Some(check_fn_def_id) =
+                            tcx.get_diagnostic_item(sym::transmute_copy_precondition_check)
+                        else {
+                            // `#![no_core]` environments (including minicore-based codegen tests)
+                            // may not provide the shim. In that case lower directly to the
+                            // `TransmuteCopy` MIR cast without an additional runtime check.
+                            block.statements.push(Statement::new(
+                                terminator.source_info,
+                                StatementKind::Assign(Box::new((
+                                    *destination,
+                                    Rvalue::Cast(CastKind::TransmuteCopy, arg.node, dst_ty),
+                                ))),
+                            ));
+                            terminator.kind = if let Some(target) = *target {
+                                TerminatorKind::Goto { target }
+                            } else {
+                                TerminatorKind::Unreachable
+                            };
+                            continue;
+                        };
+
+                        // Build the actual `transmute_copy` operation as a statement in a new
+                        // basic block. This block is reached only after the precondition check
+                        // below returns normally.
+                        let cast_stmt = Statement::new(
+                            terminator.source_info,
+                            StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Cast(
+                                    CastKind::TransmuteCopy,
+                                    Operand::Copy(src_place),
+                                    dst_ty,
+                                ),
+                            ))),
+                        );
+                        let continue_kind = if let Some(target) = *target {
+                            TerminatorKind::Goto { target }
+                        } else {
+                            TerminatorKind::Unreachable
+                        };
+                        // Put the cast statement into a BB.
+                        let check_bb = patch.new_block(BasicBlockData::new_stmts(
+                            vec![cast_stmt],
+                            Some(Terminator {
+                                source_info: terminator.source_info,
+                                kind: continue_kind,
+                                attributes: ThinVec::new(),
+                            }),
+                            is_cleanup,
+                        ));
+
+                        let unit_temp = patch.new_temp(tcx.types.unit, span);
+
+                        // Replace the original `transmute_copy` call with a call to the
+                        // precondition-check shim:
+                        //
+                        // unit_temp =
+                        //     transmute_copy_precondition_check::<Src, Dst>(
+                        //         Copy(src_place)
+                        //     ) -> check_bb
+                        //
+                        // If the check returns normally, control goes to `check_bb`, which
+                        // performs the actual `TransmuteCopy` and then continues to the original
+                        // call target.
+                        //
+                        // If the check panics, the original call's unwind behavior is preserved.
+                        terminator.kind = TerminatorKind::Call {
+                            func: Operand::function_handle(
+                                tcx,
+                                check_fn_def_id,
+                                &[src_ty.into(), dst_ty.into()],
+                                span,
+                            ),
+                            args: [dummy_spanned(Operand::Copy(src_place))].into(),
+                            destination: Place::from(unit_temp),
+                            target: Some(check_bb),
+                            unwind: *unwind,
+                            call_source: *call_source,
+                            fn_span: span,
+                        };
+                    }
                     sym::aggregate_raw_ptr => {
                         let Ok([data, meta]) = take_array(args) else {
                             span_bug!(
@@ -337,6 +453,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                 }
             }
         }
+        patch.apply(body);
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {

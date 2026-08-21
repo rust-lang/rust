@@ -593,6 +593,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 | CastKind::PtrToPtr
                 | CastKind::FnPtrToPtr
                 | CastKind::Transmute
+                | CastKind::TransmuteCopy
                 | CastKind::BoxDerefTransmute
                 | CastKind::PointerCoercion(
                     PointerCoercion::MutToConstPointer

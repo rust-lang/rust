@@ -1428,6 +1428,29 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             }
                         }
                     }
+                    CastKind::TransmuteCopy => {
+                        // Unlike `Transmute`, the operand here is `&Src`. `Src` may be unsized.
+                        if !op_ty.is_ref() {
+                            self.fail(
+                                location,
+                                format!("Cannot TransmuteCopy from non-reference type {op_ty}"),
+                            );
+                        }
+                        // Only `target_type` (`Dst`) carries a `Sized` requirement.
+                        if !self
+                            .tcx
+                            .normalize_erasing_regions(
+                                self.typing_env,
+                                Unnormalized::new_wip(*target_type),
+                            )
+                            .is_sized(self.tcx, self.typing_env)
+                        {
+                            self.fail(
+                                location,
+                                format!("Cannot TransmuteCopy to non-`Sized` type {target_type:?}"),
+                            );
+                        }
+                    }
                     CastKind::Subtype => {
                         if !util::sub_types(self.tcx, self.typing_env, op_ty, *target_type) {
                             self.fail(

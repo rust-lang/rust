@@ -764,6 +764,61 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         Some(imm)
     }
 
+    /// Loads a `dst`-typed value from the first `dst.size` bytes at `src`'s address.
+    ///
+    /// Unlike ordinary `transmute`, `transmute_copy` does not require `Src` and `Dst` to have the
+    /// same size: `Dst` may be smaller than `Src`. `Src` may also be dynamically sized, so this
+    /// helper operates directly on the source address rather than requiring a register-sized
+    /// representation of the source value.
+    ///
+    /// The load uses the weaker of the destination's natural alignment and the alignment actually
+    /// guaranteed by the source pointer.
+    ///
+    /// When function pointer type discrimination is enabled, the loaded pointer may need to be
+    /// resigned (if the type discriminator changes as a result of the transmute).
+    fn codegen_transmute_copy_from_place(
+        &mut self,
+        bx: &mut Bx,
+        src: PlaceRef<'tcx, Bx::Value>,
+        dst: TyAndLayout<'tcx>,
+    ) -> OperandValue<Bx::Value> {
+        // `src.val.align` is the alignment guaranteed by the source place. We must not tell the
+        // compiler that the source has `dst`'s (possibly stronger) alignment. This matters, for
+        // example, when reading a `u64` from a `&[u8]`.
+        //
+        // For `dyn Trait`, the static layout's alignment is only a conservative placeholder; using
+        // the minimum here ensures that we never claim more alignment than is guaranteed.
+        let align = Ord::min(dst.align.abi, src.val.align);
+        let dst_place = PlaceValue::new_sized(src.val.llval, align).with_type(dst);
+        let loaded = bx.load_operand(dst_place);
+
+        // Early exit for non-pointer type discriminated compilations.
+        if !self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+            return loaded.val;
+        }
+        let OperandValue::Immediate(ptr) = loaded.val else {
+            return loaded.val;
+        };
+
+        let src_semantic = self.ptrauth_canonicalize_fn_ptr_layout(src.layout);
+        let dst_semantic = self.ptrauth_canonicalize_fn_ptr_layout(dst);
+        if src_semantic.is_none() && dst_semantic.is_none() {
+            return loaded.val;
+        }
+
+        let info = TransmuteInfo {
+            src_ty: src_semantic.map_or(src.layout.ty, |(ty, _)| ty),
+            dst_ty: dst_semantic.map_or(dst.ty, |(ty, _)| ty),
+        };
+        let nullable = src_semantic.is_some_and(|(_, n)| n) || dst_semantic.is_some_and(|(_, n)| n);
+        let ptr = if nullable {
+            self.ptrauth_resign_transmuted_nullable_fn_ptr(bx, ptr, info)
+        } else {
+            self.ptrauth_resign_transmuted_fn_ptr(bx, ptr, info)
+        };
+        OperandValue::Immediate(ptr)
+    }
+
     pub(crate) fn codegen_rvalue_operand(
         &mut self,
         bx: &mut Bx,
@@ -906,6 +961,64 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         .unwrap_or_else(|| {
                             bug!("Unsupported cast of {operand:?} to {cast:?}");
                         })
+                    }
+                    mir::CastKind::TransmuteCopy => {
+                        match operand.layout.ty.kind() {
+                            ty::Ref(_, inner, _) => {
+                                let src_layout = bx.layout_of(*inner);
+                                // Turn the reference into a place pointing at the `Src` value.
+                                let place = operand.val.deref(src_layout.align.abi).with_type(src_layout);
+
+                                let val = if src_layout.is_unsized() {
+                                    // For an unsized `Src`, size is determined by the metadata.
+                                    // That information may be a compile-time constant, that the
+                                    // compiler can use to prove that the source is too small for
+                                    // `Dst` and therefore the operation is unconditionally UB.
+                                    let provably_too_short = if let Some(len) =
+                                        place.val.llextra.and_then(|len| bx.cx().const_to_opt_u128(len, false))
+                                    {
+                                        let bytes_per_unit = match src_layout.ty.kind() {
+                                            ty::Slice(elem_ty) => Some(bx.layout_of(*elem_ty).size.bytes()),
+                                            ty::Str => Some(1),
+                                            // For `dyn Trait` determining dynamic size would
+                                            // require loading and inspecting the vtable, which is
+                                            // more work than we want to do for this check.
+                                            _ => None,
+                                        };
+                                        // `transmute_copy` needs at least `Dst.size` bytes
+                                        // available at the source address.
+                                        bytes_per_unit.is_some_and(|b| b.saturating_mul(len as u64) < cast.size.bytes())
+                                    } else {
+                                        false
+                                    };
+
+                                    if provably_too_short {
+                                        bx.unreachable_nonterminator();
+                                        OperandValue::poison(bx, cast)
+                                    } else {
+                                        self.codegen_transmute_copy_from_place(bx, place, cast)
+                                    }
+                                } else if cast.size > src_layout.size {
+                                    // `transmute_copy` may never read beyond the end of `Src`.
+                                    bx.unreachable_nonterminator();
+                                    OperandValue::poison(bx, cast)
+                                } else {
+                                    // `Src` is large enough. This covers both:
+                                    //
+                                    //   Src.size == Dst.size  (exact-size copy)
+                                    //   Src.size >  Dst.size (shrinking copy)
+                                    self.codegen_transmute_copy_from_place(bx, place, cast)
+                                };
+
+                                return OperandRef { val, layout: cast, move_annotation: None };
+                            }
+                            _ => {
+                                // `LowerIntrinsics` pass guarantees that the operand of
+                                // `TransmuteCopy` is a reference. Reaching another operand type
+                                // means the MIR invariant has been violated.
+                                bug!("TransmuteCopy operand was not a reference: {:?}", operand.layout.ty);
+                            }
+                        }
                     }
                     mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute | mir::CastKind::Subtype => {
                         if self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {

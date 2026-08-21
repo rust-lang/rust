@@ -379,13 +379,19 @@ pub trait Drop {
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
 pub mod mem {
+    use crate::Sized;
     #[rustc_nounwind]
     #[rustc_intrinsic]
     pub const unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 
     #[rustc_nounwind]
     #[rustc_intrinsic]
+    pub const unsafe fn transmute_copy<Src: ?Sized, Dst>(src: &Src) -> Dst;
+
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
     pub const fn size_of<T>() -> usize;
+
     #[rustc_nounwind]
     #[rustc_intrinsic]
     pub const fn align_of<T>() -> usize;
