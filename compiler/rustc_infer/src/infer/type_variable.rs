@@ -2,7 +2,7 @@ use std::cmp;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_data_structures::undo_log::Rollback;
+use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
@@ -19,6 +19,8 @@ use crate::infer::InferCtxtUndoLogs;
 pub(crate) enum UndoLog<'tcx> {
     EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
     SubRelation(sv::UndoLog<ut::Delegate<TyVidSubKey>>),
+    /// Previous value of [`TypeVariableStorage::min_changed_ty_vid`].
+    MinChangedTyVid(Option<u32>),
 }
 
 /// Convert from a specific kind of undo to the more general UndoLog
@@ -52,6 +54,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
         match undo {
             UndoLog::EqRelation(undo) => self.eq_relations.reverse(undo),
             UndoLog::SubRelation(undo) => self.sub_unification_table.reverse(undo),
+            UndoLog::MinChangedTyVid(prev) => self.min_changed_ty_vid = prev,
         }
     }
 }
@@ -83,6 +86,12 @@ pub(crate) struct TypeVariableStorage<'tcx> {
     /// type of `x` is only a supertype of the argument of `returns_arg`. We
     /// still want to suggest specifying the type of the argument.
     sub_unification_table: ut::UnificationTableStorage<TyVidSubKey>,
+    /// Smallest type-inference vid that was equated, sub-unified, or
+    /// instantiated since the last [`TypeVariableTable::reset_min_changed_ty_vid`].
+    ///
+    /// Next-solver fulfillment uses this to skip walking pending goals that
+    /// can only be unstalled by changes to older vids (see rustc#159933).
+    min_changed_ty_vid: Option<u32>,
 }
 
 pub(crate) struct TypeVariableTable<'a, 'tcx> {
@@ -161,6 +170,11 @@ impl<'tcx> TypeVariableStorage<'tcx> {
     pub(crate) fn sub_unification_table_ref(&self) -> &ut::UnificationTableStorage<TyVidSubKey> {
         &self.sub_unification_table
     }
+
+    #[inline]
+    pub(crate) fn min_changed_ty_vid(&self) -> Option<u32> {
+        self.min_changed_ty_vid
+    }
 }
 
 impl<'tcx> TypeVariableTable<'_, 'tcx> {
@@ -172,12 +186,37 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         self.storage.values[vid].origin
     }
 
+    fn note_ty_infer_change(&mut self, vid: ty::TyVid) {
+        let idx = vid.as_u32();
+        let old = self.storage.min_changed_ty_vid;
+        let new = Some(old.map_or(idx, |m| m.min(idx)));
+        if old != new {
+            self.undo_log.push(UndoLog::MinChangedTyVid(old));
+            self.storage.min_changed_ty_vid = new;
+        }
+    }
+
+    pub(crate) fn reset_min_changed_ty_vid(&mut self) {
+        let old = self.storage.min_changed_ty_vid;
+        if old.is_some() {
+            self.undo_log.push(UndoLog::MinChangedTyVid(old));
+            self.storage.min_changed_ty_vid = None;
+        }
+    }
+
     /// Records that `a == b`.
     ///
     /// Precondition: neither `a` nor `b` are known.
     pub(crate) fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
+        let ra = self.root_var(a);
+        let rb = self.root_var(b);
+        let sa = self.sub_unification_table_root_var(a);
+        let sb = self.sub_unification_table_root_var(b);
+        self.note_ty_infer_change(ty::TyVid::from_u32(
+            ra.as_u32().min(rb.as_u32()).min(sa.as_u32()).min(sb.as_u32()),
+        ));
         self.eq_relations().union(a, b);
         self.sub_unification_table().union(a, b);
     }
@@ -189,6 +228,9 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub(crate) fn sub_unify(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
+        let sa = self.sub_unification_table_root_var(a);
+        let sb = self.sub_unification_table_root_var(b);
+        self.note_ty_infer_change(if sa.as_u32() < sb.as_u32() { sa } else { sb });
         self.sub_unification_table().union(a, b);
     }
 
@@ -204,6 +246,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             "instantiating type variable `{vid:?}` twice: new-value = {ty:?}, old-value={:?}",
             self.eq_relations().probe_value(vid)
         );
+        self.note_ty_infer_change(vid);
         self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
     }
 

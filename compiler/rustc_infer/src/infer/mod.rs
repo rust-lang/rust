@@ -1613,6 +1613,23 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// Smallest type vid equated, sub-unified, or instantiated since the last
+    /// [`Self::reset_min_changed_ty_vid`]. Used by next-solver fulfillment to
+    /// skip walking pending goals stalled only on older vids.
+    #[inline]
+    pub fn min_changed_ty_vid(&self) -> Option<u32> {
+        self.inner.borrow().type_variable_storage.min_changed_ty_vid()
+    }
+
+    pub fn reset_min_changed_ty_vid(&self) {
+        self.inner.borrow_mut().type_variables().reset_min_changed_ty_vid();
+    }
+
+    #[inline]
+    pub fn opaque_type_count(&self) -> usize {
+        self.inner.borrow().opaque_type_storage.num_entries().num_opaque_types()
+    }
+
     /// `ty_or_const_infer_var_changed` is equivalent to one of these two:
     ///   * `shallow_resolve(ty) != ty` (where `ty.kind = ty::Infer(_)`)
     ///   * `shallow_resolve(ct) != ct` (where `ct.kind = ty::ConstKind::Infer(_)`)
