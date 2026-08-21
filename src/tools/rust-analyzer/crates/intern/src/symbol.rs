@@ -175,19 +175,6 @@ impl Symbol {
     }
 
     #[inline]
-    pub fn into_raw(self) -> NonNull<*const str> {
-        ManuallyDrop::new(self).repr.packed
-    }
-
-    /// # Safety
-    ///
-    /// The pointer must have come from [`Symbol::into_raw()`].
-    #[inline]
-    pub unsafe fn from_raw(ptr: NonNull<*const str>) -> Symbol {
-        Symbol { repr: TaggedArcPtr { packed: ptr } }
-    }
-
-    #[inline]
     fn select_shard(
         storage: &'static Map,
         s: &str,
