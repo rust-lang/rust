@@ -362,6 +362,22 @@ impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErase
     }
 }
 
+/// `InferCtxtLike` is one of the two traits abstracting over the [InferCtxt][inferctxt-doc], which
+/// had to be split due to coherence reasons:
+/// - `InferCtxtLike`] contains the parts that have to live in `rustc_infer`, and thus aren't only
+///   about trait-solving. It is implemented [directly on `InferCtxt`][inferctxtlike-impl-doc],
+/// - [SolverDelegate][solverdelegate-doc] contains the parts depending on trait-solving logic, to
+///   provide functionality in `rustc_trait_selection`, and is implemented by a [simple wrapper over
+///   `InferCtxt`][inferctxt-wrapper-doc] there.
+///
+/// More information can also be found in the dedicated chapter in the dev-guide, in [this
+/// section][dev-guide].
+///
+/// [inferctxt-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html
+/// [inferctxtlike-impl-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#impl-InferCtxtLike-for-InferCtxt%3C'tcx%3E
+/// [solverdelegate-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/delegate/trait.SolverDelegate.html
+/// [inferctxt-wrapper-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/delegate/struct.SolverDelegate.html
+/// [dev-guide]: https://rustc-dev-guide.rust-lang.org/solve/sharing-crates-with-rust-analyzer.html#trait-inferctxtlike-and-trait-solverdelegate
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_infer_ctxt_like")]
 pub trait InferCtxtLike: Sized {
     type Interner: Interner;
