@@ -203,5 +203,5 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zdeduplicate-diagnostics=no",
     // FIXME(#160895): the new solver is enabled by default on nightly, but we
     // don't want to use it in Miri for now. Remove once that's reverted.
-    "-Znext-solver=coherence",
+    "-Znext-solver=no",
 ];
