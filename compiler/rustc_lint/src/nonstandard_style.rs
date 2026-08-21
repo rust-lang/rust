@@ -11,9 +11,9 @@ use rustc_hir::{Attribute, GenericParamKind, PatExprKind, PatKind, find_attr};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::hir::nested_filter::All;
 use rustc_middle::ty::AssocContainer;
-use rustc_session::config::CrateType;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Ident, Span, sym};
+use rustc_structures::CrateType;
 
 use crate::diagnostics::{
     NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,

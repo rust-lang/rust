@@ -14,8 +14,8 @@ use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized, Visibility,
 };
-use rustc_session::config::CrateType;
 use rustc_span::Span;
+use rustc_structures::CrateType;
 
 use crate::diagnostics::UnexportableItem;
 

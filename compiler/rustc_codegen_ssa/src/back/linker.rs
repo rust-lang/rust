@@ -14,7 +14,8 @@ use rustc_middle::middle::exported_symbols::{
 };
 use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::Session;
-use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
+use rustc_session::config::{self, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
+use rustc_structures::CrateType;
 use rustc_target::spec::{Arch, Cc, CfgAbi, LinkOutputKind, LinkerFlavor, Lld, Os};
 use tracing::{debug, warn};
 

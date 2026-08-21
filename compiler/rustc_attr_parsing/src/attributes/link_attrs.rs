@@ -7,6 +7,7 @@ use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition::Edition2024;
 use rustc_span::kw;
+use rustc_structures::NativeLibKind;
 use rustc_target::spec::{Arch, BinaryFormat};
 
 use super::prelude::*;
