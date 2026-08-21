@@ -1174,7 +1174,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target: Target,
     ) -> &'hir [hir::Attribute] {
-        self.lower_attrs_with_extra(id, attrs, target_span, target, &[])
+        self.lower_attrs_with_extra(id, attrs, target_span, target, None, &[])
     }
 
     fn lower_attrs_with_extra(
@@ -1183,13 +1183,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
+        target_item: Option<&ast::Item>,
         extra_hir_attributes: &[hir::Attribute],
     ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() && extra_hir_attributes.is_empty() {
             &[]
         } else {
             let mut lowered_attrs =
-                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target);
+                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target, target_item);
             lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
             assert_eq!(id.owner, self.curr_owner.owner_id);
@@ -1216,12 +1217,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target_hir_id: HirId,
         target: Target,
+        target_item: Option<&ast::Item>,
     ) -> Vec<hir::Attribute> {
         let l = self.span_lowerer();
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
             target,
+            target_item,
             |s| l.lower(s),
             |lint_id, span, kind| {
                 self.curr_owner.delayed_lints.push(DelayedLint {
