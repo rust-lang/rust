@@ -317,56 +317,7 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
 pub fn evaluate_solver_constraint<I: Interner>(
     constraint: &RegionConstraint<I>,
 ) -> RegionConstraint<I> {
-    use RegionConstraint::*;
-    match constraint {
-        Ambiguity | RegionOutlives(..) | AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
-            constraint.clone()
-        }
-        And(and) => {
-            let mut and_constraints = Vec::new();
-            let mut is_ambiguous_constraint = false;
-            for c in and.iter() {
-                let evaluated_constraint = evaluate_solver_constraint(c);
-                if evaluated_constraint.is_true() {
-                    // - do nothing
-                } else if evaluated_constraint.is_false() {
-                    return RegionConstraint::new_false();
-                } else if evaluated_constraint.is_ambig() {
-                    is_ambiguous_constraint = true;
-                } else {
-                    and_constraints.push(evaluated_constraint);
-                }
-            }
-
-            if is_ambiguous_constraint {
-                RegionConstraint::Ambiguity
-            } else {
-                RegionConstraint::And(and_constraints.into_boxed_slice())
-            }
-        }
-        Or(or) => {
-            let mut or_constraints = Vec::new();
-            let mut is_ambiguous_constraint = false;
-            for c in or.iter() {
-                let evaluated_constraint = evaluate_solver_constraint(c);
-                if evaluated_constraint.is_false() {
-                    // do nothing
-                } else if evaluated_constraint.is_true() {
-                    return RegionConstraint::new_true();
-                } else if evaluated_constraint.is_ambig() {
-                    is_ambiguous_constraint = true;
-                } else {
-                    or_constraints.push(evaluated_constraint);
-                }
-            }
-
-            if is_ambiguous_constraint {
-                RegionConstraint::Ambiguity
-            } else {
-                RegionConstraint::Or(or_constraints.into_boxed_slice())
-            }
-        }
-    }
+    todo!("overhauled in future commit")
 }
 
 /// Handles converting region outlives constraints involving placeholders from `u` into OR constraints
