@@ -25,6 +25,7 @@
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
 use std::hash::Hash;
+use std::ops::DerefMut;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
 
@@ -1302,9 +1303,69 @@ pub struct HygieneEncodeContext {
     serialized_expns: Lock<FxHashSet<ExpnId>>,
 
     latest_expns: Lock<FxHashSet<ExpnId>>,
+
+    /// Maps every `SyntaxContext` into its encoding index.
+    /// Earlier the `ctxt.0` was used when writing metadata, however,
+    /// this results into non-deterministic metadata (see #129094).
+    /// The non-determinism is encountered when decoding syntax contexts
+    /// in `decode_syntax_context` function below. The syntax contexts from
+    /// other crate metadata can be decoded in different order, which results
+    /// into different ids assigned to decoded syntax contexts.
+    /// First invocation:
+    /// (ALLOC - syntax context id, ORIG - original id of decoded syntax context:
+    /// `raw_id` in `decode_syntax_context`)
+    /// ALLOC: #3, ORIG: 1
+    /// ALLOC: #9, ORIG: 18769
+    /// ALLOC: #10, ORIG: 25868
+    /// ALLOC: #11, ORIG: 18822
+    /// ALLOC: #12, ORIG: 23092
+    ///
+    /// Second invocation:
+    /// ALLOC: #3, ORIG: 1
+    /// ALLOC: #9, ORIG: 25868
+    /// ALLOC: #10, ORIG: 18769
+    /// ALLOC: #11, ORIG: 18822
+    /// ALLOC: #12, ORIG: 23092
+    ///
+    /// We see that `18769` and `25868` assigned different syntax context ids,
+    /// however, the order of encoding is deterministic, so we can remap allocated
+    /// syntax context ids into encoding indices and use them, thus outputting
+    /// same metadata.
+    ///
+    /// We can use index vec as when allocating syntax context ids we use
+    /// `SyntaxContext::from_usize(self.syntax_context_data.len())` in
+    /// `alloc_ctxt`, so the indices are from continuous range from
+    /// `0` to `self.syntax_context_data.len()`.
+    encoding_indices: Lock<(
+        u32,                /* next encoding idnex */
+        IndexVec<u32, u32>, /* synt. ctxt -> enc. index, `0` at value == unfilled */
+    )>,
 }
 
 impl HygieneEncodeContext {
+    fn get_encoding_index(&self, ctxt: SyntaxContext) -> u32 {
+        if ctxt.is_root() {
+            return 0;
+        }
+
+        let mut state = self.encoding_indices.lock();
+        let (next_index, map) = state.deref_mut();
+
+        if let Some(idx) = map.get(ctxt.0).copied()
+            && idx != 0
+        {
+            idx
+        } else {
+            // Zero is taken by root syntax context.
+            *next_index += 1;
+            let encoding_index = *next_index;
+
+            *map.ensure_contains_elem(ctxt.0, || 0) = encoding_index;
+
+            encoding_index
+        }
+    }
+
     /// Record the fact that we need to serialize the corresponding `ExpnData`.
     pub fn schedule_expn_data_for_encoding(&self, expn: ExpnId) {
         if !self.serialized_expns.lock().contains(&expn) {
@@ -1329,18 +1390,19 @@ impl HygieneEncodeContext {
 
             // Consume the current round of syntax contexts.
             // Drop the lock() temporary early.
-            // It's fine to iterate over a HashMap, because the serialization of the table
-            // that we insert data into doesn't depend on insertion order.
             #[allow(rustc::potential_query_instability)]
             let latest_ctxts = { mem::take(&mut *self.latest_ctxts.lock()) }.into_iter();
-            let all_ctxt_data: Vec<_> = HygieneData::with(|data| {
+            let mut all_ctxt_data: Vec<_> = HygieneData::with(|data| {
                 latest_ctxts
                     .map(|ctxt| (ctxt, data.syntax_context_data[ctxt.0 as usize].key()))
                     .collect()
             });
+
+            all_ctxt_data.sort_by_key(|&(ctxt, _)| self.get_encoding_index(ctxt));
+
             for (ctxt, ctxt_key) in all_ctxt_data {
                 if self.serialized_ctxts.lock().insert(ctxt) {
-                    encode_ctxt(encoder, ctxt.0, &ctxt_key);
+                    encode_ctxt(encoder, self.get_encoding_index(ctxt), &ctxt_key);
                 }
             }
 
@@ -1488,7 +1550,8 @@ pub fn raw_encode_syntax_context(
     if !context.serialized_ctxts.lock().contains(&ctxt) {
         context.latest_ctxts.lock().insert(ctxt);
     }
-    ctxt.0.encode(e);
+
+    context.get_encoding_index(ctxt).encode(e);
 }
 
 /// Updates the `disambiguator` field of the corresponding `ExpnData`
