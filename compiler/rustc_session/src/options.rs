@@ -858,7 +858,7 @@ mod desc {
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
-        "either `globally` (when used without an argument), `coherence` (default) or `no`";
+        "either `globally` (when used without an argument), `coherence` or `no`";
     pub(crate) const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub(crate) const parse_linker_plugin_lto: &str =
@@ -1776,13 +1776,12 @@ pub mod parse {
     pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
         if let Some(config) = v {
             *slot = match config {
-                "no" => NextSolverConfig { coherence: false, globally: false },
-                "coherence" => NextSolverConfig { coherence: true, globally: false },
-                "globally" => NextSolverConfig { coherence: true, globally: true },
+                "no" | "coherence" => NextSolverConfig { globally: false },
+                "globally" => NextSolverConfig { globally: true },
                 _ => return false,
             };
         } else {
-            *slot = NextSolverConfig { coherence: true, globally: true };
+            *slot = NextSolverConfig { globally: true };
         }
 
         true

@@ -2692,10 +2692,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.next_solver.globally && !self.features().generic_const_exprs()
     }
 
-    pub fn next_trait_solver_in_coherence(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.coherence
-    }
-
     pub fn disable_trait_solver_fast_paths(self) -> bool {
         self.sess.opts.unstable_opts.disable_fast_paths
     }
