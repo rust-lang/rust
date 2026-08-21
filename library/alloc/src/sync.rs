@@ -1771,6 +1771,54 @@ impl<T: ?Sized> Arc<T> {
     pub unsafe fn decrement_strong_count(ptr: *const T) {
         unsafe { Arc::decrement_strong_count_in(ptr, Global) }
     }
+
+    /// Gets the number of strong (`Arc`) pointers to the allocation behind the given raw
+    /// pointer.
+    ///
+    /// This method does not consume or drop the `Arc` behind this pointer.
+    ///
+    /// # Safety
+    ///
+    /// The pointer must point to (and have valid metadata for) the value inside a live `Arc`
+    /// allocation, such as a pointer returned by [`Arc::into_raw`],
+    /// [`Arc::into_raw_with_allocator`], or [`Arc::as_ptr`].
+    /// `T` must have the same alignment as that value.
+    /// The associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// least 1) for the duration of this method.
+    ///
+    /// Using this method correctly also requires extra care: another thread can change the
+    /// strong count at any time, including between calling this method and acting on the
+    /// result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_raw_get_strong)]
+    /// use std::sync::Arc;
+    ///
+    /// let five = Arc::new(5);
+    /// let _also_five = Arc::clone(&five);
+    /// let ptr = Arc::into_raw(five);
+    ///
+    /// unsafe {
+    ///     // This assertion is deterministic because we haven't shared
+    ///     // the `Arc` between threads.
+    ///     assert_eq!(2, Arc::strong_count_from_raw(ptr));
+    ///
+    ///     // Convert back to an `Arc` to avoid leaking memory.
+    ///     let five = Arc::from_raw(ptr);
+    ///     assert_eq!(2, Arc::strong_count(&five));
+    /// }
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "arc_raw_get_strong", issue = "157021")]
+    pub unsafe fn strong_count_from_raw(ptr: *const T) -> usize {
+        let offset = unsafe { data_offset(ptr) };
+        // Reverse the offset to find the original ArcInner.
+        let arc_ptr = unsafe { ptr.byte_sub(offset) as *mut ArcInner<T> };
+        unsafe { (*arc_ptr).strong.load(Relaxed) }
+    }
 }
 
 impl<T: ?Sized, A: Allocator> Arc<T, A> {
