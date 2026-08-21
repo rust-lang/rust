@@ -850,7 +850,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: beta-nominated"
 message_on_add = [
     """\
-@*T-libs* PR #{number} "{title}" has been nominated for beta backport.
+@*T-libs-fcp* PR #{number} "{title}" has been nominated for beta backport.
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -874,7 +874,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: stable-nominated"
 message_on_add = [
     """\
-@**channel** PR #{number} "{title}" has been nominated for stable backport.
+@*T-libs-fcp* PR #{number} "{title}" has been nominated for stable backport.
 """,
     """\
 /poll Approve stable backport of #{number}?
