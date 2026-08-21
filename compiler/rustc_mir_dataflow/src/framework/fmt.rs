@@ -76,7 +76,7 @@ where
 impl<T, C, S: DenseBitSetStorage> DebugWithContext<C> for DenseBitSet<T, S>
 where
     T: Idx + DebugWithContext<C>,
-    DenseBitSet<T, S>: Eq
+    DenseBitSet<T, S>: Eq,
 {
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter().map(|i| DebugWithAdapter { this: i, ctxt })).finish()
