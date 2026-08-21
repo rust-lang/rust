@@ -2979,6 +2979,7 @@ impl Path {
     /// assert_eq!("gz", Path::new("foo.tar.gz").extension().unwrap());
     /// assert_eq!(None, Path::new(".gitignore").extension());
     /// assert_eq!(None, Path::new("..gitignore").extension());
+    /// assert_eq!(None, Path::new("...gitignore").extension());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
