@@ -19,29 +19,29 @@ macro_rules! path_separator_bytes {
 
 cfg_select! {
     target_os = "windows" => {
+        mod prefixed_paths;
         mod windows;
         mod windows_prefix;
-        mod prefixed_paths;
-        pub use windows::*;
         pub use prefixed_paths::*;
+        pub use windows::*;
     }
     all(target_vendor = "fortanix", target_env = "sgx") => {
-        mod sgx;
         mod nonprefixed_paths;
-        pub use sgx::*;
+        mod sgx;
         pub use nonprefixed_paths::*;
+        pub use sgx::*;
     }
     target_os = "solid_asp3" => {
-        mod unsupported_backslash;
         mod prefixed_paths;
-        pub use unsupported_backslash::*;
+        mod unsupported_backslash;
         pub use prefixed_paths::*;
+        pub use unsupported_backslash::*;
     }
     target_os = "uefi" => {
-        mod uefi;
         mod prefixed_paths;
-        pub use uefi::*;
+        mod uefi;
         pub use prefixed_paths::*;
+        pub use uefi::*;
     }
     target_os = "cygwin" => {
         mod cygwin;
@@ -51,9 +51,9 @@ cfg_select! {
         pub use prefixed_paths::*;
     }
     _ => {
-        mod unix;
         mod nonprefixed_paths;
-        pub use unix::*;
+        mod unix;
         pub use nonprefixed_paths::*;
+        pub use unix::*;
     }
 }
