@@ -124,12 +124,12 @@ where
 
         if self.cx().assumptions_on_binders() {
             use rustc_type_ir::region_constraint::{
-                And, CanonicalFormRegionConstraint, LeafRegionConstraint, Or,
+                CanonicalFormRegionConstraint, LeafRegionConstraint,
             };
 
-            let constraint = CanonicalFormRegionConstraint::new_from_or(Or::new([And::new([
+            let constraint = CanonicalFormRegionConstraint::new_leaf(
                 LeafRegionConstraint::RegionOutlives(a, b, ()),
-            ])]));
+            );
             self.register_solver_region_constraint(constraint);
         } else {
             self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);

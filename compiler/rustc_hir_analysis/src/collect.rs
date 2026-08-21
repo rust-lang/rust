@@ -45,7 +45,7 @@ use rustc_trait_selection::traits::{
     FulfillmentError, ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations,
 };
 use tracing::{debug, instrument};
-use ty::region_constraint::{And, LeafRegionConstraint, Or};
+use ty::region_constraint::LeafRegionConstraint;
 
 use crate::check::wfcheck::{TestBinderBody, TestBinderExists, TestBinderForall};
 use crate::diagnostics::{self, ElidedLifetimesAreNotAllowedInDelegations};
@@ -447,8 +447,9 @@ impl<'tcx> ItemCtxt<'tcx> {
                 let span = lhs.ident.span.to(rhs.ident.span);
                 let lhs = self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);
                 let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
-                let leaf = LeafRegionConstraint::RegionOutlives(lhs, rhs, span);
-                SolverRegionConstraint::new_from_or(Or::new([And::new([leaf])]))
+                SolverRegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(
+                    lhs, rhs, span,
+                ))
             }
             hir::TestBinderConstraint::Type { lhs, rhs } => {
                 let span = lhs.span.to(rhs.ident.span);
@@ -457,8 +458,9 @@ impl<'tcx> ItemCtxt<'tcx> {
                 // note that we cannot check that lhs is a placeholder at this moment, as at this
                 // point it is a bound variable that is not yet instantiated with a placeholder.
                 // instead, we check it when we emit the region constraint.
-                let leaf = LeafRegionConstraint::PlaceholderTyOutlives(lhs, rhs, span);
-                SolverRegionConstraint::new_from_or(Or::new([And::new([leaf])]))
+                SolverRegionConstraint::new_leaf(LeafRegionConstraint::PlaceholderTyOutlives(
+                    lhs, rhs, span,
+                ))
             }
         }
     }
