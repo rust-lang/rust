@@ -22,7 +22,8 @@ use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
-    Cfg, CrateType, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
+    Cfg, CrateType, Jobs, OptionsTargetModifiers, OutFileName, OutputFilenames, OutputTypes,
+    Sysroot, host_tuple,
 };
 use rustc_session::{EarlyDiagCtxt, IncrCompSession, Session, filesearch};
 use rustc_span::edition::Edition;
@@ -55,10 +56,10 @@ pub(crate) fn add_configuration(
         sess.target
             .rust_target_features()
             .iter()
-            .filter_map(|(feature, gate, _)| {
-                if gate.in_cfg()
+            .filter_map(|(feature, stab, _)| {
+                if stab.in_cfg()
                     && (sess.is_nightly_build()
-                        || gate.requires_nightly(/* in_cfg */ true).is_none())
+                        || stab.requires_nightly(/* in_cfg */ true).is_none())
                 {
                     Some(Symbol::intern(feature))
                 } else {
@@ -67,6 +68,21 @@ pub(crate) fn add_configuration(
             })
             .filter(|feature| tf_cfg.internal_target_features.contains(&feature))
             .map(|feature| (sym::target_feature, Some(feature))),
+    );
+
+    // Record relevant target features as target modifier.
+    sess.opts.target_modifiers.insert(
+        OptionsTargetModifiers::TargetFeatures,
+        // Join all target-modifier target features into a single comma-separated string,
+        // sorted by the order they appear in in `rust_target_features`.
+        sess.target
+            .rust_target_features()
+            .iter()
+            .filter(|(_, stab, _)| stab.is_target_modifier())
+            .map(|(feature, ..)| *feature)
+            .filter(|feature| tf_cfg.internal_target_features.contains(&Symbol::intern(feature)))
+            .collect::<Vec<_>>()
+            .join(","),
     );
 
     // Store all of them in the session.
