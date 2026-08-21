@@ -4,8 +4,6 @@
 // takes multiple minutes when doing so and less than a second
 // otherwise.
 
-//@ compile-flags: -Znext-solver=coherence
-
 trait RecursiveSuper:
     Super<
         A0 = Self::Assoc,

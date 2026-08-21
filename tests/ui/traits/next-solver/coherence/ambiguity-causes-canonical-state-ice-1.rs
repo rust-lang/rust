@@ -1,4 +1,3 @@
-//@ compile-flags: -Znext-solver=coherence
 //@ check-pass
 
 // A regression test for #124791. Computing ambiguity causes
