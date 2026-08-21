@@ -183,12 +183,12 @@ use rustc_ast::token::{IdentIsRaw, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg,
-    GenericParamKind, Generics, Mutability, PatKind, Safety, VariantData,
+    GenericParamKind, Generics, Mutability, PatKind, Safety, SelfKind, VariantData,
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
@@ -1003,9 +1003,9 @@ impl<'a> MethodDef<'a> {
         let span = trait_.span;
 
         let explicit_self = self.explicit_self.then(|| {
-            let (self_expr, explicit_self) = ty::get_explicit_self(cx, span);
-            selflike_args.push(self_expr);
-            explicit_self
+            // This constructs a fresh `self` path.
+            selflike_args.push(cx.expr_self(span));
+            respan(span, SelfKind::Region(None, ast::Mutability::Not))
         });
 
         for (ty, name) in self.nonself_args.iter() {
