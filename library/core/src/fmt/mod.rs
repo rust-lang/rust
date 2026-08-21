@@ -743,6 +743,16 @@ impl<'a> Arguments<'a> {
     }
 }
 
+// fn debug_print(s: &str) {
+//     unsafe extern "C" {
+//         fn write(fd: i32, buf: *const u8, count: usize) -> isize;
+//     }
+//
+//     unsafe {
+//         write(1, s.as_ptr(), s.len()); // fd 1 = stdout
+//     }
+// }
+
 #[doc(hidden)]
 #[unstable(feature = "fmt_internals", issue = "none")]
 impl<'a> Arguments<'a> {
@@ -752,13 +762,16 @@ impl<'a> Arguments<'a> {
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[inline]
     pub fn estimated_capacity(&self) -> usize {
+        // debug_print("estimated_capacity");
         if let Some(s) = self.as_str() {
             return s.len();
         }
         // Iterate over the template, counting the length of literal pieces.
         let mut length = 0usize;
-        let mut starts_with_placeholder = false;
+        let mut starts_with_placeholder_without_hint = false;
+        let mut has_placeholder_without_hint = false;
         let mut template = self.template;
+        let mut arg_index = 0;
         loop {
             // SAFETY: We can assume the template is valid.
             unsafe {
@@ -779,29 +792,42 @@ impl<'a> Arguments<'a> {
                 } else {
                     assert_unchecked(n >= 0xC0);
                     // Placeholder piece.
-                    if length == 0 {
-                        starts_with_placeholder = true;
-                    }
+                    // debug_print("placeholder\n");
                     // Skip remainder of placeholder:
                     let skip = (n & 1 != 0) as usize * 4 // flags (32 bit)
                         + (n & 2 != 0) as usize * 2  // width     (16 bit)
-                        + (n & 4 != 0) as usize * 2  // precision (16 bit)
-                        + (n & 8 != 0) as usize * 2; // arg_index (16 bit)
-                    template = template.add(skip as usize);
+                        + (n & 4 != 0) as usize * 2; // precision (16 bit)
+                    // + (n & 8 != 0) as usize * 2; // arg_index (16 bit)
+                    template = template.add(skip);
+                    let has_arg_index = (n & 8) != 0;
+                    if has_arg_index {
+                        arg_index = usize::from(u16::from_le_bytes(template.cast_array().read()));
+                        template = template.add(2);
+                    };
+                    let argument = self.args.add(arg_index).as_ref();
+                    let size_hint: Option<usize> = argument.hint();
+
+                    if let Some(hint) = size_hint {
+                        // debug_print("has hint\n");
+                        length += hint;
+                    } else {
+                        has_placeholder_without_hint = true;
+                        if length == 0 {
+                            starts_with_placeholder_without_hint = true;
+                        }
+                    }
+                    arg_index += 1;
                 }
             }
         }
 
-        if starts_with_placeholder && length < 16 {
+        if starts_with_placeholder_without_hint && length < 16 {
             // If the format string starts with a placeholder,
             // don't preallocate anything, unless length
             // of literal pieces is significant.
             0
         } else {
-            // There are some placeholders, so any additional push
-            // will reallocate the string. To avoid that,
-            // we're "pre-doubling" the capacity here.
-            length.wrapping_mul(2)
+            length.wrapping_mul(if has_placeholder_without_hint { 2 } else { 1 })
         }
     }
 }
@@ -1210,6 +1236,16 @@ pub trait Display: PointeeSized {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+
+    /// foobar
+    #[unstable(
+        feature = "split_array",
+        reason = "return type should have array as 2nd element",
+        issue = "90091"
+    )]
+    fn size_hint(&self) -> Option<usize> {
+        None
+    }
 }
 
 /// `o` formatting.
@@ -2894,7 +2930,27 @@ macro_rules! fmt_refs {
     }
 }
 
-fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
+fmt_refs! { Debug, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: PointeeSized + Display> Display for &T {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Display::fmt(&**self, f)
+    }
+    fn size_hint(&self) -> Option<usize> {
+        Display::size_hint(&**self)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: PointeeSized + Display> Display for &mut T {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Display::fmt(&**self, f)
+    }
+    fn size_hint(&self) -> Option<usize> {
+        Display::size_hint(&**self)
+    }
+}
 
 #[unstable(feature = "never_type", issue = "35121")]
 impl Debug for ! {
@@ -2924,6 +2980,13 @@ impl Debug for bool {
 impl Display for bool {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         Display::fmt(if *self { "true" } else { "false" }, f)
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        Some(match *self {
+            true => 4,
+            false => 5,
+        })
     }
 }
 
@@ -2981,6 +3044,9 @@ impl Display for str {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.pad(self)
     }
+    fn size_hint(&self) -> Option<usize> {
+        Some(self.len())
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3005,6 +3071,9 @@ impl Display for char {
         } else {
             f.pad(self.encode_utf8(&mut [0; char::MAX_LEN_UTF8]))
         }
+    }
+    fn size_hint(&self) -> Option<usize> {
+        Some(1)
     }
 }
 

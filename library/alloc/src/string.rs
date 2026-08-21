@@ -2748,6 +2748,10 @@ impl fmt::Display for String {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
+    #[inline]
+    fn size_hint(&self) -> Option<usize> {
+        fmt::Display::size_hint(&**self)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
