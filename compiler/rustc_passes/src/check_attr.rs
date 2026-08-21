@@ -77,7 +77,7 @@ fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>)
                 _ => bug!("parent of an ImplItem must be an Impl"),
             };
             if containing_impl_is_for_trait {
-                Target::Method(MethodKind::Trait { body: true })
+                Target::Method(MethodKind::TraitImpl)
             } else {
                 Target::Method(MethodKind::Inherent)
             }
@@ -749,7 +749,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn
             | Target::Closure
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+            | Target::Method(
+                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+            ) => {
                 // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
                 if let Some(did) = hir_id.as_owner()
                     && self.tcx.def_kind(did).has_codegen_attrs()
@@ -775,7 +777,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_naked(&self, hir_id: HirId, target: Target) {
         match target {
             Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+            | Target::Method(
+                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+            ) => {
                 let fn_sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
                 let abi = fn_sig.header.abi;
                 if abi.is_rustic_abi() && !self.tcx.features().naked_functions_rustic_abi() {
