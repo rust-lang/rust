@@ -102,12 +102,14 @@ pub struct ArrayStorage<const N: usize> {
     inner: [Word; N],
 }
 impl<const N: usize> AsRef<[Word]> for ArrayStorage<N> {
+    #[inline]
     fn as_ref(&self) -> &[Word] {
         &self.inner
     }
 }
 
 impl<const N: usize> AsMut<[Word]> for ArrayStorage<N> {
+    #[inline]
     fn as_mut(&mut self) -> &mut [Word] {
         &mut self.inner
     }
@@ -115,12 +117,14 @@ impl<const N: usize> AsMut<[Word]> for ArrayStorage<N> {
 
 impl<const N: usize> Deref for ArrayStorage<N> {
     type Target = [Word];
+    #[inline]
     fn deref(&self) -> &[Word] {
         self.inner.as_ref()
     }
 }
 
 impl<const N: usize> DerefMut for ArrayStorage<N> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.as_mut()
     }
