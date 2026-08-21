@@ -1815,6 +1815,8 @@ supported_targets! {
     ("x86_64-pc-cygwin", x86_64_pc_cygwin),
 
     ("x86_64-unknown-linux-gnuasan", x86_64_unknown_linux_gnuasan),
+
+    ("patmos-unknown-none", patmos_unknown_none),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1898,6 +1900,7 @@ crate::target_spec_enum! {
         X86 = "x86",
         X86_64 = "x86_64",
         Xtensa = "xtensa",
+        Patmos = "patmos",
     }
     other_variant = Other;
 }
@@ -1935,6 +1938,7 @@ impl Arch {
             Self::X86 => sym::x86,
             Self::X86_64 => sym::x86_64,
             Self::Xtensa => sym::xtensa,
+            Self::Patmos => sym::patmos,
             Self::Other(name) => rustc_span::Symbol::intern(name),
         }
     }
@@ -1944,7 +1948,7 @@ impl Arch {
 
         match self {
             // These targets just do not support c-variadic definitions.
-            Bpf | SpirV => false,
+            Bpf | SpirV | Patmos => false,
 
             // We don't know if the target supports c-variadic definitions, but we don't want
             // to needlessly restrict custom target.json configurations.
@@ -3484,6 +3488,7 @@ impl Target {
             | Arch::SpirV
             | Arch::Wasm32
             | Arch::Wasm64
+            | Arch::Patmos
             | Arch::Other(_) => return None,
         })
     }

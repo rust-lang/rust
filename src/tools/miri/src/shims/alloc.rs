@@ -36,7 +36,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | Arch::Wasm32
             | Arch::Hexagon
             | Arch::RiscV32
-            | Arch::Xtensa => 8,
+            | Arch::Xtensa
+            | Arch::Patmos => 8,
             Arch::X86_64
             | Arch::AArch64
             | Arch::Arm64EC

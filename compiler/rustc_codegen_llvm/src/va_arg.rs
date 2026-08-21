@@ -1182,7 +1182,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             // FIXME: port MipsTargetLowering::lowerVAARG.
             bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
         }
-        Arch::Sparc | Arch::Avr | Arch::M68k | Arch::Msp430 => {
+        Arch::Sparc | Arch::Patmos | Arch::Avr | Arch::M68k | Arch::Msp430 => {
             // Clang uses the LLVM implementation for these architectures.
             bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
         }

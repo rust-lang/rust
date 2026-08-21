@@ -11,6 +11,8 @@ const ALLOWED_SOURCES: &[&str] = &[
     r#""registry+https://github.com/rust-lang/crates.io-index""#,
     // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
     r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
+    // Patmos-specific `cc` fork (adds `patmos` arch recognition), see [patch.crates-io] in Cargo.toml.
+    r#""git+https://github.com/Kodalem/cc-rs?branch=patmos#587c17a81b21df647803cc022e2b189e4b9a4171""#,
 ];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the

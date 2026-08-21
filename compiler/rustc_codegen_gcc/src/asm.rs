@@ -697,6 +697,8 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => "d",
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Patmos(PatmosInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Patmos(PatmosInlineAsmRegClass::sreg) => "S",
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => "d", // more specific than "r"
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => "f",
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
@@ -846,6 +848,9 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => cx.type_i32(),
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Patmos(PatmosInlineAsmRegClass::reg | PatmosInlineAsmRegClass::sreg) => {
+            cx.type_i32()
+        }
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("GCC backend does not support SPIR-V")
         }
@@ -1037,6 +1042,7 @@ fn modifier_to_gcc(
         InlineAsmRegClass::Msp430(_) => None,
         InlineAsmRegClass::M68k(_) => None,
         InlineAsmRegClass::CSKY(_) => None,
+        InlineAsmRegClass::Patmos(_) => None,
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
