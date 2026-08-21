@@ -851,7 +851,13 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(mir_preserve_ub, true);
     tracked!(move_size_limit, Some(4096));
-    tracked!(next_solver, NextSolverConfig { coherence: true, globally: false });
+
+    // tidy-alphabetical-end
+    // FIXME(#160895): We don't test this when the next-solver is enabled by default.
+    if option_env!("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY").is_none() {
+        tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
+    }
+    // tidy-alphabetical-start
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
     tracked!(no_profiler_runtime, true);
