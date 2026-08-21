@@ -5,7 +5,7 @@ name: Patmos stage1
 on:
   workflow_dispatch:
   push:
-    branches: [master]
+    branches: [stable]
     paths:
       - "src/llvm-project"
       - "compiler/rustc_codegen_llvm/**"
