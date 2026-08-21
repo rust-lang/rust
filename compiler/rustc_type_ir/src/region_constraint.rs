@@ -748,31 +748,32 @@ pub fn destructure_type_outlives_constraints_in_root<
 ) -> RegionConstraint<I, S> {
     use RegionConstraint::*;
 
-    match constraint {
-        Ambiguity(_) | RegionOutlives(..) => constraint,
-        PlaceholderTyOutlives(ty, r, span) => {
-            Or(regions_outlived_by_placeholder(ty, assumptions, infcx.cx())
-                .map(move |assumption_r| RegionOutlives(assumption_r, r, span.clone()))
-                .collect::<Vec<_>>()
-                .into_boxed_slice())
+    let destructure_and = |and: RegionConstraint<I, S>| {
+        debug!("rewriting and {:?}", and);
+
+        let mut destructured_constraints = Vec::new();
+        for c in and.unwrap_and() {
+            match c {
+                Ambiguity(_) | RegionOutlives(..) => destructured_constraints.push(c),
+                PlaceholderTyOutlives(ty, r, span) => destructured_constraints.push(Or(
+                    regions_outlived_by_placeholder(ty, assumptions, infcx.cx())
+                        .map(move |assumption_r| RegionOutlives(assumption_r, r, span.clone()))
+                        .collect::<Vec<_>>()
+                        .into_boxed_slice(),
+                )),
+                AliasTyOutlivesViaEnv(bound_outlives, span) => destructured_constraints.push(
+                    alias_outlives_candidates_from_assumptions(infcx, bound_outlives, assumptions)
+                        .with_span(span),
+                ),
+                And(_) | Or(_) => unreachable!(),
+            }
         }
-        AliasTyOutlivesViaEnv(bound_outlives, span) => {
-            alias_outlives_candidates_from_assumptions(infcx, bound_outlives, assumptions)
-                .with_span(span)
-        }
-        And(constraints) => And(constraints
-            .into_iter()
-            .map(|constraint| {
-                destructure_type_outlives_constraints_in_root(infcx, constraint, assumptions)
-            })
-            .collect()),
-        Or(constraints) => Or(constraints
-            .into_iter()
-            .map(|constraint| {
-                destructure_type_outlives_constraints_in_root(infcx, constraint, assumptions)
-            })
-            .collect()),
-    }
+        debug!(?destructured_constraints);
+        And(destructured_constraints.into_boxed_slice())
+    };
+
+    let ands = constraint.unwrap_or();
+    Or(ands.into_iter().map(|and| destructure_and(and)).collect::<Vec<_>>().into_boxed_slice())
 }
 
 /// Converts type outlives constraints into either region outlives constraints, or type outlives
