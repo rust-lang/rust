@@ -1049,6 +1049,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let mut has_negative_sized_bound = false;
         let mut has_meta_sized_bound = false;
 
+        let mut has_move_bound = false;
+
         for (predicate, _) in
             bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
         {
@@ -1058,6 +1060,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::ClauseKind::Trait(pred) => {
                     // With `feature(sized_hierarchy)`, don't print `?Sized` as an alias for
                     // `MetaSized`, and skip sizedness bounds to be added at the end.
+                    //
+                    // With `feature(move_trait)` do the same for the `Move`
                     match tcx.as_lang_item(pred.def_id()) {
                         Some(LangItem::Sized) => match pred.polarity {
                             ty::ClausePolarity::Positive => {
@@ -1073,6 +1077,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         Some(LangItem::PointeeSized) => {
                             bug!("`PointeeSized` is removed during lowering");
                         }
+
+                        Some(LangItem::Move) => {
+                            has_move_bound = true;
+                            continue;
+                        }
+
                         _ => (),
                     }
 
@@ -1227,6 +1237,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             if !first {
                 write!(self, " + ")?;
             }
+            first = false;
             if add_maybe_sized {
                 write!(self, "?")?;
             }
@@ -1235,12 +1246,23 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             if !first {
                 write!(self, " + ")?;
             }
+            first = false;
             write!(self, "MetaSized")?;
         } else if has_pointee_sized_bound && using_sized_hierarchy {
             if !first {
                 write!(self, " + ")?;
             }
+            first = false;
             write!(self, "PointeeSized")?;
+        }
+
+        let using_move_trait = self.tcx().features().move_trait();
+        let add_maybe_move = using_move_trait && !has_move_bound;
+        if add_maybe_move {
+            if !first {
+                write!(self, " + ")?;
+            }
+            write!(self, "?Move")?;
         }
 
         if !with_forced_trimmed_paths() {
