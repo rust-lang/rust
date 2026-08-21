@@ -1665,10 +1665,10 @@ const _: () = ();
 /// not violate these invariants. The full requirements are stronger, as the reference generally
 /// must point to data that is safe to use as type `T`.
 ///
-/// It is not decided yet whether unsafe code may violate these invariants temporarily on internal
-/// data. As a consequence, unsafe code which violates these invariants temporarily on internal data
-/// may be unsound or become unsound in future versions of Rust depending on how this question is
-/// decided.
+/// Unsafe code is allowed to temporarily violate type validity invariants on internal data that
+/// cannot be otherwise observed; that is, arbitrary data can be written into the pointed-to bytes
+/// of a `&mut T` even if it would constitute an invalid value of `T` or set the disriminant of a
+/// wrapping enum to an invalid value, so long as everything is restored before the code returns.
 ///
 /// [allocation]: ptr#allocation
 #[stable(feature = "rust1", since = "1.0.0")]
