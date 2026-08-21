@@ -314,58 +314,10 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
 
 /// Evaluate ANDs and ORs to true/false/ambiguous based on whether their arguments are true/false/ambiguous
 #[instrument(level = "debug", ret)]
-pub fn evaluate_solver_constraint<I: Interner, S: Clone + std::fmt::Debug>(
-    constraint: &RegionConstraint<I, S>,
-) -> RegionConstraint<I, S> {
-    use RegionConstraint::*;
-    match constraint {
-        Ambiguity(_)
-        | RegionOutlives(..)
-        | AliasTyOutlivesViaEnv(..)
-        | PlaceholderTyOutlives(..) => constraint.clone(),
-        And(and) => {
-            let mut and_constraints = Vec::new();
-            let mut ambiguity = None;
-            for c in and.iter() {
-                let evaluated_constraint = evaluate_solver_constraint(c);
-                if evaluated_constraint.is_true() {
-                    // - do nothing
-                } else if evaluated_constraint.is_false() {
-                    return RegionConstraint::new_false();
-                } else if let Ambiguity(span) = evaluated_constraint {
-                    ambiguity.get_or_insert(span);
-                } else {
-                    and_constraints.push(evaluated_constraint);
-                }
-            }
-
-            ambiguity.map_or_else(
-                || RegionConstraint::And(and_constraints.into_boxed_slice()),
-                RegionConstraint::Ambiguity,
-            )
-        }
-        Or(or) => {
-            let mut or_constraints = Vec::new();
-            let mut ambiguity = None;
-            for c in or.iter() {
-                let evaluated_constraint = evaluate_solver_constraint(c);
-                if evaluated_constraint.is_false() {
-                    // do nothing
-                } else if evaluated_constraint.is_true() {
-                    return RegionConstraint::new_true();
-                } else if let Ambiguity(span) = evaluated_constraint {
-                    ambiguity.get_or_insert(span);
-                } else {
-                    or_constraints.push(evaluated_constraint);
-                }
-            }
-
-            ambiguity.map_or_else(
-                || RegionConstraint::Or(or_constraints.into_boxed_slice()),
-                RegionConstraint::Ambiguity,
-            )
-        }
-    }
+pub fn evaluate_solver_constraint<I: Interner>(
+    constraint: &RegionConstraint<I>,
+) -> RegionConstraint<I> {
+    todo!("overhauled in future commit")
 }
 
 /// Handles converting region outlives constraints involving placeholders from `u` into OR constraints
