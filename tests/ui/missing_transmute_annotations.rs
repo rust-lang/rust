@@ -64,6 +64,15 @@ unsafe fn foo2() -> i32 {
     }
 }
 
+#[expect(invalid_value)]
+// https://github.com/rust-lang/rust-clippy/issues/15839
+fn function_name_in_suggestion() {
+    trait T {}
+    struct S(*mut dyn T);
+    let _ = S(unsafe { std::mem::transmute((0usize, 0usize)) });
+    //~^ missing_transmute_annotations
+}
+
 fn main() {
     let x: _ = unsafe { std::mem::transmute::<_, i32>([1u16, 2u16]) };
     //~^ missing_transmute_annotations
