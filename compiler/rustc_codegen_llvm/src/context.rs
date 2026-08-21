@@ -282,6 +282,13 @@ pub(crate) unsafe fn create_module<'ll>(
         llvm::LLVMRustSetModuleCodeModel(llmod, to_llvm_code_model(sess.code_model()));
     }
 
+    let large_data_threshold = sess.opts.unstable_opts.large_data_threshold.unwrap_or(0);
+    if large_data_threshold != 0 {
+        unsafe {
+            llvm::LLVMRustSetModuleLargeDataThreshold(llmod, large_data_threshold);
+        }
+    }
+
     // If skipping the PLT is enabled, we need to add some module metadata
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
