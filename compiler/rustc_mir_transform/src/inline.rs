@@ -23,6 +23,7 @@ use rustc_span::Spanned;
 use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::{CostChecker, is_call_like};
+use crate::pass_manager::BodyMirOptLevel;
 use crate::simplify::{UsedInStmtLocals, simplify_cfg};
 use crate::validate::validate_types;
 use crate::{PassPolicy, check_inline, util};
@@ -48,13 +49,21 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
     fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
         match ctx.opts.unstable_opts.inline_mir {
             Some(enabled) => PassPolicy::optional(enabled),
-            None => PassPolicy::optional(match (ctx.mir_opt_level(), ctx.opts.optimize) {
-                (0 | 1, _) => false,
-                // Inlining reduces incremental effectiveness.
-                (2, OptLevel::More | OptLevel::Aggressive) => ctx.opts.incremental.is_none(),
-                // Don't inline if the global `-Copt-level` is 1/s/z
-                (2, _) => false,
-                _ => true,
+            None => PassPolicy::optional({
+                let source = ctx.mir_opt_level_source();
+                match source.level() {
+                    0 | 1 => false,
+                    3.. => true,
+                    // If level 2 has been inferred from opt-level=1/s/z, we don't want to enable inlining.
+                    // However, if `optimize(speed)` has been set, we want to inline irrespective of global opt level.
+                    2 if matches!(ctx.opts.optimize, OptLevel::More | OptLevel::Aggressive)
+                        || matches!(source, BodyMirOptLevel::Overridden(_)) =>
+                    {
+                        // Inlining reduces incremental effectiveness.
+                        ctx.opts.incremental.is_none()
+                    }
+                    _ => false,
+                }
             }),
         }
     }

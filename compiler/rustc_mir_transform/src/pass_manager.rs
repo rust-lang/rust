@@ -133,26 +133,62 @@ pub(super) struct PassCtx<'sess> {
     /// Prefer [`Self::mir_opt_level`] to [`Session::mir_opt_level`] to account for overrides.
     session: &'sess Session,
     /// The MIR optimization level for this body; may be overridden by `#[optimize]`.
-    body_mir_opt_level: usize,
+    // FIXME: This information is currently only inspected by inlining and may be unnecessary.
+    body_mir_opt_level: BodyMirOptLevel,
+}
+
+/// The optimization level for a body and the source for this decision.
+#[derive(Copy, Clone, Debug)]
+pub(super) enum BodyMirOptLevel {
+    /// Inferred from the global `-C opt-level`.
+    GlobalOptLevel(OptLevel),
+    /// Specified by the global `-Z mir-opt-level`.
+    GlobalMirOptLevel(usize),
+    /// Overridden by an `#[optimize]` attribute.
+    Overridden(OptLevel),
+}
+
+impl BodyMirOptLevel {
+    pub(super) fn level(&self) -> usize {
+        match self {
+            BodyMirOptLevel::GlobalOptLevel(level) | BodyMirOptLevel::Overridden(level) => {
+                level.mir_opt_level()
+            }
+            BodyMirOptLevel::GlobalMirOptLevel(level) => *level,
+        }
+    }
 }
 
 impl<'sess> PassCtx<'sess> {
     pub(super) fn for_body(tcx: TyCtxt<'sess>, def_id: DefId) -> Self {
-        let body_mir_opt_level = if !tcx.def_kind(def_id).has_codegen_attrs() {
-            tcx.sess.mir_opt_level()
+        let body_mir_opt_level = if tcx.def_kind(def_id).has_codegen_attrs()
+            && let opt_attr = tcx.codegen_fn_attrs(def_id).optimize
+            && opt_attr != OptimizeAttr::Default
+        {
+            BodyMirOptLevel::Overridden(match opt_attr {
+                OptimizeAttr::DoNotOptimize => OptLevel::No,
+                OptimizeAttr::Speed => OptLevel::Aggressive,
+                OptimizeAttr::Size => OptLevel::Size,
+                OptimizeAttr::Default => unreachable!(),
+            })
         } else {
-            match tcx.codegen_fn_attrs(def_id).optimize {
-                OptimizeAttr::Default => tcx.sess.mir_opt_level(),
-                OptimizeAttr::DoNotOptimize => OptLevel::No.mir_opt_level(),
-                OptimizeAttr::Speed => OptLevel::Aggressive.mir_opt_level(),
-                OptimizeAttr::Size => OptLevel::Size.mir_opt_level(),
+            #[allow(rustc::bad_opt_access, reason = "we want to know the source of the opt-level")]
+            if let Some(level) = tcx.sess.opts.unstable_opts.mir_opt_level {
+                BodyMirOptLevel::GlobalMirOptLevel(level)
+            } else {
+                BodyMirOptLevel::GlobalOptLevel(tcx.sess.opts.optimize)
             }
         };
+
         Self { session: tcx.sess, body_mir_opt_level }
     }
 
     /// The effective MIR optimization level for this body, including `#[optimize]` overrides.
     pub(super) fn mir_opt_level(&self) -> usize {
+        self.body_mir_opt_level.level()
+    }
+
+    pub(super) fn mir_opt_level_source(&self) -> BodyMirOptLevel {
         self.body_mir_opt_level
     }
 }
