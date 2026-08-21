@@ -6,8 +6,8 @@
 // contains control flow.
 
 #![feature(abi_gpu_kernel)]
+#![feature(gpu_offload)]
 #![feature(rustc_attrs)]
-#![feature(core_intrinsics)]
 #![no_main]
 
 // CHECK: @.offload_sizes.[[K:[^ ]*foo]] = private unnamed_addr constant
@@ -28,13 +28,12 @@ unsafe fn main() {
     let A = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
     for i in 0..100 {
-        core::intrinsics::offload::<_, _, ()>(
-            foo,
-            [256, 1, 1],
-            [32, 1, 1],
-            0,
-            (A.as_ptr() as *const [f32; 6],),
-        );
+        core::offload::offload! {
+            kernel = foo,
+            workgroup_dim = [256, 1, 1],
+            thread_dim = [32, 1, 1],
+            args = (A.as_ptr() as *const [f32; 6],),
+        }
     }
 }
 
