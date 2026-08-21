@@ -2,10 +2,11 @@ use std::marker::PhantomData;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use std::rc::Rc;
 use std::{fmt, iter, slice};
-use smallvec::SmallVec;
+
 use Chunk::*;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
+use smallvec::SmallVec;
 
 use crate::{Idx, IndexVec};
 
@@ -89,7 +90,7 @@ impl<T, S> DenseBitSet<T, S> {
     }
 }
 
-pub trait DenseBitSetStorage: AsRef<[Word]> + AsMut<[Word]> + DerefMut<Target=[Word]> {}
+pub trait DenseBitSetStorage: AsRef<[Word]> + AsMut<[Word]> + DerefMut<Target = [Word]> {}
 
 impl DenseBitSetStorage for Vec<Word> {}
 impl<const N: usize> DenseBitSetStorage for SmallVec<[Word; N]> {}
