@@ -89,6 +89,7 @@ pub trait Interner:
     type InherentAssocConstId: SpecificDefId<Self> + Into<Self::InherentAssocTermId>;
     type InherentAssocTermId: SpecificDefId<Self>;
     type Span: Span<Self>;
+    type ObligationCause: ObligationCause<Self>;
 
     type GenericArgs: GenericArgs<Self>;
     type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;

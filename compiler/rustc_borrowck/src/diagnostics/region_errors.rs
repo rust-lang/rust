@@ -1172,10 +1172,9 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let ocx = ObligationCtxt::new(&self.infcx);
         ocx.register_obligations(clauses.iter().map(|(clause, span)| {
             trace!(?clause);
-            Obligation::misc(
+            Obligation::new(
                 tcx,
-                span,
-                self.mir_def_id(),
+                rustc_middle::traits::ObligationCause::misc(span, self.mir_def_id()),
                 self.infcx.param_env,
                 clause.skip_norm_wip(),
             )
