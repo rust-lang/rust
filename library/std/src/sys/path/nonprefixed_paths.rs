@@ -105,17 +105,17 @@ impl<'a> Components<'a> {
                 // that we observed "." component instead of
                 // returning an empty path.
                 if cur_dir_present {
-                    return 1;
+                    1
                 } else {
                     self.state = State::Done;
-                    return 0;
+                    0
                 }
             }
             Some(i) => {
                 if cur_dir_present {
-                    return i + 2;
+                    i + 2
                 } else {
-                    return i + 1;
+                    i + 1
                 }
             }
         }
@@ -171,7 +171,7 @@ impl<'a> Components<'a> {
     /// Parse a u8 slice into an OsStr, which is encoded into a `Component`
     fn parse_single_component(&self, slice: &'a [u8]) -> Option<Component<'a>> {
         match slice {
-            [] => return None,
+            [] => None,
             [b'.'] => Some(Component::CurDir),
             [b'.', b'.'] => Some(Component::ParentDir),
             _ => {
@@ -298,7 +298,8 @@ pub fn eq_components(mut left: Components<'_>, mut right: Components<'_>) -> boo
     //
     // - check if we have empty paths
     // - compare raw bytes from right to left to find first mismatch
-    // - backtrack to find separator after mismatch to avoid ambiguous parsings of '.' or '..' characters
+    // - if first mismatch is not a separator or a curr dir component, return false directly. otherwise,
+    //   backtrack to find separator after mismatch to avoid ambiguous parsings of '.' or '..' characters
     // - if found update state to only do a component-wise comparison in the back direction
     //   on the remainder, otherwise do it on the full path
 
@@ -312,35 +313,30 @@ pub fn eq_components(mut left: Components<'_>, mut right: Components<'_>) -> boo
         return true;
     }
 
-    let mut left_iter = left.path.iter();
-    let mut right_iter = right.path.iter();
-    let mut bytes_consumed = 0;
-
-    // From benchmarking, this is faster than using:
-    // left_iter.rev().zip(right_iter.rev()).position(|&a, &b| a != b)
-    let (left_diff, right_diff) = 'diff: {
-        while let Some(left_byte) = left_iter.next_back()
-            && let Some(right_byte) = right_iter.next_back()
-        {
-            bytes_consumed += 1;
-            let left_byte = *left_byte;
-            let right_byte = *right_byte;
-            if left_byte != right_byte {
-                // If left byte and right byte are not any of these bytes
-                // this mismatch means they are not equal
-                if left_byte != MAIN_SEPARATOR as u8
-                    && left_byte != b'.'
-                    && right_byte != MAIN_SEPARATOR as u8
-                    && right_byte != b'.'
+    let (left_diff, right_diff) = match left
+        .path
+        .iter()
+        .rev()
+        .zip(right.path.iter().rev())
+        .enumerate()
+        .find(|(_, (a, b))| a != b)
+    {
+        None => {
+            let bytes_consumed = left.path.len().min(right.path.len());
+            (left.path.len() - bytes_consumed, right.path.len() - bytes_consumed)
+        }
+        Some((index, (a, b))) => {
+            let a = *a;
+            let b = *b;
+            if a != b {
+                if a != MAIN_SEPARATOR as u8 && a != b'.' && b != MAIN_SEPARATOR as u8 && b != b'.'
                 {
                     return false;
-                } else {
                 }
-                break 'diff (left.path.len() - bytes_consumed, right.path.len() - bytes_consumed);
             }
-        }
 
-        (left.path.len() - bytes_consumed, right.path.len() - bytes_consumed)
+            (left.path.len() - index - 1, right.path.len() - index - 1)
+        }
     };
 
     // Cases like "foo/./bar" == "foo/bar", "foobar/bar" == "foobar", needs to consider
@@ -388,16 +384,34 @@ impl Ord for Components<'_> {
 pub fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cmp::Ordering {
     // Fast path for long shared prefixes
     //
+    // - check for direct equality between both paths
     // - compare raw bytes to find first mismatch
-    // - backtrack to find separator before mismatch to avoid ambiguous parsings of '.' or '..' characters
+    // - if first mismatch is not a separator or curr dir component, compare byte directly. otherwise,
+    //   backtrack to find separator before mismatch to avoid ambiguous parsings of '.' or '..' characters
     // - if found update state to only do a component-wise comparison on the remainder,
     //   otherwise do it on the full path
 
-    let first_difference = match left.path.iter().zip(right.path).position(|(&a, &b)| a != b) {
-        None if left.path.len() == right.path.len() => return cmp::Ordering::Equal,
-        None => left.path.len().min(right.path.len()),
-        Some(diff) => diff,
-    };
+    // Directly checking for equality should be fast, so this shouldn't incur
+    // a major cost
+    if left.path == right.path {
+        return cmp::Ordering::Equal;
+    }
+
+    let first_difference =
+        match left.path.iter().zip(right.path).enumerate().find(|(_, (a, b))| a != b) {
+            None => left.path.len().min(right.path.len()),
+            Some((index, (a, b))) => {
+                let a = *a;
+                let b = *b;
+
+                if a != MAIN_SEPARATOR as u8 && a != b'.' && b != MAIN_SEPARATOR as u8 && b != b'.'
+                {
+                    return a.cmp(&b);
+                }
+
+                index
+            }
+        };
 
     if let Some(previous_sep) = left.path[..first_difference].iter().rposition(|&b| is_sep_byte(b))
     {
@@ -405,10 +419,10 @@ pub fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -
         // is guaranteed to be sliced away, so treat the state as if it were a
         // relative component
         let mismatched_component_start = previous_sep + 1;
-        left.path = &left.path[left.normalize_front(mismatched_component_start)..];
         left.state = State::Relative;
-        right.path = &right.path[right.normalize_front(mismatched_component_start)..];
         right.state = State::Relative;
+        left.path = &left.path[left.normalize_front(mismatched_component_start)..];
+        right.path = &right.path[right.normalize_front(mismatched_component_start)..];
     }
 
     Iterator::cmp(left, right)
