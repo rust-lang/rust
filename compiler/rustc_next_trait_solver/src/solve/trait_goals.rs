@@ -1109,7 +1109,8 @@ where
             .auto_traits()
             .into_iter()
             .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
-                elaborate::supertrait_def_ids(self.cx(), principal_def_id)
+                self.cx()
+                    .supertrait_def_ids(principal_def_id)
                     .filter(|def_id| self.cx().trait_is_auto(*def_id))
             }))
             .collect();

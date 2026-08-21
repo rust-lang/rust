@@ -430,6 +430,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.impl_super_outlives(impl_def_id)
     }
 
+    fn supertrait_def_ids(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
+        rustc_type_ir::elaborate::supertrait_def_ids(self, trait_def_id)
+    }
+
     fn impl_is_const(self, def_id: DefId) -> bool {
         debug_assert_matches!(self.def_kind(def_id), DefKind::Impl { of_trait: true });
         self.is_conditionally_const(def_id)

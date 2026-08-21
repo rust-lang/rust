@@ -318,6 +318,9 @@ impl<I: Interner, O: Elaboratable<I>> Iterator for Elaborator<I, O> {
 /// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
 /// to identify which traits may define a given associated type to help avoid cycle errors,
 /// and to make size estimates for vtable layout computation.
+///
+/// rust-analyzer has a query for this, so don't use this function there.
+#[cfg(feature = "nightly")]
 pub fn supertrait_def_ids<I: Interner>(
     cx: I,
     trait_def_id: I::TraitId,
