@@ -384,13 +384,6 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
     use rustc_middle::ty::Ty;
 
     let tcx = icx.tcx;
-    let type_error = || {
-        Ty::new_error_with_message(
-            tcx,
-            span,
-            "`type_of` called on const argument's anon const before the const argument was lowered",
-        )
-    };
 
     match tcx.parent_hir_node(arg_hir_id) {
         // Array length const arguments do not have `type_of` fed as there is never a corresponding
@@ -412,100 +405,14 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
             icx.lower_ty(ty)
         }
 
-        Node::Expr(Expr { kind: ExprKind::Path(qpath), .. }) => {
-            path_const_arg_anon_type_of(icx, qpath, arg_hir_id).unwrap_or_else(type_error)
-        }
-
         // This is not a `bug!` as const arguments in path segments that did not resolve to anything
         // will result in `type_of` never being fed.
-        _ => type_error(),
+        _ => Ty::new_error_with_message(
+            tcx,
+            span,
+            "`type_of` called on const argument's anon const before the const argument was lowered",
+        ),
     }
-}
-
-fn path_const_arg_anon_type_of<'tcx>(
-    icx: &ItemCtxt<'tcx>,
-    qpath: &hir::QPath<'tcx>,
-    arg_hir_id: HirId,
-) -> Option<Ty<'tcx>> {
-    if let hir::QPath::Resolved(None, path) = qpath {
-        let segment = path.segments.last()?;
-        let hir::def::Res::Def(hir::def::DefKind::Fn, def_id) = segment.res else {
-            return None;
-        };
-        expected_const_arg_type(icx.tcx, def_id, segment, arg_hir_id)
-    } else {
-        None
-    }
-}
-
-fn expected_const_arg_type<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    segment: &hir::PathSegment<'tcx>,
-    arg_hir_id: HirId,
-) -> Option<Ty<'tcx>> {
-    if segment.infer_args {
-        return None;
-    }
-
-    let generic_args = segment.args();
-    if !generic_args.constraints.is_empty()
-        || generic_args.parenthesized != hir::GenericArgsParentheses::No
-    {
-        return None;
-    }
-
-    let generics = tcx.generics_of(def_id);
-    if generics.parent.is_some()
-        || generics.parent_count != 0
-        || generics.has_self
-        || generics.has_late_bound_regions.is_some()
-    {
-        return None;
-    }
-
-    // Early lifetimes may be elided, `impl Trait` parameters are synthesized without a
-    // corresponding HIR argument, and trailing parameters with defaults may be omitted. All of
-    // these can leave fewer arguments than parameters, so only bail out when there are *more*
-    // arguments than can be matched positionally.
-    let has_lifetime_args = generic_args.has_lifetime_args();
-    let params_with_explicit_args = || {
-        generics.own_params.iter().filter(|param| match param.kind {
-            ty::GenericParamDefKind::Lifetime => has_lifetime_args,
-            ty::GenericParamDefKind::Type { synthetic, .. } => !synthetic,
-            ty::GenericParamDefKind::Const { .. } => true,
-        })
-    };
-
-    if generic_args.args.len() > params_with_explicit_args().count() {
-        return None;
-    }
-
-    let mut target_param = None;
-    for (arg, param) in generic_args.args.iter().zip(params_with_explicit_args()) {
-        match (arg, &param.kind) {
-            (hir::GenericArg::Lifetime(_), ty::GenericParamDefKind::Lifetime)
-            | (
-                hir::GenericArg::Type(_) | hir::GenericArg::Infer(_),
-                ty::GenericParamDefKind::Type { .. },
-            ) => {}
-            (hir::GenericArg::Const(const_arg), ty::GenericParamDefKind::Const { .. }) => {
-                if const_arg.hir_id == arg_hir_id {
-                    target_param = Some(param);
-                }
-            }
-            (hir::GenericArg::Infer(_), ty::GenericParamDefKind::Const { .. }) => {}
-            _ => return None,
-        }
-    }
-    let param = target_param?;
-
-    let ty = tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
-    (!ty.has_non_region_param()
-        && !ty.has_non_region_infer()
-        && !ty.has_free_regions()
-        && !ty.has_erased_regions())
-    .then_some(ty)
 }
 
 fn infer_placeholder_type<'tcx>(
