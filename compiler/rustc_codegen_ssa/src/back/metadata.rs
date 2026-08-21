@@ -317,6 +317,13 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
                 // despite that being the entire point of the CPIC ABI extension!
                 // As we are in Rome, we do as the Romans do.
                 e_flags |= elf::EF_MIPS_PIC | elf::EF_MIPS_CPIC;
+            } else if !sess.target.options.features.split(',').any(|f| f == "+noabicalls") {
+                // A static target that nonetheless leaves abicalls enabled, which is the
+                // "static object with dynamic calls" case described above. LLVM sets CPIC
+                // on the objects it emits for such a target, so set it here too: mixing
+                // the two makes the linker warn "linking abicalls code with non-abicalls
+                // code" once per object.
+                e_flags |= elf::EF_MIPS_CPIC;
             }
             if sess.target.options.cpu.contains("r6") {
                 e_flags |= elf::EF_MIPS_NAN2008;
