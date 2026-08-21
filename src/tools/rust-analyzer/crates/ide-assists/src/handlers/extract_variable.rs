@@ -953,6 +953,16 @@ fn foo() {
     }
 
     #[test]
+    fn dont_extract_in_pattern_with_selection() {
+        check_assist_not_applicable(extract_variable, r#"fn foo() { [].map(|$0bar$0| bar + 1) } "#);
+    }
+
+    #[test]
+    fn dont_extract_in_pattern_without_selection() {
+        check_assist_not_applicable(extract_variable, r#"fn foo() { [].map(|b$0ar| bar + 1) } "#);
+    }
+
+    #[test]
     fn extract_var_expr_stmt() {
         cov_mark::check!(test_extract_var_expr_stmt);
         check_assist_by_label(
