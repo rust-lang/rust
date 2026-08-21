@@ -24,7 +24,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
+    self as hir, AssocCtxt, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
     GenericParamKind, HirId, Item, ItemKind, MethodKind, Mod, Node, ParamName, Target, TraitItem,
     find_attr,
 };
@@ -60,7 +60,15 @@ struct DiagnosticOnConstOnlyForNonConstTraitImpls {
 
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
-        hir::ImplItemKind::Const(..) => Target::AssocConst,
+        hir::ImplItemKind::Const(..) => {
+            let parent_def_id = tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
+            let containing_item = tcx.hir_expect_item(parent_def_id);
+            let of_trait = match &containing_item.kind {
+                hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
+                _ => bug!("parent of an ImplItem must be an Impl"),
+            };
+            Target::AssocConst(AssocCtxt::Impl { of_trait })
+        }
         hir::ImplItemKind::Fn(..) => {
             let parent_def_id = tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
             let containing_item = tcx.hir_expect_item(parent_def_id);
@@ -69,12 +77,20 @@ fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>)
                 _ => bug!("parent of an ImplItem must be an Impl"),
             };
             if containing_impl_is_for_trait {
-                Target::Method(MethodKind::Trait { body: true })
+                Target::Method(MethodKind::TraitImpl)
             } else {
                 Target::Method(MethodKind::Inherent)
             }
         }
-        hir::ImplItemKind::Type(..) => Target::AssocTy,
+        hir::ImplItemKind::Type(..) => {
+            let parent_def_id = tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
+            let containing_item = tcx.hir_expect_item(parent_def_id);
+            let of_trait = match &containing_item.kind {
+                hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
+                _ => bug!("parent of an ImplItem must be an Impl"),
+            };
+            Target::AssocTy(AssocCtxt::Impl { of_trait })
+        }
     }
 }
 
@@ -190,9 +206,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
-            AttributeKind::Deprecated { span: attr_span, .. } => {
-                self.check_deprecated(hir_id, *attr_span, target)
-            }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::NonExhaustive(attr_span) => {
                 self.check_non_exhaustive(*attr_span, span, target, item)
@@ -245,6 +258,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::CustomMir(..) => (),
             AttributeKind::DebuggerVisualizer(..) => (),
             AttributeKind::DefaultLibAllocator => (),
+            AttributeKind::Deprecated { .. } => (),
             AttributeKind::DoNotRecommend => (),
             // `#[doc]` is actually a lot more than just doc comments, so is checked below
             AttributeKind::DocComment { .. } => (),
@@ -735,7 +749,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn
             | Target::Closure
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+            | Target::Method(
+                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+            ) => {
                 // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
                 if let Some(did) = hir_id.as_owner()
                     && self.tcx.def_kind(did).has_codegen_attrs()
@@ -761,7 +777,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_naked(&self, hir_id: HirId, target: Target) {
         match target {
             Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+            | Target::Method(
+                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+            ) => {
                 let fn_sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
                 let abi = fn_sig.header.abi;
                 if abi.is_rustic_abi() && !self.tcx.features().naked_functions_rustic_abi() {
@@ -810,7 +828,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     fn check_doc_alias_value(&self, span: Span, hir_id: HirId, target: Target, alias: Symbol) {
         if let Some(location) = match target {
-            Target::AssocTy => {
+            Target::AssocTy(_) => {
                 if let DefKind::Impl { .. } =
                     self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
                 {
@@ -819,7 +837,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     None
                 }
             }
-            Target::AssocConst => {
+            Target::AssocConst(_) => {
                 let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
                 let containing_item = self.tcx.hir_expect_item(parent_def_id);
                 // We can't link to trait impl's consts.
@@ -1275,23 +1293,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         .dcx()
                         .emit_err(diagnostics::RustcAllowConstFnUnstable { attr_span, span });
                 }
-            }
-            _ => {}
-        }
-    }
-
-    fn check_deprecated(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        match target {
-            Target::AssocConst | Target::Method(..) | Target::AssocTy
-                if self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
-                    == DefKind::Impl { of_trait: true } =>
-            {
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr_span,
-                    diagnostics::DeprecatedAnnotationHasNoEffect { span: attr_span },
-                );
             }
             _ => {}
         }
