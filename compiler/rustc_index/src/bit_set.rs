@@ -97,6 +97,7 @@ impl<const N: usize> DenseBitSetStorage for SmallVec<[Word; N]> {}
 
 // workaround because arrays don't implement DerefMut
 #[repr(transparent)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ArrayStorage<const N: usize> {
     inner: [Word; N],
 }
@@ -126,6 +127,14 @@ impl<const N: usize> DerefMut for ArrayStorage<N> {
 }
 
 impl<const N: usize> DenseBitSetStorage for ArrayStorage<N> {}
+
+impl<T: Idx, const N: usize> DenseBitSet<T, ArrayStorage<N>> {
+    /// Creates a new, empty bitset with a given `domain_size`.
+    #[inline]
+    pub fn new_empty_in_array(domain_size: usize) -> DenseBitSet<T, ArrayStorage<N>> {
+        DenseBitSet { domain_size, words: ArrayStorage { inner: [0; N] }, marker: PhantomData }
+    }
+}
 
 impl<T: Idx> DenseBitSet<T> {
     /// Creates a new, empty bitset with a given `domain_size`.
@@ -1106,7 +1115,7 @@ where
 /// will panic if the bitsets have differing domain sizes.
 #[derive(PartialEq, Eq)]
 pub enum MixedBitSet<T> {
-    Small(DenseBitSet<T>),
+    Small(DenseBitSet<T, ArrayStorage<2>>),
     Large(ChunkedBitSet<T>),
 }
 
@@ -1122,8 +1131,8 @@ impl<T> MixedBitSet<T> {
 impl<T: Idx> MixedBitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> MixedBitSet<T> {
-        if domain_size <= CHUNK_BITS {
-            MixedBitSet::Small(DenseBitSet::new_empty(domain_size))
+        if num_words(domain_size) <= 2 {
+            MixedBitSet::Small(DenseBitSet::new_empty_in_array(domain_size))
         } else {
             MixedBitSet::Large(ChunkedBitSet::new_empty(domain_size))
         }
