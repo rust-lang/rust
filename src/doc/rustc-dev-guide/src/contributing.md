@@ -412,7 +412,20 @@ There are issues for beginners and advanced compiler devs alike!
 
 Just a few things to keep in mind:
 
+[rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle
+
+- When writing about a particular part of the compiler's code, we
+  recommend that you link to the relevant parts of the [rustc API docs].
+
+- Use sentence case for chapter and sections titles.
+
+- Use dashes (`-`) to separate words in file names.
+
+- Links within the guide should use `.md` relative links, not `.html` links.
+  CI will enforce this.
+
 - Please try to avoid overly long lines and use semantic line breaks (where you break the line after each sentence).
+  This makes it easier to review diffs, since they avoid reflowing other unrelated prose.
   There is no strict limit on line lengths;
   let the sentence or part of the sentence flow to its proper end on the same line.
 
@@ -463,10 +476,6 @@ Just a few things to keep in mind:
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
     further explanation for the change process or a way to verify that the information is not
     outdated.
-
-- Use sentence case for chapter and sections titles.
-
-- Use dashes (`-`) to separate words file names.
 
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 

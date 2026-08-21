@@ -5,6 +5,9 @@
 This guide is meant to help document how rustc – the Rust compiler – works,
 as well as to help new contributors get involved in rustc development.
 
+Note that this guide is intended as a reference; it's recommended that you search
+for the docs you're looking for instead of reading them top to bottom.
+
 There are several parts to this guide:
 
 1. [Building and debugging `rustc`][p1]:
