@@ -933,8 +933,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        if !self.typing_mode().is_coherence()
-            && obligation.is_global()
+        debug_assert!(
+            !self.typing_mode().is_coherence(),
+            "we do not expect to use old solver in coherence anymore"
+        );
+
+        if obligation.is_global()
             && obligation.param_env.caller_bounds().all(|bound| bound.has_param())
         {
             // If a param env has no global bounds, global obligations do not
@@ -1379,13 +1383,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self.typing_mode() {
-            // Avoid using the global cache during coherence and just rely
-            // on the local cache. It is really just a simplification to
-            // avoid us having to fear that coherence results "pollute"
-            // the master cache. Since coherence executes pretty quickly,
-            // it's not worth going to more trouble to increase the
-            // hit-rate, I don't think.
-            TypingMode::Coherence => false,
             // Avoid using the global cache when we're defining opaque types
             // as their hidden type may impact the result of candidate selection.
             //
@@ -1411,6 +1408,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // FIXME(#132279): This is still incorrect as we treat opaque types
             // and default associated items differently between these two modes.
             TypingMode::PostAnalysis | TypingMode::Codegen => true,
+            TypingMode::Coherence => {
+                unreachable!("old solver coherence")
+            }
         }
     }
 
@@ -2437,14 +2437,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 return Err(());
             }
 
-            TypingMode::Coherence
-            | TypingMode::Typeck { .. }
+            TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::Codegen
             | TypingMode::ErasedNotCoherence(_)
             | TypingMode::Reflection
             | TypingMode::PostAnalysis => {}
+            TypingMode::Coherence => {
+                unreachable!("old solver coherence")
+            }
         }
 
         Ok(Normalized { value: impl_args, obligations: nested_obligations })
@@ -2785,12 +2787,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             TypingMode::Typeck { defining_opaque_types_and_generators: stalled_generators } => {
                 def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
             }
-            TypingMode::Coherence
-            | TypingMode::PostAnalysis
+            TypingMode::PostAnalysis
             | TypingMode::Reflection
             | TypingMode::Codegen
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowck { defined_opaque_types: _ } => false,
+            TypingMode::Coherence => {
+                unreachable!("old solver coherence")
+            }
         }
     }
 }
