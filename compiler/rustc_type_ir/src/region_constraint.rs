@@ -451,7 +451,7 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     //    IOW, we only want to encounter things from `u` as part of region out lives constraints.
     let constraint = rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling(
         infcx,
-        constraint,
+        constraint.canonical_form(),
         u,
         &assumptions,
     );
@@ -751,48 +751,37 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
     );
 
     use RegionConstraint::*;
-    match constraint {
-        Ambiguity | RegionOutlives(..) => constraint,
-        PlaceholderTyOutlives(ty, region) => {
-            rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(
-                infcx,
-                ty,
-                region,
-                u,
-                assumptions,
-            )
+    let rewrite_and = |and: RegionConstraint<I>| {
+        let mut rewritten_constraints = Vec::new();
+        for c in and.unwrap_and() {
+            match c {
+                Ambiguity | RegionOutlives(..) => rewritten_constraints.push(c),
+                PlaceholderTyOutlives(ty, region) => {
+                    rewritten_constraints.push(rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(
+                        infcx,
+                        ty,
+                        region,
+                        u,
+                        assumptions,
+                    ));
+                }
+                AliasTyOutlivesViaEnv(bound_outlives) => {
+                    rewritten_constraints.push(rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(
+                        infcx,
+                        bound_outlives,
+                        u,
+                        assumptions,
+                    ))
+                }
+                And(_) | Or(_) => unreachable!(),
+            }
         }
-        AliasTyOutlivesViaEnv(bound_outlives) => {
-            rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(
-                infcx,
-                bound_outlives,
-                u,
-                assumptions,
-            )
-        }
-        And(constraints) => And(constraints
-            .into_iter()
-            .map(|constraint| {
-                rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling(
-                    infcx,
-                    constraint,
-                    u,
-                    assumptions,
-                )
-            })
-            .collect()),
-        Or(constraints) => Or(constraints
-            .into_iter()
-            .map(|constraint| {
-                rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling(
-                    infcx,
-                    constraint,
-                    u,
-                    assumptions,
-                )
-            })
-            .collect()),
-    }
+
+        And(rewritten_constraints.into_boxed_slice())
+    };
+
+    let ands = constraint.unwrap_or();
+    Or(ands.into_iter().map(|and| rewrite_and(and)).collect::<Vec<_>>().into_boxed_slice())
 }
 
 fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling<
