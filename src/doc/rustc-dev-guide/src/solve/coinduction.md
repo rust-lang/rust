@@ -44,7 +44,7 @@ This tree would be infinitely large which is exactly what coinduction is about.
 ## Why is coinduction correct
 
 When checking whether some trait goals holds, we're asking "does there exist an `impl`
-which satisfies this bound". Even if are infinite chains of nested goals, we still have a
+which satisfies this bound". Even if there are infinite chains of nested goals, we still have a
 unique `impl` which should be used.
 
 ## How to implement coinduction
@@ -54,11 +54,11 @@ tree as that would take infinite resources, it still makes sense to think of coi
 from this perspective.
 
 As we cannot check for infinite trees, we instead search for patterns for which we know that
-they would result in an infinite proof tree. The currently pattern we detect are (canonical)
+they would result in an infinite proof tree. Currently, the pattern we detect are (canonical)
 cycles. If `T: Send` relies on `T: Send` then it's pretty clear that this will just go on forever.
 
 With cycles we have to be careful with caching. Because of canonicalization of regions and
-inference variables encountering a cycle doesn't mean that we would get an infinite proof tree.
+inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
 Looking at the following example:
 ```rust
 trait Foo {}
@@ -89,7 +89,7 @@ See [the relevant chapters][chalk] in the chalk book.
 
 We currently only consider auto-traits, `Sized`, and `WF`-goals to be coinductive.
 In the future we pretty much intend for all goals to be coinductive.
-Lets first elaborate on why allowing more coinductive proofs is even desirable.
+Let's first elaborate on why allowing more coinductive proofs is even desirable.
 
 ### Recursive data types already rely on coinduction...
 
