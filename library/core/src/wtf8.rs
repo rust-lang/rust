@@ -1,11 +1,11 @@
-//! Implementation of [the WTF-8 encoding](https://simonsapin.github.io/wtf-8/).
+//! Implementation of [the WTF-8 encoding](https://wtf-8.codeberg.page/).
 //!
 //! This library uses Rust’s type system to maintain
-//! [well-formedness](https://simonsapin.github.io/wtf-8/#well-formed),
+//! [well-formedness](https://wtf-8.codeberg.page/#well-formed),
 //! like the `String` and `&str` types do for UTF-8.
 //!
 //! Since [WTF-8 must not be used
-//! for interchange](https://simonsapin.github.io/wtf-8/#intended-audience),
+//! for interchange](https://wtf-8.codeberg.page/#intended-audience),
 //! this library deliberately does not provide access to the underlying bytes
 //! of WTF-8 strings,
 //! nor can it decode WTF-8 from arbitrary bytes.
