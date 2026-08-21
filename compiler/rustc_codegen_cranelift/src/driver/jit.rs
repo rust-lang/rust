@@ -3,6 +3,7 @@
 
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
+use std::process::ExitCode;
 
 use cranelift_jit::{JITBuilder, JITModule};
 use rustc_codegen_ssa::CrateInfo;
@@ -36,11 +37,7 @@ fn create_jit_module(
     (jit_module, cx)
 }
 
-pub(crate) fn run_jit(tcx: TyCtxt<'_>, target_cpu: String, jit_args: Vec<String>) -> ! {
-    if !tcx.crate_types().contains(&rustc_session::config::CrateType::Executable) {
-        tcx.dcx().fatal("can't jit non-executable crate");
-    }
-
+pub(crate) fn run_jit(tcx: TyCtxt<'_>, target_cpu: String, jit_args: Vec<String>) -> ExitCode {
     let output_filenames = tcx.output_filenames(());
     let crate_info = CrateInfo::new(tcx, target_cpu);
     let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
@@ -118,7 +115,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, target_cpu: String, jit_args: Vec<String>
     argv.push(std::ptr::null());
 
     let ret = f(args.len() as c_int, argv.as_ptr());
-    std::process::exit(ret);
+    ExitCode::from(ret as u8)
 }
 
 fn codegen_and_compile_fn<'tcx>(
