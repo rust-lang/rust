@@ -2151,13 +2151,18 @@ fn report_bivariance<'tcx>(
         item_kind => bug!("report_bivariance: unexpected item kind: {item_kind:?}"),
     };
 
-    let mut usage_spans = vec![];
+    let mut usages = vec![];
     intravisit::walk_item(
-        &mut CollectUsageSpans { spans: &mut usage_spans, param_def_id: param.def_id.to_def_id() },
+        &mut CollectUsageSpans {
+            tcx,
+            usages: &mut usages,
+            param_def_id: param.def_id.to_def_id(),
+            discarded_by: None,
+        },
         item,
     );
 
-    if !usage_spans.is_empty() {
+    if !usages.is_empty() {
         // First, check if the ADT/LTA is (probably) cyclical. We say probably here, since we're
         // not actually looking into substitutions, just walking through fields / the "RHS".
         // We don't recurse into the hidden types of opaques or anything else fancy.
@@ -2176,7 +2181,7 @@ fn report_bivariance<'tcx>(
         // likely to guide the user in the right direction.
         if is_probably_cyclical {
             return tcx.dcx().emit_err(diagnostics::RecursiveGenericParameter {
-                spans: usage_spans,
+                spans: usages.iter().map(|&(span, _)| span).collect(),
                 param_span: param.span,
                 param_name,
                 param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
@@ -2193,7 +2198,19 @@ fn report_bivariance<'tcx>(
         span: param.span,
         param_name,
         param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
-        usage_spans,
+        usages: usages
+            .into_iter()
+            .map(|(span, discarded_by)| match discarded_by {
+                Some(def_id) => diagnostics::UnusedGenericParameterUsage::Discarded {
+                    span,
+                    param_name,
+                    discarded_by: tcx.def_path_str(def_id),
+                },
+                None => {
+                    diagnostics::UnusedGenericParameterUsage::Unconstraining { span, param_name }
+                }
+            })
+            .collect(),
         help,
         const_param_help,
     });
@@ -2254,12 +2271,129 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsProbablyCyclical<'tcx> {
 ///
 /// This is used to report places where the user has used parameters in a
 /// non-variance-constraining way for better bivariance errors.
-struct CollectUsageSpans<'a> {
-    spans: &'a mut Vec<Span>,
+///
+/// Alongside each usage we record the item that discards the argument it is given, if we manage to
+/// find one, so that the error can point the user at the actual culprit.
+struct CollectUsageSpans<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    usages: &'a mut Vec<(Span, Option<DefId>)>,
     param_def_id: DefId,
+    /// The outermost item we're currently nested inside of that ignores the argument in this
+    /// position, e.g. `Foo` in `Foo<Vec<T>>` if `Foo`'s parameter is bivariant.
+    discarded_by: Option<DefId>,
 }
 
-impl<'tcx> Visitor<'tcx> for CollectUsageSpans<'_> {
+impl<'tcx> CollectUsageSpans<'_, 'tcx> {
+    /// Walk the arguments of a path to an ADT or a type alias, keeping track of which of them are
+    /// thrown away by the item they're passed to.
+    fn visit_applied_path(&mut self, def_id: DefId, path: &'tcx hir::Path<'tcx>) {
+        let Some((last, prefix)) = path.segments.split_last() else { return };
+        for segment in prefix {
+            intravisit::walk_path_segment(self, segment);
+        }
+
+        // A `_` argument may end up being either a type or a const argument, which would throw off
+        // the positional mapping below. This can't happen in an item signature, but let's not rely
+        // on that for a diagnostic.
+        let args = last.args();
+        if args.args.iter().any(|arg| matches!(arg, hir::GenericArg::Infer(_))) {
+            return intravisit::walk_path_segment(self, last);
+        }
+
+        let mut nth_ty_arg = 0;
+        for arg in args.args {
+            let hir::GenericArg::Type(ty) = arg else {
+                intravisit::walk_generic_arg(self, arg);
+                continue;
+            };
+            let outer = self.discarded_by;
+            if self.discarded_by.is_none() && self.discards_nth_ty_arg(def_id, nth_ty_arg) {
+                self.discarded_by = Some(def_id);
+            }
+            self.visit_ty(ty);
+            self.discarded_by = outer;
+            nth_ty_arg += 1;
+        }
+        // Associated item constraints make their arguments invariant rather than discarding them,
+        // so they get no special treatment.
+        for constraint in args.constraints {
+            intravisit::walk_assoc_item_constraint(self, constraint);
+        }
+    }
+
+    /// Whether `def_id` ignores its `nth_ty_arg`-th type argument.
+    fn discards_nth_ty_arg(&self, def_id: DefId, nth_ty_arg: usize) -> bool {
+        let Some(param) = self
+            .tcx
+            .generics_of(def_id)
+            .own_params
+            .iter()
+            .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Type { .. }))
+            .nth(nth_ty_arg)
+        else {
+            // More arguments than parameters; this is an error reported elsewhere.
+            return false;
+        };
+
+        match self.tcx.def_kind(def_id) {
+            DefKind::Struct | DefKind::Enum | DefKind::Union => {
+                self.tcx.variances_of(def_id).get(param.index as usize) == Some(&ty::Bivariant)
+            }
+            // Variances aren't computed for type aliases, so inspect the aliased type instead: the
+            // parameter is discarded if it never reaches a position that constrains it. Note that
+            // it isn't enough to look for the parameter syntactically, since the alias may just be
+            // forwarding it to something else that throws it away.
+            DefKind::TyAlias => {
+                // Free alias types aren't expanded by `type_of`, and we can't chase them by hand
+                // either: a diverging one like `type Recur<T> = Recur<(T,)>;` would recurse
+                // forever. `expand_free_alias_tys` is the routine that knows to stop.
+                let ty = self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+                let ty = self.tcx.expand_free_alias_tys(ty);
+                // On overflow the expansion gives up and hands back an error type. We have no idea
+                // what the alias does with its parameter at that point, so don't blame it.
+                !ty.references_error()
+                    && ParamIsConstrained { tcx: self.tcx, index: param.index }
+                        .visit_ty(ty)
+                        .is_continue()
+            }
+            _ => false,
+        }
+    }
+}
+
+/// Detects whether a type parameter reaches a position that constrains its variance, i.e. whether
+/// it survives being handed to the bivariant parameters of the ADTs it is passed through.
+///
+/// This lets us reason about type aliases, which have no variances of their own. Free alias types
+/// are expected to have been expanded away by the caller.
+struct ParamIsConstrained<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    index: u32,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamIsConstrained<'tcx> {
+    type Result = ControlFlow<(), ()>;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        match *ty.kind() {
+            ty::Param(param) if param.index == self.index => ControlFlow::Break(()),
+            ty::Adt(def, args) => {
+                // Arguments passed to a bivariant parameter are thrown away, so anything mentioned
+                // in them isn't constrained either.
+                let variances = self.tcx.variances_of(def.did());
+                for (i, arg) in args.iter().enumerate() {
+                    if variances.get(i) != Some(&ty::Bivariant) {
+                        arg.visit_with(self)?;
+                    }
+                }
+                ControlFlow::Continue(())
+            }
+            _ => ty.super_visit_with(self),
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for CollectUsageSpans<'_, 'tcx> {
     type Result = ();
 
     fn visit_generics(&mut self, _g: &'tcx rustc_hir::Generics<'tcx>) -> Self::Result {
@@ -2268,14 +2402,22 @@ impl<'tcx> Visitor<'tcx> for CollectUsageSpans<'_> {
 
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
         if let hir::TyKind::Path(hir::QPath::Resolved(None, qpath)) = t.kind {
-            if let Res::Def(DefKind::TyParam, def_id) = qpath.res
-                && def_id == self.param_def_id
-            {
-                self.spans.push(t.span);
-                return;
-            } else if let Res::SelfTyAlias { .. } = qpath.res {
-                self.spans.push(t.span);
-                return;
+            match qpath.res {
+                Res::Def(DefKind::TyParam, def_id) if def_id == self.param_def_id => {
+                    self.usages.push((t.span, self.discarded_by));
+                    return;
+                }
+                Res::SelfTyAlias { .. } => {
+                    self.usages.push((t.span, self.discarded_by));
+                    return;
+                }
+                Res::Def(
+                    DefKind::Struct | DefKind::Enum | DefKind::Union | DefKind::TyAlias,
+                    def_id,
+                ) => {
+                    return self.visit_applied_path(def_id, qpath);
+                }
+                _ => {}
             }
         }
         intravisit::walk_ty(self, t);

@@ -1737,8 +1737,8 @@ pub(crate) struct UnusedGenericParameter {
     pub span: Span,
     pub param_name: Ident,
     pub param_def_kind: &'static str,
-    #[label("`{$param_name}` is named here, but is likely unused in the containing type")]
-    pub usage_spans: Vec<Span>,
+    #[subdiagnostic]
+    pub usages: Vec<UnusedGenericParameterUsage>,
     #[subdiagnostic]
     pub help: UnusedGenericParameterHelp,
     #[help(
@@ -1762,6 +1762,28 @@ pub(crate) struct RecursiveGenericParameter {
         "all type parameters must be used in a non-recursive way in order to constrain their variance"
     )]
     pub note: (),
+}
+
+/// Points at a place where an otherwise unused parameter is mentioned, explaining why that mention
+/// doesn't count as a use.
+#[derive(Subdiagnostic)]
+pub(crate) enum UnusedGenericParameterUsage {
+    /// We managed to pin down the item that throws the parameter away.
+    #[label("`{$param_name}` is named here, but `{$discarded_by}` does not use it")]
+    Discarded {
+        #[primary_span]
+        span: Span,
+        param_name: Ident,
+        discarded_by: String,
+    },
+    /// The parameter is mentioned in a position that doesn't constrain it, but we couldn't work out
+    /// which item is responsible for that.
+    #[label("`{$param_name}` is named here, but this does not constrain `{$param_name}`")]
+    Unconstraining {
+        #[primary_span]
+        span: Span,
+        param_name: Ident,
+    },
 }
 
 #[derive(Subdiagnostic)]
