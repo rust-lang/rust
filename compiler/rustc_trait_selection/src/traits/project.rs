@@ -1034,8 +1034,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             // transmute checking and polymorphic MIR optimizations could
                             // get a result which isn't correct for all monomorphizations.
                             match selcx.typing_mode() {
-                                TypingMode::Coherence
-                                | TypingMode::Typeck { .. }
+                                TypingMode::Typeck { .. }
                                 | TypingMode::PostTypeckUntilBorrowck { .. }
                                 | TypingMode::Reflection
                                 | TypingMode::PostBorrowck { .. } => {
@@ -1052,6 +1051,11 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                     let poly_trait_ref =
                                         selcx.infcx.deeply_resolve_ignoring_regions(trait_ref);
                                     !poly_trait_ref.still_further_specializable()
+                                }
+                                TypingMode::Coherence => {
+                                    unreachable!(
+                                        "we do not expect to use old solver in coherence anymore"
+                                    )
                                 }
                             }
                         }
