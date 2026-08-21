@@ -46,5 +46,14 @@ LL | |     }
 LL | |     Ok(true)
    | |____________^ help: you can reduce it to: `Ok(!(a < b && b > 0))`
 
-error: aborting due to 5 previous errors
+error: this `if` guard returns a bool literal and is followed by another
+  --> tests/ui/needless_bool/early_return.rs:54:5
+   |
+LL | /     if x {
+LL | |         return Ok(true);
+LL | |     }
+LL | |     Ok(false)
+   | |_____________^ help: you can reduce it to: `Ok(x)`
+
+error: aborting due to 6 previous errors
 
