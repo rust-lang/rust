@@ -200,4 +200,7 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     // Deduplicating diagnostics means we miss events when tracking what happens during an
     // execution. Let's not do that.
     "-Zdeduplicate-diagnostics=no",
+    // FIXME(#160895): the new solver is enabled by default on nightly, but we
+    // don't want to use it in Miri for now. Remove once that's reverted.
+    "-Znext-solver=coherence",
 ];
