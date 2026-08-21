@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, LifetimeSource};
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use tracing::instrument;

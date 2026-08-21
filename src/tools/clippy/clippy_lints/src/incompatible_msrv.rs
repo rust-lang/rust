@@ -5,9 +5,8 @@ use clippy_utils::{is_in_const_context, is_in_test, sym};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::attrs::RustcVersion;
 use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, StabilityLevel, StableSince, find_attr};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::impl_lint_pass;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{ExpnKind, Span};
 

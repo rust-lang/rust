@@ -39,12 +39,8 @@ use crate::marker::PhantomCovariantLifetime;
 // derive `Copy`. However, in the future we might want to support a target where `va_copy`
 // allocates, or otherwise violates the requirements of `Copy`. Therefore `VaList` is only `Clone`.
 crate::cfg_select! {
-    all(
-        target_arch = "aarch64",
-        not(target_vendor = "apple"),
-        not(target_os = "uefi"),
-        not(windows),
-    ) => {
+    all(target_arch = "aarch64", not(target_vendor = "apple"), not(target_os = "uefi"), not(windows)) =>
+    {
         /// AArch64 ABI implementation of a `va_list`.
         ///
         /// See the [AArch64 Procedure Call Standard] for more details.
@@ -222,13 +218,13 @@ crate::cfg_select! {
 /// terms of layout and ABI.
 #[repr(transparent)]
 #[lang = "va_list"]
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 pub struct VaList<'a> {
     inner: VaListInner,
     _marker: PhantomCovariantLifetime<'a>,
 }
 
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 impl fmt::Debug for VaList<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // No need to include `_marker` in debug output.
@@ -243,7 +239,7 @@ impl VaList<'_> {
     }
 }
 
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 const impl<'f> Clone for VaList<'f> {
     /// Clone the [`VaList`], producing a second independent cursor into the variable argument list.
@@ -259,7 +255,7 @@ const impl<'f> Clone for VaList<'f> {
     }
 }
 
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 const impl<'f> Drop for VaList<'f> {
     /// Drop the [`VaList`].
@@ -312,7 +308,7 @@ const impl<'f> Drop for VaList<'f> {
 // types with a non-scalar layout. Inline assembly can be used to accept unsupported types in the
 // meantime.
 #[lang = "va_arg_safe"]
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 pub impl(self) unsafe trait VaArgSafe {}
 
 crate::cfg_select! {
@@ -321,9 +317,9 @@ crate::cfg_select! {
         //
         // - i8 is implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
         // - u8 is implicitly promoted to c_uint in C, and cannot implement `VaArgSafe`.
-        #[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "c_variadic", since = "1.99.0")]
         unsafe impl VaArgSafe for i16 {}
-        #[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "c_variadic", since = "1.99.0")]
         unsafe impl VaArgSafe for u16 {}
     }
     _ => {
@@ -337,7 +333,7 @@ crate::cfg_select! {
 crate::cfg_select! {
     target_arch = "avr" => {
         // c_double is f32 on this target.
-        #[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "c_variadic", since = "1.99.0")]
         unsafe impl VaArgSafe for f32 {}
     }
     _ => {
@@ -347,18 +343,18 @@ crate::cfg_select! {
     }
 }
 
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl VaArgSafe for i32 {}
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl VaArgSafe for i64 {}
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl VaArgSafe for isize {}
 
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl VaArgSafe for u32 {}
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl VaArgSafe for u64 {}
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl VaArgSafe for usize {}
 
 // Implement `VaArgSafe` for 128-bit integers on targets where clang provides `__int128`.
@@ -416,12 +412,12 @@ cfg_select! {
     }
 }
 
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl VaArgSafe for f64 {}
 
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl<T> VaArgSafe for *mut T {}
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl<T> VaArgSafe for *const T {}
 
 // Check that relevant `core::ffi` types implement `VaArgSafe`.
@@ -472,7 +468,7 @@ impl<'f> VaList<'f> {
     ///
     /// [`c_void`]: core::ffi::c_void
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
-    #[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "c_variadic", since = "1.99.0")]
     #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn next_arg<T: VaArgSafe>(&mut self) -> T {

@@ -36,10 +36,7 @@ cfg_select! {
         mod xous;
         pub use xous::Parker;
     }
-    any(
-        target_family = "unix",
-        target_os = "teeos",
-    ) => {
+    any(target_family = "unix", target_os = "teeos") => {
         mod pthread;
         pub use pthread::Parker;
     }

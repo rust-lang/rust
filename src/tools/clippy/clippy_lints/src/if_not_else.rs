@@ -4,8 +4,7 @@ use clippy_utils::is_else_clause;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_context};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {

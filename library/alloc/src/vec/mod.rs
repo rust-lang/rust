@@ -736,7 +736,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "box_vec_non_null", since = "1.99.0")]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const unsafe fn from_parts(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
@@ -871,7 +871,7 @@ impl<T> Vec<T> {
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
     #[must_use = "losing the pointer will leak memory"]
-    #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "box_vec_non_null", since = "1.99.0")]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const fn into_parts(self) -> (NonNull<T>, usize, usize) {
         let (ptr, len, capacity) = self.into_raw_parts();
@@ -1255,7 +1255,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// v.push(3);
     ///
     /// // Deconstruct the vector into parts.
-    /// let (p, len, cap, alloc) = v.into_parts_with_alloc();
+    /// let (p, len, cap, alloc) = v.into_parts_with_allocator();
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
@@ -1387,7 +1387,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// v.push(0);
     /// v.push(1);
     ///
-    /// let (ptr, len, cap, alloc) = v.into_parts_with_alloc();
+    /// let (ptr, len, cap, alloc) = v.into_parts_with_allocator();
     ///
     /// let rebuilt = unsafe {
     ///     // We can now make changes to the components, such as
@@ -1401,7 +1401,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn into_parts_with_alloc(self) -> (NonNull<T>, usize, usize, A) {
+    pub const fn into_parts_with_allocator(self) -> (NonNull<T>, usize, usize, A) {
         let (ptr, len, capacity, alloc) = self.into_raw_parts_with_allocator();
         // SAFETY: A `Vec` always has a non-null pointer.
         (unsafe { NonNull::new_unchecked(ptr) }, len, capacity, alloc)
@@ -3512,7 +3512,7 @@ impl<T, A: Allocator> Vec<T, A> {
             assert!(size_of::<T>() == size_of::<U>());
             assert!(align_of::<T>() == align_of::<U>());
         };
-        let (ptr, length, capacity, alloc) = self.into_parts_with_alloc();
+        let (ptr, length, capacity, alloc) = self.into_parts_with_allocator();
         debug_assert_eq!(length, 0);
         // SAFETY:
         // - `ptr` and `alloc` were just returned from `self.into_raw_parts_with_allocator()`

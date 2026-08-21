@@ -4560,16 +4560,13 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    // FIXME(bootstrap): Use a regular Rust doc code block after stage 0 emits
-    // `malformed_diagnostic_filters` instead of E0232 for this example.
-    #[cfg_attr(bootstrap, doc = "```rust,ignore (stage 0 emits E0232)")]
-    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// ```rust
     /// #![feature(rustc_attrs)]
     /// #![allow(internal_features)]
     ///
     /// #[rustc_on_unimplemented(on(invalid, message = "unused"))]
     /// trait Trait {}
-    #[doc = "```"]
+    /// ```
     ///
     /// {{produces}}
     ///
@@ -5650,13 +5647,12 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,compile_fail")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,no_run")]
+    /// ```rust,no_run
     /// fn main() {
     ///     let x = panic!();
     ///     x.clone();
     /// }
-    #[doc = "```"]
+    /// ```
     ///
     /// {{produces}}
     ///

@@ -462,7 +462,7 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
 ///     Ok(())
 /// }
 /// ```
-#[stable(feature = "fs_set_times", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fs_set_times", since = "1.99.0")]
 #[doc(alias = "utimens")]
 #[doc(alias = "utimes")]
 #[doc(alias = "utime")]
@@ -503,7 +503,7 @@ pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-#[stable(feature = "fs_set_times", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fs_set_times", since = "1.99.0")]
 #[doc(alias = "utimensat")]
 #[doc(alias = "lutimens")]
 #[doc(alias = "lutimes")]
@@ -3287,8 +3287,9 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// not be used in security-sensitive contexts:
 /// - **Miri**: Even when emulating targets where the underlying implementation will protect against
 ///   TOCTOU races, Miri will not do so.
-/// - **QNX**, **Redox OS**, **VxWorks**: This function does not protect against TOCTOU races, as
-///   the underlying platform does not implement the required platform support to do so.
+/// - **ESP-IDF**, **Horizon**, **PS Vita**, **QNX**, **Redox OS**, **VxWorks**: This function does
+///   not protect against TOCTOU races, as the underlying platform does not implement the required
+///   platform support to do so.
 ///
 /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 /// [changes]: io#platform-specific-behavior

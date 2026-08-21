@@ -24,13 +24,13 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, MacroKinds, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{Attribute, PrimTy, Stability, StabilityLevel, find_attr};
-use rustc_middle::bug;
-use rustc_middle::ty::{TyCtxt, Visibility};
-use rustc_session::Session;
-use rustc_session::lint::builtin::{
+use rustc_lint_defs::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_IMPORT_VISIBILITIES,
     AMBIGUOUS_PANIC_IMPORTS, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
+use rustc_middle::bug;
+use rustc_middle::ty::{TyCtxt, Visibility};
+use rustc_session::Session;
 use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::def_id::ModId;
 use rustc_span::edit_distance::find_best_match_for_name;

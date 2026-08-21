@@ -3,9 +3,8 @@ use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, intravisit};
 use rustc_hir_pretty::PpAnn;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
 use std::iter;
 
 declare_clippy_lint! {

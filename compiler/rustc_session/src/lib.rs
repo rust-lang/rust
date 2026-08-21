@@ -14,8 +14,7 @@
 // tidy-alphabetical-end
 
 pub use getopts;
-pub use lint::{declare_lint, declare_lint_pass, declare_tool_lint, impl_lint_pass};
-pub use rustc_lint_defs as lint;
+pub(crate) use rustc_lint_defs as lint;
 pub use session::*;
 
 pub mod code_stats;

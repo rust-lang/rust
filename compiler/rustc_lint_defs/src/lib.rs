@@ -7,7 +7,7 @@ use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCt
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::HirId;
 use rustc_macros::{Decodable, Encodable, StableHash};
-pub use rustc_span::edition::Edition;
+use rustc_span::edition::Edition;
 use rustc_span::{AttrId, Ident, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
@@ -722,7 +722,7 @@ macro_rules! declare_lint {
                 $($field: $val,)*
                 ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
             }),)?
-            $(edition_lint_opts: Some(($crate::Edition::$lint_edition, $crate::$edition_level)),)?
+            $(edition_lint_opts: Some((::rustc_span::edition::Edition::$lint_edition, $crate::$edition_level)),)?
             $(eval_always: $eval_always,)?
             $(rust_version: Some($crate::Lint::parse_rust_version($msrv)),)?
             ..$crate::Lint::default_fields_for_macro()

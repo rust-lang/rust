@@ -9,9 +9,11 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor};
 use rustc_hir::{self as hir, CRATE_HIR_ID, HirId};
-use rustc_lint::builtin::FLOAT_LITERAL_F32_FALLBACK;
+use rustc_lint_defs::builtin::{
+    DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK, FLOAT_LITERAL_F32_FALLBACK,
+    NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
+};
 use rustc_middle::ty::{self, FloatVid, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
-use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt, TraitEngine};
@@ -273,7 +275,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         for (hir_id, span, reason) in affected_unsafe_infer_vars {
             self.tcx.emit_node_span_lint(
-                lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
+                NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
                 hir_id,
                 span,
                 match reason {
@@ -343,7 +345,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.adjust_fulfillment_error_for_expr_obligation(never_error);
             let sugg = self.try_to_suggest_annotations(diverging_vids, coercions);
             self.tcx.emit_node_span_lint(
-                lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
+                DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
                 self.tcx.local_def_id_to_hir_id(self.body_def_id),
                 self.tcx.def_span(self.body_def_id),
                 diagnostics::DependencyOnUnitNeverTypeFallback {

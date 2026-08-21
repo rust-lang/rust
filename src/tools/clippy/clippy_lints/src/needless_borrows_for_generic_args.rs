@@ -11,12 +11,11 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Body, Expr, ExprKind, Mutability, Path, QPath};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt as _;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty, Unnormalized,
+    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionClause, Ty, Unnormalized,
 };
-use rustc_session::impl_lint_pass;
 use rustc_span::SyntaxContext;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
@@ -328,7 +327,7 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
 fn is_mixed_projection_predicate<'tcx>(
     cx: &LateContext<'tcx>,
     callee_def_id: DefId,
-    projection_predicate: &ProjectionPredicate<'tcx>,
+    projection_predicate: &ProjectionClause<'tcx>,
 ) -> bool {
     let generics = cx.tcx.generics_of(callee_def_id);
     // The predicate requires the projected type to equal a type parameter from the parent context.
@@ -402,7 +401,7 @@ fn replace_types<'tcx>(
     new_ty: Ty<'tcx>,
     fn_sig: FnSig<'tcx>,
     arg_index: usize,
-    projection_predicates: &[ProjectionPredicate<'tcx>],
+    projection_predicates: &[ProjectionClause<'tcx>],
     args: &mut [GenericArg<'tcx>],
 ) -> bool {
     let mut replaced = DenseBitSet::new_empty(args.len());

@@ -35,6 +35,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::ObligationCauseCode;
+use rustc_lint_defs::builtin::{TRIVIAL_CASTS, TRIVIAL_NUMERIC_CASTS};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
@@ -44,7 +45,6 @@ use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, Unnormalized, VariantDef, elaborate,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt, TraitEngine};
@@ -743,9 +743,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
 
         let (numeric, lint) = if self.cast_ty.is_numeric() && self.expr_ty.is_numeric() {
-            (true, lint::builtin::TRIVIAL_NUMERIC_CASTS)
+            (true, TRIVIAL_NUMERIC_CASTS)
         } else {
-            (false, lint::builtin::TRIVIAL_CASTS)
+            (false, TRIVIAL_CASTS)
         };
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);

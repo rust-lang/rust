@@ -461,8 +461,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[must_use]
-#[stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "layout_for_ptr", since = "1.99.0")]
+#[rustc_const_stable(feature = "layout_for_ptr", since = "1.99.0")]
 pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
@@ -635,8 +635,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
 #[inline]
 #[must_use]
-#[stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "layout_for_ptr", since = "1.99.0")]
+#[rustc_const_stable(feature = "layout_for_ptr", since = "1.99.0")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::align_of_val(val) }

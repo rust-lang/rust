@@ -9,9 +9,8 @@ use rustc_hir::{
     Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, Defaultness, Expr, ExprKind, FnDecl, HirId,
     ImplItem, ImplItemKind, IsAsync, Node, TraitItem, YieldSource,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::hir::nested_filter;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::{LocalDefId, LocalDefIdSet};
 

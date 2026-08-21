@@ -302,8 +302,12 @@ pub fn abort_internal() -> ! {
 
 cfg_select! {
     target_os = "android" => {
-        #[link(name = "dl", kind = "static", modifiers = "-bundle",
-            cfg(target_feature = "crt-static"))]
+        #[link(
+            name = "dl",
+            kind = "static",
+            modifiers = "-bundle",
+            cfg(target_feature = "crt-static")
+        )]
         #[link(name = "dl", cfg(not(target_feature = "crt-static")))]
         #[link(name = "log", cfg(not(target_feature = "crt-static")))]
         unsafe extern "C" {}

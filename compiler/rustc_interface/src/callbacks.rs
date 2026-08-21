@@ -12,7 +12,7 @@
 use std::fmt;
 
 use rustc_errors::DiagInner;
-use rustc_middle::dep_graph::{DepNodeIndex, QuerySideEffect, TaskDepsRef};
+use rustc_middle::dep_graph::{QuerySideEffect, TaskDepsRef};
 use rustc_middle::ty::tls;
 use rustc_span::Symbol;
 
@@ -59,13 +59,13 @@ fn track_feature(feature: Symbol) {
         };
         let tcx = icx.tcx;
 
-        if let Some(dep_node_index) = tcx.sess.used_features.lock().get(&feature).copied() {
-            tcx.dep_graph.read_index(DepNodeIndex::from_u32(dep_node_index));
+        if let Some(dep_node_index) = tcx.query_system.used_features.lock().get(&feature).copied() {
+            tcx.dep_graph.read_index(dep_node_index);
         } else {
             let dep_node_index = tcx
                 .dep_graph
                 .encode_side_effect(tcx, QuerySideEffect::CheckFeature { symbol: feature });
-            tcx.sess.used_features.lock().insert(feature, dep_node_index.as_u32());
+            tcx.query_system.used_features.lock().insert(feature, dep_node_index);
             tcx.dep_graph.read_index(dep_node_index);
         }
     })

@@ -6,8 +6,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_in_const_context, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does

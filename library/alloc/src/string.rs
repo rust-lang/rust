@@ -687,7 +687,7 @@ impl String {
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "string_from_utf8_lossy_owned", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_from_utf8_lossy_owned", since = "1.99.0")]
     pub fn from_utf8_lossy_owned(v: Vec<u8>) -> String {
         if let Cow::Owned(string) = String::from_utf8_lossy(&v) {
             string
@@ -2279,7 +2279,7 @@ impl FromUtf8Error {
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "string_from_utf8_lossy_owned", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_from_utf8_lossy_owned", since = "1.99.0")]
     pub fn into_utf8_lossy(self) -> String {
         const REPLACEMENT: &str = "\u{FFFD}";
 

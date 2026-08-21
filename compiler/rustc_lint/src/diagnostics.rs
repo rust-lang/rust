@@ -126,7 +126,7 @@ pub(crate) struct BuiltinEllipsisInclusiveRangePatterns {
 #[derive(Subdiagnostic)]
 #[note("requested on the command line with `{$level} {$lint_name}`")]
 pub(crate) struct RequestedLevel<'a> {
-    pub level: rustc_session::lint::Level,
+    pub level: rustc_lint_defs::Level,
     pub lint_name: &'a str,
 }
 

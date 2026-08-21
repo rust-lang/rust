@@ -6,10 +6,10 @@ use rustc_attr_ir::{AttrPath, CfgEntry};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diagnostic, MultiSpan};
 use rustc_feature::Features;
+use rustc_lint_defs::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
-use rustc_session::lint::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
