@@ -1664,7 +1664,7 @@ where
                 let constraint = self.delegate.get_solver_region_constraint();
                 debug_assert_eq!(
                     constraint,
-                    region_constraint::evaluate_solver_constraint(constraint.clone())
+                    region_constraint::propagate_ambiguity(constraint.clone())
                 );
                 constraint
             } else {
