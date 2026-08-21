@@ -152,6 +152,7 @@ pub(crate) struct Cargo {
     build_compiler_stage: u32,
     extra_rustflags: Vec<String>,
     profile: Option<&'static str>,
+    kind: Kind,
 }
 
 impl Cargo {
@@ -201,6 +202,10 @@ impl Cargo {
 
     pub(crate) fn into_cmd(self) -> BootstrapCommand {
         self.into()
+    }
+
+    pub(crate) fn kind(&self) -> Kind {
+        self.kind
     }
 
     /// Same as [`Cargo::new`] except this one doesn't configure the linker with
@@ -1530,6 +1535,7 @@ impl Builder<'_> {
             build_compiler_stage,
             extra_rustflags,
             profile,
+            kind: cmd_kind,
         }
     }
 }
