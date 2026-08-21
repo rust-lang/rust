@@ -255,6 +255,7 @@ pub mod fmt;
 pub mod intrinsics;
 #[unstable(feature = "alloc_io", issue = "154046")]
 pub mod io;
+pub mod panicking;
 #[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;
