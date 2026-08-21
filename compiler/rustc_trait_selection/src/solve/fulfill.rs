@@ -9,7 +9,8 @@ use rustc_infer::traits::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
 use rustc_next_trait_solver::solve::{
-    GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _, StalledOnCoroutines,
+    GoalEvaluation, GoalStalledOn, GoalStalledOnOpaques, HasChanged, SolverDelegateEvalExt as _,
+    StalledOnCoroutines, TyOrConstInferVar,
 };
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -44,6 +45,15 @@ pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
     /// gets rolled back. Because of this we explicitly check that we only
     /// use the context in exactly this snapshot.
     usable_in_snapshot: usize,
+    /// Whether every pending goal has precise, type-var-only stall info.
+    /// Int/float/const stalls and opaque-count mismatches force a full scan.
+    all_pending_trackable: bool,
+    /// Whether every trackable pending goal is stalled on at most one type var.
+    /// Goals stalled on two type vars can progress when those vars are equated.
+    all_pending_single_ty_stall: bool,
+    /// Shared `GoalStalledOnOpaques::Yes` storage count, if any pending goal
+    /// recorded one. `None` means no pending goal depends on opaques.
+    stalled_opaque_count: Option<usize>,
     _errors: PhantomData<E>,
 }
 
@@ -132,8 +142,80 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
         FulfillmentCtxt {
             obligations: Default::default(),
             usable_in_snapshot: infcx.num_open_snapshots(),
+            all_pending_trackable: true,
+            all_pending_single_ty_stall: true,
+            stalled_opaque_count: None,
             _errors: PhantomData,
         }
+    }
+
+    fn reset_tracking(&mut self) {
+        self.all_pending_trackable = true;
+        self.all_pending_single_ty_stall = true;
+        self.stalled_opaque_count = None;
+    }
+
+    fn note_registered_stalled_on(&mut self, stalled_on: Option<&GoalStalledOn<TyCtxt<'tcx>>>) {
+        if !self.all_pending_trackable {
+            return;
+        }
+        let Some(stalled_on) = stalled_on else {
+            self.all_pending_trackable = false;
+            return;
+        };
+        if !record_trackable_stalled_on(
+            stalled_on,
+            &mut self.stalled_opaque_count,
+            &mut self.all_pending_single_ty_stall,
+        ) {
+            self.all_pending_trackable = false;
+        }
+    }
+
+    fn recompute_tracking(&mut self) {
+        let mut stalled_opaque_count = None;
+        let mut all_pending_trackable = true;
+        let mut all_pending_single_ty_stall = true;
+        for (_, stalled_on) in &self.obligations.pending {
+            match stalled_on {
+                Some(stalled_on) => {
+                    if !record_trackable_stalled_on(
+                        stalled_on,
+                        &mut stalled_opaque_count,
+                        &mut all_pending_single_ty_stall,
+                    ) {
+                        all_pending_trackable = false;
+                        break;
+                    }
+                }
+                None => {
+                    all_pending_trackable = false;
+                    break;
+                }
+            }
+        }
+        self.all_pending_trackable = all_pending_trackable;
+        self.all_pending_single_ty_stall = all_pending_single_ty_stall;
+        self.stalled_opaque_count = stalled_opaque_count;
+    }
+
+    /// Skip the pending-queue walk when no pending goal can have made progress:
+    /// every goal is type-var-only with at most one stalled vid, opaque storage
+    /// is unchanged, and no type vid was instantiated.
+    fn can_skip_fulfillment(&self, infcx: &InferCtxt<'tcx>) -> bool {
+        if infcx.disable_trait_solver_fast_paths()
+            || !self.all_pending_trackable
+            || !self.all_pending_single_ty_stall
+            || infcx.ty_was_instantiated()
+        {
+            return false;
+        }
+        if let Some(n) = self.stalled_opaque_count
+            && infcx.opaque_type_count() != n
+        {
+            return false;
+        }
+        true
     }
 
     fn inspect_evaluated_obligation(
@@ -148,6 +230,38 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
             };
             (inspector)(infcx, &obligation, result);
         }
+    }
+}
+
+/// Returns `false` if this stalled goal cannot participate in the
+/// "no type-var instantiate" fulfillment skip.
+fn record_trackable_stalled_on<'tcx>(
+    stalled_on: &GoalStalledOn<TyCtxt<'tcx>>,
+    stalled_opaque_count: &mut Option<usize>,
+    all_pending_single_ty_stall: &mut bool,
+) -> bool {
+    let mut ty_stalls = 0usize;
+    for var in &stalled_on.stalled_vars {
+        match *var {
+            TyOrConstInferVar::Ty(_) => ty_stalls += 1,
+            TyOrConstInferVar::TyInt(_)
+            | TyOrConstInferVar::TyFloat(_)
+            | TyOrConstInferVar::Const(_) => return false,
+        }
+    }
+    if ty_stalls > 1 {
+        *all_pending_single_ty_stall = false;
+    }
+    match stalled_on.opaques {
+        GoalStalledOnOpaques::No => true,
+        GoalStalledOnOpaques::Yes { num_opaques_in_storage, .. } => match stalled_opaque_count {
+            None => {
+                *stalled_opaque_count = Some(num_opaques_in_storage);
+                true
+            }
+            Some(n) if *n == num_opaques_in_storage => true,
+            Some(_) => false,
+        },
     }
 }
 
@@ -172,10 +286,12 @@ where
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe(_) => {
+                    self.note_registered_stalled_on(stalled_on.as_ref());
                     self.obligations.register(obligation, stalled_on);
                 }
             }
         } else {
+            self.note_registered_stalled_on(None);
             self.obligations.register(obligation, None);
         }
     }
@@ -193,6 +309,14 @@ where
 
     fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
+        if self.obligations.pending.is_empty() {
+            self.reset_tracking();
+            infcx.reset_ty_instantiated();
+            return TraitErrors::NoErrors;
+        }
+        if self.can_skip_fulfillment(infcx) {
+            return TraitErrors::NoErrors;
+        }
         let mut errors = TraitErrors::NoErrors;
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
         loop {
@@ -285,6 +409,7 @@ where
             });
             if overflowed {
                 self.obligations.on_fulfillment_overflow(infcx);
+                self.all_pending_trackable = false;
                 // Only return true errors that we have accumulated while processing.
                 return errors;
             }
@@ -294,6 +419,8 @@ where
             }
         }
 
+        infcx.reset_ty_instantiated();
+        self.recompute_tracking();
         errors
     }
 

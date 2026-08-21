@@ -30,6 +30,13 @@ impl rustc_type_ir::inherent::OpaqueTypeStorageEntries for OpaqueTypeStorageEntr
     }
 }
 
+impl OpaqueTypeStorageEntries {
+    #[inline]
+    pub fn num_opaque_types(self) -> usize {
+        self.opaque_types
+    }
+}
+
 impl<'tcx> OpaqueTypeStorage<'tcx> {
     #[instrument(level = "debug")]
     pub(crate) fn remove(

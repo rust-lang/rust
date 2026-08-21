@@ -2,7 +2,7 @@ use std::cmp;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_data_structures::undo_log::Rollback;
+use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
@@ -19,6 +19,8 @@ use crate::infer::InferCtxtUndoLogs;
 pub(crate) enum UndoLog<'tcx> {
     EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
     SubRelation(sv::UndoLog<ut::Delegate<TyVidSubKey>>),
+    /// Previous value of [`TypeVariableStorage::ty_instantiated`].
+    TyInstantiated(bool),
 }
 
 /// Convert from a specific kind of undo to the more general UndoLog
@@ -52,6 +54,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
         match undo {
             UndoLog::EqRelation(undo) => self.eq_relations.reverse(undo),
             UndoLog::SubRelation(undo) => self.sub_unification_table.reverse(undo),
+            UndoLog::TyInstantiated(prev) => self.ty_instantiated = prev,
         }
     }
 }
@@ -83,6 +86,14 @@ pub(crate) struct TypeVariableStorage<'tcx> {
     /// type of `x` is only a supertype of the argument of `returns_arg`. We
     /// still want to suggest specifying the type of the argument.
     sub_unification_table: ut::UnificationTableStorage<TyVidSubKey>,
+    /// Whether any type vid was instantiated with a known type since the last
+    /// [`TypeVariableTable::reset_ty_instantiated`].
+    ///
+    /// Equating two unknown vids does not set this. Next-solver fulfillment
+    /// uses that to skip the pending-queue walk when every pending goal is
+    /// stalled on at most one type var: unknown-unknown unification cannot
+    /// make those goals progress (see rustc#159933).
+    ty_instantiated: bool,
 }
 
 pub(crate) struct TypeVariableTable<'a, 'tcx> {
@@ -161,6 +172,11 @@ impl<'tcx> TypeVariableStorage<'tcx> {
     pub(crate) fn sub_unification_table_ref(&self) -> &ut::UnificationTableStorage<TyVidSubKey> {
         &self.sub_unification_table
     }
+
+    #[inline]
+    pub(crate) fn ty_instantiated(&self) -> bool {
+        self.ty_instantiated
+    }
 }
 
 impl<'tcx> TypeVariableTable<'_, 'tcx> {
@@ -170,6 +186,20 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// `vid` has been unified with something else or not.
     pub(crate) fn var_origin(&self, vid: ty::TyVid) -> TypeVariableOrigin {
         self.storage.values[vid].origin
+    }
+
+    fn note_ty_instantiated(&mut self) {
+        if !self.storage.ty_instantiated {
+            self.undo_log.push(UndoLog::TyInstantiated(false));
+            self.storage.ty_instantiated = true;
+        }
+    }
+
+    pub(crate) fn reset_ty_instantiated(&mut self) {
+        if self.storage.ty_instantiated {
+            self.undo_log.push(UndoLog::TyInstantiated(true));
+            self.storage.ty_instantiated = false;
+        }
     }
 
     /// Records that `a == b`.
@@ -204,6 +234,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             "instantiating type variable `{vid:?}` twice: new-value = {ty:?}, old-value={:?}",
             self.eq_relations().probe_value(vid)
         );
+        self.note_ty_instantiated();
         self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
     }
 

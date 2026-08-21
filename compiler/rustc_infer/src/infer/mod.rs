@@ -1613,6 +1613,22 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// Whether any type vid was instantiated with a known type since the last
+    /// [`Self::reset_ty_instantiated`].
+    #[inline]
+    pub fn ty_was_instantiated(&self) -> bool {
+        self.inner.borrow().type_variable_storage.ty_instantiated()
+    }
+
+    pub fn reset_ty_instantiated(&self) {
+        self.inner.borrow_mut().type_variables().reset_ty_instantiated();
+    }
+
+    #[inline]
+    pub fn opaque_type_count(&self) -> usize {
+        self.inner.borrow().opaque_type_storage.num_entries().num_opaque_types()
+    }
+
     /// `ty_or_const_infer_var_changed` is equivalent to one of these two:
     ///   * `shallow_resolve(ty) != ty` (where `ty.kind = ty::Infer(_)`)
     ///   * `shallow_resolve(ct) != ct` (where `ct.kind = ty::ConstKind::Infer(_)`)
