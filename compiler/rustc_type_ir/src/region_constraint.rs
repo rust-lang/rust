@@ -441,8 +441,6 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
 ) -> RegionConstraint<I> {
-    use RegionConstraint::*;
-
     let assumptions = infcx.get_placeholder_assumptions(u);
 
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
@@ -456,28 +454,17 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
         &assumptions,
     );
 
-    // 2. rewrite the constraint into a canonical ORs of ANDs form
-    let constraint = constraint.canonical_form();
-
-    // 3. compute transitive region outlives and get a new set of region outlives constraints by
+    // 2. compute transitive region outlives and get a new set of region outlives constraints by
     //     looking for every region which either a placeholder_u flows into it, or it flows into
     //     the placeholder.
-    //
-    //    do this for each element in the top level OR
-    let constraint = Or(constraint
-        .unwrap_or()
-        .into_iter()
-        .map(|c| {
-            let and =
-                And(compute_new_region_constraints(infcx, &c.unwrap_and(), u).into_boxed_slice());
+    let constraint = compute_new_region_constraints(infcx, constraint.canonical_form(), u);
 
-            // 4. rewrite region outlives constraints (potentially to false/true)
-            pull_region_outlives_constraints_out_of_universe(infcx, and, u, &assumptions)
-        })
-        .collect::<Vec<_>>()
-        .into_boxed_slice());
+    // 3. rewrite region outlives constraints (potentially to false/true)
+    let constraint =
+        pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, &assumptions)
+            .canonical_form();
 
-    // 5. actually evaluate the constraint to eagerly error on false
+    // 4. actually evaluate the constraint to eagerly error on false
     evaluate_solver_constraint(&constraint)
 }
 
@@ -492,51 +479,63 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 #[instrument(level = "debug", skip(infcx), ret)]
 fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
-    constraints: &[RegionConstraint<I>],
+    constraint: RegionConstraint<I>,
     u: UniverseIndex,
-) -> Vec<RegionConstraint<I>> {
+) -> RegionConstraint<I> {
     use RegionConstraint::*;
 
-    let mut new_constraints = vec![];
-
-    let mut region_flows_builder = TransitiveRelationBuilder::default();
-    let mut regions = IndexSet::new();
-    for c in constraints {
-        match c {
-            And(..) | Or(..) => unreachable!(),
-            Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
-                new_constraints.push(c.clone())
-            }
-            RegionOutlives(r1, r2) => {
-                regions.insert(r1);
-                regions.insert(r2);
-                region_flows_builder.add(r2, r1);
-            }
-        }
-    }
-
-    let region_flow = region_flows_builder.freeze();
-    for r in regions.into_iter() {
-        for ub in region_flow.reachable_from(r) {
-            // we want to retain any region constraints between two "placeholder-likes" where for our
-            // purposes a placeholder-like is either a placeholder or variable in a lower universe
-            let is_placeholder_like = |r: Region<I>| match r.kind() {
-                RegionKind::ReLateParam(..)
-                | RegionKind::ReEarlyParam(..)
-                | RegionKind::RePlaceholder(..)
-                | RegionKind::ReStatic => true,
-                RegionKind::ReVar(..) => max_universe(infcx, r) < u,
-                RegionKind::ReError(..) => false,
-                RegionKind::ReErased | RegionKind::ReBound(..) => unreachable!(),
-            };
-
-            if is_placeholder_like(*r) && is_placeholder_like(*ub) {
-                new_constraints.push(RegionOutlives(*ub, *r));
+    let extend_from_and = |builder: &mut TransitiveRelationBuilder<_>,
+                           regions: &mut IndexSet<_>,
+                           constraints: &mut Vec<_>,
+                           and: RegionConstraint<I>| {
+        for c in and.unwrap_and() {
+            match c {
+                Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
+                    constraints.push(c.clone())
+                }
+                RegionOutlives(r1, r2) => {
+                    regions.insert(r1);
+                    regions.insert(r2);
+                    builder.add(r2, r1);
+                }
+                Or(_) | And(_) => unreachable!(),
             }
         }
+    };
+
+    let mut new_ands = Vec::new();
+    for and in constraint.unwrap_or() {
+        let mut region_flows_builder = TransitiveRelationBuilder::default();
+        let mut regions = IndexSet::new();
+        let mut constraints = Vec::new();
+
+        extend_from_and(&mut region_flows_builder, &mut regions, &mut constraints, and);
+
+        let region_flow = region_flows_builder.freeze();
+        for r in regions.into_iter() {
+            for ub in region_flow.reachable_from(r) {
+                // we want to retain any region constraints between two "placeholder-likes" where for our
+                // purposes a placeholder-like is either a placeholder or variable in a lower universe
+                let is_placeholder_like = |r: Region<I>| match r.kind() {
+                    RegionKind::ReLateParam(..)
+                    | RegionKind::ReEarlyParam(..)
+                    | RegionKind::RePlaceholder(..)
+                    | RegionKind::ReStatic => true,
+                    RegionKind::ReVar(..) => max_universe(infcx, r) < u,
+                    RegionKind::ReError(..) => false,
+                    RegionKind::ReErased | RegionKind::ReBound(..) => unreachable!(),
+                };
+
+                if is_placeholder_like(r) && is_placeholder_like(ub) {
+                    constraints.push(RegionOutlives(ub, r));
+                }
+            }
+        }
+
+        new_ands.push(And(constraints.into_boxed_slice()))
     }
 
-    new_constraints
+    Or(new_ands.into_boxed_slice())
 }
 
 /// Evaluate ANDs and ORs to true/false/ambiguous based on whether their arguments are true/false/ambiguous
@@ -679,7 +678,13 @@ fn pull_region_outlives_constraints_out_of_universe<
                 pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, assumptions)
             })
             .collect()),
-        Or(_) => unreachable!(),
+        // NOTE: this will be reverted back to `unreachable!()` in a future commit
+        Or(constraints) => Or(constraints
+            .into_iter()
+            .map(|constraint| {
+                pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, assumptions)
+            })
+            .collect()),
     }
 }
 
