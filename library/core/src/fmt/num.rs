@@ -269,8 +269,8 @@ macro_rules! impl_Display {
             #[doc = concat!("let n1 = 32", stringify!($Signed), ";")]
             /// assert_eq!(n1.format_into(&mut buf), "32");
             ///
-            #[doc = concat!("let n2 = ", stringify!($Signed::MAX), ";")]
-            #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($Signed::MAX), ".to_string());")]
+            #[doc = concat!("let n2 = ", stringify!($Signed), "::MAX;")]
+            #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($Signed), "::MAX.to_string());")]
             /// ```
             #[stable(feature = "int_format_into", since = "1.98.0")]
             pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
@@ -313,8 +313,8 @@ macro_rules! impl_Display {
             #[doc = concat!("let n1 = 32", stringify!($Unsigned), ";")]
             /// assert_eq!(n1.format_into(&mut buf), "32");
             ///
-            #[doc = concat!("let n2 = ", stringify!($Unsigned::MAX), ";")]
-            #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($Unsigned::MAX), ".to_string());")]
+            #[doc = concat!("let n2 = ", stringify!($Unsigned), "::MAX;")]
+            #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($Unsigned), "::MAX.to_string());")]
             /// ```
             #[stable(feature = "int_format_into", since = "1.98.0")]
             pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
