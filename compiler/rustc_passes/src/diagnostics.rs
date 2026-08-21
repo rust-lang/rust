@@ -284,17 +284,6 @@ pub(crate) struct InvalidMayDangle {
 }
 
 #[derive(Diagnostic)]
-#[diag("this `#[deprecated]` annotation has no effect")]
-pub(crate) struct DeprecatedAnnotationHasNoEffect {
-    #[suggestion(
-        "remove the unnecessary deprecation attribute",
-        applicability = "machine-applicable",
-        code = ""
-    )]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[panic_handler]` function required, but not found")]
 pub(crate) struct MissingPanicHandler;
 

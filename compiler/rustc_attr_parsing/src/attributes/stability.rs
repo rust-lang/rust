@@ -1,6 +1,6 @@
 use std::num::NonZero;
 
-use rustc_attr_ir::target::{GenericParamKind, MethodKind, Target};
+use rustc_attr_ir::target::{AssocCtxt, GenericParamKind, MethodKind, Target};
 use rustc_attr_ir::{
     DefaultBodyStability, PartialConstStability, Stability, StabilityLevel, StableSince,
     UnstableReason, UnstableRemovedFeature, VERSION_PLACEHOLDER,
@@ -28,8 +28,12 @@ const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::Mod),
     Allow(Target::Use), // FIXME I don't think this does anything?
     Allow(Target::Const),
-    Allow(Target::AssocConst),
-    Allow(Target::AssocTy),
+    Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+    Allow(Target::AssocConst(AssocCtxt::Trait)),
+    Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+    Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+    Allow(Target::AssocTy(AssocCtxt::Trait)),
+    Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
     Allow(Target::Trait),
     Allow(Target::TraitAlias),
     Allow(Target::TyAlias),
@@ -240,7 +244,9 @@ impl AttributeParser for ConstStabilityParser {
         Allow(Target::Impl { of_trait: true }),
         Allow(Target::Use), // FIXME I don't think this does anything?
         Allow(Target::Const),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Trait),
         Allow(Target::Static),
         Allow(Target::Crate),
