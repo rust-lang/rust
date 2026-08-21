@@ -505,6 +505,18 @@ enum Chunk {
 #[cfg(target_pointer_width = "64")]
 crate::static_assert_size!(Chunk, 16);
 
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(MixedBitSet<usize>, 32);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(DenseBitSet<usize>, 32);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(DenseBitSet<usize, usize>, 16);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(DenseBitSet<usize, [Word;2]>, 24);
+
 impl<T> ChunkedBitSet<T> {
     pub fn domain_size(&self) -> usize {
         self.domain_size
