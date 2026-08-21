@@ -1416,7 +1416,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         candidates.retain(|candidate| {
             if let &ImplCandidate(def_id) = candidate {
-                match (tcx.impl_polarity(def_id), obligation.polarity()) {
+                match (tcx.impl_polarity(def_id), obligation.predicate.skip_binder().polarity) {
                     (ty::ImplPolarity::Positive, ty::ClausePolarity::Positive)
                     | (ty::ImplPolarity::Negative, ty::ClausePolarity::Negative) => true,
 

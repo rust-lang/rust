@@ -58,7 +58,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
         // Negative trait predicates have different rules than positive trait predicates.
-        if obligation.polarity() == ty::ClausePolarity::Negative {
+        if obligation.predicate.skip_binder().polarity == ty::ClausePolarity::Negative {
             self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
             self.assemble_candidates_from_impls(obligation, &mut candidates);
             self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
@@ -317,7 +317,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the args on coroutine types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
-        let self_ty = obligation.self_ty().skip_binder();
+        let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
         match self_ty.kind() {
             // `async`/`gen` constructs get lowered to a special kind of coroutine that
             // should *not* `impl Coroutine`.
@@ -339,7 +339,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = obligation.self_ty().skip_binder();
+        let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
         if let ty::Coroutine(did, ..) = self_ty.kind() {
             // async constructs get lowered to a special kind of coroutine that
             // should directly `impl Future`.
@@ -356,7 +356,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = obligation.self_ty().skip_binder();
+        let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
         // gen constructs get lowered to a special kind of coroutine that
         // should directly `impl Iterator`.
         if let ty::Coroutine(did, ..) = self_ty.kind()
@@ -373,7 +373,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        if self.coroutine_is_gen(obligation.self_ty().skip_binder()) {
+        if self.coroutine_is_gen(obligation.predicate.map_bound(|p| p.self_ty()).skip_binder()) {
             candidates.vec.push(BuiltinCandidate);
         }
     }
@@ -383,7 +383,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = obligation.self_ty().skip_binder();
+        let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
         if let ty::Coroutine(did, args) = *self_ty.kind() {
             // gen constructs get lowered to a special kind of coroutine that
             // should directly `impl AsyncIterator`.
@@ -422,7 +422,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        let self_ty = obligation.self_ty().skip_binder();
+        let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
         match *self_ty.kind() {
             ty::Closure(def_id, _) => {
                 let is_const = self.tcx().is_const_fn(def_id);
@@ -483,8 +483,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let goal_kind =
             self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
 
-        debug!("self_ty = {:?}", obligation.self_ty().skip_binder().kind());
-        match *obligation.self_ty().skip_binder().kind() {
+        debug!(
+            "self_ty = {:?}",
+            obligation.predicate.map_bound(|p| p.self_ty()).skip_binder().kind()
+        );
+        match *obligation.predicate.map_bound(|p| p.self_ty()).skip_binder().kind() {
             ty::CoroutineClosure(def_id, args) => {
                 if let Some(closure_kind) =
                     args.as_coroutine_closure().kind_ty().to_opt_closure_kind()
@@ -542,7 +545,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = obligation.self_ty().skip_binder();
+        let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
         let target_kind_ty = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
 
         // `to_opt_closure_kind` is kind of ICEy when it sees non-int types.
@@ -573,7 +576,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // until the old solver (and thus this function) is removed.
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
-        let self_ty = obligation.self_ty().skip_binder();
+        let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
         match *self_ty.kind() {
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_fn_pointer_candidates: ambiguous self-type");
@@ -675,7 +678,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 continue;
             }
 
-            let self_ty = obligation.self_ty().skip_binder();
+            let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
             match self_ty.kind() {
                 // Fast path to avoid evaluating an obligation that trivially holds.
                 // There may be more bounds, but these are checked by the regular path.
@@ -744,7 +747,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         // Okay to skip binder here because the tests we do below do not involve bound regions.
-        let self_ty = obligation.self_ty().skip_binder();
+        let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
         debug!(?self_ty, "assemble_candidates_from_auto_impls");
 
         let def_id = obligation.predicate.def_id();
@@ -916,7 +919,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         debug!(
-            self_ty = ?obligation.self_ty().skip_binder(),
+            self_ty = ?obligation.predicate.map_bound(|p| p.self_ty()).skip_binder(),
             "assemble_candidates_from_object_ty",
         );
 
@@ -1133,7 +1136,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         // Okay to skip binder here because the tests we do below do not involve bound regions.
-        let self_ty = obligation.self_ty().skip_binder();
+        let self_ty = obligation.predicate.map_bound(|p| p.self_ty()).skip_binder();
         debug!(?self_ty);
 
         let def_id = obligation.predicate.def_id();
@@ -1329,7 +1332,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = self
+            .infcx
+            .shallow_resolve(obligation.predicate.map_bound(|p| p.self_ty()).skip_binder());
         match self_ty.kind() {
             ty::Tuple(_) => {
                 candidates.vec.push(BuiltinCandidate);
@@ -1373,7 +1378,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
+        let self_ty =
+            self.infcx.resolve_vars_if_possible(obligation.predicate.map_bound(|p| p.self_ty()));
 
         match self_ty.skip_binder().kind() {
             ty::FnPtr(..) => candidates.vec.push(BuiltinCandidate),

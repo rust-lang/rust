@@ -5032,10 +5032,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
                 && let Some(failed_pred) = failed_pred.as_trait_clause()
                 && let pred = failed_pred.map_bound(|pred| pred.with_replaced_self_ty(tcx, ty))
-                && self.predicate_must_hold_modulo_regions(&Obligation::misc(
+                && self.predicate_must_hold_modulo_regions(&Obligation::new(
                     tcx,
-                    expr.span,
-                    body_def_id,
+                    rustc_middle::traits::ObligationCause::misc(expr.span, body_def_id),
                     param_env,
                     pred,
                 ))
@@ -5689,10 +5688,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ));
             let body_def_id = self.tcx.hir_enclosing_body_owner(body_id);
             // Add `<ExprTy as Iterator>::Item = _` obligation.
-            ocx.register_obligation(Obligation::misc(
+            ocx.register_obligation(Obligation::new(
                 self.tcx,
-                span,
-                body_def_id,
+                rustc_middle::traits::ObligationCause::misc(span, body_def_id),
                 param_env,
                 projection,
             ));

@@ -675,6 +675,11 @@ pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 }
 
 #[rust_analyzer::prefer_underscore_import]
+pub trait ObligationCause<I: Interner<ObligationCause = Self>>: Clone + Debug {
+    fn span(&self) -> I::Span;
+}
+
+#[rust_analyzer::prefer_underscore_import]
 pub trait OpaqueTypeStorageEntries: Debug + Copy + Default {
     /// Whether the number of opaques has changed in a way that necessitates
     /// reevaluating a goal. For now, this is only when the number of non-duplicated

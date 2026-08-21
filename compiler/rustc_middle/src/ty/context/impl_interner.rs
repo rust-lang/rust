@@ -26,6 +26,14 @@ use crate::ty::{
     Region, RegionKind, RequiredDepth, Ty, TyCtxt,
 };
 
+impl<'tcx> rustc_type_ir::inherent::ObligationCause<TyCtxt<'tcx>>
+    for crate::traits::ObligationCause<'tcx>
+{
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
     fn next_trait_solver_globally(self) -> bool {
@@ -58,6 +66,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type InherentAssocConstId = DefId;
     type InherentAssocTermId = DefId;
     type Span = Span;
+    type ObligationCause = crate::traits::ObligationCause<'tcx>;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
 
