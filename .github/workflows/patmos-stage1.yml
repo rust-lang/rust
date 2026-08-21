@@ -27,6 +27,10 @@ jobs:
         uses: actions/checkout@v5
         with:
           submodules: recursive
+          # bootstrap needs git history (e.g. HEAD^1) for version/channel
+          # detection; actions/checkout defaults to a shallow (depth-1)
+          # clone which lacks any parent commit and makes that lookup fail.
+          fetch-depth: 0
 
       - name: Ensure submodules are initialized and up to date
         run: git submodule update --init --recursive
@@ -57,6 +61,10 @@ jobs:
         uses: actions/checkout@v5
         with:
           submodules: recursive
+          # bootstrap needs git history (e.g. HEAD^1) for version/channel
+          # detection; actions/checkout defaults to a shallow (depth-1)
+          # clone which lacks any parent commit and makes that lookup fail.
+          fetch-depth: 0
 
       - name: Ensure submodules are initialized and up to date
         run: git submodule update --init --recursive

@@ -1,0 +1,13 @@
+# See bootstrap.example.toml for documentation of available options
+#
+profile = "compiler"  # Includes one of the default files in src/bootstrap/defaults
+change-id = 148671
+[llvm]
+# Disable downloading pre-built LLVM
+download-ci-llvm = false
+# (Optional) Optimize the LLVM build itself
+optimize = false
+# Must include host backends too (AArch64 for Apple Silicon, X86 for x86_64 hosts)
+targets = "AArch64;X86;Patmos"
+experimental-targets = "Patmos"
+link-shared = false
