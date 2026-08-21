@@ -202,6 +202,9 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             }) => {
                 // This statement represents `*dst = *src`, `count` times.
             }
+            NonDivergingIntrinsic::LoopBound { .. } => {
+                // Loop bound intrinsic for WCET analysis - no dataflow impact.
+            }
         }
     }
 

@@ -93,3 +93,13 @@ codegen-units = 1
 # For git dependencies, also add your source to ALLOWED_SOURCES in src/tools/tidy/src/extdeps.rs.
 #[patch.crates-io]
 
+# Patch for Patmos specific CC
+[patch.crates-io]
+cc = { git = "https://github.com/Kodalem/cc-rs", branch = "patmos" }
+
+[build]
+# The host platform you are building ON, edit
+build = "aarch64-apple-darwin"
+
+# The target platform you want the compiler to generate code FOR
+target = ["patmos-unknown-none"]

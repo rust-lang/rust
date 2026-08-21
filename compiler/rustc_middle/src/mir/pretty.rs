@@ -870,6 +870,9 @@ impl Display for NonDivergingIntrinsic<'_> {
             Self::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
                 write!(f, "copy_nonoverlapping(dst = {dst:?}, src = {src:?}, count = {count:?})")
             }
+            Self::LoopBound { min, max } => {
+                write!(f, "loop_bound(min = {min:?}, max = {max:?})")
+            }
         }
     }
 }

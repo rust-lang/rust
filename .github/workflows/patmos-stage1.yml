@@ -1,0 +1,89 @@
+# Local testing with `act`:
+# act -j check --container-daemon-socket unix:///run/user/501/podman/podman.sock --platform ubuntu-latest=catthehacker/ubuntu:act-latest -W .github/workflows/patmos-stage1.yml
+name: Patmos stage1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "src/llvm-project"
+      - "compiler/rustc_codegen_llvm/**"
+      - ".github/workflows/patmos-stage1.yml"
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            host: x86_64-unknown-linux-gnu
+          - os: macos-14
+            host: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Ensure submodules are initialized and up to date
+        run: git submodule update --init --recursive
+
+      - name: Install build prerequisites (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build python3
+
+      - name: Install build prerequisites (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake ninja python3
+
+      - name: Fast sanity check (catches config/submodule breakage cheaply)
+        run: ./x.py check --target "patmos-unknown-none,${{ matrix.host }}" -j2
+  build:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            host: x86_64-unknown-linux-gnu
+          - os: macos-14
+            host: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Ensure submodules are initialized and up to date
+        run: git submodule update --init --recursive
+
+      - name: Install build prerequisites (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build python3
+
+      - name: Install build prerequisites (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake ninja python3
+
+      - name: Build stage1 rustc + patmos-unknown-none sysroot
+        # -j2 caps parallel jobs to bound peak memory during LLVM build/link.
+        # --set llvm.optimize=true, if this whole Patmos architecture is mature enough.
+        run: |
+          ./x.py build --stage 1 library/core --target "patmos-unknown-none,${{ matrix.host }}" -j2
+
+          ./x.py build --stage 1 library/alloc --target "patmos-unknown-none,${{ matrix.host }}" -j2
+          ./x.py build --stage 1 src/tools/cargo --target "patmos-unknown-none,${{ matrix.host }}" -j2
+
+      - name: Package artifact
+        run: tar czf rust-patmos-stage1-${{ matrix.host }}.tar.gz -C build/host stage1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-patmos-stage1-${{ matrix.host }}
+          path: rust-patmos-stage1-${{ matrix.host }}.tar.gz
+          retention-days: 14

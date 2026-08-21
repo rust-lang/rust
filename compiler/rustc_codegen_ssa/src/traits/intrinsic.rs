@@ -35,6 +35,10 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
+
+    /// Emit llvm.loop.bound intrinsic for WCET analysis.
+    /// Takes min and max loop iteration bounds as i32 values.
+    fn emit_loop_bound(&mut self, min: Self::Value, max: Self::Value);
     /// Trait method used to load a function while testing if it is associated with a type
     /// identifier.
     fn type_checked_load(

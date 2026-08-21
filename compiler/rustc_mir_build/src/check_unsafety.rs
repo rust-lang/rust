@@ -444,7 +444,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Return { .. }
             | ExprKind::Become { .. }
             | ExprKind::Yield { .. }
-            | ExprKind::Loop { .. }
+            | ExprKind::LoopBound { .. }
             | ExprKind::LoopMatch { .. }
             | ExprKind::Let { .. }
             | ExprKind::Match { .. }

@@ -259,6 +259,13 @@ pub struct Expr<'tcx> {
     pub span: Span,
 }
 
+/// Loop bound information for `llvm.loop.bound` intrinsic generation.
+#[derive(Clone, Debug, HashStable, TyEncodable, TyDecodable)]
+pub struct LoopBound {
+    pub min: u64,
+    pub max: u64,
+}
+
 #[derive(Clone, Debug, HashStable)]
 pub enum ExprKind<'tcx> {
     /// `Scope`s are used to explicitly mark destruction scopes,
@@ -355,8 +362,9 @@ pub enum ExprKind<'tcx> {
         is_from_as_cast: bool,
     },
     /// A `loop` expression.
-    Loop {
+    LoopBound {
         body: ExprId,
+        bound: Option<LoopBound>,
     },
     /// A `#[loop_match] loop { state = 'blk: { match state { ... } } }` expression.
     LoopMatch {

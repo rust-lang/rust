@@ -169,6 +169,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::LoopMatch(attr_span)) => {
                     self.check_loop_match(hir_id, *attr_span, target)
                 }
+                Attribute::Parsed(AttributeKind::LoopBound { span: attr_span, .. }) => {
+                    self.check_loop_bound(hir_id, *attr_span, target)
+                }
                 Attribute::Parsed(AttributeKind::ConstContinue(attr_span)) => {
                     self.check_const_continue(hir_id, *attr_span, target)
                 }
@@ -1864,6 +1867,33 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Loop(..)) {
             self.dcx().emit_err(errors::LoopMatchAttr { attr_span, node_span });
         };
+    }
+
+    // TODO: Make a discussion in writing how similar it is to the Clang's done loopbound work in the src/llvm-project/clang/test/CodeGen/Patmos/loopbounds.c et. al.
+    fn check_loop_bound(&self, hir_id: HirId, attr_span: Span, target: Target) {
+        use rustc_hir::Node;
+        let node_span = self.tcx.hir_span(hir_id);
+
+        if !matches!(target, Target::Expression | Target::Statement) {
+            return; // Handled in target checking during attr parse
+        }
+
+        // For expressions, check directly. For statements, check if it's a Semi containing a Loop
+        let is_loop = match self.tcx.hir_node(hir_id) {
+            Node::Expr(expr) => matches!(expr.kind, hir::ExprKind::Loop(..)),
+            Node::Stmt(stmt) => {
+                if let hir::StmtKind::Semi(expr) = stmt.kind {
+                    matches!(expr.kind, hir::ExprKind::Loop(..))
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+
+        if !is_loop {
+            self.dcx().emit_err(errors::LoopBoundAttr { attr_span, node_span });
+        }
     }
 
     fn check_const_continue(&self, hir_id: HirId, attr_span: Span, target: Target) {

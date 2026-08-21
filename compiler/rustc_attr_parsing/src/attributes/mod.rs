@@ -47,6 +47,7 @@ pub(crate) mod inline;
 pub(crate) mod instruction_set;
 pub(crate) mod link_attrs;
 pub(crate) mod lint_helpers;
+pub(crate) mod loop_bound;
 pub(crate) mod loop_match;
 pub(crate) mod macro_attrs;
 pub(crate) mod must_not_suspend;

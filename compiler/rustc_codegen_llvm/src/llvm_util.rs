@@ -124,6 +124,17 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-stats", false);
         }
 
+        // For Patmos target, ensure PML export includes common entry points
+        // This allows the PML export pass to find Rust entry points (_start) as well as C/C++ (main)
+        if sess.opts.target_triple.to_string().contains("patmos") {
+            if sess_args.clone().any(|arg| arg.contains("mserialize-pml")) {
+                // Only add if PML serialization requested but functions not already specified
+                if !user_specified_args.contains(&"mserialize-pml-functions") {
+                    add("-mserialize-pml-functions=_start,main", false);
+                }
+            }
+        }
+
         for arg in sess_args {
             add(&(*arg), true);
         }

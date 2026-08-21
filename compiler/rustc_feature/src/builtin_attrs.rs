@@ -893,6 +893,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         loop_match, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::No, loop_match, experimental!(loop_match)
     ),
+    gated!(
+        loop_bound, Normal,
+        template!(List: &[r#"min = "min_value", max = "max_value""#]),
+        ErrorFollowing,
+        EncodeCrossCrate::No, loop_bound, experimental!(loop_bound)
+    ),
 
     // The `#[pin_v2]` attribute is part of the `pin_ergonomics` experiment
     // that allows structurally pinning, tracked in:

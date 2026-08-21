@@ -1308,6 +1308,13 @@ pub(crate) struct LoopMatchArmWithGuard {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[loop_bound]` cannot be used together with `#[loop_match]`")]
+pub(crate) struct LoopBoundWithLoopMatch {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("could not determine the target branch for this `#[const_continue]`")]
 #[help("try extracting the expression into a `const` item")]
 pub(crate) struct ConstContinueNotMonomorphicConst {

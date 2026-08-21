@@ -192,7 +192,8 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed, AttrId);
-print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Limit);
+//Fixes erroneous error with loopbound implementation
+print_disp!(u8, u16, u32, u64, u128, usize, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,
     Ident,

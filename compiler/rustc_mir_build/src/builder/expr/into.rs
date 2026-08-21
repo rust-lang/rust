@@ -1,15 +1,16 @@
 //! See docs in build/expr/mod.rs
 
-use rustc_abi::FieldIdx;
+use rustc_abi::{FieldIdx, Size};
 use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, ScalarInt, Ty};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -205,7 +206,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.goto(short_circuit, source_info, target);
                 target.unit()
             }
-            ExprKind::Loop { body } => {
+            ExprKind::LoopBound { body, ref bound } => {
                 // [block]
                 //    |
                 //   [loop_block] -> [body_block] -/eval. body/-> [body_block_end]
@@ -224,6 +225,62 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.in_breakable_scope(Some(loop_block), destination, expr_span, move |this| {
                     // conduct the test, if necessary
                     let body_block = this.cfg.start_new_block();
+
+                    // If loop_bound attribute is present, emit the llvm.loop.bound intrinsic
+                    // in the loop header block (before the terminator)
+                    if let Some(loop_bound) = bound {
+                        // Create i32 constant operands for min and max
+                        // LLVM expects i32 for llvm.loop.bound intrinsic
+                        let i32_ty = this.tcx.types.i32;
+
+                        // Encoding for llvm.loop.bound:
+                        // For for/while loops: min_adj = min, max_adj = max - min
+                        // This ensures non-negative operands and matches Patmos backend expectations:
+                        // The backend computes: header_visits_min = min_adj + 1, header_visits_max = (min_adj + 1) + max_adj
+                        // So: header_visits_min = min + 1, header_visits_max = max + 1
+                        // We use i64 as intermediate to handle the full u64 range before truncating to i32
+                        let min_val = loop_bound.min as i64;  // min
+                        let max_val = (loop_bound.max as i64).saturating_sub(loop_bound.min as i64);  // max - min
+
+                        // Create ScalarInt values for min and max
+                        let i32_size = Size::from_bits(32);
+                        let min_scalar = ScalarInt::truncate_from_int(min_val, i32_size).0;
+                        let max_scalar = ScalarInt::truncate_from_int(max_val, i32_size).0;
+
+                        // Create constant operands
+                        let min_operand = Operand::Constant(Box::new(ConstOperand {
+                            span: expr_span,
+                            user_ty: None,
+                            const_: Const::Val(
+                                ConstValue::Scalar(Scalar::Int(min_scalar)),
+                                i32_ty,
+                            ),
+                        }));
+
+                        let max_operand = Operand::Constant(Box::new(ConstOperand {
+                            span: expr_span,
+                            user_ty: None,
+                            const_: Const::Val(
+                                ConstValue::Scalar(Scalar::Int(max_scalar)),
+                                i32_ty,
+                            ),
+                        }));
+
+                        // Create the intrinsic statement
+                        let intrinsic_stmt = Statement::new(
+                            source_info,
+                            StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::LoopBound {
+                                    min: min_operand,
+                                    max: max_operand,
+                                },
+                            )),
+                        );
+
+                        // Push the intrinsic statement to the loop header block
+                        this.cfg.push(loop_block, intrinsic_stmt);
+                    }
+
                     this.cfg.terminate(
                         loop_block,
                         source_info,

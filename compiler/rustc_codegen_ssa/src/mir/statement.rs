@@ -71,6 +71,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op_val = self.codegen_operand(bx, op);
                 bx.assume(op_val.immediate());
             }
+            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::LoopBound { ref min, ref max }) => {
+                let min_val = self.codegen_operand(bx, min).immediate();
+                let max_val = self.codegen_operand(bx, max).immediate();
+                bx.emit_loop_bound(min_val, max_val);
+            }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
                 mir::CopyNonOverlapping { ref count, ref src, ref dst },
             )) => {

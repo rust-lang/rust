@@ -792,6 +792,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let count = self.eval_operand(count, None)?;
                 self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)
             }
+            NonDivergingIntrinsic::LoopBound { .. } => {
+                // Loop bound intrinsic for WCET analysis - no-op in const eval.
+                interp_ok(())
+            }
         }
     }
 

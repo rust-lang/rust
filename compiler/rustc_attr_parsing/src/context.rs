@@ -36,6 +36,7 @@ use crate::attributes::inline::*;
 use crate::attributes::instruction_set::*;
 use crate::attributes::link_attrs::*;
 use crate::attributes::lint_helpers::*;
+use crate::attributes::loop_bound::*;
 use crate::attributes::loop_match::*;
 use crate::attributes::macro_attrs::*;
 use crate::attributes::must_not_suspend::*;
@@ -245,6 +246,7 @@ attribute_parsers!(
         Single<WithoutArgs<FfiConstParser>>,
         Single<WithoutArgs<FfiPureParser>>,
         Single<WithoutArgs<FundamentalParser>>,
+        Single<LoopBoundParser>,
         Single<WithoutArgs<LoopMatchParser>>,
         Single<WithoutArgs<MacroEscapeParser>>,
         Single<WithoutArgs<MarkerParser>>,

@@ -80,7 +80,8 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             visitor.visit_expr(&visitor.thir()[expr]);
             visitor.visit_pat(pat);
         }
-        Loop { body } => visitor.visit_expr(&visitor.thir()[body]),
+        // TODO: Check if renaming Loop to Loopbound causes long term issues.
+        LoopBound { body, bound: _ } => visitor.visit_expr(&visitor.thir()[body]),
         LoopMatch { match_data: box LoopMatchMatchData { scrutinee, ref arms, .. }, .. }
         | Match { scrutinee, ref arms, .. } => {
             visitor.visit_expr(&visitor.thir()[scrutinee]);

@@ -1030,3 +1030,12 @@ pub(crate) struct UnsupportedInstructionSet<'a> {
     pub instruction_set: Symbol,
     pub current_target: &'a TargetTuple,
 }
+
+#[derive(Diagnostic)]
+#[diag("loop_bound min value `{min}` must be less than or equal to max value `{max}`")]
+pub(crate) struct LoopBoundInvalidRange {
+    #[primary_span]
+    pub span: Span,
+    pub min: u64,
+    pub max: u64,
+}

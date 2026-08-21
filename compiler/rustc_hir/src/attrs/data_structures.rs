@@ -1100,6 +1100,9 @@ pub enum AttributeKind {
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
+    /// Represents `#[loop_bound(min = "value", max = "value")]`.
+    LoopBound { min: u64, max: u64, span: Span },
+
     /// Represents `#[macro_escape]`.
     MacroEscape(Span),
 

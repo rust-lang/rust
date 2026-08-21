@@ -988,6 +988,34 @@ impl<'ll> CodegenCx<'ll, '_> {
             return (fn_ty, f);
         }
 
+        // Patmos-specific intrinsic for loop bound annotation.
+        // This is used by the Patmos LLVM backend to generate PML files for WCET analysis.
+        if base_name == "llvm.loop.bound" {
+            let fn_ty = self.type_func(
+                &[self.type_i32(), self.type_i32()],
+                self.type_void(),
+            );
+            let f = self.declare_cfn("llvm.loop.bound", llvm::UnnamedAddr::No, fn_ty);
+
+            // Add attributes to prevent optimization (matching Clang's behavior).
+            // These are critical to ensure the intrinsic isn't optimized away before
+            // the Patmos PML export pass can process it.
+            // Use string attributes for those not in AttributeKind enum
+            use llvm::AttributePlace::Function;
+            let attrs = [
+                llvm::CreateAttrString(self.scx.llcx, "convergent"),
+                llvm::CreateAttrString(self.scx.llcx, "noduplicate"),
+                llvm::AttributeKind::NoInline.create_attr(self.scx.llcx),
+                llvm::CreateAttrString(self.scx.llcx, "norecurse"),
+                llvm::CreateAttrString(self.scx.llcx, "nomerge"),
+                llvm::AttributeKind::OptimizeNone.create_attr(self.scx.llcx),
+            ];
+            llvm::AddFunctionAttributes(f, Function, &attrs);
+
+            return (fn_ty, f);
+        }
+
+
         let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
             .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
         let f = intrinsic.get_declaration(self.llmod, &type_params);

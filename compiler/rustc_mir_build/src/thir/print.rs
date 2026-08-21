@@ -325,10 +325,14 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
-            Loop { body } => {
+            // TODO: Check if renaming Loop to Loopbound causes any long term issues.
+            LoopBound { body, bound } => {
                 print_indented!(self, "Loop (", depth_lvl);
                 print_indented!(self, "body:", depth_lvl + 1);
                 self.print_expr(*body, depth_lvl + 2);
+                if let Some(loop_bound) = bound {
+                    print_indented!(self, format!("bound: LoopBound {{ min: {}, max: {} }}", loop_bound.min, loop_bound.max), depth_lvl + 1);
+                }
                 print_indented!(self, ")", depth_lvl);
             }
             LoopMatch { state, region_scope, match_data } => {

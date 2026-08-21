@@ -194,6 +194,10 @@ macro_rules! make_mir_visitor {
                             self.visit_operand(dst, location);
                             self.visit_operand(count, location);
                         }
+                        NonDivergingIntrinsic::LoopBound { min, max } => {
+                            self.visit_operand(min, location);
+                            self.visit_operand(max, location);
+                        }
                     },
                     StatementKind::ConstEvalCounter | StatementKind::Nop => {}
                 }

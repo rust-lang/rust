@@ -238,6 +238,10 @@ fn check_statement<'tcx>(
             check_operand(cx, src, span, body, msrv)?;
             check_operand(cx, count, span, body, msrv)
         },
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::LoopBound { min, max }) => {
+            check_operand(cx, min, span, body, msrv)?;
+            check_operand(cx, max, span, body, msrv)
+        },
         // These are all NOPs
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)

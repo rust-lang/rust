@@ -918,6 +918,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
         StatementKind::Intrinsic(intrinsic) => match &**intrinsic {
             // We ignore `assume` intrinsics, they are only useful for optimizations
             NonDivergingIntrinsic::Assume(_) => {}
+            NonDivergingIntrinsic::LoopBound { .. } => {}
             NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
                 src,
                 dst,

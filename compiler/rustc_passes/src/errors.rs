@@ -29,6 +29,15 @@ pub(crate) struct LoopMatchAttr {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[loop_bound]` should be applied to a loop")]
+pub(crate) struct LoopBoundAttr {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("not a loop")]
+    pub node_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[const_continue]` should be applied to a break expression")]
 pub(crate) struct ConstContinueAttr {
     #[primary_span]

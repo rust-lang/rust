@@ -271,6 +271,51 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
+            sym::loop_bound => {
+                let min_val = args[0].immediate();
+                let max_val = args[1].immediate();
+                // Get or create llvm.loop.bound function
+                let fn_ty = self.type_func(&[self.type_i32(), self.type_i32()], self.type_void());
+                use crate::common::AsCCharPtr;
+                let loop_bound_fn = unsafe {
+                    let name = "llvm.loop.bound";
+                    let existing = llvm::LLVMGetNamedFunction(self.llmod, name.as_c_char_ptr());
+                    match existing {
+                        Some(f) => f,
+                        None => {
+                            // Use LLVMAddFunction for more control
+                            let f = llvm::LLVMAddFunction(self.llmod, name.as_c_char_ptr(), fn_ty);
+                            // Set AppendingLinkage - this allows the Patmos backend to find and process it
+                            llvm::set_linkage(f, llvm::Linkage::AppendingLinkage);
+                            // Add all 6 attributes to match Clang's implementation
+                            // These prevent LLVM from optimizing away the intrinsic, which is critical
+                            // for the PML exporter to detect it
+
+                            // Use string attributes for all to ensure compatibility
+                            let attr_names = ["convergent", "no-duplicate", "no-recurse", "no-merge", "noinline", "optimizenone"];
+
+                            // Collect all attributes
+                            let mut attrs: Vec<&llvm::Attribute> = Vec::new();
+                            for attr_name in attr_names.iter() {
+                                let c_name = std::ffi::CString::new(*attr_name).unwrap();
+                                let attr = llvm::LLVMCreateStringAttribute(
+                                    &self.cx.scx.llcx,
+                                    c_name.as_ptr(),
+                                    attr_name.len() as u32,
+                                    std::ptr::null(),
+                                    0,
+                                );
+                                attrs.push(attr);
+                            }
+
+                            // Add all attributes at once
+                            llvm::LLVMRustAddFunctionAttributes(f, 0, attrs.as_ptr(), attrs.len());
+                            f
+                        }
+                    }
+                };
+                self.call(fn_ty, None, None, loop_bound_fn, &[min_val, max_val], None, None)
+            }
             sym::va_arg => {
                 match result.layout.backend_repr {
                     BackendRepr::Scalar(scalar) => {
@@ -781,6 +826,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         if self.cx.sess().opts.optimize != rustc_session::config::OptLevel::No {
             self.call_intrinsic("llvm.assume", &[], &[val]);
         }
+    }
+
+    fn emit_loop_bound(&mut self, min: Self::Value, max: Self::Value) {
+        self.call_intrinsic("llvm.loop.bound", &[self.type_i32(), self.type_i32()], &[min, max]);
     }
 
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value {

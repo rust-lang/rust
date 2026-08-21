@@ -65,8 +65,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                 self.consume_operand(location, dst);
                 self.consume_operand(location, count);
             }
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::LoopBound { .. })
             // Only relevant for mir typeck
-            StatementKind::AscribeUserType(..)
+            | StatementKind::AscribeUserType(..)
             // Only relevant for liveness and unsafeck
             | StatementKind::PlaceMention(..)
             // Doesn't have any language semantics

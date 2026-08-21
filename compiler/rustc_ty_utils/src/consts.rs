@@ -170,7 +170,7 @@ fn recurse_build<'tcx>(
         ExprKind::Continue { .. }
         | ExprKind::ConstContinue { .. }
         | ExprKind::Break { .. }
-        | ExprKind::Loop { .. }
+        | ExprKind::LoopBound { .. }
         | ExprKind::LoopMatch { .. } => {
             error(GenericConstantTooComplexSub::LoopNotSupported(node.span))?
         }
@@ -270,7 +270,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Use { .. }
             | thir::ExprKind::NeverToAny { .. }
             | thir::ExprKind::PointerCoercion { .. }
-            | thir::ExprKind::Loop { .. }
+            | thir::ExprKind::LoopBound { .. }
             | thir::ExprKind::LoopMatch { .. }
             | thir::ExprKind::Let { .. }
             | thir::ExprKind::Match { .. }

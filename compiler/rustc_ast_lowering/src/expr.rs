@@ -1882,6 +1882,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
         let loop_expr = self.arena.alloc(hir::Expr { hir_id: loop_hir_id, kind, span: for_span });
 
+        // Apply loop-bound attributes to the loop expression itself, not the outer match.
+        // For loops like `#[loop_bound(min = 0, max = 10)] for x in iter { ... }`,
+        // the attribute needs to be on the `Loop` expression, not the outer `DropTemps` expression.
+        let loop_bound_attrs: Vec<_> = e.attrs
+            .iter()
+            .filter(|attr| {
+                if let rustc_ast::AttrKind::Normal(normal_attr) = &attr.kind {
+                    normal_attr.item.path == &[sym::loop_bound][..]
+                } else {
+                    false
+                }
+            })
+            .cloned()
+            .collect();
+
+        if !loop_bound_attrs.is_empty() {
+            self.lower_attrs(loop_hir_id, &loop_bound_attrs, for_span, Target::from_expr(e));
+        }
+
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr, for_span);
 
@@ -1943,9 +1962,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // temporaries in the `head` expression are dropped and do not leak to the
         // surrounding scope of the `match` since the `match` is not a terminating scope.
         //
-        // Also, add the attributes to the outer returned expr node.
+        // Also, add the attributes to the outer returned expr node (excluding loop_bound
+        // which was already applied to the loop_expr).
         let expr = self.expr_drop_temps_mut(for_span, match_expr);
-        self.lower_attrs(expr.hir_id, &e.attrs, e.span, Target::from_expr(e));
+        let non_loop_bound_attrs: Vec<_> = e.attrs
+            .iter()
+            .filter(|attr| {
+                if let rustc_ast::AttrKind::Normal(normal_attr) = &attr.kind {
+                    normal_attr.item.path != &[sym::loop_bound][..]
+                } else {
+                    true
+                }
+            })
+            .cloned()
+            .collect();
+        self.lower_attrs(expr.hir_id, &non_loop_bound_attrs, e.span, Target::from_expr(e));
         expr
     }
 

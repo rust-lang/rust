@@ -505,6 +505,12 @@ pub enum NonDivergingIntrinsic<'tcx> {
     /// **Needs clarification**: Is this typed or not, ie is there a typed load and store involved?
     /// I vaguely remember Ralf saying somewhere that he thought it should not be.
     CopyNonOverlapping(CopyNonOverlapping<'tcx>),
+    /// Denotes a call to `llvm.loop.bound` intrinsic for WCET analysis.
+    /// The two operands are the minimum and maximum loop iteration bounds.
+    LoopBound {
+        min: Operand<'tcx>,
+        max: Operand<'tcx>,
+    },
 }
 
 /// Describes what kind of retag is to be performed.

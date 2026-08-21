@@ -510,6 +510,12 @@ impl<'tcx> Stable<'tcx> for mir::NonDivergingIntrinsic<'tcx> {
                     count: copy_non_overlapping.count.stable(tables, cx),
                 })
             }
+            NonDivergingIntrinsic::LoopBound { min, max } => {
+                crate::mir::NonDivergingIntrinsic::LoopBound {
+                    min: min.stable(tables, cx),
+                    max: max.stable(tables, cx),
+                }
+            }
         }
     }
 }

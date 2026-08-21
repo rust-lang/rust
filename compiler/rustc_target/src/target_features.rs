@@ -357,6 +357,17 @@ const AARCH64_TIED_FEATURES: &[&[&str]] = &[
     &["paca", "pacg"], // Together these represent `pauth` in LLVM
 ];
 
+// TODO: Seek Patmos features for future reference?
+//static PATMOS_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+//    // tidy-alphabetical-start
+//   ("patmos", Unstable(sym::patmos_target_feature), &[]),
+//    // tidy-alphabetical-end
+//];
+
+//const PATMOS_TIED_FEATURES: &[&[&str]] = &[
+//    &["patmos"], // Together these represent `patmos` in LLVM
+//];
+
 static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("adx", Stable, &[]),
@@ -1007,7 +1018,12 @@ impl Target {
             Arch::Sparc | Arch::Sparc64 => SPARC_FEATURES,
             Arch::M68k => M68K_FEATURES,
             Arch::Avr => AVR_FEATURES,
-            Arch::AmdGpu | Arch::Msp430 | Arch::SpirV | Arch::Xtensa | Arch::Other(_) => &[],
+            Arch::AmdGpu
+            | Arch::Msp430
+            | Arch::SpirV
+            | Arch::Patmos
+            | Arch::Xtensa
+            | Arch::Other(_) => &[],
         }
     }
 
@@ -1033,7 +1049,7 @@ impl Target {
             Arch::CSky => CSKY_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
             // when passing args in vector registers.
-            Arch::Msp430 | Arch::SpirV | Arch::Xtensa | Arch::Other(_) => &[],
+            Arch::Msp430 | Arch::Patmos | Arch::SpirV | Arch::Xtensa | Arch::Other(_) => &[],
         }
     }
 
