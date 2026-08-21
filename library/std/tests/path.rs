@@ -2024,6 +2024,7 @@ pub fn test_with_extension() {
     twe!("....", "txt", "....txt");
 
     // dots after the start of the file name split as they always have
+    twe!("foo.bar.baz", "txt", "foo.bar.txt");
     twe!("foo..bar", "txt", "foo..txt");
     twe!("foo..bar", "", "foo.");
     twe!(".foo..bar", "txt", ".foo..txt");
