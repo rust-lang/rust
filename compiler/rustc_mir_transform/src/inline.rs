@@ -343,11 +343,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
         // which can create a cycle, even when no attempt is made to inline the function in the other
         // direction.
-        if body.coroutine.is_some() {
-            return false;
-        }
-
-        true
+        body.coroutine.is_none()
     }
 
     #[instrument(level = "debug", skip(self, callee_body))]
