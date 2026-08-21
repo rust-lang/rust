@@ -5,6 +5,7 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
 use rustc_feature::{DependentFeature, Features};
 use rustc_session::Session;
+use rustc_session::config::NextSolverConfig;
 use rustc_session::diagnostics::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, sym};
 
@@ -698,7 +699,7 @@ fn check_dependent_features(sess: &Session, features: &Features) {
 }
 
 fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
-    if !sess.opts.unstable_opts.next_solver.globally {
+    if sess.opts.unstable_opts.next_solver != NextSolverConfig::Globally {
         return;
     }
 
@@ -716,7 +717,7 @@ fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
 }
 
 fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
-    if sess.opts.unstable_opts.next_solver.globally {
+    if sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally {
         return;
     }
 
