@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders -Znext-solver
 
 // Regression test for an ICE in the `MaxUniverse` region visitor. When computing
 // the max universe of a region constraint, a `ReVar` term could already have been
