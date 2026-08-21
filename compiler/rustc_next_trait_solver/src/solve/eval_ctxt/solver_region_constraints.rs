@@ -171,12 +171,12 @@ where
         use Component::*;
         use LeafRegionConstraint::*;
         match c {
-            Region(c_r) => Or::new([And::new([RegionOutlives(*c_r, r)])]),
+            Region(c_r) => Or::new_leaf(RegionOutlives(*c_r, r)),
             Placeholder(p) => {
-                Or::new([And::new([PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r)])])
+                Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r))
             }
             Alias(_, alias) => self.destructure_alias_outlives(*alias, r),
-            UnresolvedInferenceVariable(_) => Or::new([And::new([Ambiguity])]),
+            UnresolvedInferenceVariable(_) => Or::new_ambig(),
             Param(_) => panic!("Params should have been canonicalized to placeholders"),
             EscapingAlias(components) => self.destructure_components(components, r),
         }
@@ -198,8 +198,7 @@ where
                 .map(|bound| And::new([RegionOutlives(bound, r)]));
         let item_bound_outlives = Or::new(item_bounds);
 
-        let where_clause_outlives =
-            Or::new([And::new([AliasTyOutlivesViaEnv(Binder::dummy((alias, r)))])]);
+        let where_clause_outlives = Or::new_leaf(AliasTyOutlivesViaEnv(Binder::dummy((alias, r))));
 
         let mut components = Default::default();
         rustc_type_ir::outlives::compute_alias_components_recursive(

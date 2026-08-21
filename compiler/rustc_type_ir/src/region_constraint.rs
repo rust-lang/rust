@@ -160,6 +160,14 @@ impl<I: Interner> Or<I> {
         Self(new_ands.into_boxed_slice())
     }
 
+    pub fn new_ambig() -> Self {
+        Or::new_leaf(LeafRegionConstraint::Ambiguity)
+    }
+
+    pub fn new_leaf(l: LeafRegionConstraint<I>) -> Self {
+        Or(Box::new([And(Box::new([l]))]))
+    }
+
     pub fn new_and(a: Or<I>, b: Or<I>) -> Self {
         // I think this returns false if either a or b is false?
         let mut ands = Vec::new();
@@ -292,6 +300,13 @@ impl<I: Interner> CanonicalFormRegionConstraint<I> {
             true
         } else {
             false
+        }
+    }
+
+    pub fn new_leaf(l: LeafRegionConstraint<I>) -> Self {
+        CanonicalFormRegionConstraint {
+            and_constraint: And(Box::new([l])),
+            or_constraint: Or::new_true(),
         }
     }
 }
@@ -488,21 +503,21 @@ fn pull_region_outlives_constraints_out_of_universe<
             match c {
                 Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
                     assert!(max_universe(infcx, c.clone()) < u);
-                    pulled_constraints.push(Or::new([And::new([c.clone()])]));
+                    pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
                 RegionOutlives(region_1, region_2) => {
                     let region_1_u = max_universe(infcx, region_1);
                     let region_2_u = max_universe(infcx, region_2);
 
                     if region_1_u != u && region_2_u != u {
-                        pulled_constraints.push(Or::new([And::new([c])]));
+                        pulled_constraints.push(Or::new_leaf(c));
                         continue;
                     }
 
                     let assumptions = match assumptions {
                         Some(assumptions) => assumptions,
                         None => {
-                            pulled_constraints.push(Or::new([And::new([Ambiguity])]));
+                            pulled_constraints.push(Or::new_ambig());
                             continue;
                         }
                     };
@@ -561,7 +576,7 @@ pub fn destructure_type_outlives_constraints_in_root<
         for c in &and.0 {
             match c {
                 Ambiguity | RegionOutlives(..) => {
-                    destructured_constraints.push(Or::new([And::new([c.clone()])]))
+                    destructured_constraints.push(Or::new_leaf(c.clone()))
                 }
                 PlaceholderTyOutlives(ty, r) => destructured_constraints.push(Or::new(
                     regions_outlived_by_placeholder(*ty, assumptions, infcx.cx())
@@ -626,9 +641,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
         let mut rewritten_constraints = Vec::new();
         for c in and.0 {
             match c {
-                Ambiguity | RegionOutlives(..) => {
-                    rewritten_constraints.push(Or::new([And::new([c])]))
-                }
+                Ambiguity | RegionOutlives(..) => rewritten_constraints.push(Or::new_leaf(c)),
                 PlaceholderTyOutlives(ty, region) => {
                     rewritten_constraints.push(rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(infcx, ty, region, u, assumptions));
                 }
@@ -666,12 +679,12 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     let region_u = max_universe(infcx, region);
 
     if region_u != u && ty_u != u {
-        return Or::new([And::new([PlaceholderTyOutlives(ty, region)])]);
+        return Or::new_leaf(PlaceholderTyOutlives(ty, region));
     }
 
     let assumptions = match assumptions {
         Some(assumptions) => assumptions,
-        None => return Or::new([And::new([Ambiguity])]),
+        None => return Or::new_ambig(),
     };
 
     let mut candidates = vec![];
@@ -743,13 +756,13 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
             escaping_outlives,
             I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
         );
-        candidates.push(Or::new([And::new([AliasTyOutlivesViaEnv(bound_outlives)])]));
+        candidates.push(Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives)));
     }
 
     let assumptions = match assumptions {
         Some(assumptions) => assumptions,
         None => {
-            candidates.push(Or::new([And::new([Ambiguity])]));
+            candidates.push(Or::new_ambig());
             return candidates.into_iter().fold(Or::new_false(), |acc, c| Or::new_or(acc, c));
         }
     };
@@ -797,7 +810,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     // let's be conservative and not let alias outlives' cause NoSolution
     // in coherence
     match infcx.typing_mode_raw() {
-        TypingMode::Coherence => candidates.push(Or::new([And::new([Ambiguity])])),
+        TypingMode::Coherence => candidates.push(Or::new_ambig()),
         TypingMode::Typeck { .. }
         | TypingMode::Reflection
         | TypingMode::ErasedNotCoherence { .. }
