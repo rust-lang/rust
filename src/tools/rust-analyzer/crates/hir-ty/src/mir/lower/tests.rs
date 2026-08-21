@@ -49,3 +49,19 @@ fn foo() {
     "#,
     );
 }
+
+#[test]
+fn ref_pattern_on_unresolved_alias() {
+    lower_mir(
+        r#"
+//- minicore: sized
+trait Tr {
+    type A;
+}
+
+fn f<T: Tr>(x: T::A) {
+    let &() = x;
+}
+"#,
+    );
+}
