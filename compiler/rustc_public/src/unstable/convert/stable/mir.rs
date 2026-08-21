@@ -531,6 +531,11 @@ impl<'tcx> Stable<'tcx> for mir::NonDivergingIntrinsic<'tcx> {
                     count: copy_non_overlapping.count.stable(tables, cx),
                 })
             }
+            NonDivergingIntrinsic::CodeviewAnnotation(operands) => {
+                crate::mir::NonDivergingIntrinsic::CodeviewAnnotation(
+                    operands.iter().map(|op| op.stable(tables, cx)).collect(),
+                )
+            }
         }
     }
 }

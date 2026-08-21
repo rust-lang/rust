@@ -485,6 +485,11 @@ macro_rules! make_mir_visitor {
                                 self.visit_operand(dst, location);
                                 self.visit_operand(count, location);
                             }
+                            NonDivergingIntrinsic::CodeviewAnnotation(operands) => {
+                                for op in & $($mutability)? **operands {
+                                    self.visit_operand(op, location);
+                                }
+                            }
                         }
                     }
                     StatementKind::BackwardIncompatibleDropHint { place, .. } => {

@@ -405,6 +405,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             | StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(..))
             // copy_nonoverlapping takes pointers and mutated the pointed-to value.
             | StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(..))
+            | StatementKind::Intrinsic(NonDivergingIntrinsic::CodeviewAnnotation(..))
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)

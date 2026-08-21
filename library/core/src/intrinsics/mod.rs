@@ -360,6 +360,17 @@ pub const fn prefetch_write_instruction<T, const LOCALITY: i32>(data: *const T) 
 #[rustc_nounwind]
 pub fn breakpoint();
 
+/// Emits a call to [`llvm.codeview.annotation`](https://llvm.org/docs/LangRef.html#llvm-codeview-annotation-intrinsic)
+/// which results in `strings` being written to the
+/// PDB as an `S_ANNOTATION` record.
+///
+/// Works only with Windows targets and the LLVM backend.
+/// Is a no-op on other targets and backends.
+#[unstable(feature = "codeview_annotation", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub fn codeview_annotation(strings: &[&'static str]);
+
 /// Magic intrinsic that derives its meaning from attributes
 /// attached to the function.
 ///
