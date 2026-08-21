@@ -457,8 +457,8 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     let constraint =
         pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, &assumptions);
 
-    // 4. actually evaluate the constraint to eagerly error on false
-    evaluate_solver_constraint(constraint)
+    // 4. force the constraint to ambiguous if it could be `false` in future reruns
+    propagate_ambiguity(constraint)
 }
 
 /// Filter our region constraints to not include constraints between region variables from `u` and
@@ -541,15 +541,48 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
     )
 }
 
-/// Evaluate ANDs and ORs to true/false/ambiguous based on whether their arguments are true/false/ambiguous
+/// Force the whole constraint to be ambiguous if it contains ambiguities which could
+/// have caused the constraint to be `false` if they had been `false` themselves.
+///
+/// For example if we have `'a: 'b AND ambig`  it's possible that if we had more inference
+/// information we could have produced a better region constraint than `ambig`, and that
+/// constraint may then have gone on to be false, at which point we would have `'a: 'b AND false`
+/// causing the whole constraint to be `false`.
+///
+/// If we're not careful we can wind up returning `'a: 'b AND ambig` from passing trait solver
+/// goals and then upon rerunning wind up returning `NoSolution` which would be dubious :3
+///
+/// This is inherently conservative and this method should be called as little as possible as it
+/// can cause us to get ambiguities instead of `NoSolution` (for example if `'a: 'b` is `false`),
+/// which can affect coherence, candidate selection, etc.
+///
+/// FIXME(-Zassumptions-on-binders): this method should probably be trait-solver internal as it only
+/// matters at trait solver query boundaries. We currently call it in more than just that location
 #[instrument(level = "debug", ret)]
-pub fn evaluate_solver_constraint<
-    I: Interner,
-    S: Clone + std::fmt::Debug + Eq + std::hash::Hash,
->(
+pub fn propagate_ambiguity<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
     constraint: CanonicalFormRegionConstraint<I, S>,
 ) -> CanonicalFormRegionConstraint<I, S> {
-    todo!("overhauled in future commit")
+    if let Some(ambig) = constraint.and_constraint.0.iter().find(|c| c.is_ambig()) {
+        return CanonicalFormRegionConstraint::new_leaf(ambig.clone());
+    }
+
+    for and in constraint.or_constraint.0.iter() {
+        // FIXME(-Zassumptions-on-binders): This is overly conservative. If we have:
+        // `'a: 'b OR ambig` we don't necessarily want to propagate ambiguity here
+        // as we might end up with `'a: 'b` being satisfied in which case we unncessarily
+        // errored here.
+        //
+        // It's fine if the `ambig` wound up being `false` as that wouldn't cause a goal to
+        // become `NoSolution`, it would instead result in us returning the `'a: 'b` constraint
+        // by itself.
+        //
+        // `rust-lang/project-assumptions-on-binders#21`
+        if let Some(ambig) = and.0.iter().find(|c| c.is_ambig()) {
+            return CanonicalFormRegionConstraint::new_leaf(ambig.clone());
+        }
+    }
+
+    constraint
 }
 
 /// Handles converting region outlives constraints involving placeholders from `u` into OR constraints
