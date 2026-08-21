@@ -73,6 +73,7 @@ impl<S: Borrow<str>> Join<&str> for [S] {
     type Output = String;
 
     fn join(slice: &Self, sep: &str) -> String {
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(join_generic_copy(slice, sep.as_bytes())) }
     }
 }
@@ -180,6 +181,7 @@ where
 
     result.extend_from_slice(first);
 
+    // ignore-tidy-undocumented-unsafe
     unsafe {
         let pos = result.len();
         debug_assert!(reserved_len >= pos);
@@ -248,6 +250,7 @@ impl ToOwned for str {
 
     #[inline]
     fn to_owned(&self) -> String {
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
 
@@ -316,6 +319,7 @@ impl str {
             _ => None,
         } {
             if let [to_byte] = to.as_bytes() {
+                // ignore-tidy-undocumented-unsafe
                 return unsafe { replace_ascii(self.as_bytes(), from_byte, *to_byte) };
             }
         }
@@ -328,10 +332,12 @@ impl str {
         let mut result = String::with_capacity(default_capacity);
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
+            // ignore-tidy-undocumented-unsafe
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
+        // ignore-tidy-undocumented-unsafe
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
@@ -368,10 +374,12 @@ impl str {
         let mut result = String::with_capacity(32);
         let mut last_end = 0;
         for (start, part) in self.match_indices(pat).take(count) {
+            // ignore-tidy-undocumented-unsafe
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
+        // ignore-tidy-undocumented-unsafe
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
@@ -785,6 +793,7 @@ impl str {
     #[inline]
     pub fn into_string(self: Box<Self>) -> String {
         let slice = Box::<[u8]>::from(self);
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
@@ -814,6 +823,7 @@ impl str {
     #[stable(feature = "repeat_str", since = "1.16.0")]
     #[inline]
     pub fn repeat(&self, n: usize) -> String {
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(self.as_bytes().repeat(n)) }
     }
 
@@ -903,6 +913,7 @@ impl str {
 #[must_use]
 #[inline]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
+    // SAFETY: Upheld by caller.
     unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
 }
 
@@ -915,6 +926,7 @@ pub(crate) unsafe fn from_boxed_utf8_unchecked_in<A: crate::alloc::Allocator>(
     v: Box<[u8], A>,
 ) -> Box<str, A> {
     let (ptr, alloc) = Box::into_raw_with_allocator(v);
+    // SAFETY: Upheld by caller.
     unsafe { Box::from_raw_in(ptr as *mut str, alloc) }
 }
 
@@ -972,7 +984,9 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
         }
 
         ascii_prefix_len += N;
+        // ignore-tidy-undocumented-unsafe
         slice = unsafe { slice.get_unchecked(N..) };
+        // ignore-tidy-undocumented-unsafe
         out_slice = unsafe { out_slice.get_unchecked_mut(N..) };
     }
 
@@ -987,23 +1001,23 @@ pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &
             *out_slice.get_unchecked_mut(0) = MaybeUninit::new(convert(&byte));
         }
         ascii_prefix_len += 1;
+        // ignore-tidy-undocumented-unsafe
         slice = unsafe { slice.get_unchecked(1..) };
+        // ignore-tidy-undocumented-unsafe
         out_slice = unsafe { out_slice.get_unchecked_mut(1..) };
     }
 
-    unsafe {
-        // SAFETY: ascii_prefix_len bytes have been initialized above
-        out.set_len(ascii_prefix_len);
+    // SAFETY: ascii_prefix_len bytes have been initialized above
+    unsafe { out.set_len(ascii_prefix_len) };
 
-        // SAFETY: We have written only valid ascii to the output vec
-        let ascii_string = String::from_utf8_unchecked(out);
+    // SAFETY: We have written only valid ascii to the output vec
+    let ascii_string = unsafe { String::from_utf8_unchecked(out) };
 
-        // SAFETY: we know this is a valid char boundary
-        // since we only skipped over leading ascii bytes
-        let rest = core::str::from_utf8_unchecked(slice);
+    // SAFETY: we know this is a valid char boundary
+    // since we only skipped over leading ascii bytes
+    let rest = unsafe { core::str::from_utf8_unchecked(slice) };
 
-        (ascii_string, rest)
-    }
+    (ascii_string, rest)
 }
 #[inline]
 #[cfg(not(no_global_oom_handling))]

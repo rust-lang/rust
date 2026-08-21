@@ -28,8 +28,8 @@ where
                 let initial_capacity =
                     cmp::max(RawVec::<T>::MIN_NON_ZERO_CAP, lower.saturating_add(1));
                 let mut vector = Vec::with_capacity(initial_capacity);
+                // SAFETY: We requested capacity at least 1
                 unsafe {
-                    // SAFETY: We requested capacity at least 1
                     ptr::write(vector.as_mut_ptr(), element);
                     vector.set_len(1);
                 }
