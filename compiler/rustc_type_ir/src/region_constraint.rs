@@ -460,12 +460,15 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     let constraint = compute_new_region_constraints(infcx, constraint.canonical_form(), u);
 
     // 3. rewrite region outlives constraints (potentially to false/true)
-    let constraint =
-        pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, &assumptions)
-            .canonical_form();
+    let constraint = pull_region_outlives_constraints_out_of_universe(
+        infcx,
+        constraint.canonical_form(),
+        u,
+        &assumptions,
+    );
 
     // 4. actually evaluate the constraint to eagerly error on false
-    evaluate_solver_constraint(&constraint)
+    evaluate_solver_constraint(&constraint.canonical_form())
 }
 
 /// Filter our region constraints to not include constraints between region variables from `u` and
@@ -635,57 +638,58 @@ fn pull_region_outlives_constraints_out_of_universe<
     // from the current universe and only retain those between placeholders.
 
     use RegionConstraint::*;
-    match constraint {
-        Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
-            assert!(max_universe(infcx, constraint.clone()) < u);
-            constraint
-        }
-        RegionOutlives(region_1, region_2) => {
-            let region_1_u = max_universe(infcx, region_1);
-            let region_2_u = max_universe(infcx, region_2);
-
-            if region_1_u != u && region_2_u != u {
-                return constraint;
-            }
-
-            let assumptions = match assumptions {
-                Some(assumptions) => assumptions,
-                None => return RegionConstraint::Ambiguity,
-            };
-
-            let mut candidates = vec![];
-            for ub in
-                regions_outlived_by(region_1, assumptions).filter(|r| max_universe(infcx, *r) < u)
-            {
-                // FIXME(-Zassumptions-on-binders): if `region_2` is in a smaller universe there'll be both
-                // `'region_2` and `'static` as lower bounds which seems... unfortunate and may cause us to
-                // add a bunch of duplicate `'ub: 'static` candidates the more binders we leave.
-                for lb in regions_outliving(region_2, assumptions, infcx.cx())
-                    .filter(|r| max_universe(infcx, *r) < u)
-                {
-                    // As long as any region outlived by `region_1` outlives any region region which
-                    // `region_2` outlives, we know that `region_1: region_2` holds. In other words,
-                    // there exists some set of 4 regions for which `'r1: 'i1` `'i1: 'i2` `'i2: 'r2`
-                    candidates.push(RegionOutlives(ub, lb));
+    let pull_and = |and: RegionConstraint<I>| {
+        let mut pulled_constraints = Vec::new();
+        for c in and.unwrap_and() {
+            match c {
+                Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
+                    assert!(max_universe(infcx, c.clone()) < u);
+                    pulled_constraints.push(c.clone());
                 }
-            }
+                RegionOutlives(region_1, region_2) => {
+                    let region_1_u = max_universe(infcx, region_1);
+                    let region_2_u = max_universe(infcx, region_2);
 
-            RegionConstraint::Or(candidates.into_boxed_slice())
+                    if region_1_u != u && region_2_u != u {
+                        pulled_constraints.push(c);
+                        continue;
+                    }
+
+                    let assumptions = match assumptions {
+                        Some(assumptions) => assumptions,
+                        None => {
+                            pulled_constraints.push(Ambiguity);
+                            continue;
+                        }
+                    };
+
+                    let mut candidates = vec![];
+
+                    for ub in regions_outlived_by(region_1, assumptions) {
+                        // FIXME(-Zassumptions-on-binders): if `region_2` is in a smaller universe there'll be both
+                        // `'region_2` and `'static` as lower bounds which seems... unfortunate and may cause us to
+                        // add a bunch of duplicate `'ub: 'static` candidates the more binders we leave.
+                        for lb in regions_outliving(region_2, assumptions, infcx.cx())
+                            .filter(|r| max_universe(infcx, *r) < u)
+                        {
+                            // As long as any region outlived by `region_1` outlives any region region which
+                            // `region_2` outlives, we know that `region_1: region_2` holds. In other words,
+                            // there exists some set of 4 regions for which `'r1: 'i1` `'i1: 'i2` `'i2: 'r2`
+                            candidates.push(RegionOutlives(ub, lb));
+                        }
+                    }
+
+                    pulled_constraints.push(Or(candidates.into_boxed_slice()));
+                }
+                Or(_) | And(_) => unreachable!(),
+            };
         }
-        And(constraints) => And(constraints
-            .into_iter()
-            .map(|constraint| {
-                pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, assumptions)
-            })
-            .collect()),
-        // NOTE: this will be reverted back to `unreachable!()` in a future commit
-        Or(constraints) => Or(constraints
-            .into_iter()
-            .map(|constraint| {
-                pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, assumptions)
-            })
-            .collect()),
-    }
+
+        And(pulled_constraints.into_boxed_slice())
+    };
+
+    let ands = constraint.unwrap_or();
+    Or(ands.into_iter().map(|and| pull_and(and)).collect::<Vec<_>>().into_boxed_slice())
 }
 
 /// Converts type outlives constraints into region outlives constraints. This assumes the *complete* set of
