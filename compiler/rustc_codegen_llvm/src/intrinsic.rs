@@ -244,7 +244,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::offload_get_num_devices => {
                 let (fn_decl, fn_ty) = declare_omp_get_num_devices(self.cx);
 
-                let llval = self.call(fn_ty, None, None, fn_decl, &[], None, None);
+                let llval = self.call(fn_ty, None, None, fn_decl, ReturnSlot::Direct, &[], None, None);
 
                 return IntrinsicResult::Operand(OperandValue::Immediate(llval));
             },
