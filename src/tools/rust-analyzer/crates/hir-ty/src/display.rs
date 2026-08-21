@@ -1510,7 +1510,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     ));
                 }
                 let impl_trait_id = opaque_ty_id.loc(db);
-                let data = impl_trait_id.predicates(db);
+                let data = impl_trait_id.all_bounds(db);
                 let bounds = data
                     .iter_instantiated_copied(interner, alias_ty.args.as_slice())
                     .map(Unnormalized::skip_norm_wip)

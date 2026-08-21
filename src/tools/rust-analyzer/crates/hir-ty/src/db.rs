@@ -30,7 +30,7 @@ use crate::{
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
     lower::{
-        ConstParamTypes, FieldTypes, GenericDefaults, TrackedStructToken, TypeAliasBounds,
+        ConstParamTypes, FieldTypes, GenericDefaults, SelfAndAssocBounds, TrackedStructToken,
         WithDefinedOpaques,
     },
     mir::{MirBody, MirLowerError},
@@ -318,7 +318,7 @@ pub trait HirDatabase: SourceDatabase + 'static {
     fn type_alias_bounds_with_diagnostics<'db>(
         &'db self,
         type_alias: TypeAliasId,
-    ) -> &'db TyLoweringResult<'db, TypeAliasBounds> {
+    ) -> &'db TyLoweringResult<'db, SelfAndAssocBounds> {
         let db = self.as_dyn();
         crate::lower::type_alias_bounds_with_diagnostics(db, type_alias)
     }

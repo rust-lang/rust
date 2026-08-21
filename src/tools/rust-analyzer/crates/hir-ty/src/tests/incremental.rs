@@ -621,6 +621,7 @@ fn main() {
                 "impl_self_ty_with_diagnostics",
                 "AttrFlags::query_",
                 "GenericPredicates::query_with_diagnostics_",
+                "impl_super_outlives",
                 "body_upvars_mentioned",
             ]
         "#]],

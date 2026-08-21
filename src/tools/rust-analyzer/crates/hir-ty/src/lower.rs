@@ -38,7 +38,7 @@ use hir_def::{
     },
 };
 use hir_expand::name::Name;
-use la_arena::{Arena, ArenaMap, Idx};
+use la_arena::ArenaMap;
 use path::{PathDiagnosticCallback, PathLoweringContext};
 use rustc_abi::ExternAbi;
 use rustc_ast_ir::Mutability;
@@ -84,16 +84,30 @@ pub(crate) struct PathDiagnosticCallbackData(pub(crate) TypeRefId);
 #[derive(PartialEq, Eq, Debug, Hash, SalsaValue)]
 pub struct WithDefinedOpaques<T> {
     value: T,
-    impl_traits: Option<Box<Arena<ImplTrait>>>,
+    impl_traits: ThinVec<SelfAndAssocBounds>,
 }
 
-#[derive(PartialEq, Eq, Debug, Hash)]
-pub struct ImplTrait {
-    pub(crate) predicates: StoredEarlyBinder<StoredClauses>,
-    pub(crate) assoc_ty_bounds_start: u32,
+pub enum ImplTrait {}
+
+pub type ImplTraitIdx = la_arena::Idx<ImplTrait>;
+
+#[derive(PartialEq, Eq, Debug, Hash, SalsaValue)]
+pub struct SelfAndAssocBounds {
+    bounds: StoredEarlyBinder<StoredClauses>,
+    assoc_ty_bounds_start: u32,
 }
 
-pub type ImplTraitIdx = Idx<ImplTrait>;
+impl SelfAndAssocBounds {
+    #[inline]
+    pub fn all_bounds(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
+        self.bounds.get().map_bound(|it| it.as_slice())
+    }
+
+    #[inline]
+    pub fn self_bounds(&self) -> EarlyBinder<'_, &[Clause<'_>]> {
+        self.bounds.get().map_bound(|it| &it.as_slice()[..self.assoc_ty_bounds_start as usize])
+    }
+}
 
 #[derive(Debug, Default)]
 struct ImplTraitLoweringState {
@@ -102,12 +116,12 @@ struct ImplTraitLoweringState {
     /// complicated).
     mode: ImplTraitLoweringMode,
     // This is structured as a struct with fields and not as an enum because it helps with the borrow checker.
-    opaque_type_data: Arena<ImplTrait>,
+    opaque_type_data: ThinVec<SelfAndAssocBounds>,
 }
 
 impl ImplTraitLoweringState {
     fn new(mode: ImplTraitLoweringMode) -> ImplTraitLoweringState {
-        Self { mode, opaque_type_data: Arena::new() }
+        Self { mode, opaque_type_data: ThinVec::new() }
     }
 }
 
@@ -413,13 +427,9 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         BoundVarKinds::new_from_iter(args)
     }
 
-    fn take_defined_opaques(&mut self) -> Option<Box<Arena<ImplTrait>>> {
-        if self.impl_trait_mode.opaque_type_data.is_empty() {
-            None
-        } else {
-            self.impl_trait_mode.opaque_type_data.shrink_to_fit();
-            Some(Box::new(mem::take(&mut self.impl_trait_mode.opaque_type_data)))
-        }
+    fn take_defined_opaques(&mut self) -> ThinVec<SelfAndAssocBounds> {
+        self.impl_trait_mode.opaque_type_data.shrink_to_fit();
+        mem::take(&mut self.impl_trait_mode.opaque_type_data)
     }
 }
 
@@ -634,8 +644,11 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         // this dance is to make sure the data is in the right
                         // place even if we encounter more opaque types while
                         // lowering the bounds
-                        let idx = self.impl_trait_mode.opaque_type_data.alloc(ImplTrait {
-                            predicates: StoredEarlyBinder::bind(Clauses::empty().store()),
+                        let idx = ImplTraitIdx::from_raw(la_arena::RawIdx::from_u32(
+                            self.impl_trait_mode.opaque_type_data.len() as u32,
+                        ));
+                        self.impl_trait_mode.opaque_type_data.push(SelfAndAssocBounds {
+                            bounds: StoredEarlyBinder::bind(Clauses::empty().store()),
                             assoc_ty_bounds_start: 0,
                         });
 
@@ -658,7 +671,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             .with_debruijn(DebruijnIndex::ZERO, |ctx| {
                                 ctx.lower_impl_trait(opaque_ty_id, bounds)
                             });
-                        self.impl_trait_mode.opaque_type_data[idx] = actual_opaque_type_data;
+                        self.impl_trait_mode.opaque_type_data[idx.into_raw().into_u32() as usize] =
+                            actual_opaque_type_data;
 
                         let mut late_bound_index = 0;
                         let args = GenericArgs::for_item(
@@ -1283,7 +1297,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         &mut self,
         def_id: InternedOpaqueTyId<'db>,
         bounds: &[TypeBound],
-    ) -> ImplTrait {
+    ) -> SelfAndAssocBounds {
         let interner = self.interner;
         cov_mark::hit!(lower_rpit);
         let args = GenericArgs::identity_for_item(interner, def_id.into());
@@ -1330,8 +1344,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         predicates.extend(assoc_ty_bounds);
 
         self.is_lowering_impl_trait_bounds = prev_is_lowering_impl_trait_bounds;
-        ImplTrait {
-            predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
+        SelfAndAssocBounds {
+            bounds: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
             assoc_ty_bounds_start,
         }
     }
@@ -1507,37 +1521,36 @@ pub(crate) fn impl_trait_with_diagnostics_cycle_result<'db>(
 
 impl ImplTraitId {
     #[inline]
-    fn data(self, db: &dyn HirDatabase) -> &ImplTrait {
+    pub fn bounds(self, db: &dyn HirDatabase) -> &SelfAndAssocBounds {
         let (impl_traits, idx) = match self {
             ImplTraitId::ReturnTypeImplTrait(owner, idx) => {
-                (ImplTrait::return_type_impl_traits(db, owner), idx)
+                (SelfAndAssocBounds::return_type_impl_traits(db, owner), idx)
             }
             ImplTraitId::TypeAliasImplTrait(owner, idx) => {
-                (ImplTrait::type_alias_impl_traits(db, owner), idx)
+                (SelfAndAssocBounds::type_alias_impl_traits(db, owner), idx)
             }
         };
-        &impl_traits[idx]
+        &impl_traits[idx.into_raw().into_u32() as usize]
     }
 
     #[inline]
-    pub fn predicates<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-        self.data(db).predicates.get().map_bound(|it| it.as_slice())
+    pub fn all_bounds<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+        self.bounds(db).all_bounds()
     }
 
     #[inline]
-    pub fn self_predicates<'db>(
+    pub fn self_bounds<'db>(
         self,
         db: &'db dyn HirDatabase,
     ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-        let data = self.data(db);
-        data.predicates.get().map_bound(|it| &it.as_slice()[..data.assoc_ty_bounds_start as usize])
+        self.bounds(db).self_bounds()
     }
 }
 
 impl InternedOpaqueTyId<'_> {
     #[inline]
     pub fn predicates<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-        self.loc(db).predicates(db)
+        self.loc(db).all_bounds(db)
     }
 
     #[inline]
@@ -1545,29 +1558,25 @@ impl InternedOpaqueTyId<'_> {
         self,
         db: &'db dyn HirDatabase,
     ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-        self.loc(db).self_predicates(db)
+        self.loc(db).self_bounds(db)
     }
 }
 
-impl ImplTrait {
+impl SelfAndAssocBounds {
     #[inline]
     pub(crate) fn return_type_impl_traits(
         db: &dyn HirDatabase,
         def: FunctionId,
-    ) -> &Arena<ImplTrait> {
-        fn_sig_for_fn(db, def).value.impl_traits.as_deref().unwrap_or(const { &Arena::new() })
+    ) -> &[SelfAndAssocBounds] {
+        &fn_sig_for_fn(db, def).value.impl_traits
     }
 
     #[inline]
     pub(crate) fn type_alias_impl_traits(
         db: &dyn HirDatabase,
         def: TypeAliasId,
-    ) -> &Arena<ImplTrait> {
-        type_for_type_alias_with_diagnostics(db, def)
-            .value
-            .impl_traits
-            .as_deref()
-            .unwrap_or(const { &Arena::new() })
+    ) -> &[SelfAndAssocBounds] {
+        &type_for_type_alias_with_diagnostics(db, def).value.impl_traits
     }
 }
 
@@ -1760,7 +1769,7 @@ pub(crate) fn type_for_type_alias_with_diagnostics<'db>(
     if type_alias_data.flags.contains(TypeAliasFlags::IS_EXTERN) {
         TyLoweringResult::empty(WithDefinedOpaques {
             value: StoredEarlyBinder::bind(Ty::new_foreign(interner, t.into()).store()),
-            impl_traits: None,
+            impl_traits: ThinVec::new(),
         })
     } else {
         let resolver = t.resolver(db);
@@ -1799,7 +1808,7 @@ pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result<'db>(
         value: StoredEarlyBinder::bind(
             Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed).store(),
         ),
-        impl_traits: None,
+        impl_traits: ThinVec::new(),
     })
 }
 
@@ -2246,11 +2255,7 @@ pub(crate) fn type_alias_bounds<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
 ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-    type_alias_bounds_with_diagnostics(db, type_alias)
-        .value
-        .predicates
-        .get()
-        .map_bound(|it| it.as_slice())
+    type_alias_bounds_with_diagnostics(db, type_alias).value.all_bounds()
 }
 
 #[inline]
@@ -2258,22 +2263,14 @@ pub(crate) fn type_alias_self_bounds<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
 ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-    let TypeAliasBounds { predicates, assoc_ty_bounds_start } =
-        &type_alias_bounds_with_diagnostics(db, type_alias).value;
-    predicates.get().map_bound(|it| &it.as_slice()[..*assoc_ty_bounds_start as usize])
-}
-
-#[derive(PartialEq, Eq, Debug, Hash, SalsaValue)]
-pub struct TypeAliasBounds {
-    predicates: StoredEarlyBinder<StoredClauses>,
-    assoc_ty_bounds_start: u32,
+    type_alias_bounds_with_diagnostics(db, type_alias).value.self_bounds()
 }
 
 #[salsa::tracked(returns(ref))]
 pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
-) -> TyLoweringResult<'db, TypeAliasBounds> {
+) -> TyLoweringResult<'db, SelfAndAssocBounds> {
     let type_alias_data = TypeAliasSignature::of(db, type_alias);
     let resolver = type_alias.resolver(db);
     let generics = OnceCell::new();
@@ -2342,8 +2339,8 @@ pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
     bounds.extend(assoc_ty_bounds);
 
     TyLoweringResult::from_ctx(
-        TypeAliasBounds {
-            predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&bounds).store()),
+        SelfAndAssocBounds {
+            bounds: StoredEarlyBinder::bind(Clauses::new_from_slice(&bounds).store()),
             assoc_ty_bounds_start,
         },
         ctx,
