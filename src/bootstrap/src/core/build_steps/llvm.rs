@@ -1298,9 +1298,9 @@ impl CommandLineStep for OmpOffload {
 
         builder.config.update_submodule("src/llvm-project");
 
-        let clang_dir = if !builder.config.llvm_clang {
+        let offload_clang_dir = if !builder.config.llvm_clang {
             // We must have an external clang to use.
-            builder.build.config.llvm_clang_dir.clone()
+            builder.build.config.offload_clang_dir.clone()
         } else {
             // No need to specify it, since we use the in-tree clang
             None
@@ -1312,7 +1312,7 @@ impl CommandLineStep for OmpOffload {
         // will have the same clang requirement, so we wouldn't save much. There are two ways in
         // which we can find a suitable clang. Either a user enabled the llvm.clang, in which case
         // we built our own clang based on the llvm submodule first, this always works. The
-        // alternative is that the user sets the clang_dir path, in which case they hopefully point
+        // alternative is that the user sets the offload_clang_dir path, in which case they hopefully point
         // to a suitable clang, otherwise the build will fail.
         let clang_bin_dir = if builder.config.llvm_clang {
             llvm_output.host_llvm_config.parent().map(Path::to_path_buf)
@@ -1322,7 +1322,7 @@ impl CommandLineStep for OmpOffload {
             // The clang binary is located in <prefix>/bin, so we go up three levels to find it.
             // This hardcodes the ClangConfig.cmake logic, which isn't great, so we filter for the
             // binary and error if we can't find it (presumably because LLVM build layout changed?).
-            clang_dir
+            offload_clang_dir
                 .as_deref()
                 .and_then(|dir| dir.ancestors().nth(3))
                 .map(|prefix| prefix.join("bin"))
@@ -1409,7 +1409,7 @@ impl CommandLineStep for OmpOffload {
                 .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
                 .define("LLVM_DIR", llvm_output.cmake_dir())
                 .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
-            if let Some(p) = clang_dir.clone() {
+            if let Some(p) = offload_clang_dir.clone() {
                 cfg.define("Clang_DIR", p);
             }
 
