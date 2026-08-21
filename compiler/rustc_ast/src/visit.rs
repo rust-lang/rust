@@ -15,13 +15,14 @@
 
 pub use rustc_ast_ir::visit::VisitorResult;
 pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
+use rustc_macros::StableHash;
 use rustc_span::{Ident, Span, Spanned, Symbol};
 use thin_vec::ThinVec;
 
 use crate::ast::*;
 use crate::tokenstream::DelimSpan;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, StableHash)]
 pub enum AssocCtxt {
     Trait,
     Impl { of_trait: bool },

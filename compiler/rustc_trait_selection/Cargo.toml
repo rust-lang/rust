@@ -19,6 +19,7 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_next_trait_solver = { path = "../rustc_next_trait_solver" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_structures = { path = "../rustc_structures" }
 rustc_transmute = { path = "../rustc_transmute", features = ["rustc"] }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.19"

@@ -7,6 +7,7 @@ extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_structures;
 
 mod debugger;
 mod frontend;
@@ -14,11 +15,11 @@ mod frontend;
 use debugger::PrirodaContext;
 use miri::*;
 use rustc_driver::Compilation;
-use rustc_hir::attrs::CrateType;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
+use rustc_structures::CrateType;
 
 fn find_sysroot() -> String {
     std::env::var("MIRI_SYSROOT")

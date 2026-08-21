@@ -721,10 +721,22 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
-        // This isn't done via collect::<Result<_, _>>() for performance reasons.
-        // FIXME: the function can be simplified again when #48994 is closed.
-        let mut ret = String::with_capacity(v.len());
-        for c in char::decode_utf16(v.iter().cloned()) {
+        Self::from_utf16_units(v.iter().cloned(), v.len())
+    }
+
+    /// Decodes an iterator of UTF-16 code units into a `String`, returning
+    /// [`Err`] on the first lone surrogate. `capacity` should be the number of
+    /// code units, which is used to preallocate the output buffer.
+    // This isn't done via collect::<Result<_, _>>() for performance reasons.
+    // FIXME: the function can be simplified again when #48994 is closed.
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    fn from_utf16_units(
+        units: impl Iterator<Item = u16>,
+        capacity: usize,
+    ) -> Result<String, FromUtf16Error> {
+        let mut ret = String::with_capacity(capacity);
+        for c in char::decode_utf16(units) {
             let Ok(c) = c else {
                 return Err(FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate });
             };
@@ -792,9 +804,9 @@ impl String {
         };
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
-            _ => char::decode_utf16(chunks.iter().copied().map(u16::from_le_bytes))
-                .collect::<Result<_, _>>()
-                .map_err(|_| FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate }),
+            _ => {
+                Self::from_utf16_units(chunks.iter().copied().map(u16::from_le_bytes), chunks.len())
+            }
         }
     }
 
@@ -865,9 +877,9 @@ impl String {
         };
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
-            _ => char::decode_utf16(chunks.iter().copied().map(u16::from_be_bytes))
-                .collect::<Result<_, _>>()
-                .map_err(|_| FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate }),
+            _ => {
+                Self::from_utf16_units(chunks.iter().copied().map(u16::from_be_bytes), chunks.len())
+            }
         }
     }
 
@@ -938,6 +950,7 @@ impl String {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "vec_into_raw_parts", since = "1.93.0")]
+    #[inline]
     pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
         self.vec.into_raw_parts()
     }
