@@ -3067,8 +3067,14 @@ impl BookTest {
                 let stamp = BuildStamp::new(&builder.cargo_out(test_compiler, mode, target))
                     .with_prefix(PathBuf::from(dep).file_name().and_then(|v| v.to_str()).unwrap());
 
-                let output_paths =
-                    run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
+                let output_paths = run_cargo(
+                    builder,
+                    cargo,
+                    vec![],
+                    &stamp,
+                    vec![],
+                    ArtifactKeepMode::BothRlibAndRmeta,
+                );
                 let directories = output_paths
                     .into_iter()
                     .filter_map(|p| p.parent().map(ToOwned::to_owned))
