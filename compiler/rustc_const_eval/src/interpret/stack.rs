@@ -384,7 +384,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // First push a stack frame so we have access to `instantiate_from_current_frame` and other
         // `self.frame()`-based functions.
         let dead_local = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
-        let mut locals = IndexVec::from_elem(dead_local, &body.local_decls);
+        let locals = IndexVec::from_elem(dead_local, &body.local_decls);
         if let Some(cached) =
             self.local_layout_cache.borrow().get(&(instance, body.source.promoted))
         {
