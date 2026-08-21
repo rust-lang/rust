@@ -168,7 +168,13 @@ pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> O
             kind: LlvmKind::External,
         });
     }
-    None
+
+    // If LLVM is not available from CI, not externally, it is still possible that it was already
+    // built locally before. In that case we still treat it as prebuilt config.
+    match get_locally_built_llvm_build_status(builder, target) {
+        LlvmBuildStatus::AlreadyBuilt(output) => Some(output),
+        LlvmBuildStatus::ShouldBuild(_) => None,
+    }
 }
 
 /// This returns whether we've already previously built LLVM.
@@ -186,6 +192,16 @@ pub fn get_llvm_build_status(builder: &Builder<'_>, target: TargetSelection) -> 
     // If submodules are disabled, this does nothing.
     builder.config.update_submodule("src/llvm-project");
 
+    get_locally_built_llvm_build_status(builder, target)
+}
+
+/// Return build status of LLVM, considering only the (possibly) locally built LLVM.
+///
+/// Calling this function should never attempt to checkout the LLVM submodule.
+fn get_locally_built_llvm_build_status(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+) -> LlvmBuildStatus {
     let out_dir = builder.llvm_out(target);
 
     let build_llvm_config = if let Some(build_llvm_config) = builder
