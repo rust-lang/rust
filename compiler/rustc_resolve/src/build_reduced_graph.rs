@@ -459,7 +459,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::GlobalAsm
                 | DefKind::Closure
                 | DefKind::SyntheticCoroutineBody
-                | DefKind::Impl { .. },
+                | DefKind::Impl { .. }
+                | DefKind::TestBinderConstraints,
                 _,
             )
             | Res::Local(..)
@@ -987,7 +988,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             ItemKind::Impl { .. }
             | ItemKind::ForeignMod(..)
             | ItemKind::GlobalAsm(..)
-            | ItemKind::ConstBlock(..) => {}
+            | ItemKind::ConstBlock(..)
+            | ItemKind::TestBinderConstraints(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()

@@ -260,7 +260,8 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Struct(..)
                     | hir::ItemKind::Enum(..)
                     | hir::ItemKind::Union(..)
-                    | hir::ItemKind::GlobalAsm { .. } => {}
+                    | hir::ItemKind::GlobalAsm { .. }
+                    | rustc_hir::ItemKind::TestBinderConstraints { .. } => {}
                 }
             }
             Node::TraitItem(trait_method) => {

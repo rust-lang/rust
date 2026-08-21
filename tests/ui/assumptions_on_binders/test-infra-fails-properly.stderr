@@ -1,0 +1,62 @@
+error: expected one of `!`, `(`, `+`, `::`, `:`, or `<`, found `{`
+  --> $DIR/test-infra-fails-properly.rs:15:20
+   |
+LL |             forall { }
+   |                    ^ expected one of `!`, `(`, `+`, `::`, `:`, or `<`
+
+error: expected one of `!`, `(`, `+`, `::`, `:`, or `<`, found `{`
+  --> $DIR/test-infra-fails-properly.rs:24:20
+   |
+LL |             forall { }
+   |                    ^ expected one of `!`, `(`, `+`, `::`, `:`, or `<`
+
+error: expected lifetime, found keyword `for`
+  --> $DIR/test-infra-fails-properly.rs:41:12
+   |
+LL |         T: for<'b> Trait<'b>,
+   |            ^^^ expected lifetime
+
+error[E0658]: only lifetime parameters can be used in this context
+  --> $DIR/test-infra-fails-properly.rs:48:16
+   |
+LL |         forall<T> where T: 'a {
+   |                ^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: unsatisfied lifetime constraint from -Zassumptions-on-binders :3
+  --> $DIR/test-infra-fails-properly.rs:5:1
+   |
+LL | / core::test_binder_constraints! {
+LL | |
+LL | |     impl<'a, 'b> {
+LL | |         'a: 'b
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = note: meoow :c
+
+error: the lhs of a ty outlives must be a placeholder
+  --> $DIR/test-infra-fails-properly.rs:34:9
+   |
+LL |         dyn for<'b> Trait<'b>: 'a,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: it is a (dyn for<'b> Trait<'b> + 'static)
+   = note: and here it is `Debug`ged :3 dyn [Binder { value: Trait(Trait<'b>), bound_vars: [Region(BrNamed(DefId(0:11 ~ test_infra_fails_properly[2377]::{test_binder_constraints#1}::'b)))] }] + 'static
+
+error: the lhs of a ty outlives must be a placeholder
+  --> $DIR/test-infra-fails-properly.rs:50:13
+   |
+LL |             T: 'a,
+   |             ^^^^^
+   |
+   = note: it is a {type error}
+   = note: and here it is `Debug`ged :3 {type error}
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -51,33 +51,27 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         u: ty::UniverseIndex,
         assumptions: Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
     ) {
-        self.placeholder_assumptions_for_next_solver.borrow_mut().insert(u, assumptions);
+        self.insert_placeholder_assumptions(u, assumptions);
     }
 
     fn get_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
     ) -> Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>> {
-        self.placeholder_assumptions_for_next_solver.borrow().get(&u).unwrap().as_ref().cloned()
+        self.get_placeholder_assumptions(u)
     }
 
     fn get_solver_region_constraint(
         &self,
     ) -> rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>> {
-        self.inner.borrow().solver_region_constraint_storage.get_constraint()
+        self.get_solver_region_constraint()
     }
 
     fn overwrite_solver_region_constraint(
         &self,
         constraint: rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
     ) {
-        let mut inner = self.inner.borrow_mut();
-        use rustc_data_structures::undo_log::UndoLogs;
-
-        use crate::infer::UndoLog;
-        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
-        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
-        inner.solver_region_constraint_storage.overwrite_solver_region_constraint(constraint);
+        self.overwrite_solver_region_constraint(constraint);
     }
 
     fn universe_of_ty(&self, vid: ty::TyVid) -> Option<ty::UniverseIndex> {
@@ -332,13 +326,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         &self,
         c: rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
     ) {
-        let mut inner = self.inner.borrow_mut();
-        use rustc_data_structures::undo_log::UndoLogs;
-
-        use crate::infer::UndoLog;
-        let previous_was_and = inner.solver_region_constraint_storage.is_and();
-        inner.undo_log.push(UndoLog::PushSolverRegionConstraint { previous_was_and });
-        inner.solver_region_constraint_storage.push(c);
+        self.register_solver_region_constraint(c);
     }
 
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {

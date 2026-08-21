@@ -227,6 +227,7 @@ pub enum DefPathData {
     LifetimeNs(Symbol),
     /// A closure expression.
     Closure,
+    TestBinderConstraints,
 
     // Subportions of items:
     /// Implicit constructor for a unit or tuple-like struct or enum variant.
@@ -447,7 +448,8 @@ impl DefPathData {
             | OpaqueTy
             | AnonAssocTy(..)
             | SyntheticCoroutineBody
-            | NestedStatic => None,
+            | NestedStatic
+            | TestBinderConstraints => None,
         }
     }
 
@@ -467,7 +469,8 @@ impl DefPathData {
             | AnonConst
             | OpaqueTy
             | SyntheticCoroutineBody
-            | NestedStatic => None,
+            | NestedStatic
+            | TestBinderConstraints => None,
         }
     }
 
@@ -489,6 +492,9 @@ impl DefPathData {
             AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
             SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
             NestedStatic => DefPathDataName::Anon { namespace: sym::nested },
+            TestBinderConstraints => {
+                DefPathDataName::Anon { namespace: sym::test_binder_constraints }
+            }
         }
     }
 }

@@ -265,7 +265,8 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Union,
                 Trait,
                 TraitAlias,
-                Impl
+                Impl,
+                TestBinderConstraints
             ]
         );
         hir_visit::walk_item(self, i)
@@ -589,7 +590,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 MacCall,
                 MacroDef,
                 Delegation,
-                DelegationMac
+                DelegationMac,
+                TestBinderConstraints
             ]
         );
         ast_visit::walk_item(self, i)

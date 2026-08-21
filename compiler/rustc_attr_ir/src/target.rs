@@ -143,6 +143,7 @@ impl Target {
             ast::ItemKind::MacroDef(..) => Target::MacroDef,
             ast::ItemKind::Delegation(..) => Target::Delegation { mac: false },
             ast::ItemKind::DelegationMac(..) => Target::Delegation { mac: true },
+            ast::ItemKind::TestBinderConstraints(..) => Target::MacroCall,
         }
     }
 

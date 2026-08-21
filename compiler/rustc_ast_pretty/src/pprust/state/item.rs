@@ -450,6 +450,9 @@ impl<'a> State<'a> {
                 },
                 &deleg.body,
             ),
+            ast::ItemKind::TestBinderConstraints(_) => {
+                self.word("test_binder_constraints!(/* pretty-printing not supported */)")
+            }
         }
         self.ann.post(self, AnnNode::Item(item))
     }
