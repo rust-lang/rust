@@ -15,6 +15,8 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath, find_attr};
+use rustc_lint_defs::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
+use rustc_lint_defs::{self as lint, Lint, StableLintExpectationId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dead_code::{DeadCodeLivenessSnapshot, DeadCodeLivenessSummary};
 use rustc_middle::middle::privacy::Level;
@@ -22,8 +24,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
-use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
-use rustc_session::lint::{self, Lint, StableLintExpectationId};
 use rustc_span::{Symbol, kw};
 
 use crate::diagnostics::{
@@ -292,7 +292,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         {
             let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
             self.tcx.emit_node_span_lint(
-                lint::builtin::DEAD_CODE,
+                DEAD_CODE,
                 assign.hir_id,
                 assign.span,
                 UselessAssignment { is_field_assign, ty: self.typeck_results().expr_ty(lhs) },
@@ -773,7 +773,7 @@ fn has_allow_dead_code_or_lang_attr(
 ) -> Option<ComesFromAllowExpect> {
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let lint_level = tcx.lint_level_spec_at_node(lint::builtin::DEAD_CODE, hir_id).level();
+        let lint_level = tcx.lint_level_spec_at_node(DEAD_CODE, hir_id).level();
         matches!(lint_level, lint::Allow | lint::Expect)
     }
 

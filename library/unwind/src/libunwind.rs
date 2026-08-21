@@ -59,10 +59,11 @@ cfg_select! {
             pub fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word;
             pub fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word);
             pub fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Word);
-            pub fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context, ip_before_insn: *mut c_int)
-                                     -> _Unwind_Word;
+            pub fn _Unwind_GetIPInfo(
+                ctx: *mut _Unwind_Context,
+                ip_before_insn: *mut c_int,
+            ) -> _Unwind_Word;
         }
-
     }
     _ => {
         // ARM EHABI
@@ -113,51 +114,69 @@ cfg_select! {
             link(name = "unwind", kind = "static", modifiers = "-bundle")
         )]
         unsafe extern "C" {
-            fn _Unwind_VRS_Get(ctx: *mut _Unwind_Context,
-                               regclass: _Unwind_VRS_RegClass,
-                               regno: _Unwind_Word,
-                               repr: _Unwind_VRS_DataRepresentation,
-                               data: *mut c_void)
-                               -> _Unwind_VRS_Result;
+            fn _Unwind_VRS_Get(
+                ctx: *mut _Unwind_Context,
+                regclass: _Unwind_VRS_RegClass,
+                regno: _Unwind_Word,
+                repr: _Unwind_VRS_DataRepresentation,
+                data: *mut c_void,
+            ) -> _Unwind_VRS_Result;
 
-            fn _Unwind_VRS_Set(ctx: *mut _Unwind_Context,
-                               regclass: _Unwind_VRS_RegClass,
-                               regno: _Unwind_Word,
-                               repr: _Unwind_VRS_DataRepresentation,
-                               data: *mut c_void)
-                               -> _Unwind_VRS_Result;
+            fn _Unwind_VRS_Set(
+                ctx: *mut _Unwind_Context,
+                regclass: _Unwind_VRS_RegClass,
+                regno: _Unwind_Word,
+                repr: _Unwind_VRS_DataRepresentation,
+                data: *mut c_void,
+            ) -> _Unwind_VRS_Result;
         }
 
         // On Android or ARM/Linux, these are implemented as macros:
 
         pub unsafe fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word {
             let mut val: _Unwind_Word = core::ptr::null();
-            unsafe { _Unwind_VRS_Get(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                            (&raw mut val) as *mut c_void); }
+            unsafe {
+                _Unwind_VRS_Get(
+                    ctx,
+                    _UVRSC_CORE,
+                    reg_index as _Unwind_Word,
+                    _UVRSD_UINT32,
+                    (&raw mut val) as *mut c_void,
+                );
+            }
             val
         }
 
         pub unsafe fn _Unwind_SetGR(
             ctx: *mut _Unwind_Context,
             reg_index: c_int,
-            value: _Unwind_Word
+            value: _Unwind_Word,
         ) {
             let mut value = value;
-            unsafe { _Unwind_VRS_Set(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                            (&raw mut value) as *mut c_void); }
+            unsafe {
+                _Unwind_VRS_Set(
+                    ctx,
+                    _UVRSC_CORE,
+                    reg_index as _Unwind_Word,
+                    _UVRSD_UINT32,
+                    (&raw mut value) as *mut c_void,
+                );
+            }
         }
 
-        pub unsafe fn _Unwind_SetIP(ctx: *mut _Unwind_Context,
-                                    value: _Unwind_Word) {
+        pub unsafe fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Word) {
             // Propagate thumb bit to instruction pointer
             let thumb_state = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG).addr() & 1 };
             let value = value.map_addr(|v| v | thumb_state);
-            unsafe { _Unwind_SetGR(ctx, UNWIND_IP_REG, value); }
+            unsafe {
+                _Unwind_SetGR(ctx, UNWIND_IP_REG, value);
+            }
         }
 
-        pub unsafe fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
-                                        ip_before_insn: *mut c_int)
-                                        -> _Unwind_Word {
+        pub unsafe fn _Unwind_GetIPInfo(
+            ctx: *mut _Unwind_Context,
+            ip_before_insn: *mut c_int,
+        ) -> _Unwind_Word {
             unsafe { *ip_before_insn = 0 };
             let val = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG) };
             val.map_addr(|v| v & !1)
@@ -190,20 +209,22 @@ cfg_select! {
         pub enum CONTEXT {}
         pub enum DISPATCHER_CONTEXT {}
         pub type EXCEPTION_DISPOSITION = c_int;
-        type PersonalityFn = unsafe extern "C" fn(version: c_int,
-                                                  actions: _Unwind_Action,
-                                                  exception_class: _Unwind_Exception_Class,
-                                                  exception_object: *mut _Unwind_Exception,
-                                                  context: *mut _Unwind_Context)
-                                                  -> _Unwind_Reason_Code;
+        type PersonalityFn = unsafe extern "C" fn(
+            version: c_int,
+            actions: _Unwind_Action,
+            exception_class: _Unwind_Exception_Class,
+            exception_object: *mut _Unwind_Exception,
+            context: *mut _Unwind_Context,
+        ) -> _Unwind_Reason_Code;
 
         unsafe extern "C" {
-            pub fn _GCC_specific_handler(exceptionRecord: *mut EXCEPTION_RECORD,
-                                    establisherFrame: LPVOID,
-                                    contextRecord: *mut CONTEXT,
-                                    dispatcherContext: *mut DISPATCHER_CONTEXT,
-                                    personality: PersonalityFn)
-                                    -> EXCEPTION_DISPOSITION;
+            pub fn _GCC_specific_handler(
+                exceptionRecord: *mut EXCEPTION_RECORD,
+                establisherFrame: LPVOID,
+                contextRecord: *mut CONTEXT,
+                dispatcherContext: *mut DISPATCHER_CONTEXT,
+                personality: PersonalityFn,
+            ) -> EXCEPTION_DISPOSITION;
         }
     }
     _ => {}

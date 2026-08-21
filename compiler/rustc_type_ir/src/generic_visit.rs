@@ -196,7 +196,7 @@ trivial_impls!(
     u64,
     u128,
     usize,
-    crate::PredicatePolarity,
+    crate::ClausePolarity,
     crate::BoundConstness,
     crate::DebruijnIndex,
     crate::solve::Certainty,

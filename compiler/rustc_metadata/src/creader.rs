@@ -18,10 +18,13 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
+use rustc_lint_defs as lint;
+use rustc_lint_defs::builtin::UNUSED_CRATE_DEPENDENCIES;
 use rustc_middle::bug;
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
+use rustc_session::Session;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
@@ -29,7 +32,6 @@ use rustc_session::config::{
 };
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
-use rustc_session::{Session, lint};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
@@ -328,12 +330,8 @@ impl CStore {
         if !json_unused_externs.is_enabled() {
             return;
         }
-        let level = tcx
-            .lint_level_spec_at_node(
-                lint::builtin::UNUSED_CRATE_DEPENDENCIES,
-                rustc_hir::CRATE_HIR_ID,
-            )
-            .level();
+        let level =
+            tcx.lint_level_spec_at_node(UNUSED_CRATE_DEPENDENCIES, rustc_hir::CRATE_HIR_ID).level();
         if level != lint::Level::Allow {
             let unused_externs =
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
@@ -1228,7 +1226,7 @@ impl CStore {
             }
 
             tcx.sess.psess.buffer_lint(
-                lint::builtin::UNUSED_CRATE_DEPENDENCIES,
+                UNUSED_CRATE_DEPENDENCIES,
                 span,
                 ast::CRATE_NODE_ID,
                 diagnostics::UnusedCrateDependency {

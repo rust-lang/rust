@@ -51,8 +51,8 @@ TrivialTypeTraversalImpls! {
     u64,
     // tidy-alphabetical-start
     crate::BoundConstness,
+    crate::ClausePolarity,
     crate::DebruijnIndex,
-    crate::PredicatePolarity,
     crate::UniverseIndex,
     crate::Variance,
     crate::solve::BuiltinImplSource,

@@ -7,7 +7,6 @@
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
-#![cfg_attr(bootstrap, feature(string_from_utf8_lossy_owned))]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
 //! The backend-agnostic functions of this crate use functions defined in various traits that
@@ -25,7 +24,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
-use rustc_lint_defs::builtin::LINKER_INFO;
+use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_MESSAGES};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
@@ -39,7 +38,6 @@ use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, OutputType};
-use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_span::{Span, Symbol};
 
 pub mod assert_module_sources;

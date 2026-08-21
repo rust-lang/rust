@@ -24,7 +24,7 @@ mod cstring_array;
 cfg_select! {
     target_os = "fuchsia" => {
         // fuchsia doesn't have /dev/null
-    },
+    }
     target_os = "l4re" => {
         // l4re doesn't have /dev/null
     }
@@ -51,8 +51,9 @@ cfg_select! {
 
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-            use crate::slice;
             use libc::{c_ulong, sigset_t};
+
+            use crate::slice;
 
             // The implementations from bionic (android libc) type pun `sigset_t` as an
             // array of `c_ulong`. This works, but lets add a smoke check to make sure
@@ -78,7 +79,7 @@ cfg_select! {
     }
     _ => {
         #[allow(unused_imports)]
-        pub use libc::{sigemptyset, sigaddset};
+        pub use libc::{sigaddset, sigemptyset};
     }
 }
 

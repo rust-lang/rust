@@ -8,7 +8,7 @@
 //!
 //! Most lints can be written as [`LintPass`] instances. These run after
 //! all other analyses. The `LintPass`es built into rustc are defined
-//! within [rustc_session::lint::builtin],
+//! within [rustc_lint_defs::builtin],
 //! which has further comments on how to add such a lint.
 //! rustc can also load external lint plugins, as is done for Clippy.
 //!
@@ -143,8 +143,11 @@ pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_errors::BufferedEarlyLint;
-pub use rustc_session::lint::Level::{self, *};
-pub use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec};
+pub use rustc_lint_defs::Level::{self, *};
+pub use rustc_lint_defs::{
+    Applicability, FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec, declare_lint,
+    declare_lint_pass, declare_tool_lint, impl_lint_pass,
+};
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
@@ -318,7 +321,7 @@ pub fn new_lint_store(internal_lints: bool) -> LintStore {
 
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
-/// `rustc_session::lint::builtin`).
+/// `rustc_lint_defs::builtin`).
 fn register_builtins(store: &mut LintStore) {
     macro_rules! add_lint_group {
         ($name:expr, $($lint:ident),*) => (

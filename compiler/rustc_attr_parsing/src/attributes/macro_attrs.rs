@@ -1,6 +1,6 @@
 use rustc_attr_ir::{CollapseMacroDebuginfo, MacroUseArgs, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_session::lint::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
+use rustc_lint_defs::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
 
 use super::prelude::*;
 use crate::diagnostics::MacroOnlyAttribute;

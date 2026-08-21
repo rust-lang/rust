@@ -14,14 +14,15 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
+use rustc_lint as lint;
 use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_session::Session;
 use rustc_session::config::{
     self, CrateType, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
 };
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
-use rustc_session::{Session, lint};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use tracing::{debug, info};

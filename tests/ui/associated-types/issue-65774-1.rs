@@ -39,7 +39,7 @@ impl ProcessType for Process {
         // writer.my_write(valref)
 
         // This one causes the ICE:
-        // FulfillmentError(Obligation(predicate=Binder(TraitPredicate(<T as MyDisplay>)),
+        // FulfillmentError(Obligation(predicate=Binder(TraitClause(<T as MyDisplay>)),
         // depth=1),Unimplemented)
         let closure = |config: &mut <S as MPU>::MpuConfig| writer.my_write(&config);
         //~^ ERROR the trait bound `T: MyDisplay` is not satisfied

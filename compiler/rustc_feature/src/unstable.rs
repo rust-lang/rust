@@ -255,7 +255,7 @@ declare_features! (
     /// Allows checking whether or not the backend correctly supports unstable float types.
     (internal, cfg_target_has_reliable_f16_f128, "1.88.0", None),
     /// Allows checking whether or not the target might have thread support.
-    (internal, cfg_target_has_threads, "CURRENT_RUSTC_VERSION", None),
+    (internal, cfg_target_has_threads, "1.99.0", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows skipping `ConstParamTy_` trait implementation checks
@@ -397,7 +397,7 @@ declare_features! (
     /// Target features on arm.
     (unstable, arm_target_feature, "1.27.0", Some(150246)),
     /// Allows using `const` operands with pointer in inline assembly.
-    (unstable, asm_const_ptr, "CURRENT_RUSTC_VERSION", Some(128464)),
+    (unstable, asm_const_ptr, "1.99.0", Some(128464)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Enables experimental register support in inline assembly.
@@ -452,7 +452,7 @@ declare_features! (
     /// Allows to use the `#[cfi_encoding = ""]` attribute.
     (unstable, cfi_encoding, "1.71.0", Some(89653)),
     /// Allow to have type alias types for inter-crate use.
-    (incomplete, checked_type_aliases, "CURRENT_RUSTC_VERSION", Some(112792)),
+    (incomplete, checked_type_aliases, "1.99.0", Some(112792)),
     /// The `clflushopt` target feature on x86.
     (unstable, clflushopt_target_feature, "1.98.0", Some(157096)),
     /// Allows `for<...>` on closures and coroutines.
@@ -518,7 +518,7 @@ declare_features! (
     /// Allows macros to customize macro argument matcher diagnostics.
     (unstable, diagnostic_on_unmatched_args, "1.97.0", Some(155642)),
     // Used by macros to not show their bodies in error messages. No-op with `-Z macro-backtrace`.
-    (unstable, diagnostic_opaque, "CURRENT_RUSTC_VERSION", Some(158813)),
+    (unstable, diagnostic_opaque, "1.99.0", Some(158813)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
@@ -630,7 +630,7 @@ declare_features! (
     /// Provides a way to concatenate identifiers using metavariable expressions.
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
     /// Allows directly represented generic_const_args without the `direct_const_arg!` macro.
-    (incomplete, macroless_generic_const_args, "CURRENT_RUSTC_VERSION", Some(159006)),
+    (incomplete, macroless_generic_const_args, "1.99.0", Some(159006)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Enable mgca `type const` syntax before expansion.
@@ -660,13 +660,13 @@ declare_features! (
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows `mut(crate) field: Type` restrictions.
-    (unstable, mut_restriction, "CURRENT_RUSTC_VERSION", Some(105077)),
+    (unstable, mut_restriction, "1.99.0", Some(105077)),
     /// Allows using `#[naked]` on `extern "Rust"` functions.
     (unstable, naked_functions_rustic_abi, "1.88.0", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
     (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
     /// Allows providing names to parameters of `impl Fn` etc
-    (incomplete, named_fn_trait_parameters, "CURRENT_RUSTC_VERSION", Some(158499)),
+    (incomplete, named_fn_trait_parameters, "1.99.0", Some(158499)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.

@@ -19,9 +19,9 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
+use rustc_lint_defs::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_literal_escaper::unescape_char;
 use rustc_session::diagnostics::report_lit_error;
-use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
