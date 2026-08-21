@@ -2945,6 +2945,7 @@ impl Path {
     /// assert_eq!(".config", Path::new(".config").file_prefix().unwrap());
     /// assert_eq!(".config", Path::new(".config.toml").file_prefix().unwrap());
     /// assert_eq!("..config", Path::new("..config.toml").file_prefix().unwrap());
+    /// assert_eq!("...config", Path::new("...config.toml").file_prefix().unwrap());
     /// ```
     ///
     /// # See Also
