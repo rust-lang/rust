@@ -40,7 +40,7 @@ pub enum Target {
     TyAlias,
     Enum,
     Variant,
-    Struct,
+    Struct { has_default_field_values: bool },
     Field,
     Union,
     Trait,
@@ -94,7 +94,7 @@ impl Target {
             | Target::TyAlias
             | Target::Enum
             | Target::Variant
-            | Target::Struct
+            | Target::Struct { .. }
             | Target::Field
             | Target::Union
             | Target::Trait
@@ -134,7 +134,13 @@ impl Target {
             ast::ItemKind::GlobalAsm { .. } => Target::GlobalAsm,
             ast::ItemKind::TyAlias(..) => Target::TyAlias,
             ast::ItemKind::Enum(..) => Target::Enum,
-            ast::ItemKind::Struct(..) => Target::Struct,
+            ast::ItemKind::Struct(_, _, ref data) => Target::Struct {
+                has_default_field_values: matches!(
+                    data,
+                    ast::VariantData::Struct { fields, .. }
+                        if !fields.is_empty() && fields.iter().any(|f| f.default_value().is_some())
+                ),
+            },
             ast::ItemKind::Union(..) => Target::Union,
             ast::ItemKind::Trait(..) => Target::Trait,
             ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
@@ -201,7 +207,7 @@ impl Target {
             Target::TyAlias => "type alias",
             Target::Enum => "enum",
             Target::Variant => "enum variant",
-            Target::Struct => "struct",
+            Target::Struct { .. } => "struct",
             Target::Field => "struct field",
             Target::Union => "union",
             Target::Trait => "trait",
@@ -255,7 +261,7 @@ impl Target {
             Target::TyAlias => "type aliases",
             Target::Enum => "enums",
             Target::Variant => "enum variants",
-            Target::Struct => "structs",
+            Target::Struct { .. } => "structs",
             Target::Field => "struct fields",
             Target::Union => "unions",
             Target::Trait => "traits",

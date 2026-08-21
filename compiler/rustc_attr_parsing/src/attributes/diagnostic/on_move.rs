@@ -35,7 +35,8 @@ impl AttributeParser for OnMoveParser {
 
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Enum),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Union),
     ]);
 

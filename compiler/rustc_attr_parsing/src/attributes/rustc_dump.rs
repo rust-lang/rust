@@ -50,7 +50,8 @@ pub(crate) struct RustcDumpGenericsParser;
 impl NoArgsAttributeParser for RustcDumpGenericsParser {
     const PATH: &[Symbol] = &[sym::rustc_dump_generics];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::Union),
         Allow(Target::Trait),
@@ -92,7 +93,8 @@ pub(crate) struct RustcDumpInferredOutlivesParser;
 impl NoArgsAttributeParser for RustcDumpInferredOutlivesParser {
     const PATH: &[Symbol] = &[sym::rustc_dump_inferred_outlives];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::Union),
         Allow(Target::TyAlias),
@@ -124,7 +126,8 @@ impl CombineAttributeParser for RustcDumpLayoutParser {
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcDumpLayout(items);
 
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::Union),
         Allow(Target::TyAlias),
@@ -199,7 +202,8 @@ impl NoArgsAttributeParser for RustcDumpObjectLifetimeDefaultsParser {
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Trait),
         Allow(Target::TraitAlias),
         Allow(Target::TyAlias),
@@ -231,7 +235,8 @@ impl NoArgsAttributeParser for RustcDumpClausesParser {
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Trait),
         Allow(Target::TraitAlias),
         Allow(Target::TyAlias),
@@ -273,7 +278,8 @@ impl NoArgsAttributeParser for RustcDumpVariancesParser {
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Union),
     ]);
     const STABILITY: AttributeStability =

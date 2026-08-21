@@ -37,7 +37,8 @@ impl SingleAttributeParser for DeprecatedParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Mod),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::Union),
         Allow(Target::Const),

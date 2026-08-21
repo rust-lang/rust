@@ -22,7 +22,8 @@ pub(crate) struct RustcPubTransparentParser;
 impl NoArgsAttributeParser for RustcPubTransparentParser {
     const PATH: &[Symbol] = &[sym::rustc_pub_transparent];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::Union),
     ]);
@@ -45,7 +46,8 @@ pub(crate) struct RustcPassByValueParser;
 impl NoArgsAttributeParser for RustcPassByValueParser {
     const PATH: &[Symbol] = &[sym::rustc_pass_by_value];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::TyAlias),
     ]);
