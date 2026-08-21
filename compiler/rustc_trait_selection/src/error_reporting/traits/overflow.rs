@@ -1,6 +1,5 @@
 use std::fmt;
 
-use rustc_data_structures::Limit;
 use rustc_errors::{Diag, E0275, EmissionGuarantee, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -8,6 +7,7 @@ use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::{self, TyCtxt, Upcast};
 use rustc_span::Span;
+use rustc_structures::Limit;
 use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;

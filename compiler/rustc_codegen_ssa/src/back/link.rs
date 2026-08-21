@@ -21,7 +21,6 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::{TempDirBuilder, fix_windows_verbatim_for_gcc, try_canonicalize};
-use rustc_hir::attrs::NativeLibKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_MESSAGES};
 use rustc_macros::Diagnostic;
@@ -34,8 +33,8 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
-    self, CFGuard, CrateType, DebugInfo, InstrumentMcount, LinkerFeaturesCli, LinkerJobs,
-    OutFileName, OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
+    self, CFGuard, DebugInfo, InstrumentMcount, LinkerFeaturesCli, LinkerJobs, OutFileName,
+    OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
 };
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -43,6 +42,7 @@ use rustc_session::search_paths::PathKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{Session, filesearch};
 use rustc_span::Symbol;
+use rustc_structures::{CrateType, NativeLibKind};
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     Arch, BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,

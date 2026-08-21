@@ -20,11 +20,12 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{
-    self, CrateType, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
+    self, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
 };
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
+use rustc_structures::CrateType;
 use tracing::{debug, info};
 
 use crate::clean::inline::build_trait;

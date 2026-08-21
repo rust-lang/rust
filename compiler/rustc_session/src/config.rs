@@ -26,6 +26,7 @@ use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
     FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol, sym,
 };
+use rustc_structures::CrateType;
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
     Target, TargetTuple,
@@ -1590,8 +1591,6 @@ pub enum EntryFnType {
         sigpipe: u8,
     },
 }
-
-pub use rustc_attr_ir::CrateType;
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq, Encodable, Decodable)]
 pub enum Passes {
@@ -3330,7 +3329,6 @@ pub(crate) mod dep_tracking {
 
     use rustc_abi::Align;
     use rustc_ast::attr::version::RustcVersion;
-    use rustc_attr_ir::CollapseMacroDebuginfo;
     use rustc_data_structures::fx::FxIndexMap;
     use rustc_data_structures::stable_hash::StableHasher;
     use rustc_errors::LanguageIdentifier;
@@ -3338,6 +3336,7 @@ pub(crate) mod dep_tracking {
     use rustc_hashes::Hash64;
     use rustc_span::edition::Edition;
     use rustc_span::{RealFileName, RemapPathScopeComponents};
+    use rustc_structures::CollapseMacroDebuginfo;
     use rustc_target::spec::{
         CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTuple,

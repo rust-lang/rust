@@ -5,7 +5,7 @@ use rustc_hir::attrs::lang_items::{self, LangItem};
 use rustc_hir::attrs::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::CrateType;
+use rustc_structures::CrateType;
 
 use crate::diagnostics::{MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd};
 
