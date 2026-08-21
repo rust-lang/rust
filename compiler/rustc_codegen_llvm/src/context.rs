@@ -564,6 +564,17 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
+    if llvm_version >= (24, 0, 0)
+        && let Some(floatabi) = sess.target.llvm_floatabi
+    {
+        llvm::add_module_flag_str(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "float-abi",
+            floatabi.desc(),
+        );
+    }
+
     // Add module flags specified via -Z llvm_module_flag
     for (key, value, merge_behavior) in &sess.opts.unstable_opts.llvm_module_flag {
         let merge_behavior = match merge_behavior.as_str() {
