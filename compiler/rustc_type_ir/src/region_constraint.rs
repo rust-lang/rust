@@ -754,157 +754,21 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
     match constraint {
         Ambiguity | RegionOutlives(..) => constraint,
         PlaceholderTyOutlives(ty, region) => {
-            let ty_u = max_universe(infcx, ty);
-            let region_u = max_universe(infcx, region);
-
-            if region_u != u && ty_u != u {
-                return constraint;
-            }
-
-            let assumptions = match assumptions {
-                Some(assumptions) => assumptions,
-                None => return Ambiguity,
-            };
-
-            let mut candidates = vec![];
-
-            // There could be `!T: 'region` assumptions in the env even if `!T` is in a
-            // smaller universe
-            candidates.extend(
-                regions_outlived_by_placeholder(ty, assumptions, infcx.cx())
-                    .map(move |assumption_r| RegionOutlives(assumption_r, region)),
-            );
-
-            // We can express `!T: 'region` as `!T: 'r` where `'r: 'region`. This is only necessary
-            // if the placeholder type is in a smaller universe as otherwise we know all regions which
-            // the placeholder outlives and can just destructure into an OR of RegionOutlives.
-            if region_u == u && ty_u < u {
-                candidates.extend(
-                    regions_outliving::<I>(region, assumptions, infcx.cx())
-                        .filter(|r| max_universe(infcx, *r) < u)
-                        .map(|r| PlaceholderTyOutlives(ty, r)),
-                );
-            }
-
-            Or(candidates.into_boxed_slice())
+            rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(
+                infcx,
+                ty,
+                region,
+                u,
+                assumptions,
+            )
         }
         AliasTyOutlivesViaEnv(bound_outlives) => {
-            let mut candidates = Vec::new();
-
-            // given there can be higher ranked assumptions, e.g. `for<'a> <T as Trait<'a>>::Assoc: 'c`, that
-            // means that it's actually *always* possible for an alias outlive to be satisfied in the root universe
-            // which means there should *always* be atleast two candidates when destructuring alias outlives. The
-            // two candidates being component outlives and then a higher ranked alias outlives.
-            //
-            // we dont care about this for region outlives as `for<'a> 'a: 'b` can't exist as we don't elaborate
-            // higher ranked type outlives assumptions into higher ranked region outlives assumptions. similarly,
-            // we don't care about `for<'a> Foo<'a>: 'b` as we always destructure adts into their components and if
-            // we dont equivalently elaborate the assumption into assumptions on the adt's components we just drop the
-            // assumptions
-            //
-            // so actually only `for<'a, 'b> Alias<'a>: 'b` and `for<'a> T: 'a` are assumptions we actually need to
-            // handle.
-            //
-            // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
-            if max_universe(infcx, bound_outlives) == u {
-                let mut replacer = PlaceholderReplacer {
-                    cx: infcx.cx(),
-                    existing_var_count: bound_outlives.bound_vars().len(),
-                    bound_vars: IndexMap::default(),
-                    universe: u,
-                    current_index: DebruijnIndex::ZERO,
-                };
-                let escaping_outlives = bound_outlives.skip_binder().fold_with(&mut replacer);
-                let bound_vars = bound_outlives.bound_vars().iter().chain(
-                    core::mem::take(&mut replacer.bound_vars)
-                        .into_iter()
-                        .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
-                );
-                let bound_outlives = Binder::bind_with_vars(
-                    escaping_outlives,
-                    I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
-                );
-                let candidate = RegionConstraint::AliasTyOutlivesViaEnv(bound_outlives);
-                if max_universe(infcx, candidate.clone()) < u {
-                    candidates.push(candidate);
-                } else {
-                    // `PlaceholderReplacer` only folds regions. A non-lifetime binder can leave
-                    // a placeholder type in `u`, so this type-outlives constraint cannot be
-                    // handled by the region-outlives-only eager placeholder machinery.
-                    candidates.push(Ambiguity);
-                }
-            }
-
-            let assumptions = match assumptions {
-                Some(assumptions) => assumptions,
-                None => {
-                    candidates.push(Ambiguity);
-                    return Or(candidates.into_boxed_slice());
-                }
-            };
-
-            // Actually look at the assumptions and matching our higher ranked alias outlives goal
-            // against potentially higher ranked type outlives assumptions.
-            candidates.push(alias_outlives_candidates_from_assumptions(
+            rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(
                 infcx,
                 bound_outlives,
+                u,
                 assumptions,
-            ));
-
-            // we can rewrite `Alias_u1: 'u2` into `Or(Alias_u1: 'u1)`
-            // given a list of regions which outlive `'u2`
-            //
-            // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
-            let (escaping_alias, escaping_r) = bound_outlives.skip_binder();
-            if max_universe(infcx, escaping_r) == u {
-                let mut replacer = PlaceholderReplacer {
-                    cx: infcx.cx(),
-                    existing_var_count: bound_outlives.bound_vars().len(),
-                    bound_vars: IndexMap::default(),
-                    universe: u,
-                    current_index: DebruijnIndex::ZERO,
-                };
-                let escaping_alias = escaping_alias.fold_with(&mut replacer);
-                let bound_vars = bound_outlives.bound_vars().iter().chain(
-                    core::mem::take(&mut replacer.bound_vars)
-                        .into_iter()
-                        .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
-                );
-                let bound_alias = Binder::bind_with_vars(
-                    escaping_alias,
-                    I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
-                );
-
-                // while we did skip the binder, bound vars aren't in any universe so
-                // this can't be an escaping bound var
-                for r2 in regions_outliving(escaping_r, assumptions, infcx.cx())
-                    .filter(|r2| max_universe(infcx, *r2) < u)
-                {
-                    let candidate =
-                        AliasTyOutlivesViaEnv(bound_alias.map_bound(|alias| (alias, r2)));
-                    if max_universe(infcx, candidate.clone()) < u {
-                        candidates.push(candidate);
-                    } else {
-                        candidates.push(Ambiguity);
-                    }
-                }
-            }
-
-            // I'm not convinced our handling here is *complete* so for now
-            // let's be conservative and not let alias outlives' cause NoSolution
-            // in coherence
-            match infcx.typing_mode_raw() {
-                TypingMode::Coherence => candidates.push(RegionConstraint::Ambiguity),
-                TypingMode::Typeck { .. }
-                | TypingMode::ErasedNotCoherence { .. }
-                | TypingMode::PostTypeckUntilBorrowck { .. }
-                | TypingMode::PostBorrowck { .. }
-                | TypingMode::Reflection
-                | TypingMode::PostAnalysis
-                | TypingMode::Codegen => (),
-            };
-
-            RegionConstraint::Or(candidates.into_boxed_slice())
+            )
         }
         And(constraints) => And(constraints
             .into_iter()
@@ -929,6 +793,177 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
             })
             .collect()),
     }
+}
+
+fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling<
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+>(
+    infcx: &Infcx,
+    ty: I::Ty,
+    region: Region<I>,
+    u: UniverseIndex,
+    assumptions: &Option<Assumptions<I>>,
+) -> RegionConstraint<I> {
+    use RegionConstraint::*;
+
+    let ty_u = max_universe(infcx, ty);
+    let region_u = max_universe(infcx, region);
+
+    if region_u != u && ty_u != u {
+        return PlaceholderTyOutlives(ty, region);
+    }
+
+    let assumptions = match assumptions {
+        Some(assumptions) => assumptions,
+        None => return Ambiguity,
+    };
+
+    let mut candidates = vec![];
+
+    // There could be `!T: 'region` assumptions in the env even if `!T` is in a
+    // smaller universe
+    candidates.extend(
+        regions_outlived_by_placeholder(ty, assumptions, infcx.cx())
+            .map(move |assumption_r| RegionOutlives(assumption_r, region)),
+    );
+
+    // We can express `!T: 'region` as `!T: 'r` where `'r: 'region`. This is only necessary
+    // if the placeholder type is in a smaller universe as otherwise we know all regions which
+    // the placeholder outlives and can just destructure into an OR of RegionOutlives.
+    if region_u == u && ty_u < u {
+        candidates.extend(
+            regions_outliving::<I>(region, assumptions, infcx.cx())
+                .filter(|r| max_universe(infcx, *r) < u)
+                .map(|r| PlaceholderTyOutlives(ty, r)),
+        );
+    }
+
+    Or(candidates.into_boxed_slice())
+}
+
+fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handling<
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+>(
+    infcx: &Infcx,
+    bound_outlives: Binder<I, (AliasTy<I>, Region<I>)>,
+    u: UniverseIndex,
+    assumptions: &Option<Assumptions<I>>,
+) -> RegionConstraint<I> {
+    use RegionConstraint::*;
+
+    let mut candidates = Vec::new();
+
+    // given there can be higher ranked assumptions, e.g. `for<'a> <T as Trait<'a>>::Assoc: 'c`, that
+    // means that it's actually *always* possible for an alias outlive to be satisfied in the root universe
+    // which means there should *always* be atleast two candidates when destructuring alias outlives. The
+    // two candidates being component outlives and then a higher ranked alias outlives.
+    //
+    // we dont care about this for region outlives as `for<'a> 'a: 'b` can't exist as we don't elaborate
+    // higher ranked type outlives assumptions into higher ranked region outlives assumptions. similarly,
+    // we don't care about `for<'a> Foo<'a>: 'b` as we always destructure adts into their components and if
+    // we dont equivalently elaborate the assumption into assumptions on the adt's components we just drop the
+    // assumptions
+    //
+    // so actually only `for<'a, 'b> Alias<'a>: 'b` and `for<'a> T: 'a` are assumptions we actually need to
+    // handle.
+    //
+    // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
+    if max_universe(infcx, bound_outlives) == u {
+        let mut replacer = PlaceholderReplacer {
+            cx: infcx.cx(),
+            existing_var_count: bound_outlives.bound_vars().len(),
+            bound_vars: IndexMap::default(),
+            universe: u,
+            current_index: DebruijnIndex::ZERO,
+        };
+        let escaping_outlives = bound_outlives.skip_binder().fold_with(&mut replacer);
+        let bound_vars = bound_outlives.bound_vars().iter().chain(
+            core::mem::take(&mut replacer.bound_vars)
+                .into_iter()
+                .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
+        );
+        let bound_outlives = Binder::bind_with_vars(
+            escaping_outlives,
+            I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
+        );
+        let candidate = RegionConstraint::AliasTyOutlivesViaEnv(bound_outlives);
+        if max_universe(infcx, candidate.clone()) < u {
+            candidates.push(candidate);
+        } else {
+            // `PlaceholderReplacer` only folds regions. A non-lifetime binder can leave
+            // a placeholder type in `u`, so this type-outlives constraint cannot be
+            // handled by the region-outlives-only eager placeholder machinery.
+            candidates.push(Ambiguity);
+        }
+    }
+
+    let assumptions = match assumptions {
+        Some(assumptions) => assumptions,
+        None => {
+            candidates.push(Ambiguity);
+            return Or(candidates.into_boxed_slice());
+        }
+    };
+
+    // Actually look at the assumptions and matching our higher ranked alias outlives goal
+    // against potentially higher ranked type outlives assumptions.
+    candidates.push(alias_outlives_candidates_from_assumptions(infcx, bound_outlives, assumptions));
+
+    // we can rewrite `Alias_u1: 'u2` into `Or(Alias_u1: 'u1)`
+    // given a list of regions which outlive `'u2`
+    //
+    // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
+    let (escaping_alias, escaping_r) = bound_outlives.skip_binder();
+    if max_universe(infcx, escaping_r) == u {
+        let mut replacer = PlaceholderReplacer {
+            cx: infcx.cx(),
+            existing_var_count: bound_outlives.bound_vars().len(),
+            bound_vars: IndexMap::default(),
+            universe: u,
+            current_index: DebruijnIndex::ZERO,
+        };
+        let escaping_alias = escaping_alias.fold_with(&mut replacer);
+        let bound_vars = bound_outlives.bound_vars().iter().chain(
+            core::mem::take(&mut replacer.bound_vars)
+                .into_iter()
+                .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
+        );
+        let bound_alias = Binder::bind_with_vars(
+            escaping_alias,
+            I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
+        );
+
+        // while we did skip the binder, bound vars aren't in any universe so
+        // this can't be an escaping bound var
+        for r2 in regions_outliving(escaping_r, assumptions, infcx.cx())
+            .filter(|r2| max_universe(infcx, *r2) < u)
+        {
+            let candidate = AliasTyOutlivesViaEnv(bound_alias.map_bound(|alias| (alias, r2)));
+            if max_universe(infcx, candidate.clone()) < u {
+                candidates.push(candidate);
+            } else {
+                candidates.push(Ambiguity);
+            }
+        }
+    }
+
+    // I'm not convinced our handling here is *complete* so for now
+    // let's be conservative and not let alias outlives' cause NoSolution
+    // in coherence
+    match infcx.typing_mode_raw() {
+        TypingMode::Coherence => candidates.push(RegionConstraint::Ambiguity),
+        TypingMode::Typeck { .. }
+        | TypingMode::ErasedNotCoherence { .. }
+        | TypingMode::PostTypeckUntilBorrowck { .. }
+        | TypingMode::PostBorrowck { .. }
+        | TypingMode::Reflection
+        | TypingMode::PostAnalysis
+        | TypingMode::Codegen => (),
+    };
+
+    RegionConstraint::Or(candidates.into_boxed_slice())
 }
 
 /// Returns all regions `r2` for which `r: r2` is known to hold in
