@@ -2,7 +2,6 @@
 
 use std::{debug_assert_matches, fmt};
 
-use rustc_data_structures::Limit;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -12,6 +11,7 @@ use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_lint_defs::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT;
 use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_structures::Limit;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::{
     BoundVar, CollectAndApply, DebruijnIndex, Interner, TypeFoldable, Unnormalized, VisitorResult,

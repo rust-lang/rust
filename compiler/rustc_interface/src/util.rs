@@ -22,12 +22,13 @@ use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
-    Cfg, CrateType, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
+    Cfg, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
 use rustc_session::{EarlyDiagCtxt, IncrCompSession, Session, filesearch};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::{SessionGlobals, Symbol, sym};
+use rustc_structures::CrateType;
 use rustc_target::spec::Target;
 use tracing::info;
 

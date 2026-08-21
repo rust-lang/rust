@@ -23,12 +23,12 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{
-    self, CrateType, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes,
-    SwitchWithOptPath,
+    self, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
 };
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, InnerSpan, Span, SpanData};
+use rustc_structures::CrateType;
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 use tracing::debug;
 
