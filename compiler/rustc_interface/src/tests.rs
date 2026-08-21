@@ -856,7 +856,7 @@ fn test_unstable_options_tracking_hash() {
     // tidy-alphabetical-end
     // FIXME(#160895): We don't test this when the next-solver is enabled by default.
     if option_env!("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY").is_none() {
-        tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
+        tracked!(next_solver, NextSolverConfig { globally: Some(true) });
     }
     // tidy-alphabetical-start
     tracked!(no_generate_arange_section, true);
@@ -946,7 +946,7 @@ fn test_edition_parsing() {
 
 #[test]
 fn test_assumptions_on_binders_enables_next_solver_globally() {
-    let globally = NextSolverConfig { coherence: true, globally: true };
+    let globally = NextSolverConfig { globally: Some(true) };
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // `-Zassumptions-on-binders` alone enables the next solver globally.
@@ -958,8 +958,8 @@ fn test_assumptions_on_binders_enables_next_solver_globally() {
     // Flag order must not matter when both `-Zassumptions-on-binders` and `-Znext-solver`
     // are present.
     for args in [
-        ["-Zassumptions-on-binders".to_string(), "-Znext-solver=coherence".to_string()],
-        ["-Znext-solver=coherence".to_string(), "-Zassumptions-on-binders".to_string()],
+        ["-Zassumptions-on-binders".to_string(), "-Znext-solver=globally".to_string()],
+        ["-Znext-solver=globally".to_string(), "-Zassumptions-on-binders".to_string()],
     ] {
         let matches = optgroups().parse(&args).unwrap();
         let opts = build_session_options(&mut early_dcx, &matches);
