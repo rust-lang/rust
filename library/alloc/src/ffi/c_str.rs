@@ -1171,7 +1171,7 @@ impl CStr {
     /// [str]: prim@str "str"
     /// [Borrowed]: Cow::Borrowed
     /// [Owned]: Cow::Owned
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER "std::char::REPLACEMENT_CHARACTER"
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///

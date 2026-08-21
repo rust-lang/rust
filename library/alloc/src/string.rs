@@ -583,7 +583,7 @@ impl String {
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD], which looks like this: �
     ///
     /// [byteslice]: prim@slice
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the conversion, there is an unsafe version
@@ -742,7 +742,7 @@ impl String {
     ///
     /// [`from_utf8_lossy`]: String::from_utf8_lossy
     /// [`Cow<'a, str>`]: crate::borrow::Cow "borrow::Cow"
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -807,7 +807,7 @@ impl String {
     ///
     /// [`from_utf8_lossy`]: String::from_utf8_lossy
     /// [`Cow<'a, str>`]: crate::borrow::Cow "borrow::Cow"
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -880,7 +880,7 @@ impl String {
     ///
     /// [`from_utf8_lossy`]: String::from_utf8_lossy
     /// [`Cow<'a, str>`]: crate::borrow::Cow "borrow::Cow"
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
