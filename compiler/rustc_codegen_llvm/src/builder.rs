@@ -2121,6 +2121,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     None,
                     None,
                     ubsan_handler,
+                    ReturnSlot::Direct,
                     &[diag_data, function_address, self.const_usize(0)],
                     None,
                     None,
