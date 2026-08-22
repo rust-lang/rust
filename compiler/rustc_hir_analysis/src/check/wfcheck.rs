@@ -5,6 +5,7 @@ use hir::intravisit::{self, Visitor};
 use rustc_abi::{ExternAbi, ScalableElt};
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, msg, pluralize, struct_span_code_err};
 use rustc_hir as hir;
@@ -13,11 +14,11 @@ use rustc_hir::attrs::{EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{AmbigArg, ItemKind, find_attr};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_infer::traits::{PredicateObligations, TraitErrors};
 use rustc_lint_defs::builtin::{REDUNDANT_LIFETIMES, SHADOWING_SUPERTRAIT_ITEMS};
-use rustc_macros::Diagnostic;
+use rustc_macros::{Diagnostic, TypeFoldable, TypeVisitable};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -2335,6 +2336,115 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             }
         }
     }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
+        let constraints = match validate(self.tcx(), body.constraints_span, &body.constraints) {
+            Ok(()) => body.constraints,
+            Err(_guar) => ty::region_constraint::RegionConstraint::And(Box::new([])),
+        };
+
+        self.infcx.register_solver_region_constraint(constraints);
+
+        for forall in body.foralls {
+            self.check_test_binder_forall(forall);
+        }
+        for exists in body.exists {
+            self.check_test_binder_exists(exists);
+        }
+
+        fn validate<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            span: Span,
+            constraint: &ty::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+        ) -> Result<(), ErrorGuaranteed> {
+            match constraint {
+                ty::region_constraint::RegionConstraint::Ambiguity => Ok(()),
+                ty::region_constraint::RegionConstraint::RegionOutlives(..) => Ok(()),
+                ty::region_constraint::RegionConstraint::AliasTyOutlivesViaEnv(..) => Ok(()),
+                ty::region_constraint::RegionConstraint::PlaceholderTyOutlives(ty, _) => {
+                    // we can't check this during lowering, because the ty is a ty::Bound that gets
+                    // instantiated with a placeholder when entering the containing forall.
+                    if let ty::Placeholder(_) | ty::Param(_) = ty.kind() {
+                        Ok(())
+                    } else {
+                        let mut err = tcx.dcx().struct_span_err(
+                            span,
+                            "the lhs of a ty outlives must be a placeholder",
+                        );
+                        err.note(format!("it is a {ty}"));
+                        err.note(format!("and here it is `Debug`ged :3 {ty:?}"));
+                        Err(err.emit())
+                    }
+                }
+                ty::region_constraint::RegionConstraint::And(constraints) => {
+                    let mut res = Ok(());
+                    for constraint in constraints {
+                        res = res.and(validate(tcx, span, constraint));
+                    }
+                    res
+                }
+                ty::region_constraint::RegionConstraint::Or(constraints) => {
+                    let mut res = Ok(());
+                    for constraint in constraints {
+                        res = res.and(validate(tcx, span, constraint));
+                    }
+                    res
+                }
+            }
+        }
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn check_test_binder_forall(&self, forall: TestBinderForall<'tcx>) {
+        self.infcx.enter_forall(forall.binder, |body| {
+            let u = self.infcx.universe();
+            let mut builder = TransitiveRelationBuilder::default();
+            for &(r1, r2) in &body.region_outlives {
+                builder.add(r1, r2);
+            }
+            let assumptions =
+                ty::region_constraint::Assumptions::new(body.type_outlives, builder.freeze());
+            self.infcx.insert_placeholder_assumptions(u, Some(assumptions));
+            self.check_test_binder_body(body.value);
+            let solver_region_constraint = self.infcx.get_solver_region_constraint();
+            let constraint = ty::region_constraint::eagerly_handle_placeholders_in_universe(
+                self.infcx,
+                solver_region_constraint,
+                u,
+            );
+            if let Some(assert_on_exit) = &forall.assert_on_exit {
+                let assert_on_exit_canon = assert_on_exit.clone().canonical_form();
+                let constraint_canon = constraint.clone().canonical_form();
+                if assert_on_exit_canon != constraint_canon {
+                    let mut err = self
+                        .tcx()
+                        .dcx()
+                        .struct_span_err(forall.assert_on_exit_span, "forall expect clause failed");
+                    err.note(format!("expected: {assert_on_exit_canon:?}"));
+                    err.note(format!("actual: {constraint_canon:?}"));
+                    if assert_on_exit != &assert_on_exit_canon {
+                        err.note(format!("expected (original, non-canonical): {assert_on_exit:?}"));
+                    }
+                    if constraint != constraint_canon {
+                        err.note(format!("actual (original, non-canonical): {constraint:?}"));
+                    }
+                    err.emit();
+                }
+            }
+            self.infcx.overwrite_solver_region_constraint(constraint);
+        });
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn check_test_binder_exists(&self, exists: TestBinderExists<'tcx>) {
+        let body = self.infcx.instantiate_binder_with_fresh_vars(
+            exists.span,
+            BoundRegionConversionTime::HigherRankedType,
+            exists.binder,
+        );
+        self.check_test_binder_body(body);
+    }
 }
 
 pub(super) fn check_type_wf(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
@@ -2375,7 +2485,8 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::TraitAlias
         | DefKind::Fn
         | DefKind::Const { .. }
-        | DefKind::Impl { of_trait: _ } => {
+        | DefKind::Impl { of_trait: _ }
+        | DefKind::TestBinderConstraints => {
             // Proceed
         }
         DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst { .. } => {
@@ -2495,4 +2606,35 @@ struct RedundantLifetimeArgsLint<'tcx> {
     victim: ty::Region<'tcx>,
     // The lifetime we can replace the victim with.
     candidate: ty::Region<'tcx>,
+}
+
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub(crate) struct TestBinderBody<'tcx> {
+    pub foralls: Vec<TestBinderForall<'tcx>>,
+    pub exists: Vec<TestBinderExists<'tcx>>,
+    pub constraints_span: Span,
+    pub constraints: ty::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+}
+
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub(crate) struct TestBinderForall<'tcx> {
+    pub binder: ty::Binder<'tcx, WithWhereClauses<'tcx, TestBinderBody<'tcx>>>,
+    pub assert_on_exit_span: Span,
+    pub assert_on_exit: Option<ty::region_constraint::RegionConstraint<TyCtxt<'tcx>>>,
+}
+
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub(crate) struct TestBinderExists<'tcx> {
+    pub span: Span,
+    pub binder: ty::Binder<'tcx, TestBinderBody<'tcx>>,
+}
+
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub(crate) struct WithWhereClauses<'tcx, T> {
+    pub value: T,
+
+    // The where clauses on the forall. These eventually will probably get stored inside
+    // `ty::Binder` but they're here for now.
+    pub type_outlives: Vec<ty::Binder<'tcx, ty::OutlivesClause<'tcx, Ty<'tcx>>>>,
+    pub region_outlives: Vec<(ty::Region<'tcx>, ty::Region<'tcx>)>,
 }

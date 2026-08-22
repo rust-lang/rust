@@ -327,12 +327,8 @@ pub struct InferCtxt<'tcx> {
     //
     // FIXME(-Zassumptions-on-binders): This and `universe` should probably be
     // in `InferCtxtInner` so they can participate in rollbacks and whatnot
-    placeholder_assumptions_for_next_solver: RefCell<
-        FxIndexMap<
-            ty::UniverseIndex,
-            Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
-        >,
-    >,
+    placeholder_assumptions_for_next_solver:
+        RefCell<FxIndexMap<ty::UniverseIndex, Option<Assumptions<'tcx>>>>,
 
     next_trait_solver: bool,
 
@@ -1471,10 +1467,10 @@ impl<'tcx> InferCtxt<'tcx> {
         value: ty::Binder<'tcx, T>,
     ) -> T
     where
-        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        if let Some(inner) = value.no_bound_vars() {
-            return inner;
+        if let Some(_) = value.as_ref().no_bound_vars() {
+            return value.skip_binder();
         }
 
         let bound_vars = value.bound_vars();
@@ -1508,6 +1504,45 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let delegate = ToFreshVars { args };
         self.tcx.replace_bound_vars_uncached(value, delegate)
+    }
+
+    pub fn insert_placeholder_assumptions(
+        &self,
+        u: ty::UniverseIndex,
+        assumptions: Option<Assumptions<'tcx>>,
+    ) {
+        if let Some(assumptions) = &assumptions {
+            assert!(
+                !assumptions.type_outlives.has_escaping_bound_vars(),
+                "assumptions has escaping bound vars, which is indicative of a bug in how assumptions are handled: {:?}",
+                assumptions.type_outlives
+            );
+            assert!(
+                assumptions.region_outlives.base_edges().all(|r| !r.has_escaping_bound_vars()),
+                "assumptions has escaping bound vars, which is indicative of a bug in how assumptions are handled: {:?}",
+                assumptions.region_outlives
+            );
+        }
+        self.placeholder_assumptions_for_next_solver.borrow_mut().insert(u, assumptions);
+    }
+
+    pub fn get_placeholder_assumptions(&self, u: ty::UniverseIndex) -> Option<Assumptions<'tcx>> {
+        self.placeholder_assumptions_for_next_solver.borrow().get(&u).unwrap().as_ref().cloned()
+    }
+
+    pub fn get_solver_region_constraint(&self) -> SolverRegionConstraint<'tcx> {
+        self.inner.borrow().solver_region_constraint_storage.get_constraint()
+    }
+
+    pub fn overwrite_solver_region_constraint(&self, constraint: SolverRegionConstraint<'tcx>) {
+        assert!(
+            !constraint.has_escaping_bound_vars(),
+            "solver region constraint has escaping bound vars, which is indicative of a bug in how constraints are handled: {constraint:?}",
+        );
+        let mut inner = self.inner.borrow_mut();
+        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
+        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
+        inner.solver_region_constraint_storage.overwrite_solver_region_constraint(constraint);
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.
@@ -1811,6 +1846,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
 type SolverRegionConstraint<'tcx> =
     rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>;
+type Assumptions<'tcx> = rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>;
 
 #[derive(Clone, Debug)]
 struct SolverRegionConstraintStorage<'tcx>(SolverRegionConstraint<'tcx>);

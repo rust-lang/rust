@@ -728,6 +728,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ItemKind::Trait { .. } => "trait",
                     ItemKind::TraitAlias(..) => "trait alias",
                     ItemKind::Impl { .. } => "impl",
+                    ItemKind::TestBinderConstraints { .. } => "test_binder_constraints!",
                 };
                 format!("{id} ({item_str} {})", path_str(item.owner_id.def_id))
             }
@@ -794,9 +795,11 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             Node::Crate(..) => String::from("(root_crate)"),
             Node::WherePredicate(_) => node_str("where predicate"),
+            Node::PreciseCapturingNonLifetimeArg(_param) => node_str("parameter"),
+            Node::TestBinderForall(_) => node_str("forall"),
+            Node::TestBinderExists(_) => node_str("exists"),
             Node::Synthetic => unreachable!(),
             Node::Err(_) => node_str("error"),
-            Node::PreciseCapturingNonLifetimeArg(_param) => node_str("parameter"),
         }
     }
 
@@ -1070,6 +1073,8 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Crate(item) => item.spans.inner_span,
             Node::WherePredicate(pred) => pred.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
+            Node::TestBinderForall(forall) => forall.span,
+            Node::TestBinderExists(exists) => exists.span,
             Node::Synthetic => unreachable!(),
             Node::Err(span) => span,
         }

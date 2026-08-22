@@ -139,6 +139,16 @@ impl<'tcx> InferCtxt<'tcx> {
         inner.region_obligations.push(obligation);
     }
 
+    pub fn register_solver_region_constraint(
+        &self,
+        c: rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+    ) {
+        let mut inner = self.inner.borrow_mut();
+        let previous_was_and = inner.solver_region_constraint_storage.is_and();
+        inner.undo_log.push(UndoLog::PushSolverRegionConstraint { previous_was_and });
+        inner.solver_region_constraint_storage.push(c);
+    }
+
     pub fn register_type_outlives_constraint(
         &self,
         sup_type: Ty<'tcx>,
