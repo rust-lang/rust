@@ -65,10 +65,10 @@ fn do_check_simd_vector_abi<'tcx>(
         let size = arg_abi.layout.size;
         match passes_vectors_by_value(&arg_abi.mode, &arg_abi.layout.backend_repr) {
             UsesVectorRegisters::FixedVector => {
-                let feature_def = tcx.sess.target.features_for_correct_fixed_length_vector_abi();
+                let features_def = tcx.sess.target.features_for_correct_fixed_length_vector_abi();
                 // Find the first feature that provides at least this vector size.
-                let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
-                    Some((_, feature)) => feature,
+                let features = match features_def.iter().find(|(bits, _)| size.bits() <= *bits) {
+                    Some((_, features)) => features,
                     None => {
                         let (span, _hir_id) = loc();
                         tcx.dcx().emit_err(diagnostics::AbiErrorUnsupportedVectorType {
@@ -79,11 +79,14 @@ fn do_check_simd_vector_abi<'tcx>(
                         continue;
                     }
                 };
-                if !feature.is_empty() && !have_feature(Symbol::intern(feature)) {
+                if !features.is_empty()
+                    && !features.iter().any(|feature| have_feature(Symbol::intern(feature)))
+                {
                     let (span, _hir_id) = loc();
                     tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
-                        required_feature: feature,
+                        // FIXME: If there are multiple features, we should suggest "features[0] or features[1] ...".
+                        required_feature: features[0],
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: false,
