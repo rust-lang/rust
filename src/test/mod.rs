@@ -486,7 +486,7 @@ fn self_tests() {
         files.push(path);
     }
     // for crates that need to be included but lies outside src
-    let external_crates = vec!["check_diff", "config_proc_macro"];
+    let external_crates = vec!["check_diff", "config_proc_macro", "ci"];
     for external_crate in external_crates {
         let mut path = PathBuf::from(external_crate);
         path.push("src");
