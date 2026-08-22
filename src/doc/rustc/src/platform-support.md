@@ -347,6 +347,7 @@ target | std | host | notes
 [`i686-unknown-helenos`](platform-support/helenos.md) | ✓ |  | HelenOS IA-32 (see docs for pending issues)
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 (Pentium 4) [^x86_32-floats-return-ABI]
+[`i686-unknown-none`](platform-support/i686-unknown-none.md) | * |  | 32-bit Freestanding/bare-metal, softfloat [^x86_32-floats-return-ABI]
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD (Pentium 4) [^x86_32-floats-return-ABI]
 `i686-uwp-windows-gnu` | ✓ |  | [^x86_32-floats-return-ABI]
 [`i686-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  | [^x86_32-floats-return-ABI] [^win32-msvc-alignment]

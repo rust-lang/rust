@@ -1644,6 +1644,7 @@ supported_targets! {
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
 
     ("x86_64-unknown-none", x86_64_unknown_none),
+    ("i686-unknown-none", i686_unknown_none),
 
     ("aarch64-unknown-teeos", aarch64_unknown_teeos),
 
