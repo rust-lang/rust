@@ -62,7 +62,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 expr_span,
                 this.thir[scrutinee].span,
             ),
-            ExprKind::If { cond, then, else_opt, if_then_scope } => {
+            ExprKind::If { cond, then, else_opt, if_then_scope, hir_id: _ } => {
                 let then_span = this.thir[then].span;
                 let then_source_info = this.source_info(then_span);
                 let condition_scope = this.local_scope();

@@ -126,7 +126,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 });
                 return;
             }
-            ExprKind::If { cond, then, else_opt, if_then_scope: _ } => {
+            ExprKind::If { cond, then, else_opt, if_then_scope: _, hir_id: _ } => {
                 // Give a specific `let_source` for the condition.
                 let let_source = match ex.span.desugaring_kind() {
                     Some(DesugaringKind::WhileLoop) => LetSource::WhileLet,

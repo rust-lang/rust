@@ -223,7 +223,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*value, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
-            If { if_then_scope, cond, then, else_opt } => {
+            If { if_then_scope, cond, then, else_opt, hir_id } => {
                 print_indented!(self, "If {", depth_lvl);
                 print_indented!(self, format!("if_then_scope: {:?}", if_then_scope), depth_lvl + 1);
                 print_indented!(self, "cond:", depth_lvl + 1);
@@ -236,6 +236,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                     self.print_expr(*else_expr, depth_lvl + 2);
                 }
 
+                print_indented!(self, format_args!("hir_id: {hir_id:?}"), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
             Call { fun, args, ty, from_hir_call, fn_span } => {

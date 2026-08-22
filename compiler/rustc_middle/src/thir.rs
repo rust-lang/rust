@@ -282,6 +282,8 @@ pub enum ExprKind<'tcx> {
         /// If present, the `else_opt` expr is always `ExprKind::Block` (for
         /// `else`) or `ExprKind::If` (for `else if`).
         else_opt: Option<ExprId>,
+        /// HIR ID of the `if` expression, for use by coverage instrumentation.
+        hir_id: HirId,
     },
     /// A function call. Method calls and overloaded operators are converted to plain function calls.
     Call {

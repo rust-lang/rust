@@ -1011,6 +1011,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 cond: self.mirror_expr(cond),
                 then: self.mirror_expr(then),
                 else_opt: else_opt.map(|el| self.mirror_expr(el)),
+                hir_id: expr.hir_id,
             },
             hir::ExprKind::Match(discr, arms, match_source) => ExprKind::Match {
                 scrutinee: self.mirror_expr(discr),
