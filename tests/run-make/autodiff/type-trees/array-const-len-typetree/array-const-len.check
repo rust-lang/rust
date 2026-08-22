@@ -1,0 +1,14 @@
+; Pointer-to-[T; N]: normalize N, keep a compact [-1] float child under the pointee.
+PTR-LABEL: define{{.*}}@copy_ptr_array(
+PTR-NOT: define
+PTR: call void @llvm.memcpy{{.*}}"enzyme_type"="{[0]:Pointer, [0,0]:Pointer, [0,0,-1]:Float@float, [0,8]:Float@float, [0,12]:Float@float}"
+
+; Inline [T; N]: first float element plus the distinct `scale: i32` field.
+; Struct flattening currently collapses array `-1` to the field base, so only
+; byte 0 of `data` is classified until Enzyme gains a compact range encoding.
+INLINE-LABEL: define{{.*}}@copy_inline_array(
+INLINE-NOT: define
+INLINE: call void @llvm.memcpy{{.*}}"enzyme_type"="{[0]:Pointer, [0,0]:Float@float, [0,32]:Integer}"
+
+ADIFF-LABEL: define{{.*}}@ptr_array_sum(
+ADIFF-SAME: ptr{{.*}}"enzyme_type"="{[-1]:Pointer, [-1,0]:Pointer, [-1,0,-1]:Float@float, [-1,8]:Float@float, [-1,12]:Float@float}"
