@@ -2314,6 +2314,7 @@ symbols! {
         usize_legacy_mod,
         v1,
         v8plus,
+        v9,
         va_arg,
         va_arg_safe,
         va_copy,
