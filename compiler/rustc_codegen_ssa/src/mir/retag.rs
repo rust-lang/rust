@@ -271,7 +271,9 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         let global_alloc = tcx.global_alloc(alloc_id);
         let global_mem = global_alloc.unwrap_memory();
 
-        bx.cx().static_addr_of(global_mem, None)
+        // The range table contains only integer data, not pointer relocations, so no ptrauth
+        // discriminators are needed.
+        bx.cx().static_addr_of(global_mem, None, None)
     }
 }
 

@@ -4,6 +4,7 @@ use rustc_crate_store::{DllCallingConvention, DllImport, DllImportSymbolType};
 use rustc_hir::attrs::PeImportNameType;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
+use rustc_middle::ptrauth::ptrauth_clone_discriminated_schema_for;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, ScalarInt, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -118,11 +119,20 @@ pub(crate) fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = bx.tcx();
     let def_id = tcx.require_lang_item(li, span);
     let instance = ty::Instance::mono(tcx, def_id);
-    (
-        bx.fn_abi_of_instance(instance, ty::List::empty()),
-        bx.get_fn_addr(instance, tcx.sess.pointer_authentication_functions()),
-        instance,
-    )
+
+    let schema = if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+        // It is unlikely that any of LangItem will follow the extern C/System ABI, but it future
+        // proofs the implementation.
+        ptrauth_clone_discriminated_schema_for(
+            bx.tcx(),
+            bx.sess().pointer_authentication_functions(),
+            instance,
+        )
+    } else {
+        bx.sess().pointer_authentication_functions().clone()
+    };
+
+    (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance, schema), instance)
 }
 
 pub(crate) fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(

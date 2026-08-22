@@ -3,6 +3,7 @@ use std::ops::Range;
 use rustc_abi::{Align, ExternAbi, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
@@ -13,6 +14,7 @@ use rustc_middle::mir::interpret::{
     read_target_uint,
 };
 use rustc_middle::mono::MonoItem;
+use rustc_middle::ptrauth::ptrauth_collect_fn_ptr_discriminators;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
@@ -37,11 +39,13 @@ pub(crate) enum IsInitOrFini {
     Yes,
     No,
 }
+
 pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
     alloc: &Allocation,
     is_static: IsStatic,
     is_init_fini: IsInitOrFini,
+    ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
 ) -> &'ll Value {
     // We expect that callers of const_alloc_to_llvm will instead directly codegen a pointer or
     // integer for any &ZST where the ZST is a constant (i.e. not a static). We should never be
@@ -121,7 +125,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
             as u64;
 
         let address_space = cx.tcx.global_alloc(prov.alloc_id()).address_space(cx);
-        let schema = if cx.sess().pointer_authentication() {
+        let mut schema = if cx.sess().pointer_authentication() {
             match is_init_fini {
                 IsInitOrFini::Yes => cx.sess().pointer_authentication_init_fini(),
                 IsInitOrFini::No => cx.sess().pointer_authentication_functions(),
@@ -129,6 +133,16 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
         } else {
             None
         };
+        let discr =
+            ptrauth_discriminators.as_ref().and_then(|m| m.get(&Size::from_bytes(offset as u64)));
+
+        // Init/fini entries must not participate in function pointer type discrimination, they use
+        // a dedicated constant value (ptrauth_string_discriminator("init_fini") which is: 0xd9d4).
+        if let (Some(schema), Some(discr)) = (schema.as_mut(), discr)
+            && is_init_fini == IsInitOrFini::No
+        {
+            schema.constant_discriminator = *discr as u16;
+        }
         llvals.push(cx.scalar_to_backend_with_pac(
             InterpScalar::from_pointer(Pointer::new(prov, Size::from_bytes(ptr_offset)), &cx.tcx),
             Scalar::Initialized {
@@ -137,6 +151,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
             },
             cx.type_ptr_ext(address_space),
             schema,
+            ptrauth_discriminators,
         ));
         next_offset = offset + pointer_size_bytes;
     }
@@ -160,6 +175,15 @@ fn codegen_static_initializer<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
 ) -> Result<(&'ll Value, ConstAllocation<'tcx>), ErrorHandled> {
+    let ptrauth_discriminators = if cx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+        let instance = Instance::mono(cx.tcx, def_id);
+        let ty = instance.ty(cx.tcx, cx.typing_env());
+
+        Some(ptrauth_collect_fn_ptr_discriminators(cx.tcx, cx.typing_env(), ty))
+    } else {
+        None
+    };
+
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
     let attrs = cx.tcx.codegen_fn_attrs(def_id);
     // FIXME(jchlanda) Decide if this could be better served by `ctor` crate. See the discussion
@@ -175,7 +199,16 @@ fn codegen_static_initializer<'ll, 'tcx>(
             }
         })
         .unwrap_or(IsInitOrFini::No);
-    Ok((const_alloc_to_llvm(cx, alloc.inner(), IsStatic::Yes, is_in_init_fini), alloc))
+    Ok((
+        const_alloc_to_llvm(
+            cx,
+            alloc.inner(),
+            IsStatic::Yes,
+            is_in_init_fini,
+            ptrauth_discriminators.as_ref(),
+        ),
+        alloc,
+    ))
 }
 
 fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Align) {
@@ -834,10 +867,21 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     ///
     /// The pointer will always be in the default address space. If global variables default to a
     /// different address space, an addrspacecast is inserted.
-    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> &'ll Value {
+    fn static_addr_of(
+        &self,
+        alloc: ConstAllocation<'_>,
+        kind: Option<&str>,
+        ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
+    ) -> &'ll Value {
         // FIXME: should we cache `const_alloc_to_llvm` to avoid repeating this for the
         // same `ConstAllocation`?
-        let cv = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
+        let cv = const_alloc_to_llvm(
+            self,
+            alloc.inner(),
+            IsStatic::No,
+            IsInitOrFini::No,
+            ptrauth_discriminators,
+        );
 
         let gv = self.static_addr_of_impl(cv, alloc.inner().align, kind);
         // static_addr_of_impl returns the bare global variable, which might not be in the default
