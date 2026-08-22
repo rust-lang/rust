@@ -394,6 +394,7 @@
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
 #![feature(used_with_arg)]
+#![feature(wrapping_funnel_shifts)]
 #![feature(write_all_vectored)]
 // tidy-alphabetical-end
 //

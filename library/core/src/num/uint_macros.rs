@@ -555,9 +555,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         pub const fn funnel_shl(self, right: Self, n: u32) -> Self {
-            assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
-            // SAFETY: just checked that `shift` is in-range
-            unsafe { self.unchecked_funnel_shl(right, n) }
+            self.checked_funnel_shl(right, n).expect("attempt to funnel shift left with overflow")
         }
 
         /// Performs a right funnel shift.
@@ -611,9 +609,109 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         pub const fn funnel_shr(self, right: Self, n: u32) -> Self {
-            assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
-            // SAFETY: just checked that `shift` is in-range
+            self.checked_funnel_shr(right, n).expect("attempt to funnel shift right with overflow")
+        }
+
+        /// Performs a left funnel shift.
+        ///
+        /// This function will return `None` if `n` is greater than or equal to the number of
+        /// bits in `self`, i.e. when [`funnel_shl`](Self::funnel_shl) would panic.
+        #[rustc_const_unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
+        #[inline(always)]
+        pub const fn checked_funnel_shl(self, right: Self, n: u32) -> Option<Self> {
+            if n < Self::BITS {
+                // SAFETY: just checked that `n` is in-range
+                Some(unsafe { self.unchecked_funnel_shl(right, n) })
+            } else {
+                None
+            }
+        }
+
+        /// Performs a right funnel shift.
+        ///
+        /// This function will return `None` if `n` is greater than or equal to the number of
+        /// bits in `self`, i.e. when [`funnel_shr`](Self::funnel_shr) would panic.
+        #[rustc_const_unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
+        #[inline(always)]
+        pub const fn checked_funnel_shr(self, right: Self, n: u32) -> Option<Self> {
+            if n < Self::BITS {
+                // SAFETY: just checked that `n` is in-range
+                Some(unsafe { self.unchecked_funnel_shr(right, n) })
+            } else {
+                None
+            }
+        }
+
+        /// Performs a left funnel shift.
+        ///
+        /// This function shifts by `mask(n)`, where `mask` removes any high-order bits of `n`
+        /// that would cause the shift to exceed the bitwidth of the type. As a result, this
+        /// function never panics, unlike [`funnel_shl`](Self::funnel_shl).
+        #[rustc_const_unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
+        #[inline(always)]
+        pub const fn wrapping_funnel_shl(self, right: Self, n: u32) -> Self {
+            let n = n & (Self::BITS - 1);
+            // SAFETY: `n` is now ensured to be in-range
+            unsafe { self.unchecked_funnel_shl(right, n) }
+        }
+
+        /// Performs a right funnel shift.
+        ///
+        /// This function shifts by `mask(n)`, where `mask` removes any high-order bits of `n`
+        /// that would cause the shift to exceed the bitwidth of the type. As a result, this
+        /// function never panics, unlike [`funnel_shr`](Self::funnel_shr).
+        #[rustc_const_unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
+        #[inline(always)]
+        pub const fn wrapping_funnel_shr(self, right: Self, n: u32) -> Self {
+            let n = n & (Self::BITS - 1);
+            // SAFETY: `n` is now ensured to be in-range
             unsafe { self.unchecked_funnel_shr(right, n) }
+        }
+
+        /// Performs a left funnel shift.
+        ///
+        /// This function will act like [`unbounded_shl`](Self::unbounded_shl) on a type with
+        /// twice the bitwidth of `Self` where the high-order half comes from `self` and the
+        /// low-order half comes from `right`, regardless of whether such a type exists, and
+        /// will return the high-order half of the result.
+        #[rustc_const_unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
+        #[inline(always)]
+        pub const fn unbounded_funnel_shl(self, right: Self, n: u32) -> Self {
+            if let Some(r) = self.checked_funnel_shl(right, n) {
+                r
+            } else {
+                // This subtraction will never underflow.
+                right.unbounded_shl(n - Self::BITS)
+            }
+        }
+
+        /// Performs a right funnel shift.
+        ///
+        /// This function will act like [`unbounded_shr`](Self::unbounded_shr) on a type with
+        /// twice the bitwidth of `Self` where the high-order half comes from `self` and the
+        /// low-order half comes from `right`, regardless of whether such a type exists, and
+        /// will return the low-order half of the result.
+        #[rustc_const_unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[unstable(feature = "wrapping_funnel_shifts", issue = "none")]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
+        #[inline(always)]
+        pub const fn unbounded_funnel_shr(self, right: Self, n: u32) -> Self {
+            if let Some(r) = self.checked_funnel_shr(right, n) {
+                r
+            } else {
+                // This subtraction will never underflow.
+                self.unbounded_shr(n - Self::BITS)
+            }
         }
 
         /// Unchecked funnel shift left.
