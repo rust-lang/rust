@@ -1412,7 +1412,17 @@ where
         alias_const: ty::AliasConst<I>,
     ) -> Result<Option<I::Const>, NoSolutionOrRerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
-            match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
+            let resolved = self.resolve_vars_if_possible(alias_const);
+            // FIXME: get rid of this once GCE is removed
+            let is_gce = match resolved.kind {
+                ty::AliasConstKind::Anon { def_id } => {
+                    matches!(self.cx().anon_const_kind(def_id.into()), ty::AnonConstKind::GCE)
+                }
+                _ => false,
+            };
+            if resolved.has_opaque_types() || is_gce {
+                match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
+            }
         }
 
         self.delegate.evaluate_const(param_env, alias_const, |ty| {
