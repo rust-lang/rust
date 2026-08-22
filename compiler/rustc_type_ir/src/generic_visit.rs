@@ -20,29 +20,35 @@ use crate::Interner;
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
 ///
-/// To implement this conveniently, use the derive macro located in
-/// `rustc_macros`.
-pub trait GenericTypeVisitable<V> {
+/// ## Safety
+///
+/// A manual implementation **must visit** every field.
+///
+/// Therefore, it is advised to instead derive this using the derive
+/// macro located in `rustc_macros`.
+pub unsafe trait GenericTypeVisitable<V> {
     fn generic_visit_with(&self, visitor: &mut V);
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
 
-impl<V, T: ?Sized + GenericTypeVisitable<V>> GenericTypeVisitable<V> for &T {
+unsafe impl<V, T: ?Sized + GenericTypeVisitable<V>> GenericTypeVisitable<V> for &T {
     fn generic_visit_with(&self, visitor: &mut V) {
         T::generic_visit_with(*self, visitor)
     }
 }
 
-impl<V, T: GenericTypeVisitable<V>, U: GenericTypeVisitable<V>> GenericTypeVisitable<V> for (T, U) {
+unsafe impl<V, T: GenericTypeVisitable<V>, U: GenericTypeVisitable<V>> GenericTypeVisitable<V>
+    for (T, U)
+{
     fn generic_visit_with(&self, visitor: &mut V) {
         self.0.generic_visit_with(visitor);
         self.1.generic_visit_with(visitor);
     }
 }
 
-impl<V, A: GenericTypeVisitable<V>, B: GenericTypeVisitable<V>, C: GenericTypeVisitable<V>>
+unsafe impl<V, A: GenericTypeVisitable<V>, B: GenericTypeVisitable<V>, C: GenericTypeVisitable<V>>
     GenericTypeVisitable<V> for (A, B, C)
 {
     fn generic_visit_with(&self, visitor: &mut V) {
@@ -52,7 +58,7 @@ impl<V, A: GenericTypeVisitable<V>, B: GenericTypeVisitable<V>, C: GenericTypeVi
     }
 }
 
-impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for Option<T> {
+unsafe impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for Option<T> {
     fn generic_visit_with(&self, visitor: &mut V) {
         match self {
             Some(v) => v.generic_visit_with(visitor),
@@ -61,7 +67,7 @@ impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for Option<T> {
     }
 }
 
-impl<V, T: GenericTypeVisitable<V>, E: GenericTypeVisitable<V>> GenericTypeVisitable<V>
+unsafe impl<V, T: GenericTypeVisitable<V>, E: GenericTypeVisitable<V>> GenericTypeVisitable<V>
     for Result<T, E>
 {
     fn generic_visit_with(&self, visitor: &mut V) {
@@ -72,54 +78,56 @@ impl<V, T: GenericTypeVisitable<V>, E: GenericTypeVisitable<V>> GenericTypeVisit
     }
 }
 
-impl<V, T: ?Sized + GenericTypeVisitable<V>> GenericTypeVisitable<V> for Arc<T> {
+unsafe impl<V, T: ?Sized + GenericTypeVisitable<V>> GenericTypeVisitable<V> for Arc<T> {
     fn generic_visit_with(&self, visitor: &mut V) {
         (**self).generic_visit_with(visitor)
     }
 }
 
-impl<V, T: ?Sized + GenericTypeVisitable<V>> GenericTypeVisitable<V> for Box<T> {
+unsafe impl<V, T: ?Sized + GenericTypeVisitable<V>> GenericTypeVisitable<V> for Box<T> {
     fn generic_visit_with(&self, visitor: &mut V) {
         (**self).generic_visit_with(visitor)
     }
 }
 
-impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for Vec<T> {
+unsafe impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for Vec<T> {
     fn generic_visit_with(&self, visitor: &mut V) {
         self.iter().for_each(|it| it.generic_visit_with(visitor));
     }
 }
 
-impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for ThinVec<T> {
+unsafe impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for ThinVec<T> {
     fn generic_visit_with(&self, visitor: &mut V) {
         self.iter().for_each(|it| it.generic_visit_with(visitor));
     }
 }
 
-impl<V, T: GenericTypeVisitable<V>, const N: usize> GenericTypeVisitable<V> for SmallVec<[T; N]> {
+unsafe impl<V, T: GenericTypeVisitable<V>, const N: usize> GenericTypeVisitable<V>
+    for SmallVec<[T; N]>
+{
     fn generic_visit_with(&self, visitor: &mut V) {
         self.iter().for_each(|it| it.generic_visit_with(visitor));
     }
 }
 
-impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for [T] {
+unsafe impl<V, T: GenericTypeVisitable<V>> GenericTypeVisitable<V> for [T] {
     fn generic_visit_with(&self, visitor: &mut V) {
         self.iter().for_each(|it| it.generic_visit_with(visitor));
     }
 }
 
-impl<V, T: GenericTypeVisitable<V>, Ix: Idx> GenericTypeVisitable<V> for IndexVec<Ix, T> {
+unsafe impl<V, T: GenericTypeVisitable<V>, Ix: Idx> GenericTypeVisitable<V> for IndexVec<Ix, T> {
     fn generic_visit_with(&self, visitor: &mut V) {
         self.iter().for_each(|it| it.generic_visit_with(visitor));
     }
 }
 
-impl<S, V> GenericTypeVisitable<V> for std::hash::BuildHasherDefault<S> {
+unsafe impl<S, V> GenericTypeVisitable<V> for std::hash::BuildHasherDefault<S> {
     fn generic_visit_with(&self, _visitor: &mut V) {}
 }
 
 #[expect(rustc::default_hash_types, rustc::potential_query_instability)]
-impl<
+unsafe impl<
     Visitor,
     Key: GenericTypeVisitable<Visitor>,
     Value: GenericTypeVisitable<Visitor>,
@@ -133,7 +141,7 @@ impl<
 }
 
 #[expect(rustc::default_hash_types, rustc::potential_query_instability)]
-impl<V, T: GenericTypeVisitable<V>, S: GenericTypeVisitable<V>> GenericTypeVisitable<V>
+unsafe impl<V, T: GenericTypeVisitable<V>, S: GenericTypeVisitable<V>> GenericTypeVisitable<V>
     for std::collections::HashSet<T, S>
 {
     fn generic_visit_with(&self, visitor: &mut V) {
@@ -142,7 +150,7 @@ impl<V, T: GenericTypeVisitable<V>, S: GenericTypeVisitable<V>> GenericTypeVisit
     }
 }
 
-impl<
+unsafe impl<
     Visitor,
     Key: GenericTypeVisitable<Visitor>,
     Value: GenericTypeVisitable<Visitor>,
@@ -155,7 +163,7 @@ impl<
     }
 }
 
-impl<V, T: GenericTypeVisitable<V>, S: GenericTypeVisitable<V>> GenericTypeVisitable<V>
+unsafe impl<V, T: GenericTypeVisitable<V>, S: GenericTypeVisitable<V>> GenericTypeVisitable<V>
     for indexmap::IndexSet<T, S>
 {
     fn generic_visit_with(&self, visitor: &mut V) {
@@ -167,7 +175,7 @@ impl<V, T: GenericTypeVisitable<V>, S: GenericTypeVisitable<V>> GenericTypeVisit
 macro_rules! trivial_impls {
     ( $($ty:ty),* $(,)? ) => {
         $(
-            impl<V>
+            unsafe impl<V>
                 GenericTypeVisitable<V> for $ty
             {
                 fn generic_visit_with(&self, _visitor: &mut V) {}
@@ -176,7 +184,7 @@ macro_rules! trivial_impls {
     };
 }
 
-impl<T: ?Sized, V> GenericTypeVisitable<V> for std::marker::PhantomData<T> {
+unsafe impl<T: ?Sized, V> GenericTypeVisitable<V> for std::marker::PhantomData<T> {
     fn generic_visit_with(&self, _visitor: &mut V) {}
 }
 
@@ -215,6 +223,7 @@ trivial_impls!(
     rustc_abi::ExternAbi,
 );
 
-impl<I: Interner, V> GenericTypeVisitable<V> for crate::FnSigKind<I> {
+// SAFETY: `FnSigKind` is a packed representation, therefore visiting its fields doesn't make sense
+unsafe impl<I: Interner, V> GenericTypeVisitable<V> for crate::FnSigKind<I> {
     fn generic_visit_with(&self, _visitor: &mut V) {}
 }
