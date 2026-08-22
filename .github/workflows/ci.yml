@@ -169,6 +169,11 @@ jobs:
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
 
+      - name: install cdb
+        run: src/ci/scripts/install-cdb.ps1
+        shell: pwsh
+        if: env.NEEDS_CDB == 1
+
       - name: install clang
         run: src/ci/scripts/install-clang.sh
 
