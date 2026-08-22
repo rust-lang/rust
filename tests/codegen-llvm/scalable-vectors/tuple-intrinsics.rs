@@ -1,7 +1,7 @@
 //@ only-aarch64
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features)]
-#![feature(abi_unadjusted, core_intrinsics, link_llvm_intrinsics, rustc_attrs)]
+#![feature(core_intrinsics, rustc_attrs)]
 
 // Tests that tuples of scalable vectors are passed as immediates and that the intrinsics for
 // creating/getting/setting tuples of scalable vectors generate the correct assembly

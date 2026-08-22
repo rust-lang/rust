@@ -331,8 +331,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Check that the given function has the expected amount of arguments, and then
     /// return the list of arguments.
     ///
-    /// This may only be used for `extern "unadjusted"` LLVM intrinsics.
-    fn check_shim_sig_unadjusted<'a, const N: usize>(
+    /// This may only be used for `extern "llvm-intrinsic"` LLVM intrinsics.
+    fn check_shim_sig_llvm_intrinsic<'a, const N: usize>(
         &mut self,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],

@@ -42,8 +42,6 @@
 ///   ignored if an optimized C version was compiled.
 /// * `aapcs_on_arm` - forces the ABI of the function to be `"aapcs"` on ARM and
 ///   the specified ABI everywhere else.
-/// * `unadjusted_on_win64` - like `aapcs_on_arm` this switches to the
-///   `"unadjusted"` abi on Win64 and the specified abi elsewhere.
 /// * `arm_aeabi_alias` - handles the "aliasing" of various intrinsics on ARM
 ///   their otherwise typical names to other prefixed ones.
 /// * `ppc_alias` - changes the name of the symbol on PowerPC platforms without
