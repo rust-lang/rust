@@ -2,17 +2,18 @@ use std::iter;
 use std::rc::Rc;
 
 use rustc_data_structures::frozen::Frozen;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, OpaqueTypeStorageEntries};
 use rustc_infer::traits::ObligationCause;
 use rustc_macros::extension;
+use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{
     self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, Flags, GenericArg,
     GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionExt, RegionVid, Ty, TyCtxt,
-    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, Unnormalized, fold_regions,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
@@ -20,6 +21,7 @@ use rustc_trait_selection::opaque_types::{
     NonDefiningUseReason, opaque_type_has_defining_use_args,
 };
 use rustc_trait_selection::solve::NoSolution;
+use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use tracing::{debug, instrument};
 
@@ -186,12 +188,17 @@ struct DefiningUse<'tcx> {
     /// to interact with code outside of `rustc_borrowck`.
     opaque_type_key: OpaqueTypeKey<'tcx>,
     arg_regions: Vec<RegionVid>,
+    /// The hidden type used for pre-member candidate equality. Unknown regions in
+    /// intentionally non-member positions are replaced by fresh existentials.
+    equality_hidden_type: Ty<'tcx>,
     hidden_type: ProvisionalHiddenType<'tcx>,
 }
 
 /// This computes the actual hidden types of the opaque types and maps them to their
-/// definition sites. Outside of registering the computed hidden types this function
-/// does not mutate the current borrowck state.
+/// definition sites. While preparing compatible defining uses, it allocates
+/// equality-only existential region variables and registers equality constraints
+/// between their hidden types. It otherwise does not mutate the current borrowck
+/// state outside of registering the computed hidden types.
 ///
 /// While it may fail to infer the hidden type and return errors, we always apply
 /// the computed hidden type to all opaque type uses to check whether they
@@ -203,24 +210,51 @@ struct DefiningUse<'tcx> {
 pub(crate) fn compute_definition_site_hidden_types<'tcx>(
     def_id: LocalDefId,
     infcx: &BorrowckInferCtxt<'tcx>,
+    body: &Body<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
-    constraints: &MirTypeckRegionConstraints<'tcx>,
+    region_bound_pairs: &RegionBoundPairs<'tcx>,
+    known_type_outlives_obligations: &[ty::PolyTypeOutlivesClause<'tcx>],
+    constraints: &mut MirTypeckRegionConstraints<'tcx>,
     location_map: Rc<DenseLocationMap>,
     hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
     unconstrained_hidden_type_errors: &mut Vec<UnexpectedHiddenRegion<'tcx>>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let mut errors = Vec::new();
-    // When computing the hidden type we need to track member constraints.
-    // We don't mutate the region graph used by `fn compute_regions` but instead
-    // manually track region information via a `RegionCtxt`. We discard this
-    // information at the end of this function.
-    let mut rcx = RegionCtxt::new(infcx, universal_region_relations, location_map, constraints);
-
     // We start by checking each use of an opaque type during type check and
     // check whether the generic arguments of the opaque type are fully
     // universal, if so, it's a defining use.
-    let defining_uses = collect_defining_uses(&mut rcx, hidden_types, opaque_types, &mut errors);
+    let defining_uses = {
+        let mut rcx = RegionCtxt::new(
+            infcx,
+            universal_region_relations,
+            Rc::clone(&location_map),
+            constraints,
+        );
+        let mut defining_uses =
+            collect_defining_uses(&mut rcx, hidden_types, opaque_types, &mut errors);
+        prepare_candidate_equality_types(&rcx, &mut defining_uses);
+        defining_uses
+    };
+
+    // Member constraints need equality information from all hidden-type candidates
+    // for the same opaque instantiation. Query responses may freshen non-captured
+    // parent regions, so raw `OpaqueTypeKey` equality is too strict here.
+    // `iter_captured_args()` keeps the invariant arguments which identify the
+    // instantiation.
+    equate_hidden_types_for_same_opaque_instantiation(
+        infcx,
+        body,
+        &universal_region_relations.universal_regions,
+        region_bound_pairs,
+        known_type_outlives_obligations,
+        constraints,
+        &defining_uses,
+    );
+
+    // Candidate equality can add region constraints, so rebuild the region context
+    // before computing member constraints.
+    let mut rcx = RegionCtxt::new(infcx, universal_region_relations, location_map, constraints);
 
     // We now compute and apply member constraints for all regions in the hidden
     // types of each defining use. This mutates the region values of the `rcx` which
@@ -239,6 +273,247 @@ pub(crate) fn compute_definition_site_hidden_types<'tcx>(
         &mut errors,
     );
     errors
+}
+
+fn equate_hidden_types_for_same_opaque_instantiation<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    body: &Body<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
+    region_bound_pairs: &RegionBoundPairs<'tcx>,
+    known_type_outlives_obligations: &[ty::PolyTypeOutlivesClause<'tcx>],
+    constraints: &mut MirTypeckRegionConstraints<'tcx>,
+    defining_uses: &[DefiningUse<'tcx>],
+) {
+    for (index, defining_use) in defining_uses.iter().enumerate() {
+        // Leave incompatible candidates for the definition-site merge to diagnose.
+        let cause = ObligationCause::misc(
+            defining_use.hidden_type.span,
+            body.source.def_id().expect_local(),
+        );
+        // Ambiguity can make a probe fail, so keep looking for another compatible
+        // candidate in the same instantiation.
+        let Some(previous) = defining_uses[..index].iter().find(|previous| {
+            same_opaque_instantiation(infcx.tcx, previous, defining_use)
+                && infcx.probe(|_| {
+                    let ocx = ObligationCtxt::new(infcx);
+                    equate_hidden_type_candidates(
+                        &ocx,
+                        &cause,
+                        infcx.param_env,
+                        previous.equality_hidden_type,
+                        defining_use.equality_hidden_type,
+                    )
+                    .is_ok()
+                        && ocx.evaluate_obligations_error_on_ambiguity().no_errors()
+                })
+        }) else {
+            continue;
+        };
+
+        let locations = Locations::All(defining_use.hidden_type.span);
+        let result = fully_perform_op_raw(
+            infcx,
+            body,
+            universal_regions,
+            region_bound_pairs,
+            known_type_outlives_obligations,
+            constraints,
+            locations,
+            ConstraintCategory::OpaqueType,
+            CustomTypeOp::new(
+                |ocx| {
+                    equate_hidden_type_candidates(
+                        ocx,
+                        &cause,
+                        infcx.param_env,
+                        previous.equality_hidden_type,
+                        defining_use.equality_hidden_type,
+                    )
+                },
+                "equating defining opaque type uses",
+            ),
+        );
+        if let Err(guar) = result {
+            // The probe above succeeded, so preserve an unexpected failure rather
+            // than silently ignoring it.
+            infcx.set_tainted_by_errors(guar);
+            return;
+        }
+    }
+}
+
+fn same_opaque_instantiation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    a: &DefiningUse<'tcx>,
+    b: &DefiningUse<'tcx>,
+) -> bool {
+    a.opaque_type_key.def_id == b.opaque_type_key.def_id
+        && a.opaque_type_key
+            .iter_captured_args(tcx)
+            .map(|(_, arg)| arg)
+            .eq(b.opaque_type_key.iter_captured_args(tcx).map(|(_, arg)| arg))
+}
+
+fn prepare_candidate_equality_types<'tcx>(
+    rcx: &RegionCtxt<'_, 'tcx>,
+    defining_uses: &mut [DefiningUse<'tcx>],
+) {
+    for index in 0..defining_uses.len() {
+        if !defining_uses.iter().enumerate().any(|(other, defining_use)| {
+            other != index
+                && same_opaque_instantiation(rcx.infcx.tcx, &defining_uses[index], defining_use)
+        }) {
+            continue;
+        }
+
+        let defining_use = &mut defining_uses[index];
+        defining_use.equality_hidden_type = replace_regions_in_non_member_args(
+            rcx,
+            defining_use.opaque_type_key.def_id,
+            &defining_use.arg_regions,
+            defining_use.hidden_type.ty,
+        );
+    }
+}
+
+fn equate_hidden_type_candidates<'tcx>(
+    ocx: &ObligationCtxt<'_, 'tcx>,
+    cause: &ObligationCause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    previous: Ty<'tcx>,
+    current: Ty<'tcx>,
+) -> Result<(), NoSolution> {
+    // Type equality is invariant here, including closure/coroutine arguments and
+    // bivariant alias arguments. Non-member regions in those positions were replaced
+    // with equality-local NLL variables, so this cannot constrain the originals.
+    let previous = ocx.normalize(cause, param_env, Unnormalized::new_wip(previous));
+    let current = ocx.normalize(cause, param_env, Unnormalized::new_wip(current));
+    ocx.eq(cause, param_env, previous, current).map_err(|_| NoSolution)
+}
+
+fn replace_regions_in_non_member_args<'tcx>(
+    rcx: &RegionCtxt<'_, 'tcx>,
+    opaque_def_id: LocalDefId,
+    arg_regions: &[RegionVid],
+    ty: Ty<'tcx>,
+) -> Ty<'tcx> {
+    // Use NLL variables instead of `ReErased`: normalization may emit region
+    // obligations for these types, and MIR constraint conversion requires every
+    // free region in such an obligation to have a region vid.
+    ty.fold_with(&mut ReplaceNonMemberRegions {
+        rcx,
+        opaque_def_id,
+        arg_regions,
+        replacements: Default::default(),
+        replace_regions: false,
+    })
+}
+
+/// Mirrors the non-member positions used by `CollectMemberConstraintsVisitor`
+/// and `ToArgRegionsFolder`.
+struct ReplaceNonMemberRegions<'a, 'tcx> {
+    rcx: &'a RegionCtxt<'a, 'tcx>,
+    opaque_def_id: LocalDefId,
+    arg_regions: &'a [RegionVid],
+    replacements: FxHashMap<RegionVid, Region<'tcx>>,
+    replace_regions: bool,
+}
+
+impl<'tcx> ReplaceNonMemberRegions<'_, 'tcx> {
+    fn fold_non_member_arg(&mut self, arg: GenericArg<'tcx>) -> GenericArg<'tcx> {
+        let prev = self.replace_regions;
+        self.replace_regions = true;
+        let result = arg.fold_with(self);
+        self.replace_regions = prev;
+        result
+    }
+
+    fn fold_closure_args(
+        &mut self,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> GenericArgsRef<'tcx> {
+        let generics = self.cx().generics_of(def_id);
+        self.cx().mk_args_from_iter(args.iter().enumerate().map(|(index, arg)| {
+            // Parent arguments are normally non-members. Keep captured lifetime
+            // arguments intact so candidate equality can still share member information.
+            if index < generics.parent_count && !self.is_captured_parent_arg(def_id, index) {
+                self.fold_non_member_arg(arg)
+            } else {
+                arg.fold_with(self)
+            }
+        }))
+    }
+
+    fn is_captured_parent_arg(&self, def_id: DefId, index: usize) -> bool {
+        let tcx = self.cx();
+        let generics = tcx.generics_of(def_id);
+        tcx.opaque_captured_lifetimes(self.opaque_def_id).iter().any(|&(resolved_arg, _)| {
+            let param = match resolved_arg {
+                ResolvedArg::EarlyBound(param)
+                | ResolvedArg::LateBound(_, _, param)
+                | ResolvedArg::Free(_, param) => param,
+                ResolvedArg::StaticLifetime | ResolvedArg::Error(_) => return false,
+            };
+            generics.param_def_id_to_index(tcx, param.to_def_id()) == Some(index as u32)
+        })
+    }
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceNonMemberRegions<'_, 'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.rcx.infcx.tcx
+    }
+
+    fn fold_region(&mut self, region: Region<'tcx>) -> Region<'tcx> {
+        let ty::ReVar(vid) = region.kind() else { return region };
+        if !self.replace_regions
+            || self.arg_regions.iter().any(|&arg_region| self.rcx.eval_equal(vid, arg_region))
+        {
+            return region;
+        }
+
+        *self.replacements.entry(vid).or_insert_with(|| {
+            self.rcx
+                .infcx
+                .next_nll_region_var(NllRegionVariableOrigin::Existential { name: None }, || {
+                    crate::RegionCtxt::Existential(None)
+                })
+        })
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
+            return ty;
+        }
+
+        match *ty.kind() {
+            ty::Closure(def_id, args) => {
+                Ty::new_closure(self.cx(), def_id, self.fold_closure_args(def_id, args))
+            }
+            ty::CoroutineClosure(def_id, args) => {
+                Ty::new_coroutine_closure(self.cx(), def_id, self.fold_closure_args(def_id, args))
+            }
+            ty::Coroutine(def_id, args) => {
+                Ty::new_coroutine(self.cx(), def_id, self.fold_closure_args(def_id, args))
+            }
+            ty::Alias(is_rigid, ty::AliasTy { kind, args, .. })
+                if let Some(variances) = self.cx().opt_alias_variances(kind) =>
+            {
+                let args = self.cx().mk_args_from_iter(std::iter::zip(variances, args).map(
+                    |(&variance, arg)| {
+                        if variance == ty::Bivariant {
+                            self.fold_non_member_arg(arg)
+                        } else {
+                            arg.fold_with(self)
+                        }
+                    },
+                ));
+                ty::AliasTy::new_from_args(self.cx(), kind, args).to_ty(self.cx(), is_rigid)
+            }
+            _ => ty.super_fold_with(self),
+        }
+    }
 }
 
 #[instrument(level = "debug", skip_all, ret)]
@@ -283,7 +558,7 @@ fn collect_defining_uses<'tcx>(
         }
 
         // We use the original `opaque_type_key` to compute the `arg_regions`.
-        let arg_regions = iter::once(rcx.universal_regions().fr_static)
+        let arg_regions: Vec<_> = iter::once(rcx.universal_regions().fr_static)
             .chain(
                 opaque_type_key
                     .iter_captured_args(infcx.tcx)
@@ -294,6 +569,7 @@ fn collect_defining_uses<'tcx>(
         defining_uses.push(DefiningUse {
             opaque_type_key: non_nll_opaque_type_key,
             arg_regions,
+            equality_hidden_type: hidden_type.ty,
             hidden_type,
         });
     }
@@ -314,7 +590,7 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
     let tcx = infcx.tcx;
     let mut decls_modulo_regions: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueTypeKey<'tcx>, Span)> =
         FxIndexMap::default();
-    for &DefiningUse { opaque_type_key, ref arg_regions, hidden_type } in defining_uses {
+    for &DefiningUse { opaque_type_key, ref arg_regions, hidden_type, .. } in defining_uses {
         debug!(?opaque_type_key, ?arg_regions, ?hidden_type);
         // After applying member constraints, we now map all regions in the hidden type
         // to the `arg_regions` of this defining use. In case a region in the hidden type
