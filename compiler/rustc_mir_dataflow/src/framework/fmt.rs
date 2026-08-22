@@ -134,6 +134,8 @@ where
 {
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            MixedBitSet::Empty => DenseBitSet::<T>::new_empty(0).fmt_with(ctxt, f),
+            MixedBitSet::Tiny(set) => set.fmt_with(ctxt, f),
             MixedBitSet::Small(set) => set.fmt_with(ctxt, f),
             MixedBitSet::Large(set) => set.fmt_with(ctxt, f),
         }
@@ -141,6 +143,8 @@ where
 
     fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match (self, old) {
+            (MixedBitSet::Empty, MixedBitSet::Empty) => DenseBitSet::<T>::new_empty(0).fmt_diff_with(&DenseBitSet::<T>::new_empty(0), ctxt, f),
+            (MixedBitSet::Tiny(set), MixedBitSet::Tiny(old)) => set.fmt_diff_with(old, ctxt, f),
             (MixedBitSet::Small(set), MixedBitSet::Small(old)) => set.fmt_diff_with(old, ctxt, f),
             (MixedBitSet::Large(set), MixedBitSet::Large(old)) => set.fmt_diff_with(old, ctxt, f),
             _ => panic!("MixedBitSet size mismatch"),
