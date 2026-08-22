@@ -6,15 +6,18 @@
 
 use std::ops::ControlFlow;
 
+use itertools::Itertools;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
-    Upcast, elaborate,
+    self, Clause, EarlyBinder, GenericArgs, PolyProjectionPredicate, ProjectionPredicate, Ty,
+    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized, Upcast, elaborate,
 };
 use rustc_span::{DUMMY_SP, Span};
 use smallvec::SmallVec;
@@ -23,9 +26,10 @@ use tracing::{debug, instrument};
 use super::elaborate;
 use crate::infer::TyCtxtInferExt;
 pub use crate::traits::DynCompatibilityViolation;
+use crate::traits::coherence::plug_infer_with_placeholders;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{
-    AssocConstViolation, MethodViolation, Obligation, ObligationCause,
+    AssocConstViolation, MethodViolation, Obligation, ObligationCause, ObligationCtxt,
     normalize_param_env_or_error, util,
 };
 
@@ -55,7 +59,8 @@ fn dyn_compatibility_violations(
     debug!("dyn_compatibility_violations: {:?}", trait_def_id);
     tcx.arena.alloc_from_iter(
         elaborate::supertrait_def_ids(tcx, trait_def_id)
-            .flat_map(|def_id| dyn_compatibility_violations_for_trait(tcx, def_id)),
+            .flat_map(|def_id| dyn_compatibility_violations_for_trait(tcx, def_id))
+            .chain(incoherent_supertrait_assocs(tcx, trait_def_id)),
     )
 }
 
@@ -977,6 +982,103 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalRpititVisitor<'tcx> {
             ty.super_visit_with(self)
         }
     }
+}
+
+/// Computes [`DynCompatibilityViolation::IncoherentSupertraitAssocs`]
+#[instrument(level = "debug", skip(tcx))]
+fn incoherent_supertrait_assocs(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> impl Iterator<Item = DynCompatibilityViolation> {
+    let clauses = tcx
+        .clauses_of(trait_def_id)
+        .instantiate_identity(tcx)
+        .clauses
+        .into_iter()
+        .map(Unnormalized::skip_norm_wip);
+    // Map from associated items to projection predicates that apply to them.
+    let mut preds_for_assoc = FxHashMap::<DefId, Vec<PolyProjectionPredicate<'_>>>::default();
+    elaborate(tcx, clauses).filter_map(Clause::as_projection_clause).flat_map(move |proj| {
+        let prev_projs = preds_for_assoc.entry(proj.item_def_id()).or_default();
+        let violations: Vec<_> = prev_projs
+            .iter()
+            .copied()
+            .filter(move |&prev_proj| {
+                !does_pair_have_coherent_supertrait_assocs(tcx, trait_def_id, prev_proj, proj)
+            })
+            .map(move |_| {
+                DynCompatibilityViolation::IncoherentSupertraitAssocs(
+                    tcx.item_name(proj.item_def_id()),
+                    tcx.def_ident_span(proj.item_def_id())
+                        .expect("Associated items should have a def_ident_span"),
+                )
+            })
+            .collect();
+        prev_projs.push(proj);
+        violations
+    })
+}
+
+#[instrument(level = "debug", skip(tcx), ret)]
+fn does_pair_have_coherent_supertrait_assocs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
+    proj_1: PolyProjectionPredicate<'tcx>,
+    proj_2: PolyProjectionPredicate<'tcx>,
+) -> bool {
+    let infcx = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
+        .build(TypingMode::Coherence);
+
+    // We instantiate type parameters in the two projections with the same
+    // fresh inference variables.
+    let trait_args = infcx.fresh_args_for_item(DUMMY_SP, trait_def_id);
+    let process_proj = |proj: PolyProjectionPredicate<'tcx>| -> ProjectionPredicate<'tcx> {
+        let instantiated_proj = EarlyBinder::bind(tcx, proj).instantiate(tcx, trait_args);
+        infcx.instantiate_binder_with_fresh_vars(
+            DUMMY_SP,
+            BoundRegionConversionTime::AssocTypeProjection(proj.item_def_id()),
+            instantiated_proj.skip_norm_wip(),
+        )
+    };
+    let proj_1 = process_proj(proj_1);
+    let proj_2 = process_proj(proj_2);
+    assert_eq!(
+        proj_1.projection_term.kind, proj_2.projection_term.kind,
+        "should compare the same projection kind"
+    );
+
+    let ocx = ObligationCtxt::new(&infcx);
+    let param_env = tcx.param_env(trait_def_id);
+    // Constrain the two projections to be on the same trait, including generics.
+    // If this fails, then the two projections do not conflict with each other,
+    // as they're projecting different things.
+    let can_equate_generics =
+        proj_1.projection_term.args.iter().zip_eq(proj_2.projection_term.args).all(
+            |(arg_1, arg_2)| ocx.eq(&ObligationCause::dummy(), param_env, arg_1, arg_2).is_ok(),
+        );
+    // FIXME: Is it sound to return true here if we call .resolve_regions() here,
+    // and that produces an error?
+    if !can_equate_generics || ocx.try_evaluate_obligations().has_errors() {
+        return true;
+    }
+    // Discard any ambiguous obligations. In doing so, we're conservatively assuming that
+    // the two projections might apply to the same trait-with-generics. This is sound, since
+    // it can only cause this function to return false when it could have returned true,
+    // which at worst can only cause a trait to be marked as dyn-incompatible.
+    // FIXME: Is this strictly necessary? Can retaining the ambiguous obligations
+    // to the following check cause any problems?
+    drop(ocx);
+
+    // Now that we've constrained the two projections to be on the same thing,
+    // we check whether the two terms are necessarily equal to each other.
+    // If they are, then the two projections are coherent.
+    plug_infer_with_placeholders(&infcx, ty::UniverseIndex::ROOT, (proj_1, proj_2));
+    let ocx = ObligationCtxt::new(&infcx);
+    ocx.eq(&ObligationCause::dummy(), param_env, proj_1.term, proj_2.term).is_ok()
+        && ocx.evaluate_obligations_error_on_ambiguity().no_errors()
+        && ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty()
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
