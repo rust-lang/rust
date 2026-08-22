@@ -934,7 +934,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
 });
 
 pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
-    compiler: &Compiler,
+    compiler: &Compiler<'_>,
     krate: rustc_ast::Crate,
     f: F,
 ) -> (T, Option<IncrCompSession>) {

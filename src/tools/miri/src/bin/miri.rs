@@ -126,7 +126,7 @@ fn make_miri_codegen_backend(sess: &Session, dep: bool) -> Box<dyn CodegenBacken
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
-    fn config(&mut self, config: &mut rustc_interface::interface::Config) {
+    fn config(&mut self, config: &mut Config<'_>) {
         // We never reach codegen anyway.
         config.make_codegen_backend =
             Some(Box::new(|sess| make_miri_codegen_backend(sess, /* dep */ false)));
@@ -137,7 +137,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
     fn after_analysis<'tcx>(
         &mut self,
-        _: &rustc_interface::interface::Compiler,
+        _: &rustc_interface::interface::Compiler<'_>,
         tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         // Compilation is done, interpretation is starting. Deal with diagnostics from the
@@ -276,7 +276,7 @@ struct MiriDepCompilerCalls;
 
 impl rustc_driver::Callbacks for MiriDepCompilerCalls {
     #[allow(rustc::potential_query_instability)] // rustc_codegen_ssa (where this code is copied from) also allows this lint
-    fn config(&mut self, config: &mut Config) {
+    fn config(&mut self, config: &mut Config<'_>) {
         // We don't need actual codegen, we just emit an rlib that Miri can later consume.
         config.make_codegen_backend =
             Some(Box::new(|sess| make_miri_codegen_backend(sess, /* dep */ true)));
@@ -319,7 +319,7 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
 
     fn after_analysis<'tcx>(
         &mut self,
-        _: &rustc_interface::interface::Compiler,
+        _: &rustc_interface::interface::Compiler<'_>,
         tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         // While the dummy codegen backend doesn't do any codegen, we are still emulating

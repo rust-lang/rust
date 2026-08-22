@@ -766,7 +766,7 @@ fn run_renderer<
 /// discovered via `--read-doc-meta-dir` are combined and written to the doc root.
 fn run_merge_finalize(
     render_options: config::RenderOptions,
-    compiler: &interface::Compiler,
+    compiler: &interface::Compiler<'_>,
 ) -> Result<(), error::Error> {
     assert!(
         render_options.should_merge.write_rendered_cci,

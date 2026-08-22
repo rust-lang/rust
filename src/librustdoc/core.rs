@@ -233,7 +233,7 @@ pub(crate) fn create_config(
         ..
     }: RustdocOptions,
     render_options: &RenderOptions,
-) -> rustc_interface::Config {
+) -> rustc_interface::Config<'static> {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
 

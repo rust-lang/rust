@@ -34,9 +34,9 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 ///
 /// Can be used to run `rustc_interface` queries.
 /// Created by passing [`Config`] to [`run_compiler`].
-pub struct Compiler {
+pub struct Compiler<'a> {
     pub sess: Session,
-    pub codegen_backend: Box<dyn CodegenBackend>,
+    pub codegen_backend: Box<dyn CodegenBackend + 'a>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
 
     /// A reference to the current `GlobalCtxt` which we pass on to `GlobalCtxt`.
@@ -308,7 +308,7 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
 }
 
 /// The compiler configuration
-pub struct Config {
+pub struct Config<'a> {
     /// Command line options
     pub opts: config::Options,
 
@@ -358,7 +358,8 @@ pub struct Config {
     /// hotswapping branch of cg_clif" for "setting the codegen backend from a
     /// custom driver where the custom codegen backend has arbitrary data."
     /// (See #102759.)
-    pub make_codegen_backend: Option<Box<dyn FnOnce(&Session) -> Box<dyn CodegenBackend> + Send>>,
+    pub make_codegen_backend:
+        Option<Box<dyn FnOnce(&Session) -> Box<dyn CodegenBackend + 'a> + Send + 'a>>,
 
     /// The inner atomic value is set to true when a feature marked as `internal` is
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
@@ -368,7 +369,10 @@ pub struct Config {
 
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
-pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
+pub fn run_compiler<R: Send>(
+    config: Config<'_>,
+    f: impl for<'a> FnOnce(&Compiler<'a>) -> R + Send,
+) -> R {
     trace!("run_compiler");
 
     // Set parallel mode before thread pool creation, which will create `Lock`s.
