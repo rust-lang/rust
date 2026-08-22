@@ -44,9 +44,9 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     matches!(
                         self.cx.tcx.hir_node(hir_id),
                         rustc_hir::Node::Item(rustc_hir::Item {
-                            kind: rustc_hir::ItemKind::Use(_, rustc_hir::UseKind::Glob),
+                            kind: rustc_hir::ItemKind::Use(tree),
                             ..
-                        })
+                        }) | rustc_hir::Node::NestedUseTree(tree) if matches!(tree.kind, rustc_hir::UseKind::Glob)
                     )
                 });
                 let own_stability = if let Some(item_stab) = item_stability

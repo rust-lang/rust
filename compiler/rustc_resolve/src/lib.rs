@@ -1652,7 +1652,12 @@ impl<'tcx> Resolver<'_, 'tcx> {
 
     /// Get the `DefId` of a child of the current owner
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
+        self.opt_local_def_id(node).unwrap_or_else(|| {
+            panic!(
+                "no entry for node id `{node:?}` in owner {:?}, available: {:#?}",
+                self.current_owner.def_id, self.current_owner.node_id_to_def_id
+            )
+        })
     }
 
     /// Adds a definition with a parent definition.
