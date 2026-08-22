@@ -11,10 +11,20 @@ use std::arch::x86_64::*;
 
 fn main() {
     assert!(is_x86_feature_detected!("aes"));
-    assert!(is_x86_feature_detected!("vaes"));
 
     unsafe {
         test_aes();
+    }
+
+    // The tests below require vaes, which is recent enough that contributors may be using CPUs that
+    // do not support it. But we still want to run this natively if the machine happens to have vaes.
+    // So we bail out dynamically.
+    if !is_x86_feature_detected!("vaes") {
+        println!("warning: skipping vaes tests");
+        return;
+    }
+
+    unsafe {
         test_vaes();
     }
 }
