@@ -4875,6 +4875,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
+ "rustc_index",
  "rustc_infer",
  "rustc_lint_defs",
  "rustc_macros",
