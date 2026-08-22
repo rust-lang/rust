@@ -1422,30 +1422,50 @@ const _: () = ();
 #[rustc_doc_primitive = "i8"]
 //
 /// The 8-bit signed integer type.
+///
+/// # Binary representation
+///
+/// Signed integers are represented using two's complement.
 #[stable(feature = "rust1", since = "1.0.0")]
 const _: () = ();
 
 #[rustc_doc_primitive = "i16"]
 //
 /// The 16-bit signed integer type.
+///
+/// # Binary representation
+///
+/// Signed integers are represented using two's complement.
 #[stable(feature = "rust1", since = "1.0.0")]
 const _: () = ();
 
 #[rustc_doc_primitive = "i32"]
 //
 /// The 32-bit signed integer type.
+///
+/// # Binary representation
+///
+/// Signed integers are represented using two's complement.
 #[stable(feature = "rust1", since = "1.0.0")]
 const _: () = ();
 
 #[rustc_doc_primitive = "i64"]
 //
 /// The 64-bit signed integer type.
+///
+/// # Binary representation
+///
+/// Signed integers are represented using two's complement.
 #[stable(feature = "rust1", since = "1.0.0")]
 const _: () = ();
 
 #[rustc_doc_primitive = "i128"]
 //
 /// The 128-bit signed integer type.
+///
+/// # Binary representation
+///
+/// Signed integers are represented using two's complement.
 ///
 /// # ABI compatibility
 ///
@@ -1500,6 +1520,10 @@ const _: () = ();
 /// The size of this primitive is how many bytes it takes to reference any
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
+///
+/// # Binary representation
+///
+/// Signed integers are represented using two's complement.
 #[stable(feature = "rust1", since = "1.0.0")]
 const _: () = ();
 
