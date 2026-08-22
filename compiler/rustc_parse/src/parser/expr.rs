@@ -107,8 +107,54 @@ impl<'a> Parser<'a> {
 
     /// Parses a sequence of expressions delimited by parentheses.
     fn parse_expr_paren_seq(&mut self) -> PResult<'a, ThinVec<Box<Expr>>> {
-        self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore(Restrictions::empty()))
-            .map(|(r, _)| r)
+        let mut candidates = Vec::new();
+        let mut arg_count = 0;
+        let mut recovered_args = Vec::new();
+
+        let (mut args, _) = self.parse_paren_comma_seq(|p| {
+            match p.parse_expr_catch_underscore(Restrictions::empty()) {
+                Ok(expr) => {
+                    if let ExprKind::Binary(binop, _, _) = &expr.kind
+                        && binop.node == BinOpKind::Lt
+                    {
+                        candidates.push((
+                            p.create_snapshot_for_diagnostic(),
+                            expr.span,
+                            binop.span,
+                            arg_count,
+                        ));
+                    }
+                    arg_count += 1;
+                    Ok(expr)
+                }
+                Err(err) => {
+                    if candidates.is_empty() {
+                        return Err(err);
+                    }
+                    let failed = p.create_snapshot_for_diagnostic();
+                    while let Some((candidate, expr_span, binop_span, candidate_index)) =
+                        candidates.pop()
+                    {
+                        p.restore_snapshot(candidate);
+                        if let Some(expr) =
+                            p.try_recover_fn_call_arg_missing_turbofish(expr_span, binop_span)
+                        {
+                            err.cancel();
+                            recovered_args.push((candidate_index, arg_count));
+                            candidates.clear();
+                            arg_count += 1;
+                            return Ok(expr);
+                        }
+                    }
+                    p.restore_snapshot(failed);
+                    Err(err)
+                }
+            }
+        })?;
+        for (start, end) in recovered_args.into_iter().rev() {
+            args.drain(start..end);
+        }
+        Ok(args)
     }
 
     /// Parses an expression, subject to the given restrictions.

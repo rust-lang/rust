@@ -31,15 +31,15 @@ use crate::diagnostics::{
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
     ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
-    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
-    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
-    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
-    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
-    SuggEscapeIdentifier, SuggRemoveComma, SuggestBindTypeParameter, SuggestIntroduceTypeParameter,
-    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead, WrapType,
+    GenericArgsInExprRequireTurbofishSyntax, GenericParamsWithoutAngleBrackets,
+    GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
+    InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
+    MisspelledKw, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
+    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
+    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, SuggestBindTypeParameter,
+    SuggestIntroduceTypeParameter, TernaryOperator, TernaryOperatorSuggestion,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::exp;
 use crate::parser::attr::InnerAttrPolicy;
@@ -1244,49 +1244,87 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ErrorGuaranteed> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
             && let ast::BinOpKind::Lt = binop.node
-            && self.eat(exp!(Comma))
+            && self.parse_mistyped_turbofish_generic_args()
         {
-            let x = self.parse_seq_to_before_end(
-                exp!(Gt),
-                SeqSep::trailing_allowed(exp!(Comma)),
-                |p| match p.parse_generic_arg(None)? {
-                    Some(arg) => Ok(arg),
-                    // If we didn't eat a generic arg, then we should error.
-                    None => p.unexpected_any(),
-                },
+            // We made sense of it. Improve the error message.
+            e.span_suggestion_verbose(
+                binop.span.shrink_to_lo(),
+                msg!(
+                    "use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"
+                ),
+                "::",
+                Applicability::MaybeIncorrect,
             );
-            match x {
-                Ok((_, _, Recovered::No)) => {
-                    if self.eat(exp!(Gt)) {
-                        // We made sense of it. Improve the error message.
-                        e.span_suggestion_verbose(
-                            binop.span.shrink_to_lo(),
-                            msg!("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"),
-                            "::",
-                            Applicability::MaybeIncorrect,
-                        );
-                        match self.parse_expr() {
-                            Ok(_) => {
-                                // The subsequent expression is valid. Mark
-                                // `expr` as erroneous and emit `e` now, but
-                                // return `Ok` so parsing can continue.
-                                let guar = e.emit();
-                                *expr = self.mk_expr_err(expr.span.to(self.prev_token.span), guar);
-                                return Ok(guar);
-                            }
-                            Err(err) => {
-                                err.cancel();
-                            }
-                        }
-                    }
+            match self.parse_expr() {
+                Ok(_) => {
+                    // The subsequent expression is valid. Mark
+                    // `expr` as erroneous and emit `e` now, but
+                    // return `Ok` so parsing can continue.
+                    let guar = e.emit();
+                    *expr = self.mk_expr_err(expr.span.to(self.prev_token.span), guar);
+                    return Ok(guar);
                 }
-                Ok((_, _, Recovered::Yes(_))) => {}
                 Err(err) => {
                     err.cancel();
                 }
             }
         }
         Err(e)
+    }
+
+    /// Parses the `, T, U>` tail of a `Foo<T, U>` whose turbofish `::` is missing, so it parsed
+    /// as a comparison. On failure the parser is left mid-way, so callers must snapshot first.
+    fn parse_mistyped_turbofish_generic_args(&mut self) -> bool {
+        if !self.eat(exp!(Comma)) {
+            return false;
+        }
+        match self.parse_seq_to_before_end(exp!(Gt), SeqSep::trailing_allowed(exp!(Comma)), |p| {
+            match p.parse_generic_arg(None)? {
+                Some(arg) => Ok(arg),
+                None => p.unexpected_any(),
+            }
+        }) {
+            Ok((_, _, Recovered::No)) => self.eat(exp!(Gt)),
+            Ok((_, _, Recovered::Yes(_))) => false,
+            Err(err) => {
+                err.cancel();
+                false
+            }
+        }
+    }
+
+    /// Check whether a call argument that parsed as a `<` comparison is really a path missing its
+    /// turbofish.
+    pub(super) fn try_recover_fn_call_arg_missing_turbofish(
+        &mut self,
+        expr_span: Span,
+        binop_span: Span,
+    ) -> Option<Box<Expr>> {
+        let recovered = self.with_recovery(super::Recovery::Forbidden, |this| {
+            this.parse_mistyped_turbofish_generic_args()
+                && match this.token.kind {
+                    token::PathSep => {
+                        this.bump();
+                        match this.parse_expr() {
+                            Ok(_) => true,
+                            Err(err) => {
+                                err.cancel();
+                                false
+                            }
+                        }
+                    }
+                    token::OpenParen => this.consume_fn_args().is_ok(),
+                    _ => false,
+                }
+        });
+        if !recovered {
+            return None;
+        }
+        let guar = self.dcx().emit_err(GenericArgsInExprRequireTurbofishSyntax {
+            span: expr_span,
+            suggest_turbofish: binop_span.shrink_to_lo(),
+        });
+        Some(self.mk_expr_err(expr_span.to(self.prev_token.span), guar))
     }
 
     /// Suggest add the missing `let` before the identifier in stmt
