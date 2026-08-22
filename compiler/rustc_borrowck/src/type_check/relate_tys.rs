@@ -21,15 +21,6 @@ use crate::renumber::RegionCtxt;
 use crate::type_check::{InstantiateOpaqueType, Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
-    /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
-    ///
-    /// - "Covariant" `a <: b`
-    /// - "Invariant" `a == b`
-    /// - "Contravariant" `a :> b`
-    ///
-    /// N.B., the type `a` is permitted to have unresolved inference
-    /// variables, but not the type `b`.
-    #[instrument(skip(self), level = "debug")]
     pub(super) fn relate_types(
         &mut self,
         a: Ty<'tcx>,
@@ -38,7 +29,30 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
-        NllTypeRelating::new(self, locations, category, UniverseInfo::relate(a, b), v)
+        self.relate_types_spanned(a, v, b, locations, None, category)
+    }
+
+    /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
+    ///
+    /// - "Covariant" `a <: b`
+    /// - "Invariant" `a == b`
+    /// - "Contravariant" `a :> b`
+    ///
+    /// N.B., the type `a` is permitted to have unresolved inference
+    /// variables, but not the type `b`.
+    ///
+    /// FIXME: Explain `span`
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn relate_types_spanned(
+        &mut self,
+        a: Ty<'tcx>,
+        v: ty::Variance,
+        b: Ty<'tcx>,
+        locations: Locations,
+        span: Option<Span>,
+        category: ConstraintCategory<'tcx>,
+    ) -> Result<(), NoSolution> {
+        NllTypeRelating::new(self, locations, span, category, UniverseInfo::relate(a, b), v)
             .relate(a, b)?;
         Ok(())
     }
@@ -51,7 +65,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
-        NllTypeRelating::new(self, locations, category, UniverseInfo::other(), ty::Invariant)
+        NllTypeRelating::new(self, locations, None, category, UniverseInfo::other(), ty::Invariant)
             .relate(a, b)?;
         Ok(())
     }
@@ -62,6 +76,10 @@ struct NllTypeRelating<'a, 'b, 'tcx> {
 
     /// Where (and why) is this relation taking place?
     locations: Locations,
+
+    /// An optional Span in case we want to be more specific than `locations` in
+    /// diagnostics.
+    span: Option<Span>,
 
     /// What category do we assign the resulting `'a: 'b` relationships?
     category: ConstraintCategory<'tcx>,
@@ -85,6 +103,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     fn new(
         type_checker: &'a mut TypeChecker<'b, 'tcx>,
         locations: Locations,
+        span: Option<Span>,
         category: ConstraintCategory<'tcx>,
         universe_info: UniverseInfo<'tcx>,
         ambient_variance: ty::Variance,
@@ -95,6 +114,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
             category,
             universe_info,
             ambient_variance,
+            span,
             ambient_variance_info: ty::VarianceDiagInfo::default(),
         }
     }
@@ -321,7 +341,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
             sup,
             sub,
             locations: self.locations,
-            span: self.locations.span(self.type_checker.body),
+            span: self.span.unwrap_or_else(|| self.locations.span(self.type_checker.body)),
             category: self.category,
             variance_info: info,
             from_closure: false,

@@ -21,10 +21,10 @@ LL |     let b = 44;
    |         - binding `b` declared here
 LL |     let c = 66;
 LL |     <_ as Bazoom<&'a u32>>::method(a, &b, c);
-   |     ----------------------------------^^----
-   |     |                                 |
-   |     |                                 borrowed value does not live long enough
-   |     argument requires that `b` is borrowed for `'a`
+   |                                       ^^
+   |                                       |
+   |                                       borrowed value does not live long enough
+   |                                       argument requires that `b` is borrowed for `'a`
 LL | }
    | - `b` dropped here while still borrowed
 
@@ -40,10 +40,10 @@ LL |     let _closure = || {
    |                    -- value captured here
 LL |         let c = 66;
 LL |         <_ as Bazoom<&'a u32>>::method(a, &b, c);
-   |         -----------------------------------^----
-   |         |                                  |
-   |         |                                  borrowed value does not live long enough
-   |         argument requires that `b` is borrowed for `'a`
+   |                                           -^
+   |                                           ||
+   |                                           |borrowed value does not live long enough
+   |                                           argument requires that `b` is borrowed for `'a`
 LL |     };
 LL | }
    | - `b` dropped here while still borrowed

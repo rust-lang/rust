@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/var-matching-lifetime-but-unused-not-mentioned.rs:14:5
+  --> $DIR/var-matching-lifetime-but-unused-not-mentioned.rs:14:13
    |
 LL | fn foo<'a>(
    |        -- lifetime `'a` defined here
@@ -7,10 +7,10 @@ LL |     used_arg: &'a u8,
    |     -------- `used_arg` is a reference that is only valid in the function body
 ...
 LL |     consume(c);
-   |     ^^^^^^^^^^
-   |     |
-   |     `used_arg` escapes the function body here
-   |     argument requires that `'a` must outlive `'static`
+   |             ^
+   |             |
+   |             `used_arg` escapes the function body here
+   |             argument requires that `'a` must outlive `'static`
 
 error: aborting due to 1 previous error
 

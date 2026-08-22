@@ -48,10 +48,10 @@ LL |     let _closure = || {
 LL |         let c = 66;
    |             - binding `c` declared here
 LL |         f(&c);
-   |         --^^-
-   |         | |
-   |         | borrowed value does not live long enough
-   |         argument requires that `c` is borrowed for `'1`
+   |           ^^
+   |           |
+   |           borrowed value does not live long enough
+   |           argument requires that `c` is borrowed for `'1`
 LL |     };
    |     - `c` dropped here while still borrowed
 

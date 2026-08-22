@@ -6,7 +6,7 @@ LL |     doit(0, &|x, y| {
    |               |
    |               has type `&Cell<&'2 i32>`
 LL |         x.set(y);
-   |         ^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |         ^ receiver requires that `'1` must outlive `'2`
    |
    = note: requirement occurs because of the type `Cell<&i32>`, which makes the generic argument `&i32` invariant
    = note: the struct `Cell<T>` is invariant over the parameter `T`

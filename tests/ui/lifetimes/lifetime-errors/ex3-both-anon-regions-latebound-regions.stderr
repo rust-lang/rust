@@ -6,7 +6,7 @@ LL | fn foo<'a,'b>(x: &mut Vec<&'a u8>, y: &'b u8) {
    |        |
    |        lifetime `'a` defined here
 LL |     x.push(y);
-   |     ^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |     ^ receiver requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
    = note: requirement occurs because of a mutable reference to `Vec<&u8>`

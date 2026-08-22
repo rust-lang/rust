@@ -4,10 +4,10 @@ error[E0597]: `c` does not live long enough
 LL |     let c = 66;
    |         - binding `c` declared here
 LL |     <_ as Bazoom<_>>::method::<&'static u32>(&a, b, &c);
-   |     ------------------------------------------------^^-
-   |     |                                               |
-   |     |                                               borrowed value does not live long enough
-   |     argument requires that `c` is borrowed for `'static`
+   |                                                     ^^
+   |                                                     |
+   |                                                     borrowed value does not live long enough
+   |                                                     argument requires that `c` is borrowed for `'static`
 LL | }
    | - `c` dropped here while still borrowed
 
@@ -20,10 +20,10 @@ LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
 LL |     let c = 66;
    |         - binding `c` declared here
 LL |     <_ as Bazoom<_>>::method::<&'a u32>(&a, b, &c);
-   |     -------------------------------------------^^-
-   |     |                                          |
-   |     |                                          borrowed value does not live long enough
-   |     argument requires that `c` is borrowed for `'a`
+   |                                                ^^
+   |                                                |
+   |                                                borrowed value does not live long enough
+   |                                                argument requires that `c` is borrowed for `'a`
 LL | }
    | - `c` dropped here while still borrowed
 
@@ -36,10 +36,10 @@ LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
 LL |         let c = 66;
    |             - binding `c` declared here
 LL |         <_ as Bazoom<_>>::method::<&'a u32>(&a, b, &c);
-   |         -------------------------------------------^^-
-   |         |                                          |
-   |         |                                          borrowed value does not live long enough
-   |         argument requires that `c` is borrowed for `'a`
+   |                                                    ^^
+   |                                                    |
+   |                                                    borrowed value does not live long enough
+   |                                                    argument requires that `c` is borrowed for `'a`
 LL |     };
    |     - `c` dropped here while still borrowed
 

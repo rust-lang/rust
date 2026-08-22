@@ -6,7 +6,7 @@ LL | fn bar(foo: &mut Foo) {
    |        |
    |        has type `&mut Foo<'2>`
 LL |     foo.modify();
-   |     ^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |     ^^^ receiver requires that `'1` must outlive `'2`
    |
    = note: requirement occurs because of a mutable reference to `Foo<'_>`
    = note: mutable references are invariant over their type parameter

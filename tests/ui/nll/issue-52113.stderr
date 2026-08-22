@@ -7,7 +7,7 @@ LL | fn produce_err<'a, 'b: 'a>(data: &'b mut Vec<&'b u32>, value: &'a u32) -> i
    |                lifetime `'a` defined here
 ...
 LL |         data.push(value);
-   |         ^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
+   |         ^^^^ receiver requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
 
