@@ -4,11 +4,13 @@
 //@ revisions: std core
 
 #![feature(lang_items)]
+#![feature(panic_unwind)]
 #![cfg_attr(core, no_std)]
+
+extern crate unwind;
 
 #[cfg(std)] use std::fmt;
 #[cfg(core)] use core::fmt;
-#[cfg(core)] #[lang = "eh_personality"] fn eh_personality() {}
 #[cfg(core)] #[panic_handler] fn panic_impl(panic: &core::panic::PanicInfo) -> ! { loop {} }
 
 // (see documentation of the similarly-named test in run-pass)
