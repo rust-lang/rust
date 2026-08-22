@@ -1044,11 +1044,14 @@ impl<'ra> DeclKind<'ra> {
 struct PrivacyError<'ra> {
     ident: Ident,
     decl: Decl<'ra>,
+    /// Span of the specific item being imported (e.g. `bar` in `use foo::{bar, baz}`).
+    /// Used for deduplication and single-item suggestion replacement.
     dedup_span: Span,
+    /// Span of the entire `use` path, excluding the leading `use` keyword.
+    /// Needed for grouped-import suggestions.
+    root_span: Span,
     outermost_res: Option<(Res, Ident)>,
     parent_scope: ParentScope<'ra>,
-    /// Is the format `use a::{b,c}`?
-    single_nested: bool,
     source: Option<ast::Expr>,
 }
 

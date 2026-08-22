@@ -1363,10 +1363,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ident,
                     decl: binding,
                     dedup_span: path_span,
+                    root_span,
                     outermost_res: None,
                     source: None,
                     parent_scope: *parent_scope,
-                    single_nested: path_span != root_span,
                 });
             } else {
                 return Err(ControlFlow::Break(Determined));
