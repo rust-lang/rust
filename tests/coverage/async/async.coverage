@@ -11,9 +11,9 @@
    LL|      1|async fn c(x: u8) -> u8 {
    LL|      1|    if x == 8 {
    LL|      1|        1
-   LL|       |    } else {
+   LL|      1|    } else {
    LL|      0|        0
-   LL|       |    }
+   LL|      0|    }
    LL|      1|}
    LL|       |
    LL|      0|async fn d() -> u8 { 1 }
@@ -49,9 +49,9 @@
    LL|       |                    // executed asynchronously.
    LL|      1|    match x {
    LL|      1|        y if c(x).await == y + 1 => { d().await; }
-                      ^0                            ^0
+                                                    ^0  ^0
    LL|      1|        y if f().await == y + 1 => (),
-                      ^0                         ^0
+                                                 ^0
    LL|      1|        _ => (),
    LL|       |    }
    LL|      1|}
@@ -61,17 +61,17 @@
    LL|      1|    fn c(x: u8) -> u8 {
    LL|      1|        if x == 8 {
    LL|      0|            1
-   LL|       |        } else {
+   LL|      1|        } else {
    LL|      1|            0
-   LL|       |        }
+   LL|      1|        }
    LL|      1|    }
    LL|      0|    fn d() -> u8 { 1 } // inner function is defined in-line, but the function is not executed
    LL|      1|    fn f() -> u8 { 1 }
    LL|      1|    match x {
    LL|      1|        y if c(x) == y + 1 => { d(); }
-                      ^0                    ^0
+                                            ^0
    LL|      1|        y if f() == y + 1 => (),
-                      ^0                   ^0
+                                           ^0
    LL|      1|        _ => (),
    LL|       |    }
    LL|      1|}

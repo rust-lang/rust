@@ -17,11 +17,11 @@
    LL|      1|        ;
    LL|      1|    }
    LL|       |    else // Note coverage region difference without semicolon
-   LL|       |    {
+   LL|      0|    {
    LL|      0|        countdown
    LL|      0|        =
    LL|      0|            100
-   LL|       |    }
+   LL|      0|    }
    LL|       |
    LL|       |    if
    LL|      1|        is_true

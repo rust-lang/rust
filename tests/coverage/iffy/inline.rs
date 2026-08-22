@@ -1,4 +1,5 @@
 //@ compile-flags: -Zinline-mir
+//@ min-llvm-version: 23
 
 use std::fmt::Display;
 

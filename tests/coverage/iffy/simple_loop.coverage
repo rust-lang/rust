@@ -25,9 +25,9 @@
    LL|     11|            countdown
    LL|     11|                ==
    LL|     11|            0
-   LL|       |        {
+   LL|      1|        {
    LL|      1|            break
-   LL|       |            ;
+   LL|      1|            ;
    LL|     10|        }
    LL|     10|        countdown
    LL|     10|        -=

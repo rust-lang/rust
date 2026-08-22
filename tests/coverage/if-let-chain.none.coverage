@@ -8,16 +8,14 @@
    LL|       |
    LL|      1|fn if_let_chain(opt_opt_msg: Option<Option<&str>>) {
    LL|      1|    if let Some(opt_msg) = opt_opt_msg
-                              ^0
    LL|      0|        && let Some(msg) = opt_msg
    LL|      0|    {
    LL|      0|        say(msg);
    LL|      1|    }
    LL|       |
    LL|      1|    if let Some(opt_msg) = opt_opt_msg
-                              ^0
    LL|      0|        && let Some(msg) = opt_msg
-   LL|       |    {
+   LL|      0|    {
    LL|      0|        say(msg)
    LL|      1|    }
    LL|       |

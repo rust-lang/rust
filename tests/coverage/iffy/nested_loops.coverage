@@ -15,7 +15,7 @@
    LL|      1|                a -= 10;
    LL|      1|                if is_true {
    LL|      1|                    break 'outer;
-   LL|      0|                } else {
+   LL|      1|                } else {
    LL|      0|                    a -= 2;
    LL|      0|                }
    LL|      2|            }

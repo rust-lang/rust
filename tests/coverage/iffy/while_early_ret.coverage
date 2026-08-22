@@ -19,13 +19,13 @@
    LL|      1|                    countdown
    LL|      1|                        >
    LL|      1|                    8
-   LL|       |                {
+   LL|      0|                {
    LL|      0|                    Ok(())
-   LL|       |                }
+   LL|      0|                }
    LL|       |                else
-   LL|       |                {
+   LL|      1|                {
    LL|      1|                    Err(1)
-   LL|       |                }
+   LL|      1|                }
    LL|       |                ;
    LL|      6|        }
    LL|      6|        countdown

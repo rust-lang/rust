@@ -103,7 +103,7 @@ pub(crate) fn build_expn_tree(
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
 ) -> Result<ExpnTree, MappingsError> {
-    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
+    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, hir_info, graph);
 
     let mut nodes = FxIndexMap::default();
     let new_node = |&context: &SyntaxContext| ExpnNode::for_context(context);

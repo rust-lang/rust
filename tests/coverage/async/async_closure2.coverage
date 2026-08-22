@@ -1,6 +1,7 @@
    LL|       |// Regression test for <https://github.com/rust-lang/rust/issues/151135>.
    LL|       |
    LL|       |//@ edition: 2021
+   LL|       |//@ min-llvm-version: 23
    LL|       |
    LL|       |//@ aux-build: executor.rs
    LL|       |extern crate executor;

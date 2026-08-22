@@ -23,7 +23,7 @@
    LL|       |        match
    LL|      2|            countdown
    LL|       |        {
-   LL|      1|            x
+   LL|       |            x
    LL|       |            if
    LL|      2|                x
    LL|      2|                    <

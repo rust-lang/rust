@@ -18,12 +18,12 @@ $DIR/doctest.rs:
    LL|       |//! Just some random code:
    LL|      1|//! ```
    LL|      1|//! if true {
-   LL|       |//!     // this is executed!
+   LL|      1|//!     // this is executed!
    LL|      1|//!     assert_eq!(1, 1);
-   LL|       |//! } else {
-   LL|       |//!     // this is not!
+   LL|      1|//! } else {
+   LL|      0|//!     // this is not!
    LL|      0|//!     assert_eq!(1, 2);
-   LL|       |//! }
+   LL|      0|//! }
    LL|      1|//! ```
    LL|       |//!
    LL|       |//! doctest testing external code:
@@ -89,9 +89,9 @@ $DIR/doctest.rs:
    LL|      1|fn main() {
    LL|      1|    if true {
    LL|      1|        assert_eq!(1, 1);
-   LL|       |    } else {
+   LL|      1|    } else {
    LL|      0|        assert_eq!(1, 2);
-   LL|       |    }
+   LL|      0|    }
    LL|      1|}
    LL|       |
    LL|       |// FIXME(Swatinem): Fix known issue that coverage code region columns need to be offset by the

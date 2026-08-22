@@ -1,5 +1,6 @@
    LL|       |#![allow(unused_assignments, unused_variables)]
    LL|       |//@ compile-flags: -C opt-level=2
+   LL|       |//@ min-llvm-version: 23
    LL|       |
    LL|       |// This test used to be sensitive to certain coverage-specific hacks in
    LL|       |// `rustc_middle/mir/mono.rs`, but those hacks were later cleaned up by
@@ -19,7 +20,7 @@
    LL|       |        ,
    LL|      1|        some_string
    LL|       |            .
-   LL|      1|            unwrap_or_else
+   LL|       |            unwrap_or_else
    LL|       |        (
    LL|       |            ||
    LL|      0|            {
@@ -34,7 +35,7 @@
    LL|       |
    LL|      1|    some_string = Some(String::from("the string content"));
    LL|       |    let
-   LL|      1|        a
+   LL|       |        a
    LL|       |    =
    LL|       |        ||
    LL|      0|    {
@@ -48,11 +49,11 @@
    LL|       |        "The string or alt: {}"
    LL|       |        ,
    LL|      1|        some_string
-   LL|       |            .
+   LL|      1|            .
    LL|      1|            unwrap_or_else
-   LL|       |        (
+   LL|      1|        (
    LL|      1|            a
-   LL|       |        )
+   LL|      1|        )
    LL|       |    );
    LL|       |
    LL|      1|    some_string = None;
@@ -61,7 +62,7 @@
    LL|       |        ,
    LL|      1|        some_string
    LL|       |            .
-   LL|      1|            unwrap_or_else
+   LL|       |            unwrap_or_else
    LL|       |        (
    LL|       |            ||
    LL|      1|            {
@@ -76,7 +77,7 @@
    LL|       |
    LL|      1|    some_string = None;
    LL|       |    let
-   LL|      1|        a
+   LL|       |        a
    LL|       |    =
    LL|       |        ||
    LL|      1|    {
@@ -90,15 +91,15 @@
    LL|       |        "The string or alt: {}"
    LL|       |        ,
    LL|      1|        some_string
-   LL|       |            .
+   LL|      1|            .
    LL|      1|            unwrap_or_else
-   LL|       |        (
+   LL|      1|        (
    LL|      1|            a
-   LL|       |        )
+   LL|      1|        )
    LL|       |    );
    LL|       |
    LL|       |    let
-   LL|      1|        quote_closure
+   LL|       |        quote_closure
    LL|       |    =
    LL|       |        |val|
    LL|      5|    {
@@ -114,14 +115,14 @@
    LL|      1|        std::iter::repeat("repeat me")
    LL|      1|            .take(5)
    LL|      1|            .map
-   LL|       |        (
+   LL|      1|        (
    LL|      1|            quote_closure
-   LL|       |        )
+   LL|      1|        )
    LL|      1|            .collect::<Vec<_>>()
    LL|       |    );
    LL|       |
    LL|       |    let
-   LL|      1|        _unused_closure
+   LL|       |        _unused_closure
    LL|       |    =
    LL|       |        |
    LL|       |            mut countdown
@@ -134,31 +135,27 @@
    LL|      0|    };
    LL|       |
    LL|      1|    let mut countdown = 10;
-   LL|      1|    let _short_unused_closure = | _unused_arg: u8 | countdown += 1;
+   LL|      0|    let _short_unused_closure = | _unused_arg: u8 | countdown += 1;
    LL|       |
    LL|       |
    LL|      1|    let short_used_covered_closure_macro = | used_arg: u8 | println!("called");
-   LL|      1|    let short_used_not_covered_closure_macro = | used_arg: u8 | println!("not called");
-                                                                              ^0
-   LL|      1|    let _short_unused_closure_macro = | _unused_arg: u8 | println!("not called");
-                                                                        ^0
+   LL|      0|    let short_used_not_covered_closure_macro = | used_arg: u8 | println!("not called");
+   LL|      0|    let _short_unused_closure_macro = | _unused_arg: u8 | println!("not called");
    LL|       |
    LL|       |
    LL|       |
    LL|       |
-   LL|      1|    let _short_unused_closure_block = | _unused_arg: u8 | { println!("not called") };
-                                                                        ^0^0                     ^0
+   LL|      0|    let _short_unused_closure_block = | _unused_arg: u8 | { println!("not called") };
    LL|       |
-   LL|      1|    let _shortish_unused_closure = | _unused_arg: u8 | {
-                                                                     ^0
+   LL|      0|    let _shortish_unused_closure = | _unused_arg: u8 | {
    LL|      0|        println!("not called")
    LL|      0|    };
    LL|       |
-   LL|      1|    let _as_short_unused_closure = |
+   LL|       |    let _as_short_unused_closure = |
    LL|       |        _unused_arg: u8
    LL|      0|    | { println!("not called") };
    LL|       |
-   LL|      1|    let _almost_as_short_unused_closure = |
+   LL|       |    let _almost_as_short_unused_closure = |
    LL|       |        _unused_arg: u8
    LL|      0|    | { println!("not called") }
    LL|       |    ;
@@ -167,26 +164,26 @@
    LL|       |
    LL|       |
    LL|       |
-   LL|      1|    let _short_unused_closure_line_break_no_block = | _unused_arg: u8 |
+   LL|       |    let _short_unused_closure_line_break_no_block = | _unused_arg: u8 |
    LL|      0|println!("not called")
    LL|       |    ;
    LL|       |
-   LL|      1|    let _short_unused_closure_line_break_no_block2 =
+   LL|       |    let _short_unused_closure_line_break_no_block2 =
    LL|       |        | _unused_arg: u8 |
    LL|      0|            println!(
-   LL|       |                "not called"
+   LL|      0|                "not called"
    LL|       |            )
    LL|       |    ;
    LL|       |
-   LL|      1|    let short_used_not_covered_closure_line_break_no_block_embedded_branch =
+   LL|       |    let short_used_not_covered_closure_line_break_no_block_embedded_branch =
    LL|       |        | _unused_arg: u8 |
-   LL|       |            println!(
+   LL|      0|            println!(
    LL|       |                "not called: {}",
    LL|      0|                if is_true { "check" } else { "me" }
    LL|       |            )
    LL|       |    ;
    LL|       |
-   LL|      1|    let short_used_not_covered_closure_line_break_block_embedded_branch =
+   LL|       |    let short_used_not_covered_closure_line_break_block_embedded_branch =
    LL|       |        | _unused_arg: u8 |
    LL|      0|        {
    LL|      0|            println!(
@@ -196,22 +193,22 @@
    LL|      0|        }
    LL|       |    ;
    LL|       |
-   LL|      1|    let short_used_covered_closure_line_break_no_block_embedded_branch =
+   LL|       |    let short_used_covered_closure_line_break_no_block_embedded_branch =
    LL|       |        | _unused_arg: u8 |
-   LL|       |            println!(
+   LL|      1|            println!(
    LL|       |                "not called: {}",
    LL|      1|                if is_true { "check" } else { "me" }
-                                                            ^0
+                                                          ^0
    LL|       |            )
    LL|       |    ;
    LL|       |
-   LL|      1|    let short_used_covered_closure_line_break_block_embedded_branch =
+   LL|       |    let short_used_covered_closure_line_break_block_embedded_branch =
    LL|       |        | _unused_arg: u8 |
    LL|      1|        {
    LL|      1|            println!(
    LL|       |                "not called: {}",
    LL|      1|                if is_true { "check" } else { "me" }
-                                                            ^0
+                                                          ^0
    LL|       |            )
    LL|      1|        }
    LL|       |    ;

@@ -15,14 +15,14 @@
    LL|      1|    }
                   ^0
    LL|       |    let
-   LL|      1|        somebool
+   LL|       |        somebool
    LL|       |        =
    LL|      1|            a < b
    LL|       |        ||
    LL|      0|            b < c
    LL|       |    ;
    LL|       |    let
-   LL|      1|        somebool
+   LL|       |        somebool
    LL|       |        =
    LL|      1|            b < a
    LL|       |        ||

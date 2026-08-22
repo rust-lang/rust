@@ -23,7 +23,7 @@
    LL|      0|            if message.len() > 0 {
    LL|      0|                println!("{}", message);
    LL|      0|                Ok(String::from("ok"))
-   LL|       |            } else {
+   LL|      0|            } else {
    LL|      0|                bail!("error");
    LL|       |            }
    LL|      0|        })

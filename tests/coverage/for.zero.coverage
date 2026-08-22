@@ -10,14 +10,12 @@
    LL|      1|    say("hello");
    LL|       |
    LL|      1|    for item in items {
-                      ^0
    LL|      0|        say(item);
    LL|      0|    }
    LL|       |
    LL|      1|    for item in items {
-                      ^0
    LL|      0|        say(item)
-   LL|       |    }
+   LL|      0|    }
    LL|       |
    LL|      1|    say("goodbye");
    LL|      1|}

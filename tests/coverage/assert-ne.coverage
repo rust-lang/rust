@@ -10,9 +10,9 @@
    LL|      1|        black_box(Foo(5)), // Make sure this expression's span isn't lost.
    LL|      1|        if black_box(false) {
    LL|      0|            Foo(0) //
-   LL|       |        } else {
+   LL|      1|        } else {
    LL|      1|            Foo(1) //
-   LL|       |        }
+   LL|      1|        }
    LL|       |    );
    LL|      1|    ()
    LL|      1|}

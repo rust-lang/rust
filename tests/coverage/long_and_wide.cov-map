@@ -19,15 +19,15 @@ Number of file 0 mappings: 2
 Highest counter ID seen: c0
 
 Function name: long_and_wide::main
-Raw bytes (29): 0x[01, 01, 00, 05, 01, 07, 01, 00, 0a, 01, 01, 05, 00, 12, 01, 01, 05, 00, 12, 01, 01, 05, 00, 11, 01, 01, 01, 00, 02]
+Raw bytes (29): 0x[01, 01, 00, 05, 01, 07, 01, 00, 0a, 01, 01, 05, 00, 14, 01, 01, 05, 00, 14, 01, 01, 05, 00, 13, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/long_and_wide.rs
 Number of expressions: 0
 Number of file 0 mappings: 5
 - Code(Counter(0)) at (prev + 7, 1) to (start + 0, 10)
-- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 18)
-- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 18)
-- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 20)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 19)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
 Highest counter ID seen: c0
 

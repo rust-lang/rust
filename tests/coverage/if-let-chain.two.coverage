@@ -16,9 +16,10 @@
    LL|       |
    LL|      1|    if let Some(opt_msg) = opt_opt_msg
    LL|      1|        && let Some(msg) = opt_msg
-   LL|       |    {
+   LL|      1|    {
    LL|      1|        say(msg)
-   LL|      0|    }
+   LL|      1|    }
+                  ^0
    LL|       |
    LL|      1|    say("goodbye");
    LL|      1|}

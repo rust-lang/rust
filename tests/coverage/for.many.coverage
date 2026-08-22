@@ -17,7 +17,7 @@
    LL|      3|    for item in items {
                               ^1
    LL|      3|        say(item)
-   LL|       |    }
+   LL|      3|    }
    LL|       |
    LL|      1|    say("goodbye");
    LL|      1|}

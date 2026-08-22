@@ -15,6 +15,9 @@ use crate::builder::{Builder, CFG};
 
 /// Collects coverage-related information during MIR building, to eventually be
 /// turned into a function's [`CoverageInfoHi`] when MIR building is complete.
+///
+/// FIXME(Zalathar): Now that we have [`CoverageKind::Point`], we should be able
+/// to remove this and perform HIR-aware analysis during instrumentation instead.
 pub(crate) struct CoverageInfoBuilder {
     /// Maps condition expressions to their enclosing `!`, for better instrumentation.
     nots: FxHashMap<ExprId, NotInfo>,

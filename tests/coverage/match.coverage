@@ -4,21 +4,20 @@
    LL|       |// Basic test for `match` expressions with various kinds of arms and guards.
    LL|       |
    LL|     16|fn match_expr(x: Option<u32>, cond: bool) {
-   LL|      3|    match x {
+   LL|     16|    match x {
    LL|      0|        Some(0) => say("zero"),
-   LL|       |        Some(1) => {
-   LL|       |            // (block with a trailing expression)
+   LL|      1|        Some(1) => {
+   LL|      1|            // (block with a trailing expression)
    LL|      1|            say("one")
-   LL|       |        }
+   LL|      1|        }
    LL|      2|        Some(2) => {
    LL|      2|            say("two");
    LL|      2|        }
-   LL|      0|        Some(3) if cond => {
+   LL|      3|        Some(3) if cond => {
    LL|      0|            say("three-cond");
    LL|      0|        }
    LL|      3|        Some(3) => say("three"),
    LL|      9|        Some(other) if other == 4 => {
-                           ^4                 ^4
    LL|      4|            say("four");
    LL|      4|        }
    LL|      5|        Some(other) => say("other"),

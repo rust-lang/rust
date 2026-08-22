@@ -1,30 +1,20 @@
 Function name: for::for_loop
-Raw bytes (77): 0x[01, 01, 04, 05, 01, 09, 01, 09, 01, 09, 01, 0d, 01, 09, 01, 00, 1c, 01, 01, 05, 00, 08, 01, 00, 09, 00, 10, 02, 02, 09, 00, 0d, 01, 00, 11, 00, 16, 02, 00, 17, 02, 06, 0e, 04, 09, 00, 0d, 01, 00, 11, 00, 16, 0e, 01, 09, 00, 0c, 0e, 00, 0d, 00, 11, 01, 03, 05, 00, 08, 01, 00, 09, 00, 12, 01, 01, 01, 00, 02]
+Raw bytes (48): 0x[01, 01, 02, 05, 01, 09, 01, 08, 01, 09, 01, 00, 1c, 01, 01, 05, 00, 11, 01, 02, 11, 00, 16, 02, 00, 17, 02, 06, 01, 04, 11, 00, 16, 06, 00, 17, 02, 06, 01, 04, 05, 00, 13, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/for.rs
-Number of expressions: 4
+Number of expressions: 2
 - expression 0 operands: lhs = Counter(1), rhs = Counter(0)
 - expression 1 operands: lhs = Counter(2), rhs = Counter(0)
-- expression 2 operands: lhs = Counter(2), rhs = Counter(0)
-- expression 3 operands: lhs = Counter(2), rhs = Counter(0)
-Number of file 0 mappings: 13
+Number of file 0 mappings: 8
 - Code(Counter(0)) at (prev + 9, 1) to (start + 0, 28)
-- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 8)
-- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 16)
-- Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 13)
-    = (c1 - c0)
-- Code(Counter(0)) at (prev + 0, 17) to (start + 0, 22)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 2, 17) to (start + 0, 22)
 - Code(Expression(0, Sub)) at (prev + 0, 23) to (start + 2, 6)
     = (c1 - c0)
-- Code(Expression(3, Sub)) at (prev + 4, 9) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 4, 17) to (start + 0, 22)
+- Code(Expression(1, Sub)) at (prev + 0, 23) to (start + 2, 6)
     = (c2 - c0)
-- Code(Counter(0)) at (prev + 0, 17) to (start + 0, 22)
-- Code(Expression(3, Sub)) at (prev + 1, 9) to (start + 0, 12)
-    = (c2 - c0)
-- Code(Expression(3, Sub)) at (prev + 0, 13) to (start + 0, 17)
-    = (c2 - c0)
-- Code(Counter(0)) at (prev + 3, 5) to (start + 0, 8)
-- Code(Counter(0)) at (prev + 0, 9) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 19)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
 Highest counter ID seen: c0
 

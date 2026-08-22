@@ -13,7 +13,6 @@
    LL|      3|    no_merge!();
    LL|       |
    LL|      3|    let Some(x) = value else {
-                           ^2
   ------------------
   |  Branch (LL:9): [True: 2, False: 1]
   ------------------
