@@ -42,10 +42,23 @@ use crate::vec::Vec;
 /// showing invalid UTF-8 as hex escapes or the Unicode replacement character, respectively.
 #[unstable(feature = "bstr", issue = "134915")]
 #[repr(transparent)]
-#[derive(Clone)]
 #[doc(alias = "BString")]
 pub struct ByteString(pub Vec<u8>);
 
+#[unstable(feature = "bstr", issue = "134915")]
+impl Clone for ByteString {
+    #[inline]
+    fn clone(&self) -> Self {
+        ByteString(self.0.clone())
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        self.0.clone_from(&source.0);
+    }
+}
+
+#[unstable(feature = "bstr", issue = "134915")]
 impl ByteString {
     #[inline]
     pub(crate) fn as_bytes(&self) -> &[u8] {
@@ -330,11 +343,16 @@ impl<'a> FromIterator<&'a ByteStr> for ByteString {
 impl FromIterator<ByteString> for ByteString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = ByteString>>(iter: T) -> Self {
-        let mut buf = Vec::new();
+        // Reuse first `ByteString`'s buffer to avoid an allocation and copy.
+        let mut first: Option<ByteString> = None;
         for mut b in iter {
-            buf.append(&mut b.0);
+            if let Some(buf) = &mut first {
+                buf.0.append(&mut b.0);
+            } else {
+                first = Some(b);
+            }
         }
-        ByteString(buf)
+        first.unwrap_or(ByteString(Vec::new()))
     }
 }
 
@@ -578,6 +596,11 @@ impl ToOwned for ByteStr {
     #[inline]
     fn to_owned(&self) -> ByteString {
         ByteString(self.0.to_vec())
+    }
+
+    #[inline]
+    fn clone_into(&self, target: &mut ByteString) {
+        self.0.clone_into(&mut target.0);
     }
 }
 
