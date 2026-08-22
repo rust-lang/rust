@@ -3,6 +3,7 @@
 use std::fmt::{self, Debug, Formatter};
 
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::Span;
@@ -70,8 +71,19 @@ impl Debug for CovTerm {
     }
 }
 
+/// The specific relationship between [`CoverageKind::Point`] and its [`HirId`].
+#[derive(Clone, Copy, Debug, PartialEq, TyEncodable, TyDecodable, StableHash)]
+pub enum PointKind {
+    // Variants to be added as needed by injection during MIR building.
+}
+
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, StableHash)]
 pub enum CoverageKind {
+    /// Associates a HIR node (such as an expression) with a particular point in
+    /// MIR control-flow. The relationship between the node and the point is
+    /// indicated by [`PointKind`]. Injected during MIR building.
+    Point { point_kind: PointKind, hir_id: HirId },
+
     /// Marks a span that might otherwise not be represented in MIR, so that
     /// coverage instrumentation can associate it with its enclosing block/BCB.
     ///
@@ -95,6 +107,9 @@ pub enum CoverageKind {
 impl Debug for CoverageKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            CoverageKind::Point { point_kind, hir_id } => {
+                write!(fmt, "Point({point_kind:?}, {hir_id:?}")
+            }
             CoverageKind::SpanMarker => write!(fmt, "SpanMarker"),
             CoverageKind::BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
             CoverageKind::VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
@@ -108,7 +123,9 @@ impl CoverageKind {
     /// no longer needed after that pass.
     pub fn is_removed_after_analysis(&self) -> bool {
         match self {
-            CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => true,
+            CoverageKind::Point { .. }
+            | CoverageKind::SpanMarker
+            | CoverageKind::BlockMarker { .. } => true,
             CoverageKind::VirtualCounter { .. } => false,
         }
     }
