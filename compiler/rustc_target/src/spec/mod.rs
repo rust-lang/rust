@@ -1904,6 +1904,7 @@ crate::target_spec_enum! {
         Nto71 = "nto71",
         Nto71IoSock = "nto71_iosock",
         Ohos = "ohos",
+        OpenBsdCurrent = "openbsd8.0",
         Relibc = "relibc",
         Sgx = "sgx",
         Sim = "sim",

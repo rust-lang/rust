@@ -19,6 +19,18 @@ The target names follow this format: `$ARCH-unknown-openbsd`, where `$ARCH` spec
 
 Note that all OS versions are *major* even if using X.Y notation (`6.8` and `6.9` are different major versions) and could be binary incompatibles (with breaking changes).
 
+> [!IMPORTANT]
+> These targets, if supported by the next OpenBSD `-current` release
+> channel, need to update the `rustc_target::spec::Env` type under
+> `compiler/` in the `rust-lang/rust` repository whenever a new
+> OpenBSD version is released.
+>
+> That should reflect the `-current` release channel, which is always
+> one version above the latest `-release` channel version.
+>
+> One must also update the `src/librustdoc/clean.rs` file with the
+> relevant formatted string providing a public view of this
+> `target_env` value.
 
 ## Target Maintainers
 
@@ -29,7 +41,6 @@ Further contacts:
 - [lang/rust](https://cvsweb.openbsd.org/cgi-bin/cvsweb/ports/lang/rust/Makefile?rev=HEAD&content-type=text/x-cvsweb-markup) maintainer (see MAINTAINER variable)
 
 Fallback to ports@openbsd.org, OpenBSD third parties public mailing-list (with openbsd developers readers)
-
 
 ## Requirements
 
