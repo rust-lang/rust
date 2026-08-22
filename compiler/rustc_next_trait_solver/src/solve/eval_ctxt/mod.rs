@@ -359,12 +359,11 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
             EvalCtxt::enter_root(delegate, delegate.cx().recursion_limit() * 2, span, |ecx| {
                 ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal)
             });
-        if let Ok(goal_evaluation) = &rerun_result
-            && !goal_evaluation.certainty.is_overflow()
-        {
-            Ok(rerun_result)
-        } else {
+
+        if rerun_result.as_ref().is_ok_and(|evaluation| evaluation.certainty.is_overflow()) {
             Err(())
+        } else {
+            Ok(rerun_result)
         }
     });
     if let Ok(rerun_result) = rerun_result {
@@ -408,12 +407,11 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
             span,
             delegate.cx().recursion_limit() * 2,
         );
-        if let Ok(response) = &new_goal_evaluation.result
-            && !response.value.certainty.is_overflow()
-        {
-            Ok((new_result, new_goal_evaluation))
-        } else {
+
+        if new_goal_evaluation.result.is_ok_and(|response| response.value.certainty.is_overflow()) {
             Err(())
+        } else {
+            Ok((new_result, new_goal_evaluation))
         }
     });
     if let Ok(rerun_result) = rerun_result {
