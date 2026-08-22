@@ -42,7 +42,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return this.in_scope(
                 (region_scope, source_info),
                 LintLevel::Explicit(hir_id),
-                |this| this.as_temp(block, temp_lifetime, value, mutability),
+                |this| {
+                    this.push_coverage_point_for_expr(block, source_info, hir_id);
+                    this.as_temp(block, temp_lifetime, value, mutability)
+                },
             );
         }
 

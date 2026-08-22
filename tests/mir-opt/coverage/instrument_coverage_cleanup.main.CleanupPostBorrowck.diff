@@ -16,9 +16,21 @@
   
       bb0: {
           Coverage::VirtualCounter(bcb0);
+-         Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).12);
+-         Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).2);
+-         Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).3);
 -         Coverage::SpanMarker;
+-         Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).4);
++         nop;
++         nop;
++         nop;
++         nop;
 +         nop;
           StorageLive(_1);
+-         Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).5);
+-         Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).9);
++         nop;
++         nop;
           _1 = std::hint::black_box::<bool>(const true) -> [return: bb1, unwind: bb5];
       }
   
@@ -29,6 +41,8 @@
       bb2: {
           Coverage::VirtualCounter(bcb1);
 -         Coverage::BlockMarker(1);
+-         Coverage::Point(ImplicitElse, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).2);
++         nop;
 +         nop;
           _0 = const ();
           goto -> bb4;
@@ -37,6 +51,8 @@
       bb3: {
           Coverage::VirtualCounter(bcb3);
 -         Coverage::BlockMarker(0);
+-         Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).11);
++         nop;
 +         nop;
           _0 = const ();
           goto -> bb4;
@@ -45,6 +61,8 @@
       bb4: {
           Coverage::VirtualCounter(bcb2);
           StorageDead(_1);
+-         Coverage::Point(FunctionEnd, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).0);
++         nop;
           return;
       }
   

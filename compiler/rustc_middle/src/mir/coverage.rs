@@ -74,7 +74,13 @@ impl Debug for CovTerm {
 /// The specific relationship between [`CoverageKind::Point`] and its [`HirId`].
 #[derive(Clone, Copy, Debug, PartialEq, TyEncodable, TyDecodable, StableHash)]
 pub enum PointKind {
-    // Variants to be added as needed by injection during MIR building.
+    /// Inserted just before evaluating an expression.
+    Expr,
+    /// Inserted when a one-sided `if` expression generates its synthetic `else {}`.
+    /// The absent `else` has no node, so [`HirId`] is the `if` expression.
+    ImplicitElse,
+    /// Inserted at the end of a function's body. [`HirId`] is the function itself.
+    FunctionEnd,
 }
 
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, StableHash)]

@@ -15,6 +15,8 @@
 + 
       bb0: {
 +         Coverage::VirtualCounter(bcb0);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).12);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).2);
           goto -> bb1;
       }
   
@@ -24,7 +26,10 @@
       }
   
       bb2: {
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).4);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).5);
           StorageLive(_2);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).6);
           _2 = bar() -> [return: bb3, unwind: bb6];
       }
   
@@ -34,13 +39,17 @@
   
       bb4: {
 +         Coverage::VirtualCounter(bcb2);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).11);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).9);
           _0 = const ();
           StorageDead(_2);
+          Coverage::Point(FunctionEnd, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).0);
           return;
       }
   
       bb5: {
 +         Coverage::VirtualCounter(bcb3);
+          Coverage::Point(ImplicitElse, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).4);
           _1 = const ();
           StorageDead(_2);
           goto -> bb1;
