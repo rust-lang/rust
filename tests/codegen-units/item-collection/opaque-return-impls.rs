@@ -80,8 +80,8 @@ pub fn foo3() -> Box<dyn Iterator<Item = usize>> {
 //~ MONO_ITEM fn <Counter as std::iter::Iterator>::size_hint
 //~ MONO_ITEM fn <Counter as std::iter::Iterator>::try_fold::<std::num::NonZero<usize>, {closure@<Counter as std::iter::Iterator::advance_by::SpecAdvanceBy>::spec_advance_by::{closure#0}}, std::option::Option<std::num::NonZero<usize>>>
 //~ MONO_ITEM fn <std::option::Option<std::num::NonZero<usize>> as std::ops::FromResidual<std::option::Option<std::convert::Infallible>>>::from_residual
-//~ MONO_ITEM fn <std::option::Option<std::num::NonZero<usize>> as std::ops::Try>::branch
-//~ MONO_ITEM fn <std::option::Option<std::num::NonZero<usize>> as std::ops::Try>::from_output
+//~ MONO_ITEM fn <std::option::Option<std::num::NonZero<usize>> as std::ops::Branch>::branch
+//~ MONO_ITEM fn <std::option::Option<std::num::NonZero<usize>> as std::ops::FromOutput>::from_output
 //~ MONO_ITEM fn foo3
 //~ MONO_ITEM fn std::boxed::Box::<Counter>::new
 //~ MONO_ITEM fn Counter::new

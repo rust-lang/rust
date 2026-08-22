@@ -1871,7 +1871,7 @@ impl<T> Option<T> {
         // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
         // variant in the code above.
 
-        Try::from_output(unsafe { self.as_mut().unwrap_unchecked() })
+        <_>::from_output(unsafe { self.as_mut().unwrap_unchecked() })
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -2855,14 +2855,9 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T> ops::Try for Option<T> {
+const impl<T> ops::Branch for Option<T> {
     type Output = T;
     type Residual = Option<convert::Infallible>;
-
-    #[inline]
-    fn from_output(output: Self::Output) -> Self {
-        Some(output)
-    }
 
     #[inline]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
@@ -2870,6 +2865,15 @@ const impl<T> ops::Try for Option<T> {
             Some(v) => ControlFlow::Continue(v),
             None => ControlFlow::Break(None),
         }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+const impl<T> ops::FromOutput for Option<T> {
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        Some(output)
     }
 }
 

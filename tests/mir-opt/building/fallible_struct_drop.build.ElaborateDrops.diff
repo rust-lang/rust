@@ -129,7 +129,7 @@
   
       bb1: {
           StorageDead(_6);
-          _4 = <Result<String, ()> as Try>::branch(move _5) -> [return: bb2, unwind: bb91];
+          _4 = <Result<String, ()> as Branch>::branch(move _5) -> [return: bb2, unwind: bb91];
       }
   
       bb2: {
@@ -183,7 +183,7 @@
   
       bb8: {
           StorageDead(_16);
-          _14 = <Result<String, ()> as Try>::branch(move _15) -> [return: bb9, unwind: bb88];
+          _14 = <Result<String, ()> as Branch>::branch(move _15) -> [return: bb9, unwind: bb88];
       }
   
       bb9: {
@@ -232,7 +232,7 @@
   
       bb14: {
           StorageDead(_26);
-          _24 = <Result<String, ()> as Try>::branch(move _25) -> [return: bb15, unwind: bb84];
+          _24 = <Result<String, ()> as Branch>::branch(move _25) -> [return: bb15, unwind: bb84];
       }
   
       bb15: {
@@ -281,7 +281,7 @@
   
       bb20: {
           StorageDead(_36);
-          _34 = <Result<String, ()> as Try>::branch(move _35) -> [return: bb21, unwind: bb79];
+          _34 = <Result<String, ()> as Branch>::branch(move _35) -> [return: bb21, unwind: bb79];
       }
   
       bb21: {
@@ -330,7 +330,7 @@
   
       bb26: {
           StorageDead(_46);
-          _44 = <Result<String, ()> as Try>::branch(move _45) -> [return: bb27, unwind: bb73];
+          _44 = <Result<String, ()> as Branch>::branch(move _45) -> [return: bb27, unwind: bb73];
       }
   
       bb27: {

@@ -49,9 +49,8 @@ impl CallDesugaringKind {
             Self::ForLoopIntoIter => tcx.get_diagnostic_item(sym::IntoIterator).unwrap(),
             Self::ForLoopIntoAsyncIter => tcx.get_diagnostic_item(sym::IntoAsyncIterator).unwrap(),
             Self::ForLoopNext => tcx.require_lang_item(LangItem::Iterator, DUMMY_SP),
-            Self::QuestionBranch | Self::TryBlockFromOutput => {
-                tcx.require_lang_item(LangItem::Try, DUMMY_SP)
-            }
+            Self::TryBlockFromOutput => tcx.get_diagnostic_item(sym::FromOutput).unwrap(),
+            Self::QuestionBranch => tcx.require_lang_item(LangItem::Try, DUMMY_SP),
             Self::QuestionFromResidual => tcx.get_diagnostic_item(sym::FromResidual).unwrap(),
             Self::Await => tcx.get_diagnostic_item(sym::IntoFuture).unwrap(),
         }

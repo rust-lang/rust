@@ -16,6 +16,7 @@ pub fn main() {
 
     let res = try bikeshed () { };
     //~^ ERROR a `try` block must return `Result` or `Option`
+    //~| ERROR a `try` block must return `Result` or `Option`
 
     let res = try bikeshed i32 { 5 }; //~ ERROR a `try` block must return `Result` or `Option`
 }
