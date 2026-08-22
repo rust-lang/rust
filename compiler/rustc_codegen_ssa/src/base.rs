@@ -490,7 +490,14 @@ where
             })
             .collect();
 
-        cx.codegen_global_asm(asm.template, &operands, asm.options, asm.line_spans);
+        let target_features = cx.tcx().global_backend_features(());
+        cx.codegen_global_asm(
+            asm.template,
+            &operands,
+            asm.options,
+            asm.line_spans,
+            &target_features,
+        );
     } else {
         span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
     }

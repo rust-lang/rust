@@ -922,6 +922,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         line_spans: &[Span],
+        _target_features: &[String],
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
