@@ -421,6 +421,25 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
     }
 }
 
+// // use rutsc_span::ErrorGuaranteed;  cant use it from here.
+// // TODO: this likely should be imported from compiler/rustc_trait_selection/src/traits/mod.rs:575
+// #[derive(Debug)]
+// pub enum EvaluateConstErr<E> {
+//     /// The constant being evaluated was either a generic parameter or inference variable, *or*,
+//     /// some alias const with either generic parameters or inference variables in its
+//     /// generic arguments.
+//     HasGenericsOrInfers,
+//     /// The type this constant evaluated to is not valid for use in const generics. This should
+//     /// always result in an error when checking the constant is correctly typed for the parameter
+//     /// it is an argument to, so a bug is delayed when encountering this.
+//     InvalidConstParamTy, //(ErrorGuaranteed),
+//     /// CTFE failed to evaluate the constant in some unrecoverable way (e.g. encountered a `panic!`).
+//     /// This is also used when the constant was already tainted by error.
+//     EvaluationFailure, //(ErrorGuaranteed),
+//     FailedNormalization(E),
+// }
+//
+
 impl<'a, D, I> EvalCtxt<'a, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -1415,9 +1434,123 @@ where
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
 
-        self.delegate.evaluate_const(param_env, alias_const, |ty| {
-            self.normalize(GoalSource::Misc, param_env, ty)
-        })
+        let cx = self.cx();
+        let alias_const = self.resolve_vars_if_possible(alias_const);
+        let mut normalize_ty = |ty| self.normalize(GoalSource::Misc, param_env, ty);
+
+
+        // ---- ---- ----
+        let opt_anon_const_kind = match alias_const.kind {
+            ty::AliasConstKind::Anon { def_id } => Some((def_id, cx.anon_const_kind(def_id.into()))),
+            _ => None,
+        };
+
+        // Postpone evaluation of constants that depend on generic parameters or
+        // inference variables.
+        //
+        // We use `TypingMode::PostAnalysis` here which is not *technically* correct
+        // to be revealing opaque types here as borrowcheck has not run yet. However,
+        // CTFE itself uses `TypingMode::PostAnalysis` unconditionally even during
+        // typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
+        // As a result we always use a revealed env when resolving the instance to evaluate.
+        let (args, typing_env) = match opt_anon_const_kind {
+            // We handle `generic_const_exprs` separately as reasonable ways of handling constants in the type system
+            // completely fall apart under `generic_const_exprs` and makes this whole function Really hard to reason
+            // about if you have to consider gce whatsoever.
+            Some((_def_id, ty::AnonConstKind::GCE)) => { panic!("this is GCE const meow") }
+
+            // is this actually reachable from here?
+            Some((def_id, ty::AnonConstKind::RepeatExprCount)) => {
+                if alias_const.has_non_region_infer() {
+                    // Diagnostics will sometimes replace the identity args of anon consts in
+                    // array repeat expr counts with inference variables so we have to handle this
+                    // even though it is not something we should ever actually encounter.
+                    //
+                    // Array repeat expr counts are allowed to syntactically use generic parameters
+                    // but must not actually depend on them in order to evalaute successfully. This means
+                    // that it is actually fine to evalaute them in their own environment rather than with
+                    // the actually provided generic arguments.
+
+                    // not sure about this
+                    cx.delay_bug("AnonConst with infer args but no error reported");
+                }
+
+                // The generic args of repeat expr counts under `min_const_generics` are not supposed to
+                // affect evaluation of the constant as this would make it a "truly" generic const arg.
+                // To prevent this we discard all the generic arguments and evalaute with identity args
+                // and in its own environment instead of the current environment we are normalizing in.
+                let args = GenericArgs::identity_for_item(cx, def_id.into());
+                let typing_env = ty::TypingEnv::post_analysis(cx, def_id.into());
+
+                (args, typing_env)
+            }
+            Some((
+                _,
+                ty::AnonConstKind::MCG
+                | ty::AnonConstKind::NonTypeSystemAnon
+                | ty::AnonConstKind::NonTypeSystemInline,
+            ))
+            | None => {
+
+                // We are only dealing with "truly" generic/uninferred constants here:
+                // - GCEConsts have been handled separately
+                // - Repeat expr count back compat consts have also been handled separately
+                // So we are free to simply defer evaluation here.
+                //
+                // FIXME: This assumes that `args` are normalized which is not necessarily true
+                //
+                // Const patterns are converted to type system constants before being
+                // evaluated. However, we don't care about them here as pattern evaluation
+                // logic does not go through type system normalization. If it did this would
+                // be a backwards compatibility problem as we do not enforce "syntactic" non-
+                // usage of generic parameters like we do here.
+                if alias_const.args.has_non_region_param()
+                    || alias_const.args.has_non_region_infer()
+                    || alias_const.args.has_non_region_placeholders()
+                {
+                    return Ok(None)
+                }
+
+                // Since there is no generic parameter, we can just drop the environment
+                // to prevent query cycle.
+                let typing_env = ty::TypingEnv::fully_monomorphized();
+
+                (alias_const.args, typing_env)
+            }
+        };
+
+        let alias_const = ty::AliasConst::new(cx, alias_const.kind, args);
+        // why are we erasing this? can we actually ahve regions here?
+        let erased_alias_const = cx.erase_and_anonymize_regions(alias_const);
+
+        // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
+        // where it gets used as a const generic.
+        let span = alias_const.kind.def_span(cx);
+
+        use ty::{ErrorHandled};
+
+        match cx.const_eval_resolve_for_typeck(typing_env, erased_alias_const, span) {
+            Ok(Ok(val)) => {
+                let Ok(ty) = normalize_ty(alias_const.type_of(cx)) else { return Ok(None) };// TODO look into this
+
+                Ok(Some(I::Const::new_value(cx, val, ty)))
+            }
+            Ok(Err(_)) => {
+                let _e = cx.delay_bug( // delayed_bug vs delay_bug? whats the difference
+                    "Type system constant with non valtree'able type evaluated but no error emitted",
+                );
+                Ok(None) // look later
+
+            }
+
+            Err(ErrorHandled::Reported(r, _)) => {
+                Ok(Some(I::Const::new_error(cx, r.error)))
+            }
+
+            Err(ErrorHandled::TooGeneric(_span)) => {
+                Ok(None)
+            }
+        }
     }
 
     pub(super) fn evaluate_const_and_instantiate_projection_term(

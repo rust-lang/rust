@@ -259,6 +259,17 @@ pub trait Interner:
     // FIXME: remove in favor of explicit construction
     fn alias_term_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTermKind<Self>;
 
+    fn param_env_normalized_for_post_analysis(self, defid: Self::DefId) -> Self::ParamEnv;
+
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T;
+
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: ty::TypingEnv<Self>,
+        ct: ty::AliasConst<Self>,
+        span: Self::Span,
+    ) -> ty::ConstToValTreeResult<Self>;
+
     fn trait_ref_and_own_args_for_alias(
         self,
         def_id: Self::TraitAssocTermId,

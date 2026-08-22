@@ -245,6 +245,12 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
 
+    fn new_value(
+    interner: I,
+    valtree: I::ValTree,
+    ty: I::Ty,
+    ) -> I::Const;
+
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, bound_const: ty::BoundConst<I>) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
@@ -619,6 +625,9 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 #[rust_analyzer::prefer_underscore_import]
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
+
+    //TODO: bring doc here
+    fn empty() -> Self;
 }
 
 #[rust_analyzer::prefer_underscore_import]
