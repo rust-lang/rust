@@ -19,8 +19,6 @@ pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
     None
 }
 
-pub const HAS_PREFIXES: bool = true;
-
 /// UEFI paths can be of 4 types:
 ///
 /// 1. Absolute Shell Path: Uses shell mappings (eg: `FS0:`). Does not exist if UEFI shell not present.

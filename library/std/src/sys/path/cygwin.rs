@@ -18,8 +18,6 @@ pub const fn is_verbatim_sep(b: u8) -> bool {
 
 pub use super::windows_prefix::parse_prefix;
 
-pub const HAS_PREFIXES: bool = true;
-
 unsafe extern "C" {
     // Doc: https://cygwin.com/cygwin-api/func-cygwin-conv-path.html
     // Src: https://github.com/cygwin/cygwin/blob/718a15ba50e0d01c79800bd658c2477f9a603540/winsup/cygwin/path.cc#L3902
@@ -55,7 +53,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
         Ok(PathBuf::from(OsString::from_vec(buffer)))
     })
     .map(|path| {
-        if path.prefix().is_some() {
+        if path.components().0.prefix().is_some() {
             return path;
         }
 
@@ -81,7 +79,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
 
 pub(crate) fn is_absolute(path: &Path) -> bool {
     if path.as_os_str().as_encoded_bytes().starts_with(b"\\") {
-        path.has_root() && path.prefix().is_some()
+        path.has_root() && path.components().0.prefix().is_some()
     } else {
         path.has_root()
     }
