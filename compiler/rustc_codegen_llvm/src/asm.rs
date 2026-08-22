@@ -734,6 +734,16 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
                 // LLVM doesn't recognize r14
                 "{lr}".to_string()
+            } else if let InlineAsmReg::Sparc(reg) = reg
+                && let Some(num) = reg.dreg_number()
+            {
+                // LLVM numbers d registers sequentially (d0 => d0, d2 => d1, d4 => d2 etc.)
+                format!("{{d{}}}", num / 2)
+            } else if let InlineAsmReg::Sparc(reg) = reg
+                && let Some(num) = reg.qreg_number()
+            {
+                // LLVM numbers q registers sequentially (q0 => q0, q4 => q1, q8 => q2 etc.)
+                format!("{{q{}}}", num / 4)
             } else {
                 format!("{{{}}}", reg.name())
             }
@@ -820,6 +830,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                 unreachable!("clobber-only")
             }
             Sparc(SparcInlineAsmRegClass::reg) => "r",
+            Sparc(SparcInlineAsmRegClass::freg) => "f",
+            Sparc(SparcInlineAsmRegClass::dreg | SparcInlineAsmRegClass::qreg) => "e",
             Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
             Msp430(Msp430InlineAsmRegClass::reg) => "r",
             M68k(M68kInlineAsmRegClass::reg) => "r",
@@ -1043,6 +1055,9 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
             unreachable!("clobber-only")
         }
         Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),
+        Sparc(SparcInlineAsmRegClass::freg) => cx.type_f32(),
+        Sparc(SparcInlineAsmRegClass::dreg) => cx.type_f64(),
+        Sparc(SparcInlineAsmRegClass::qreg) => cx.type_f128(),
         Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
