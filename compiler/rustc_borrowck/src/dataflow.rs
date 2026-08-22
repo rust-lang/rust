@@ -12,7 +12,9 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice};
 use tracing::debug;
 
-use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
+use crate::{
+    AccessDepth, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict,
+};
 
 // This analysis is different to most others. Its results aren't computed with
 // `iterate_to_fixpoint`, but are instead composed from the results of three sub-analyses that are
@@ -474,7 +476,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 
         // If the borrowed place is a local with no projections, all other borrows of this
         // local must conflict. This is purely an optimization so we don't have to call
-        // `places_conflict` for every borrow.
+        // `places_conflict::borrow_conflicts_with_place` for every borrow.
         if place.projection.is_empty() {
             if !self.body.local_decls[place.local].is_ref_to_static() {
                 state.kill_all(other_borrows_of_local);
@@ -487,11 +489,13 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         // will be assured that two places being compared definitely denotes the same sets of
         // locations.
         let definitely_conflicting_borrows = other_borrows_of_local.filter(|&i| {
-            places_conflict(
+            places_conflict::borrow_conflicts_with_place(
                 self.tcx,
                 self.body,
                 self.borrow_set[i].borrowed_place,
-                place,
+                self.borrow_set[i].kind,
+                place.as_ref(),
+                AccessDepth::Deep,
                 PlaceConflictBias::NoOverlap,
             )
         });

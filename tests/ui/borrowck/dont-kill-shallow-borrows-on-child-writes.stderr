@@ -1,0 +1,19 @@
+error[E0510]: cannot assign `p` in match guard
+  --> $DIR/dont-kill-shallow-borrows-on-child-writes.rs:16:31
+   |
+LL |     match p.0 {
+   |           --- value is immutable in match guard
+LL |         Some(_) if { p.1 = 1; p = &mut b; false } => unreachable!(),
+   |                               ^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/dont-kill-shallow-borrows-on-child-writes.rs:28:25
+   |
+LL |     x[0][{ x[0][0] = 1; x = y; 0 }];
+   |     ----                ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0510`.
