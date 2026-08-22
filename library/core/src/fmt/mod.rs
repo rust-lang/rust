@@ -1778,16 +1778,13 @@ impl<'a> Formatter<'a> {
     // Helper methods used for padding and processing formatting arguments that
     // all formatting traits can use.
 
-    /// Performs the correct padding for an integer which has already been
-    /// emitted into a str. The str should *not* contain the sign for the
-    /// integer, that will be added by this method.
+    /// Writes an integer representation to the `Formatter`.
     ///
-    /// # Arguments
-    ///
-    /// * is_nonnegative - whether the original integer was either positive or zero.
-    /// * prefix - if the '#' character (Alternate) is provided, this
-    ///   is the prefix to put in front of the number.
-    /// * buf - the byte array that the number has been formatted into
+    /// The `digits` must contain the absolute value of the original number,
+    /// without a sign. Whether a sign is written by `pad_integral` depends on
+    /// the `is_nonnegative` flag and the formatting parameters. The optional
+    /// `prefix` (e.g., `"0x"`) always gets written after any sign and before
+    /// any digits.
     ///
     /// This function will correctly account for the flags provided as well as
     /// the minimum width. It will not take precision into account.
@@ -1823,8 +1820,8 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{:0>#8}", Foo::new(-1)), "00-Foo 1");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pad_integral(&mut self, is_nonnegative: bool, prefix: &str, buf: &str) -> Result {
-        let mut width = buf.len();
+    pub fn pad_integral(&mut self, is_nonnegative: bool, prefix: &str, digits: &str) -> Result {
+        let mut width = digits.len();
 
         let mut sign = None;
         if !is_nonnegative {
@@ -1856,7 +1853,7 @@ impl<'a> Formatter<'a> {
         if width >= usize::from(min) {
             // We're over the minimum width, so then we can just write the bytes.
             write_prefix(self, sign, prefix)?;
-            self.buf.write_str(buf)
+            self.buf.write_str(digits)
         } else if self.sign_aware_zero_pad() {
             // The sign and prefix goes before the padding if the fill character
             // is zero
@@ -1864,7 +1861,7 @@ impl<'a> Formatter<'a> {
             self.options.fill('0').align(Some(Alignment::Right));
             write_prefix(self, sign, prefix)?;
             let post_padding = self.padding(min - width as u16, Alignment::Right)?;
-            self.buf.write_str(buf)?;
+            self.buf.write_str(digits)?;
             post_padding.write(self)?;
             self.options = old_options;
             Ok(())
@@ -1872,9 +1869,58 @@ impl<'a> Formatter<'a> {
             // Otherwise, the sign and prefix goes after the padding
             let post_padding = self.padding(min - width as u16, Alignment::Right)?;
             write_prefix(self, sign, prefix)?;
-            self.buf.write_str(buf)?;
+            self.buf.write_str(digits)?;
             post_padding.write(self)
         }
+    }
+
+    /// Writes a number representation to the `Formatter` using a closure.
+    ///
+    /// The `write_abs` closure must write the absolute value of the number,
+    /// without a sign, and `write_len` must match the number of characters
+    /// written by `write_abs`.
+    ///
+    /// The output of `write_abs` should honor any precision specified by the
+    /// formatting parameters. Likewise, `sign` should already account for
+    /// [`Self::sign_plus`].
+    ///
+    /// This function correctly applies padding an alignment to the output.
+    fn pad_number<F>(&mut self, sign: &str, write_len: usize, write_abs: F) -> Result
+    where
+        F: Fn(&mut Self) -> Result,
+    {
+        let out_len = write_len + sign.len();
+        // Pad when the width is higher than the output length.
+        let pad = self.width().unwrap_or(0).saturating_sub(out_len);
+
+        if self.sign_aware_zero_pad() {
+            // The sign goes before the padding.
+            self.write_str(sign)?;
+            self.write_zeroes(pad)?;
+            return write_abs(self);
+        }
+
+        // Numbers align to the right by default.
+        let align = self.align().unwrap_or(Alignment::Right);
+        let (pad_before, pad_after) = match align {
+            Alignment::Left => (0, pad),
+            Alignment::Right => (pad, 0),
+            Alignment::Center => {
+                let split = pad / 2; // may round down
+                (split, pad - split)
+            }
+        };
+
+        let fill = self.fill();
+        for _ in 0..pad_before {
+            self.write_char(fill)?;
+        }
+        self.write_str(sign)?;
+        write_abs(self)?;
+        for _ in 0..pad_after {
+            self.write_char(fill)?;
+        }
+        Ok(())
     }
 
     /// Takes a string slice and emits it to the internal buffer after applying
@@ -1979,56 +2025,6 @@ impl<'a> Formatter<'a> {
     ///
     /// Any `numfmt::Part::Copy` parts in `formatted` must contain valid UTF-8.
     unsafe fn pad_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
-        if self.options.width == 0 {
-            // this is the common case and we take a shortcut
-            // SAFETY: Per the precondition.
-            unsafe { self.write_formatted_parts(formatted) }
-        } else {
-            // for the sign-aware zero padding, we render the sign first and
-            // behave as if we had no sign from the beginning.
-            let mut formatted = formatted.clone();
-            let mut width = self.options.width;
-            let old_options = self.options;
-            if self.sign_aware_zero_pad() {
-                // a sign always goes first
-                let sign = formatted.sign;
-                self.buf.write_str(sign)?;
-
-                // remove the sign from the formatted parts
-                formatted.sign = "";
-                width = width.saturating_sub(sign.len() as u16);
-                self.options.fill('0').align(Some(Alignment::Right));
-            }
-
-            // remaining parts go through the ordinary padding process.
-            let len = formatted.len();
-            let ret = if usize::from(width) <= len {
-                // no padding
-                // SAFETY: Per the precondition.
-                unsafe { self.write_formatted_parts(&formatted) }
-            } else {
-                // Padding widths are capped at `u16`, so reaching this branch means
-                // the formatted output is also shorter than `u16::MAX`.
-                let len = match u16::try_from(len) {
-                    Ok(len) => len,
-                    Err(_) => unreachable!(),
-                };
-                let post_padding = self.padding(width - len, Alignment::Right)?;
-                // SAFETY: Per the precondition.
-                unsafe {
-                    self.write_formatted_parts(&formatted)?;
-                }
-                post_padding.write(self)
-            };
-            self.options = old_options;
-            ret
-        }
-    }
-
-    /// # Safety
-    ///
-    /// Any `numfmt::Part::Copy` parts in `formatted` must contain valid UTF-8.
-    unsafe fn write_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
         unsafe fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
             // SAFETY: This is used for `numfmt::Part::Num` and `numfmt::Part::Copy`.
             // It's safe to use for `numfmt::Part::Num` since every char `c` is between
@@ -2037,39 +2033,51 @@ impl<'a> Formatter<'a> {
             buf.write_str(unsafe { str::from_utf8_unchecked(s) })
         }
 
-        if !formatted.sign.is_empty() {
-            self.buf.write_str(formatted.sign)?;
-        }
-        for part in formatted.parts {
-            match *part {
-                numfmt::Part::Zero(mut nzeroes) => {
-                    const ZEROES: &str = // 64 zeroes
-                        "0000000000000000000000000000000000000000000000000000000000000000";
-                    while nzeroes > ZEROES.len() {
-                        self.buf.write_str(ZEROES)?;
-                        nzeroes -= ZEROES.len();
+        let sign = formatted.sign;
+        let out_len = formatted.len() - sign.len();
+        self.pad_number(sign, out_len, |f: &mut Self| {
+            for part in formatted.parts {
+                match *part {
+                    numfmt::Part::Zero(nzeroes) => {
+                        f.write_zeroes(nzeroes)?;
                     }
-                    if nzeroes > 0 {
-                        self.buf.write_str(&ZEROES[..nzeroes])?;
-                    }
-                }
-                numfmt::Part::Num(mut v) => {
-                    let mut s = [0; 5];
-                    let len = part.len();
-                    for c in s[..len].iter_mut().rev() {
-                        *c = b'0' + (v % 10) as u8;
-                        v /= 10;
+                    numfmt::Part::Num(mut v) => {
+                        let mut s = [0; 5];
+                        let len = part.len();
+                        for c in s[..len].iter_mut().rev() {
+                            *c = b'0' + (v % 10) as u8;
+                            v /= 10;
+                        }
+                        // SAFETY: Per the precondition.
+                        unsafe {
+                            write_bytes(f.buf, &s[..len])?;
+                        }
                     }
                     // SAFETY: Per the precondition.
-                    unsafe {
-                        write_bytes(self.buf, &s[..len])?;
-                    }
+                    numfmt::Part::Copy(buf) => unsafe {
+                        write_bytes(f.buf, buf)?;
+                    },
                 }
-                // SAFETY: Per the precondition.
-                numfmt::Part::Copy(buf) => unsafe {
-                    write_bytes(self.buf, buf)?;
-                },
             }
+            Ok(())
+        })
+    }
+
+    /// Writes n ASCII digits (U+0030) to the Formatter.
+    pub(crate) fn write_zeroes(&mut self, n: usize) -> Result {
+        #[cfg(feature = "optimize_for_size")]
+        {
+            for _ in 0..n {
+                self.write_char('0')?;
+            }
+        }
+        #[cfg(not(feature = "optimize_for_size"))]
+        {
+            const ZEROES: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+            for _ in 0..(n / 64) {
+                self.write_str(ZEROES)?;
+            }
+            self.write_str(&ZEROES[..(n % 64)])?;
         }
         Ok(())
     }
