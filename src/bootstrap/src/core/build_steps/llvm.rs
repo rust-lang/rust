@@ -1162,10 +1162,7 @@ impl CommandLineStep for RustOffload {
 
         let profile = get_llvm_profile(&builder.config);
 
-        cfg.out_dir(&out_dir)
-            .profile(profile)
-            .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
-            .define("LLVM_DIR", llvm_output.cmake_dir());
+        cfg.out_dir(&out_dir).profile(profile).define("LLVM_DIR", llvm_output.cmake_dir());
 
         cfg.build();
 
@@ -1392,7 +1389,6 @@ impl CommandLineStep for OmpOffload {
         // runtime to simplify our build. So far, these are still under development.
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("LLVM_INCLUDE_TESTS", "OFF")
             .define("OFFLOAD_INCLUDE_TESTS", "OFF")
@@ -1550,7 +1546,6 @@ impl CommandLineStep for Enzyme {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", llvm_output.llvm_config())
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
             .define("ENZYME_BC_LOADER", "OFF")
