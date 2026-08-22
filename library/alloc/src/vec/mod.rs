@@ -433,7 +433,10 @@ mod spec_extend;
 #[rustc_insignificant_dtor]
 #[doc(alias = "list")]
 #[doc(alias = "vector")]
-pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+pub struct Vec<
+    T,
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")] A: Allocator = Global,
+> {
     buf: RawVec<T, A>,
     len: usize,
 }
@@ -936,8 +939,6 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
-    ///
     /// use std::alloc::System;
     ///
     /// let mut vec = Vec::with_capacity_in(10, System);
@@ -964,7 +965,7 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// assert_eq!(vec_units.capacity(), usize::MAX);
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
     }
@@ -1050,14 +1051,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
-    ///
     /// use std::alloc::System;
     ///
     /// let vec: Vec<i32, System> = Vec::new_in(System);
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "allocator_ext", issue = "32838")]
     pub const fn new_in(alloc: A) -> Self {
         Vec { buf: RawVec::new_in(alloc), len: 0 }
     }
@@ -1074,7 +1074,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Returns an error if the capacity exceeds `isize::MAX` _bytes_,
     /// or if the allocator reports allocation failure.
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     // #[unstable(feature = "try_with_capacity", issue = "91913")]
     pub fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
         Ok(Vec { buf: RawVec::try_with_capacity_in(capacity, alloc)?, len: 0 })
@@ -1128,8 +1128,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
-    ///
     /// use std::alloc::System;
     ///
     /// use std::ptr;
@@ -1157,8 +1155,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Using memory that was allocated elsewhere:
     ///
     /// ```rust
-    /// #![feature(allocator_api)]
-    ///
     /// use std::alloc::{AllocError, Allocator, Global, Layout};
     ///
     /// fn main() {
@@ -1180,8 +1176,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const unsafe fn from_raw_parts_in(
         ptr: *mut T,
         length: usize,
@@ -1245,8 +1241,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
-    ///
     /// use std::alloc::System;
     ///
     /// let mut v = Vec::with_capacity_in(3, System);
@@ -1272,8 +1266,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Using memory that was allocated elsewhere:
     ///
     /// ```rust
-    /// #![feature(allocator_api)]
-    ///
     /// use std::alloc::{AllocError, Allocator, Global, Layout};
     ///
     /// fn main() {
@@ -1295,8 +1287,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const unsafe fn from_parts_in(
         ptr: NonNull<T>,
         length: usize,
@@ -1328,8 +1320,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
-    ///
     /// use std::alloc::System;
     ///
     /// let mut v: Vec<i32, System> = Vec::new_in(System);
@@ -1349,8 +1339,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
     #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const fn into_raw_parts_with_allocator(self) -> (*mut T, usize, usize, A) {
         let mut me = ManuallyDrop::new(self);
         let len = me.len();
@@ -1378,8 +1368,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_api)]
-    ///
     /// use std::alloc::System;
     ///
     /// let mut v: Vec<i32, System> = Vec::new_in(System);
@@ -1399,8 +1387,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
     #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub const fn into_parts_with_allocator(self) -> (NonNull<T>, usize, usize, A) {
         let (ptr, len, capacity, alloc) = self.into_raw_parts_with_allocator();
         // SAFETY: A `Vec` always has a non-null pointer.
@@ -2118,7 +2106,7 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
     pub const fn allocator(&self) -> &A {
@@ -3778,7 +3766,7 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
 pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
     <T as SpecFromElem>::from_elem(elem, n, alloc)
 }

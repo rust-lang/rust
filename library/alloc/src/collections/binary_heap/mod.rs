@@ -273,7 +273,7 @@ use crate::vec::{self, Vec};
 #[cfg_attr(not(test), rustc_diagnostic_item = "BinaryHeap")]
 pub struct BinaryHeap<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     data: Vec<T, A>,
 }
@@ -289,7 +289,7 @@ pub struct BinaryHeap<
 pub struct PeekMut<
     'a,
     T: 'a + Ord,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     heap: &'a mut BinaryHeap<T, A>,
     // If a set_len + sift_down are required, this is Some. If a &mut T has not
@@ -484,7 +484,7 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for BinaryHeap<T, A> {
 struct RebuildOnDrop<
     'a,
     T: Ord,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     heap: &'a mut BinaryHeap<T, A>,
     rebuild_from: usize,
@@ -545,14 +545,15 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::alloc::System;
     /// use std::collections::BinaryHeap;
     ///
     /// let heap : BinaryHeap<i32, System> = BinaryHeap::new_in(System);
     /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
+    #[rustc_const_unstable(feature = "allocator_ext", issue = "32838")]
     #[must_use]
     pub const fn new_in(alloc: A) -> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::new_in(alloc) }
@@ -569,14 +570,14 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(allocator_api)]
+    /// #![feature(allocator_ext)]
     ///
     /// use std::alloc::System;
     /// use std::collections::BinaryHeap;
     ///
     /// let heap: BinaryHeap<i32, System> = BinaryHeap::with_capacity_in(10, System);
     /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[must_use]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::with_capacity_in(capacity, alloc) }
@@ -1419,7 +1420,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     }
 
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn allocator(&self) -> &A {
         self.data.allocator()
@@ -1679,14 +1680,14 @@ impl<T> FusedIterator for Iter<'_, T> {}
 #[derive(Clone)]
 pub struct IntoIter<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     iter: vec::IntoIter<T, A>,
 }
 
 impl<T, A: Allocator> IntoIter<T, A> {
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn allocator(&self) -> &A {
         self.iter.allocator()
     }
@@ -1784,14 +1785,14 @@ unsafe impl<I> AsVecIntoIter for IntoIter<I> {
 #[derive(Clone, Debug)]
 pub struct IntoIterSorted<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     inner: BinaryHeap<T, A>,
 }
 
 impl<T, A: Allocator> IntoIterSorted<T, A> {
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn allocator(&self) -> &A {
         self.inner.allocator()
     }
@@ -1833,14 +1834,14 @@ unsafe impl<T: Ord, A: Allocator> TrustedLen for IntoIterSorted<T, A> {}
 pub struct Drain<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     iter: vec::Drain<'a, T, A>,
 }
 
 impl<T, A: Allocator> Drain<'_, T, A> {
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn allocator(&self) -> &A {
         self.iter.allocator()
     }
@@ -1890,14 +1891,14 @@ impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
 pub struct DrainSorted<
     'a,
     T: Ord,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     inner: &'a mut BinaryHeap<T, A>,
 }
 
 impl<'a, T: Ord, A: Allocator> DrainSorted<'a, T, A> {
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     pub fn allocator(&self) -> &A {
         self.inner.allocator()
     }

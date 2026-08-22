@@ -1,4 +1,4 @@
-#![feature(allocator_api, alloc_error_hook)]
+#![feature(allocator_ext, alloc_error_hook)]
 
 use std::alloc::*;
 

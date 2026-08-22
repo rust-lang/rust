@@ -1,7 +1,7 @@
 //@compile-flags: -Cpanic=abort
 #![feature(core_intrinsics)]
 #![feature(alloc_error_handler)]
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![no_std]
 #![no_main]
 

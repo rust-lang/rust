@@ -8,6 +8,7 @@ LL |     let k = i + j;
    |
 note: `Vec<R>` does not implement `Add`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: `Vec<R>` is defined in another crate
 

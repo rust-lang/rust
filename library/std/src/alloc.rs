@@ -145,10 +145,10 @@ use crate::{hint, mem, ptr};
 #[derive_const(Clone, Default)]
 pub struct System;
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
 unsafe impl core::alloc::AllocatorClone for System {}
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
 unsafe impl core::alloc::StaticAllocator for System {}
 
 impl System {
@@ -216,7 +216,7 @@ impl System {
 
 // The Allocator impl checks the layout size to be non-zero and forwards to the
 // platform functions in `std::sys::*::alloc`.
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "allocator_api", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl Allocator for System {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
@@ -303,7 +303,7 @@ unsafe impl Allocator for System {
     }
 }
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
 unsafe impl GlobalAllocator for System {}
 
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());

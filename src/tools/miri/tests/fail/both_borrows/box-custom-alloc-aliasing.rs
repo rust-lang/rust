@@ -4,7 +4,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@normalize-stderr-test: "\[0x[a-fx\d.]+\]" -> "[RANGE]"
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 use std::alloc::{AllocError, Allocator, Layout};
 use std::cell::{Cell, UnsafeCell};
