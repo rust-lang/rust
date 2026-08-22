@@ -294,7 +294,7 @@ pub mod bstr;
 pub mod cell;
 pub mod char;
 pub mod ffi;
-#[unstable(feature = "core_io", issue = "154046")]
+#[stable(feature = "core_io_fundamentals", since = "CURRENT_RUSTC_VERSION")]
 pub mod io;
 pub mod iter;
 pub mod net;
