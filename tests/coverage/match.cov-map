@@ -1,0 +1,32 @@
+Function name: match::match_expr
+Raw bytes (83): 0x[01, 01, 07, 1d, 07, 0b, 19, 0f, 15, 05, 0d, 0d, 11, 05, 09, 01, 1d, 0d, 01, 06, 01, 00, 2a, 01, 01, 0b, 00, 0c, 02, 01, 14, 00, 1f, 19, 01, 14, 03, 0a, 15, 04, 14, 02, 0a, 0d, 03, 14, 00, 18, 11, 00, 1c, 02, 0a, 12, 03, 14, 00, 20, 05, 01, 18, 00, 22, 09, 00, 26, 02, 0a, 16, 03, 18, 00, 24, 1a, 01, 11, 00, 1c, 01, 02, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/match.rs
+Number of expressions: 7
+- expression 0 operands: lhs = Counter(7), rhs = Expression(1, Add)
+- expression 1 operands: lhs = Expression(2, Add), rhs = Counter(6)
+- expression 2 operands: lhs = Expression(3, Add), rhs = Counter(5)
+- expression 3 operands: lhs = Counter(1), rhs = Counter(3)
+- expression 4 operands: lhs = Counter(3), rhs = Counter(4)
+- expression 5 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 6 operands: lhs = Counter(0), rhs = Counter(7)
+Number of file 0 mappings: 13
+- Code(Counter(0)) at (prev + 6, 1) to (start + 0, 42)
+- Code(Counter(0)) at (prev + 1, 11) to (start + 0, 12)
+- Code(Expression(0, Sub)) at (prev + 1, 20) to (start + 0, 31)
+    = (c7 - (((c1 + c3) + c5) + c6))
+- Code(Counter(6)) at (prev + 1, 20) to (start + 3, 10)
+- Code(Counter(5)) at (prev + 4, 20) to (start + 2, 10)
+- Code(Counter(3)) at (prev + 3, 20) to (start + 0, 24)
+- Code(Counter(4)) at (prev + 0, 28) to (start + 2, 10)
+- Code(Expression(4, Sub)) at (prev + 3, 20) to (start + 0, 32)
+    = (c3 - c4)
+- Code(Counter(1)) at (prev + 1, 24) to (start + 0, 34)
+- Code(Counter(2)) at (prev + 0, 38) to (start + 2, 10)
+- Code(Expression(5, Sub)) at (prev + 3, 24) to (start + 0, 36)
+    = (c1 - c2)
+- Code(Expression(6, Sub)) at (prev + 1, 17) to (start + 0, 28)
+    = (c0 - c7)
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c6
+

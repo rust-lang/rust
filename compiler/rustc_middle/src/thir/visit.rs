@@ -48,7 +48,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     let Expr { kind, ty: _, temp_scope_id: _, span: _ } = expr;
     match *kind {
         Scope { value, region_scope: _, hir_id: _ } => visitor.visit_expr(&visitor.thir()[value]),
-        If { cond, then, else_opt, if_then_scope: _ } => {
+        If { cond, then, else_opt, if_then_scope: _, hir_id: _ } => {
             visitor.visit_expr(&visitor.thir()[cond]);
             visitor.visit_expr(&visitor.thir()[then]);
             if let Some(else_expr) = else_opt {

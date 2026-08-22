@@ -22,9 +22,9 @@
    LL|      1|    fn affected_function() {
    LL|      1|        if !false {
    LL|      1|            ()
-   LL|       |        } else {
+   LL|      1|        } else {
    LL|      0|            ()
-   LL|       |        }
+   LL|      0|        }
    LL|       |    }
    LL|       |}
 

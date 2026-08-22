@@ -1,0 +1,42 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |
+   LL|       |// Basic test for `match` expressions with various kinds of arms and guards.
+   LL|       |
+   LL|     16|fn match_expr(x: Option<u32>, cond: bool) {
+   LL|     16|    match x {
+   LL|      0|        Some(0) => say("zero"),
+   LL|      1|        Some(1) => {
+   LL|      1|            // (block with a trailing expression)
+   LL|      1|            say("one")
+   LL|      1|        }
+   LL|      2|        Some(2) => {
+   LL|      2|            say("two");
+   LL|      2|        }
+   LL|      3|        Some(3) if cond => {
+   LL|      0|            say("three-cond");
+   LL|      0|        }
+   LL|      3|        Some(3) => say("three"),
+   LL|      9|        Some(other) if other == 4 => {
+   LL|      4|            say("four");
+   LL|      4|        }
+   LL|      5|        Some(other) => say("other"),
+   LL|      1|        None => say("none"),
+   LL|       |    }
+   LL|     16|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    for i in 0..=5 {
+   LL|       |        for _ in 0..i {
+   LL|       |            match_expr(Some(i), false);
+   LL|       |        }
+   LL|       |    }
+   LL|       |    match_expr(None, true);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(msg: &str) {
+   LL|       |    println!("{msg}");
+   LL|       |}
+

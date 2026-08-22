@@ -1,0 +1,39 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |//@ revisions: zero one many
+   LL|       |//@[one] ignore-coverage-map
+   LL|       |//@[many] ignore-coverage-map
+   LL|       |
+   LL|       |// Basic test of `for` loops.
+   LL|       |
+   LL|      1|fn for_loop(items: &[&str]) {
+   LL|      1|    say("hello");
+   LL|       |
+   LL|      3|    for item in items {
+                              ^1
+   LL|      3|        say(item);
+   LL|      3|    }
+   LL|       |
+   LL|      3|    for item in items {
+                              ^1
+   LL|      3|        say(item)
+   LL|      3|    }
+   LL|       |
+   LL|      1|    say("goodbye");
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    let items = cfg_select!(
+   LL|       |        zero => &[],
+   LL|       |        one => &["one"],
+   LL|       |        many => &["one", "two", "three"],
+   LL|       |    );
+   LL|       |    for_loop(items);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(msg: &str) {
+   LL|       |    println!("{msg}");
+   LL|       |}
+

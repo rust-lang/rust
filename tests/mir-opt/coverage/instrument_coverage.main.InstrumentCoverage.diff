@@ -8,13 +8,15 @@
       let mut _3: !;
   
 +     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:13:1: 13:10 (#0);
-+     coverage Code { bcb: bcb1 } => $DIR/instrument_coverage.rs:15:12: 15:15 (#0);
-+     coverage Code { bcb: bcb2 } => $DIR/instrument_coverage.rs:16:13: 16:18 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/instrument_coverage.rs:15:12: 15:17 (#0);
++     coverage Code { bcb: bcb2 } => $DIR/instrument_coverage.rs:15:18: 17:10 (#0);
 +     coverage Code { bcb: bcb3 } => $DIR/instrument_coverage.rs:17:9: 17:10 (#0);
 +     coverage Code { bcb: bcb2 } => $DIR/instrument_coverage.rs:19:1: 19:2 (#0);
 + 
       bb0: {
 +         Coverage::VirtualCounter(bcb0);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).12);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).2);
           goto -> bb1;
       }
   
@@ -24,7 +26,10 @@
       }
   
       bb2: {
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).4);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).5);
           StorageLive(_2);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).6);
           _2 = bar() -> [return: bb3, unwind: bb6];
       }
   
@@ -34,13 +39,17 @@
   
       bb4: {
 +         Coverage::VirtualCounter(bcb2);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).11);
+          Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).9);
           _0 = const ();
           StorageDead(_2);
+          Coverage::Point(FunctionEnd, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).0);
           return;
       }
   
       bb5: {
 +         Coverage::VirtualCounter(bcb3);
+          Coverage::Point(ImplicitElse, HirId(DefId(0:3 ~ instrument_coverage[f559]::main).4);
           _1 = const ();
           StorageDead(_2);
           goto -> bb1;

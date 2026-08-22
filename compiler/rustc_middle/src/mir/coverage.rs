@@ -3,6 +3,7 @@
 use std::fmt::{self, Debug, Formatter};
 
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::Span;
@@ -70,13 +71,24 @@ impl Debug for CovTerm {
     }
 }
 
+/// The specific relationship between [`CoverageKind::Point`] and its [`HirId`].
+#[derive(Clone, Copy, Debug, PartialEq, TyEncodable, TyDecodable, StableHash)]
+pub enum PointKind {
+    /// Inserted just before evaluating an expression.
+    Expr,
+    /// Inserted when a one-sided `if` expression generates its synthetic `else {}`.
+    /// The absent `else` has no node, so [`HirId`] is the `if` expression.
+    ImplicitElse,
+    /// Inserted at the end of a function's body. [`HirId`] is the function itself.
+    FunctionEnd,
+}
+
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, StableHash)]
 pub enum CoverageKind {
-    /// Marks a span that might otherwise not be represented in MIR, so that
-    /// coverage instrumentation can associate it with its enclosing block/BCB.
-    ///
-    /// Should be erased before codegen (at some point after `InstrumentCoverage`).
-    SpanMarker,
+    /// Associates a HIR node (such as an expression) with a particular point in
+    /// MIR control-flow. The relationship between the node and the point is
+    /// indicated by [`PointKind`]. Injected during MIR building.
+    Point { point_kind: PointKind, hir_id: HirId },
 
     /// Marks its enclosing basic block with an ID that can be referred to by
     /// side data in [`CoverageInfoHi`].
@@ -94,11 +106,24 @@ pub enum CoverageKind {
 
 impl Debug for CoverageKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use CoverageKind::*;
         match self {
-            SpanMarker => write!(fmt, "SpanMarker"),
-            BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
-            VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
+            CoverageKind::Point { point_kind, hir_id } => {
+                write!(fmt, "Point({point_kind:?}, {hir_id:?}")
+            }
+            CoverageKind::BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
+            CoverageKind::VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
+        }
+    }
+}
+
+impl CoverageKind {
+    /// Returns true if this kind of coverage statement is a marker inserted during
+    /// MIR building, for use by analysis in the `InstrumentCoverage` pass, and is
+    /// no longer needed after that pass.
+    pub fn is_removed_after_analysis(&self) -> bool {
+        match self {
+            CoverageKind::Point { .. } | CoverageKind::BlockMarker { .. } => true,
+            CoverageKind::VirtualCounter { .. } => false,
         }
     }
 }

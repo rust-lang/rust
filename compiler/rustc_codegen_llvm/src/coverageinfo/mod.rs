@@ -113,7 +113,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         };
 
         match *kind {
-            CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(
+            CoverageKind::Point { .. } | CoverageKind::BlockMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
             CoverageKind::VirtualCounter { bcb }

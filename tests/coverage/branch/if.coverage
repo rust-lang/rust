@@ -17,7 +17,8 @@
   |  Branch (LL:8): [True: 2, False: 1]
   ------------------
    LL|      2|        say("a")
-   LL|      1|    }
+   LL|      2|    }
+                  ^1
    LL|      3|    if !a {
   ------------------
   |  Branch (LL:8): [True: 1, False: 2]

@@ -138,6 +138,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
         }
 
         // Finally, wrap this up in the expr's scope.
+        //
+        // (In addition to marking scope, coverage instrumentation also uses this node
+        // to help mark the point in MIR where an expression is about to be evaluated.)
         expr = Expr {
             temp_scope_id: expr_scope.local_id,
             ty,
@@ -1011,6 +1014,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 cond: self.mirror_expr(cond),
                 then: self.mirror_expr(then),
                 else_opt: else_opt.map(|el| self.mirror_expr(el)),
+                hir_id: expr.hir_id,
             },
             hir::ExprKind::Match(discr, arms, match_source) => ExprKind::Match {
                 scrutinee: self.mirror_expr(discr),
