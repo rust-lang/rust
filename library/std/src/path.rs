@@ -2369,10 +2369,47 @@ pub struct StripPrefixError(());
 
 /// An error returned from [`Path::normalize_lexically`] if a `..` parent reference
 /// would escape the path.
+///
+/// The error carries the best-effort partial normalization of the path: all `.` and
+/// `..` components that could be resolved are resolved, with the leading `..` that
+/// escape the base directory preserved. Retrieve it with [`partial`] or [`into_partial`]:
+///
+/// ```
+/// #![feature(normalize_lexically)]
+/// use std::path::Path;
+///
+/// let err = Path::new("a/../../b/c/../d").normalize_lexically().unwrap_err();
+/// assert_eq!(err.partial(), Path::new("../b/d"));
+/// assert_eq!(err.into_partial(), Path::new("../b/d"));
+/// ```
+///
+/// [`partial`]: NormalizeError::partial
+/// [`into_partial`]: NormalizeError::into_partial
 #[unstable(feature = "normalize_lexically", issue = "134694")]
 #[derive(Debug, PartialEq)]
 #[non_exhaustive]
-pub struct NormalizeError;
+pub struct NormalizeError {
+    partial: PathBuf,
+}
+
+#[unstable(feature = "normalize_lexically", issue = "134694")]
+impl NormalizeError {
+    /// Returns the partially-normalized path.
+    ///
+    /// All `.` and `..` components that could be resolved have been resolved; the
+    /// leading `..` components that escape the base directory are preserved.
+    pub fn partial(&self) -> &Path {
+        &self.partial
+    }
+
+    /// Consumes the error, returning the partially-normalized path.
+    ///
+    /// All `.` and `..` components that could be resolved have been resolved; the
+    /// leading `..` components that escape the base directory are preserved.
+    pub fn into_partial(self) -> PathBuf {
+        self.partial
+    }
+}
 
 impl Path {
     // The following (private!) function allows construction of a path from a u8
@@ -3426,51 +3463,103 @@ impl Path {
     ///
     /// [`path::absolute`](absolute) is an alternative that preserves `..`.
     /// Or [`Path::canonicalize`] can be used to resolve any `..` by querying the filesystem.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error in the following situations:
+    ///
+    /// - `path` where [`Path::has_root`] is `false` and a parent reference `..` points outside
+    ///    of the base directory.
+    ///
+    /// On Unix, a path that is absolute ([`Path::is_absolute`]) is equivalent to
+    /// [`Path::has_root`] and will never fail. On Windows, a root-relative path such
+    /// as `\..` is not considered absolute, but it has a root, so its `..` is pinned
+    /// to that root and it will not fail.
+    ///
+    /// A partially normalized value can be retrieved by with [`NormalizeError::partial`] or
+    /// [`NormalizeError::into_partial`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(normalize_lexically)]
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("relative/path/unnormalized/../.");
+    /// let normalized = path.normalize_lexically().unwrap();
+    /// assert_eq!(Path::new("relative/path"), normalized);
+    ///
+    /// let path = Path::new("/absolute/path/un/../normalized/.");
+    /// let normalized = path.normalize_lexically().unwrap();
+    /// assert_eq!(Path::new("/absolute/path/normalized"), normalized);
+    /// ```
+    ///
+    /// A path without a root cannot normalize beyond its current base, attempting to do so will
+    /// cause an error. Paths with a root will pin `..` to the root.
+    ///
+    /// ```
+    /// #![feature(normalize_lexically)]
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("../relative");
+    /// assert!(path.normalize_lexically().is_err());
+    ///
+    /// let path = Path::new("relative/../../partially/un/../normalized");
+    /// let result = path.normalize_lexically();
+    /// assert!(result.is_err());
+    /// assert_eq!(Path::new("../partially/normalized"), result.unwrap_err().into_partial());
+    ///
+    /// let path = Path::new("/../has_root");
+    /// assert_eq!(Path::new("/has_root"), path.normalize_lexically().unwrap());
+    /// ```
+    ///
+    /// This root pinning behavior for absolute paths is common in many operating systems but is
+    /// [not guaranteed by POSIX](https://pubs.opengroup.org/onlinepubs/9799919799.2024edition/basedefs/V1_chap04.html#tag_04_16).
+    ///
+    /// > As a special case, in the root directory, dot-dot may refer to the root directory itself.
+    ///
+    /// If your operating system behavior diverges you can use [`Component`] directly.
     #[unstable(feature = "normalize_lexically", issue = "134694")]
     pub fn normalize_lexically(&self) -> Result<PathBuf, NormalizeError> {
-        let mut lexical = PathBuf::new();
-        let mut iter = self.components().peekable();
+        let mut lexical = PathBuf::with_capacity(self.as_os_str().len());
+        let mut escaped = false;
 
-        // Find the root, if any, and add it to the lexical path.
-        // Here we treat the Windows path "C:\" as a single "root" even though
-        // `components` splits it into two: (Prefix, RootDir).
-        let root = match iter.peek() {
-            Some(Component::ParentDir) => return Err(NormalizeError),
-            Some(p @ Component::RootDir) | Some(p @ Component::CurDir) => {
-                lexical.push(p);
-                iter.next();
-                lexical.as_os_str().len()
-            }
-            Some(Component::Prefix(prefix)) => {
-                lexical.push(prefix.as_os_str());
-                iter.next();
-                if let Some(p @ Component::RootDir) = iter.peek() {
-                    lexical.push(p);
-                    iter.next();
-                }
-                lexical.as_os_str().len()
-            }
-            None => return Ok(PathBuf::new()),
-            Some(Component::Normal(_)) => 0,
-        };
-
-        for component in iter {
+        for component in self.components() {
             match component {
-                Component::RootDir => unreachable!(),
-                Component::Prefix(_) => return Err(NormalizeError),
-                Component::CurDir => continue,
-                Component::ParentDir => {
-                    // It's an error if ParentDir causes us to go above the "root".
-                    if lexical.as_os_str().len() == root {
-                        return Err(NormalizeError);
-                    } else {
-                        lexical.pop();
+                // Prefix/RootDir only ever occur at the start; keep them as the anchor.
+                // push() retains the prefix when pushing a RootDir, so `C:` + `\` => `C:\`.
+                Component::RootDir => lexical.push(component),
+                Component::Prefix(p) => lexical.push(p.as_os_str()),
+                // Preserve a *leading* `.` (so `./a` stays `./a`); drop any later `.`.
+                Component::CurDir => {
+                    if lexical.is_empty() {
+                        lexical.push(component);
                     }
                 }
-                Component::Normal(path) => lexical.push(path),
+                Component::ParentDir => match lexical.components().next_back() {
+                    // A real directory: cancel it out.
+                    Some(Component::Normal(_)) => {
+                        lexical.pop();
+                    }
+                    // A root pins `..` to itself, so it never escapes.
+                    Some(Component::RootDir) => {}
+                    // `./..` resolves to `..`; drop the leading `.` first.
+                    Some(Component::CurDir) => {
+                        lexical.pop();
+                        lexical.push(Component::ParentDir);
+                        escaped = true;
+                    }
+                    // Escapes the base, so keep the leading `..`:
+                    None | Some(Component::ParentDir) | Some(Component::Prefix(_)) => {
+                        lexical.push(Component::ParentDir);
+                        escaped = true;
+                    }
+                },
+                Component::Normal(p) => lexical.push(p),
             }
         }
-        Ok(lexical)
+
+        if escaped { Err(NormalizeError { partial: lexical }) } else { Ok(lexical) }
     }
 
     /// Reads a symbolic link, returning the file that the link points to.
@@ -4050,7 +4139,11 @@ impl Error for StripPrefixError {}
 #[unstable(feature = "normalize_lexically", issue = "134694")]
 impl fmt::Display for NormalizeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("parent reference `..` points outside of base directory")
+        write!(
+            f,
+            "parent reference `..` points outside of base directory `{}`",
+            self.partial.display()
+        )
     }
 }
 #[unstable(feature = "normalize_lexically", issue = "134694")]
