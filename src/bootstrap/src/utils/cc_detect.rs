@@ -95,7 +95,7 @@ pub fn fill_compilers(build: &mut Build) {
     // as well. In the future it would be good to make this a no-op given that we shouldn't need to
     // build any C/C++ code for wasm...
     if build.config.wasm_proc_macros {
-        targets.insert(TargetSelection::from_user("wasm32-wasip2"));
+        targets.insert(TargetSelection::from_user("wasm32-wasip1"));
     }
 
     for target in targets {

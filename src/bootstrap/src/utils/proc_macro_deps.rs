@@ -4,6 +4,7 @@
 pub static CRATES: &[&str] = &[
     // tidy-alphabetical-start
     "allocator_api2",
+    "anyhow",
     "askama_derive",
     "askama_parser",
     "basic_toml",
@@ -30,7 +31,9 @@ pub static CRATES: &[&str] = &[
     "indexmap",
     "intl_memoizer",
     "intl_pluralrules",
+    "leb128",
     "libc",
+    "log",
     "memchr",
     "minimal_lexical",
     "nom",
@@ -62,6 +65,8 @@ pub static CRATES: &[&str] = &[
     "version_check",
     "wasm_bindgen_macro_support",
     "wasm_bindgen_shared",
+    "wast",
+    "wiggle_generate",
     "winnow",
     "yoke",
     "zerofrom",

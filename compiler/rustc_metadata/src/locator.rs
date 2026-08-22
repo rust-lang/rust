@@ -223,9 +223,10 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
-use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
+use rustc_proc_macro::bridge::server::DynClient;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;
@@ -987,7 +988,8 @@ pub fn get_proc_macros(
     path: &Path,
     metadata_loader: &dyn MetadataLoader,
     cfg_version: &'static str,
-) -> IoResult<Vec<(ProcMacroClient, ProcMacroKind)>> {
+) -> IoResult<Vec<(IntoDynSyncSend<DynClient>, ProcMacroKind)>> {
+    // FIXME support wasm proc-macros
     let host_tuple = TargetTuple::from_tuple(config::host_tuple());
     let (host, _) = Target::search(&host_tuple, Path::new(""), false).unwrap();
 
@@ -1004,7 +1006,7 @@ pub fn get_proc_macros(
     let proc_macro_info = metadata.get_proc_macro_info();
     assert_eq!(proc_macro_info.len(), clients.len());
 
-    Ok(clients.into_iter().copied().zip(proc_macro_info).collect())
+    Ok(clients.into_iter().zip(proc_macro_info).collect())
 }
 
 // ------------------------------------------ Error reporting -------------------------------------
