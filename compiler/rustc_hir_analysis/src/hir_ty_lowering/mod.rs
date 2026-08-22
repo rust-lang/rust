@@ -2527,7 +2527,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     fn try_recover_misrepresented_function_call(
         &self,
-        hir_self_ty: &'tcx hir::Ty<'tcx>,
+        hir_self_ty: &hir::Ty<'_>,
         span: Span,
     ) -> Option<ErrorGuaranteed> {
         // Only an enum can host a tuple-variant constructor (`<Option<u32>>::Some(..)`).
