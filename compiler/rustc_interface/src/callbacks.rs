@@ -91,4 +91,5 @@ pub fn setup_callbacks() {
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     rustc_errors::TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
     rustc_feature::TRACK_FEATURE.swap(&(track_feature as _));
+    rustc_expand_queries::enable();
 }

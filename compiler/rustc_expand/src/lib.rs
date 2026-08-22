@@ -23,7 +23,3 @@ pub mod config;
 pub mod expand;
 pub mod module;
 pub mod proc_macro;
-
-pub fn provide(providers: &mut rustc_middle::query::Providers) {
-    providers.derive_macro_expansion = proc_macro::provide_derive_macro_expansion;
-}
