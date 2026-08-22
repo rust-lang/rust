@@ -94,6 +94,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         override_span,
         nbsp_is_whitespace: false,
         last_lifetime: None,
+        first_multiline_str: None,
         token: Token::dummy(),
         diag_info: TokenTreeDiagInfo::default(),
     };
@@ -139,6 +140,11 @@ struct Lexer<'psess, 'src> {
     /// Track the `Span` for the leading `'` of the last lifetime. Used for
     /// diagnostics to detect possible typo where `"` was meant.
     last_lifetime: Option<Span>,
+
+    /// Span of the first string literal in this file that contains an unescaped
+    /// newline, i.e. that spans multiple lines. Used to point at the likely
+    /// culprit when a later string literal turns out to be unterminated.
+    first_multiline_str: Option<Span>,
 
     /// The current token.
     token: Token,
@@ -757,7 +763,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     }
 
     fn cook_lexer_literal(
-        &self,
+        &mut self,
         start: BytePos,
         end: BytePos,
         kind: rustc_lexer::LiteralKind,
@@ -796,14 +802,24 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 self.cook_quoted(token::Byte, Mode::Byte, start, end, 2, 1) // b' '
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
-                if !terminated {
-                    self.dcx()
+                if terminated {
+                    self.maybe_record_multiline_str(start, end);
+                } else {
+                    let mut err = self
+                        .dcx()
                         .struct_span_fatal(
                             self.mk_sp(start, end),
                             "unterminated double quote string",
                         )
-                        .with_code(E0765)
-                        .emit()
+                        .with_code(E0765);
+                    if let Some(span) = self.first_multiline_str {
+                        err.span_note(
+                            span,
+                            "this string literal spans multiple lines; a missing closing `\"` \
+                             here could be the cause",
+                        );
+                    }
+                    err.emit()
                 }
                 self.cook_quoted(token::Str, Mode::Str, start, end, 1, 1) // " "
             }
@@ -914,6 +930,32 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     #[inline]
     fn src_index(&self, pos: BytePos) -> usize {
         (pos - self.start_pos).to_usize()
+    }
+
+    /// A string literal containing an unescaped newline is legal, but rare. It is also exactly
+    /// what forgetting a closing `"` produces: the lexer runs on to the *next* `"` in the file,
+    /// which may be many lines below, and the mismatch only surfaces later as an unterminated
+    /// string. Remember the first such literal so we can point at it from that error.
+    fn maybe_record_multiline_str(&mut self, start: BytePos, end: BytePos) {
+        if self.first_multiline_str.is_some() {
+            return;
+        }
+        // Trim the delimiting quotes.
+        let mut chars = self.str_from_to(start + BytePos(1), end - BytePos(1)).chars();
+        while let Some(c) = chars.next() {
+            match c {
+                // An escape, possibly a `\<newline>` line continuation. Either way the newline
+                // was written deliberately, so skip over it.
+                '\\' => {
+                    chars.next();
+                }
+                '\n' => {
+                    self.first_multiline_str = Some(self.mk_sp(start, end));
+                    return;
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Slice of the source text from `start` up to but excluding `self.pos`,
