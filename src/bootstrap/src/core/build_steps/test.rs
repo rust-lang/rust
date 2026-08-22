@@ -2277,6 +2277,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // running compiler in stage 2 when plugins run.
         let query_compiler;
         let (stage, stage_id) = if suite == "ui-fulldeps" && test_compiler.stage == 1 {
+            builder.info("Warning: running ui-fulldeps tests in stage 1 might cause failures");
+
             // Even when using the stage 0 compiler, we also need to provide the stage 1 compiler
             // so that compiletest can query it for target information.
             query_compiler = Some(test_compiler);
@@ -3067,8 +3069,14 @@ impl BookTest {
                 let stamp = BuildStamp::new(&builder.cargo_out(test_compiler, mode, target))
                     .with_prefix(PathBuf::from(dep).file_name().and_then(|v| v.to_str()).unwrap());
 
-                let output_paths =
-                    run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
+                let output_paths = run_cargo(
+                    builder,
+                    cargo,
+                    vec![],
+                    &stamp,
+                    vec![],
+                    ArtifactKeepMode::BothRlibAndRmeta,
+                );
                 let directories = output_paths
                     .into_iter()
                     .filter_map(|p| p.parent().map(ToOwned::to_owned))
