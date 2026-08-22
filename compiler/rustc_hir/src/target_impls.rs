@@ -62,7 +62,7 @@ impl From<DefKind> for Target {
             DefKind::GlobalAsm => Target::GlobalAsm,
             DefKind::TyAlias => Target::TyAlias,
             DefKind::Enum => Target::Enum,
-            DefKind::Struct => Target::Struct,
+            DefKind::Struct => Target::Struct { has_default_field_values: false },
             DefKind::Union => Target::Union,
             DefKind::Trait => Target::Trait,
             DefKind::TraitAlias => Target::TraitAlias,
@@ -86,7 +86,13 @@ impl From<&hir::Item<'_>> for Target {
             ItemKind::GlobalAsm { .. } => Target::GlobalAsm,
             ItemKind::TyAlias(..) => Target::TyAlias,
             ItemKind::Enum(..) => Target::Enum,
-            ItemKind::Struct(..) => Target::Struct,
+            ItemKind::Struct(_, _, data) => Target::Struct {
+                has_default_field_values: matches!(
+                    data,
+                    hir::VariantData::Struct { fields, .. }
+                        if !fields.is_empty() && fields.iter().any(|f| f.default.is_some())
+                ),
+            },
             ItemKind::Union(..) => Target::Union,
             ItemKind::Trait { .. } => Target::Trait,
             ItemKind::TraitAlias(..) => Target::TraitAlias,

@@ -207,9 +207,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
-            AttributeKind::NonExhaustive(attr_span) => {
-                self.check_non_exhaustive(*attr_span, span, target, item)
-            }
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
@@ -292,6 +289,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NoMain => (),
             AttributeKind::NoMangle(..) => (),
             AttributeKind::NoStd { .. } => (),
+            AttributeKind::NonExhaustive(_) => (),
             AttributeKind::OnUnknown { .. } => (),
             AttributeKind::OnUnmatchedArgs { .. } => (),
             AttributeKind::Opaque => (),
@@ -799,33 +797,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid.
-    fn check_non_exhaustive(
-        &self,
-        attr_span: Span,
-        span: Span,
-        target: Target,
-        item: Option<&'tcx Item<'tcx>>,
-    ) {
-        match target {
-            Target::Struct => {
-                if let hir::Item {
-                    kind: hir::ItemKind::Struct(_, _, hir::VariantData::Struct { fields, .. }),
-                    ..
-                } = item.unwrap()
-                    && !fields.is_empty()
-                    && fields.iter().any(|f| f.default.is_some())
-                {
-                    self.dcx().emit_err(diagnostics::NonExhaustiveWithDefaultFieldValues {
-                        attr_span,
-                        defn_span: span,
-                    });
-                }
-            }
-            _ => {}
-        }
-    }
-
     fn check_doc_alias_value(&self, span: Span, hir_id: HirId, target: Target, alias: Symbol) {
         if let Some(location) = match target {
             Target::AssocTy(_) => {
@@ -866,7 +837,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::TyAlias
             | Target::Enum
             | Target::Variant
-            | Target::Struct
+            | Target::Struct { .. }
             | Target::Field
             | Target::Union
             | Target::Trait

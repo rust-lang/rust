@@ -178,9 +178,9 @@ language_item_table! {
 
     PointeeTrait,            sym::pointee_trait,       pointee_trait,              Target::Trait,          GenericRequirement::None;
     Metadata,                sym::metadata_type,       metadata_type,              Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;
-    DynMetadata,             sym::dyn_metadata,        dyn_metadata,               Target::Struct,         GenericRequirement::None;
+    DynMetadata,             sym::dyn_metadata,        dyn_metadata,               Target::Struct { has_default_field_values: false },         GenericRequirement::None;
 
-    NonNull,                 sym::non_null,            non_null_trait,             Target::Struct,         GenericRequirement::Exact(1);
+    NonNull,                 sym::non_null,            non_null_trait,             Target::Struct { has_default_field_values: false },         GenericRequirement::Exact(1);
 
     Freeze,                  sym::freeze,              freeze_trait,               Target::Trait,          GenericRequirement::Exact(0);
     UnsafeUnpin,             sym::unsafe_unpin,        unsafe_unpin_trait,         Target::Trait,          GenericRequirement::Exact(0);
@@ -201,7 +201,7 @@ language_item_table! {
     TryAsDyn,                sym::try_as_dyn,          try_as_dyn,                 Target::Trait,          GenericRequirement::Exact(1);
 
     // lang items relating to transmutability
-    TransmuteOpts,           sym::transmute_opts,      transmute_opts,             Target::Struct,         GenericRequirement::Exact(0);
+    TransmuteOpts,           sym::transmute_opts,      transmute_opts,             Target::Struct { has_default_field_values: false },         GenericRequirement::Exact(0);
     TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(2);
 
     Add,                     sym::add,                 add_trait,                  Target::Trait,          GenericRequirement::Exact(1);
@@ -229,14 +229,14 @@ language_item_table! {
     Index,                   sym::index,               index_trait,                Target::Trait,          GenericRequirement::Exact(1);
     IndexMut,                sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
-    UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
-    CovariantUnsafeCell,   sym::covariant_unsafe_cell, covariant_unsafe_cell_type, Target::Struct,         GenericRequirement::Exact(1);
-    UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct,         GenericRequirement::None;
+    UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    CovariantUnsafeCell,   sym::covariant_unsafe_cell, covariant_unsafe_cell_type, Target::Struct { has_default_field_values: false },         GenericRequirement::Exact(1);
+    UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct { has_default_field_values: false },         GenericRequirement::None;
 
     VaArgSafe,               sym::va_arg_safe,         va_arg_safe,                Target::Trait,          GenericRequirement::None;
-    VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
+    VaList,                  sym::va_list,             va_list,                    Target::Struct { has_default_field_values: false },         GenericRequirement::None;
 
-    Complex,                 sym::complex,             complex,                    Target::Struct,         GenericRequirement::Exact(1);
+    Complex,                 sym::complex,             complex,                    Target::Struct { has_default_field_values: false },         GenericRequirement::Exact(1);
 
     Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
@@ -275,16 +275,16 @@ language_item_table! {
     CoroutineResume,         sym::coroutine_resume,    coroutine_resume,           Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
 
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
-    Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
+    Pin,                     sym::pin,                 pin_type,                   Target::Struct { has_default_field_values: false },         GenericRequirement::None;
 
     OrderingEnum,            sym::Ordering,            ordering_enum,              Target::Enum,           GenericRequirement::Exact(0);
     PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
     CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
 
-    Type,                    sym::type_info,           type_struct,                Target::Struct,         GenericRequirement::None;
+    Type,                    sym::type_info,           type_struct,                Target::Struct { has_default_field_values: false },         GenericRequirement::None;
     TypeGeneric,             sym::type_info_generic,   type_generic,               Target::Enum,         GenericRequirement::None;
-    TypeId,                  sym::type_id,             type_id,                    Target::Struct,         GenericRequirement::None;
+    TypeId,                  sym::type_id,             type_id,                    Target::Struct { has_default_field_values: false },         GenericRequirement::None;
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and
     // various panic cases with `match`. The `panic_bounds_check` item is for indexing arrays.
@@ -300,8 +300,8 @@ language_item_table! {
     ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn,             GenericRequirement::None;
     PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn,             GenericRequirement::Exact(0);
     PanicMisalignedPointerDereference, sym::panic_misaligned_pointer_dereference, panic_misaligned_pointer_dereference_fn, Target::Fn, GenericRequirement::Exact(0);
-    PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;
-    PanicLocation,           sym::panic_location,      panic_location,             Target::Struct,         GenericRequirement::None;
+    PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    PanicLocation,           sym::panic_location,      panic_location,             Target::Struct { has_default_field_values: false },         GenericRequirement::None;
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::ForeignFn,      GenericRequirement::None;
     PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        Target::Fn,             GenericRequirement::Exact(0);
     PanicInCleanup,          sym::panic_in_cleanup,    panic_in_cleanup,           Target::Fn,             GenericRequirement::Exact(0);
@@ -335,12 +335,12 @@ language_item_table! {
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
     // Lang items needed for `format_args!()`.
-    FormatArgument,          sym::format_argument,     format_argument,            Target::Struct,         GenericRequirement::None;
-    FormatArguments,         sym::format_arguments,    format_arguments,           Target::Struct,         GenericRequirement::None;
+    FormatArgument,          sym::format_argument,     format_argument,            Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    FormatArguments,         sym::format_arguments,    format_arguments,           Target::Struct { has_default_field_values: false },         GenericRequirement::None;
 
     // Compiler-generated drop glue function, aka `core::ptr::drop_glue`
     DropGlue,                sym::drop_glue,           drop_glue_fn,               Target::Fn,             GenericRequirement::Exact(1);
-    AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
+    AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct { has_default_field_values: false },         GenericRequirement::None;
 
     /// For all binary crates without `#![no_main]`, Rust will generate a "main" function.
     /// The exact name and signature are target-dependent. The "main" function will invoke
@@ -354,13 +354,13 @@ language_item_table! {
     CompilerMove,            sym::compiler_move,       compiler_move_fn,           Target::Fn,             GenericRequirement::Exact(2);
     CompilerCopy,            sym::compiler_copy,       compiler_copy_fn,           Target::Fn,             GenericRequirement::Exact(2);
 
-    OwnedBox,                sym::owned_box,           owned_box,                  Target::Struct,         GenericRequirement::Minimum(1);
-    GlobalAlloc,             sym::global_alloc_ty,     global_alloc_ty,            Target::Struct,         GenericRequirement::None;
+    OwnedBox,                sym::owned_box,           owned_box,                  Target::Struct { has_default_field_values: false },         GenericRequirement::Minimum(1);
+    GlobalAlloc,             sym::global_alloc_ty,     global_alloc_ty,            Target::Struct { has_default_field_values: false },         GenericRequirement::None;
 
-    PhantomData,             sym::phantom_data,        phantom_data,               Target::Struct,         GenericRequirement::Exact(1);
+    PhantomData,             sym::phantom_data,        phantom_data,               Target::Struct { has_default_field_values: false },         GenericRequirement::Exact(1);
 
-    ManuallyDrop,            sym::manually_drop,       manually_drop,              Target::Struct,         GenericRequirement::Exact(1);
-    MaybeDangling,           sym::maybe_dangling,      maybe_dangling,             Target::Struct,         GenericRequirement::Exact(1);
+    ManuallyDrop,            sym::manually_drop,       manually_drop,              Target::Struct { has_default_field_values: false },         GenericRequirement::Exact(1);
+    MaybeDangling,           sym::maybe_dangling,      maybe_dangling,             Target::Struct { has_default_field_values: false },         GenericRequirement::Exact(1);
     BikeshedGuaranteedNoDrop, sym::bikeshed_guaranteed_no_drop, bikeshed_guaranteed_no_drop, Target::Trait, GenericRequirement::Exact(0);
 
     MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               Target::Union,          GenericRequirement::None;
@@ -394,10 +394,10 @@ language_item_table! {
 
     // FIXME(swatinem): the following lang items are used for async lowering and
     // should become obsolete eventually.
-    ResumeTy,                sym::ResumeTy,            resume_ty,                  Target::Struct,         GenericRequirement::None;
+    ResumeTy,                sym::ResumeTy,            resume_ty,                  Target::Struct { has_default_field_values: false },         GenericRequirement::None;
     GetContext,              sym::get_context,         get_context_fn,             Target::Fn,             GenericRequirement::None;
 
-    Context,                 sym::Context,             context,                    Target::Struct,         GenericRequirement::None;
+    Context,                 sym::Context,             context,                    Target::Struct { has_default_field_values: false },         GenericRequirement::None;
     FuturePoll,              sym::poll,                future_poll_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
 
     AsyncIteratorPollNext,   sym::async_iterator_poll_next, async_iterator_poll_next, Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(0);
@@ -419,25 +419,25 @@ language_item_table! {
 
     PinNewUnchecked,         sym::new_unchecked,       new_unchecked_fn,           Target::Method(MethodKind::Inherent), GenericRequirement::None;
 
-    RangeFrom,               sym::RangeFrom,           range_from_struct,          Target::Struct,         GenericRequirement::None;
-    RangeFull,               sym::RangeFull,           range_full_struct,          Target::Struct,         GenericRequirement::None;
-    RangeInclusiveStruct,    sym::RangeInclusive,      range_inclusive_struct,     Target::Struct,         GenericRequirement::None;
+    RangeFrom,               sym::RangeFrom,           range_from_struct,          Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    RangeFull,               sym::RangeFull,           range_full_struct,          Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    RangeInclusiveStruct,    sym::RangeInclusive,      range_inclusive_struct,     Target::Struct { has_default_field_values: false },         GenericRequirement::None;
     RangeInclusiveNew,       sym::range_inclusive_new, range_inclusive_new_method, Target::Method(MethodKind::Inherent), GenericRequirement::None;
-    Range,                   sym::Range,               range_struct,               Target::Struct,         GenericRequirement::None;
-    RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct,         GenericRequirement::None;
-    RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
+    Range,                   sym::Range,               range_struct,               Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct { has_default_field_values: false },         GenericRequirement::None;
     RangeMax,                sym::RangeMax,            range_max,                  Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
     RangeMin,                sym::RangeMin,            range_min,                  Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
     RangeSub,                sym::RangeSub,            range_sub,                  Target::Method(MethodKind::Trait { body: false }),     GenericRequirement::Exact(0);
 
     // `new_range` types that are `Copy + IntoIterator`
-    RangeFromCopy,           sym::RangeFromCopy,       range_from_copy_struct,     Target::Struct,         GenericRequirement::None;
-    RangeCopy,               sym::RangeCopy,           range_copy_struct,          Target::Struct,         GenericRequirement::None;
-    RangeInclusiveCopy,      sym::RangeInclusiveCopy,  range_inclusive_copy_struct, Target::Struct,         GenericRequirement::None;
-    RangeToInclusiveCopy,    sym::RangeToInclusiveCopy,     range_to_inclusive_copy_struct, Target::Struct, GenericRequirement::None;
+    RangeFromCopy,           sym::RangeFromCopy,       range_from_copy_struct,     Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    RangeCopy,               sym::RangeCopy,           range_copy_struct,          Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    RangeInclusiveCopy,      sym::RangeInclusiveCopy,  range_inclusive_copy_struct, Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    RangeToInclusiveCopy,    sym::RangeToInclusiveCopy,     range_to_inclusive_copy_struct, Target::Struct { has_default_field_values: false }, GenericRequirement::None;
 
-    String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
-    CStr,                    sym::CStr,                c_str,                      Target::Struct,         GenericRequirement::None;
+    String,                  sym::String,              string,                     Target::Struct { has_default_field_values: false },         GenericRequirement::None;
+    CStr,                    sym::CStr,                c_str,                      Target::Struct { has_default_field_values: false },         GenericRequirement::None;
 
     // Experimental lang items for implementing contract pre- and post-condition checking.
     ContractBuildCheckEnsures, sym::contract_build_check_ensures, contract_build_check_ensures_fn, Target::Fn, GenericRequirement::None;
@@ -456,7 +456,7 @@ language_item_table! {
     CoerceShared,            sym::coerce_shared,       coerce_shared,              Target::Trait,          GenericRequirement::Exact(1);
 
     // Field representing types.
-    FieldRepresentingType,   sym::field_representing_type, field_representing_type,    Target::Struct,         GenericRequirement::Exact(3);
+    FieldRepresentingType,   sym::field_representing_type, field_representing_type,    Target::Struct { has_default_field_values: false },         GenericRequirement::Exact(3);
     Field,                   sym::field,                   field,                      Target::Trait,          GenericRequirement::Exact(0);
     FieldBase,               sym::field_base,              field_base,                 Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(0);
     FieldType,               sym::field_type,              field_type,                 Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(0);

@@ -41,7 +41,8 @@ impl CombineAttributeParser for ReprParser {
             cx.check_target(
                 "()",
                 &AllowedTargets::AllowList(&[
-                    Allow(Target::Struct),
+                    Allow(Target::Struct { has_default_field_values: false }),
+                    Allow(Target::Struct { has_default_field_values: true }),
                     Allow(Target::Enum),
                     Allow(Target::Union),
                     Warn(Target::MacroCall),
@@ -87,7 +88,8 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             cx.check_target(
                 "(align(...))",
                 &AllowedTargets::AllowList(&[
-                    Allow(Target::Struct),
+                    Allow(Target::Struct { has_default_field_values: false }),
+                    Allow(Target::Struct { has_default_field_values: true }),
                     Allow(Target::Enum),
                     Allow(Target::Union),
                     Warn(Target::MacroCall),
@@ -100,7 +102,8 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             cx.check_target(
                 "(packed)",
                 &AllowedTargets::AllowList(&[
-                    Allow(Target::Struct),
+                    Allow(Target::Struct { has_default_field_values: false }),
+                    Allow(Target::Struct { has_default_field_values: true }),
                     Allow(Target::Union),
                     Warn(Target::MacroCall),
                 ]),
@@ -119,7 +122,8 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             cx.check_target(
                 "(Rust)",
                 &AllowedTargets::AllowList(&[
-                    Allow(Target::Struct),
+                    Allow(Target::Struct { has_default_field_values: false }),
+                    Allow(Target::Struct { has_default_field_values: true }),
                     Allow(Target::Enum),
                     Allow(Target::Union),
                     Warn(Target::MacroCall),
@@ -132,7 +136,8 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             cx.check_target(
                 "(C)",
                 &AllowedTargets::AllowList(&[
-                    Allow(Target::Struct),
+                    Allow(Target::Struct { has_default_field_values: false }),
+                    Allow(Target::Struct { has_default_field_values: true }),
                     Allow(Target::Enum),
                     Allow(Target::Union),
                     Warn(Target::MacroCall),
@@ -151,7 +156,13 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                 )
                 .emit();
             }
-            cx.check_target("(simd)", &AllowedTargets::AllowList(&[Allow(Target::Struct)]));
+            cx.check_target(
+                "(simd)",
+                &AllowedTargets::AllowList(&[
+                    Allow(Target::Struct { has_default_field_values: false }),
+                    Allow(Target::Struct { has_default_field_values: true }),
+                ]),
+            );
             cx.expect_no_args(param.args())?;
             Some(ReprSimd)
         }
@@ -159,7 +170,8 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             cx.check_target(
                 "(transparent)",
                 &AllowedTargets::AllowList(&[
-                    Allow(Target::Struct),
+                    Allow(Target::Struct { has_default_field_values: false }),
+                    Allow(Target::Struct { has_default_field_values: true }),
                     Allow(Target::Enum),
                     Allow(Target::Union), // Feature gated in `rustc_attr_ir_analysis`
                     Warn(Target::MacroCall),

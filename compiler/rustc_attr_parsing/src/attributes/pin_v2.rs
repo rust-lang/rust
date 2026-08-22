@@ -14,7 +14,8 @@ impl NoArgsAttributeParser for PinV2Parser {
     const PATH: &[Symbol] = &[sym::pin_v2];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Union),
     ]);
     const STABILITY: AttributeStability = unstable!(pin_ergonomics);

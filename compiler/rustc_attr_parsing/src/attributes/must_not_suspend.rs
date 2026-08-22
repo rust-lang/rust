@@ -7,7 +7,8 @@ pub(crate) struct MustNotSuspendParser;
 impl SingleAttributeParser for MustNotSuspendParser {
     const PATH: &[rustc_span::Symbol] = &[sym::must_not_suspend];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::Union),
         Allow(Target::Trait),

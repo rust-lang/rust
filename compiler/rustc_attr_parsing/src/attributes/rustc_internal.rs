@@ -207,7 +207,10 @@ pub(crate) struct RustcLintOptTyParser;
 
 impl NoArgsAttributeParser for RustcLintOptTyParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_opt_ty];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
+    ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintOptTy;
 }
@@ -559,7 +562,10 @@ pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
 
 impl SingleAttributeParser for RustcSimdMonomorphizeLaneLimitParser {
     const PATH: &[Symbol] = &[sym::rustc_simd_monomorphize_lane_limit];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
@@ -573,7 +579,10 @@ pub(crate) struct RustcScalableVectorParser;
 
 impl SingleAttributeParser for RustcScalableVectorParser {
     const PATH: &[Symbol] = &[sym::rustc_scalable_vector];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["count"]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
@@ -630,7 +639,8 @@ impl NoArgsAttributeParser for RustcHasIncoherentInherentImplsParser {
     const PATH: &[Symbol] = &[sym::rustc_has_incoherent_inherent_impls];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::Union),
         Allow(Target::ForeignTy),
@@ -797,7 +807,8 @@ impl CombineAttributeParser for RustcCleanParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Mod),
         Allow(Target::Static),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Trait),
         Allow(Target::TyAlias),
         Allow(Target::Union),
@@ -894,7 +905,8 @@ impl SingleAttributeParser for RustcIfThisChangedParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Mod),
         Allow(Target::Static),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Trait),
         Allow(Target::TyAlias),
         Allow(Target::Union),
@@ -956,7 +968,8 @@ impl CombineAttributeParser for RustcThenThisWouldNeedParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Mod),
         Allow(Target::Static),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Trait),
         Allow(Target::TyAlias),
         Allow(Target::Union),
@@ -987,7 +1000,8 @@ impl NoArgsAttributeParser for RustcInsignificantDtorParser {
     const PATH: &[Symbol] = &[sym::rustc_insignificant_dtor];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::ForeignTy),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
@@ -1009,7 +1023,8 @@ impl NoArgsAttributeParser for RustcEffectiveVisibilityParser {
         Allow(Target::TyAlias),
         Allow(Target::Enum),
         Allow(Target::Variant),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Field),
         Allow(Target::Union),
         Allow(Target::Trait),
@@ -1043,7 +1058,8 @@ impl SingleAttributeParser for RustcDiagnosticItemParser {
     const PATH: &[Symbol] = &[sym::rustc_diagnostic_item];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::MacroDef),
         Allow(Target::TyAlias),
@@ -1098,7 +1114,10 @@ pub(crate) struct RustcNonnullOptimizationGuaranteedParser;
 
 impl NoArgsAttributeParser for RustcNonnullOptimizationGuaranteedParser {
     const PATH: &[Symbol] = &[sym::rustc_nonnull_optimization_guaranteed];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
+    ]);
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
         "the `rustc_nonnull_optimization_guaranteed` attribute is just used to document guaranteed niche optimizations in the standard library",
@@ -1113,7 +1132,8 @@ impl NoArgsAttributeParser for RustcStrictCoherenceParser {
     const PATH: &[Symbol] = &[sym::rustc_strict_coherence];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Enum),
         Allow(Target::Union),
         Allow(Target::ForeignTy),

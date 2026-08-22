@@ -408,7 +408,12 @@ pub(crate) fn allowed_targets_applied(
     ];
     const IMPL_LIKE: &[Target] =
         &[Target::Impl { of_trait: false }, Target::Impl { of_trait: true }];
-    const ADT_LIKE: &[Target] = &[Target::Struct, Target::Enum, Target::Union];
+    const ADT_LIKE: &[Target] = &[
+        Target::Struct { has_default_field_values: false },
+        Target::Struct { has_default_field_values: true },
+        Target::Enum,
+        Target::Union,
+    ];
 
     let mut added_fake_targets = Vec::new();
     filter_targets(
@@ -500,7 +505,8 @@ pub(crate) const ALL_TARGETS: &[Policy] = {
         Allow(Target::TyAlias),
         Allow(Target::Enum),
         Allow(Target::Variant),
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::Field),
         Allow(Target::Union),
         Allow(Target::Trait),

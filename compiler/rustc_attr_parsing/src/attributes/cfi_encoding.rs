@@ -5,7 +5,8 @@ pub(crate) struct CfiEncodingParser;
 impl SingleAttributeParser for CfiEncodingParser {
     const PATH: &[Symbol] = &[sym::cfi_encoding];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::Struct),
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
         Allow(Target::ForeignTy),
         Allow(Target::Enum),
         Allow(Target::Union),

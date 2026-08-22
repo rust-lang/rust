@@ -135,8 +135,11 @@ impl NoArgsAttributeParser for RustcAllowIncoherentImplParser {
 pub(crate) struct FundamentalParser;
 impl NoArgsAttributeParser for FundamentalParser {
     const PATH: &[Symbol] = &[sym::fundamental];
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowList(&[Allow(Target::Struct), Allow(Target::Trait)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Struct { has_default_field_values: false }),
+        Allow(Target::Struct { has_default_field_values: true }),
+        Allow(Target::Trait),
+    ]);
     const STABILITY: AttributeStability = unstable!(fundamental);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Fundamental;
 }
