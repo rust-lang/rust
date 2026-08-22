@@ -153,8 +153,8 @@ impl<T: Idx> DenseBitSet<T> {
         if i >= domain_size {
             #[cold]
             #[inline(never)]
-            fn insert_fail() {
-                panic!("inserting element at larger than domain size");
+            fn insert_fail() -> ! {
+                panic!("inserting element at larger than domain size")
             }
             insert_fail()
         }
