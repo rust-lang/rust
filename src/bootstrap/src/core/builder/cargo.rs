@@ -449,27 +449,32 @@ impl Cargo {
             let cc = ccacheify(&builder.cc(target));
             self.command.env(format!("CC_{triple_underscored}"), &cc);
 
-            // Compiling C deps, like jemalloc and llvm-wrapper, should be with
-            // the same LTO mode as the Rust code they are linked into.
+            // Compiling C deps, like jemalloc and llvm-wrapper, should be with the same LTO mode as
+            // the Rust code they are linked into. We don't pass the checks cc-rs uses to
+            // auto-enable that so we have to do it ourselves.
             //
             // Std's C deps, e.g. compiler_builtins, ship inside rlibs that
             // end users consume directly. Building with `-flto` may break
             // non-LLVM linkers or mismatch on bitcode versions. Therefore we
             // must not build std in LTO mode here.
+            //
+            // The same concern also applies to `rustc` because we distribute the rustc-dev
+            // component. There we use "fat LTO" (storing both object code and bitcode) as we can
+            // live with the extra space this consumes.
             let lto_cflag = if matches!(self.mode, Mode::Rustc | Mode::ToolRustcPrivate)
                 && is_lto_stage(&self.compiler)
                 && builder.cc_tool(target).is_like_clang()
             {
                 match builder.config.rust_lto {
-                    RustcLto::Thin => Some("-flto=thin"),
-                    RustcLto::Fat => Some("-flto=full"),
+                    RustcLto::Thin => Some("-flto=thin -ffat-lto-objects"),
+                    RustcLto::Fat => Some("-flto=full -ffat-lto-objects"),
                     RustcLto::ThinLocal | RustcLto::Off => None,
                 }
             } else {
                 None
             };
 
-            // Extend `CXXFLAGS_$TARGET` with our extra flags.
+            // Extend `CFLAGS_$TARGET` with our extra flags.
             let env = format!("CFLAGS_{triple_underscored}");
             let mut cflags =
                 builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
