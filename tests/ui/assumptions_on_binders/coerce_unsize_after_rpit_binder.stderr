@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `&impl Trait<T>: CoerceUnsized<&dyn Debug>` is not satisfied in `impl Trait<T>`
+  --> $DIR/coerce_unsize_after_rpit_binder.rs:26:25
+   |
+LL | fn produce() -> impl for<T> Trait<T> {
+   |                 -------------------- within this `impl Trait<T>`
+...
+LL |     let _: &dyn Debug = &x;
+   |                         ^^ within `impl Trait<T>`, the trait `Debug` is not implemented for `impl Trait<T>`
+   |
+note: required because it appears within the type `impl Trait<T>`
+  --> $DIR/coerce_unsize_after_rpit_binder.rs:20:17
+   |
+LL | fn produce() -> impl for<T> Trait<T> {
+   |                 ^^^^^^^^^^^^^^^^^^^^
+   = note: required for `&impl Trait<T>` to implement `CoerceUnsized<&dyn Debug>`
+   = note: required for the cast from `&impl Trait<T>` to `&dyn Debug`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -2223,4 +2223,11 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
             ControlFlow::Continue(())
         }
     }
+
+    fn on_instantiate_nested_goals_failure(&mut self) -> Self::Result {
+        // A candidate that cannot be replayed must not be treated as a successful
+        // unsizing path. `coerce_unsized` only rejects when this visitor `Break`s.
+        self.errored = true;
+        ControlFlow::Break(())
+    }
 }

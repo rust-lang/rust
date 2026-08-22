@@ -229,14 +229,16 @@ impl<'tcx> BestObligation<'tcx> {
                 if candidates.len() > 1 {
                     candidates.retain(|candidate| {
                         goal.infcx().probe(|_| {
-                            candidate.instantiate_nested_goals(self.span()).iter().any(
-                                |nested_goal| {
-                                    matches!(
-                                        nested_goal.source(),
-                                        GoalSource::ImplWhereBound
-                                            | GoalSource::AliasBoundConstCondition
-                                            | GoalSource::AliasWellFormed
-                                    ) && nested_goal.result().is_err()
+                            candidate.instantiate_nested_goals(self.span()).is_ok_and(
+                                |nested_goals| {
+                                    nested_goals.iter().any(|nested_goal| {
+                                        matches!(
+                                            nested_goal.source(),
+                                            GoalSource::ImplWhereBound
+                                                | GoalSource::AliasBoundConstCondition
+                                                | GoalSource::AliasWellFormed
+                                        ) && nested_goal.result().is_err()
+                                    })
                                 },
                             )
                         })
@@ -470,7 +472,9 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             _ => ChildMode::PassThrough,
         };
 
-        let nested_goals = candidate.instantiate_nested_goals(self.span());
+        let Ok(nested_goals) = candidate.instantiate_nested_goals(self.span()) else {
+            return self.detect_error_from_empty_candidates(goal);
+        };
 
         // If the candidate requires some `T: FnPtr` bound which does not hold should not be treated as
         // an actual candidate, instead we should treat them as if the impl was never considered to

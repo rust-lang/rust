@@ -77,7 +77,15 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     /// back their inference constraints. This function modifies
     /// the state of the `infcx`.
     pub fn visit_nested_no_probe<V: ProofTreeVisitor<'tcx>>(&self, visitor: &mut V) -> V::Result {
-        for goal in self.instantiate_nested_goals(visitor.span()) {
+        let Ok(nested_goals) = self.instantiate_nested_goals(visitor.span()) else {
+            // Instantiation can fail when a candidate response is not applicable in the
+            // caller's inference context (e.g. a placeholder universe leak). Do not treat
+            // that as a successful visit: `V::Result::output()` is `Continue` for
+            // `ControlFlow` visitors such as unsizing coercion.
+            return visitor.on_instantiate_nested_goals_failure();
+        };
+
+        for goal in nested_goals {
             try_visit!(goal.visit_with(visitor));
         }
 
@@ -93,44 +101,54 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         skip_all,
         fields(goal = ?self.goal.goal, steps = ?self.steps)
     )]
-    pub fn instantiate_nested_goals(&self, span: Span) -> Vec<InspectGoal<'a, 'tcx>> {
+    pub fn instantiate_nested_goals(
+        &self,
+        span: Span,
+    ) -> Result<Vec<InspectGoal<'a, 'tcx>>, NoSolution> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
-        let mut orig_values = self.goal.orig_values.clone();
+        let instantiate =
+            || -> Result<Vec<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>, NoSolution> {
+                let mut orig_values = self.goal.orig_values.clone();
+                let mut instantiated_goals = vec![];
 
-        let mut instantiated_goals = vec![];
-        for step in &self.steps {
-            match **step {
-                inspect::ProbeStep::AddGoal(source, goal) => instantiated_goals.push((
-                    source,
-                    instantiate_canonical_state(
-                        infcx,
-                        span,
-                        param_env,
-                        self.goal.prev_universe,
-                        &mut orig_values,
-                        goal,
-                    ),
-                )),
-                inspect::ProbeStep::RecordImplArgs { .. } => {}
-                inspect::ProbeStep::MakeCanonicalResponse { .. }
-                | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
-            }
-        }
+                for step in &self.steps {
+                    match **step {
+                        inspect::ProbeStep::AddGoal(source, goal) => {
+                            let goal = instantiate_canonical_state(
+                                infcx,
+                                span,
+                                param_env,
+                                self.goal.prev_universe,
+                                &mut orig_values,
+                                goal,
+                            )?;
+                            instantiated_goals.push((source, goal));
+                        }
+                        inspect::ProbeStep::RecordImplArgs { .. } => {}
+                        inspect::ProbeStep::MakeCanonicalResponse { .. }
+                        | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
+                    }
+                }
 
-        let () = instantiate_canonical_state(
-            infcx,
-            span,
-            param_env,
-            self.goal.prev_universe,
-            &mut orig_values,
-            self.final_state,
-        );
+                let () = instantiate_canonical_state(
+                    infcx,
+                    span,
+                    param_env,
+                    self.goal.prev_universe,
+                    &mut orig_values,
+                    self.final_state,
+                )?;
 
-        instantiated_goals
+                Ok(instantiated_goals)
+            };
+
+        let instantiated_goals = infcx.commit_if_ok(|_| instantiate())?;
+
+        Ok(instantiated_goals
             .into_iter()
             .map(|(source, goal)| self.instantiate_proof_tree_for_nested_goal(source, goal, span))
-            .collect()
+            .collect())
     }
 
     /// Instantiate the args of an impl if this candidate came from a
@@ -141,41 +159,49 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         skip_all,
         fields(goal = ?self.goal.goal, steps = ?self.steps)
     )]
-    pub fn instantiate_impl_args(&self, span: Span) -> ty::GenericArgsRef<'tcx> {
+    pub fn instantiate_impl_args(
+        &self,
+        span: Span,
+    ) -> Result<ty::GenericArgsRef<'tcx>, NoSolution> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
-        let mut orig_values = self.goal.orig_values.clone();
+        let instantiate = || -> Result<ty::GenericArgsRef<'tcx>, NoSolution> {
+            let mut orig_values = self.goal.orig_values.clone();
 
-        for step in &self.steps {
-            match **step {
-                inspect::ProbeStep::RecordImplArgs { impl_args } => {
-                    let impl_args = instantiate_canonical_state(
-                        infcx,
-                        span,
-                        param_env,
-                        self.goal.prev_universe,
-                        &mut orig_values,
-                        impl_args,
-                    );
+            for step in &self.steps {
+                match **step {
+                    inspect::ProbeStep::RecordImplArgs { impl_args } => {
+                        let impl_args = instantiate_canonical_state(
+                            infcx,
+                            span,
+                            param_env,
+                            self.goal.prev_universe,
+                            &mut orig_values,
+                            impl_args,
+                        )?;
 
-                    let () = instantiate_canonical_state(
-                        infcx,
-                        span,
-                        param_env,
-                        self.goal.prev_universe,
-                        &mut orig_values,
-                        self.final_state,
-                    );
+                        let () = instantiate_canonical_state(
+                            infcx,
+                            span,
+                            param_env,
+                            self.goal.prev_universe,
+                            &mut orig_values,
+                            self.final_state,
+                        )?;
 
-                    return eager_resolve_vars(&**infcx, impl_args);
+                        return Ok(impl_args);
+                    }
+                    inspect::ProbeStep::AddGoal(..) => {}
+                    inspect::ProbeStep::MakeCanonicalResponse { .. }
+                    | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
                 }
-                inspect::ProbeStep::AddGoal(..) => {}
-                inspect::ProbeStep::MakeCanonicalResponse { .. }
-                | inspect::ProbeStep::NestedProbe(_) => unreachable!(),
             }
-        }
 
-        bug!("expected impl args probe step for `instantiate_impl_args`");
+            bug!("expected impl args probe step for `instantiate_impl_args`");
+        };
+
+        let impl_args = infcx.commit_if_ok(|_| instantiate())?;
+        Ok(eager_resolve_vars(&**infcx, impl_args))
     }
 
     pub fn instantiate_proof_tree_for_nested_goal(
@@ -379,6 +405,15 @@ pub trait ProofTreeVisitor<'tcx> {
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> Self::Result;
 
     fn on_recursion_limit(&mut self) -> Self::Result {
+        Self::Result::output()
+    }
+
+    /// Called when [`InspectCandidate::instantiate_nested_goals`] fails.
+    ///
+    /// The default continues the visit. Visitors that encode accept/reject as
+    /// `ControlFlow` (for example unsizing coercion) should override this to
+    /// break instead of treating the failed replay as success.
+    fn on_instantiate_nested_goals_failure(&mut self) -> Self::Result {
         Self::Result::output()
     }
 }
