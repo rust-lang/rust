@@ -1069,12 +1069,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         .unwrap() // if uninhabited, then >0 fields
             }
             if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant)
-                    // FIXME: this constructs two `typing_env`s in a single line
-                    // (inefficient, but is it that big a problem?)
-                    && !super::is_1zst(self.cx, maybe_normalize_erasing_regions(
-                        self.cx,
-                        field.ty(self.cx.tcx, args),
-                    ))
+                // FIXME: this constructs two `typing_env`s in a single line
+                // (inefficient, but is it that big a problem?)
+                && !super::is_1zst(self.cx, maybe_normalize_erasing_regions(
+                    self.cx,
+                    field.ty(self.cx.tcx, args),
+                ))
             {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked later
                 // Though, the function above doesn't see through type params in this ADT, so we checked its work

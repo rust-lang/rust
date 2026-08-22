@@ -1,5 +1,5 @@
 error: `extern` block uses type `&[u32]`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:76:26
+  --> $DIR/lint-ctypes.rs:71:26
    |
 LL |     pub fn slice_type(p: &[u32]);
    |                          ^^^^^^ not FFI-safe
@@ -7,13 +7,13 @@ LL |     pub fn slice_type(p: &[u32]);
    = help: consider using a raw pointer to the slice's first element (and a length) instead
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 note: the lint level is defined here
-  --> $DIR/lint-ctypes.rs:6:9
+  --> $DIR/lint-ctypes.rs:7:9
    |
 LL | #![deny(improper_ctypes, improper_ctypes_definitions)]
    |         ^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `&str`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:77:24
+  --> $DIR/lint-ctypes.rs:72:24
    |
 LL |     pub fn str_type(p: &str);
    |                        ^^^^ not FFI-safe
@@ -22,7 +22,7 @@ LL |     pub fn str_type(p: &str);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `char`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:80:25
+  --> $DIR/lint-ctypes.rs:76:25
    |
 LL |     pub fn char_type(p: char);
    |                         ^^^^ not FFI-safe
@@ -31,7 +31,7 @@ LL |     pub fn char_type(p: char);
    = note: the `char` type has no C equivalent
 
 error: `extern` block uses type `Option<pattern_type!(u32 is 0..)>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:81:27
+  --> $DIR/lint-ctypes.rs:77:27
    |
 LL |     pub fn pat_type1() -> Option<pattern_type!(u32 is 0..)>;
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -40,7 +40,7 @@ LL |     pub fn pat_type1() -> Option<pattern_type!(u32 is 0..)>;
    = note: enum has no representation hint
 
 error: `extern` block uses type `&dyn Bar`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:83:26
+  --> $DIR/lint-ctypes.rs:79:26
    |
 LL |     pub fn trait_type(p: &dyn Bar);
    |                          ^^^^^^^^ not FFI-safe
@@ -48,7 +48,7 @@ LL |     pub fn trait_type(p: &dyn Bar);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `(i32, i32)`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:84:26
+  --> $DIR/lint-ctypes.rs:80:26
    |
 LL |     pub fn tuple_type(p: (i32, i32));
    |                          ^^^^^^^^^^ not FFI-safe
@@ -57,7 +57,7 @@ LL |     pub fn tuple_type(p: (i32, i32));
    = note: tuples have unspecified layout
 
 error: `extern` block uses type `(i32, i32)`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:85:27
+  --> $DIR/lint-ctypes.rs:81:27
    |
 LL |     pub fn tuple_type2(p: I32Pair);
    |                           ^^^^^^^ not FFI-safe
@@ -65,35 +65,24 @@ LL |     pub fn tuple_type2(p: I32Pair);
    = help: consider using a struct instead
    = note: tuples have unspecified layout
 
-error: `extern` block uses type `ZeroSize`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:86:25
+error: `extern` block uses type `Box<(i32, [u8])>`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:82:29
    |
-LL |     pub fn zero_size(p: ZeroSize);
-   |                         ^^^^^^^^ not FFI-safe
+LL |     pub fn tuple_unsized(p: Box<(i32, [u8])>);
+   |                             ^^^^^^^^^^^^^^^^ not FFI-safe
    |
-   = help: consider adding a member to this struct
-   = note: `ZeroSize` has no fields
-note: the type is defined here
-  --> $DIR/lint-ctypes.rs:32:1
-   |
-LL | pub struct ZeroSize;
-   | ^^^^^^^^^^^^^^^^^^^
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` block uses type `ZeroSizeWithPhantomData`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:87:33
+error: `extern` block uses type `unsafe<'a> &'a (i32, UnsizedFFIOpaque)`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:83:31
    |
-LL |     pub fn zero_size_phantom(p: ZeroSizeWithPhantomData);
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+LL |     pub fn unsafe_binder() -> unsafe<'made_up> &'made_up (i32, UnsizedFFIOpaque);
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
-   = note: composed only of `PhantomData`
-note: the type is defined here
-  --> $DIR/lint-ctypes.rs:69:1
-   |
-LL | pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: unsafe binders are incompatible with foreign function interfaces
 
 error: `extern` block uses type `PhantomData<bool>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:89:44
+  --> $DIR/lint-ctypes.rs:86:44
    |
 LL |     pub fn zero_size_phantom_toplevel() -> ::std::marker::PhantomData<bool>;
    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -101,7 +90,7 @@ LL |     pub fn zero_size_phantom_toplevel() -> ::std::marker::PhantomData<bool>
    = note: composed only of `PhantomData`
 
 error: `extern` block uses type `fn()`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:90:23
+  --> $DIR/lint-ctypes.rs:87:23
    |
 LL |     pub fn fn_type(p: RustFn);
    |                       ^^^^^^ not FFI-safe
@@ -110,7 +99,7 @@ LL |     pub fn fn_type(p: RustFn);
    = note: this function pointer has a Rust-specific calling convention
 
 error: `extern` block uses type `fn()`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:91:24
+  --> $DIR/lint-ctypes.rs:88:24
    |
 LL |     pub fn fn_type2(p: fn());
    |                        ^^^^ not FFI-safe
@@ -119,14 +108,14 @@ LL |     pub fn fn_type2(p: fn());
    = note: this function pointer has a Rust-specific calling convention
 
 error: `extern` block uses type `TransparentStr`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:93:31
+  --> $DIR/lint-ctypes.rs:90:31
    |
 LL |     pub fn transparent_str(p: TransparentStr);
    |                               ^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: this struct/enum/union (`TransparentStr`) is FFI-unsafe due to a `&str` field
 note: the type is defined here
-  --> $DIR/lint-ctypes.rs:40:1
+  --> $DIR/lint-ctypes.rs:39:1
    |
 LL | pub struct TransparentStr(&'static str);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -134,7 +123,7 @@ LL | pub struct TransparentStr(&'static str);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `[u8; 8]`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:95:27
+  --> $DIR/lint-ctypes.rs:92:27
    |
 LL |     pub fn raw_array(arr: [u8; 8]);
    |                           ^^^^^^^ not FFI-safe
@@ -143,7 +132,7 @@ LL |     pub fn raw_array(arr: [u8; 8]);
    = note: passing raw arrays by value is not FFI-safe
 
 error: `extern` callback uses type `char`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:97:37
+  --> $DIR/lint-ctypes.rs:95:37
    |
 LL |         f: for<'a> extern "C" fn(a: char, b: &dyn Debug, c: TwoBadTypes<'a>),
    |                                     ^^^^ not FFI-safe
@@ -152,7 +141,7 @@ LL |         f: for<'a> extern "C" fn(a: char, b: &dyn Debug, c: TwoBadTypes<'a>
    = note: the `char` type has no C equivalent
 
 error: `extern` callback uses type `&dyn Debug`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:97:46
+  --> $DIR/lint-ctypes.rs:95:46
    |
 LL |         f: for<'a> extern "C" fn(a: char, b: &dyn Debug, c: TwoBadTypes<'a>),
    |                                              ^^^^^^^^^^ not FFI-safe
@@ -160,14 +149,14 @@ LL |         f: for<'a> extern "C" fn(a: char, b: &dyn Debug, c: TwoBadTypes<'a>
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` callback uses type `TwoBadTypes<'_>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:97:61
+  --> $DIR/lint-ctypes.rs:95:61
    |
 LL |         f: for<'a> extern "C" fn(a: char, b: &dyn Debug, c: TwoBadTypes<'a>),
    |                                                             ^^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: this struct/enum/union (`TwoBadTypes<'_>`) is FFI-unsafe due to a `char` field
 note: the type is defined here
-  --> $DIR/lint-ctypes.rs:63:1
+  --> $DIR/lint-ctypes.rs:50:1
    |
 LL | pub struct TwoBadTypes<'a> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -175,30 +164,30 @@ LL | pub struct TwoBadTypes<'a> {
    = note: the `char` type has no C equivalent
 
 error: `extern` callback uses type `TwoBadTypes<'_>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:97:61
+  --> $DIR/lint-ctypes.rs:95:61
    |
 LL |         f: for<'a> extern "C" fn(a: char, b: &dyn Debug, c: TwoBadTypes<'a>),
    |                                                             ^^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: this struct/enum/union (`TwoBadTypes<'_>`) is FFI-unsafe due to a `&[u8]` field
 note: the type is defined here
-  --> $DIR/lint-ctypes.rs:63:1
+  --> $DIR/lint-ctypes.rs:50:1
    |
 LL | pub struct TwoBadTypes<'a> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: consider using a raw pointer to the slice's first element (and a length) instead
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` block uses type `&UnsizedStructBecauseDyn`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:105:47
+error: `extern` block uses type `*const UnsizedStructBecauseDyn`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:103:47
    |
-LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
-   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+LL |     pub fn struct_unsized_ptr_has_metadata(p: *const UnsizedStructBecauseDyn);
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
-   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+   = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `Option<UnsafeCell<extern "C" fn()>>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:107:26
+  --> $DIR/lint-ctypes.rs:105:26
    |
 LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -207,7 +196,7 @@ LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
    = note: enum has no representation hint
 
 error: `extern` block uses type `Option<UnsafeCell<&i32>>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:109:26
+  --> $DIR/lint-ctypes.rs:107:26
    |
 LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -215,8 +204,34 @@ LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
+error: `extern` callback uses type `dyn Bar`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:135:40
+   |
+LL |     pub fn for_fnptr1(f: extern "C" fn(dyn Bar));
+   |                                        ^^^^^^^ not FFI-safe
+   |
+   = note: trait objects have no C equivalent
+
+error: `extern` callback uses type `str`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:136:40
+   |
+LL |     pub fn for_fnptr2(f: extern "C" fn(str));
+   |                                        ^^^ not FFI-safe
+   |
+   = help: consider using `*const u8` and a length instead
+   = note: string slices have no C equivalent
+
+error: `extern` callback uses type `[u32]`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:137:40
+   |
+LL |     pub fn for_fnptr3(f: extern "C" fn([u32]));
+   |                                        ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer to the slice's first element (and a length) instead
+   = note: slices have no C equivalent
+
 error: foreign-code-reachable static uses type `&str`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:146:29
+  --> $DIR/lint-ctypes.rs:150:29
    |
 LL | static EXPORTED_STATIC_BAD: &'static str = "is this reaching you, plugin?";
    |                             ^^^^^^^^^^^^ not FFI-safe
@@ -224,10 +239,10 @@ LL | static EXPORTED_STATIC_BAD: &'static str = "is this reaching you, plugin?";
    = help: consider using `*const u8` and a length instead
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 note: the lint level is defined here
-  --> $DIR/lint-ctypes.rs:6:26
+  --> $DIR/lint-ctypes.rs:7:26
    |
 LL | #![deny(improper_ctypes, improper_ctypes_definitions)]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 22 previous errors
+error: aborting due to 25 previous errors
 
