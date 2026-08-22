@@ -2082,6 +2082,7 @@ symbols! {
         sub_with_overflow,
         suggestion,
         super_let,
+        supertrait_auto_impl,
         supertrait_item_shadowing,
         sve_cast,
         sve_tuple_create2,

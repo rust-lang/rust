@@ -488,6 +488,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "call as func((a, ...)) instead"
     );
     gate_all!(super_let, "`super let` is experimental");
+    gate_all!(supertrait_auto_impl, "`auto impl` syntax is experimental");
     gate_all!(try_blocks_heterogeneous, "`try bikeshed` expression is experimental");
     gate_all!(unnamed_enum_variants, "unnamed enum variants are experimental");
     gate_all!(unsafe_binders, "unsafe binder types are experimental");

@@ -3759,6 +3759,7 @@ impl Item {
             | ItemKind::Union(_, generics, _) => Some(&generics),
             ItemKind::Trait(i) => Some(&i.generics),
             ItemKind::Impl(i) => Some(&i.generics),
+            ItemKind::AutoImplTrait(i) => Some(&i.generics),
         }
     }
 }
@@ -3936,6 +3937,24 @@ pub struct TraitImplHeader {
     pub safety: Safety,
     pub polarity: ImplPolarity,
     pub trait_ref: TraitRef,
+}
+
+/// A supertrait auto-implementation declaration.
+///
+/// E.g., `auto impl Super for trait Sub {}` or
+/// `unsafe auto impl Super for trait Sub { type Assoc = u8; }`
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct AutoImplTrait {
+    /// The safety of this auto impl (`unsafe auto impl ...`)
+    pub safety: Safety,
+    /// Generics on the auto impl (reserved for future use)
+    pub generics: Generics,
+    /// The supertrait being auto-implemented (e.g., `Super`)
+    pub trait_ref: TraitRef,
+    /// The subtrait this auto impl belongs to (e.g., `Sub` in `for trait Sub`)
+    pub for_trait: Ident,
+    /// The items inside the auto impl block (associated item defaults)
+    pub items: ThinVec<Box<AssocItem>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Default, Walkable)]
@@ -4164,6 +4183,10 @@ pub enum ItemKind {
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
     Impl(Impl),
+    /// A supertrait auto-implementation.
+    ///
+    /// E.g., `auto impl Super for trait Sub { .. }`.
+    AutoImplTrait(Box<AutoImplTrait>),
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
@@ -4202,6 +4225,7 @@ impl ItemKind {
             | ItemKind::ForeignMod(_)
             | ItemKind::GlobalAsm(_)
             | ItemKind::Impl(_)
+            | ItemKind::AutoImplTrait(_)
             | ItemKind::MacCall(_)
             | ItemKind::DelegationMac(_) => None,
         }
@@ -4214,7 +4238,8 @@ impl ItemKind {
             Use(..) | Static(..) | Const(..) | ConstBlock(..) | Fn(..) | Mod(..)
             | GlobalAsm(..) | TyAlias(..) | Struct(..) | Union(..) | Trait(..) | TraitAlias(..)
             | MacroDef(..) | Delegation(..) | DelegationMac(..) => "a",
-            ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
+            ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. }
+            | AutoImplTrait(..) => "an",
         }
     }
 
@@ -4238,6 +4263,7 @@ impl ItemKind {
             ItemKind::MacCall(..) => "item macro invocation",
             ItemKind::MacroDef(..) => "macro definition",
             ItemKind::Impl { .. } => "implementation",
+            ItemKind::AutoImplTrait(..) => "supertrait auto implementation",
             ItemKind::Delegation(..) => "delegated function",
             ItemKind::DelegationMac(..) => "delegation",
         }
@@ -4253,7 +4279,8 @@ impl ItemKind {
             | Self::Union(_, generics, _)
             | Self::Trait(Trait { generics, .. })
             | Self::TraitAlias(TraitAlias { generics, .. })
-            | Self::Impl(Impl { generics, .. }) => Some(generics),
+            | Self::Impl(Impl { generics, .. })
+            | Self::AutoImplTrait(AutoImplTrait { generics, .. }) => Some(generics),
 
             Self::ExternCrate(..)
             | Self::Use(..)
