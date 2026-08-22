@@ -3,7 +3,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, MultiSpan, pluralize};
 use rustc_hir as hir;
 use rustc_middle::ty::{self as ty, AssocItem, AssocItems, TyCtxt};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use tracing::debug;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.
@@ -30,6 +30,9 @@ pub(crate) struct WrongNumberOfGenericArgs<'a, 'tcx> {
 
     /// DefId of the generic type
     pub(crate) def_id: DefId,
+
+    /// DefId of the generic type
+    pub(crate) cx_def_id: LocalDefId,
 }
 
 // Provides information about the kind of arguments that were provided for
@@ -83,6 +86,7 @@ pub(crate) enum GenericArgsInfo {
         // if synthetic type arguments (e.g. `impl Trait`) are specified
         synth_provided: bool,
     },
+    // BadDerive,
 }
 
 impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
@@ -94,6 +98,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         params_offset: usize,
         gen_args: &'a hir::GenericArgs<'a>,
         def_id: DefId,
+        cx_def_id: LocalDefId,
     ) -> Self {
         let angle_brackets = if gen_args.span_ext().is_none() {
             if gen_args.is_empty() { AngleBrackets::Missing } else { AngleBrackets::Implied }
@@ -110,6 +115,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             params_offset,
             gen_args,
             def_id,
+            cx_def_id,
         }
     }
 
@@ -540,6 +546,25 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         } else {
             format!("missing generics for {def_kind} `{def_path}`")
         }
+    }
+
+    fn bad_derive(&self, err: &mut Diag<'_, impl EmissionGuarantee>) -> bool {
+        if let Some(ident) = self.tcx.opt_item_ident(self.def_id)
+            && self.def_id.is_local()
+            && self.path_segment.ident.span.source_equal(ident.span)
+            && self.tcx.is_automatically_derived(self.cx_def_id.into())
+        {
+            // Very likely this is a botched `derive` which passes the iten name straight
+            // through, but doesn't support type parameters.
+            err.span_label(
+                self.tcx.def_span(self.cx_def_id),
+                "it looks like this derive macro might not support annotating items with type \
+                 parameters",
+            );
+
+            return true;
+        }
+        false
     }
 
     /// Builds the `expected 1 type argument / supplied 2 type arguments` message.
@@ -1158,6 +1183,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for WrongNumberOfGenericArgs<'_
         err.code(E0107);
         err.span(self.path_segment.ident.span);
 
+        if self.bad_derive(&mut err) {
+            return err;
+        }
         self.notify(&mut err);
         self.suggest(&mut err);
         self.show_definition(&mut err);
