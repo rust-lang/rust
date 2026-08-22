@@ -1220,6 +1220,81 @@ impl CommandLineStep for IntrinsicTest {
     }
 }
 
+/// Runs stdarch's gen-checks (arm, loongarch, hexagon) to
+/// verify the committed `core_arch` files are up to date with their specs.
+/// With `--bless`, regenerates and writes them back instead.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StdarchGenCheck {
+    host: TargetSelection,
+}
+
+impl CommandLineStep for StdarchGenCheck {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("stdarch-gen-check")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(StdarchGenCheck { host: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let stdarch_root = builder.src.join("library/stdarch");
+
+        // `--bless` regenerates and writes back into the tree otherwise just check.
+        let mode = if builder.config.cmd.bless() { "bless" } else { "check" };
+
+        // Generators shell out to `rustfmt`. Skip this step if bootstrap has none for this channel.
+        let Some(rustfmt_path) = builder.ensure(InternalRustfmt) else {
+            eprintln!(
+                "WARNING: stdarch-gen-check skipped because rustfmt is required but not available on this channel"
+            );
+            return;
+        };
+
+        let mut path_dirs: Vec<PathBuf> = Vec::new();
+        if let Some(rustfmt_dir) = rustfmt_path.parent() {
+            path_dirs.push(rustfmt_dir.to_path_buf());
+        }
+        let old_path = env::var_os("PATH").unwrap_or_default();
+        let new_path = env::join_paths(path_dirs.into_iter().chain(env::split_paths(&old_path)))
+            .expect("could not build PATH for stdarch-gen-check");
+
+        // Keep cargo's build artifacts out of the (possibly read-only) source tree.
+        let cargo_target_dir = builder.out.join("stdarch-gen-check").join("target");
+
+        // `stdarch-gen-common` runs each generator into a temp dir and diffs/blesses
+        // against the committed files itself, driven by STDARCH_GEN_MODE.
+        let run_gen = |selector: &str, pkg: &str, args: &[&OsStr]| {
+            let mut cmd = command(&builder.initial_cargo);
+            cmd.current_dir(&stdarch_root);
+            cmd.arg("run").arg(selector).arg(pkg).arg("--release").arg("--").args(args);
+            // RUSTC_BOOTSTRAP=1 allow nightly features when building tools against stage0.
+            cmd.env("RUSTC_BOOTSTRAP", "1");
+            cmd.env("RUSTC", &builder.initial_rustc);
+            cmd.env("PATH", &new_path);
+            cmd.env("CARGO_TARGET_DIR", &cargo_target_dir);
+            cmd.env("STDARCH_GEN_MODE", mode);
+            cmd.run(builder);
+        };
+
+        run_gen(
+            "--bin",
+            "stdarch-gen-arm",
+            &[OsStr::new("crates/stdarch-gen-arm/spec"), OsStr::new("crates/core_arch/src")],
+        );
+        run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lsx")]);
+        run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lasx")]);
+        run_gen("-p", "stdarch-gen-hexagon", &[]);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
