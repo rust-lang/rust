@@ -260,7 +260,7 @@ impl SocketAddr {
         {
             AddressKind::Unnamed
         } else if self.addr.sun_path[0] == 0 {
-            AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
+            AddressKind::Abstract(ByteStr::new(&path[1..len]))
         } else {
             // linux adds a trailing NUL and counts it in the length, freebsd, netbsd
             // and qnx do not, and a caller may bind(2) without one either. unix(7)

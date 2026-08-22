@@ -7,7 +7,9 @@ pub use traits::{impl_partial_eq, impl_partial_eq_n, impl_partial_eq_ord};
 
 use crate::borrow::{Borrow, BorrowMut};
 use crate::fmt::{self, Alignment};
+use crate::marker::Destruct;
 use crate::ops::{Deref, DerefMut, DerefPure};
+use crate::{fmt, str};
 
 /// A wrapper for `&[u8]` representing a human-readable string that's conventionally, but not
 /// always, UTF-8.
@@ -41,7 +43,8 @@ use crate::ops::{Deref, DerefMut, DerefPure};
 #[rustc_has_incoherent_inherent_impls]
 #[repr(transparent)]
 #[doc(alias = "BStr")]
-pub struct ByteStr(pub [u8]);
+#[rustc_has_incoherent_inherent_impls]
+pub struct ByteStr(pub(crate) [u8]);
 
 impl ByteStr {
     /// Creates a `ByteStr` slice from anything that can be converted to a byte slice.
@@ -53,8 +56,9 @@ impl ByteStr {
     /// You can create a `ByteStr` from a byte array, a byte slice or a string slice:
     ///
     /// ```
-    /// # #![feature(bstr)]
-    /// # use std::bstr::ByteStr;
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
     /// let a = ByteStr::new(b"abc");
     /// let b = ByteStr::new(&b"abc"[..]);
     /// let c = ByteStr::new("abc");
@@ -75,7 +79,6 @@ impl ByteStr {
     /// it helps dereferencing other "container" types,
     /// for example `Box<ByteStr>` or `Arc<ByteStr>`.
     #[inline]
-    // #[unstable(feature = "str_as_str", issue = "130366")]
     #[unstable(feature = "bstr", issue = "134915")]
     pub const fn as_byte_str(&self) -> &ByteStr {
         self
@@ -87,7 +90,6 @@ impl ByteStr {
     /// it helps dereferencing other "container" types,
     /// for example `Box<ByteStr>` or `MutexGuard<ByteStr>`.
     #[inline]
-    // #[unstable(feature = "str_as_str", issue = "130366")]
     #[unstable(feature = "bstr", issue = "134915")]
     pub const fn as_mut_byte_str(&mut self) -> &mut ByteStr {
         self
@@ -95,38 +97,265 @@ impl ByteStr {
 
     #[doc(hidden)]
     #[unstable(feature = "bstr_internals", issue = "none")]
+    /// Creates a mutable `ByteStr` slice from anything that can be converted to a mutable byte slice.
+    ///
+    /// This is a zero-cost conversion.
+    ///
+    /// # Example
+    ///
+    /// Unlike `str`, the raw bytes of a `ByteStr` can be safely mutated at any time, since the
+    /// result is not guaranteed to be valid UTF-8.
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let mut buf = "😀".to_string().into_bytes().into_byte_string();
+    /// assert_eq!(format!("{buf}"), "😀");
+    ///
+    /// let s = ByteStr::new_mut(&mut buf);
+    /// s.as_bytes_mut().reverse();
+    /// s[1] = b':';
+    /// s[2] = b'(';
+    ///
+    /// assert_eq!(format!("{buf}"), "�:(�");
+    /// ```
     #[inline]
-    #[rustc_const_unstable(feature = "bstr_internals", issue = "none")]
-    pub const fn from_bytes(slice: &[u8]) -> &Self {
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn new_mut<B: ?Sized + [const] AsMut<[u8]>>(bytes: &mut B) -> &mut Self {
+        ByteStr::from_bytes_mut(bytes.as_mut())
+    }
+
+    #[inline]
+    pub(crate) const fn from_bytes(slice: &[u8]) -> &Self {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`, so we can turn a reference to
         // the wrapped type into a reference to the wrapper type.
         unsafe { &*(slice as *const [u8] as *const Self) }
     }
 
-    #[doc(hidden)]
-    #[unstable(feature = "bstr_internals", issue = "none")]
     #[inline]
-    #[rustc_const_unstable(feature = "bstr_internals", issue = "none")]
-    pub const fn from_bytes_mut(slice: &mut [u8]) -> &mut Self {
+    pub(crate) const fn from_bytes_mut(slice: &mut [u8]) -> &mut Self {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`, so we can turn a reference to
         // the wrapped type into a reference to the wrapper type.
         unsafe { &mut *(slice as *mut [u8] as *mut Self) }
     }
 
-    #[doc(hidden)]
-    #[unstable(feature = "bstr_internals", issue = "none")]
+    /// Converts a `ByteStr` slice to a byte slice. To convert the byte slice back into a byte string
+    /// slice, use [`ByteStr::new`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let s = ByteStr::new("bors");
+    /// let bytes = s.as_bytes();
+    /// assert_eq!(b"bors", bytes);
+    /// ```
+    #[unstable(feature = "bstr", issue = "134915")]
     #[inline]
-    #[rustc_const_unstable(feature = "bstr_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
     pub const fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
-    #[doc(hidden)]
-    #[unstable(feature = "bstr_internals", issue = "none")]
+    /// Converts a mutable `ByteStr` slice to a mutable byte slice.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let mut s = ByteStr::new("Hello").to_byte_string();
+    /// let bytes = s.as_bytes_mut();
+    /// assert_eq!(b"Hello", bytes);
+    /// ```
+    ///
+    /// Mutability:
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let mut s = ByteStr::new("🗻∈🌏").to_byte_string();
+    /// let bytes = s.as_bytes_mut();
+    ///
+    /// bytes[0] = 0xF0;
+    /// bytes[1] = 0x9F;
+    /// bytes[2] = 0x8D;
+    /// bytes[3] = 0x94;
+    ///
+    /// assert_eq!("🍔∈🌏", s);
+    /// ```
+    #[unstable(feature = "bstr", issue = "134915")]
     #[inline]
-    #[rustc_const_unstable(feature = "bstr_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
     pub const fn as_bytes_mut(&mut self) -> &mut [u8] {
         &mut self.0
+    }
+
+    /// Yields a <code>&[prim@str]</code> slice if the `ByteStr` is valid unicode.
+    ///
+    /// This conversion may entail a check for UTF-8 validity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let bstr = ByteStr::new("foo");
+    /// assert_eq!(bstr.to_str(), Some("foo"));
+    /// ```
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
+    pub const fn to_str(&self) -> Option<&str> {
+        str::from_utf8(&self.0).ok()
+    }
+
+    /// Checks whether the `ByteStr` is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let byte_str = ByteStr::new("");
+    /// assert!(byte_str.is_empty());
+    ///
+    /// let byte_str = ByteStr::new("foo");
+    /// assert!(!byte_str.is_empty());
+    /// ```
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
+    pub const fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns the length of this `ByteStr` in bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let byte_str = ByteStr::new("");
+    /// assert_eq!(byte_str.len(), 0);
+    ///
+    /// let byte_str = ByteStr::new("foo");
+    /// assert_eq!(byte_str.len(), 3);
+    /// ```
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
+    pub const fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Checks if all bytes in this byte string are within the ASCII range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let ascii = ByteStr::new("hello!\n");
+    /// let non_ascii = ByteStr::new("Grüße, Jürgen ❤");
+    ///
+    /// assert!(ascii.is_ascii());
+    /// assert!(!non_ascii.is_ascii());
+    /// ```
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
+    pub const fn is_ascii(&self) -> bool {
+        self.0.is_ascii()
+    }
+
+    /// Converts this byte string to its ASCII lower case equivalent in-place.
+    ///
+    /// ASCII letters ‘A’ to ‘Z’ are mapped to ‘a’ to ‘z’, but non-ASCII letters are unchanged.
+    /// To return a new lowercased value without modifying the existing one, use
+    /// `ByteStr::to_ascii_lowercase`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let mut s = ByteStr::new("GRÜßE, JÜRGEN ❤").to_byte_string();
+    ///
+    /// s.make_ascii_lowercase();
+    ///
+    /// assert_eq!("grÜße, jÜrgen ❤", s);
+    /// ```
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
+    pub const fn make_ascii_lowercase(&mut self) {
+        self.0.make_ascii_lowercase()
+    }
+
+    /// Converts this byte string to its ASCII upper case equivalent in-place.
+    ///
+    /// ASCII letters ‘A’ to ‘Z’ are mapped to ‘a’ to ‘z’, but non-ASCII letters are unchanged.
+    /// To return a new uppercased value without modifying the existing one, use
+    /// `ByteStr::to_ascii_uppercase`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// let mut s = ByteStr::new("Grüße, Jürgen ❤").to_byte_string();
+    ///
+    /// s.make_ascii_uppercase();
+    ///
+    /// assert_eq!("GRüßE, JüRGEN ❤", s);
+    /// ```
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
+    pub const fn make_ascii_uppercase(&mut self) {
+        self.0.make_ascii_uppercase()
+    }
+
+    /// Checks if two byte strings are an ASCII case-insensitive match.
+    ///
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`, but without allocating and copying
+    /// temporaries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bstr)]
+    /// use std::bstr::ByteStr;
+    ///
+    /// assert!(ByteStr::new("Ferris").eq_ignore_ascii_case("FERRIS"));
+    /// assert!(ByteStr::new("Ferrös").eq_ignore_ascii_case("FERRöS"));
+    /// assert!(!ByteStr::new("Ferrös").eq_ignore_ascii_case("FERRÖS"));
+    /// ```
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "bstr", issue = "134915")]
+    pub const fn eq_ignore_ascii_case<S: [const] AsRef<ByteStr> + [const] Destruct>(
+        &self,
+        other: S,
+    ) -> bool {
+        let other: &ByteStr = other.as_ref();
+        self.0.eq_ignore_ascii_case(&other.0)
     }
 }
 
@@ -134,7 +363,6 @@ impl ByteStr {
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl Deref for ByteStr {
     type Target = [u8];
-
     #[inline]
     fn deref(&self) -> &[u8] {
         &self.0
@@ -157,7 +385,7 @@ unsafe impl DerefPure for ByteStr {}
 impl fmt::Debug for ByteStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\"")?;
-        for chunk in self.utf8_chunks() {
+        for chunk in self.0.utf8_chunks() {
             for c in chunk.valid().chars() {
                 match c {
                     '\0' => write!(f, "\\0")?,
@@ -175,8 +403,8 @@ impl fmt::Debug for ByteStr {
 #[unstable(feature = "bstr_to_string", issue = "134915")]
 impl fmt::Display for ByteStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn emit(byte_str: &ByteStr, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            for chunk in byte_str.utf8_chunks() {
+        fn fmt_nopad(this: &ByteStr, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            for chunk in this.0.utf8_chunks() {
                 f.write_str(chunk.valid())?;
                 if !chunk.invalid().is_empty() {
                     f.write_str("\u{FFFD}")?;
@@ -186,11 +414,32 @@ impl fmt::Display for ByteStr {
             Ok(())
         }
 
-        let requested_width = f.width().unwrap_or(0);
-        if requested_width == 0 && f.precision().is_none() {
-            // Avoid counting the characters if no truncation or padding was
-            // requested.
-            return emit(self, f);
+        let Some(align) = f.align() else {
+            return fmt_nopad(self, f);
+        };
+        let nchars: usize = self
+            .0
+            .utf8_chunks()
+            .map(|chunk| {
+                chunk.valid().chars().count() + if chunk.invalid().is_empty() { 0 } else { 1 }
+            })
+            .sum();
+        let padding = f.width().unwrap_or(0).saturating_sub(nchars);
+        let fill = f.fill();
+        let (lpad, rpad) = match align {
+            fmt::Alignment::Left => (0, padding),
+            fmt::Alignment::Right => (padding, 0),
+            fmt::Alignment::Center => {
+                let half = padding / 2;
+                (half, half + padding % 2)
+            }
+        };
+        for _ in 0..lpad {
+            write!(f, "{fill}")?;
+        }
+        fmt_nopad(self, f)?;
+        for _ in 0..rpad {
+            write!(f, "{fill}")?;
         }
 
         let (truncated, actual_width) = match f.precision() {
@@ -388,7 +637,7 @@ const impl<'a> TryFrom<&'a ByteStr> for &'a str {
 
     #[inline]
     fn try_from(s: &'a ByteStr) -> Result<Self, Self::Error> {
-        crate::str::from_utf8(&s.0)
+        str::from_utf8(&s.0)
     }
 }
 
@@ -399,6 +648,6 @@ const impl<'a> TryFrom<&'a mut ByteStr> for &'a mut str {
 
     #[inline]
     fn try_from(s: &'a mut ByteStr) -> Result<Self, Self::Error> {
-        crate::str::from_utf8_mut(&mut s.0)
+        str::from_utf8_mut(&mut s.0)
     }
 }
