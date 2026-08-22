@@ -264,7 +264,7 @@ pub(crate) fn expand_test_or_bench(
         &fn_.ident,
     ));
 
-    let location_info = get_location_info(cx, &fn_);
+    let location_info = get_location_info(cx, fn_);
 
     let mut test_const =
         cx.item(
