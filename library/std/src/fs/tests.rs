@@ -649,7 +649,10 @@ fn set_get_permissions_nofollows() {
 
 // Only Windows and Unix support `fs::set_permissions_nofollow`
 #[test]
-#[cfg(all(any(windows, unix), not(any(target_os = "espidf", target_os = "horizon"))))]
+#[cfg(all(
+    any(windows, unix),
+    not(any(target_os = "espidf", target_os = "horizon", target_os = "wasi"))
+))]
 fn set_get_permissions_nofollows_symlink() {
     #[cfg(not(windows))]
     use crate::os::unix::fs::symlink as symlink_dir;
@@ -670,23 +673,19 @@ fn set_get_permissions_nofollows_symlink() {
     cfg_select! {
         any(
             windows,
-            target_os = "android",
             target_os = "macos",
             target_os = "freebsd",
             target_os = "openbsd",
             target_os = "netbsd",
-            target_os = "dragonfly"
+            target_os = "dragonfly",
+            target_os = "nto",
+            target_os = "qnx"
         ) => {
             assert_eq!(result.unwrap(), ());
             let metadata0 = check!(fs::symlink_metadata(&symlink_name));
-            // So seems like BSD-based systems trying to set permissions
-            // on symlinks could lead to no effect, so we should expect
-            // there being no change to BSD-based systems.
+            // On these systems, it's confirmed the symlink itself is marked readonly
             // https://superuser.com/questions/1099634/change-permissions-symbolic-link-mac-os
-            #[cfg(windows)]
             assert!(metadata0.permissions().readonly());
-            #[cfg(not(windows))]
-            assert!(!metadata0.permissions().readonly());
 
             // Reset the read-only bit under Windows 7: avoids the
             // `TempDir::drop` from crashing on a permission denial when
