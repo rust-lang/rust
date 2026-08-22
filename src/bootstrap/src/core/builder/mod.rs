@@ -15,6 +15,7 @@ use tracing::instrument;
 
 pub(crate) use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
 use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend};
+use crate::core::build_steps::llvm::{LlvmKind, get_llvm_build_status};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
@@ -1377,7 +1378,10 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
 
         // Ensure that the downloaded LLVM libraries can be found.
-        if self.config.llvm_ci_mode.download_from_ci() {
+        // FIXME: the libraries should be added elsewhere, not in this function...
+        if get_llvm_build_status(self, compiler.host).llvm_output().kind()
+            == LlvmKind::DownloadedFromCi
+        {
             let ci_llvm_lib = self.out.join(compiler.host).join("ci-llvm").join("lib");
             dylib_dirs.push(ci_llvm_lib);
         }
@@ -1511,40 +1515,17 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         cmd
     }
 
-    /// Return the path to `llvm-config` for the target, if it exists.
+    /// Returns true is LLVM is enabled for the given target and we are supposed to build it.
     ///
-    /// Note that this returns `None` if LLVM is disabled, or if we're in a
+    /// Note that this returns false if LLVM is disabled, or if we're in a
     /// check build or dry-run, where there's no need to build all of LLVM.
-    ///
-    /// FIXME(@kobzol)
-    /// **WARNING**: This actually returns the **HOST** LLVM config, not LLVM config for the given
-    /// *target*.
-    pub fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
-        if self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run() {
-            let llvm::LlvmOutput { host_llvm_config, .. } = self.ensure(llvm::Llvm { target });
-            if host_llvm_config.is_file() {
-                return Some(host_llvm_config);
-            }
-        }
-        None
+    pub fn is_llvm_enabled_for(&self, target: TargetSelection) -> bool {
+        self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run()
     }
 
-    /// Root output directory of LLVM for `target`
-    ///
-    /// Note that if LLVM is configured externally then the directory returned
-    /// will likely be empty.
-    pub fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        // We don't want to eagerly build LLVM by calling this function, so we only check if it
-        // was already downloaded from CI.
-        // The first part of the condition ensures that we don't download LLVM for non-host targets
-        // from CI eagerly (FIXME: this could be relaxed in the future).
-        if self.config.is_host_target(target)
-            && let Some(llvm_ci) = self.ensure(llvm::LlvmFromCi { target })
-        {
-            llvm_ci.output.root_dir().to_path_buf()
-        } else {
-            self.out.join(target).join("llvm")
-        }
+    /// Return the `llvm-config` for the host target, so that it is executable.
+    pub fn host_llvm_config(&self) -> PathBuf {
+        self.ensure(llvm::Llvm { target: self.host_target }).llvm_config().to_owned()
     }
 
     /// Updates all submodules, and exits with an error if submodule

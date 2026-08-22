@@ -5,6 +5,7 @@ use build_helper::stage0_parser::parse_stage0_file;
 use llvm::get_llvm_build_status;
 
 use super::*;
+use crate::core::build_steps::llvm::LlvmKind;
 use crate::core::config::Config;
 use crate::utils::cache::ExecutedStep;
 use crate::utils::helpers::get_host_target;
@@ -250,17 +251,16 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let actual =
         get_llvm_build_status(&builder, TargetSelection::from_user("arm-unknown-linux-gnueabihf"))
             .llvm_output()
-            .host_llvm_config
-            .clone();
+            .llvm_config()
+            .to_path_buf();
     let actual = drop_win_disk_prefix_if_present(actual);
-    assert_eq!(expected, actual);
+    assert_ne!(expected, actual);
 
     let actual = get_llvm_build_status(&builder, builder.config.host_target)
         .llvm_output()
-        .host_llvm_config
-        .clone();
+        .llvm_config()
+        .to_path_buf();
     let actual = drop_win_disk_prefix_if_present(actual);
-    assert_eq!(expected, actual);
     assert_eq!(expected, actual);
 
     let config = configure(
@@ -275,8 +275,8 @@ fn test_prebuilt_llvm_config_path_resolution() {
 
     let actual = get_llvm_build_status(&builder, builder.config.host_target)
         .llvm_output()
-        .host_llvm_config
-        .clone();
+        .llvm_config()
+        .to_path_buf();
     let expected = builder
         .out
         .join(builder.config.host_target)
@@ -291,15 +291,14 @@ fn test_prebuilt_llvm_config_path_resolution() {
         "#,
     );
 
-    // CI-LLVM isn't always available; check if it's enabled before testing.
-    if config.llvm_ci_mode.download_from_ci() {
-        let build = Build::new(config.clone());
-        let builder = Builder::new(&build);
+    let build = Build::new(config.clone());
+    let builder = Builder::new(&build);
 
-        let actual = get_llvm_build_status(&builder, builder.config.host_target)
-            .llvm_output()
-            .host_llvm_config
-            .clone();
+    let llvm = get_llvm_build_status(&builder, builder.config.host_target);
+    let llvm = llvm.llvm_output();
+    // CI-LLVM isn't always available; check if it's enabled before testing.
+    if llvm.kind() == LlvmKind::DownloadedFromCi {
+        let actual = llvm.llvm_config().to_path_buf();
         let expected = builder
             .out
             .join(builder.config.host_target)
