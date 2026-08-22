@@ -709,6 +709,11 @@ fn project<'cx, 'tcx>(
     if let ty::Dynamic(data, ..) = self_ty.kind() {
         if let Some(def_id) = data.principal_def_id() {
             let tcx = selcx.tcx();
+            // Delaying a bug is fine here:
+            // - In case of a dymmy span, we are in a canonical query.
+            // - `CheckAssociatedTypeBounds` means that the trait object is part of the trait's item bounds
+            //   or the impl's associated type; both are checked at their own definition
+            //   where the error is already reported with a better span.
             if !tcx.is_dyn_compatible(def_id) {
                 let span = obligation.cause.span;
                 let guar = if span.is_dummy()
