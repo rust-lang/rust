@@ -338,7 +338,6 @@
 #![feature(cstr_display)]
 #![feature(cursor_split)]
 #![feature(derive_const)]
-#![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
 #![feature(error_iter)]
