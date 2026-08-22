@@ -1320,30 +1320,29 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         let typo_sugg =
             self.lookup_typo_candidate(path, following_seg, source.namespace(), is_expected);
-        let mut fallback = false;
+        let mut fallback = true;
         let typo_sugg = typo_sugg
             .to_opt_suggestion()
             .filter(|sugg| !suggested_candidates.contains(sugg.candidate.as_str()));
-        if !self.r.add_typo_suggestion(err, typo_sugg, ident_span) {
-            fallback = true;
-            match self.diag_metadata.current_let_binding {
-                Some((pat_sp, Some(ty_sp), None))
-                    if ty_sp.contains(base_error.span) && base_error.could_be_expr =>
-                {
-                    err.span_suggestion_verbose(
-                        pat_sp.between(ty_sp),
-                        "use `=` if you meant to assign",
-                        " = ",
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                _ => {}
-            }
+        self.r.add_typo_suggestion(err, typo_sugg, ident_span);
 
-            // If the trait has a single item (which wasn't matched by the algorithm), suggest it
-            let suggestion = self.get_single_associated_item(path, &source, is_expected);
-            self.r.add_typo_suggestion(err, suggestion, ident_span);
+        match self.diag_metadata.current_let_binding {
+            Some((pat_sp, Some(ty_sp), None))
+                if ty_sp.contains(base_error.span) && base_error.could_be_expr =>
+            {
+                err.span_suggestion_verbose(
+                    pat_sp.between(ty_sp),
+                    "use `=` if you meant to assign",
+                    " = ",
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => {}
         }
+
+        // If the trait has a single item (which wasn't matched by the algorithm), suggest it
+        let suggestion = self.get_single_associated_item(path, &source, is_expected);
+        self.r.add_typo_suggestion(err, suggestion, ident_span);
 
         if self.let_binding_suggestion(err, ident_span) {
             fallback = false;

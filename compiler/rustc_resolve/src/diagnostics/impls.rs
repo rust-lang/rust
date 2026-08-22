@@ -1932,9 +1932,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ident,
             is_expected,
         );
-        if !self.add_typo_suggestion(err, suggestion, ident.span) {
-            self.detect_derive_attribute(err, ident, parent_scope, sugg_span);
-        }
+        self.add_typo_suggestion(err, suggestion, ident.span);
+        self.detect_derive_attribute(err, ident, parent_scope, sugg_span);
 
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
@@ -2215,11 +2214,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         err: &mut Diag<'_>,
         suggestion: Option<TypoSuggestion>,
         span: Span,
-    ) -> bool {
+    ) {
         let suggestion = match suggestion {
-            None => return false,
+            None => return,
             // We shouldn't suggest underscore.
-            Some(suggestion) if suggestion.candidate == kw::Underscore => return false,
+            Some(suggestion) if suggestion.candidate == kw::Underscore => return,
             Some(suggestion) => suggestion,
         };
 
@@ -2245,7 +2244,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //    |
                 // LL | const Y: X = Y("ö");
                 //    |              ^
-                return false;
+                return;
             }
             let span = self.tcx.sess.source_map().guess_head_span(def_span);
             let candidate_descr = suggestion.res.descr();
@@ -2275,7 +2274,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 "the leading underscore in `{candidate}` marks it as unused, consider renaming it to `{snippet}`"
             );
             if !did_label_def_span {
-                err.span_label(span, format!("`{candidate}` defined here"));
+                err.span_note(span, format!("`{candidate}` defined here"));
             }
             (span, msg, snippet)
         } else {
@@ -2292,7 +2291,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             (span, msg, suggestion.candidate.to_ident_string())
         };
         err.span_suggestion_verbose(span, msg, sugg, Applicability::MaybeIncorrect);
-        true
     }
 
     fn decl_description(&self, b: Decl<'_>, ident: Ident, scope: Scope<'_>) -> String {
