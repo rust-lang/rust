@@ -417,6 +417,8 @@ pub use alloc_crate::collections::TryReserveError;
     issue = "48043"
 )]
 pub use alloc_crate::collections::TryReserveErrorKind;
+#[unstable(feature = "fallible_vec", issue = "157392")]
+pub use alloc_crate::collections::fallible;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{BTreeMap, BTreeSet, BinaryHeap};
 #[stable(feature = "rust1", since = "1.0.0")]
