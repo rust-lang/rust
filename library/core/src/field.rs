@@ -78,7 +78,7 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Default
     for FieldRepresentingType<T, VARIANT, FIELD>
 {
     fn default() -> Self {
-        Self { _phantom: PhantomData::default() }
+        Self { _phantom: PhantomData }
     }
 }
 
