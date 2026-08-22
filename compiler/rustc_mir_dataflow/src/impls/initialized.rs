@@ -75,7 +75,7 @@ impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
                                     // On each call to this closure `find` only consumes part of
                                     // the `discriminants` iterator.
                                     discriminants
-                                        .find(|(_, discr)| discr.val == value.get())
+                                        .find(|(_, discr)| discr.val == value.to_u128())
                                         .expect("SwitchInt vals should match a variant")
                                         .0
                                 })

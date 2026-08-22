@@ -5,7 +5,6 @@
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
-use rustc_data_structures::packed::Pu128;
 use rustc_hir::CoroutineKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
@@ -18,7 +17,7 @@ use smallvec::SmallVec;
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
 use crate::ty::adjustment::PointerCoercion;
-use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
+use crate::ty::{self, GenericArgsRef, List, Region, ScalarInt, Ty, UserTypeAnnotationIndex};
 
 /// Represents the "flavors" of MIR.
 ///
@@ -977,7 +976,7 @@ pub enum BackwardIncompatibleDropReason {
 pub struct SwitchTargets {
     /// Possible values. For each value, the location to branch to is found in
     /// the corresponding element in the `targets` vector.
-    pub(super) values: SmallVec<[Pu128; 1]>,
+    pub(super) values: SmallVec<[ScalarInt; 1]>,
 
     /// Possible branch targets. The last element of this vector is used for
     /// the "otherwise" branch, so `targets.len() == values.len() + 1` always
@@ -1746,6 +1745,6 @@ mod size_asserts {
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(TerminatorKind<'_>, 80);
+    static_assert_size!(TerminatorKind<'_>, 88);
     // tidy-alphabetical-end
 }

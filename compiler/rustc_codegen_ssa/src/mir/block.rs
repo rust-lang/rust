@@ -7,7 +7,6 @@ use rustc_abi::{
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_data_structures::packed::Pu128;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
@@ -15,7 +14,7 @@ use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, ScalarInt, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Spanned};
@@ -456,8 +455,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         } else if target_iter.len() == 2
             && self.mir[targets.otherwise()].is_empty_unreachable()
-            && targets.all_values().contains(&Pu128(0))
-            && targets.all_values().contains(&Pu128(1))
+            && targets.all_values().contains(&ScalarInt::from(0_u128))
+            && targets.all_values().contains(&ScalarInt::from(1_u128))
         {
             // This is the really common case for `bool`, `Option`, etc.
             // By using `trunc nuw` we communicate that other values are
