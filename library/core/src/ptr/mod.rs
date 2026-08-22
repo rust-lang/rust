@@ -2079,10 +2079,10 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///   semantics associated to their manipulation, and cannot be used as general purpose memory.
 ///   Here, any address value is possible, including 0 and [`usize::MAX`], so long as the semantics
 ///   of such a read are well-defined by the target hardware. The provenance of the pointer is
-///   irrelevant, and it can be created with [`without_provenance`]. The access must not trap. It
-///   can cause side-effects, but those must not affect Rust-allocated memory in any way. This
-///   access is still not considered [atomic], and as such it cannot be used for inter-thread
-///   synchronization.
+///   irrelevant, and it can be created with [`without_provenance`]. The access is allowed to trap,
+///   which must immediately abort the process. It can also cause other side-effects, but those
+///   must not affect Rust-allocated memory in any way. This access is still not considered
+///   [atomic], and as such it cannot be used for inter-thread synchronization.
 ///
 /// Note that volatile memory operations where T is a zero-sized type are noops and may be ignored.
 ///
@@ -2117,9 +2117,8 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `src` must be either [valid] for reads, or `T` must be a ZST, or `src` must point to memory
-///   outside of all Rust allocations and reading from that memory must:
-///   - not trap, and
-///   - not cause any memory inside a Rust allocation to be modified.
+///   outside of all Rust allocations and reading from that memory must not cause any memory inside
+///   a Rust allocation to be modified.
 ///
 /// * `src` must be properly aligned.
 ///
@@ -2185,10 +2184,10 @@ pub const unsafe fn read_volatile<T>(src: *const T) -> T {
 ///   semantics associated to their manipulation, and cannot be used as general purpose memory.
 ///   Here, any address value is possible, including 0 and [`usize::MAX`], so long as the semantics
 ///   of such a write are well-defined by the target hardware. The provenance of the pointer is
-///   irrelevant, and it can be created with [`without_provenance`]. The access must not trap. It
-///   can cause side-effects, but those must not affect Rust-allocated memory in any way. This
-///   access is still not considered [atomic], and as such it cannot be used for inter-thread
-///   synchronization.
+///   irrelevant, and it can be created with [`without_provenance`]. The access is allowed to trap,
+///   which must immediately abort the process. It can also cause side-effects, but those must not
+///   affect Rust-allocated memory in any way. This access is still not considered [atomic], and as
+///   such it cannot be used for inter-thread synchronization.
 ///
 /// Note that volatile memory operations on zero-sized types (e.g., if a zero-sized type is passed
 /// to `write_volatile`) are noops and may be ignored.
@@ -2224,9 +2223,8 @@ pub const unsafe fn read_volatile<T>(src: *const T) -> T {
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `dst` must be either [valid] for writes, or `T` must be a ZST, or `dst` must point to memory
-///   outside of all Rust allocations and writing to that memory must:
-///   - not trap, and
-///   - not cause any memory inside a Rust allocation to be modified.
+///   outside of all Rust allocations and writing to that memory must not cause any memory inside a
+///   Rust allocation to be modified.
 ///
 /// * `dst` must be properly aligned.
 ///

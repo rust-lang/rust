@@ -173,6 +173,42 @@ fn call_simple_intrinsic<'ll, 'tcx>(
     ))
 }
 
+impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
+    fn black_box(&mut self, result: PlaceRef<'tcx, &'ll Value>, span: Span) {
+        let result_val_span = [result.val.llval];
+        // We need to "use" the argument in some way LLVM can't introspect, and on
+        // targets that support it we can typically leverage inline assembly to do
+        // this. LLVM's interpretation of inline assembly is that it's, well, a black
+        // box. This isn't the greatest implementation since it probably deoptimizes
+        // more than we want, but it's so far good enough.
+        //
+        // For zero-sized types, the location pointed to by the result may be
+        // uninitialized. Do not "use" the result in this case; instead just clobber
+        // the memory.
+        let (constraint, inputs): (&str, &[_]) = if result.layout.is_zst() {
+            ("~{memory}", &[])
+        } else {
+            ("r,~{memory}", &result_val_span)
+        };
+        crate::asm::inline_asm_call(
+            self,
+            "",
+            constraint,
+            inputs,
+            self.type_void(),
+            &[],
+            true,
+            false,
+            llvm::AsmDialect::Att,
+            &[span],
+            false,
+            None,
+            None,
+        )
+        .unwrap_or_else(|| bug!("failed to generate inline asm call for `black_box`"));
+    }
+}
+
 impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
@@ -365,9 +401,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let ptr = args[0].immediate();
                 let abi_align = result_layout.align.abi;
                 let ptr_align = if name == sym::volatile_load { abi_align } else { Align::ONE };
+                let need_black_box = llvm_version < (23, 0, 0);
                 if result_layout.is_zst() {
                     return IntrinsicResult::Operand(OperandValue::ZeroSized);
-                } else if let BackendRepr::Scalar(scalar) = result_layout.backend_repr {
+                } else if let BackendRepr::Scalar(scalar) = result_layout.backend_repr && !need_black_box {
                     let load = self.volatile_load(self.type_from_scalar(scalar), ptr, ptr_align);
                     self.to_immediate_scalar(load, scalar)
                 } else {
@@ -385,6 +422,13 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     };
                     let llval = self.volatile_load(llty, ptr, ptr_align);
                     self.store(llval, temp.val.llval, abi_align);
+                    if need_black_box {
+                        // LLVM up until v22 considers volatile reads `willreturn` and hence can
+                        // move UB from further down up across this read. To prevent that, insert an
+                        // inline asm block that, as far as LLVM is concerned, might not terminate,
+                        // and hence should prevent such reordering.
+                        self.black_box(temp, span);
+                    }
                     return if result_place.is_none() {
                         IntrinsicResult::Operand(self.load_operand(temp).val)
                     } else {
@@ -614,41 +658,13 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
             sym::black_box => {
                 let result = PlaceRef {
+                    // This `unwrap` is justified by `intrinsic_call_expects_place_always` declaring
+                    // this intrinsic as always needing a return place.
                     val: result_place.unwrap(),
                     layout: result_layout,
                 };
                 args[0].val.store(self, result);
-                let result_val_span = [result.val.llval];
-                // We need to "use" the argument in some way LLVM can't introspect, and on
-                // targets that support it we can typically leverage inline assembly to do
-                // this. LLVM's interpretation of inline assembly is that it's, well, a black
-                // box. This isn't the greatest implementation since it probably deoptimizes
-                // more than we want, but it's so far good enough.
-                //
-                // For zero-sized types, the location pointed to by the result may be
-                // uninitialized. Do not "use" the result in this case; instead just clobber
-                // the memory.
-                let (constraint, inputs): (&str, &[_]) = if result.layout.is_zst() {
-                    ("~{memory}", &[])
-                } else {
-                    ("r,~{memory}", &result_val_span)
-                };
-                crate::asm::inline_asm_call(
-                    self,
-                    "",
-                    constraint,
-                    inputs,
-                    self.type_void(),
-                    &[],
-                    true,
-                    false,
-                    llvm::AsmDialect::Att,
-                    &[span],
-                    false,
-                    None,
-                    None,
-                )
-                .unwrap_or_else(|| bug!("failed to generate inline asm call for `black_box`"));
+                self.black_box(result, span);
 
                 // We have copied the value to `result` already.
                 return IntrinsicResult::WroteIntoPlace;
