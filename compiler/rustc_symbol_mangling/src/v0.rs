@@ -693,7 +693,10 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         // [<Trait> [{<Projection>}]] [{<Auto>}]
         // Since any predicates after the first one shouldn't change the binders,
         // just put them all in the binders of the first.
+        let tcx = self.tcx();
         self.wrap_binder(&predicates[0], |p, _| {
+            let mut has_move_bound = false;
+
             for predicate in predicates.iter() {
                 // It would be nice to be able to validate bound vars here, but
                 // projections can actually include bound vars from super traits
@@ -721,10 +724,20 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                         }?;
                     }
                     ty::ExistentialPredicate::AutoTrait(def_id) => {
+                        if tcx.is_move_trait(*def_id) {
+                            has_move_bound = true;
+                            continue;
+                        }
+
                         p.print_def_path(*def_id, &[])?;
                     }
                 }
             }
+
+            if !has_move_bound {
+                unimplemented!("Handle mangling of !Move symbols")
+            }
+
             Ok(())
         })?;
 
