@@ -907,13 +907,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
-    /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
-    pub(crate) fn LLVMAppendModuleInlineAsm(
-        M: &Module,
-        Asm: *const c_uchar, // See "PTR_LEN_STR".
-        Len: size_t,
-    );
-
     /// Create the specified uniqued inline asm string. See `InlineAsm::get()`.
     pub(crate) fn LLVMGetInlineAsm<'ll>(
         Ty: &'ll Type,
@@ -2118,6 +2111,17 @@ unsafe extern "C" {
         Constraints: *const c_uchar, // See "PTR_LEN_STR".
         ConstraintsLen: size_t,
     ) -> bool;
+
+    /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
+    pub(crate) fn LLVMRustAppendModuleInlineAsm(
+        M: &Module,
+        Asm: *const c_uchar, // See "PTR_LEN_STR".
+        AsmLen: size_t,
+        TargetFeatures: *const c_uchar, // See "PTR_LEN_STR".
+        TargetFeaturesLen: size_t,
+        TargetCpu: *const c_uchar, // See "PTR_LEN_STR".
+        TargetCpuLen: size_t,
+    );
 
     /// A list of pointer-length strings is passed as two pointer-length slices,
     /// one slice containing pointers and one slice containing their corresponding
