@@ -1243,46 +1243,46 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dummy]`.
     RustcDummy,
 
-    /// Represents `#[rustc_dump_clauses]`
+    /// Represents the [`rustc_dump_clauses`](./attribute.rustc_dump_clauses.html) attribute.
     RustcDumpClauses,
 
-    /// Represents `#[rustc_dump_def_parents]`
+    /// Represents the [`rustc_dump_def_parents`](./attribute.rustc_dump_def_parents.html) attribute.
     RustcDumpDefParents,
 
-    /// Represents `#[rustc_dump_def_path]`
+    /// Represents the [`rustc_dump_def_path`](./attribute.rustc_dump_def_path.html) attribute.
     RustcDumpDefPath(Span),
 
-    /// Represents `#[rustc_dump_generics]`
+    /// Represents the [`rustc_dump_generics`](./attribute.rustc_dump_generics.html) attribute.
     RustcDumpGenerics,
 
-    /// Represents `#[rustc_dump_hidden_type_of_opaques]`
+    /// Represents the [`rustc_dump_hidden_type_of_opaques`](./attribute.rustc_dump_hidden_type_of_opaques.html) attribute.
     RustcDumpHiddenTypeOfOpaques,
 
-    /// Represents `#[rustc_dump_inferred_outlives]`
+    /// Represents the [`rustc_dump_inferred_outlives`](./attribute.rustc_dump_inferred_outlives.html) attribute.
     RustcDumpInferredOutlives,
 
-    /// Represents `#[rustc_dump_item_bounds]`
+    /// Represents the [`rustc_dump_item_bounds`](./attribute.rustc_dump_item_bounds.html) attribute.
     RustcDumpItemBounds,
 
-    /// Represents `#[rustc_dump_layout]`
+    /// Represents the [`rustc_dump_layout`](./attribute.rustc_dump_layout.html) attribute.
     RustcDumpLayout(ThinVec<RustcDumpLayoutKind>),
 
-    /// Represents `#[rustc_dump_object_lifetime_defaults]`.
+    /// Represents the [`rustc_dump_object_lifetime_defaults`](./attribute.rustc_dump_object_lifetime_defaults.html) attribute.
     RustcDumpObjectLifetimeDefaults,
 
-    /// Represents `#[rustc_dump_symbol_name]`
+    /// Represents the [`rustc_dump_symbol_name`](./attribute.rustc_dump_symbol_name.html) attribute.
     RustcDumpSymbolName(Span),
 
     /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
 
-    /// Represents `#[rustc_dump_variances]`
+    /// Represents the [`rustc_dump_variances`](./attribute.rustc_dump_variances.html) attribute.
     RustcDumpVariances,
 
-    /// Represents `#[rustc_dump_variances_of_opaques]`
+    /// Represents the [`rustc_dump_variances_of_opaques`](./attribute.rustc_dump_variances_of_opaques.html) attribute.
     RustcDumpVariancesOfOpaques,
 
-    /// Represents `#[rustc_dump_vtable]`
+    /// Represents the [`rustc_dump_vtable`](./attribute.rustc_dump_vtable.html) attribute.
     RustcDumpVtable(Span),
 
     /// Represents `#[rustc_dyn_incompatible_trait]`.

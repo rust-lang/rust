@@ -69,11 +69,9 @@ fn main() {
                 .arg("-Zcrate-attr=doc(rust_logo)")
                 .arg("-Zcrate-attr=doc(html_root_url = \"https://doc.rust-lang.org/nightly/nightly-rustc/\")");
 
-            // rustc_proc_macro is another build of library/proc_macro which already enables this
-            // feature
-            if crate_name != "rustc_proc_macro" {
-                cmd.arg("-Zcrate-attr=feature(rustdoc_internals)");
-            }
+            // Some crates already have this feature enabled
+            cmd.arg("-Zcrate-attr=feature(rustdoc_internals)");
+            cmd.arg("-Aduplicate-features");
         }
     }
 
