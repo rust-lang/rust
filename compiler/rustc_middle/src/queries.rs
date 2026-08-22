@@ -2816,6 +2816,20 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Returns the fake doc items defined in a crate's root.
+    query fake_doc_items(_: CrateNum) -> &'tcx Vec<DefId> {
+        arena_cache
+        desc { "calculating the fake doc items" }
+        separate_provide_extern
+    }
+
+    /// Returns all fake doc items defined in all crates' roots.
+    query all_fake_doc_items(_: ()) -> &'tcx Vec<DefId> {
+        arena_cache
+        eval_always
+        desc { "calculating all fake doc items" }
+    }
+
     //-----------------------------------------------------------------------------
     // "Non-queries" are special dep kinds that are not queries.
     //-----------------------------------------------------------------------------

@@ -236,35 +236,12 @@ impl ExternalCrate {
             .unwrap_or(Unknown) // Well, at least we tried.
     }
 
-    fn mapped_root_anon_consts<T>(
+    fn fake_doc_items<T>(
         &self,
         tcx: TyCtxt<'_>,
         f: impl Fn(DefId, TyCtxt<'_>) -> Option<(DefId, T)>,
     ) -> impl Iterator<Item = (DefId, T)> {
-        let root = self.def_id();
-
-        if root.is_local() {
-            Either::Left(
-                tcx.hir_root_module()
-                    .item_ids
-                    .iter()
-                    .filter(move |&&id| matches!(tcx.hir_item(id).kind, hir::ItemKind::Const(..)))
-                    .filter_map(move |&id| f(id.owner_id.into(), tcx)),
-            )
-        } else {
-            Either::Right(
-                tcx.module_children(root)
-                    .iter()
-                    .filter_map(|item| {
-                        if let Res::Def(DefKind::Const { is_type_const: false }, did) = item.res {
-                            Some(did)
-                        } else {
-                            None
-                        }
-                    })
-                    .filter_map(move |did| f(did, tcx)),
-            )
-        }
+        tcx.fake_doc_items(self.crate_num).into_iter().filter_map(move |did| f(*did, tcx))
     }
 
     pub(crate) fn keywords(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = (DefId, Symbol)> {
@@ -285,7 +262,7 @@ impl ExternalCrate {
         let as_target = move |did: DefId, tcx: TyCtxt<'_>| -> Option<(DefId, Symbol)> {
             find_attr!(tcx, did, Doc(d) => callback(d)).flatten().map(|value| (did, value))
         };
-        self.mapped_root_anon_consts(tcx, as_target)
+        self.fake_doc_items(tcx, as_target)
     }
 
     pub(crate) fn primitives(
@@ -320,7 +297,7 @@ impl ExternalCrate {
             Some((def_id, prim))
         }
 
-        self.mapped_root_anon_consts(tcx, as_primitive)
+        self.fake_doc_items(tcx, as_primitive)
     }
 }
 
@@ -1895,27 +1872,35 @@ impl PrimitiveType {
     /// `rustc_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
     /// (no_std crates are usually fine unless multiple dependencies define a primitive.)
     pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxIndexMap<PrimitiveType, DefId> {
+        fn as_primitive(def_id: DefId, tcx: TyCtxt<'_>) -> Option<PrimitiveType> {
+            let (attr_span, prim_sym) = find_attr!(
+                tcx, def_id,
+                RustcDocPrimitive(span, prim) => (*span, *prim)
+            )?;
+            let Some(prim) = PrimitiveType::from_symbol(prim_sym) else {
+                span_bug!(attr_span, "primitive `{prim_sym}` is not a member of `PrimitiveType`");
+            };
+            Some(prim)
+        }
+
         static PRIMITIVE_LOCATIONS: OnceCell<FxIndexMap<PrimitiveType, DefId>> = OnceCell::new();
         PRIMITIVE_LOCATIONS.get_or_init(|| {
             let mut primitive_locations = FxIndexMap::default();
             // NOTE: technically this misses crates that are only passed with `--extern` and not loaded when checking the crate.
             // This is a degenerate case that I don't plan to support.
-            for &crate_num in tcx.crates(()) {
-                let e = ExternalCrate { crate_num };
-                let crate_name = e.name(tcx);
-                debug!(?crate_num, ?crate_name);
-                for (def_id, prim) in e.primitives(tcx) {
-                    // HACK: try to link to std instead where possible
-                    if crate_name == sym::core && primitive_locations.contains_key(&prim) {
-                        continue;
-                    }
+
+            let mut ids = tcx.all_fake_doc_items(()).clone();
+
+            // Primitives are unhygienically duplicated by `include!`.
+            // Sort them with core first, so that if std is present in the crate graph,
+            // core's items are overridden and we link to std preferentially.
+            ids.iter_mut().partition_in_place(|id| tcx.crate_name(id.krate) == sym::core);
+            for def_id in ids {
+                if let Some(prim) = as_primitive(def_id, tcx) {
                     primitive_locations.insert(prim, def_id);
                 }
             }
-            let local_primitives = ExternalCrate { crate_num: LOCAL_CRATE }.primitives(tcx);
-            for (def_id, prim) in local_primitives {
-                primitive_locations.insert(prim, def_id);
-            }
+
             primitive_locations
         })
     }
