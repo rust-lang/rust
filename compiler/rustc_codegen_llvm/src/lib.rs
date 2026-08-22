@@ -19,6 +19,7 @@ use std::any::Any;
 use std::ffi::CStr;
 use std::mem::ManuallyDrop;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
@@ -112,8 +113,9 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
+        module_config: Arc<ModuleConfig>,
     ) -> (ModuleCodegen<ModuleLlvm>, u64) {
-        base::compile_codegen_unit(tcx, cgu_name)
+        base::compile_codegen_unit(tcx, cgu_name, module_config)
     }
 }
 

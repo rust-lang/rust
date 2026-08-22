@@ -3,6 +3,7 @@ use std::fmt::Write;
 
 use rustc_abi::{BackendRepr, Endian, Float, Integer, Primitive, Scalar, Size};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_codegen_ssa::back::write::ModuleConfig;
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
@@ -10,6 +11,8 @@ use rustc_middle::mir::interpret::{PointerArithmetic, Scalar as ConstScalar};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug};
+use rustc_session::Session;
+use rustc_session::config::Lto;
 use rustc_span::{Pos, Span, Symbol, sym};
 use rustc_target::asm::*;
 use rustc_target::spec::HasTargetSpec;
@@ -573,28 +576,43 @@ pub(crate) fn inline_asm_call<'ll>(
     let key = "srcloc";
     let kind = bx.get_md_kind_id(key);
 
-    // `srcloc` contains one 64-bit integer for each line of assembly code,
-    // where the lower 32 bits hold the lo byte position and the upper 32 bits
-    // hold the hi byte position.
-    let mut srcloc = vec![];
-    if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
-        // LLVM inserts an extra line to add the ".intel_syntax", so add
-        // a dummy srcloc entry for it.
-        //
-        // Don't do this if we only have 1 line span since that may be
-        // due to the asm template string coming from a macro. LLVM will
-        // default to the first srcloc for lines that don't have an
-        // associated srcloc.
-        srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
+    if allow_raw_span_inline_asm_srcloc(bx.tcx.sess, &bx.module_config) {
+        // `srcloc` contains one 64-bit integer for each line of assembly code,
+        // where the lower 32 bits hold the lo byte position and the upper 32 bits
+        // hold the hi byte position.
+        let mut srcloc = vec![];
+        if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
+            // LLVM inserts an extra line to add the ".intel_syntax", so add
+            // a dummy srcloc entry for it.
+            //
+            // Don't do this if we only have 1 line span since that may be
+            // due to the asm template string coming from a macro. LLVM will
+            // default to the first srcloc for lines that don't have an
+            // associated srcloc.
+            srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
+        }
+        srcloc.extend(line_spans.iter().map(|span| {
+            llvm::LLVMValueAsMetadata(
+                bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
+            )
+        }));
+        bx.cx.set_metadata_node(call, kind, &srcloc);
     }
-    srcloc.extend(line_spans.iter().map(|span| {
-        llvm::LLVMValueAsMetadata(
-            bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
-        )
-    }));
-    bx.cx.set_metadata_node(call, kind, &srcloc);
 
     Some(call)
+}
+
+/// Whenever inline assembly bitcode is built, its `srcloc` contains the raw span numbers
+/// as location cookies. This is problematic since that is nondeterministic when using
+/// the parallel frontend. Even without parallelism, the cookies are meaningless in another
+/// rustc session.
+///
+/// Discussion about replacing the cookies with something stable: rust-lang/rust#150451
+fn allow_raw_span_inline_asm_srcloc(sess: &Session, module_config: &ModuleConfig) -> bool {
+    // even for Lto::ThinLocal, where the bitcode isn't serialized into files, the changes in
+    // raw span positions would reflect in the LTO module hashes, which could lead to
+    // nondeterminism
+    sess.lto() != Lto::No || module_config.bitcode_needed()
 }
 
 /// If the register is an xmm/ymm/zmm register then return its index.

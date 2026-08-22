@@ -284,6 +284,7 @@ impl ExtraBackendMethods for AotDriver {
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
+        _module_config: Arc<ModuleConfig>,
     ) -> (ModuleCodegen<Self::Module>, u64) {
         let start_time = Instant::now();
 

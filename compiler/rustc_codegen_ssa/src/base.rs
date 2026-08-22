@@ -42,7 +42,7 @@ use tracing::{debug, info};
 use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
 use crate::back::write::{
-    ComputedLtoType, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
+    ComputedLtoType, ModuleConfig, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
     submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
 };
 use crate::common::{self, IntPredicate, RealPredicate, TypeKind};
@@ -52,7 +52,7 @@ use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, EiiLinkageImplInfo, EiiLinkageInfo,
-    ModuleCodegen, diagnostics, meth, mir,
+    ModuleCodegen, ModuleKind, diagnostics, meth, mir,
 };
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
@@ -762,7 +762,17 @@ pub fn codegen_crate<
         None
     };
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, allocator_module);
+    let no_builtins = find_attr!(tcx, crate, NoBuiltins);
+    let regular_module_config = Arc::new(ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins));
+    let allocator_module_config = ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins);
+
+    let ongoing_codegen = start_async_codegen(
+        backend.clone(),
+        tcx,
+        Arc::clone(&regular_module_config),
+        Arc::new(allocator_module_config),
+        allocator_module,
+    );
 
     // For better throughput during parallel processing by LLVM, we used to sort
     // CGUs largest to smallest. This would lead to better thread utilization
@@ -822,7 +832,11 @@ pub fn codegen_crate<
             let start_time = Instant::now();
 
             let pre_compiled_cgus = par_map(cgus, |(i, _)| {
-                let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
+                let module = backend.compile_codegen_unit(
+                    tcx,
+                    codegen_units[i].name(),
+                    Arc::clone(&regular_module_config),
+                );
                 (i, IntoDynSyncSend(module))
             });
 
@@ -846,7 +860,11 @@ pub fn codegen_crate<
                     cgu.0
                 } else {
                     let start_time = Instant::now();
-                    let module = backend.compile_codegen_unit(tcx, cgu.name());
+                    let module = backend.compile_codegen_unit(
+                        tcx,
+                        cgu.name(),
+                        Arc::clone(&regular_module_config),
+                    );
                     total_codegen_time += start_time.elapsed();
                     module
                 };
