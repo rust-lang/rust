@@ -480,6 +480,12 @@ pub enum NonDivergingIntrinsic<'tcx> {
     /// **Needs clarification**: Is this typed or not, ie is there a typed load and store involved?
     /// I vaguely remember Ralf saying somewhere that he thought it should not be.
     CopyNonOverlapping(CopyNonOverlapping<'tcx>),
+
+    /// Denotes a call to the intrinsic function `codeview_annotation`.
+    ///
+    /// Gets lowered to `llvm.codeview.annotation` on LLVM for MSVC targets.
+    /// Is a no-op on other targets and backends.
+    CodeviewAnnotation(Box<[Operand<'tcx>]>),
 }
 
 /// Describes whether this operand use performs a retag.

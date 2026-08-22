@@ -46,7 +46,7 @@ use crate::diagnostics::{
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
 use crate::intrinsic::ty::typetree::fnc_typetrees;
-use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
+use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -1080,6 +1080,24 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
     fn retag_mem(&mut self, ptr: Self::Value, info: &RetagInfo<Self::Value>) {
         codegen_retag_inner(self, "__rust_retag_mem", ptr, info);
+    }
+
+    fn codeview_annotation(&mut self, strings: &[&[u8]]) {
+        if !self.cx.sess().target.is_like_msvc {
+            return;
+        }
+
+        if strings.is_empty() {
+            bug!("codeview_annotation with empty strings should not reach codegen");
+        }
+
+        let md_strings: Vec<&Metadata> =
+            strings.iter().map(|s| self.cx.create_metadata(s)).collect();
+        let md_tuple = self.cx.md_node_in_context(&md_strings);
+        let md_value = self.cx.get_metadata_value(md_tuple);
+        let (fn_ty, intrinsic_fn) = self.cx.get_intrinsic("llvm.codeview.annotation".into(), &[]);
+
+        self.call(fn_ty, None, None, intrinsic_fn, &[md_value], None, None);
     }
 }
 

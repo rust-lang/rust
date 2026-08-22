@@ -1028,3 +1028,22 @@ pub const fn prefetch_read_instruction<T>(ptr: *const T, locality: Locality) {
         Locality::L1 => intrinsics::prefetch_read_instruction::<T, { Locality::L1.to_llvm() }>(ptr),
     }
 }
+
+/// Emits a call to [`llvm.codeview.annotation`](https://llvm.org/docs/LangRef.html#llvm-codeview-annotation-intrinsic)
+/// which results in `strings` being written to the
+/// PDB as an `S_ANNOTATION` record.
+///
+/// Works only with Windows targets and the LLVM backend.
+/// Is a no-op on other targets and backends.
+#[unstable(feature = "codeview_annotation", issue = "none")]
+#[allow_internal_unstable(core_intrinsics)]
+#[macro_export]
+macro_rules! codeview_annotation {
+    ($($arg:expr),+ $(,)?) => {{
+        $crate::intrinsics::codeview_annotation(&[$($arg),+])
+    }};
+}
+
+#[unstable(feature = "codeview_annotation", issue = "none")]
+#[doc(inline)]
+pub use codeview_annotation;

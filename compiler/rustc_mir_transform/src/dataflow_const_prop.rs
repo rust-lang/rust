@@ -218,6 +218,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             }) => {
                 // This statement represents `*dst = *src`, `count` times.
             }
+            NonDivergingIntrinsic::CodeviewAnnotation(_) => {}
         }
     }
 
