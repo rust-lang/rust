@@ -27,14 +27,14 @@ fn method_1(_1: Guard) -> () {
         StorageLive(_5);
         StorageLive(_6);
         _6 = &_1;
-        _5 = <Guard as Clone>::clone(move _6) -> [return: bb1, unwind: bb13];
+        _5 = <Guard as Clone>::clone(move _6) -> [return: bb1, unwind: bb12];
     }
 
     bb1: {
         StorageDead(_6);
         _4 = &_5;
         _3 = &(*_4);
-        _2 = method_2(move _3) -> [return: bb2, unwind: bb12];
+        _2 = method_2(move _3) -> [return: bb2, unwind: bb11];
     }
 
     bb2: {
@@ -74,7 +74,7 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb8: {
-        drop(_5) -> [return: bb9, unwind: bb13];
+        drop(_5) -> [return: bb9, unwind: bb12];
     }
 
     bb9: {
@@ -82,7 +82,7 @@ fn method_1(_1: Guard) -> () {
         StorageDead(_4);
         _10 = const false;
         StorageDead(_2);
-        drop(_1) -> [return: bb10, unwind: bb14];
+        drop(_1) -> [return: bb10, unwind: bb13];
     }
 
     bb10: {
@@ -90,18 +90,14 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb11 (cleanup): {
-        goto -> bb12;
+        drop(_5) -> [return: bb12, unwind terminate(cleanup)];
     }
 
     bb12 (cleanup): {
-        drop(_5) -> [return: bb13, unwind terminate(cleanup)];
+        drop(_1) -> [return: bb13, unwind terminate(cleanup)];
     }
 
     bb13 (cleanup): {
-        drop(_1) -> [return: bb14, unwind terminate(cleanup)];
-    }
-
-    bb14 (cleanup): {
         resume;
     }
 }

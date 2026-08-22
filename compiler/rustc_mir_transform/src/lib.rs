@@ -412,6 +412,7 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             // This used to be part of MIR building,
             // now done separately to separate concerns.
             &lint_and_remove_uninhabited::LintAndRemoveUninhabited,
+            &remove_uninit_drops::RemoveUninitDrops,
             // MIR-level lints.
             &Lint(check_inline::CheckForceInline),
             &Lint(check_call_recursion::CheckCallRecursion),

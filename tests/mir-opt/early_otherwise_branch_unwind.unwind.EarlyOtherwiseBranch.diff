@@ -1,7 +1,7 @@
 - // MIR for `unwind` before EarlyOtherwiseBranch
 + // MIR for `unwind` after EarlyOtherwiseBranch
   
-  fn unwind(_1: Option<Option<Option<T>>>) -> () {
+  fn unwind(_1: Option<Option<Result<T, T>>>) -> () {
       debug val => _1;
       let mut _0: ();
       let mut _2: isize;
@@ -9,16 +9,24 @@
       let mut _4: isize;
       let _5: T;
       let mut _6: bool;
-      let mut _7: isize;
+      let mut _7: bool;
+      let mut _8: isize;
+      let mut _9: isize;
+      let mut _10: isize;
+      let mut _11: isize;
+      let mut _12: isize;
+      let mut _13: isize;
       scope 1 {
           debug _v => _5;
       }
   
       bb0: {
           _6 = const false;
+          _7 = const false;
           _6 = const true;
+          _7 = const true;
           _4 = discriminant(_1);
-          switchInt(copy _4) -> [0: bb4, 1: bb2, otherwise: bb1];
+          switchInt(move _4) -> [0: bb4, 1: bb2, otherwise: bb1];
       }
   
       bb1: {
@@ -26,40 +34,40 @@
       }
   
       bb2: {
-          _3 = discriminant(((_1 as Some).0: std::option::Option<std::option::Option<T>>));
-          switchInt(copy _3) -> [0: bb5, 1: bb3, otherwise: bb1];
+          _3 = discriminant(((_1 as Some).0: std::option::Option<std::result::Result<T, T>>));
+          switchInt(move _3) -> [0: bb5, 1: bb3, otherwise: bb1];
       }
   
       bb3: {
-          _2 = discriminant(((((_1 as Some).0: std::option::Option<std::option::Option<T>>) as Some).0: std::option::Option<T>));
-          switchInt(move _2) -> [0: bb6, 1: bb7, otherwise: bb1];
+          _2 = discriminant(((((_1 as Some).0: std::option::Option<std::result::Result<T, T>>) as Some).0: std::result::Result<T, T>));
+          switchInt(move _2) -> [0: bb7, 1: bb6, otherwise: bb1];
       }
   
       bb4: {
           _0 = const ();
-          goto -> bb15;
+          goto -> bb18;
       }
   
       bb5: {
           _0 = const ();
-          goto -> bb15;
+          goto -> bb18;
       }
   
       bb6: {
           _0 = const ();
-          goto -> bb15;
+          goto -> bb18;
       }
   
       bb7: {
           StorageLive(_5);
-          _5 = move ((((((_1 as Some).0: std::option::Option<std::option::Option<T>>) as Some).0: std::option::Option<T>) as Some).0: T);
+          _5 = move ((((((_1 as Some).0: std::option::Option<std::result::Result<T, T>>) as Some).0: std::result::Result<T, T>) as Ok).0: T);
           _0 = const ();
-          drop(_5) -> [return: bb8, unwind: bb17];
+          drop(_5) -> [return: bb8, unwind: bb22];
       }
   
       bb8: {
           StorageDead(_5);
-          goto -> bb15;
+          goto -> bb18;
       }
   
       bb9: {
@@ -71,7 +79,7 @@
       }
   
       bb11: {
-          switchInt(copy _6) -> [0: bb12, otherwise: bb14];
+          switchInt(copy _6) -> [0: bb12, otherwise: bb17];
       }
   
       bb12: {
@@ -80,24 +88,50 @@
       }
   
       bb13: {
-          goto -> bb12;
+          switchInt(copy _7) -> [0: bb14, otherwise: bb16];
       }
   
       bb14: {
-          _7 = discriminant(((_1 as Some).0: std::option::Option<std::option::Option<T>>));
-          switchInt(move _7) -> [1: bb13, otherwise: bb12];
+          _7 = const false;
+          goto -> bb12;
       }
   
       bb15: {
-          switchInt(copy _4) -> [1: bb11, otherwise: bb9];
+          drop(((((_1 as Some).0: std::option::Option<std::result::Result<T, T>>) as Some).0: std::result::Result<T, T>)) -> [return: bb14, unwind: bb10];
       }
   
-      bb16 (cleanup): {
-          goto -> bb10;
+      bb16: {
+          _8 = discriminant(((((_1 as Some).0: std::option::Option<std::result::Result<T, T>>) as Some).0: std::result::Result<T, T>));
+          switchInt(move _8) -> [0: bb14, otherwise: bb15];
       }
   
-      bb17 (cleanup): {
-          switchInt(copy _4) -> [1: bb16, otherwise: bb10];
+      bb17: {
+          _9 = discriminant(((_1 as Some).0: std::option::Option<std::result::Result<T, T>>));
+          switchInt(move _9) -> [1: bb13, otherwise: bb12];
+      }
+  
+      bb18: {
+          _10 = discriminant(_1);
+          switchInt(move _10) -> [1: bb11, otherwise: bb9];
+      }
+  
+      bb19 (cleanup): {
+          _12 = discriminant(((_1 as Some).0: std::option::Option<std::result::Result<T, T>>));
+          switchInt(move _12) -> [1: bb20, otherwise: bb10];
+      }
+  
+      bb20 (cleanup): {
+          _11 = discriminant(((((_1 as Some).0: std::option::Option<std::result::Result<T, T>>) as Some).0: std::result::Result<T, T>));
+          switchInt(move _11) -> [0: bb10, otherwise: bb21];
+      }
+  
+      bb21 (cleanup): {
+          drop(((((_1 as Some).0: std::option::Option<std::result::Result<T, T>>) as Some).0: std::result::Result<T, T>)) -> [return: bb10, unwind terminate(cleanup)];
+      }
+  
+      bb22 (cleanup): {
+          _13 = discriminant(_1);
+          switchInt(move _13) -> [1: bb19, otherwise: bb10];
       }
   }
   

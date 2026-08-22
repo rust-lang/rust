@@ -19,12 +19,10 @@ macro_rules! type_combinations {
             let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
             //~^ NOTE `significant_drop::Client` which is not `Send`
             //~| NOTE `insignificant_dtor::Client` which is not `Send`
-            //~| NOTE `derived_drop::Client` which is not `Send`
                 _ => yield,
             };
             assert_send(g);
             //~^ ERROR cannot be sent between threads
-            //~| ERROR cannot be sent between threads
             //~| ERROR cannot be sent between threads
         }
 

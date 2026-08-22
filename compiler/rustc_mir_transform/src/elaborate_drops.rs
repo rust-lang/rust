@@ -3,6 +3,7 @@ use std::fmt;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
+use rustc_middle::mir::traversal::reachable_as_bitset;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
@@ -58,6 +59,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
         // For types that do not need dropping, the behaviour is trivial. So we only need to track
         // init/uninit for types that do need dropping.
         let move_data = MoveData::gather_moves(body, tcx, |ty| ty.needs_drop(tcx, typing_env));
+        let reachable = reachable_as_bitset(body);
         let elaborate_patch = {
             let env = MoveDataTypingEnv { move_data, typing_env };
 
@@ -66,7 +68,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
                 .skipping_unreachable_unwind()
                 .iterate_to_fixpoint(tcx, body, Some("elaborate_drops"))
                 .into_results_cursor(body);
-            let dead_unwinds = compute_dead_unwinds(body, &mut inits);
+            let dead_unwinds = compute_dead_unwinds(body, &reachable, &mut inits);
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env.move_data)
                 .mark_inactive_variants_as_uninit()
@@ -79,6 +81,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
                 tcx,
                 body,
                 env: &env,
+                reachable: &reachable,
                 init_data: InitializationData { inits, uninits },
                 drop_flags,
                 patch: MirPatch::new(body),
@@ -99,12 +102,14 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
 #[instrument(level = "trace", skip(body, flow_inits), ret)]
 fn compute_dead_unwinds<'a, 'tcx>(
     body: &'a Body<'tcx>,
+    reachable: &DenseBitSet<BasicBlock>,
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
 ) -> DenseBitSet<BasicBlock> {
     // We only need to do this pass once, because unwind edges can only
     // reach cleanup blocks, which can't have unwind edges themselves.
     let mut dead_unwinds = DenseBitSet::new_empty(body.basic_blocks.len());
-    for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
+    for bb in reachable.iter() {
+        let bb_data = &body[bb];
         let TerminatorKind::Drop { place, unwind: UnwindAction::Cleanup(_), .. } =
             bb_data.terminator().kind
         else {
@@ -248,6 +253,7 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     env: &'a MoveDataTypingEnv<'tcx>,
+    reachable: &'a DenseBitSet<BasicBlock>,
     init_data: InitializationData<'a, 'tcx>,
     drop_flags: IndexVec<MovePathIndex, Option<Local>>,
     patch: MirPatch<'tcx>,
@@ -290,7 +296,8 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
     }
 
     fn collect_drop_flags(&mut self) {
-        for (bb, data) in self.body.basic_blocks.iter_enumerated() {
+        for bb in self.reachable.iter() {
+            let data = &self.body[bb];
             let terminator = data.terminator();
             let TerminatorKind::Drop { ref place, .. } = terminator.kind else { continue };
 
@@ -337,7 +344,8 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
 
     fn elaborate_drops(&mut self) {
         // This function should mirror what `collect_drop_flags` does.
-        for (bb, data) in self.body.basic_blocks.iter_enumerated() {
+        for bb in self.reachable.iter() {
+            let data = &self.body[bb];
             let terminator = data.terminator();
             let TerminatorKind::Drop { place, target, unwind, replace, drop } = terminator.kind
             else {

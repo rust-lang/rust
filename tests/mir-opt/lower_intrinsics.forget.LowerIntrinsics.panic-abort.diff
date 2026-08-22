@@ -16,10 +16,6 @@
   
       bb1: {
           StorageDead(_2);
-          goto -> bb2;
-      }
-  
-      bb2: {
           return;
       }
   }

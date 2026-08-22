@@ -27,8 +27,6 @@ const _: Option<NotConstDestruct> = {
 // existing analysis.
 const _: NotConstDestruct = {
     let vec_tuple = (NotConstDestruct,);
-    //[stock]~^ ERROR destructor of
-
     vec_tuple.0
 };
 

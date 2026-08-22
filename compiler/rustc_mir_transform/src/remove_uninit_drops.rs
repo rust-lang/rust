@@ -1,5 +1,6 @@
 use rustc_abi::FieldIdx;
 use rustc_index::bit_set::MixedBitSet;
+use rustc_middle::mir::traversal::reachable;
 use rustc_middle::mir::{Body, TerminatorKind};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -29,7 +30,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
             .into_results_cursor(body);
 
         let mut to_remove = vec![];
-        for (bb, block) in body.basic_blocks.iter_enumerated() {
+        for (bb, block) in reachable(body) {
             let terminator = block.terminator();
             let TerminatorKind::Drop { place, .. } = &terminator.kind else { continue };
 
