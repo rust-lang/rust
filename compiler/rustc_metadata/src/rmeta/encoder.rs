@@ -1,12 +1,16 @@
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::fs::File;
-use std::io::{Read, Seek, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
+use rustc_data_structures::owned_slice::slice_owned;
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
@@ -16,7 +20,9 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
+use rustc_index::IndexVec;
 use rustc_middle::dep_graph::WorkProductId;
+use rustc_middle::hir::map::compute_hir_hash;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
@@ -25,7 +31,8 @@ use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
+use rustc_serialize::opaque::FileEncoder;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{OptLevel, TargetModifier};
 use rustc_span::def_id::CRATE_MOD_ID;
@@ -36,13 +43,15 @@ use rustc_span::{
 };
 use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
+use twox_hash::XxHash3_128;
 
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
-    opaque: opaque::FileEncoder<'a>,
+    opaque: FileEncoder<'a>,
+    metadata_hasher: Arc<Mutex<XxHash3_128>>,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
     tables: TableBuilders,
@@ -605,7 +614,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         adapted.encode(&mut self.opaque)
     }
 
-    fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
+    fn encode_crate_root(&mut self) -> (LazyValue<CrateRoot>, LazyValue<CrateRootUnhashed>) {
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
 
@@ -724,17 +733,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let denied_partial_mitigations = stat!("denied-partial-mitigations", || self
             .encode_enabled_denied_partial_mitigations());
 
-        let root = stat!("final", || {
+        let root = stat!("crate-root", || {
             let attrs = tcx.hir_krate_attrs();
             self.lazy(CrateRoot {
                 header: CrateHeader {
                     name: tcx.crate_name(LOCAL_CRATE),
                     triple: tcx.sess.opts.target_triple.clone(),
-                    hash: tcx.crate_hash(LOCAL_CRATE),
                     is_proc_macro_crate: proc_macro_data.is_some(),
                     is_stub: false,
                 },
-                extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
+
                 stable_crate_id: tcx.stable_crate_id(LOCAL_CRATE),
                 required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
                 panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
@@ -782,6 +790,36 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 expn_hashes,
                 def_path_hash_map,
                 specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
+            })
+        });
+
+        // By default the crate hash (SVH) is derived from the encoded metadata bytes. With
+        // `-Z metadata-crate-hash=no` we instead store the legacy HIR-based hash, which the
+        // `crate_hash` query computes directly without consulting `local_crate_hash`.
+        let hash = if tcx.sess.opts.unstable_opts.metadata_crate_hash {
+            self.opaque.flush();
+            Svh::new(Fingerprint::from_le_bytes(
+                self.metadata_hasher.lock().unwrap().finish_128().to_le_bytes(),
+            ))
+        } else {
+            tcx.crate_hash(LOCAL_CRATE)
+        };
+        tcx.untracked().local_crate_hash.set(hash).expect("local_crate_hash set twice");
+
+        let unhashed = stat!("final", || {
+            // Indexed by dependency `CrateNum`, matching the numbering `encode_crate_deps` uses.
+            // Slot 0 (`LOCAL_CRATE`) is filler; this crate's own value is `extra_filename`.
+            let mut dep_extra_filenames = IndexVec::from_elem_n(String::new(), 1);
+            if !self.is_proc_macro {
+                for &cnum in self.tcx.crates(()).iter() {
+                    let idx = dep_extra_filenames.push(self.tcx.extra_filename(cnum).clone());
+                    assert_eq!(idx, cnum, "dep_extra_filenames must be indexed by CrateNum");
+                }
+            }
+
+            self.lazy(CrateRootUnhashed {
+                extra_filename: self.tcx.sess.opts.cg.extra_filename.clone(),
+                dep_extra_filenames,
             })
         });
 
@@ -848,7 +886,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             eprint!("{s}");
         }
 
-        root
+        (root, unhashed)
     }
 }
 
@@ -2095,7 +2133,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.crate_dep_kind(cnum),
-                    extra_filename: self.tcx.extra_filename(cnum).clone(),
                     is_private: self.tcx.is_private_dep(cnum),
                 };
                 (cnum, dep)
@@ -2458,22 +2495,6 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     // there's no need to do dep-graph tracking for any of it.
     tcx.dep_graph.assert_ignored();
 
-    // Generate the metadata stub manually, as that is a small file compared to full metadata.
-    if let Some(ref_path) = ref_path {
-        let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
-
-        with_encode_metadata_header(tcx, ref_path, |ecx| {
-            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
-                name: tcx.crate_name(LOCAL_CRATE),
-                triple: tcx.sess.opts.target_triple.clone(),
-                hash: tcx.crate_hash(LOCAL_CRATE),
-                is_proc_macro_crate: false,
-                is_stub: true,
-            });
-            header.position.get()
-        })
-    }
-
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     let dep_node = tcx.metadata_dep_node();
@@ -2492,6 +2513,15 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             Ok(_) => {}
             Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
         };
+
+        // Read the SVH from the old metadata header.
+        let file = std::fs::File::open(&source_file_in_incr_dir).unwrap();
+        let mmap = unsafe { Mmap::map(file) }.unwrap();
+        let owned = slice_owned(mmap, Deref::deref);
+        let blob = MetadataBlob::new(owned);
+        let hash = blob.expect("file already created").get_crate_hash();
+        tcx.untracked().local_crate_hash.set(hash).expect("local_crate_hash set twice");
+
         return;
     };
 
@@ -2517,7 +2547,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             with_encode_metadata_header(tcx, path, |ecx| {
                 // Encode all the entries and extra information in the crate,
                 // culminating in the `CrateRoot` which points to all of it.
-                let root = ecx.encode_crate_root();
+                let (root, unhashed) = ecx.encode_crate_root();
 
                 // Flush buffer to ensure backing file has the correct size.
                 ecx.opaque.flush();
@@ -2528,24 +2558,79 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                     ecx.opaque.file().metadata().unwrap().len(),
                 );
 
-                root.position.get()
+                (root.position.get(), unhashed.position.get())
             })
         },
         None,
     );
+
+    // Generate the metadata stub manually, as that is a small file compared to full metadata.
+    if let Some(ref_path) = ref_path {
+        let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
+
+        with_encode_metadata_header(tcx, ref_path, |ecx| {
+            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
+                name: tcx.crate_name(LOCAL_CRATE),
+                triple: tcx.sess.opts.target_triple.clone(),
+                is_proc_macro_crate: false,
+                is_stub: true,
+            });
+            (header.position.get(), 0)
+        })
+    }
 }
 
 fn with_encode_metadata_header(
     tcx: TyCtxt<'_>,
     path: &Path,
-    f: impl FnOnce(&mut EncodeContext<'_, '_>) -> usize,
+    f: impl FnOnce(&mut EncodeContext<'_, '_>) -> (usize, usize),
 ) {
-    let mut encoder = opaque::FileEncoder::new(path)
-        .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
+    // By default the crate hash (SVH) is computed from the bytes of the encoded metadata,
+    // Under `-Z metadata-crate-hash=no` the SVH comes from the legacy `crate_hash` query instead and
+    // this hasher is never consulted, so we skip seeding it and feeding metadata bytes into it.
+    let metadata_crate_hash = tcx.sess.opts.unstable_opts.metadata_crate_hash;
+    // The SVH is an XXH3-128 digest of the encoded metadata bytes. XXH3 is a fast, non-cryptographic
+    // hash; that is sufficient here because the SVH is only a change detector, is never keyed
+    // secretly (it must be reproducible), and compiling a crate already runs its build scripts and
+    // proc-macros, so the crate author is trusted regardless.
+    let metadata_hasher = Arc::new(Mutex::new(XxHash3_128::new()));
+    if metadata_crate_hash {
+        // Fold in inputs that are not part of the encoded metadata bytes, reduced to a single
+        // fingerprint via the stable hasher and then mixed into the byte digest.
+        let hir_body_hash = compute_hir_hash(tcx);
+        let supplement: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            // Add dep_tracking_hash to ensure the SVH changes when any tracked flag changes.
+            tcx.sess.opts.dep_tracking_hash(true).stable_hash(&mut hcx, &mut hasher);
+            // Add HIR hash for untracked elements, e.g. DefKind::GlobalAsm.
+            hir_body_hash.stable_hash(&mut hcx, &mut hasher);
+            hasher.finish()
+        });
+        metadata_hasher.lock().unwrap().write(&supplement.to_le_bytes());
+    }
+
+    // Feed every flushed byte into `metadata_hasher` so the SVH covers the entire encoded metadata.
+    let mut flush_strategy = {
+        let metadata_hasher = Arc::clone(&metadata_hasher);
+        move |bytes: &[u8]| metadata_hasher.lock().unwrap().write(bytes)
+    };
+
+    let mut encoder = if metadata_crate_hash {
+        FileEncoder::with_flush_strategy(path, &mut flush_strategy)
+    } else {
+        FileEncoder::new(path)
+    }
+    .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
     encoder.emit_raw_bytes(METADATA_HEADER);
 
     // Will be filled with the root position after encoding everything.
     encoder.emit_raw_bytes(&0u64.to_le_bytes());
+
+    // Same with unhashed_position.
+    encoder.emit_raw_bytes(&0u64.to_le_bytes());
+
+    // Same with crate_hash.
+    encoder.emit_raw_bytes(&Fingerprint::ZERO.to_le_bytes());
 
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (Arc::clone(&source_map_files[0]), 0);
@@ -2556,6 +2641,7 @@ fn with_encode_metadata_header(
 
     let mut ecx = EncodeContext {
         opaque: encoder,
+        metadata_hasher: Arc::clone(&metadata_hasher),
         tcx,
         feat: tcx.features(),
         tables: Default::default(),
@@ -2574,7 +2660,7 @@ fn with_encode_metadata_header(
     // Encode the rustc version string in a predictable location.
     rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
 
-    let root_position = f(&mut ecx);
+    let (root_position, unhashed_position) = f(&mut ecx);
 
     // Make sure we report any errors from writing to the file.
     // If we forget this, compilation can succeed with an incomplete rmeta file,
@@ -2583,23 +2669,48 @@ fn with_encode_metadata_header(
         tcx.dcx().emit_fatal(FailWriteFile { path: &path, err });
     }
 
-    let file = ecx.opaque.file();
+    let mut file = ecx.opaque.file();
+    // We will return to this position after writing the root position and crate hash.
+    let pos_before_seek = file.stream_position().unwrap();
+
     if let Err(err) = encode_root_position(file, root_position) {
+        tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
+    }
+
+    if let Err(err) = encode_unhashed_position(file, unhashed_position) {
+        tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
+    }
+
+    let hash = tcx
+        .untracked()
+        .local_crate_hash
+        .get()
+        .copied()
+        .expect("local_crate_hash set during encoding");
+    if let Err(err) = encode_crate_hash(file, hash) {
+        tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
+    }
+
+    if let Err(err) = file.seek(SeekFrom::Start(pos_before_seek)) {
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 }
 
 fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Error> {
-    // We will return to this position after writing the root position.
-    let pos_before_seek = file.stream_position().unwrap();
-
-    // Encode the root position.
-    let header = METADATA_HEADER.len();
-    file.seek(std::io::SeekFrom::Start(header as u64))?;
+    file.seek(SeekFrom::Start(ROOT_POS_OFFSET as u64))?;
     file.write_all(&pos.to_le_bytes())?;
+    Ok(())
+}
 
-    // Return to the position where we are before writing the root position.
-    file.seek(std::io::SeekFrom::Start(pos_before_seek))?;
+fn encode_unhashed_position(mut file: &File, pos: usize) -> Result<(), std::io::Error> {
+    file.seek(SeekFrom::Start(UNHASHED_POS_OFFSET as u64))?;
+    file.write_all(&pos.to_le_bytes())?;
+    Ok(())
+}
+
+fn encode_crate_hash(mut file: &File, hash: Svh) -> Result<(), std::io::Error> {
+    file.seek(SeekFrom::Start(CRATE_HASH_OFFSET as u64))?;
+    file.write_all(&hash.as_fingerprint().to_le_bytes())?;
     Ok(())
 }
 
