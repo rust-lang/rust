@@ -3617,24 +3617,32 @@ pub enum TyKind<'hir, Unambig = ()> {
     Infer(Unambig),
 }
 
+/// An inline assembly operand in HIR.
+///
+/// Explicit-register operands keep the register name written in the source for diagnostics. The
+/// canonical `reg` value remains the only value used for validation and code generation.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub enum InlineAsmOperand<'hir> {
     In {
         reg: InlineAsmRegOrRegClass,
+        explicit_reg_name: Option<Symbol>,
         expr: &'hir Expr<'hir>,
     },
     Out {
         reg: InlineAsmRegOrRegClass,
+        explicit_reg_name: Option<Symbol>,
         late: bool,
         expr: Option<&'hir Expr<'hir>>,
     },
     InOut {
         reg: InlineAsmRegOrRegClass,
+        explicit_reg_name: Option<Symbol>,
         late: bool,
         expr: &'hir Expr<'hir>,
     },
     SplitInOut {
         reg: InlineAsmRegOrRegClass,
+        explicit_reg_name: Option<Symbol>,
         late: bool,
         in_expr: &'hir Expr<'hir>,
         out_expr: Option<&'hir Expr<'hir>>,
@@ -3668,10 +3676,26 @@ impl<'hir> InlineAsmOperand<'hir> {
         }
     }
 
+    /// Returns the register name written in the source for an explicit-register operand.
+    ///
+    /// Register-class operands and compiler-generated operands do not have a source register name.
+    pub fn explicit_reg_name(&self) -> Option<&Symbol> {
+        match self {
+            Self::In { explicit_reg_name, .. }
+            | Self::Out { explicit_reg_name, .. }
+            | Self::InOut { explicit_reg_name, .. }
+            | Self::SplitInOut { explicit_reg_name, .. } => explicit_reg_name.as_ref(),
+            Self::Const { .. }
+            | Self::SymFn { .. }
+            | Self::SymStatic { .. }
+            | Self::Label { .. } => None,
+        }
+    }
+
     pub fn is_clobber(&self) -> bool {
         matches!(
             self,
-            InlineAsmOperand::Out { reg: InlineAsmRegOrRegClass::Reg(_), late: _, expr: None }
+            InlineAsmOperand::Out { reg: InlineAsmRegOrRegClass::Reg(_), expr: None, .. }
         )
     }
 }

@@ -827,27 +827,31 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     .operands
                     .iter()
                     .map(|(op, _op_sp)| match *op {
-                        hir::InlineAsmOperand::In { reg, expr } => {
+                        hir::InlineAsmOperand::In { reg, expr, .. } => {
                             InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
                         }
-                        hir::InlineAsmOperand::Out { reg, late, ref expr } => {
+                        hir::InlineAsmOperand::Out { reg, late, ref expr, .. } => {
                             InlineAsmOperand::Out {
                                 reg,
                                 late,
                                 expr: expr.map(|expr| self.mirror_expr(expr)),
                             }
                         }
-                        hir::InlineAsmOperand::InOut { reg, late, expr } => {
+                        hir::InlineAsmOperand::InOut { reg, late, expr, .. } => {
                             InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
                         }
-                        hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, ref out_expr } => {
-                            InlineAsmOperand::SplitInOut {
-                                reg,
-                                late,
-                                in_expr: self.mirror_expr(in_expr),
-                                out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
-                            }
-                        }
+                        hir::InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            in_expr,
+                            ref out_expr,
+                            ..
+                        } => InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            in_expr: self.mirror_expr(in_expr),
+                            out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
+                        },
                         hir::InlineAsmOperand::Const { ref anon_const } => {
                             let ty = self.typeck_results.node_type(anon_const.hir_id);
                             let did = anon_const.def_id;
