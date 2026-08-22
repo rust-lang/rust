@@ -63,17 +63,24 @@ LL |     let x: bar;
 error[E0573]: cannot find type `x` in this scope
   --> $DIR/let-binding-init-expr-as-ty.rs:51:12
    |
-LL | struct K(S::new(()));
-   | --------------------- similarly named struct `K` defined here
-...
 LL |     let x: x;
-   |            ^
+   |            ^ not found in this scope
    |
    = note: a local variable named `x` exists in another namespace
+note: similarly named struct `K` defined here
+  --> $DIR/let-binding-init-expr-as-ty.rs:18:1
+   |
+LL | struct K(S::new(()));
+   | ^^^^^^^^^^^^^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL -     let x: x;
 LL +     let x: K;
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: x;
+LL +     let x = x;
    |
 
 error[E0658]: return type notation is experimental
