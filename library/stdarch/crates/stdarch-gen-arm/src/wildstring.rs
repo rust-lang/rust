@@ -2,7 +2,7 @@ use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{ToTokens, TokenStreamExt, quote};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use std::str::pattern::Pattern;
+use std::pattern::Pattern;
 use std::{fmt, str::FromStr};
 
 use crate::context::LocalContext;
@@ -68,7 +68,7 @@ impl WildString {
 
     pub fn replace<P>(&self, from: P, to: &str) -> WildString
     where
-        P: Pattern + Copy,
+        P: for<'a> Pattern<&'a str> + Copy,
     {
         WildString(
             self.0
