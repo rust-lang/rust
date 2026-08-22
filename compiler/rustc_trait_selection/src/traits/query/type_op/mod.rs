@@ -146,6 +146,24 @@ where
         root_def_id: LocalDefId,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
+        // Canonical type-op queries drop NextGen solver region constraints when
+        // building `QueryResponse`. Evaluate locally so `-Zassumptions-on-binders`
+        // can attach those constraints to this `InferCtxt` and report them from
+        // borrowck instead of silently succeeding.
+        if infcx.tcx.assumptions_on_binders() {
+            if !infcx.disable_trait_solver_fast_paths()
+                && let Some(output) = Q::try_fast_path(infcx.tcx, &self)
+            {
+                return Ok(TypeOpOutput { output, constraints: None, error_info: None });
+            }
+
+            let (output, _) =
+                scrape_region_constraints(infcx, root_def_id, "fully_perform", span, |ocx| {
+                    Q::perform_locally_with_next_solver(ocx, self, span)
+                })?;
+            return Ok(output);
+        }
+
         let mut error_info = None;
         let mut region_constraints = QueryRegionConstraints::default();
 
