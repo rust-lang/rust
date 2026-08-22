@@ -1,0 +1,4 @@
+error: building proc macro crate with sanitizers enabled is not supported
+
+error: aborting due to 1 previous error
+

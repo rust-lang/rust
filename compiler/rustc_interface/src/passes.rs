@@ -286,6 +286,10 @@ fn configure_and_expand(
         feature_err(sess, sym::export_stable, DUMMY_SP, "`sdylib` crate type is unstable").emit();
     }
 
+    if is_proc_macro_crate && !sess.sanitizers().is_empty() {
+        sess.dcx().emit_err(diagnostics::CannotSanitizeProcMacro);
+    }
+
     if is_proc_macro_crate && !sess.panic_strategy().unwinds() {
         sess.dcx().emit_warn(diagnostics::ProcMacroCratePanicAbort);
     }

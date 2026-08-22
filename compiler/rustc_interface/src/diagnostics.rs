@@ -101,6 +101,10 @@ pub(crate) struct FailedWritingFile<'a> {
 pub(crate) struct ProcMacroCratePanicAbort;
 
 #[derive(Diagnostic)]
+#[diag("building proc macro crate with sanitizers enabled is not supported")]
+pub(crate) struct CannotSanitizeProcMacro;
+
+#[derive(Diagnostic)]
 #[diag(
     "due to multiple output types requested, the explicitly specified output file name will be adapted for each output type"
 )]
