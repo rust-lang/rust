@@ -4,8 +4,9 @@ use crate::alloc::System;
 use crate::ffi::CStr;
 use crate::fmt;
 use crate::pin::Pin;
-use crate::sync::Arc;
+use crate::sync::{Arc, OnceLock};
 use crate::sys::sync::Parker;
+use crate::sys::thread as imp;
 use crate::time::Duration;
 
 // This module ensures private fields are kept private, which is necessary to enforce the safety requirements.
@@ -49,6 +50,7 @@ use thread_name_string::ThreadNameString;
 struct Inner {
     name: Option<ThreadNameString>,
     id: ThreadId,
+    os_id: OnceLock<u64>,
     parker: Parker,
 }
 
@@ -103,11 +105,40 @@ impl Thread {
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
             (&raw mut (*ptr).name).write(name);
             (&raw mut (*ptr).id).write(id);
+            (&raw mut (*ptr).os_id).write(OnceLock::new());
             Parker::new_in_place(&raw mut (*ptr).parker);
             Pin::new_unchecked(arc.assume_init())
         };
 
         Thread { inner }
+    }
+
+    /// Creates a handle for the calling thread, recording its OS id.
+    ///
+    /// `id` must be the `ThreadId` of the calling thread.
+    ///
+    /// Takes no name because passing one into `Thread::new` allocates with the
+    /// global allocator, which `thread::current` is documented never to use.
+    pub(crate) fn new_current(id: ThreadId) -> Thread {
+        let thread = Thread::new(id, None);
+        thread.set_os_id_to_current();
+        thread
+    }
+
+    /// Records the OS id of the calling thread in this handle.
+    ///
+    /// May only be called from the thread to which this handle belongs. A
+    /// spawned thread does this itself once it starts running, since its handle
+    /// already exists by then.
+    ///
+    /// `imp::current_os_id` must not allocate with the global allocator or call
+    /// `thread::current`.
+    pub(crate) fn set_os_id_to_current(&self) {
+        if let Some(os_id) = imp::current_os_id() {
+            if self.inner.os_id.set(os_id).is_err() {
+                rtabort!("thread OS id already set");
+            }
+        }
     }
 
     /// Like the public [`park`], but callable on any handle. This is used to
@@ -202,6 +233,35 @@ impl Thread {
     #[must_use]
     pub fn id(&self) -> ThreadId {
         self.inner.id
+    }
+
+    /// Gets the id the operating system gave this thread, if it has one that can
+    /// be read.
+    ///
+    /// This is the id that shows up in tools like `ps` and `top`, debuggers and
+    /// crash logs, unlike [`ThreadId`], which has no guaranteed relationship to
+    /// it. `None` means the platform has no such id, the thread has not started
+    /// running yet, or the id could not be read.
+    ///
+    /// The operating system may reuse the id of a thread that has exited, and a
+    /// `Thread` handle can outlive the thread it refers to. Use the id only
+    /// where a reused id is harmless, such as logging.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(thread_os_id)]
+    /// use std::thread;
+    ///
+    /// let spawned = thread::spawn(|| thread::current().os_id()).join().unwrap();
+    /// if spawned.is_some() {
+    ///     assert_ne!(spawned, thread::current().os_id());
+    /// }
+    /// ```
+    #[unstable(feature = "thread_os_id", issue = "160215")]
+    #[must_use]
+    pub fn os_id(&self) -> Option<u64> {
+        self.inner.os_id.get().copied()
     }
 
     /// Gets the thread's name.
