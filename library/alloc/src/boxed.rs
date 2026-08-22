@@ -438,14 +438,12 @@ impl<T> Box<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(smart_pointer_try_map)]
-    ///
     /// let b = Box::new(7);
     /// let new = Box::map(b, |i| i + 7);
     /// assert_eq!(*new, 14);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    #[stable(feature = "smart_pointer_map", since = "CURRENT_RUSTC_VERSION")]
     pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> Box<U> {
         if size_of::<T>() == size_of::<U>() && align_of::<T>() == align_of::<U>() {
             let (value, allocation) = Box::take(this);
