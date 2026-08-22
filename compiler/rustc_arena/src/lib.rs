@@ -86,14 +86,7 @@ impl<T> ArenaChunk<T> {
     // Returns a pointer to the end of the allocated space.
     #[inline]
     fn end(&mut self) -> *mut T {
-        unsafe {
-            if size_of::<T>() == 0 {
-                // A pointer as large as possible for zero-sized elements.
-                ptr::without_provenance_mut(!0)
-            } else {
-                self.start().add(self.storage.len())
-            }
-        }
+        unsafe { self.start().add(self.storage.len()) }
     }
 }
 
@@ -257,7 +250,7 @@ impl<T> TypedArena<T> {
         unsafe {
             // We need the element size to convert chunk sizes (ranging from
             // PAGE to HUGE_PAGE bytes) to element counts.
-            let elem_size = cmp::max(1, size_of::<T>());
+            let elem_size = size_of::<T>();
             let mut chunks = self.chunks.borrow_mut();
             let mut new_cap;
             if let Some(last_chunk) = chunks.last_mut() {
