@@ -1129,7 +1129,7 @@ impl<I: Interner> FnSig<I> {
     }
 
     pub fn is_fn_trait_compatible(self) -> bool {
-        !self.c_variadic() && self.safety().is_safe() && self.abi() == ExternAbi::Rust
+        !self.c_variadic() && self.safety().is_safe() && self.abi().is_fn_trait_compatible()
     }
 
     /// Set the safety flag.
