@@ -30,34 +30,33 @@ cfg_select! {
     target_os = "hermit" => {
         mod hermit;
         use hermit as imp;
+        use crate::sys::helpers::run_path_with_cstr as with_native_path;
     }
     target_os = "motor" => {
         mod motor;
         use motor as imp;
+        use crate::sys::path::with_native_path;
     }
     target_os = "solid_asp3" => {
         mod solid;
         use solid as imp;
+        use crate::sys::path::with_native_path;
     }
     target_os = "uefi" => {
         mod uefi;
         use uefi as imp;
+        use crate::sys::path::with_native_path;
     }
     target_os = "vexos" => {
         mod vexos;
         use vexos as imp;
+        use crate::sys::helpers::run_path_with_cstr as with_native_path;
     }
     _ => {
         mod unsupported;
         use unsupported as imp;
+        use unsupported::with_native_path;
     }
-}
-
-// FIXME: Replace this with platform-specific path conversion functions.
-#[cfg(not(any(target_family = "unix", target_os = "windows", target_os = "wasi")))]
-#[inline]
-pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> io::Result<T> {
-    f(path)
 }
 
 pub use imp::{
@@ -74,8 +73,12 @@ pub fn remove_file(path: &Path) -> io::Result<()> {
     with_native_path(path, &imp::unlink)
 }
 
+// UEFI converts old and new from `&Path` -> `PathBuf`, which requires a clone
+// in the nested &dyn Fn closures as `Fn` and `FnMut` closures require captured values
+// to be able to be consumed multiple times
+#[allow(noop_method_call)]
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    with_native_path(old, &|old| with_native_path(new, &|new| imp::rename(old, new)))
+    with_native_path(old, &|old| with_native_path(new, &|new| imp::rename(old.clone(), new)))
 }
 
 pub fn remove_dir(path: &Path) -> io::Result<()> {
@@ -94,19 +97,27 @@ pub fn read_link(path: &Path) -> io::Result<PathBuf> {
     with_native_path(path, &imp::readlink)
 }
 
+// UEFI converts old and new from `&Path` -> `PathBuf`, which requires a clone
+// in the nested &dyn Fn closures as `Fn` and `FnMut` closures require captured values
+// to be able to be consumed multiple times
+#[allow(noop_method_call)]
 pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
     // FIXME: use with_native_path on all platforms
     #[cfg(windows)]
     return imp::symlink(original, link);
     #[cfg(not(windows))]
     with_native_path(original, &|original| {
-        with_native_path(link, &|link| imp::symlink(original, link))
+        with_native_path(link, &|link| imp::symlink(original.clone(), link))
     })
 }
 
+// UEFI converts old and new from `&Path` -> `PathBuf`, which requires a clone
+// in the nested &dyn Fn closures as `Fn` and `FnMut` closures require captured values
+// to be able to be consumed multiple times
+#[allow(noop_method_call)]
 pub fn hard_link(original: &Path, link: &Path) -> io::Result<()> {
     with_native_path(original, &|original| {
-        with_native_path(link, &|link| imp::link(original, link))
+        with_native_path(link, &|link| imp::link(original.clone(), link))
     })
 }
 
@@ -139,10 +150,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
-    // FIXME: use with_native_path on all platforms
-    #[cfg(not(windows))]
-    return imp::exists(path);
-    #[cfg(windows)]
     with_native_path(path, &imp::exists)
 }
 

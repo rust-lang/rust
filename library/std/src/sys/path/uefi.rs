@@ -21,6 +21,12 @@ pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
 
 pub const HAS_PREFIXES: bool = true;
 
+#[inline]
+pub fn with_native_path<T>(path: &Path, f: &dyn Fn(PathBuf) -> io::Result<T>) -> io::Result<T> {
+    let path = absolute(path)?;
+    f(path)
+}
+
 /// UEFI paths can be of 4 types:
 ///
 /// 1. Absolute Shell Path: Uses shell mappings (eg: `FS0:`). Does not exist if UEFI shell not present.
