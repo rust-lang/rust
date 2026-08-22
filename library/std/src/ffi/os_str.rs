@@ -568,8 +568,8 @@ impl OsString {
 
     /// Truncate the `OsString` to the specified length.
     ///
-    /// If `new_len` is greater than the string's current length, this has no
-    /// effect.
+    /// If `new_len` is greater than or equal to the string's current length,
+    /// this has no effect.
     ///
     /// # Panics
     ///
@@ -578,11 +578,12 @@ impl OsString {
     #[inline]
     #[unstable(feature = "os_string_truncate", issue = "133262")]
     pub fn truncate(&mut self, len: usize) {
-        if len <= self.len() {
-            self.as_os_str().inner.check_public_boundary(len);
-            // SAFETY: The length was just checked to be at a valid boundary.
-            unsafe { self.inner.truncate_unchecked(len) };
+        if len >= self.len() {
+            return;
         }
+        self.as_os_str().inner.check_public_boundary(len);
+        // SAFETY: The length was just checked to be at a valid boundary.
+        unsafe { self.inner.truncate_unchecked(len) };
     }
 
     /// Provides plumbing to `Vec::extend_from_slice` without giving full
