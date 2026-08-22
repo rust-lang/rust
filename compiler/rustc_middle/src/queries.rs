@@ -2395,6 +2395,9 @@ rustc_queries! {
         desc { "checking whether crate `{}` is a direct public dependency", c }
         separate_provide_extern
     }
+    query paths_from_private_deps(key: hir::OwnerId) -> Option<&'tcx SortedMap<hir::ItemLocalId, CrateNum>> {
+        desc { "getting paths imported from private dependencies in `{}`", tcx.def_path_str(key) }
+    }
     query allocator_kind(_: ()) -> Option<AllocatorKind> {
         eval_always
         desc { "getting the allocator kind for the current crate" }
