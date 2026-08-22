@@ -11,5 +11,5 @@ fn main() {
     //~^ ERROR the size for values of type `str` cannot be known at compilation time
 
     foo::<for<'a> fn(&'a ()) -> (dyn std::fmt::Display + 'a), _>(None, (&(),));
-    //~^ ERROR the size for values of type `(dyn std::fmt::Display + 'a)` cannot be known at compilation time
+    //~^ ERROR the size for values of type `dyn std::fmt::Display + 'a` cannot be known at compilation time
 }

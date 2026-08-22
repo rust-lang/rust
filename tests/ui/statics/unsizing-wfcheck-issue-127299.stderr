@@ -21,13 +21,13 @@ help: alternatively, consider constraining `bar` so it does not apply to trait o
 LL |     fn bar() -> i32 where Self: Sized;
    |                     +++++++++++++++++
 
-error[E0277]: `(dyn Qux + 'static)` cannot be shared between threads safely
+error[E0277]: `dyn Qux + 'static` cannot be shared between threads safely
   --> $DIR/unsizing-wfcheck-issue-127299.rs:12:13
    |
 LL | static FOO: &Lint = &Lint { desc: "desc" };
-   |             ^^^^^ `(dyn Qux + 'static)` cannot be shared between threads safely
+   |             ^^^^^ `dyn Qux + 'static` cannot be shared between threads safely
    |
-   = help: within `&'static Lint`, the trait `Sync` is not implemented for `(dyn Qux + 'static)`
+   = help: within `&'static Lint`, the trait `Sync` is not implemented for `dyn Qux + 'static`
    = note: required because it appears within the type `&'static (dyn Qux + 'static)`
 note: required because it appears within the type `Lint`
   --> $DIR/unsizing-wfcheck-issue-127299.rs:7:12

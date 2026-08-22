@@ -359,6 +359,17 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// will always be printed.)
     fn should_print_optional_region(&self, region: ty::Region<'tcx>) -> bool;
 
+    /// Whether `pretty_print_type` should wrap a multi-bound `impl` / `dyn`
+    /// inner in parens at positions where the bare form would be parser-
+    /// ambiguous: after a prefix type constructor (`&`, `&mut`, `*const`,
+    /// `*mut`) where `&T + B` parses as `(&T) + B`, and in the function-
+    /// pointer / `Fn(..) -> T` return position where `-> T + B` parses as
+    /// the outer signature picking up an extra bound. Byte-stable printers
+    /// (mangling, etc.) override this to `false`.
+    fn add_disambiguating_parens(&self) -> bool {
+        true
+    }
+
     fn reset_type_limit(&mut self) {}
 
     // Defaults (should not be overridden):
@@ -762,7 +773,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::RawPtr(ty, mutbl) => {
                 write!(self, "*{} ", mutbl.ptr_str())?;
-                ty.print(self)?;
+                self.print_inner_with_disambiguating_parens(ty)?;
             }
             ty::Ref(r, ty, mutbl) => {
                 write!(self, "&")?;
@@ -770,7 +781,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     r.print(self)?;
                     write!(self, " ")?;
                 }
-                ty::TypeAndMut { ty, mutbl }.print(self)?;
+                // `&mut (impl A + B)`, not `&(mut impl A + B)`: emit `mut ` before the parens.
+                write!(self, "{}", mutbl.prefix_str())?;
+                self.print_inner_with_disambiguating_parens(ty)?;
             }
             ty::Never => write!(self, "!")?,
             ty::Tuple(tys) => {
@@ -846,16 +859,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::Adt(def, args) => self.print_def_path(def.did(), args)?,
             ty::Dynamic(data, r) => {
-                let print_r = self.should_print_optional_region(r);
-                if print_r {
-                    write!(self, "(")?;
-                }
                 write!(self, "dyn ")?;
                 data.print(self)?;
-                if print_r {
+                if self.should_print_optional_region(r) {
                     write!(self, " + ")?;
                     r.print(self)?;
-                    write!(self, ")")?;
                 }
             }
             ty::Foreign(def_id) => self.print_def_path(def_id, &[])?,
@@ -1030,28 +1038,98 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         Ok(())
     }
 
-    fn pretty_print_opaque_impl_type(
-        &mut self,
-        def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Result<(), PrintError> {
-        let tcx = self.tcx();
+    /// Prints `ty` after a prefix type constructor, wrapping in parens iff
+    /// [`Self::inner_needs_disambiguating_parens`] returns `true`.
+    fn print_inner_with_disambiguating_parens(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
+        let need_paren = self.inner_needs_disambiguating_parens(ty);
+        if need_paren {
+            write!(self, "(")?;
+        }
+        ty.print(self)?;
+        if need_paren {
+            write!(self, ")")?;
+        }
+        Ok(())
+    }
 
-        // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
-        // by looking up the projections associated with the def_id.
+    /// Whether `ty`, sitting right after a prefix type constructor, would
+    /// print with a top-level `+`. Without the wrap, `&impl A + B` parses as
+    /// the ambiguous `(&impl A) + B`.
+    fn inner_needs_disambiguating_parens(&self, ty: Ty<'tcx>) -> bool {
+        if !self.add_disambiguating_parens() || self.should_print_verbose() {
+            return false;
+        }
+        match ty.kind() {
+            // RPITIT trait-side appears as `Projection`, not `Opaque`.
+            ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+                self.opaque_has_multiple_bounds(*def_id)
+            }
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. })
+                if self.tcx().is_impl_trait_in_trait(*def_id) =>
+            {
+                self.opaque_has_multiple_bounds(*def_id)
+            }
+            ty::Dynamic(predicates, region) => {
+                // Projections inline into the principal as `<Item = X>`;
+                // only principal/auto traits produce a top-level `+`. An
+                // explicit (printable) region adds one more `+`-joined part.
+                let trait_count = predicates
+                    .iter()
+                    .filter(|pred| {
+                        matches!(
+                            pred.skip_binder(),
+                            ty::ExistentialPredicate::Trait(_)
+                                | ty::ExistentialPredicate::AutoTrait(_)
+                        )
+                    })
+                    .count();
+                let region_count = usize::from(self.should_print_optional_region(*region));
+                trait_count + region_count > 1
+            }
+            _ => false,
+        }
+    }
+
+    /// Whether `Alias(Opaque)` would print with more than one top-level
+    /// `+`-joined component. Must stay in sync with
+    /// `pretty_print_opaque_impl_type`'s sized-bound handling. `?Sized` and
+    /// the synthetic `Sized` / `?Sized` / `MetaSized` / `PointeeSized` suffix
+    /// each contribute one top-level joinable component. Regressions land in
+    /// `tests/ui/impl-trait/in-trait/refine-rustfix-parens.rs`.
+    fn opaque_has_multiple_bounds(&self, def_id: DefId) -> bool {
+        let tcx = self.tcx();
         let bounds = tcx.explicit_item_bounds(def_id);
 
-        let mut traits = FxIndexMap::default();
-        let mut fn_traits = FxIndexMap::default();
-        let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
+        // Only the *number* of printed components matters here, and that is
+        // invariant under instantiation, so identity args are enough.
+        let collected = self.collect_opaque_bounds(
+            bounds
+                .iter_identity_copied()
+                .map(Unnormalized::skip_norm_wip)
+                .map(|(clause, _)| clause),
+        );
 
-        let mut has_sized_bound = false;
-        let mut has_negative_sized_bound = false;
-        let mut has_meta_sized_bound = false;
+        collected.printed_component_count(tcx.features().sized_hierarchy()) > 1
+    }
 
-        for (predicate, _) in
-            bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
-        {
+    /// Gather the `+`-joined components of an opaque type's item bounds, in the
+    /// order `pretty_print_opaque_impl_type` prints them.
+    fn collect_opaque_bounds(
+        &self,
+        clauses: impl Iterator<Item = ty::Clause<'tcx>>,
+    ) -> OpaqueBounds<'tcx> {
+        let tcx = self.tcx();
+
+        let mut collected = OpaqueBounds {
+            traits: FxIndexMap::default(),
+            fn_traits: FxIndexMap::default(),
+            lifetimes: SmallVec::new(),
+            has_sized_bound: false,
+            has_negative_sized_bound: false,
+            has_meta_sized_bound: false,
+        };
+
+        for predicate in clauses {
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
@@ -1061,13 +1139,15 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     match tcx.as_lang_item(pred.def_id()) {
                         Some(LangItem::Sized) => match pred.polarity {
                             ty::ClausePolarity::Positive => {
-                                has_sized_bound = true;
+                                collected.has_sized_bound = true;
                                 continue;
                             }
-                            ty::ClausePolarity::Negative => has_negative_sized_bound = true,
+                            ty::ClausePolarity::Negative => {
+                                collected.has_negative_sized_bound = true
+                            }
                         },
                         Some(LangItem::MetaSized) => {
-                            has_meta_sized_bound = true;
+                            collected.has_meta_sized_bound = true;
                             continue;
                         }
                         Some(LangItem::PointeeSized) => {
@@ -1079,8 +1159,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     self.insert_trait_and_projection(
                         bound_predicate.rebind(pred),
                         None,
-                        &mut traits,
-                        &mut fn_traits,
+                        &mut collected.traits,
+                        &mut collected.fn_traits,
                     );
                 }
                 ty::ClauseKind::Projection(pred) => {
@@ -1093,16 +1173,44 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     self.insert_trait_and_projection(
                         trait_ref,
                         Some((proj.item_def_id(), proj.term())),
-                        &mut traits,
-                        &mut fn_traits,
+                        &mut collected.traits,
+                        &mut collected.fn_traits,
                     );
                 }
                 ty::ClauseKind::TypeOutlives(outlives) => {
-                    lifetimes.push(outlives.1);
+                    collected.lifetimes.push(outlives.1);
                 }
                 _ => {}
             }
         }
+
+        collected
+    }
+
+    fn pretty_print_opaque_impl_type(
+        &mut self,
+        def_id: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<(), PrintError> {
+        let tcx = self.tcx();
+
+        // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
+        // by looking up the projections associated with the def_id.
+        let bounds = tcx.explicit_item_bounds(def_id);
+
+        let OpaqueBounds {
+            mut traits,
+            fn_traits,
+            lifetimes,
+            has_sized_bound,
+            has_negative_sized_bound,
+            has_meta_sized_bound,
+        } = self.collect_opaque_bounds(
+            bounds
+                .iter_instantiated_copied(tcx, args)
+                .map(Unnormalized::skip_norm_wip)
+                .map(|(clause, _)| clause),
+        );
 
         write!(self, "impl ")?;
 
@@ -1256,7 +1364,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// Insert the trait ref and optionally a projection type associated with it into either the
     /// traits map or fn_traits map, depending on if the trait is in the Fn* family of traits.
     fn insert_trait_and_projection(
-        &mut self,
+        &self,
         trait_pred: ty::PolyTraitClause<'tcx>,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
         traits: &mut FxIndexMap<
@@ -1519,7 +1627,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         write!(self, ")")?;
         if !output.is_unit() {
             write!(self, " -> ")?;
-            output.print(self)?;
+            // `Fn(..) -> X + B` parses as if `+ B` extended the outer signature,
+            // so wrap if `X` would print with `+`-joined bounds. Same machinery
+            // as the `&T`, `*const T`, `*mut T` prefix arms.
+            self.print_inner_with_disambiguating_parens(output)?;
         }
 
         Ok(())
@@ -3618,4 +3729,52 @@ pub fn provide(providers: &mut Providers) {
 pub struct OpaqueFnEntry<'tcx> {
     kind: ty::ClosureKind,
     return_ty: Option<ty::Binder<'tcx, Term<'tcx>>>,
+}
+
+/// The `+`-joined components of an `impl Trait`, gathered from its item bounds.
+///
+/// [`PrettyPrinter::pretty_print_opaque_impl_type`] renders these, and
+/// [`PrettyPrinter::opaque_has_multiple_bounds`] counts them to decide whether
+/// the opaque needs disambiguating parens. Both go through
+/// [`PrettyPrinter::collect_opaque_bounds`] so that the two never disagree.
+pub struct OpaqueBounds<'tcx> {
+    traits: FxIndexMap<ty::PolyTraitClause<'tcx>, FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>>,
+    fn_traits: FxIndexMap<
+        (ty::Binder<'tcx, (&'tcx ty::List<Ty<'tcx>>, Ty<'tcx>)>, bool),
+        OpaqueFnEntry<'tcx>,
+    >,
+    lifetimes: SmallVec<[ty::Region<'tcx>; 1]>,
+    has_sized_bound: bool,
+    has_negative_sized_bound: bool,
+    has_meta_sized_bound: bool,
+}
+
+impl<'tcx> OpaqueBounds<'tcx> {
+    /// Whether the sizedness suffix adds a component of its own, mirroring the
+    /// tail of `pretty_print_opaque_impl_type`.
+    fn prints_sized_suffix(&self, using_sized_hierarchy: bool) -> bool {
+        let nothing_printed_yet = self.fn_traits.is_empty() && self.traits.is_empty();
+        let add_sized =
+            self.has_sized_bound && (nothing_printed_yet || self.has_negative_sized_bound);
+        let add_maybe_sized =
+            self.has_meta_sized_bound && !self.has_negative_sized_bound && !using_sized_hierarchy;
+        let has_pointee_sized_bound =
+            !self.has_sized_bound && !self.has_meta_sized_bound && !self.has_negative_sized_bound;
+
+        add_sized
+            || add_maybe_sized
+            || (using_sized_hierarchy && (self.has_meta_sized_bound || has_pointee_sized_bound))
+    }
+
+    /// How many `+`-joined components the opaque actually prints as. Lifetimes
+    /// are only rendered outside of forced-trimmed mode, so they only count
+    /// when they will be printed.
+    fn printed_component_count(&self, using_sized_hierarchy: bool) -> usize {
+        let lifetimes = if with_forced_trimmed_paths() { 0 } else { self.lifetimes.len() };
+
+        self.fn_traits.len()
+            + self.traits.len()
+            + lifetimes
+            + usize::from(self.prints_sized_suffix(using_sized_hierarchy))
+    }
 }

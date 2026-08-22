@@ -9,8 +9,8 @@ LL |     Foo::f();
    |
 help: use the fully-qualified path to the only available implementation
    |
-LL |     <(dyn Bar + 'static) as Foo>::f();
-   |     +++++++++++++++++++++++    +
+LL |     <dyn Bar + 'static as Foo>::f();
+   |     +++++++++++++++++++++    +
 
 error: aborting due to 1 previous error
 

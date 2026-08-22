@@ -48,6 +48,6 @@ unsafe impl Send for ToRef {}
 // An alias expanding to a trait object is still rejected for the local auto trait.
 type ToDyn = dyn Send;
 impl Marker for ToDyn {}
-//~^ ERROR traits with a default impl, like `Marker`, cannot be implemented for trait object `(dyn Send + 'static)`
+//~^ ERROR traits with a default impl, like `Marker`, cannot be implemented for trait object `dyn Send + 'static`
 
 fn main() {}

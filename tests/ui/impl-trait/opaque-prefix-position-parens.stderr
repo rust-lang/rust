@@ -1,0 +1,60 @@
+error[E0308]: mismatched types
+  --> $DIR/opaque-prefix-position-parens.rs:18:16
+   |
+LL | pub fn one() -> impl Ta { 0u8 }
+   |                 ------- the found opaque type
+...
+LL |     takes_unit(&one());
+   |     ---------- ^^^^^^ expected `()`, found `&impl Ta`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected unit type `()`
+              found reference `&impl Ta`
+note: function defined here
+  --> $DIR/opaque-prefix-position-parens.rs:15:8
+   |
+LL | pub fn takes_unit(_: ()) {}
+   |        ^^^^^^^^^^ -----
+
+error[E0308]: mismatched types
+  --> $DIR/opaque-prefix-position-parens.rs:23:16
+   |
+LL | pub fn two() -> impl Ta + Tb { 0u8 }
+   |                 ------------ the found opaque type
+...
+LL |     takes_unit(&two());
+   |     ---------- ^^^^^^ expected `()`, found `&(impl Ta + Tb)`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected unit type `()`
+              found reference `&impl Ta + Tb`
+note: function defined here
+  --> $DIR/opaque-prefix-position-parens.rs:15:8
+   |
+LL | pub fn takes_unit(_: ()) {}
+   |        ^^^^^^^^^^ -----
+
+error[E0308]: mismatched types
+  --> $DIR/opaque-prefix-position-parens.rs:28:16
+   |
+LL | pub fn lifetime<'a>(_x: &'a u8) -> impl Ta + 'a { 0u8 }
+   |                                    ------------ the found opaque type
+...
+LL |     takes_unit(&lifetime(x));
+   |     ---------- ^^^^^^^^^^^^ expected `()`, found `&impl Ta`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected unit type `()`
+              found reference `&impl Ta + '_`
+note: function defined here
+  --> $DIR/opaque-prefix-position-parens.rs:15:8
+   |
+LL | pub fn takes_unit(_: ()) {}
+   |        ^^^^^^^^^^ -----
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

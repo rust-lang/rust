@@ -23,13 +23,13 @@ help: add missing generic argument
 LL | fn iso<A>(a: Fn<Args>) -> Option<_>
    |                ++++++
 
-error[E0277]: the size for values of type `(dyn Fn(_) + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Fn(_) + 'static` cannot be known at compilation time
   --> $DIR/dyn-trait-ice-153366.rs:18:5
    |
 LL |     iso(())
    |     ^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Fn(_) + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Fn(_) + 'static`
 note: required by a bound in `iso`
   --> $DIR/dyn-trait-ice-153366.rs:11:22
    |
@@ -71,13 +71,13 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL | fn iso<A>(a: Fn) -> Option<_>
    |                            ^ not allowed in type signatures
 
-error[E0277]: the size for values of type `(dyn Fn(_) + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Fn(_) + 'static` cannot be known at compilation time
   --> $DIR/dyn-trait-ice-153366.rs:23:5
    |
 LL |     iso(())
    |     ^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Fn(_) + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Fn(_) + 'static`
 note: required by a bound in `iso`
   --> $DIR/dyn-trait-ice-153366.rs:11:22
    |

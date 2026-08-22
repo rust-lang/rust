@@ -7,7 +7,7 @@ LL |     h2(|_: (), _: (), _: (), x: &_| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a, 't0> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
+   = note: expected closure signature `for<'a, 't0> fn(&'a (), Box<dyn for<'a> Fn(&'a ()) + 'static>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
               found closure signature `fn((), (), (), &_) -> _`
 note: required by a bound in `h2`
   --> $DIR/closure-arg-borrow-ice-issue-152331.rs:8:8

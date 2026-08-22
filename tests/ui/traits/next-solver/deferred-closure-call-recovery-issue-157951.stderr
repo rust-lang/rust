@@ -1,10 +1,10 @@
-error[E0277]: the size for values of type `(dyn Fn() + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Fn() + 'static` cannot be known at compilation time
   --> $DIR/deferred-closure-call-recovery-issue-157951.rs:5:17
    |
 LL |     let f = |f: dyn Fn()| f;
    |                 ^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Fn() + 'static`
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
@@ -21,7 +21,7 @@ error[E0057]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/deferred-closure-call-recovery-issue-157951.rs:8:5
    |
 LL |     f();
-   |     ^-- argument #1 of type `(dyn Fn() + 'static)` is missing
+   |     ^-- argument #1 of type `dyn Fn() + 'static` is missing
    |
 note: closure defined here
   --> $DIR/deferred-closure-call-recovery-issue-157951.rs:5:13

@@ -13,6 +13,6 @@ struct A<T: Size<8> + ?Sized> {
 
 fn foo(x: A<dyn Send>) {}
 //~^ ERROR mismatched types
-//~| ERROR the size for values of type `(dyn Send + 'static)` cannot be known at compilation time
+//~| ERROR the size for values of type `dyn Send + 'static` cannot be known at compilation time
 
 fn main() {}
