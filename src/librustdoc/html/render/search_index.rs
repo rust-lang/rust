@@ -12,6 +12,7 @@ use ::serde::ser::{SerializeSeq, Serializer};
 use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::smallvec::smallvec;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
 use rustc_hir::find_attr;
@@ -22,6 +23,7 @@ use rustc_span::symbol::{Symbol, kw};
 use stringdex::internals as stringdex_internals;
 use tracing::instrument;
 
+use crate::clean::paths::ItemPath;
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
 use crate::clean::{self, ExternalLocation, utils};
 use crate::config::ShouldMerge;
@@ -58,7 +60,7 @@ pub(crate) struct SerializedSearchIndex {
     generic_inverted_index: Vec<Vec<Vec<u32>>>,
     // generated in-memory backref cache
     #[serde(skip)]
-    crate_paths_index: FxHashMap<(ItemType, Vec<Symbol>), usize>,
+    crate_paths_index: FxHashMap<(ItemType, ItemPath), usize>,
 }
 
 impl SerializedSearchIndex {
@@ -188,13 +190,13 @@ impl SerializedSearchIndex {
         // generic_inverted_index is not the same length as other columns,
         // because it's actually a completely different set of objects
 
-        let mut crate_paths_index: FxHashMap<(ItemType, Vec<Symbol>), usize> = FxHashMap::default();
+        let mut crate_paths_index: FxHashMap<(ItemType, ItemPath), usize> = FxHashMap::default();
         for (i, (name, path_data)) in names.iter().zip(path_data.iter()).enumerate() {
             if let Some(path_data) = path_data {
                 let full_path = if path_data.module_path.is_empty() {
-                    vec![Symbol::intern(name)]
+                    smallvec![Symbol::intern(name)].into()
                 } else {
-                    let mut full_path = path_data.module_path.to_vec();
+                    let mut full_path = path_data.module_path.clone();
                     full_path.push(Symbol::intern(name));
                     full_path
                 };
@@ -229,7 +231,7 @@ impl SerializedSearchIndex {
         if let Some(path_data) = &path_data
             && let name = Symbol::intern(&name)
             && let fqp = if path_data.module_path.is_empty() {
-                vec![name]
+                ItemPath::from(smallvec![name])
             } else {
                 let mut v = path_data.module_path.clone();
                 v.push(name);
@@ -268,7 +270,7 @@ impl SerializedSearchIndex {
                 .chain([Symbol::intern(&self.names[module_path_index]), name])
                 .collect()
         } else {
-            vec![name]
+            smallvec![name].into()
         };
         // If a path with the same name already exists, but no entry does,
         // we can fill in the entry without having to allocate a new row ID.
@@ -298,14 +300,14 @@ impl SerializedSearchIndex {
 
     fn get_id_by_module_path(&mut self, path: &[Symbol]) -> usize {
         let ty = if path.len() == 1 { ItemType::ExternCrate } else { ItemType::Module };
-        match self.crate_paths_index.entry((ty, path.to_vec())) {
+        match self.crate_paths_index.entry((ty, path.into())) {
             Entry::Occupied(index) => *index.get(),
             Entry::Vacant(slot) => {
                 slot.insert(self.path_data.len());
                 let (name, module_path) = path.split_last().unwrap();
                 self.push_path(
                     name.as_str().to_string(),
-                    PathData { ty, module_path: module_path.to_vec(), exact_module_path: None },
+                    PathData { ty, module_path: module_path.into(), exact_module_path: None },
                 )
             }
         }
@@ -978,8 +980,8 @@ impl<'de> Deserialize<'de> for EntryData {
 #[derive(Clone, Debug)]
 struct PathData {
     ty: ItemType,
-    module_path: Vec<Symbol>,
-    exact_module_path: Option<Vec<Symbol>>,
+    module_path: ItemPath,
+    exact_module_path: Option<ItemPath>,
 }
 
 impl Serialize for PathData {
@@ -1026,13 +1028,13 @@ impl<'de> Deserialize<'de> for PathData {
                 Ok(PathData {
                     ty,
                     module_path: if module_path.is_empty() {
-                        vec![]
+                        ItemPath::default()
                     } else {
                         module_path.split("::").map(Symbol::intern).collect()
                     },
                     exact_module_path: exact_module_path.map(|path| {
                         if path.is_empty() {
-                            vec![]
+                            ItemPath::default()
                         } else {
                             path.split("::").map(Symbol::intern).collect()
                         }
@@ -1283,7 +1285,7 @@ pub(crate) fn build_index(
             search_index.push(IndexItem {
                 defid: item.item_id.as_def_id(),
                 name: item.name.unwrap(),
-                module_path: fqp[..fqp.len() - 1].to_vec(),
+                module_path: fqp[..fqp.len() - 1].into(),
                 parent: Some(parent),
                 parent_idx: None,
                 trait_parent,
@@ -1320,7 +1322,7 @@ pub(crate) fn build_index(
     let crate_doc =
         short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
     let crate_idx = {
-        let crate_path = (ItemType::ExternCrate, vec![crate_name]);
+        let crate_path = (ItemType::ExternCrate, ItemPath::from(smallvec![crate_name]));
         match serialized_index.crate_paths_index.entry(crate_path) {
             Entry::Occupied(index) => {
                 let index = *index.get();
@@ -1378,7 +1380,7 @@ pub(crate) fn build_index(
                     crate_name.as_str().to_string(),
                     Some(PathData {
                         ty: ItemType::ExternCrate,
-                        module_path: vec![],
+                        module_path: ItemPath::default(),
                         exact_module_path: None,
                     }),
                     Some(EntryData {
@@ -1422,14 +1424,14 @@ pub(crate) fn build_index(
                                     name.as_str().to_string(),
                                     PathData {
                                         ty,
-                                        module_path: path.to_vec(),
+                                        module_path: path.into(),
                                         exact_module_path: if let Some(exact_path) =
                                             cache.exact_paths.get(&defid)
                                             && let Some((name2, exact_path)) =
                                                 exact_path.split_last()
                                             && name == name2
                                         {
-                                            Some(exact_path.to_vec())
+                                            Some(exact_path.into())
                                         } else {
                                             None
                                         },
@@ -1467,12 +1469,12 @@ pub(crate) fn build_index(
                         && find_attr!(tcx, defid, MacroExport { .. })
                     {
                         // `#[macro_export]` always exports to the crate root.
-                        vec![tcx.crate_name(defid.krate)]
+                        smallvec![tcx.crate_name(defid.krate)].into()
                     } else {
                         if fqp.len() < 2 {
                             return None;
                         }
-                        fqp[..fqp.len() - 1].to_vec()
+                        fqp[..fqp.len() - 1].into()
                     };
                     if path == item.module_path {
                         return None;
@@ -1576,7 +1578,8 @@ pub(crate) fn build_index(
             used_in_function_signature: &mut BTreeSet<isize>,
         ) -> RenderTypeId {
             let pathid = serialized_index.names.len();
-            let pathid = match serialized_index.crate_paths_index.entry((ty, path.to_vec())) {
+            let pathid = match serialized_index.crate_paths_index.entry((ty, ItemPath::from(path)))
+            {
                 Entry::Occupied(entry) => {
                     let id = *entry.get();
                     if serialized_index.type_data[id].as_mut().is_none() {
@@ -1597,12 +1600,12 @@ pub(crate) fn build_index(
                         name.to_string(),
                         PathData {
                             ty,
-                            module_path: path.to_vec(),
+                            module_path: path.into(),
                             exact_module_path: if let Some(exact_path) = exact_path
                                 && let Some((name2, exact_path)) = exact_path.split_last()
                                 && name == name2
                             {
-                                Some(exact_path.to_vec())
+                                Some(exact_path.into())
                             } else {
                                 None
                             },
