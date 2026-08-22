@@ -402,7 +402,13 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         config.opts.edition,
         jobs,
         &config.extra_symbols,
-        SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind },
+        SourceMapInputs {
+            file_loader,
+            path_mapping,
+            hash_kind,
+            checksum_hash_kind,
+            verbose: config.opts.verbose,
+        },
         |current_gcx| {
             // The previous `early_dcx` can't be reused here because it doesn't
             // impl `Send`. Creating a new one is fine.

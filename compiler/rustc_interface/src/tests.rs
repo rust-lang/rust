@@ -53,6 +53,7 @@ where
         path_mapping: sessopts.file_path_mapping(),
         hash_kind,
         checksum_hash_kind,
+        verbose: sessopts.verbose,
     });
 
     rustc_span::create_session_globals_then(DEFAULT_EDITION, &[], sm_inputs, || {
