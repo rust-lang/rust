@@ -1526,28 +1526,30 @@ where
         // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
         // where it gets used as a const generic.
         let span = alias_const.kind.def_span(cx);
+
+        use ty::{ErrorHandled};
+
         match cx.const_eval_resolve_for_typeck(typing_env, erased_alias_const, span) {
             Ok(Ok(val)) => {
-                let Ok(ty) = normalize_ty(alias_const.type_of(cx)) else {panic!("failed to normalize ValTree or something meow")};
+                let Ok(ty) = normalize_ty(alias_const.type_of(cx)) else { return Ok(None) };// TODO look into this
 
                 Ok(Some(I::Const::new_value(cx, val, ty)))
             }
-            Ok(Err(_)) => panic!("huh"),
+            Ok(Err(_)) => {
+                let _e = cx.delay_bug( // delayed_bug vs delay_bug? whats the difference
+                    "Type system constant with non valtree'able type evaluated but no error emitted",
+                );
+                Ok(None) // look later
 
-            //Err(e) => Ok(Some(I::Const::new_error(cx, e)))
-            Err(_) => panic!("dont care for now")
+            }
 
+            Err(ErrorHandled::Reported(r, _)) => {
+                Ok(Some(I::Const::new_error(cx, r.error)))
+            }
 
-            // Ok(Err(_)) => {
-            //     let e = cx.delay_bug( // delayed_bug vs delay_bug? whats the difference
-            //         "Type system constant with non valtree'able type evaluated but no error emitted",
-            //     );
-            //     Err(EvaluateConstErr::InvalidConstParamTy(e))
-            // }
-            // Err(ErrorHandled::Reported(info, _)) => {
-            //     Err(EvaluateConstErr::EvaluationFailure(info.into()))
-            // }
-            // Err(ErrorHandled::TooGeneric(_)) => Err(EvaluateConstErr::HasGenericsOrInfers),
+            Err(ErrorHandled::TooGeneric(_span)) => {
+                Ok(None)
+            }
         }
     }
 
