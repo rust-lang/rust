@@ -15,8 +15,8 @@ use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
-    AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
-    DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
+    DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd,
+    DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
     DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
@@ -27,6 +27,7 @@ use crate::diagnostics::{
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
 };
+use crate::target_checking::Policy::Allow;
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
     // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
@@ -59,15 +60,6 @@ fn check_attr_not_crate_level(
 ) -> bool {
     if cx.shared.target == Target::Crate {
         cx.emit_err(DocAttrNotCrateLevel { span, attr_name });
-        return false;
-    }
-    true
-}
-
-/// Checks that an attribute is used at the crate level. Returns `true` if valid.
-fn check_attr_crate_level(cx: &mut AcceptContext<'_, '_>, span: Span) -> bool {
-    if cx.shared.target != Target::Crate {
-        cx.emit_lint(INVALID_DOC_ATTRIBUTES, AttrCrateLevelOnly, span);
         return false;
     }
     true
@@ -164,9 +156,10 @@ impl DocParser {
                     return;
                 }
 
-                if !check_attr_crate_level(cx, path.span()) {
-                    return;
-                }
+                cx.check_target(
+                    &sym::no_crate_inject.to_string(),
+                    &AllowedTargets::AllowList(&[Allow(Target::Crate)]),
+                );
 
                 self.attribute.no_crate_inject = Some(path.span())
             }
@@ -534,9 +527,9 @@ impl DocParser {
                     return;
                 }
                 let $span = path.span();
-                if !check_attr_crate_level(cx, $span) {
-                    return;
-                }
+                cx.check_target(
+                concat!("(", stringify!($ident), ")"),
+                     &AllowedTargets::AllowList(&[Allow(Target::Crate)]));
                 $extra_validation
                 self.attribute.$ident = Some($span);
             }};
@@ -553,9 +546,10 @@ impl DocParser {
                     return;
                 };
 
-                if !check_attr_crate_level(cx, path.span()) {
-                    return;
-                }
+                cx.check_target(
+                    &s.to_string(),
+                    &AllowedTargets::AllowList(&[Allow(Target::Crate)]),
+                );
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
                 // line.
