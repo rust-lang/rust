@@ -11,6 +11,7 @@ LL |     fun_times();
    = note: which requires `W<W<(), W<(), W<(), W<(), ()>>>>, W<W<(), W<(), W<(), W<(), ()>>>>, W<_, _>>>: Count`
    = note: which requires `W<W<(), W<(), W<(), W<(), ()>>>>, W<W<(), W<(), W<(), W<(), ()>>>>, W<_, _>>>: Count`
    = note: which requires `W<W<(), W<(), W<(), W<(), ()>>>>, W<W<(), W<(), W<(), W<(), ()>>>>, W<(), _>>>: Count`
+   = note: and so on...
    = help: consider adding a manual `impl` of auto traits like `Send` for intermediate types, if auto traits are involved
    = help: or consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate (`fcw_overflow_to_ambig_with_constraints`)
    = note: this lint is attached to the whole crate and can't be disabled on a per-function basis
