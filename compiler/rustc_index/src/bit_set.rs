@@ -89,6 +89,12 @@ impl<T> DenseBitSet<T> {
     }
 }
 
+#[cold]
+#[inline(never)]
+fn insert_fail() -> ! {
+    panic!("inserting element at larger than domain size")
+}
+
 impl<T: Idx> DenseBitSet<T> {
     /// Creates a new, empty bitset with a given `domain_size`.
     #[inline]
@@ -151,11 +157,6 @@ impl<T: Idx> DenseBitSet<T> {
         let domain_size = self.domain_size;
 
         if i >= domain_size {
-            #[cold]
-            #[inline(never)]
-            fn insert_fail() -> ! {
-                panic!("inserting element at larger than domain size")
-            }
             insert_fail()
         }
 
