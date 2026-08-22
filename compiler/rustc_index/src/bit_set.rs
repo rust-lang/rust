@@ -149,7 +149,7 @@ impl<T: Idx> DenseBitSet<T> {
     pub fn insert(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
         let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
+        let word_ref = unsafe { self.words.get_unchecked_mut(word_index) };
         let word = *word_ref;
         let new_word = word | mask;
         *word_ref = new_word;
