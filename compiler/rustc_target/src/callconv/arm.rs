@@ -26,7 +26,7 @@ where
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector { .. } => size.bits() == 64 || size.bits() == 128,
+            RegKind::Vector { .. } => unit.size.bits() == 64 || unit.size.bits() == 128,
         };
 
         valid_unit.then_some(Uniform::consecutive(unit, size))
