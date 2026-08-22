@@ -1,0 +1,17 @@
+error[E0275]: overflow evaluating the requirement `<Bar as Trait>::Assoc2 == _`
+  --> $DIR/ptr-metadata-recursive-assoc-type-ice-153431.rs:12:19
+   |
+LL |     type Assoc2 = Result<(), <Bar as Trait>::Assoc2>;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<Bar as Trait>::Assoc2 == _`
+  --> $DIR/ptr-metadata-recursive-assoc-type-ice-153431.rs:17:12
+   |
+LL |     field: <Bar as Trait>::Assoc2,
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<Bar as Trait>::Assoc2 == _`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0275`.
