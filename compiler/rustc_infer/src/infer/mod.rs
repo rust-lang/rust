@@ -345,7 +345,7 @@ pub struct InferCtxt<'tcx> {
     /// already used by default in some places so we know they won't have
     /// additional breakages. We also don't want spurious result in coherence
     /// checking so we disable the FCW there as well.
-    enable_next_solver_overflow_fcw: bool,
+    enable_next_solver_overflow_fcw: Cell<bool>,
 
     pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
 
@@ -691,7 +691,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             universe: Cell::new(ty::UniverseIndex::ROOT),
             placeholder_assumptions_for_next_solver: RefCell::new(Default::default()),
             next_trait_solver,
-            enable_next_solver_overflow_fcw,
+            enable_next_solver_overflow_fcw: Cell::new(enable_next_solver_overflow_fcw),
             obligation_inspector: Cell::new(None),
             canonicalizer_state: Default::default(),
         }
@@ -1554,6 +1554,18 @@ impl<'tcx> InferCtxt<'tcx> {
         debug!("create_next_universe {u:?}");
         self.universe.set(u);
         u
+    }
+
+    /// We need to disable the fcw if we're already in a fcw emitting to avoid
+    /// indefinite triggering.
+    pub fn with_disabled_next_solver_overflow_fcw<F, R>(&self, mut f: F) -> R
+    where
+        F: FnMut() -> R,
+    {
+        let prev = self.enable_next_solver_overflow_fcw.replace(false);
+        let ret = f();
+        self.enable_next_solver_overflow_fcw.set(prev);
+        ret
     }
 
     /// Extract [`ty::TypingMode`] of this inference context to get a `TypingEnv`
