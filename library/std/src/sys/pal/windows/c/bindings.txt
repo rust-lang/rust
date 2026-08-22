@@ -2188,6 +2188,7 @@ GetModuleHandleW
 GetOverlappedResult
 getpeername
 GetProcAddress
+GetProcessGroupAffinity
 GetProcessId
 getsockname
 getsockopt
