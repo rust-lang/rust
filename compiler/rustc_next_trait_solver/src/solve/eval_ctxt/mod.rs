@@ -1524,7 +1524,7 @@ where
     ) -> QueryResultOrRerunNonErased<I> {
         self.inspect.make_canonical_response(shallow_certainty);
 
-        let goals_certainty = self.try_evaluate_added_goals()?;
+        let added_goals_certainty = self.try_evaluate_added_goals()?;
         assert_eq!(
             self.tainted,
             Ok(()),
@@ -1532,11 +1532,8 @@ where
             previous call to `try_evaluate_added_goals!`"
         );
 
-        let goals_certainty = match self.delegate.cx().assumptions_on_binders() {
-            true => {
-                let certainty = self.eagerly_handle_placeholders()?;
-                certainty.and(goals_certainty)
-            }
+        let placeholder_certainty = match self.delegate.cx().assumptions_on_binders() {
+            true => self.eagerly_handle_placeholders()?,
             false => {
                 // We only check for leaks from universes which were entered inside
                 // of the query.
@@ -1545,9 +1542,10 @@ where
                     NoSolution
                 })?;
 
-                goals_certainty
+                Certainty::Yes
             }
         };
+        let goals_certainty = placeholder_certainty.and(added_goals_certainty);
 
         let (certainty, normalization_nested_goals) =
             match (self.current_goal_kind, shallow_certainty) {
@@ -1561,12 +1559,13 @@ where
                 (CurrentGoalKind::ProjectionComputeAssocTermCandidate, Certainty::Yes) => {
                     let goals = std::mem::take(&mut self.nested_goals);
                     // As we return all ambiguous nested goals, we can ignore the certainty
-                    // returned by `self.try_evaluate_added_goals()`.
+                    // returned by `self.try_evaluate_added_goals()`. However, placeholder
+                    // handling may independently be ambiguous, so preserve its certainty.
                     if goals.is_empty() {
-                        assert!(matches!(goals_certainty, Certainty::Yes));
+                        assert!(matches!(added_goals_certainty, Certainty::Yes));
                     }
                     (
-                        Certainty::Yes,
+                        placeholder_certainty,
                         NestedNormalizationGoals(
                             goals.into_iter().map(|(s, g, _)| (s, g)).collect(),
                         ),
