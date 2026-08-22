@@ -23,6 +23,7 @@ use rustc_span::Spanned;
 use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::{CostChecker, is_call_like};
+use crate::pass_manager::BodyMirOptLevel;
 use crate::simplify::{UsedInStmtLocals, simplify_cfg};
 use crate::validate::validate_types;
 use crate::{PassPolicy, check_inline, util};
@@ -45,18 +46,26 @@ struct CallSite<'tcx> {
 pub struct Inline;
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        let enabled_by_default =
-            sess.opts.unstable_opts.inline_mir.unwrap_or_else(|| match sess.mir_opt_level() {
-                0 | 1 => false,
-                2 => {
-                    (sess.opts.optimize == OptLevel::More
-                        || sess.opts.optimize == OptLevel::Aggressive)
-                        && sess.opts.incremental == None
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        match ctx.opts.unstable_opts.inline_mir {
+            Some(enabled) => PassPolicy::optional(enabled),
+            None => PassPolicy::optional({
+                let source = ctx.mir_opt_level_source();
+                match source.level() {
+                    0 | 1 => false,
+                    3.. => true,
+                    // If level 2 has been inferred from opt-level=1/s/z, we don't want to enable inlining.
+                    // However, if `optimize(speed)` has been set, we want to inline irrespective of global opt level.
+                    2 if matches!(ctx.opts.optimize, OptLevel::More | OptLevel::Aggressive)
+                        || matches!(source, BodyMirOptLevel::Overridden(_)) =>
+                    {
+                        // Inlining reduces incremental effectiveness.
+                        ctx.opts.incremental.is_none()
+                    }
+                    _ => false,
                 }
-                _ => true,
-            });
-        PassPolicy::optimization(enabled_by_default)
+            }),
+        }
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -78,7 +87,7 @@ impl ForceInline {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for ForceInline {
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Forced inlining is part of MIR semantics.
         PassPolicy::Required
     }
