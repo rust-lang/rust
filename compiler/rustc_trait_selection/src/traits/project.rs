@@ -26,6 +26,7 @@ use super::{
     SelectionError, specialization_graph, translate_args, util,
 };
 use crate::diagnostics::InherentProjectionNormalizationOverflow;
+use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::infer::{BoundRegionConversionTime, InferOk};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -701,6 +702,44 @@ fn project<'cx, 'tcx>(
         )));
     }
 
+    // `<dyn Trait>::Name` is only valid when `Trait` is dyn-compatible.
+    // If it isn't, create an error at the projection site and return a tainted error term.
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    if let ty::Dynamic(data, ..) = self_ty.kind() {
+        if let Some(def_id) = data.principal_def_id() {
+            let tcx = selcx.tcx();
+            // Delaying a bug is fine here:
+            // - In case of a dymmy span, we are in a canonical query.
+            // - `CheckAssociatedTypeBounds` means that the trait object is part of the trait's item bounds
+            //   or the impl's associated type; both are checked at their own definition
+            //   where the error is already reported with a better span.
+            if !tcx.is_dyn_compatible(def_id) {
+                let span = obligation.cause.span;
+                let guar = if span.is_dummy()
+                    || matches!(
+                        obligation.cause.code(),
+                        ObligationCauseCode::CheckAssociatedTypeBounds { .. }
+                    ) {
+                    tcx.dcx().span_delayed_bug(
+                        span,
+                        format!(
+                            "projection from non-dyn-compatible trait `{}`",
+                            tcx.def_path_str(def_id)
+                        ),
+                    )
+                } else {
+                    let violations = tcx.dyn_compatibility_violations(def_id);
+                    report_dyn_incompatibility(tcx, span, None, def_id, &violations).emit()
+                };
+                return Ok(Projected::Progress(Progress::error_for_term(
+                    tcx,
+                    obligation.predicate,
+                    guar,
+                )));
+            }
+        }
+    }
+
     let mut candidates = ProjectionCandidateSet::None;
 
     // Make sure that the following procedures are kept in order. ParamEnv
@@ -845,7 +884,13 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         }
         _ => return,
     };
-    let env_clauses = data
+
+    // Projecting `dyn Trait` is only valid when `Trait` is dyn-compatible.
+    if data.principal_def_id().is_some_and(|def_id| !tcx.is_dyn_compatible(def_id)) {
+        return;
+    }
+
+    let env_predicates = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.expect_projection_def_id())
         .map(|p| p.with_self_ty(tcx, object_ty).upcast(tcx));
@@ -855,7 +900,7 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::Object,
-        env_clauses,
+        env_predicates,
         false,
     );
 }
