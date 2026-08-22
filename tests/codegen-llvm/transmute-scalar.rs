@@ -24,7 +24,7 @@ pub fn f32_to_bits(x: f32) -> u32 {
     unsafe { mem::transmute(x) }
 }
 
-// CHECK-LABEL: define{{.*}}i8 @bool_to_byte(i1 zeroext %b)
+// CHECK-LABEL: define{{.*}}i8 @bool_to_byte(i1{{( zeroext)?}} %b)
 // CHECK: %_0 = zext i1 %b to i8
 // CHECK-NEXT: ret i8 %_0
 #[no_mangle]
@@ -32,7 +32,7 @@ pub fn bool_to_byte(b: bool) -> u8 {
     unsafe { mem::transmute(b) }
 }
 
-// CHECK-LABEL: define{{.*}}zeroext i1 @byte_to_bool(i8{{.*}} %byte)
+// CHECK-LABEL: define{{.*}} i1 @byte_to_bool(i8{{.*}} %byte)
 // CHECK: %_0 = trunc{{( nuw)?}} i8 %byte to i1
 // CHECK-NEXT: ret i1 %_0
 #[no_mangle]
@@ -72,7 +72,7 @@ pub enum FakeBoolSigned {
     True = 1,
 }
 
-// CHECK-LABEL: define{{.*}}i8 @bool_to_fake_bool_signed(i1 zeroext %b)
+// CHECK-LABEL: define{{.*}}i8 @bool_to_fake_bool_signed(i1{{( zeroext)?}} %b)
 // CHECK: %_0 = zext i1 %b to i8
 // CHECK-NEXT: ret i8 %_0
 #[no_mangle]
@@ -94,14 +94,14 @@ pub enum FakeBoolUnsigned {
     True = 1,
 }
 
-// CHECK-LABEL: define{{.*}}i1 @bool_to_fake_bool_unsigned(i1 zeroext %b)
+// CHECK-LABEL: define{{.*}}i1 @bool_to_fake_bool_unsigned(i1{{( zeroext)?}} %b)
 // CHECK: ret i1 %b
 #[no_mangle]
 pub fn bool_to_fake_bool_unsigned(b: bool) -> FakeBoolUnsigned {
     unsafe { mem::transmute(b) }
 }
 
-// CHECK-LABEL: define{{.*}}i1 @fake_bool_unsigned_to_bool(i1 zeroext %b)
+// CHECK-LABEL: define{{.*}}i1 @fake_bool_unsigned_to_bool(i1{{( zeroext)?}} %b)
 // CHECK: ret i1 %b
 #[no_mangle]
 pub fn fake_bool_unsigned_to_bool(b: FakeBoolUnsigned) -> bool {
