@@ -9,7 +9,7 @@ use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::DiagCtxtHandle;
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::{
-    ActiveKeyStatus, Cycle, QueryCache, QueryJob, QueryJobId, QueryKey, QueryLatch,
+    ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryKey, QueryLatch,
     QueryStackFrame, QueryVTable, QueryWaiter,
 };
 use rustc_middle::ty::TyCtxt;
@@ -142,7 +142,7 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
     job_map: QueryJobMap<'tcx>,
     current_job: &Option<QueryJobId>,
     span: Span,
-) -> Cycle<'tcx> {
+) -> QueryCycle<'tcx> {
     // Find the waitee amongst `current_job` parents.
     let mut frames = Vec::new();
     let mut current_job = Option::clone(current_job);
@@ -163,7 +163,7 @@ pub(crate) fn find_cycle_in_stack<'tcx>(
                 let parent = info.job.parent?;
                 QueryStackFrame { span: info.job.span, tagged_key: job_map.tagged_key_of(parent) }
             };
-            return Cycle { usage, frames };
+            return QueryCycle { usage, frames };
         }
 
         current_job = info.job.parent;
@@ -316,7 +316,10 @@ fn connected_to_root<'tcx>(
 }
 
 /// Processes a found query cycle into a `Cycle`
-fn process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, stack: Vec<(Span, QueryJobId)>) -> Cycle<'tcx> {
+fn process_cycle<'tcx>(
+    job_map: &QueryJobMap<'tcx>,
+    stack: Vec<(Span, QueryJobId)>,
+) -> QueryCycle<'tcx> {
     // The stack is a vector of pairs of spans and queries; reverse it so that
     // the earlier entries require later entries
     let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
@@ -380,7 +383,7 @@ fn process_cycle<'tcx>(job_map: &QueryJobMap<'tcx>, stack: Vec<(Span, QueryJobId
         .map(|(span, job)| QueryStackFrame { span, tagged_key: job_map.tagged_key_of(job) });
 
     // Create the cycle error
-    Cycle {
+    QueryCycle {
         usage,
         frames: stack
             .iter()

@@ -96,8 +96,7 @@ use crate::mir::interpret::{
 use crate::mono::{
     CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
-use crate::query::describe_as_module;
-use crate::query::plumbing::{define_callbacks, maybe_into_query_key};
+use crate::query::query_api::{define_query_api, maybe_into_query_key};
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
     CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
@@ -118,6 +117,15 @@ use crate::ty::{
     SizedTraitKind, Ty, TyCtxt, TyCtxtFeed,
 };
 use crate::{mir, thir};
+
+fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
+    let def_id = def_id.into();
+    if def_id.is_top_level_module() {
+        "top-level module".to_string()
+    } else {
+        format!("module `{}`", tcx.def_path_str(def_id))
+    }
+}
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -2834,4 +2842,4 @@ rustc_queries! {
     non_query Metadata
 }
 
-rustc_with_all_queries! { define_callbacks! }
+rustc_with_all_queries! { define_query_api! }
