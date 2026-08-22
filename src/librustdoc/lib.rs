@@ -7,6 +7,7 @@
 #![feature(ascii_char_variants)]
 #![feature(deref_patterns)]
 #![feature(file_buffered)]
+#![feature(format_args_nl)]
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
