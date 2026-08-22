@@ -1,12 +1,14 @@
 error[E0422]: cannot find struct, variant or union type `Fooo` in this scope
   --> $DIR/adt_expr_erroneuous_inits.rs:20:17
    |
-LL | struct Foo<T> { field: T }
-   | ------------- similarly named struct `Foo` defined here
-...
 LL |     accepts::<{ Fooo::<u8> { field: const { 1 } }}>();
-   |                 ^^^^
+   |                 ^^^^ not found in this scope
    |
+note: similarly named struct `Foo` defined here
+  --> $DIR/adt_expr_erroneuous_inits.rs:9:1
+   |
+LL | struct Foo<T> { field: T }
+   | ^^^^^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL -     accepts::<{ Fooo::<u8> { field: const { 1 } }}>();

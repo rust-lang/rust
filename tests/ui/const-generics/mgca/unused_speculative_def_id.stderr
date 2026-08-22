@@ -2,11 +2,10 @@ error[E0425]: cannot find value `ERR` in this scope
   --> $DIR/unused_speculative_def_id.rs:20:16
    |
 LL |     field: A<{ ERR::<const { 1 }> }>,
-   |                ^^^
+   |                ^^^ not found in this scope
    |
+note: similarly named tuple variant `Err` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: similarly named tuple variant `Err` defined here
 help: a tuple variant with a similar name exists
    |
 LL -     field: A<{ ERR::<const { 1 }> }>,

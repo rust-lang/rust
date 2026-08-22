@@ -29,7 +29,7 @@ error[E0425]: cannot find type `Bool` in this scope
   --> $DIR/recommend-literal.rs:15:13
    |
 LL |     let v2: Bool = true;
-   |             ^^^^
+   |             ^^^^ not found in this scope
    |
 help: a builtin type with a similar name exists
    |
