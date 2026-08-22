@@ -403,7 +403,7 @@ pub fn check_generic_arg_count_for_value_path(
 
 /// Checks that the correct number of generic arguments have been provided.
 /// This is used both for datatypes and function calls.
-#[instrument(skip(cx, gen_pos), level = "debug")]
+#[instrument(skip(cx, gen_pos), level = "info")]
 pub(crate) fn check_generic_arg_count(
     cx: &dyn HirTyLowerer<'_>,
     def_id: DefId,
@@ -413,6 +413,8 @@ pub(crate) fn check_generic_arg_count(
     has_self: bool,
 ) -> GenericArgCountResult {
     let gen_args = seg.args();
+    let tcx = cx.tcx();
+    let kind = tcx.def_kind(def_id);
     let default_counts = gen_params.own_defaults();
     let param_counts = gen_params.own_counts();
     // If we have any `Vec<foo: Bar>` constraint, where `Bar` is unresolved, the user likely meant
@@ -450,7 +452,33 @@ pub(crate) fn check_generic_arg_count(
         prohibit_assoc_item_constraint(cx, c, None);
     }
 
-    let tcx = cx.tcx();
+    // hidden lifetimes may not be specified explicitly.
+    // if it doesn't show up in the function signature,
+    // it can't be written as a lifetime arg.
+    //
+    // While most hidden lifetimes are late-bound (e.g. `fn(_: &u32)` ),
+    // there are some cases (complicated and involve associated types)
+    // where an early-bound lifetime parameter can be hidden from the function signature.
+    //
+    // see: <tests/ui/lifetimes/turbofishing-invisible-lifetimes-154490.rs>
+
+    let hidden_early_lifetimes =
+        gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count();
+
+    let hidden_late_lifetimes =
+        gen_params.own_lifetime_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
+            - hidden_early_lifetimes;
+
+    debug!(?hidden_early_lifetimes, ?hidden_late_lifetimes);
+
+    let late_bound_lt_count = gen_params.own_late_bound_regions.len();
+
+    if kind.is_fn_like() {
+        debug!("we are using fn-like {:?} ({gen_pos:?})", tcx.item_name(def_id));
+    }
+    debug!(?late_bound_lt_count);
+    debug!("gen_args count = {}", gen_args.args.len());
+    debug!("lb+eb lifetimes={:?}", gen_params.own_lifetime_params);
 
     // Suppress this warning for delegations as it is compiler generated and lifetimes are
     // propagated while late-bound lifetimes may be present.
@@ -469,7 +497,7 @@ pub(crate) fn check_generic_arg_count(
             return Ok(());
         }
 
-        if late_bounds_ignore {
+        if late_bounds_ignore && !tcx.features().late_bound_turbofishing() {
             return Ok(());
         }
 
@@ -496,9 +524,22 @@ pub(crate) fn check_generic_arg_count(
         Err(reported)
     };
 
-    let min_expected_lifetime_args = if infer_lifetimes { 0 } else { param_counts.lifetimes };
-    let max_expected_lifetime_args = param_counts.lifetimes;
+    let min_expected_lifetime_args =
+        if infer_lifetimes { 0 } else { param_counts.lifetimes - hidden_early_lifetimes };
+    debug!(?min_expected_lifetime_args);
+
+    let mut max_expected_lifetime_args = param_counts.lifetimes - hidden_early_lifetimes;
+
+    // FIXME: under certain circumstances (which I have had trouble replicating)
+    //        this leads to subtraction with overflow
+    if tcx.features().late_bound_turbofishing() {
+        max_expected_lifetime_args =
+            max_expected_lifetime_args + late_bound_lt_count - hidden_late_lifetimes;
+    }
+    debug!(?max_expected_lifetime_args,);
+
     let num_provided_lifetime_args = gen_args.num_lifetime_args();
+    debug!(?num_provided_lifetime_args,);
 
     let lifetimes_correct = check_lifetime_args(
         min_expected_lifetime_args,
@@ -562,7 +603,7 @@ pub(crate) fn check_generic_arg_count(
                     .map(|param| param.name)
                     .collect();
                 if constraint_names == param_names {
-                    let has_assoc_ty_with_same_name = if let DefKind::Trait = tcx.def_kind(def_id) {
+                    let has_assoc_ty_with_same_name = if let DefKind::Trait = kind {
                         gen_args.constraints.iter().any(|constraint| {
                             traits::supertrait_def_ids(tcx, def_id).any(|trait_did| {
                                 cx.probe_trait_that_defines_assoc_item(
@@ -653,20 +694,27 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
 ) -> ExplicitLateBound {
     struct LifetimeArgsIssue {
         msg: &'static str,
+        note: &'static str,
     }
 
     impl<'a> Diagnostic<'a, ()> for LifetimeArgsIssue {
         fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-            let Self { msg } = self;
-            Diag::new(dcx, level, msg)
+            let Self { msg, note } = self;
+            Diag::new(dcx, level, msg).with_note(note)
         }
     }
 
     let param_counts = def.own_counts();
 
-    if let Some(span_late) = def.has_late_bound_regions
+    // FIXME(addiesh): just turning off the diagnostic is probably not enough to solve the problem. see:
+    //        https://rust-lang.zulipchat.com/#narrow/channel/600108-t-types.2Fearly-late-cleanup/topic/turbofishing.20elided.20lifetimes/near/607748866
+    if cx.tcx().features().late_bound_turbofishing() {
+        ExplicitLateBound::Yes
+    } else if let Some(span_late) = def.own_late_bound_regions.first().copied()
         && args.has_lifetime_args()
     {
+        let gone_turbofishing = "this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information";
+
         let msg = "cannot specify lifetime arguments explicitly \
                        if late bound lifetime parameters are present";
         let note = "the late bound lifetime parameter is introduced here";
@@ -677,6 +725,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         {
             struct_span_code_err!(cx.dcx(), span, E0794, "{}", msg)
                 .with_span_note(span_late, note)
+                .with_note(gone_turbofishing)
                 .emit();
         } else {
             let mut multispan = MultiSpan::from_span(span);
@@ -685,7 +734,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
                 LATE_BOUND_LIFETIME_ARGUMENTS,
                 args.args[0].hir_id(),
                 multispan,
-                LifetimeArgsIssue { msg },
+                LifetimeArgsIssue { msg, note: gone_turbofishing },
             );
         }
 

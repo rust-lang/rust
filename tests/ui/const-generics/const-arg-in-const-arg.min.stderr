@@ -250,6 +250,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:21:23
@@ -262,6 +263,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error: constant expression depends on a generic parameter
   --> $DIR/const-arg-in-const-arg.rs:25:17
@@ -301,6 +303,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:32:23
@@ -313,6 +316,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0747]: unresolved item provided when a constant was expected
   --> $DIR/const-arg-in-const-arg.rs:36:24
@@ -336,6 +340,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:41:24
@@ -348,6 +353,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0747]: unresolved item provided when a constant was expected
   --> $DIR/const-arg-in-const-arg.rs:45:27
@@ -371,6 +377,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:50:27
@@ -383,6 +390,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error: aborting due to 37 previous errors
 

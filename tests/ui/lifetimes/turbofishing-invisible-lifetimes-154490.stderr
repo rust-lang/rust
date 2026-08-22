@@ -1,0 +1,85 @@
+error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:53:5
+   |
+LL |     evil_early_bound_1::<'static, T>(None);
+   |     ^^^^^^^^^^^^^^^^^^   ------- help: remove the lifetime argument
+   |     |
+   |     expected 0 lifetime arguments
+   |
+note: function defined here, with 0 lifetime parameters
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:14:4
+   |
+LL | fn evil_early_bound_1<T: EvilTrait>(_: Option<<T as EvilTrait>::EvilAssoc<'_>>) -> &i32 {
+   |    ^^^^^^^^^^^^^^^^^^
+
+error[E0107]: function takes 1 lifetime argument but 2 lifetime arguments were supplied
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:57:5
+   |
+LL |     evil_multi_bound_3::<'static, 'static, T>(None);
+   |     ^^^^^^^^^^^^^^^^^^          --------- help: remove the lifetime argument
+   |     |
+   |     expected 1 lifetime argument
+   |
+note: function defined here, with 1 lifetime parameter: `'b`
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:22:4
+   |
+LL | fn evil_multi_bound_3<'b, T: EvilTrait>(
+   |    ^^^^^^^^^^^^^^^^^^ --
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:59:26
+   |
+LL |     evil_early_bound_4::<'static, T>(None);
+   |                          ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:28:75
+   |
+LL | fn evil_early_bound_4<T: EvilTrait>(_: Option<<T as EvilTrait>::EvilAssoc<'_>>) -> i32 {
+   |                                                                           ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
+
+error[E0107]: associated function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:61:23
+   |
+LL |     <T as EvilTrait>::evil_assoc_1::<'static>(None);
+   |                       ^^^^^^^^^^^^----------- help: remove the unnecessary generics
+   |                       |
+   |                       expected 0 lifetime arguments
+   |
+note: associated function defined here, with 0 lifetime parameters
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:8:8
+   |
+LL |     fn evil_assoc_1(_: Option<Self::EvilAssoc<'_>>) -> &i32 {
+   |        ^^^^^^^^^^^^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:64:22
+   |
+LL |     elide_struct_2::<'static>(&WHATEVER);
+   |                      ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:46:22
+   |
+LL | fn elide_struct_2(_: &i32) -> LtWrapper {
+   |                      ^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:68:25
+   |
+LL |     normal_late_bound::<'static, T>(&WHATEVER);
+   |                         ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:36:22
+   |
+LL | fn normal_late_bound<'lb, T: EvilTrait>(_: &'lb i32 ) -> &'lb i32 {
+   |                      ^^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0107, E0794.
+For more information about an error, try `rustc --explain E0107`.
