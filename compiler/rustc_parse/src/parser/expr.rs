@@ -2387,7 +2387,10 @@ impl<'a> Parser<'a> {
         }
 
         if self.token == token::Comma {
-            if !self.psess.source_map().is_multiline(prev_span.until(self.token.span)) {
+            // Only make this suggestion if the `[` is not on the same line as the last token of
+            // the expression preceding it, which is a sign that it is not intended as an
+            // index expression.
+            if !self.psess.source_map().is_multiline(prev_span.until(open_delim_span)) {
                 return Ok(());
             }
             let mut snapshot = self.create_snapshot_for_diagnostic();
