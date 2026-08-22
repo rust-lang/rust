@@ -23,7 +23,7 @@ const EXTENSIONS: &[&str] = &["stdout", "stderr"];
 const SPECIAL_TEST: &str = "tests/ui/command/need-crate-arg-ignore-tidy.x.rs";
 
 pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx
+    let check = tidy_ctx
         .start_check(CheckId::new("tests_revision_unpaired_stdout_stderr").path(tests_path));
 
     // Recurse over subdirectories under `tests/`

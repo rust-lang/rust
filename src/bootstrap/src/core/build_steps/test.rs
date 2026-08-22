@@ -1740,7 +1740,10 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
         }
 
         builder.info("tidy check");
-        cmd.delay_failure().run(builder);
+        let ctx = builder.as_ref();
+        let mut cmd = cmd.delay_failure();
+        // spawn child in background so we can do additional work in parallel
+        let tidy = cmd.start(ctx);
 
         builder.info("x.py completions check");
         let completion_paths = get_completion_paths(builder);
@@ -1755,6 +1758,9 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
             );
             helpers::exit_process(1);
         }
+
+        // now wait for the child to complete
+        tidy.wait_for_output(ctx);
 
         builder.info("x.py help check");
         if builder.config.cmd.bless() {

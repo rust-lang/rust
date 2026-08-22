@@ -16,7 +16,7 @@ const ALLOWED_SOURCES: &[&str] = &[
 /// Checks for external package sources. `root` is the path to the directory that contains the
 /// workspace `Cargo.toml`.
 pub fn check(root: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check("extdeps");
+    let check = tidy_ctx.start_check("extdeps");
 
     for &WorkspaceInfo { path, submodules, .. } in crate::deps::WORKSPACES {
         if crate::deps::has_missing_submodule(root, submodules, tidy_ctx.is_running_on_ci()) {

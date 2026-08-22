@@ -3,8 +3,10 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::fs::{self, read_dir};
-use std::io;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::Scope;
+use std::{io, thread};
 
 use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
@@ -632,62 +634,80 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 ///
 /// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
 /// to the cargo executable.
-pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
+pub fn check(
+    root: &Path,
+    cargo: &Path,
+    _scope: &'_ Scope<'_, '_>,
+    sem: &'_ crate::Semaphore,
+    tidy_ctx: TidyCtx,
+) {
     let mut check = tidy_ctx.start_check("deps");
     let bless = tidy_ctx.is_bless_enabled();
+    let is_ci = tidy_ctx.is_running_on_ci();
 
-    let mut checked_runtime_licenses = false;
+    let checked_runtime_licenses = AtomicBool::new(false);
 
     check_proc_macro_dep_list(root, cargo, bless, &mut check);
 
-    for &WorkspaceInfo { path, exceptions, crates_and_deps, submodules } in WORKSPACES {
-        if has_missing_submodule(root, submodules, tidy_ctx.is_running_on_ci()) {
-            continue;
-        }
+    thread::scope(|s| {
+        for (i, WorkspaceInfo { path, exceptions, crates_and_deps, submodules }) in
+            WORKSPACES.iter().enumerate()
+        {
+            let check = &check;
+            let checked_runtime_licenses = &checked_runtime_licenses;
+            let guard = if i > 0 { Some(sem.acquire()) } else { None };
+            s.spawn(move || {
+                if has_missing_submodule(root, submodules, is_ci) {
+                    return;
+                }
 
-        if !root.join(path).join("Cargo.lock").exists() {
-            check.error(format!("the `{path}` workspace doesn't have a Cargo.lock"));
-            continue;
-        }
+                if !root.join(path).join("Cargo.lock").exists() {
+                    check.error(format!("the `{path}` workspace doesn't have a Cargo.lock"));
+                    return;
+                }
 
-        let mut cmd = cargo_metadata::MetadataCommand::new();
-        cmd.cargo_path(cargo)
-            .manifest_path(root.join(path).join("Cargo.toml"))
-            .features(cargo_metadata::CargoOpt::AllFeatures)
-            .other_options(vec!["--locked".to_owned()]);
-        let metadata = t!(cmd.exec());
+                let mut cmd = cargo_metadata::MetadataCommand::new();
+                cmd.cargo_path(cargo)
+                    .manifest_path(root.join(path).join("Cargo.toml"))
+                    .features(cargo_metadata::CargoOpt::AllFeatures)
+                    .other_options(vec!["--locked".to_owned()]);
+                let metadata = t!(cmd.exec());
 
-        // Check for packages which have been moved into a different workspace and not updated
-        let absolute_root =
-            if path == "." { root.to_path_buf() } else { t!(std::path::absolute(root.join(path))) };
-        let absolute_root_real = t!(std::path::absolute(&metadata.workspace_root));
-        if absolute_root_real != absolute_root {
-            check.error(format!("{path} is part of another workspace ({} != {}), remove from `WORKSPACES` ({WORKSPACE_LOCATION})", absolute_root.display(), absolute_root_real.display()));
-        }
-        check_license_exceptions(&metadata, path, exceptions, &mut check);
-        if let Some((crates, permitted_deps, location)) = crates_and_deps {
-            let descr = crates.get(0).unwrap_or(&path);
-            check_permitted_dependencies(
-                &metadata,
-                descr,
-                permitted_deps,
-                crates,
-                location,
-                &mut check,
-            );
-        }
+                // Check for packages which have been moved into a different workspace and not updated
+                let absolute_root =
+                    if *path == "." { root.to_path_buf() } else { t!(std::path::absolute(root.join(path))) };
+                let absolute_root_real = t!(std::path::absolute(&metadata.workspace_root));
+                if absolute_root_real != absolute_root {
+                    check.error(format!("{path} is part of another workspace ({} != {}), remove from `WORKSPACES` ({WORKSPACE_LOCATION})", absolute_root.display(), absolute_root_real.display()));
+                }
+                check_license_exceptions(&metadata, path, exceptions, &check);
+                if let Some((crates, permitted_deps, location)) = &crates_and_deps {
+                    let descr = crates.get(0).unwrap_or(&path);
+                    check_permitted_dependencies(
+                        &metadata,
+                        descr,
+                        permitted_deps,
+                        crates,
+                        location,
+                        &check,
+                    );
+                }
 
-        if path == "library" {
-            check_runtime_license_exceptions(&metadata, &mut check);
-            check_runtime_no_duplicate_dependencies(&metadata, &mut check);
-            check_runtime_no_proc_macros(&metadata, &mut check);
-            checked_runtime_licenses = true;
+                if *path == "library" {
+                    check_runtime_license_exceptions(&metadata, &check);
+                    check_runtime_no_duplicate_dependencies(&metadata, &check);
+                    check_runtime_no_proc_macros(&metadata, &check);
+                    checked_runtime_licenses.store(true, Ordering::Relaxed);
+                }
+
+                let _guard = guard;
+            });
         }
-    }
+    });
 
     // Sanity check to ensure we don't accidentally remove the workspace containing the runtime
     // crates.
-    assert!(checked_runtime_licenses);
+    assert!(checked_runtime_licenses.load(Ordering::Relaxed));
 }
 
 /// Ensure the list of proc-macro crate transitive dependencies is up to date
@@ -790,7 +810,7 @@ pub fn has_missing_submodule(root: &Path, submodules: &[&str], is_ci: bool) -> b
 ///
 /// Unlike for tools we don't allow exceptions to the `LICENSES` list for the runtime with the sole
 /// exception of `fortanix-sgx-abi` which is only used on x86_64-fortanix-unknown-sgx.
-fn check_runtime_license_exceptions(metadata: &Metadata, check: &mut RunningCheck) {
+fn check_runtime_license_exceptions(metadata: &Metadata, check: &RunningCheck) {
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
             // No need to check local packages.
@@ -825,7 +845,7 @@ fn check_license_exceptions(
     metadata: &Metadata,
     workspace: &str,
     exceptions: &[(&str, &str)],
-    check: &mut RunningCheck,
+    check: &RunningCheck,
 ) {
     // Validate the EXCEPTIONS list hasn't changed.
     for (name, license) in exceptions {
@@ -892,7 +912,7 @@ fn check_license_exceptions(
     }
 }
 
-fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, check: &mut RunningCheck) {
+fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, check: &RunningCheck) {
     let mut seen_pkgs = HashSet::new();
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
@@ -908,7 +928,7 @@ fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, check: &mut Runn
     }
 }
 
-fn check_runtime_no_proc_macros(metadata: &Metadata, check: &mut RunningCheck) {
+fn check_runtime_no_proc_macros(metadata: &Metadata, check: &RunningCheck) {
     for pkg in &metadata.packages {
         if pkg.targets.iter().any(|target| target.is_proc_macro()) {
             check.error(format!(
@@ -930,8 +950,8 @@ fn check_permitted_dependencies(
     descr: &str,
     permitted_dependencies: &[&'static str],
     restricted_dependency_crates: &[&'static str],
-    permitted_location: ListLocation,
-    check: &mut RunningCheck,
+    permitted_location: &ListLocation,
+    check: &RunningCheck,
 ) {
     let mut has_permitted_dep_error = false;
     let mut deps = HashSet::new();
