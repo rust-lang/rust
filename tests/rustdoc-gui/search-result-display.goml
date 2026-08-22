@@ -79,8 +79,7 @@ define-function: (
     [theme, border, filter, hover_border, hover_filter],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
-        wait-for: "#crate-search"
-        wait-for-false: "#search-tabs .count.loading"
+        call-function: ("wait-for-search-results", {})
         assert-css: ("#crate-search", {"border": "1px solid " + |border|})
         assert-css: ("#crate-search-div::after", {"filter": |filter|})
         move-cursor-to: "#crate-search"
