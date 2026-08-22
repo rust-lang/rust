@@ -76,12 +76,20 @@ pub struct QueryResponse<'tcx, R> {
     pub value: R,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Hash)]
 #[derive(StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub constraints: Vec<QueryRegionConstraint<'tcx>>,
     pub assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
+    /// Region constraints emitted by the next solver under
+    /// `-Zassumptions-on-binders`.
+    ///
+    /// These stay unspanned while passing through a canonical query. The type-op
+    /// caller attaches its origin span when consuming the response.
+    pub solver_constraints: ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
 }
+
+impl Eq for QueryRegionConstraints<'_> {}
 
 impl QueryRegionConstraints<'_> {
     /// Represents an empty (trivially true) set of region constraints.
@@ -91,8 +99,18 @@ impl QueryRegionConstraints<'_> {
     /// discharge a requirement from another query, which is a potential problem if we did throw
     /// away these assumptions because there were no constraints.
     pub fn is_empty(&self) -> bool {
-        let QueryRegionConstraints { constraints, assumptions } = self;
-        constraints.is_empty() && assumptions.is_empty()
+        self.constraints.is_empty()
+            && self.assumptions.is_empty()
+            && self.solver_constraints.is_true()
+    }
+
+    pub fn extend(&mut self, other: &Self) {
+        self.constraints.extend(other.constraints.iter().cloned());
+        self.assumptions.extend(other.assumptions.iter().cloned());
+        self.solver_constraints = ir::region_constraint::RegionConstraint::build_and(
+            std::mem::take(&mut self.solver_constraints),
+            other.solver_constraints.clone(),
+        );
     }
 }
 

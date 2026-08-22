@@ -68,7 +68,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
-        let QueryRegionConstraints { constraints, assumptions } = query_constraints;
+        let QueryRegionConstraints { constraints, assumptions, solver_constraints } =
+            query_constraints;
         let assumptions =
             elaborate::elaborate_outlives_assumptions(self.infcx.tcx, assumptions.iter().copied());
 
@@ -76,6 +77,12 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             constraint.iter_outlives().for_each(|predicate| {
                 self.convert(predicate, category, &assumptions);
             });
+        }
+
+        if !solver_constraints.is_true() {
+            self.infcx.register_solver_region_constraint(
+                solver_constraints.clone().with_spans(self.span),
+            );
         }
     }
 
