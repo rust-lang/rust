@@ -292,7 +292,7 @@ note: matching on a reference type with a non-reference pattern implicitly borro
    |
 LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this non-reference pattern matches on a reference type `&_`
-   = note: this error originates in the macro `migration_lint_macros::mixed_edition_pat` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `migration_lint_macros::mixed_edition_pat` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: match on the reference with a reference pattern to avoid implicitly borrowing
    |
 LL |         &(Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
@@ -574,7 +574,7 @@ note: matching on a reference type with a non-reference pattern implicitly borro
    |
 LL |     let [migration_lint_macros::bind_ref!(a)] = &[0];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this non-reference pattern matches on a reference type `&_`
-   = note: this error originates in the macro `migration_lint_macros::bind_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `migration_lint_macros::bind_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: match on the reference with a reference pattern to avoid implicitly borrowing
    |
 LL |     let &[migration_lint_macros::bind_ref!(a)] = &[0];

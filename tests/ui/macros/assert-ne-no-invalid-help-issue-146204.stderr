@@ -37,14 +37,21 @@ LL |     assert_eq!(buf, b"----");
 error[E0277]: can't compare `[u8; 4]` with `&[u8; 4]`
   --> $DIR/assert-ne-no-invalid-help-issue-146204.rs:5:30
    |
-LL |                 if *left_val == *right_val {
-   |                              ^^ no implementation for `[u8; 4] == &[u8; 4]`
+LL | / macro_rules! local_assert_ne {
+LL | |     ($left:expr, $right:expr $(,)?) => {
+LL | |         match (&$left, &$right) {
+LL | |             (left_val, right_val) => {
+LL | |                 if *left_val == *right_val {
+   | |                              ^^ no implementation for `[u8; 4] == &[u8; 4]`
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `local_assert_ne`
 ...
-LL |     local_assert_ne!(buf, b"----");
-   |     ------------------------------ in this macro invocation
+LL |       local_assert_ne!(buf, b"----");
+   |       ------------------------------ in this macro invocation
    |
    = help: the trait `PartialEq<&[u8; 4]>` is not implemented for `[u8; 4]`
-   = note: this error originates in the macro `local_assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider dereferencing here
    |
 LL |                 if *left_val == **right_val {

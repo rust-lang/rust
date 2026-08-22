@@ -34,8 +34,6 @@ LL | macro_rules! test { () => { fn foo() -> i32 { 1; } } }
 ...
 LL |     test!();
    |     ------- in this macro invocation
-   |
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

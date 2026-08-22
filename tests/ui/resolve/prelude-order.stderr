@@ -29,7 +29,7 @@ LL | #[test]
    | |
    | expected `()`, found `&str`
    |
-   = note: this error originates in the attribute macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the attribute macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/prelude-order.rs:87:1
@@ -39,7 +39,7 @@ LL | #[global_allocator]
    | |
    | expected `()`, found `&str`
    |
-   = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

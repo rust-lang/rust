@@ -1,11 +1,16 @@
 warning: unresolved link to `long_cat`
   --> $DIR/macro-docs.rs:5:9
    |
-LL |         /// A
-   |         ^^^^^
-...
-LL | m!();
-   | ---- in this macro invocation
+LL | / macro_rules! m {
+LL | |     () => {
+LL | |         /// A
+   | |         ^^^^^
+...  |
+LL | | }
+   | |_- the warning originates in the macro `m`
+LL |
+LL |   m!();
+   |   ---- in this macro invocation
    |
    = note: the link appears in this line:
            
@@ -14,7 +19,6 @@ LL | m!();
    = note: no item named `long_cat` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
    = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
-   = note: this warning originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 1 warning emitted
 

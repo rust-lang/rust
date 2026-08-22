@@ -1,46 +1,74 @@
 error: type `foo::S` is private
   --> $DIR/fields.rs:13:17
    |
-LL |         let s = S { x: 0 };
-   |                 ^^^^^^^^^^ private type
+LL | /     pub macro m($S:ident, $x:ident) {{
+LL | |         struct $S {
+LL | |             $x: u32,
+LL | |             x: i32,
+...  |
+LL | |         let s = S { x: 0 };
+   | |                 ^^^^^^^^^^ private type
+...  |
+LL | |         s
+LL | |     }}
+   | |______- the error originates in the macro `foo::m`
 ...
-LL |     let s = foo::m!(S, x);
-   |             ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       let s = foo::m!(S, x);
+   |               ------------- in this macro invocation
 
 error: type `foo::S` is private
   --> $DIR/fields.rs:14:17
    |
-LL |         let _ = s.x;
-   |                 ^ private type
+LL | /     pub macro m($S:ident, $x:ident) {{
+LL | |         struct $S {
+LL | |             $x: u32,
+LL | |             x: i32,
+...  |
+LL | |         let _ = s.x;
+   | |                 ^ private type
+...  |
+LL | |         s
+LL | |     }}
+   | |______- the error originates in the macro `foo::m`
 ...
-LL |     let s = foo::m!(S, x);
-   |             ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       let s = foo::m!(S, x);
+   |               ------------- in this macro invocation
 
 error: type `T` is private
   --> $DIR/fields.rs:16:17
    |
-LL |         let t = T(0);
-   |                 ^^^^ private type
+LL | /     pub macro m($S:ident, $x:ident) {{
+LL | |         struct $S {
+LL | |             $x: u32,
+LL | |             x: i32,
+...  |
+LL | |         let t = T(0);
+   | |                 ^^^^ private type
+...  |
+LL | |         s
+LL | |     }}
+   | |______- the error originates in the macro `foo::m`
 ...
-LL |     let s = foo::m!(S, x);
-   |             ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       let s = foo::m!(S, x);
+   |               ------------- in this macro invocation
 
 error: type `T` is private
   --> $DIR/fields.rs:17:17
    |
-LL |         let _ = t.0;
-   |                 ^ private type
+LL | /     pub macro m($S:ident, $x:ident) {{
+LL | |         struct $S {
+LL | |             $x: u32,
+LL | |             x: i32,
+...  |
+LL | |         let _ = t.0;
+   | |                 ^ private type
+...  |
+LL | |         s
+LL | |     }}
+   | |______- the error originates in the macro `foo::m`
 ...
-LL |     let s = foo::m!(S, x);
-   |             ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       let s = foo::m!(S, x);
+   |               ------------- in this macro invocation
 
 error: aborting due to 4 previous errors
 

@@ -1,13 +1,14 @@
 error[E0426]: use of undeclared label `'x`
   --> $DIR/hygienic-label-3.rs:2:19
    |
-LL |     () => { break 'x; }
-   |                   ^^ undeclared label `'x`
+LL | / macro_rules! foo {
+LL | |     () => { break 'x; }
+   | |                   ^^ undeclared label `'x`
+LL | | }
+   | |_- the error originates in the macro `foo`
 ...
-LL |         foo!();
-   |         ------ in this macro invocation
-   |
-   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |           foo!();
+   |           ------ in this macro invocation
 
 error: aborting due to 1 previous error
 

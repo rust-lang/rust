@@ -12,7 +12,6 @@ LL | macro_rules! let_it { {} => { let it = (); } }
 ...
 LL |     let_it!();
    |     --------- in this macro invocation
-   = note: this error originates in the macro `let_it` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `it` in this scope
   --> $DIR/macro-hygiene-help-issue-149604.rs:3:50
@@ -31,7 +30,6 @@ LL | macro_rules! let_it { {} => { let it = (); } }
 ...
 LL |     let_it!();
    |     --------- in this macro invocation
-   = note: this error originates in the macro `print_it` which comes from the expansion of the macro `let_it` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -1,18 +1,22 @@
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/fn-arg-count-mismatch-diagnostics.rs:24:9
    |
-LL |         <Self>::$method(8)
-   |         ^^^^^^^^^^^^^^^--- argument #2 of type `u8` is missing
+LL | / macro_rules! delegate_local {
+LL | |     ($method:ident) => {
+LL | |         <Self>::$method(8)
+   | |         ^^^^^^^^^^^^^^^--- argument #2 of type `u8` is missing
+...  |
+LL | | }
+   | |_- the error originates in the macro `delegate_local`
 ...
-LL |         delegate_local!(foo);
-   |         -------------------- in this macro invocation
+LL |           delegate_local!(foo);
+   |           -------------------- in this macro invocation
    |
 note: associated function defined here
   --> $DIR/fn-arg-count-mismatch-diagnostics.rs:39:8
    |
 LL |     fn foo(a: u8, b: u8) {}
    |        ^^^        -----
-   = note: this error originates in the macro `delegate_local` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: provide the argument
    |
 LL |         <Self>::$method(8, /* u8 */)
@@ -29,23 +33,27 @@ note: associated function defined here
    |
 LL |     fn foo(a: u8, b: u8) {}
    |        ^^^        -----
-   = note: this error originates in the macro `delegate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `delegate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/fn-arg-count-mismatch-diagnostics.rs:31:9
    |
-LL |         <$from>::$method(8)
-   |         ^^^^^^^^^^^^^^^^--- argument #2 of type `u8` is missing
+LL | / macro_rules! delegate_from {
+LL | |     ($from:ident, $method:ident) => {
+LL | |         <$from>::$method(8)
+   | |         ^^^^^^^^^^^^^^^^--- argument #2 of type `u8` is missing
+...  |
+LL | | }
+   | |_- the error originates in the macro `delegate_from`
 ...
-LL |         delegate_from!(Bar, foo);
-   |         ------------------------ in this macro invocation
+LL |           delegate_from!(Bar, foo);
+   |           ------------------------ in this macro invocation
    |
 note: associated function defined here
   --> $DIR/fn-arg-count-mismatch-diagnostics.rs:39:8
    |
 LL |     fn foo(a: u8, b: u8) {}
    |        ^^^        -----
-   = note: this error originates in the macro `delegate_from` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: provide the argument
    |
 LL |         <$from>::$method(8, /* u8 */)

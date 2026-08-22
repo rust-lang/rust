@@ -1,13 +1,18 @@
 error[E0425]: cannot find type `a` in this scope
   --> $DIR/wrong-number-of-args-in-macro.rs:7:13
    |
-LL |         Foo<a, $b>
-   |             ^ not found in this scope
-...
-LL | fn foo<'a, 'b>() -> foo_ty!(&'b (), &'b ()) {}
-   |                     ----------------------- in this macro invocation
+LL | / macro_rules! foo_ty {
+LL | |     ($a:ty, $b:ty) => {
+LL | |         Foo<a, $b>
+   | |             ^ not found in this scope
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `foo_ty`
+LL |
+LL |   fn foo<'a, 'b>() -> foo_ty!(&'b (), &'b ()) {}
+   |                       ----------------------- in this macro invocation
    |
-   = note: this error originates in the macro `foo_ty` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might be missing a type parameter
    |
 LL | fn foo<'a, 'b, a>() -> foo_ty!(&'b (), &'b ()) {}
@@ -16,18 +21,23 @@ LL | fn foo<'a, 'b, a>() -> foo_ty!(&'b (), &'b ()) {}
 error[E0107]: struct takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/wrong-number-of-args-in-macro.rs:7:9
    |
-LL |         Foo<a, $b>
-   |         ^^^ expected 1 generic argument
-...
-LL | fn foo<'a, 'b>() -> foo_ty!(&'b (), &'b ()) {}
-   |                     ----------------------- in this macro invocation
+LL | / macro_rules! foo_ty {
+LL | |     ($a:ty, $b:ty) => {
+LL | |         Foo<a, $b>
+   | |         ^^^ expected 1 generic argument
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `foo_ty`
+LL |
+LL |   fn foo<'a, 'b>() -> foo_ty!(&'b (), &'b ()) {}
+   |                       ----------------------- in this macro invocation
    |
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/wrong-number-of-args-in-macro.rs:3:8
    |
 LL | struct Foo<T>;
    |        ^^^ -
-   = note: this error originates in the macro `foo_ty` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0392]: type parameter `T` is never used
   --> $DIR/wrong-number-of-args-in-macro.rs:3:12

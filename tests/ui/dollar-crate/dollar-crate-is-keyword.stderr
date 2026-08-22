@@ -1,35 +1,48 @@
 error: expected identifier, found reserved identifier `$crate`
   --> $DIR/dollar-crate-is-keyword.rs:6:20
    |
-LL |             struct $crate {}
-   |                    ^^^^^^ expected identifier, found reserved identifier
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! m {
+LL | |     () => {
+...  |
+LL | |             struct $crate {}
+   | |                    ^^^^^^ expected identifier, found reserved identifier
+...  |
+LL | | }
+   | |_- the error originates in the macro `m`
+LL |
+LL |   m!();
+   |   ---- in this macro invocation
 
 error: expected identifier, found reserved identifier `$crate`
   --> $DIR/dollar-crate-is-keyword.rs:10:23
    |
-LL |         use $crate as $crate;
-   |                       ^^^^^^ expected identifier, found reserved identifier
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! m {
+LL | |     () => {
+...  |
+LL | |         use $crate as $crate;
+   | |                       ^^^^^^ expected identifier, found reserved identifier
+LL | |     }
+LL | | }
+   | |_- the error originates in the macro `m`
+LL |
+LL |   m!();
+   |   ---- in this macro invocation
 
 error: imports need to be explicitly named
   --> $DIR/dollar-crate-is-keyword.rs:9:13
    |
-LL |         use $crate;
-   |             ^^^^^^
-...
-LL | m!();
-   | ---- in this macro invocation
+LL | / macro_rules! m {
+LL | |     () => {
+...  |
+LL | |         use $crate;
+   | |             ^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `m`
+LL |
+LL |   m!();
+   |   ---- in this macro invocation
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: try renaming it with a name
    |
 LL |         use $crate as name;

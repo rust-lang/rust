@@ -7,13 +7,15 @@ LL |     ( $( $($t:ident),* );* ) => { ${count($t,)} }
 error: expected expression, found `$`
   --> $DIR/count-empty-index-arg.rs:7:35
    |
-LL |     ( $( $($t:ident),* );* ) => { ${count($t,)} }
-   |                                   ^ expected expression
+LL | / macro_rules! foo {
+LL | |     ( $( $($t:ident),* );* ) => { ${count($t,)} }
+   | |                                   ^ expected expression
+...  |
+LL | | }
+   | |_- the error originates in the macro `foo`
 ...
-LL |     foo!(a, a; b, b);
-   |     ---------------- in this macro invocation
-   |
-   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       foo!(a, a; b, b);
+   |       ---------------- in this macro invocation
 
 error: aborting due to 2 previous errors
 

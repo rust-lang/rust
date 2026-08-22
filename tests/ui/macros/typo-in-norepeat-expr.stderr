@@ -1,13 +1,18 @@
 error: cannot find macro parameter `$arg` in this scope
   --> $DIR/typo-in-norepeat-expr.rs:4:10
    |
-LL |         [$arg]
-   |          ^^^^ not found in this scope
+LL | / macro_rules! m {
+LL | |     (begin $ard:ident end) => {
+LL | |         [$arg]
+   | |          ^^^^ not found in this scope
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `m`
 ...
-LL |     let _ = m![begin x end];
-   |             --------------- in this macro invocation
+LL |       let _ = m![begin x end];
+   |               --------------- in this macro invocation
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: there is a macro metavariable with a similar name
    |
 LL -         [$arg]

@@ -53,14 +53,18 @@ LL +     if let X.. = 1 {}
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:18:19
    |
-LL |             let $e...;
-   |                   ^^^
-...
-LL |     mac!(0);
-   |     ------- in this macro invocation
+LL | /     macro_rules! mac {
+LL | |         ($e:expr) => {
+LL | |             let $e...;
+   | |                   ^^^
+...  |
+LL | |     }
+   | |_____- the error originates in the macro `mac`
+LL |
+LL |       mac!(0);
+   |       ------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use `..` instead
    |
 LL -             let $e...;
@@ -70,14 +74,20 @@ LL +             let $e..;
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:20:19
    |
-LL |             let $e..=;
-   |                   ^^^
-...
-LL |     mac!(0);
-   |     ------- in this macro invocation
+LL | /     macro_rules! mac {
+LL | |         ($e:expr) => {
+LL | |             let $e...;
+LL | |
+LL | |             let $e..=;
+   | |                   ^^^
+...  |
+LL | |     }
+   | |_____- the error originates in the macro `mac`
+LL |
+LL |       mac!(0);
+   |       ------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use `..` instead
    |
 LL -             let $e..=;
@@ -87,30 +97,40 @@ LL +             let $e..;
 error[E0005]: refutable pattern in local binding
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:18:17
    |
-LL |             let $e...;
-   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
-...
-LL |     mac!(0);
-   |     ------- in this macro invocation
+LL | /     macro_rules! mac {
+LL | |         ($e:expr) => {
+LL | |             let $e...;
+   | |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
+...  |
+LL | |     }
+   | |_____- the error originates in the macro `mac`
+LL |
+LL |       mac!(0);
+   |       ------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:20:17
    |
-LL |             let $e..=;
-   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
-...
-LL |     mac!(0);
-   |     ------- in this macro invocation
+LL | /     macro_rules! mac {
+LL | |         ($e:expr) => {
+LL | |             let $e...;
+LL | |
+LL | |             let $e..=;
+   | |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
+...  |
+LL | |     }
+   | |_____- the error originates in the macro `mac`
+LL |
+LL |       mac!(0);
+   |       ------- in this macro invocation
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 8 previous errors
 

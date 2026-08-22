@@ -23,15 +23,18 @@ LL | |         }
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/macro-const-arg-infer.rs:6:9
    |
-LL |           _
-   |           ^ not allowed in type signatures
+LL | / macro_rules! y {
+LL | |     ( $($matcher:tt)*) => {
+LL | |         _
+   | |         ^ not allowed in type signatures
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `y`
 ...
 LL | /         y! {
 LL | |             x
 LL | |         }
    | |_________- in this macro invocation
-   |
-   = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

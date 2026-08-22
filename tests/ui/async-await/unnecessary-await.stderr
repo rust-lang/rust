@@ -37,19 +37,23 @@ LL +     e!();
 error[E0277]: `()` is not a future
   --> $DIR/unnecessary-await.rs:22:15
    |
-LL |         $expr.await
-   |               ^^^^^
-   |               |
-   |               `()` is not a future
-   |               remove the `.await`
+LL | / macro_rules! f {
+LL | |     ($expr:expr) => {
+LL | |         $expr.await
+   | |               ^^^^^
+   | |               |
+   | |               `()` is not a future
+   | |               remove the `.await`
+...  |
+LL | | }
+   | |_- the error originates in the macro `f`
 ...
-LL |     f!(());
-   |     ------ in this macro invocation
+LL |       f!(());
+   |       ------ in this macro invocation
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
    = note: required for `()` to implement `IntoFuture`
-   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `()` is not a future
   --> $DIR/unnecessary-await.rs:36:20

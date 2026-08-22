@@ -34,13 +34,16 @@ LL |     #[cfg(key="foo 1 bar 2.0 baz.")]
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
   --> $DIR/attr-unquoted-ident.rs:28:38
    |
-LL |     ($name:ident) => { #[doc(alias = $name)] pub struct S; }
-   |                                      ^^^^^ expressions are not allowed here
-...
-LL | make!(nickname);
-   | --------------- in this macro invocation
+LL | / macro_rules! make {
+LL | |     ($name:ident) => { #[doc(alias = $name)] pub struct S; }
+   | |                                      ^^^^^ expressions are not allowed here
+...  |
+LL | | }
+   | |_- the error originates in the macro `make`
+LL |
+LL |   make!(nickname);
+   |   --------------- in this macro invocation
    |
-   = note: this error originates in the macro `make` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: surround the identifier with quotation marks to make it into a string literal
    |
 LL |     ($name:ident) => { #[doc(alias = "$name")] pub struct S; }

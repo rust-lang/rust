@@ -18,13 +18,17 @@ LL | const _: A<
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/const_arg_trivial_macro_expansion-2.rs:7:9
    |
-LL |         x
-   |         ^ not found in this scope
+LL | / macro_rules! y {
+LL | |     ( $($matcher:tt)*) => {
+LL | |         x
+   | |         ^ not found in this scope
+...  |
+LL | | }
+   | |_- the error originates in the macro `y`
 ...
-LL |         y! { test.tou8 }
-   |         ---------------- in this macro invocation
+LL |           y! { test.tou8 }
+   |           ---------------- in this macro invocation
    |
-   = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might be missing a const parameter
    |
 LL | const _<const x: /* Type */>: A<

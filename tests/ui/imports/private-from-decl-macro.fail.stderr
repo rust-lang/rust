@@ -1,11 +1,15 @@
 error[E0364]: `S` is private, and cannot be re-exported
   --> $DIR/private-from-decl-macro.rs:18:13
    |
-LL |         use crate::m::*;
-   |             ^^^^^^^^^^^
+LL | /     pub macro mac_glob() {
+LL | |         #[cfg(fail)]
+LL | |         use crate::m::*;
+   | |             ^^^^^^^^^^^
+LL | |     }
+   | |_____- the error originates in the macro `crate::m::mac_glob`
 ...
-LL |     crate::m::mac_glob!();
-   |     --------------------- in this macro invocation
+LL |       crate::m::mac_glob!();
+   |       --------------------- in this macro invocation
    |
 note: consider marking `S` as `pub` in the imported module
   --> $DIR/private-from-decl-macro.rs:18:13
@@ -15,7 +19,6 @@ LL |         use crate::m::*;
 ...
 LL |     crate::m::mac_glob!();
    |     --------------------- in this macro invocation
-   = note: this error originates in the macro `crate::m::mac_glob` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: cannot find value `S` in this scope
   --> $DIR/private-from-decl-macro.rs:28:17

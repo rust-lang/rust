@@ -21,7 +21,7 @@ LL | proc_macro_sequence::make_foo!();
    | -------------------------------- in this macro invocation
    |
    = note: allowed there are: `=>`, `,` or `;`
-   = note: this error originates in the macro `proc_macro_sequence::make_foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `proc_macro_sequence::make_foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `$x:expr` may be followed by `=`, which is not allowed for `expr` fragments
   --> $DIR/same-sequence-span.rs:20:1
@@ -30,7 +30,7 @@ LL | proc_macro_sequence::make_foo!();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed after `expr` fragments
    |
    = note: allowed there are: `=>`, `,` or `;`
-   = note: this error originates in the macro `proc_macro_sequence::make_foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `proc_macro_sequence::make_foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

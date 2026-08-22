@@ -237,11 +237,17 @@ LL |         (true | false, None | Some(true
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:116:14
    |
-LL |             (true
-   |              ^^^^ no value can reach this
+LL | /     macro_rules! t_or_f {
+LL | |         () => {
+LL | |             (true
+   | |              ^^^^ no value can reach this
+LL | |             | false)
+LL | |         };
+LL | |     }
+   | |_____- the error originates in the macro `t_or_f`
 ...
-LL |         (true | false, None | Some(t_or_f!())) => {}
-   |                                    --------- in this macro invocation
+LL |           (true | false, None | Some(t_or_f!())) => {}
+   |                                      --------- in this macro invocation
    |
 note: multiple earlier patterns match some of the same values
   --> $DIR/exhaustiveness-unreachable-pattern.rs:116:14
@@ -255,7 +261,6 @@ LL |         (false, Some(true)) => {}
    |                      ---- matches some of the same values
 LL |         (true | false, None | Some(t_or_f!())) => {}
    |                                    --------- in this macro invocation
-   = note: this error originates in the macro `t_or_f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:127:14

@@ -11,7 +11,7 @@ note: the lint level is defined here
    |
 LL | #![deny(semicolon_in_expressions_from_non_local_macros)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `foreign_crate::my_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `foreign_crate::my_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 
@@ -29,5 +29,5 @@ note: the lint level is defined here
    |
 LL | #![deny(semicolon_in_expressions_from_non_local_macros)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `foreign_crate::my_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `foreign_crate::my_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 

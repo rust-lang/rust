@@ -13,7 +13,7 @@ LL |         let _ = $crate::ValidateConstImm::<$imm, 0, { (1 << 1) - 1 }>::VALI
 LL |     static_assert_imm1!(IMM1);
    |     ------------------------- in this macro invocation
    |
-   = note: this note originates in the macro `static_assert_imm1` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the note originates in the macro `static_assert_imm1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: the above error was encountered while instantiating `fn stdarch_intrinsic::<2>`
   --> $DIR/issue-85155.rs:19:5

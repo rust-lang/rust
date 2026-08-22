@@ -165,8 +165,8 @@ pub trait Emitter {
         let has_macro_spans: Vec<_> = iter::once(&*span)
             .chain(children.iter().map(|child| &child.span))
             .flat_map(|span| span.primary_spans())
-            .flat_map(|sp| sp.macro_backtrace())
-            .filter_map(|expn_data| {
+            .flat_map(|sp| sp.macro_backtrace().map(move |expn_data| (sp, expn_data)))
+            .filter_map(|(sp, expn_data)| {
                 match expn_data.kind {
                     ExpnKind::Root => None,
 
@@ -175,7 +175,16 @@ pub trait Emitter {
                     ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
                     ExpnKind::Macro(macro_kind, name) => {
-                        Some((macro_kind, name, expn_data.diagnostic_opaque))
+                        let same_line = sp
+                            .overlaps(expn_data.def_site)
+                            .then(|| expn_data.def_site.with_hi(sp.lo()));
+                        Some((
+                            macro_kind,
+                            name,
+                            expn_data.diagnostic_opaque,
+                            expn_data.def_site,
+                            same_line,
+                        ))
                     }
                 }
             })
@@ -187,27 +196,42 @@ pub trait Emitter {
 
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
-        if !backtrace {
+        if !backtrace
             // Skip macros annotated with `#[diagnostic::opaque]`. Builtin macros are "opaque" too.
-            if let Some((macro_kind, name, _)) = has_macro_spans.first()
-                && let Some((_, _, false)) = has_macro_spans.last()
+            && let Some((macro_kind, name, _, sp, same_line_span)) = has_macro_spans.first()
+            && let Some((_, _, false, _, _)) = has_macro_spans.last()
+        {
+            // Mark the actual macro this originates from
+            let and_then = if let Some((macro_kind, last_name, _, _, _)) = has_macro_spans.last()
+                && last_name != name
             {
-                // Mark the actual macro this originates from
-                let and_then = if let Some((macro_kind, last_name, _)) = has_macro_spans.last()
-                    && last_name != name
-                {
-                    let descr = macro_kind.descr();
-                    format!(" which comes from the expansion of the {descr} `{last_name}`")
-                } else {
-                    "".to_string()
-                };
-
                 let descr = macro_kind.descr();
-                let msg = format!(
-                    "this {level} originates in the {descr} `{name}`{and_then} \
-                    (in Nightly builds, run with -Z macro-backtrace for more info)",
-                );
+                format!(" which comes from the expansion of the {descr} `{last_name}`")
+            } else {
+                "".to_string()
+            };
 
+            let descr = macro_kind.descr();
+            let msg = format!("the {level} originates in the {descr} `{name}`{and_then}");
+
+            if let Some(source_map) = self.source_map() {
+                if source_map.is_imported(*sp) || same_line_span.is_none() {
+                    let msg = format!(
+                        "{msg} (in Nightly builds, run with -Z macro-backtrace for more info)"
+                    );
+                    children.push(Subdiag {
+                        level: Level::Note,
+                        messages: vec![(DiagMessage::from(msg), Style::NoStyle)],
+                        span: MultiSpan::new(),
+                    });
+                } else if let Some(def) = same_line_span
+                    && source_map.is_multiline(*def)
+                {
+                    // We only point at the macro definition when it is not on the same line as the
+                    // error produced, otherwise we get overlapping spans which don't look as good.
+                    span.push_span_label(*sp, msg);
+                }
+            } else {
                 children.push(Subdiag {
                     level: Level::Note,
                     messages: vec![(DiagMessage::from(msg), Style::NoStyle)],

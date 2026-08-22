@@ -133,16 +133,21 @@ LL |         let ref _v = A.value;
 error: creating a mutable reference to mutable static
   --> $DIR/static-mut-refs.rs:14:14
    |
-LL |         &mut ($x.0)
-   |              ^^^^^^ mutable reference to mutable static
+LL | / macro_rules! bar {
+LL | |     ($x:expr) => {
+LL | |         &mut ($x.0)
+   | |              ^^^^^^ mutable reference to mutable static
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `bar`
 ...
-LL |         let _x = bar!(FOO);
-   |                  --------- in this macro invocation
+LL |           let _x = bar!(FOO);
+   |                    --------- in this macro invocation
    |
    = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
    = help: use a type that relies on "interior mutability" instead; to read more on this, visit <https://doc.rust-lang.org/reference/interior-mutability.html>
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
-   = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
 

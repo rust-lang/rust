@@ -5,7 +5,7 @@ LL |             #[derive(GenHelperUse)]
    |                      ^^^^^^^^^^^^
    |
    = note: `empty_helper` is an attribute that can be used by the derive macro `Empty`, you might be missing a `derive` attribute
-   = note: this error originates in the derive macro `GenHelperUse` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the derive macro `GenHelperUse` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this attribute macro through its public re-export
    |
 LL +             use empty_helper;
@@ -14,14 +14,19 @@ LL +             use empty_helper;
 error: cannot find attribute `empty_helper` in this scope
   --> $DIR/derive-helper-shadowing.rs:17:11
    |
-LL |         #[empty_helper]
-   |           ^^^^^^^^^^^^
+LL | / macro_rules! gen_helper_use {
+LL | |     () => {
+LL | |         #[empty_helper]
+   | |           ^^^^^^^^^^^^
+LL | |         struct W;
+LL | |     }
+LL | | }
+   | |_- the error originates in the macro `gen_helper_use`
 ...
-LL |             gen_helper_use!();
-   |             ----------------- in this macro invocation
+LL |               gen_helper_use!();
+   |               ----------------- in this macro invocation
    |
    = note: `empty_helper` is an attribute that can be used by the derive macro `Empty`, you might be missing a `derive` attribute
-   = note: this error originates in the macro `gen_helper_use` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this attribute macro through its public re-export
    |
 LL +             use empty_helper;

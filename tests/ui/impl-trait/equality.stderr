@@ -39,7 +39,7 @@ help: the following other types implement trait `Add<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&u32` implements `Add`
-   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

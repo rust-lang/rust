@@ -1,35 +1,49 @@
 error: `$crate` in paths can only be used in start position
   --> $DIR/dollar-crate-is-keyword-2.rs:5:16
    |
-LL |         use a::$crate;
-   |                ^^^^^^
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! m {
+LL | |     () => {
+LL | |         use a::$crate;
+   | |                ^^^^^^
+LL | |         use a::$crate::b;
+...  |
+LL | | }
+   | |_- the error originates in the macro `m`
+LL |
+LL |   m!();
+   |   ---- in this macro invocation
 
 error[E0433]: `$crate` in paths can only be used in start position
   --> $DIR/dollar-crate-is-keyword-2.rs:6:16
    |
-LL |         use a::$crate::b;
-   |                ^^^^^^ can only be used in path start position
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! m {
+LL | |     () => {
+LL | |         use a::$crate;
+LL | |         use a::$crate::b;
+   | |                ^^^^^^ can only be used in path start position
+...  |
+LL | | }
+   | |_- the error originates in the macro `m`
+LL |
+LL |   m!();
+   |   ---- in this macro invocation
 
 error[E0433]: `$crate` in paths can only be used in start position
   --> $DIR/dollar-crate-is-keyword-2.rs:8:21
    |
-LL |         type A = a::$crate;
-   |                     ^^^^^^ can only be used in path start position
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! m {
+LL | |     () => {
+LL | |         use a::$crate;
+LL | |         use a::$crate::b;
+LL | |
+LL | |         type A = a::$crate;
+   | |                     ^^^^^^ can only be used in path start position
+...  |
+LL | | }
+   | |_- the error originates in the macro `m`
+LL |
+LL |   m!();
+   |   ---- in this macro invocation
 
 error: aborting due to 3 previous errors
 

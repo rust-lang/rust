@@ -17,7 +17,7 @@ LL | non_local_macro::non_local_macro_rules!(my_macro);
    = help: remove the `#[macro_export]` or move this `macro_rules!` outside the of the current constant `_MACRO_EXPORT`
    = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
    = note: the macro `non_local_macro::non_local_macro_rules` may come from an old version of the `non_local_macro` crate, try updating your dependency with `cargo update -p non_local_macro`
-   = note: this warning originates in the macro `non_local_macro::non_local_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the warning originates in the macro `non_local_macro::non_local_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
   --> $DIR/macro_rules.rs:21:5

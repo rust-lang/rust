@@ -104,7 +104,7 @@ note: required by a bound in `ProjectionPred`
    |
 LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
    |                                                                  ^^^^^^^ required by this bound in `ProjectionPred`
-   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 7 previous errors
 

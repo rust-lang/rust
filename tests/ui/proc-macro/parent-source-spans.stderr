@@ -1,46 +1,54 @@
 error: first final: "hello"
   --> $DIR/parent-source-spans.rs:17:12
    |
-LL |     three!($a, $b);
-   |            ^^
+LL | / macro two($a:expr, $b:expr) {
+LL | |     three!($a, $b);
+   | |            ^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `two` which comes from the expansion of the macro `one`
 ...
-LL |     one!("hello", "world");
-   |     ---------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `two` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       one!("hello", "world");
+   |       ---------------------- in this macro invocation
 
 error: second final: "world"
   --> $DIR/parent-source-spans.rs:17:16
    |
-LL |     three!($a, $b);
-   |                ^^
+LL | / macro two($a:expr, $b:expr) {
+LL | |     three!($a, $b);
+   | |                ^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `two` which comes from the expansion of the macro `one`
 ...
-LL |     one!("hello", "world");
-   |     ---------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `two` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       one!("hello", "world");
+   |       ---------------------- in this macro invocation
 
 error: first parent: "hello"
   --> $DIR/parent-source-spans.rs:11:5
    |
-LL |     two!($a, $b);
-   |     ^^^^^^^^^^^^
+LL | / macro one($a:expr, $b:expr) {
+LL | |     two!($a, $b);
+   | |     ^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `one`
 ...
-LL |     one!("hello", "world");
-   |     ---------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       one!("hello", "world");
+   |       ---------------------- in this macro invocation
 
 error: second parent: "world"
   --> $DIR/parent-source-spans.rs:11:5
    |
-LL |     two!($a, $b);
-   |     ^^^^^^^^^^^^
+LL | / macro one($a:expr, $b:expr) {
+LL | |     two!($a, $b);
+   | |     ^^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `one`
 ...
-LL |     one!("hello", "world");
-   |     ---------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       one!("hello", "world");
+   |       ---------------------- in this macro invocation
 
 error: first grandparent: "hello"
   --> $DIR/parent-source-spans.rs:37:5
@@ -69,24 +77,28 @@ LL |     one!("hello", "world");
 error: first final: "yay"
   --> $DIR/parent-source-spans.rs:17:12
    |
-LL |     three!($a, $b);
-   |            ^^
+LL | / macro two($a:expr, $b:expr) {
+LL | |     three!($a, $b);
+   | |            ^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `two`
 ...
-LL |     two!("yay", "rust");
-   |     ------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       two!("yay", "rust");
+   |       ------------------- in this macro invocation
 
 error: second final: "rust"
   --> $DIR/parent-source-spans.rs:17:16
    |
-LL |     three!($a, $b);
-   |                ^^
+LL | / macro two($a:expr, $b:expr) {
+LL | |     three!($a, $b);
+   | |                ^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `two`
 ...
-LL |     two!("yay", "rust");
-   |     ------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       two!("yay", "rust");
+   |       ------------------- in this macro invocation
 
 error: first parent: "yay"
   --> $DIR/parent-source-spans.rs:43:5
@@ -149,7 +161,7 @@ LL |     one!("hello", "world");
    |
    = note: similarly named tuple variant `Ok` defined here
    |
-   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `parent_source_spans` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a tuple variant with a similar name exists
    |
 LL -     parent_source_spans!($($tokens)*);
@@ -169,7 +181,7 @@ LL |     two!("yay", "rust");
    |
    = note: similarly named tuple variant `Ok` defined here
    |
-   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `parent_source_spans` which comes from the expansion of the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a tuple variant with a similar name exists
    |
 LL -     parent_source_spans!($($tokens)*);
@@ -189,7 +201,7 @@ LL |     three!("hip", "hop");
    |
    = note: similarly named tuple variant `Ok` defined here
    |
-   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `three` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `parent_source_spans` which comes from the expansion of the macro `three` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a tuple variant with a similar name exists
    |
 LL -     parent_source_spans!($($tokens)*);

@@ -21,7 +21,7 @@ help: the following other types implement trait `Add<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&u8` implements `Add`
-   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot add `&str` to `f64`
   --> $DIR/not-suggest-float-literal.rs:6:7
@@ -46,7 +46,7 @@ help: the following other types implement trait `Add<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Add`
-   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot add `{integer}` to `f64`
   --> $DIR/not-suggest-float-literal.rs:11:7
@@ -71,7 +71,7 @@ help: the following other types implement trait `Add<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Add`
-   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot subtract `{float}` from `u8`
   --> $DIR/not-suggest-float-literal.rs:15:7
@@ -96,7 +96,7 @@ help: the following other types implement trait `Sub<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&u8` implements `Sub`
-   = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot subtract `&str` from `f64`
   --> $DIR/not-suggest-float-literal.rs:19:7
@@ -121,7 +121,7 @@ help: the following other types implement trait `Sub<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Sub`
-   = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot subtract `{integer}` from `f64`
   --> $DIR/not-suggest-float-literal.rs:24:7
@@ -146,7 +146,7 @@ help: the following other types implement trait `Sub<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Sub`
-   = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot multiply `u8` by `{float}`
   --> $DIR/not-suggest-float-literal.rs:28:7
@@ -171,7 +171,7 @@ help: the following other types implement trait `Mul<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&u8` implements `Mul`
-   = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot multiply `f64` by `&str`
   --> $DIR/not-suggest-float-literal.rs:32:7
@@ -196,7 +196,7 @@ help: the following other types implement trait `Mul<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Mul`
-   = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot multiply `f64` by `{integer}`
   --> $DIR/not-suggest-float-literal.rs:37:7
@@ -221,7 +221,7 @@ help: the following other types implement trait `Mul<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Mul`
-   = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot divide `u8` by `{float}`
   --> $DIR/not-suggest-float-literal.rs:41:7
@@ -260,7 +260,7 @@ help: the following other types implement trait `Div<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Div`
-   = note: this error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot divide `f64` by `{integer}`
   --> $DIR/not-suggest-float-literal.rs:50:7
@@ -285,7 +285,7 @@ help: the following other types implement trait `Div<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Div`
-   = note: this error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
 

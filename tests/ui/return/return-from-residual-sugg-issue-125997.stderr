@@ -86,15 +86,20 @@ LL +     Ok(())
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/return-from-residual-sugg-issue-125997.rs:23:52
    |
-LL |         fn test3() {
-   |         ---------- this function should return `Result` or `Option` to accept `?`
-LL |             let mut _file = File::create("foo.txt")?;
-   |                                                    ^ cannot use the `?` operator in a function that returns `()`
+LL | / macro_rules! mac {
+LL | |     () => {
+LL | |         fn test3() {
+   | |         ---------- this function should return `Result` or `Option` to accept `?`
+LL | |             let mut _file = File::create("foo.txt")?;
+   | |                                                    ^ cannot use the `?` operator in a function that returns `()`
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `mac`
 ...
-LL |     mac!();
-   |     ------ in this macro invocation
+LL |       mac!();
+   |       ------ in this macro invocation
    |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider adding return type
    |
 LL ~         fn test3() -> Result<(), Box<dyn std::error::Error>> {

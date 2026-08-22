@@ -24,11 +24,16 @@ LL | make_macro!((meow));
 error: cannot find macro `macro_rules` in this scope
   --> $DIR/issue-118786.rs:10:9
    |
-LL |         macro_rules! $macro_name {
-   |         ^^^^^^^^^^^
-...
-LL | make_macro!((meow));
-   | ------------------- in this macro invocation
+LL | / macro_rules! make_macro {
+LL | |     ($macro_name:tt) => {
+LL | |         macro_rules! $macro_name {
+   | |         ^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `make_macro`
+LL |
+LL |   make_macro!((meow));
+   |   ------------------- in this macro invocation
    |
 note: maybe you have forgotten to define a name for this `macro_rules!`
   --> $DIR/issue-118786.rs:10:20
@@ -38,7 +43,6 @@ LL |         macro_rules! $macro_name {
 ...
 LL | make_macro!((meow));
    | ------------------- in this macro invocation
-   = note: this error originates in the macro `make_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

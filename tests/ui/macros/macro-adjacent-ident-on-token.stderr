@@ -1,11 +1,16 @@
 error: expected `{`, found identifier `foo`
   --> $DIR/macro-adjacent-ident-on-token.rs:6:21
    |
-LL |         if $tgt.has_$field() {}
-   |                     ^^^^^^ expected `{`
+LL | / macro_rules! get_opt {
+LL | |     ($tgt:expr, $field:ident) => {
+LL | |         if $tgt.has_$field() {}
+   | |                     ^^^^^^ expected `{`
+LL | |     }
+LL | | }
+   | |_- the error originates in the macro `get_opt`
 ...
-LL |     get_opt!(bar, foo);
-   |     ------------------ in this macro invocation
+LL |       get_opt!(bar, foo);
+   |       ------------------ in this macro invocation
    |
 note: the `if` expression is missing a block after this condition
   --> $DIR/macro-adjacent-ident-on-token.rs:6:12
@@ -15,7 +20,6 @@ LL |         if $tgt.has_$field() {}
 ...
 LL |     get_opt!(bar, foo);
    |     ------------------ in this macro invocation
-   = note: this error originates in the macro `get_opt` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might have meant to write a method call
    |
 LL |         if $tgt.has_.$field() {}

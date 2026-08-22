@@ -19,15 +19,17 @@ LL |     format!(concat!("{ba", "r} {}"), 1);
 error: there is no argument named `foo`
   --> $DIR/format-args-capture-macro-hygiene.rs:7:13
    |
-LL |     () => { "{foo}" }
-   |             ^^^^^^^
+LL | / macro_rules! def_site {
+LL | |     () => { "{foo}" }
+   | |             ^^^^^^^
+LL | | }
+   | |_- the error originates in the macro `def_site`
 ...
-LL |     format!(def_site!());
-   |             ----------- in this macro invocation
+LL |       format!(def_site!());
+   |               ----------- in this macro invocation
    |
    = note: did you intend to capture a variable `foo` from the surrounding scope?
    = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
-   = note: this error originates in the macro `def_site` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: there is no argument named `foo`
   --> $DIR/format-args-capture-macro-hygiene.rs:19:24

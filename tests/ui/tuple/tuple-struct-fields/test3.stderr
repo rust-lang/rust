@@ -1,15 +1,20 @@
 error: expected one of `)` or `,`, found `(`
   --> $DIR/test3.rs:5:27
    |
-LL |         struct S3(pub($t) ());
-   |                          -^ expected one of `)` or `,`
-   |                          |
-   |                          help: missing `,`
+LL | / macro_rules! define_struct {
+LL | |     ($t:ty) => {
+LL | |         struct S1(pub($t));
+LL | |         struct S2(pub (in crate::foo) ());
+LL | |         struct S3(pub($t) ());
+   | |                          -^ expected one of `)` or `,`
+   | |                          |
+   | |                          help: missing `,`
+...  |
+LL | | }
+   | |_- the error originates in the macro `define_struct`
 ...
-LL |     define_struct! { foo }
-   |     ---------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `define_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       define_struct! { foo }
+   |       ---------------------- in this macro invocation
 
 error[E0425]: cannot find type `foo` in this scope
   --> $DIR/test3.rs:11:22

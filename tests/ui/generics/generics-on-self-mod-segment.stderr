@@ -17,15 +17,18 @@ LL | fn crate_(_: crate::<i32>::Ty) {}
 error[E0109]: type arguments are not allowed on module `generics_on_self_mod_segment`
   --> $DIR/generics-on-self-mod-segment.rs:11:38
    |
-LL |         fn dollar_crate_(_: $crate::<i32>::Ty) {}
-   |                             ------   ^^^ type argument not allowed
-   |                             |
-   |                             not allowed on module `generics_on_self_mod_segment`
-...
-LL | dollar_crate!();
-   | --------------- in this macro invocation
-   |
-   = note: this error originates in the macro `dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro_rules! dollar_crate {
+LL | |     () => {
+LL | |         fn dollar_crate_(_: $crate::<i32>::Ty) {}
+   | |                             ------   ^^^ type argument not allowed
+   | |                             |
+   | |                             not allowed on module `generics_on_self_mod_segment`
+...  |
+LL | | }
+   | |_- the error originates in the macro `dollar_crate`
+LL |
+LL |   dollar_crate!();
+   |   --------------- in this macro invocation
 
 error: aborting due to 3 previous errors
 

@@ -143,38 +143,53 @@ LL +     a::I()
 error[E0423]: cannot find value `a` in this scope
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:72:9
    |
-LL |         a
-   |         ^ not found in this scope
+LL | / macro_rules! module {
+LL | |     () => {
+LL | |         a
+   | |         ^ not found in this scope
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `module`
 ...
-LL |     module!().g::<()>(); // no `help` here!
-   |     --------- in this macro invocation
+LL |       module!().g::<()>(); // no `help` here!
+   |       --------- in this macro invocation
    |
    = note: a module named `a` exists in another namespace
-   = note: this error originates in the macro `module` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: cannot find value `a` in this scope
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:72:9
    |
-LL |         a
-   |         ^ not found in this scope
+LL | / macro_rules! module {
+LL | |     () => {
+LL | |         a
+   | |         ^ not found in this scope
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `module`
 ...
-LL |     module!().g; // no `help` here!
-   |     --------- in this macro invocation
+LL |       module!().g; // no `help` here!
+   |       --------- in this macro invocation
    |
    = note: a module named `a` exists in another namespace
-   = note: this error originates in the macro `module` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: cannot find value `a` in this scope
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:80:9
    |
-LL |         a.f()
-   |         ^
+LL | / macro_rules! create {
+LL | |     (method) => {
+LL | |         a.f()
+   | |         ^
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `create`
 ...
-LL |     let _ = create!(method);
-   |             --------------- in this macro invocation
+LL |       let _ = create!(method);
+   |               --------------- in this macro invocation
    |
    = note: a module named `a` exists in another namespace
-   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         a.f()
@@ -184,14 +199,21 @@ LL +         a::f()
 error[E0423]: cannot find value `a` in this scope
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:85:9
    |
-LL |         a.f
-   |         ^
+LL | / macro_rules! create {
+LL | |     (method) => {
+LL | |         a.f()
+...  |
+LL | |         a.f
+   | |         ^
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `create`
 ...
-LL |     let _ = create!(field);
-   |             -------------- in this macro invocation
+LL |       let _ = create!(field);
+   |               -------------- in this macro invocation
    |
    = note: a module named `a` exists in another namespace
-   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         a.f

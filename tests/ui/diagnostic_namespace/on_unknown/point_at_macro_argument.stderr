@@ -1,22 +1,36 @@
 error[E0432]: unresolved import `things::what`
   --> $DIR/point_at_macro_argument.rs:12:17
    |
-LL |             use things::$thing;
-   |                 ^^^^^^^^^^^^^^
+LL | / macro_rules! mac {
+LL | |     ($thing: ident) => {{
+LL | |         const _x: u32 = {
+LL | |             #[diagnostic::on_unknown(label = "you did the bad thing")]
+LL | |             use things::$thing;
+   | |                 ^^^^^^^^^^^^^^
+...  |
+LL | |     }};
+LL | | }
+   | |_- the error originates in the macro `mac`
 ...
-LL |     mac!(what);
-   |     ----------
-   |     |    |
-   |     |    you did the bad thing
-   |     in this macro invocation
-   |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       mac!(what);
+   |       ----------
+   |       |    |
+   |       |    you did the bad thing
+   |       in this macro invocation
 
 error[E0432]: unresolved import `things::what2`
   --> $DIR/point_at_macro_argument.rs:12:17
    |
-LL |               use things::$thing;
-   |                   ^^^^^^^^^^^^^^
+LL | / macro_rules! mac {
+LL | |     ($thing: ident) => {{
+LL | |         const _x: u32 = {
+LL | |             #[diagnostic::on_unknown(label = "you did the bad thing")]
+LL | |             use things::$thing;
+   | |                 ^^^^^^^^^^^^^^
+...  |
+LL | |     }};
+LL | | }
+   | |_- the error originates in the macro `mac`
 ...
 LL | /     mac!(
 LL | |
@@ -25,8 +39,6 @@ LL | |         what2
 ...  |
 LL | |     );
    | |_____- in this macro invocation
-   |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

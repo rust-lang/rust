@@ -7,7 +7,7 @@ LL | a::ice! {}
    | cannot borrow as mutable
    | a call in this macro requires a mutable binding due to mutable borrow of `d`
    |
-   = note: this error originates in the macro `a::ice` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `a::ice` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider changing this to be mutable
   --> $DIR/auxiliary/borrowck-error-in-macro.rs:7:17
    |

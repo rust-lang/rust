@@ -1,46 +1,70 @@
 error: unexpected token: `literal` metavariable
   --> $DIR/float-field-interpolated.rs:8:13
    |
-LL |         { s.$b; }
-   |             ^^
+LL | / macro_rules! generate_field_accesses {
+LL | |     ($a:tt, $b:literal, $c:expr) => {
+LL | |         let s = S(0, (0, 0));
+...  |
+LL | |         { s.$b; }
+   | |             ^^
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `generate_field_accesses`
 ...
-LL |     generate_field_accesses!(1.1, 1.1, 1.1);
-   |     --------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       generate_field_accesses!(1.1, 1.1, 1.1);
+   |       --------------------------------------- in this macro invocation
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `literal` metavariable
   --> $DIR/float-field-interpolated.rs:8:13
    |
-LL |         { s.$b; }
-   |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+LL | / macro_rules! generate_field_accesses {
+LL | |     ($a:tt, $b:literal, $c:expr) => {
+LL | |         let s = S(0, (0, 0));
+...  |
+LL | |         { s.$b; }
+   | |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+...  |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `generate_field_accesses`
 ...
-LL |     generate_field_accesses!(1.1, 1.1, 1.1);
-   |     --------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       generate_field_accesses!(1.1, 1.1, 1.1);
+   |       --------------------------------------- in this macro invocation
 
 error: unexpected token: `expr` metavariable
   --> $DIR/float-field-interpolated.rs:10:13
    |
-LL |         { s.$c; }
-   |             ^^
+LL | / macro_rules! generate_field_accesses {
+LL | |     ($a:tt, $b:literal, $c:expr) => {
+LL | |         let s = S(0, (0, 0));
+...  |
+LL | |         { s.$c; }
+   | |             ^^
+LL | |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `generate_field_accesses`
 ...
-LL |     generate_field_accesses!(1.1, 1.1, 1.1);
-   |     --------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       generate_field_accesses!(1.1, 1.1, 1.1);
+   |       --------------------------------------- in this macro invocation
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `expr` metavariable
   --> $DIR/float-field-interpolated.rs:10:13
    |
-LL |         { s.$c; }
-   |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+LL | / macro_rules! generate_field_accesses {
+LL | |     ($a:tt, $b:literal, $c:expr) => {
+LL | |         let s = S(0, (0, 0));
+...  |
+LL | |         { s.$c; }
+   | |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+LL | |
+LL | |     };
+LL | | }
+   | |_- the error originates in the macro `generate_field_accesses`
 ...
-LL |     generate_field_accesses!(1.1, 1.1, 1.1);
-   |     --------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `generate_field_accesses` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       generate_field_accesses!(1.1, 1.1, 1.1);
+   |       --------------------------------------- in this macro invocation
 
 error: aborting due to 4 previous errors
 

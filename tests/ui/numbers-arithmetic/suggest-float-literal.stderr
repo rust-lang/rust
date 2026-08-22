@@ -21,7 +21,7 @@ help: the following other types implement trait `Add<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f32` implements `Add`
-   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x + 100.0
@@ -50,7 +50,7 @@ help: the following other types implement trait `Add<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Add`
-   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x + 100.0
@@ -79,7 +79,7 @@ help: the following other types implement trait `Sub<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f32` implements `Sub`
-   = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x - 100.0
@@ -108,7 +108,7 @@ help: the following other types implement trait `Sub<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Sub`
-   = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x - 100.0
@@ -137,7 +137,7 @@ help: the following other types implement trait `Mul<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f32` implements `Mul`
-   = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x * 100.0
@@ -166,7 +166,7 @@ help: the following other types implement trait `Mul<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Mul`
-   = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x * 100.0
@@ -195,7 +195,7 @@ help: the following other types implement trait `Div<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f32` implements `Div`
-   = note: this error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x / 100.0
@@ -224,7 +224,7 @@ help: the following other types implement trait `Div<Rhs>`
   ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `&f64` implements `Div`
-   = note: this error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `div_impl_float` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x / 100.0

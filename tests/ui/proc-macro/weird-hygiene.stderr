@@ -12,23 +12,29 @@ help: an identifier with the same name exists, but is not accessible due to macr
    |
 LL |     let hidden_ident = "Hello1";
    |         ^^^^^^^^^^^^
-   = note: this error originates in the macro `inner` which comes from the expansion of the macro `other` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `inner` which comes from the expansion of the macro `other` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `hidden_ident` in this scope
   --> $DIR/weird-hygiene.rs:35:13
    |
-LL |             hidden_ident
-   |             ^^^^^^^^^^^^ not found in this scope
+LL | / macro_rules! invoke_it {
+LL | |     ($token:expr) => {
+LL | |         #[recollect_attr] {
+LL | |             $token;
+LL | |             hidden_ident
+   | |             ^^^^^^^^^^^^ not found in this scope
+...  |
+LL | | }
+   | |_- the error originates in the macro `invoke_it`
 ...
-LL |     invoke_it!(25);
-   |     -------------- in this macro invocation
+LL |       invoke_it!(25);
+   |       -------------- in this macro invocation
    |
 help: an identifier with the same name exists, but is not accessible due to macro hygiene
   --> $DIR/weird-hygiene.rs:44:9
    |
 LL |     let hidden_ident = "Hello1";
    |         ^^^^^^^^^^^^
-   = note: this error originates in the macro `invoke_it` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

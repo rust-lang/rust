@@ -1,8 +1,13 @@
 error: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/lint-if-let-rescope-with-macro.rs:12:12
    |
-LL |           if let $p = $e { $($conseq)* } else { $($alt)* }
-   |              ^^^^^^^^^^^
+LL | / macro_rules! edition_2021_if_let {
+LL | |     ($p:pat, $e:expr, { $($conseq:tt)* } { $($alt:tt)* }) => {
+LL | |         if let $p = $e { $($conseq)* } else { $($alt)* }
+   | |            ^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `edition_2021_if_let`
 ...
 LL | /     edition_2021_if_let! {
 LL | |         Some(_value),
@@ -38,7 +43,6 @@ note: the lint level is defined here
    |
 LL | #![deny(if_let_rescope)]
    |         ^^^^^^^^^^^^^^
-   = note: this error originates in the macro `edition_2021_if_let` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

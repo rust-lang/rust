@@ -49,15 +49,21 @@ LL |     bar!(internal_unstable::unstable());
 error[E0658]: use of unstable library feature `function`
   --> $DIR/internal-unstable.rs:20:9
    |
-LL |         internal_unstable::unstable();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! foo {
+LL | |     ($e: expr, $f: expr) => {{
+LL | |         $e;
+LL | |         $f;
+LL | |         internal_unstable::unstable();
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | |     }}
+LL | | }
+   | |_- the error originates in the macro `foo` which comes from the expansion of the macro `bar`
 ...
-LL |     bar!(internal_unstable::unstable());
-   |     ----------------------------------- in this macro invocation
+LL |       bar!(internal_unstable::unstable());
+   |       ----------------------------------- in this macro invocation
    |
    = help: add `#![feature(function)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: this error originates in the macro `foo` which comes from the expansion of the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: the `allow_internal_unstable` attribute cannot be used on struct fields
   --> $DIR/internal-unstable.rs:10:7

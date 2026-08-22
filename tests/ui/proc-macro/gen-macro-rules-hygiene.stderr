@@ -6,8 +6,6 @@ LL | gen_macro_rules!();
 ...
 LL |         generated!();
    |         ------------ in this macro invocation
-   |
-   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `local_use` in this scope
   --> $DIR/gen-macro-rules-hygiene.rs:13:1
@@ -23,7 +21,6 @@ help: an identifier with the same name exists, but is not accessible due to macr
    |
 LL |         let local_use = 1;
    |             ^^^^^^^^^
-   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a local variable with a similar name exists
    |
 LL - gen_macro_rules!();
@@ -44,7 +41,6 @@ LL | gen_macro_rules!();
 ...
 LL |         generated!();
    |         ------------ in this macro invocation
-   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a local variable with a similar name exists
    |
 LL -         local_def;

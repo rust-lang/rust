@@ -6,7 +6,7 @@ LL |     invoke_with_crate!{input proc_macro_item}
    |                              |
    |                              no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate::proc_macro_item`
   --> $DIR/mixed-site-span.rs:50:5
@@ -16,7 +16,7 @@ LL |     invoke_with_ident!{input proc_macro_item}
    |                              |
    |                              no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:51:5
@@ -26,7 +26,7 @@ LL |     invoke_with_crate!{call proc_macro_item}
    |                             |
    |                             no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:52:5
@@ -36,7 +36,7 @@ LL |     invoke_with_ident!{call proc_macro_item}
    |                             |
    |                             no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:53:5
@@ -46,7 +46,7 @@ LL |     invoke_with_ident!{hello call proc_macro_item}
    |                                   |
    |                                   no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate::proc_macro_item`
   --> $DIR/mixed-site-span.rs:56:5
@@ -56,7 +56,7 @@ LL |     invoke_with_ident!{krate input proc_macro_item}
    |                                    |
    |                                    no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a similar name exists in the module
    |
 LL -     invoke_with_ident!{krate input proc_macro_item}
@@ -71,7 +71,7 @@ LL |     with_crate!{krate input proc_macro_item}
    |                             |
    |                             no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a similar name exists in the module
    |
 LL -     with_crate!{krate input proc_macro_item}
@@ -86,7 +86,7 @@ LL |     with_crate!{krate call proc_macro_item}
    |                            |
    |                            no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a similar name exists in the module
    |
 LL -     with_crate!{krate call proc_macro_item}
@@ -96,15 +96,20 @@ LL +     with_crate!{krate call proc_macro_rules}
 error[E0432]: unresolved import `$crate::proc_macro_item`
   --> $DIR/mixed-site-span.rs:62:28
    |
-LL |         invoke_with_ident!{$crate input proc_macro_item}
-   |                            ^^^^^^^^^^^^^---------------
-   |                                         |
-   |                                         no `proc_macro_item` in the root
-...
-LL |     test!();
-   |     ------- in this macro invocation
+LL | /     macro_rules! test {() => {
+LL | |         // crate::proc_macro_item
+LL | |         invoke_with_ident!{$crate input proc_macro_item}
+   | |                            ^^^^^^^^^^^^^---------------
+   | |                                         |
+   | |                                         no `proc_macro_item` in the root
+LL | |         with_crate!{$crate input proc_macro_item}
+...  |
+LL | |         invoke_with_ident!{$crate call proc_macro_item}
+LL | |     }}
+   | |______- the error originates in the macro `test`
+LL |       test!();
+   |       ------- in this macro invocation
    |
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a similar name exists in the module
    |
 LL -         invoke_with_ident!{$crate input proc_macro_item}
@@ -114,15 +119,20 @@ LL +         invoke_with_ident!{$crate input proc_macro_rules}
 error[E0432]: unresolved import `$crate::proc_macro_item`
   --> $DIR/mixed-site-span.rs:63:21
    |
-LL |         with_crate!{$crate input proc_macro_item}
-   |                     ^^^^^^^^^^^^^---------------
-   |                                  |
-   |                                  no `proc_macro_item` in the root
-...
-LL |     test!();
-   |     ------- in this macro invocation
+LL | /     macro_rules! test {() => {
+LL | |         // crate::proc_macro_item
+LL | |         invoke_with_ident!{$crate input proc_macro_item}
+LL | |         with_crate!{$crate input proc_macro_item}
+   | |                     ^^^^^^^^^^^^^---------------
+   | |                                  |
+   | |                                  no `proc_macro_item` in the root
+...  |
+LL | |         invoke_with_ident!{$crate call proc_macro_item}
+LL | |     }}
+   | |______- the error originates in the macro `test`
+LL |       test!();
+   |       ------- in this macro invocation
    |
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a similar name exists in the module
    |
 LL -         with_crate!{$crate input proc_macro_item}
@@ -140,7 +150,7 @@ LL |         with_crate!{$crate call proc_macro_item}
 LL |     test!();
    |     ------- in this macro invocation
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a similar name exists in the module
    |
 LL -         with_crate!{$crate call proc_macro_item}
@@ -158,7 +168,7 @@ LL |     }}
 LL |     test!();
    |     ------- in this macro invocation
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate::TokenItem`
   --> $DIR/mixed-site-span.rs:89:5
@@ -168,7 +178,7 @@ LL |     invoke_with_ident!{krate input TokenItem}
    |                                    |
    |                                    no `TokenItem` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/mixed-site-span.rs:60:34
    |
@@ -183,7 +193,7 @@ LL |     with_crate!{krate input TokenItem}
    |                             |
    |                             no `TokenItem` in the root
    |
-   = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/mixed-site-span.rs:60:34
    |
@@ -198,7 +208,7 @@ LL |     with_crate!{krate call TokenItem}
    |                            |
    |                            no `TokenItem` in the root
    |
-   = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
    |
 LL -     with_crate!{krate call TokenItem}
@@ -213,7 +223,7 @@ LL |     invoke_with_crate!{mixed TokenItem}
    |                              |
    |                              no `TokenItem` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:14:30
    |
@@ -229,7 +239,7 @@ LL |     invoke_with_ident!{mixed TokenItem}
    |                              |
    |                              no `TokenItem` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:19:30
    |
@@ -245,7 +255,7 @@ LL |     invoke_with_ident!{krate mixed TokenItem}
    |                                    |
    |                                    no `TokenItem` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:20:39
    |
@@ -261,7 +271,7 @@ LL |     with_crate!{krate mixed TokenItem}
    |                             |
    |                             no `TokenItem` in the root
    |
-   = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
    |
 LL -     with_crate!{krate mixed TokenItem}
@@ -271,15 +281,19 @@ LL +     token_site_span::TokenItem as _
 error[E0432]: unresolved import `$crate::TokenItem`
   --> $DIR/mixed-site-span.rs:101:28
    |
-LL |         invoke_with_ident!{$crate input TokenItem}
-   |                            ^^^^^^^^^^^^^---------
-   |                                         |
-   |                                         no `TokenItem` in the root
-...
-LL |     test!();
-   |     ------- in this macro invocation
+LL | /     macro_rules! test {() => {
+LL | |         // crate::TokenItem
+LL | |         invoke_with_ident!{$crate input TokenItem}
+   | |                            ^^^^^^^^^^^^^---------
+   | |                                         |
+   | |                                         no `TokenItem` in the root
+LL | |         with_crate!{$crate input TokenItem}
+...  |
+LL | |     }}
+   | |______- the error originates in the macro `test`
+LL |       test!();
+   |       ------- in this macro invocation
    |
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
    |
 LL -         invoke_with_ident!{$crate input TokenItem}
@@ -289,15 +303,19 @@ LL +         invoke_with_ident!{token_site_span::TokenItem as _}
 error[E0432]: unresolved import `$crate::TokenItem`
   --> $DIR/mixed-site-span.rs:102:21
    |
-LL |         with_crate!{$crate input TokenItem}
-   |                     ^^^^^^^^^^^^^---------
-   |                                  |
-   |                                  no `TokenItem` in the root
-...
-LL |     test!();
-   |     ------- in this macro invocation
+LL | /     macro_rules! test {() => {
+LL | |         // crate::TokenItem
+LL | |         invoke_with_ident!{$crate input TokenItem}
+LL | |         with_crate!{$crate input TokenItem}
+   | |                     ^^^^^^^^^^^^^---------
+   | |                                  |
+   | |                                  no `TokenItem` in the root
+...  |
+LL | |     }}
+   | |______- the error originates in the macro `test`
+LL |       test!();
+   |       ------- in this macro invocation
    |
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
    |
 LL -         with_crate!{$crate input TokenItem}
@@ -315,7 +333,7 @@ LL |         with_crate!{$crate call TokenItem}
 LL |     test!();
    |     ------- in this macro invocation
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
    |
 LL -         with_crate!{$crate call TokenItem}
@@ -333,7 +351,7 @@ LL |         invoke_with_ident!{$crate mixed TokenItem}
 LL |     test!();
    |     ------- in this macro invocation
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:20:39
    |
@@ -352,7 +370,7 @@ LL |         with_crate!{$crate mixed TokenItem}
 LL |     test!();
    |     ------- in this macro invocation
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
    |
 LL -         with_crate!{$crate mixed TokenItem}
@@ -367,7 +385,7 @@ LL |     invoke_with_crate!{input ItemUse}
    |                              |
    |                              no `ItemUse` in the root
    |
-   = note: this error originates in the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:14:42
    |
@@ -383,7 +401,7 @@ LL |     invoke_with_ident!{input ItemUse}
    |                              |
    |                              no `ItemUse` in the root
    |
-   = note: this error originates in the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:19:42
    |
@@ -399,7 +417,7 @@ LL |     invoke_with_crate!{mixed ItemUse}
    |                              |
    |                              no `ItemUse` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:14:30
    |
@@ -415,7 +433,7 @@ LL |     invoke_with_ident!{mixed ItemUse}
    |                              |
    |                              no `ItemUse` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:19:30
    |
@@ -431,7 +449,7 @@ LL |     invoke_with_ident!{krate mixed ItemUse}
    |                                    |
    |                                    no `ItemUse` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:20:39
    |
@@ -447,7 +465,7 @@ LL |     with_crate!{krate mixed ItemUse}
    |                             |
    |                             no `ItemUse` in the root
    |
-   = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
    |
 LL -     with_crate!{krate mixed ItemUse}
@@ -462,7 +480,7 @@ LL |     invoke_with_crate!{call ItemUse}
    |                             |
    |                             no `ItemUse` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:14:30
    |
@@ -478,7 +496,7 @@ LL |     invoke_with_ident!{call ItemUse}
    |                             |
    |                             no `ItemUse` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:19:30
    |
@@ -494,7 +512,7 @@ LL |     invoke_with_ident!{hello call ItemUse}
    |                                   |
    |                                   no `ItemUse` in the root
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:20:39
    |
@@ -513,7 +531,7 @@ LL |         invoke_with_ident!{$crate mixed ItemUse}
 LL |     test!();
    |     ------- in this macro invocation
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:20:39
    |
@@ -532,7 +550,7 @@ LL |         with_crate!{$crate mixed ItemUse}
 LL |     test!();
    |     ------- in this macro invocation
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
    |
 LL -         with_crate!{$crate mixed ItemUse}
@@ -550,7 +568,7 @@ LL |     }}
 LL |     test!();
    |     ------- in this macro invocation
    |
-   = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:20:39
    |
@@ -566,7 +584,7 @@ LL | use_input_crate!{proc_macro_item}
    |                  |
    |                  no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `use_input_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_input_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:156:1
@@ -576,7 +594,7 @@ LL | use_input_krate!{proc_macro_item}
    |                  |
    |                  no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `use_input_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_input_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:159:1
@@ -586,7 +604,7 @@ LL | use_call_crate!{proc_macro_item}
    |                 |
    |                 no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `use_call_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_call_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:160:1
@@ -596,7 +614,7 @@ LL | use_call_krate!{proc_macro_item}
    |                 |
    |                 no `proc_macro_item` in the root
    |
-   = note: this error originates in the macro `use_call_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_call_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:165:1
@@ -606,7 +624,7 @@ LL | use_mixed_crate!{TokenItem}
    |                  |
    |                  no `TokenItem` in the root
    |
-   = note: this error originates in the macro `use_mixed_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_mixed_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:25:5
    |
@@ -622,7 +640,7 @@ LL | use_mixed_krate!{TokenItem}
    |                  |
    |                  no `TokenItem` in the root
    |
-   = note: this error originates in the macro `use_mixed_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_mixed_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
   --> $DIR/auxiliary/token-site-span.rs:30:1
    |
@@ -638,7 +656,7 @@ LL | use_input_crate!{ItemUse}
    |                  |
    |                  no `ItemUse` in the root
    |
-   = note: this error originates in the macro `use_input_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_input_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:172:1
@@ -648,7 +666,7 @@ LL | use_input_krate!{ItemUse}
    |                  |
    |                  no `ItemUse` in the root
    |
-   = note: this error originates in the macro `use_input_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_input_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:173:1
@@ -658,7 +676,7 @@ LL | use_mixed_crate!{ItemUse}
    |                  |
    |                  no `ItemUse` in the root
    |
-   = note: this error originates in the macro `use_mixed_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_mixed_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:174:1
@@ -668,7 +686,7 @@ LL | use_mixed_krate!{ItemUse}
    |                  |
    |                  no `ItemUse` in the root
    |
-   = note: this error originates in the macro `use_mixed_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_mixed_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:175:1
@@ -678,7 +696,7 @@ LL | use_call_crate!{ItemUse}
    |                 |
    |                 no `ItemUse` in the root
    |
-   = note: this error originates in the macro `use_call_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_call_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:176:1
@@ -688,7 +706,7 @@ LL | use_call_krate!{ItemUse}
    |                 |
    |                 no `ItemUse` in the root
    |
-   = note: this error originates in the macro `use_call_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `use_call_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0426]: use of undeclared label `'label_use`
   --> $DIR/mixed-site-span.rs:23:9
@@ -696,7 +714,7 @@ error[E0426]: use of undeclared label `'label_use`
 LL |         proc_macro_rules!();
    |         ^^^^^^^^^^^^^^^^^^^ undeclared label `'label_use`
    |
-   = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find type `ItemUse` in crate `$crate`
   --> $DIR/mixed-site-span.rs:23:9
@@ -704,7 +722,7 @@ error[E0425]: cannot find type `ItemUse` in crate `$crate`
 LL |         proc_macro_rules!();
    |         ^^^^^^^^^^^^^^^^^^^ not found in `$crate`
    |
-   = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct
    |
 LL + use ItemUse;
@@ -721,7 +739,7 @@ help: an identifier with the same name exists, but is not accessible due to macr
    |
 LL |         let local_use = 1;
    |             ^^^^^^^^^
-   = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a local variable with a similar name exists
    |
 LL -         proc_macro_rules!();
@@ -739,7 +757,7 @@ help: an identifier with the same name is defined here, but is not accessible du
    |
 LL |         proc_macro_rules!();
    |         ^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a local variable with a similar name exists
    |
 LL -         local_def;

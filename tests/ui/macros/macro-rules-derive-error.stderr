@@ -1,13 +1,17 @@
 error: MyDerive: struct S1;
   --> $DIR/macro-rules-derive-error.rs:5:9
    |
-LL |         compile_error!(concat!("MyDerive: ", stringify!($($body)*)));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! MyDerive {
+LL | |     derive() { $($body:tt)* } => {
+LL | |         compile_error!(concat!("MyDerive: ", stringify!($($body)*)));
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | |     };
+LL | |
+LL | | }
+   | |_- the error originates in the derive macro `MyDerive`
 ...
-LL |     #[derive(MyDerive)]
-   |              -------- in this derive macro expansion
-   |
-   = note: this error originates in the derive macro `MyDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       #[derive(MyDerive)]
+   |                -------- in this derive macro expansion
 
 error: cannot find macro `MyDerive` in this scope
   --> $DIR/macro-rules-derive-error.rs:28:5

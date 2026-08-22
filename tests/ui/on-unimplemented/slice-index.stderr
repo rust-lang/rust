@@ -35,7 +35,7 @@ help: `RangeTo<usize>` implements trait `SliceIndex<T>`
    |
    = note: `SliceIndex<str>`
    = note: required for `[i32]` to implement `Index<RangeTo<i32>>`
-   = note: this error originates in the macro `impl_slice_index` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the macro `impl_slice_index` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

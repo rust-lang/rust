@@ -53,7 +53,7 @@ LL | m! { A B }
    | ---------- in this macro invocation
    |
    = note: only one variant can be default
-   = note: this error originates in the derive macro `Default` which comes from the expansion of the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the derive macro `Default` which comes from the expansion of the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

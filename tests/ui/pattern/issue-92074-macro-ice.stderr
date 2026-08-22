@@ -1,38 +1,46 @@
 error: arbitrary expressions aren't allowed in patterns
   --> $DIR/issue-92074-macro-ice.rs:18:25
    |
-LL |     () => { force_expr!(Vec::new()) }
-   |                         ^^^^^^^^^^
+LL | / macro_rules! make_vec {
+LL | |     () => { force_expr!(Vec::new()) }
+   | |                         ^^^^^^^^^^
+LL | | }
+   | |_- the error originates in the macro `make_vec`
 ...
-LL |     assert!(matches!(x, En::A(make_vec!())));
-   |                               ----------- in this macro invocation
+LL |       assert!(matches!(x, En::A(make_vec!())));
+   |                                 ----------- in this macro invocation
    |
    = note: the `expr` fragment specifier forces the metavariable's content to be an expression
-   = note: this error originates in the macro `make_vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: arbitrary expressions aren't allowed in patterns
   --> $DIR/issue-92074-macro-ice.rs:22:24
    |
-LL |     () => { force_pat!(get_usize(), get_usize()) }
-   |                        ^^^^^^^^^^^
+LL | / macro_rules! make_pat {
+LL | |     () => { force_pat!(get_usize(), get_usize()) }
+   | |                        ^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `make_pat`
 ...
-LL |     assert!(matches!(5, make_pat!()));
-   |                         ----------- in this macro invocation
+LL |       assert!(matches!(5, make_pat!()));
+   |                           ----------- in this macro invocation
    |
    = note: the `expr` fragment specifier forces the metavariable's content to be an expression
-   = note: this error originates in the macro `make_pat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: arbitrary expressions aren't allowed in patterns
   --> $DIR/issue-92074-macro-ice.rs:22:37
    |
-LL |     () => { force_pat!(get_usize(), get_usize()) }
-   |                                     ^^^^^^^^^^^
+LL | / macro_rules! make_pat {
+LL | |     () => { force_pat!(get_usize(), get_usize()) }
+   | |                                     ^^^^^^^^^^^
+...  |
+LL | | }
+   | |_- the error originates in the macro `make_pat`
 ...
-LL |     assert!(matches!(5, make_pat!()));
-   |                         ----------- in this macro invocation
+LL |       assert!(matches!(5, make_pat!()));
+   |                           ----------- in this macro invocation
    |
    = note: the `expr` fragment specifier forces the metavariable's content to be an expression
-   = note: this error originates in the macro `make_pat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

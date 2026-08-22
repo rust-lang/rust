@@ -7,27 +7,38 @@ LL |     use my_core;
 error[E0432]: unresolved import `my_core`
   --> $DIR/extern-prelude-from-opaque-fail-2018.rs:8:13
    |
-LL |         use my_core;
-   |             ^^^^^^^ no external crate `my_core`
-...
-LL | a!();
-   | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | / macro a() {
+LL | |     extern crate core as my_core;
+LL | |     mod v {
+LL | |         // Early resolution.
+LL | |         use my_core;
+   | |             ^^^^^^^ no external crate `my_core`
+...  |
+LL | | }
+   | |_- the error originates in the macro `a`
+LL |
+LL |   a!();
+   |   ---- in this macro invocation
 
 error[E0433]: cannot find module or crate `my_core` in this scope
   --> $DIR/extern-prelude-from-opaque-fail-2018.rs:12:18
    |
-LL |         fn f() { my_core::mem::drop(0); }
-   |                  ^^^^^^^ use of unresolved module or unlinked crate `my_core`
-...
-LL | a!();
-   | ---- in this macro invocation
+LL | / macro a() {
+LL | |     extern crate core as my_core;
+LL | |     mod v {
+...  |
+LL | |         fn f() { my_core::mem::drop(0); }
+   | |                  ^^^^^^^ use of unresolved module or unlinked crate `my_core`
+...  |
+LL | | }
+   | |_- the error originates in the macro `a`
+LL |
+LL |   a!();
+   |   ---- in this macro invocation
    |
    = help: you might be missing a crate named `my_core`
    = help: consider importing this module:
            std::mem
-   = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: cannot find module or crate `my_core` in this scope
   --> $DIR/extern-prelude-from-opaque-fail-2018.rs:25:14

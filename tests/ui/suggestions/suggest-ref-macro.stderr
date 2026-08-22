@@ -12,25 +12,29 @@ note: function defined here
    |
 LL | #[hello]
    | ^^^^^^^^
-   = note: this error originates in the attribute macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the error originates in the attribute macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/suggest-ref-macro.rs:16:11
    |
-LL |         x(123);
-   |         - ^^^ expected `&mut i32`, found integer
-   |         |
-   |         arguments to this function are incorrect
+LL | / macro_rules! bla {
+LL | |     () => {
+LL | |         x(123);
+   | |         - ^^^ expected `&mut i32`, found integer
+   | |         |
+   | |         arguments to this function are incorrect
+...  |
+LL | | }
+   | |_- the error originates in the macro `bla`
 ...
-LL |     bla!();
-   |     ------ in this macro invocation
+LL |       bla!();
+   |       ------ in this macro invocation
    |
 note: function defined here
   --> $DIR/suggest-ref-macro.rs:12:4
    |
 LL | fn x(_: &mut i32) {}
    |    ^ -----------
-   = note: this error originates in the macro `bla` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider mutably borrowing here
    |
 LL |         x(&mut 123);

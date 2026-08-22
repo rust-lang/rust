@@ -1,13 +1,16 @@
 error[E0425]: cannot find value `target` in this scope
   --> $DIR/trivial-const-arg-macro-res-error.rs:5:9
    |
-LL |         target
-   |         ^^^^^^ not found in this scope
+LL | / macro_rules! len {
+LL | |     () => {
+LL | |         target
+   | |         ^^^^^^ not found in this scope
+...  |
+LL | | }
+   | |_- the error originates in the macro `len`
 ...
-LL |     let val: [str; len!()] = [];
-   |                    ------ in this macro invocation
-   |
-   = note: this error originates in the macro `len` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       let val: [str; len!()] = [];
+   |                      ------ in this macro invocation
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/trivial-const-arg-macro-res-error.rs:11:14
