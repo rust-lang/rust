@@ -66,7 +66,6 @@ mod const_kind;
 mod flags;
 mod fold;
 mod generic_arg;
-#[cfg(not(feature = "nightly"))]
 mod generic_visit;
 mod infer_ctxt;
 mod interner;
@@ -97,7 +96,6 @@ pub use const_kind::*;
 pub use flags::*;
 pub use fold::*;
 pub use generic_arg::*;
-#[cfg(not(feature = "nightly"))]
 pub use generic_visit::*;
 pub use infer_ctxt::*;
 pub use interner::*;
