@@ -194,6 +194,16 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         {
             tcx.ensure_ok().typeck(item_def_id);
         }
+    });
+
+    // This has to be a second pass over the body owners, after every body has been
+    // type-checked above. `needs_coroutine_by_move_body_def_id` asks for `type_of`, and for a
+    // body owner nested inside a const argument's anon const that goes through `typeck` of the
+    // anon const, which needs the anon const's own type. That type is never computed, only fed
+    // while the enclosing body is type-checked. Doing this in the pass above lets the parallel
+    // front end reach the nested body owner first, computing (and caching) an error type for
+    // the anon const that then conflicts with the type fed later on.
+    tcx.par_hir_body_owners(|item_def_id| {
         // Ensure we generate the new `DefId` before finishing `check_crate`.
         // Afterwards we freeze the list of `DefId`s.
         if tcx.needs_coroutine_by_move_body_def_id(item_def_id.to_def_id()) {
