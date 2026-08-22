@@ -19,7 +19,7 @@ use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{
     self, Builder, Cargo as CargoCommand, CommandLineStep, Kind, RunConfig, ShouldRun, Step,
-    StepMetadata, apply_pgo, cargo_profile_var,
+    StepMetadata, apply_pgo,
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
@@ -126,14 +126,26 @@ impl Step for ToolBuild {
         if is_lto_stage(&self.build_compiler)
             && (self.mode == Mode::ToolRustcPrivate || self.path == "src/tools/cargo")
         {
-            let lto = match builder.config.rust_lto {
-                RustcLto::Off => Some("off"),
-                RustcLto::Thin => Some("thin"),
-                RustcLto::Fat => Some("fat"),
-                RustcLto::ThinLocal => None,
-            };
-            if let Some(lto) = lto {
-                cargo.env(cargo_profile_var("LTO", &builder.config, self.mode), lto);
+            // We don't use Cargo's LTO setting here to workaround https://github.com/rust-lang/cargo/issues/14575
+            // FIXME: Move back to Cargo profiles which were done
+            // before PR #128947 once rust-lang/cargo#14575 is fixed
+            if let RustcLto::Thin | RustcLto::Fat = builder.config.rust_lto {
+                // Since using LTO for optimizing dylibs is currently experimental,
+                // we need to pass -Zdylib-lto since proc macros are dylibs.
+                cargo.rustflag("-Zdylib-lto");
+                cargo.rustflag("-Cembed-bitcode=yes");
+            }
+            match builder.config.rust_lto {
+                RustcLto::Thin => {
+                    cargo.rustflag("-Clto=thin");
+                }
+                RustcLto::Fat => {
+                    cargo.rustflag("-Clto=fat");
+                }
+                RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+                RustcLto::Off => {
+                    cargo.rustflag("-Clto=off");
+                }
             }
         }
 
