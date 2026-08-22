@@ -1427,6 +1427,14 @@ where
         expected_term: I::Term,
         alias_const: ty::AliasConst<I>,
     ) -> QueryResultOrRerunNonErased<I> {
+        // Evaluation instantiates the constant's body with its arguments. An argument whose
+        // type does not match its parameter makes that body ill-formed, which CTFE cannot run.
+        self.try_evaluate_added_goals().inspect_err(|_| {
+            // Without recording the response here we attribute the error to this goal rather
+            // than to the nested goal which actually failed.
+            self.inspect.make_canonical_response(Certainty::Yes);
+        })?;
+
         match self.evaluate_const(param_env, alias_const)? {
             Some(evaluated) => {
                 self.eq(param_env, expected_term, evaluated.into())?;
