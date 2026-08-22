@@ -372,12 +372,10 @@ fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
     let slice = file.as_encoded_bytes();
     let start = stem_start(slice);
 
-    let Some(i) = slice[start..].iter().position(|b| *b == b'.') else {
-        return (file, None),
+    let Some(dot) = slice[start..].iter().position(|b| *b == b'.') else {
+        return (file, None);
     };
-    let i = start + i;
-    let before = &slice[..i];
-    let after = &slice[i + 1..];
+    let dot = start + dot;
 
     // The unsafety here stems from converting between &OsStr and &[u8]
     // and back. This is safe to do because (1) we only look at ASCII
@@ -385,8 +383,8 @@ fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
     // only from ASCII-bounded slices of existing &OsStr values.
     unsafe {
         (
-            OsStr::from_encoded_bytes_unchecked(before),
-            Some(OsStr::from_encoded_bytes_unchecked(after)),
+            OsStr::from_encoded_bytes_unchecked(&slice[..dot]),
+            Some(OsStr::from_encoded_bytes_unchecked(&slice[dot + 1..])),
         )
     }
 }
