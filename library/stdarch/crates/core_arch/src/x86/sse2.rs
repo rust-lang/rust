@@ -1353,7 +1353,8 @@ pub const unsafe fn _mm_loadu_si128(mem_addr: *const __m128i) -> __m128i {
 /// corresponding element.
 ///
 /// `mem_addr` should correspond to a 128-bit memory location and does not need
-/// to be aligned on any particular boundary.
+/// to be aligned on any particular boundary. The memory range starting at `mem_addr`
+/// and going on for 16 bytes must be contained in a mutable allocation, even if `mask` is all-0.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskmoveu_si128)
 ///
