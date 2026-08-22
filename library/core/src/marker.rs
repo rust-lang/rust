@@ -910,7 +910,6 @@ impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
 marker_impls! {
     #[unstable(feature = "freeze", issue = "121675")]
     unsafe Freeze for
-        {T: PointeeSized} PhantomData<T>,
         {T: PointeeSized} *const T,
         {T: PointeeSized} *mut T,
         {T: PointeeSized} &T,
