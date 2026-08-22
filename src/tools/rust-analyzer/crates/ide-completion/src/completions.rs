@@ -752,7 +752,9 @@ pub(super) fn complete_name_ref<'db>(
                         TypeLocation::TypeAscription(ascription) => {
                             if let TypeAscriptionTarget::RetType { item: Some(item), .. } =
                                 ascription
-                                && path_ctx.required_thin_arrow().is_some()
+                                && path_ctx
+                                    .required_thin_arrow(|it| Some(it.text_range()))
+                                    .is_some()
                                 && matches!(path_ctx.qualified, Qualified::No)
                             {
                                 keyword::complete_for_and_where(acc, ctx, &item.clone().into());

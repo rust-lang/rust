@@ -651,7 +651,8 @@ fn adds_ret_type_arrow(
     item: &mut Builder,
     insert_text: String,
 ) {
-    if let Some((arrow, at)) = path_ctx.required_thin_arrow() {
+    let unmap = |node: &_| ctx.sema.original_range_opt(node).map(|it| it.range);
+    if let Some((arrow, at)) = path_ctx.required_thin_arrow(unmap) {
         let mut edit = TextEdit::builder();
 
         edit.insert(at, arrow.to_owned());
