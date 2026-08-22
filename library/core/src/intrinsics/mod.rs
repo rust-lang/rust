@@ -2211,7 +2211,7 @@ pub const unsafe fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_allow_const_fn_unstable(const_trait_impl, funnel_shifts)]
+#[rustc_allow_const_fn_unstable(const_trait_impl)]
 #[miri::intrinsic_fallback_is_spec]
 pub const fn rotate_left<T: [const] fallback::FunnelShift>(x: T, shift: u32) -> T {
     // Make sure to call the intrinsic for `funnel_shl`, not the fallback impl.
@@ -2233,7 +2233,7 @@ pub const fn rotate_left<T: [const] fallback::FunnelShift>(x: T, shift: u32) -> 
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_allow_const_fn_unstable(const_trait_impl, funnel_shifts)]
+#[rustc_allow_const_fn_unstable(const_trait_impl)]
 #[miri::intrinsic_fallback_is_spec]
 pub const fn rotate_right<T: [const] fallback::FunnelShift>(x: T, shift: u32) -> T {
     // Make sure to call the intrinsic for `funnel_shr`, not the fallback impl.
@@ -2329,11 +2329,11 @@ pub const fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 ///
 /// Safe versions of this intrinsic are available on the integer primitives
 /// via the `funnel_shl` method. For example, [`u32::funnel_shl`].
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-#[unstable(feature = "funnel_shifts", issue = "145686")]
 #[track_caller]
+#[rustc_allow_const_fn_unstable(const_trait_impl, core_intrinsics_fallbacks)]
 #[miri::intrinsic_fallback_is_spec]
 pub const unsafe fn unchecked_funnel_shl<T: [const] fallback::FunnelShift>(
     a: T,
@@ -2357,11 +2357,11 @@ pub const unsafe fn unchecked_funnel_shl<T: [const] fallback::FunnelShift>(
 ///
 /// Safer versions of this intrinsic are available on the integer primitives
 /// via the `funnel_shr` method. For example, [`u32::funnel_shr`]
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-#[unstable(feature = "funnel_shifts", issue = "145686")]
 #[track_caller]
+#[rustc_allow_const_fn_unstable(const_trait_impl, core_intrinsics_fallbacks)]
 #[miri::intrinsic_fallback_is_spec]
 pub const unsafe fn unchecked_funnel_shr<T: [const] fallback::FunnelShift>(
     a: T,
