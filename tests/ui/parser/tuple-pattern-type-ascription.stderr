@@ -1,0 +1,61 @@
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:9:11
+   |
+LL |     let (a: bool,) = (true,);
+   |           ^^^^^^
+   |
+help: to annotate the types of a tuple's elements, write them as a tuple type after the pattern
+   |
+LL -     let (a: bool,) = (true,);
+LL +     let (a,): (bool,) = (true,);
+   |
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:12:11
+   |
+LL |     let (b: bool, c: u8) = (true, 1);
+   |           ^^^^^^   ^^^^
+   |
+help: to annotate the types of a tuple's elements, write them as a tuple type after the pattern
+   |
+LL -     let (b: bool, c: u8) = (true, 1);
+LL +     let (b, c): (bool, u8) = (true, 1);
+   |
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:15:11
+   |
+LL |     let (d: bool, e) = (true, 1);
+   |           ^^^^^^
+   |
+help: to annotate the types of a tuple's elements, write them as a tuple type after the pattern
+   |
+LL -     let (d: bool, e) = (true, 1);
+LL +     let (d, e): (bool, _) = (true, 1);
+   |
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:18:11
+   |
+LL |     let (f: Option<u8>,) = (Some(1),);
+   |           ^^^^^^^^^^^^
+   |
+help: to annotate the types of a tuple's elements, write them as a tuple type after the pattern
+   |
+LL -     let (f: Option<u8>,) = (Some(1),);
+LL +     let (f,): (Option<u8>,) = (Some(1),);
+   |
+
+error: expected one of `)`, `,`, `@`, `if`, or `|`, found `:`
+  --> $DIR/tuple-pattern-type-ascription.rs:26:11
+   |
+LL |     let (m:C,) = (0,);
+   |           ^ expected one of `)`, `,`, `@`, `if`, or `|`
+   |
+help: maybe write a path separator here
+   |
+LL |     let (m::C,) = (0,);
+   |            +
+
+error: aborting due to 5 previous errors
+
