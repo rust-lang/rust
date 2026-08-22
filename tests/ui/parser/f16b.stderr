@@ -1,0 +1,10 @@
+error: invalid suffix `f16b` for float literal
+  --> $DIR/f16b.rs:15:13
+   |
+LL |     let _ = 0.0f16b;
+   |             ^^^^^^^ invalid suffix `f16b`
+   |
+   = help: valid suffixes are `f32` and `f64`
+
+error: aborting due to 1 previous error
+

@@ -254,6 +254,8 @@ declare_features! (
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows checking whether or not the backend correctly supports unstable float types.
     (internal, cfg_target_has_reliable_f16_f128, "1.88.0", None),
+    /// Allows checking whether or not the backend correctly supports the unstable `f16b` type.
+    (internal, cfg_target_has_reliable_f16b, "CURRENT_RUSTC_VERSION", None),
     /// Allows checking whether or not the target might have thread support.
     (internal, cfg_target_has_threads, "1.99.0", None),
     /// Allows identifying the `compiler_builtins` crate.
@@ -545,6 +547,8 @@ declare_features! (
     (unstable, f128, "1.78.0", Some(116909)),
     /// Allow using 16-bit (half precision) floating point numbers.
     (unstable, f16, "1.78.0", Some(116909)),
+    /// Allow using bfloat16 floating point numbers.
+    (unstable, f16b, "CURRENT_RUSTC_VERSION", Some(160630)),
     /// Allows the use of `#[ffi_const]` on foreign functions.
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.

@@ -214,6 +214,7 @@ pub fn compile_codegen_unit(
             // -fsyntax-only), forbid the compilation when get_target_info() is called on a
             // context.
             let f16_type_supported = target_info.supports_target_dependent_type(CType::Float16);
+            let f16b_type_supported = target_info.supports_target_dependent_type(CType::BFloat16);
             let f32_type_supported = target_info.supports_target_dependent_type(CType::Float32);
             let f64_type_supported = target_info.supports_target_dependent_type(CType::Float64);
             let f128_type_supported = target_info.supports_target_dependent_type(CType::Float128);
@@ -225,6 +226,7 @@ pub fn compile_codegen_unit(
                 tcx,
                 u128_type_supported,
                 f16_type_supported,
+                f16b_type_supported,
                 f32_type_supported,
                 f64_type_supported,
                 f128_type_supported,

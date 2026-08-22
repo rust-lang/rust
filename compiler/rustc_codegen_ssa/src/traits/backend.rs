@@ -50,6 +50,7 @@ pub trait CodegenBackend {
             // support the float types, rather than accidentally quietly skipping all tests.
             has_reliable_f16: true,
             has_reliable_f16_math: true,
+            has_reliable_f16b: true,
             has_reliable_f128: true,
             has_reliable_f128_math: true,
         }

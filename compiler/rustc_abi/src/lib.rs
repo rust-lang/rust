@@ -1402,6 +1402,10 @@ impl Integer {
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Float {
     F16,
+    /// `f16b`. This is not a builtin type in Rust (it is exposed as a lang item),
+    /// but it is a builtin type in LLVM so needs to be explicitly represented
+    /// in the backend.
+    F16B,
     F32,
     F64,
     F128,
@@ -1413,6 +1417,7 @@ impl Float {
 
         match self {
             F16 => Size::from_bits(16),
+            F16B => Size::from_bits(16),
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
             F128 => Size::from_bits(128),
@@ -1424,7 +1429,7 @@ impl Float {
         let dl = cx.data_layout();
 
         AbiAlign::new(match self {
-            F16 => dl.f16_align,
+            F16 | F16B => dl.f16_align,
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             F128 => dl.f128_align,
@@ -1436,6 +1441,7 @@ impl Float {
 
         match self {
             F16 => "f16",
+            F16B => "f16b",
             F32 => "f32",
             F64 => "f64",
             F128 => "f128",
