@@ -283,9 +283,9 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       backend_repr: Memory {
-                           sized: true,
-                       },
+                       backend_repr: Scalar(
+                           u16 is 0..=0,
+                       ),
                        field_offsets: [
                            Size(0 bytes),
                        ],
