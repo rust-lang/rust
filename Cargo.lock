@@ -2052,7 +2052,7 @@ dependencies = [
  "libc",
  "mio",
  "postcard",
- "rand 0.9.3",
+ "rand 0.9.4",
  "rustc-hash 2.1.1",
  "serde_core",
  "tempfile",
@@ -3230,9 +3230,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ec095654a25171c2124e9e3393a930bddbffdc939556c914957a4c3e0a87166"
+checksum = "44c5af06bb1b7d3216d91932aed5265164bf384dc89cd6ba05cf59a35f5f76ea"
 dependencies = [
  "rand_chacha",
  "rand_core 0.9.3",
@@ -3543,7 +3543,7 @@ name = "rustc_abi"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "rand 0.9.3",
+ "rand 0.9.4",
  "rand_xoshiro",
  "rustc_data_structures",
  "rustc_error_messages",
@@ -4168,7 +4168,7 @@ dependencies = [
 name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
- "rand 0.9.3",
+ "rand 0.9.4",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fs_util",
@@ -4223,7 +4223,7 @@ dependencies = [
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
- "rand 0.9.3",
+ "rand 0.9.4",
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_lowering",
@@ -4848,7 +4848,7 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
  "libc",
- "rand 0.9.3",
+ "rand 0.9.4",
  "rand_xorshift",
  "scoped-tls",
  "smallvec",
@@ -5623,7 +5623,7 @@ version = "0.1.0"
 dependencies = [
  "indicatif",
  "num",
- "rand 0.9.3",
+ "rand 0.9.4",
  "rand_chacha",
  "rayon",
 ]
