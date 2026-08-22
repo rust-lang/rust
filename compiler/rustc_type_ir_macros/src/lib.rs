@@ -1,5 +1,8 @@
+use std::ops::ControlFlow;
+
 use indexmap::IndexSet;
 use quote::{ToTokens, quote};
+use syn::parse::Parse;
 use syn::visit_mut::VisitMut;
 use syn::{Attribute, parse_quote};
 use synstructure::decl_derive;
@@ -13,9 +16,44 @@ decl_derive!(
 decl_derive!(
     [Lift_Generic, attributes(lift)] => lift_derive
 );
-#[cfg(not(feature = "nightly"))]
 decl_derive!(
-    [GenericTypeVisitable] => customizable_type_visitable_derive
+    [ GenericTypeVisitable, attributes(generic_type_visitable)] =>
+        /// By default, `#[derive(GenericTypeVisitable)]` will add `GenericTypeVisitable`
+        /// bounds to every field of the item. However, this results in infinite recursion
+        /// for types whose fields mention `Self`, such as:
+        ///
+        /// ```
+        /// struct List {
+        ///     next: Option<Box<Self>>
+        /// }
+        /// ```
+        ///
+        /// The `#[generic_type_visitable(bounds(...))]` attribute provides an escape
+        /// hatch: it allows you to override the list of trait bounds added to the field's type.
+        /// Namely, it should contain `GenericTypeVisitable` bounds for all the non-`Self`
+        /// types present in the field.
+        ///
+        /// For the example above, that list will be empty:
+        /// ```ignore (would need to import GenericTypeVisitable to get this to compile)
+        /// #[derive(GenericTypeVisitable)]
+        /// struct List {
+        ///     #[generic_type_visitable(bounds())]
+        ///     next: Option<Box<Self>>
+        /// }
+        /// ```
+        ///
+        /// For a more complicated type:
+        /// ```ignore (would need to import GenericTypeVisitable to get this to compile)
+        /// #[derive(GenericTypeVisitable)]
+        /// struct Foo {
+        ///     #[generic_type_visitable(bounds())]
+        ///     just_self: Box<Self>,
+        ///     #[generic_type_visitable(bounds(Bar: GenericTypeVisitable))]
+        ///     contains_self: (Box<Self>, Bar),
+        /// }
+        /// struct Bar;
+        /// ```
+        customizable_type_visitable_derive
 );
 
 struct TransformedTy {
@@ -28,13 +66,8 @@ enum TypeParameterPath {
     GenericParameter(syn::Ident),
 }
 
-enum TypeParameterTransform {
-    Continue,
-    Stop,
-}
-
 type TypeParameterVisitor =
-    fn(TypeParameterPath, &mut syn::TypePath, &mut IndexSet<syn::Ident>) -> TypeParameterTransform;
+    fn(TypeParameterPath, &mut syn::TypePath, &mut IndexSet<syn::Ident>) -> ControlFlow<()>;
 
 fn has_ignore_attr(attrs: &[Attribute], name: &'static str, meta: &'static str) -> bool {
     let mut ignored = false;
@@ -183,7 +216,7 @@ fn type_foldable_generic_parameters(
         if let TypeParameterPath::GenericParameter(param) = path {
             generic_parameter_bounds.insert(param);
         }
-        TypeParameterTransform::Continue
+        ControlFlow::Continue(())
     })
     .generic_parameter_bounds
 }
@@ -295,12 +328,12 @@ fn lift(ty: syn::Type, generic_parameters: &[syn::Ident]) -> TransformedTy {
         match path {
             TypeParameterPath::Interner => {
                 *ty.path.segments.first_mut().unwrap() = parse_quote! { J };
-                TypeParameterTransform::Continue
+                ControlFlow::Continue(())
             }
             TypeParameterPath::GenericParameter(param) => {
                 generic_parameter_bounds.insert(param.clone());
                 *ty = parse_quote! { <#param as ::rustc_type_ir::lift::Lift<J>>::Lifted };
-                TypeParameterTransform::Stop
+                ControlFlow::Break(())
             }
         }
     })
@@ -338,9 +371,7 @@ fn transform_type_parameters(
             };
 
             if let Some(path) = path {
-                if let TypeParameterTransform::Stop =
-                    (self.visit)(path, i, &mut self.generic_parameter_bounds)
-                {
+                if (self.visit)(path, i, &mut self.generic_parameter_bounds).is_break() {
                     return;
                 }
             }
@@ -358,7 +389,6 @@ fn transform_type_parameters(
     TransformedTy { ty, generic_parameter_bounds: visitor.generic_parameter_bounds }
 }
 
-#[cfg(not(feature = "nightly"))]
 fn customizable_type_visitable_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
@@ -367,15 +397,32 @@ fn customizable_type_visitable_derive(
     }
 
     s.add_impl_generic(parse_quote!(__V));
-    s.add_bounds(synstructure::AddBounds::Fields);
+    s.add_bounds(synstructure::AddBounds::None);
+
+    let mut wc = vec![];
     let body_visit = s.each(|bind| {
+        let field = bind.ast();
+        let ty = field.ty.clone();
+
+        match field_generic_type_visitable_bound(field) {
+            Ok(Some(bounds)) => wc.extend(bounds),
+            Ok(None) => {
+                // no overridden bounds, add the default one
+                wc.push(parse_quote! { #ty: ::rustc_type_ir::GenericTypeVisitable::<__V> });
+            }
+            Err(err) => return err.into_compile_error(),
+        }
+
         quote! {
             ::rustc_type_ir::GenericTypeVisitable::<__V>::generic_visit_with(#bind, __visitor);
         }
     });
     s.bind_with(|_| synstructure::BindStyle::Move);
+    for wc in wc {
+        s.add_where_predicate(wc);
+    }
 
-    s.bound_impl(
+    s.unsafe_bound_impl(
         quote!(::rustc_type_ir::GenericTypeVisitable<__V>),
         quote! {
             fn generic_visit_with(
@@ -388,8 +435,45 @@ fn customizable_type_visitable_derive(
     )
 }
 
-#[cfg(feature = "nightly")]
-#[proc_macro_derive(GenericTypeVisitable)]
-pub fn customizable_type_visitable_derive(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    proc_macro::TokenStream::new()
+fn field_generic_type_visitable_bound(
+    field: &syn::Field,
+) -> syn::Result<Option<impl Iterator<Item = syn::WherePredicate>>> {
+    let mut attrs =
+        field.attrs.iter().filter(|attr| attr.path().is_ident("generic_type_visitable"));
+    let Some(attr) = attrs.next() else {
+        return Ok(None);
+    };
+
+    if attrs.next().is_some() {
+        return Err(syn::Error::new_spanned(
+            field,
+            "multiple `generic_type_visitable` attributes on field",
+        ));
+    }
+
+    parse_generic_type_visitable_bound(attr).map(Some)
+}
+
+mod kw {
+    syn::custom_keyword!(bounds);
+}
+
+/// Parses a bound like:
+///
+/// ```ignore (would need to import GenericTypeVisitable to get this to compile)
+/// #[generic_type_visitable(bounds(Foo: GenericTypeVisitable, Bar: GenericTypeVisitable))]
+/// ```
+fn parse_generic_type_visitable_bound(
+    attr: &Attribute,
+) -> syn::Result<impl Iterator<Item = syn::WherePredicate>> {
+    attr.parse_args_with(|input: syn::parse::ParseStream<'_>| {
+        input.parse::<kw::bounds>()?;
+        let predicates;
+        syn::parenthesized!(predicates in input);
+
+        let proof =
+            predicates.parse_terminated(syn::WherePredicate::parse, syn::Token![,])?.into_iter();
+
+        if input.is_empty() { Ok(proof) } else { Err(input.error("unexpected token")) }
+    })
 }
