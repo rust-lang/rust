@@ -9,7 +9,7 @@ pub type Ty2 = dyn for<'a, 'r> Container<'r, Item<'a, 'static> = ()>;
 pub type Ty3<'s> = &'s dyn ToString;
 
 pub trait Container<'r> {
-    type Item<'a, 'ctx>;
+    type Item<'a, 'ctx> where Self: Sized;
 }
 
 // Trait-object types inside of a container type that has lifetime bounds ("wrapped").

@@ -4,10 +4,10 @@
 
 trait Base {
     type AssocTy;
-    fn f();
+    fn f(self);
 }
 trait Derived: Base {
-    fn g();
+    fn g(self);
 }
 
 macro mac() {
@@ -16,12 +16,12 @@ macro mac() {
 
     impl Base for u8 {
         type AssocTy = u8;
-        fn f() {
+        fn f(self) {
             let _: Self::AssocTy;
         }
     }
     impl Derived for u8 {
-        fn g() {
+        fn g(self) {
             let _: Self::AssocTy;
         }
     }
