@@ -4625,36 +4625,55 @@ declare_lint! {
     /// ```rust,compile_fail
     /// #![deny(ambiguous_glob_imported_traits)]
     /// mod m1 {
-    ///    pub trait Trait {
-    ///            fn method1(&self) {}
-    ///        }
-    ///        impl Trait for u8 {}
+    ///    pub trait Foo {
+    ///        fn method1(&self) {}
     ///    }
-    ///    mod m2 {
-    ///        pub trait Trait {
-    ///            fn method2(&self) {}
-    ///        }
-    ///        impl Trait for u8 {}
-    ///    }
+    ///    impl Foo for u8 {}
+    /// }
+    /// mod m2 {
+    ///     pub trait Foo {
+    ///         fn method2(&self) {}
+    ///     }
+    ///     impl Foo for u8 {}
+    /// }
     ///
-    ///  fn main() {
-    ///      use m1::*;
-    ///      use m2::*;
-    ///      0u8.method1();
-    ///      0u8.method2();
-    ///  }
+    /// mod m3{
+    ///     pub struct Foo;
+    /// }
+    ///
+    /// fn trait_and_trait() {
+    ///     use m1::*;
+    ///     use m2::*;
+    ///     0u8.method1();
+    ///     0u8.method2();
+    /// }
+    ///
+    /// fn trait_and_non_trait(){
+    ///     use m1::*;
+    ///     use m3::*;
+    ///     0u8.method1();
+    /// }
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// When multiple traits with the same name are brought into scope through glob imports,
-    /// one trait becomes the "primary" one while the others are shadowed. Methods from the
-    /// shadowed traits (e.g. `method2`) become inaccessible, while methods from the "primary"
-    /// trait (e.g. `method1`) still resolve. Ideally, none of the ambiguous traits would be in scope,
-    /// but we have to allow this for now because of backwards compatibility.
-    /// This lint reports uses of these "primary" traits that are ambiguous.
+    /// Glob imports can bring multiple items with the same name into scope, creating an ambiguity
+    /// that name resolution has to resolve somehow. This lint reports two different situations
+    /// where that happens:
+    ///
+    /// When two or more traits with the same name are glob imported (as in `trait_and_trait`),
+    /// one of them becomes the "primary" trait, while the others are shadowed. Methods from
+    /// the primary trait (e.g. `method1`) still resolve, but methods from the shadowed trait
+    /// (e.g. `method2`) become inaccessible. Ideally none of the ambiguous traits would be
+    /// usable at all, but this is allowed for backwards compatibility (for now).
+    ///
+    /// When a trait and a non-trait item with the same name are both glob imported (as in
+    /// `trait_and_non_trait`), the trait is currently recovered from the ambiguity and treated
+    /// as in scope, specifically so that this lint can still be reported; method resolution is
+    /// therefore not affected today. This is only possible because the ambiguity is a lint and
+    /// not a hard error. Once it becomes one, the trait will no longer be placed into scope.
     ///
     /// This is a [future-incompatible] lint to transition this to a
     /// hard error in the future.
