@@ -421,7 +421,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
-        let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+        let oprnd_t = match unop {
+            hir::UnOp::Deref => self.structurally_resolve_type(expr.span, oprnd_t),
+            hir::UnOp::Not | hir::UnOp::Neg => self.resolve_vars_with_obligations(oprnd_t),
+        };
         match unop {
             hir::UnOp::Deref => self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
                 let mut err =
