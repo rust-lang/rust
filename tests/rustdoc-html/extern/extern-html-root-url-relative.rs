@@ -21,7 +21,11 @@ pub mod nested {
 pub mod intra_doc_link {
 }
 
-// link-to-definition
+// link-to-definition: source pages live under src/<crate_name>/ so they need
+// ../../ to reach the doc root. Previously these links were incorrectly generated
+// as ../../../ (one level too deep) which passed the `has` check by substring match.
 //@ has src/extern_html_root_url_relative/extern-html-root-url-relative.rs.html
 //@ has - '//a/@href' '../../core/iter/index.html'
 //@ has - '//a/@href' '../../core/future/index.html'
+//@ !has - '//a/@href' '../../../core/iter/index.html'
+//@ !has - '//a/@href' '../../../core/future/index.html'
