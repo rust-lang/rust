@@ -8,6 +8,7 @@
 #![feature(ascii_char_variants)]
 #![feature(async_iter_from_iter)]
 #![feature(async_iterator)]
+#![feature(atomic_volatile)]
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(casefold)]
