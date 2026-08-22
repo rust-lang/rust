@@ -1483,14 +1483,12 @@ impl fmt::Debug for Primitive {
 }
 
 impl Primitive {
-    pub fn size<C: HasDataLayout>(self, cx: &C) -> Size {
+    pub fn size(self, cx: &impl HasDataLayout) -> Size {
         use Primitive::*;
-        let dl = cx.data_layout();
-
         match self {
             Int(i, _) => i.size(),
             Float(f) => f.size(),
-            Pointer(a) => dl.pointer_size_in(a),
+            Pointer(a) => cx.data_layout().pointer_size_in(a),
         }
     }
 
@@ -2047,82 +2045,134 @@ impl Niche {
     }
 
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
-        let Self { value, valid_range: v, .. } = *self;
+        let Self { value, valid_range, offset: _ } = *self;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
-        let max_value = size.unsigned_int_max();
 
         // Find out how many values are outside the valid range.
-        let niche = v.end.wrapping_add(1)..v.start;
-        niche.end.wrapping_sub(niche.start) & max_value
+        valid_range.count_unused(size)
     }
 
+    /// Claim `count` currently-unused values from `self.valid_range` to represent
+    /// additional variants without needing to add an additional tag field.
+    ///
+    /// Those must be exactly before or after the existing range. Returns the
+    /// *first* of those newly claimed values (which is thus either `end + 1` or
+    /// `start - count`, with appropriate wrapping) along with the updated `Scalar`
+    /// for the tag field (the same `Primitive` but with an updated range).
+    ///
+    /// Returns `None` if that's not possible.
+    ///
+    /// Panics if `count == 0`; if you don't need to reserve anything don't call this.
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Self { value, valid_range: v, .. } = *self;
+        let Self { value, valid_range: v, offset: _ } = *self;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
+        let signed_max = size.signed_int_max().cast_unsigned();
 
-        let available = v.start.wrapping_sub(v.end).wrapping_sub(1) & max_value;
+        let available = v.count_unused(size);
         if count > available {
             return None;
         }
 
-        // Extend the range of valid values being reserved by moving either `v.start` or `v.end`
-        // bound. Given an eventual `Option<T>`, we try to maximize the chance for `None` to occupy
-        // the niche of zero. This is accomplished by preferring enums with 2 variants(`count==1`)
-        // and always taking the shortest path to niche zero. Having `None` in niche zero can
-        // enable some special optimizations.
-        //
-        // Bound selection criteria:
-        // 1. Select closest to zero given wrapping semantics.
-        // 2. Avoid moving past zero if possible.
-        //
-        // In practice this means that enums with `count > 1` are unlikely to claim niche zero,
-        // since they have to fit perfectly. If niche zero is already reserved, the selection of
-        // bounds are of little interest.
-        let move_start = |v: WrappingRange| {
-            let start = v.start.wrapping_sub(count) & max_value;
-            Some((start, Scalar::Initialized { value, valid_range: v.with_start(start) }))
+        // These are the two places we can put the new values; the rest of the
+        // method is dedicated to picking which of these strategies to use.
+        let move_start = || {
+            let first_new = v.start.wrapping_sub(count) & max_value;
+            let valid_range = WrappingRange { start: first_new, ..v };
+            Some((first_new, Scalar::Initialized { value, valid_range }))
         };
-        let move_end = |v: WrappingRange| {
-            let start = v.end.wrapping_add(1) & max_value;
+        let move_end = || {
+            let first_new = v.end.wrapping_add(1) & max_value;
             let end = v.end.wrapping_add(count) & max_value;
-            Some((start, Scalar::Initialized { value, valid_range: v.with_end(end) }))
+            let valid_range = WrappingRange { end, ..v };
+            Some((first_new, Scalar::Initialized { value, valid_range }))
         };
-        let distance_end_zero = max_value - v.end;
-        // FIXME: this ought to work for `bool` too, but that seems to be hitting a miscompilation
-        // <https://github.com/rust-lang/rust/pull/155473#issuecomment-4302036343>
-        if count == 1 && v != (WrappingRange { start: 0, end: 1 }) {
-            // We only need one, so just pick the one closest to zero.
-            // Not only does that obviously use zero if it's possible, but it also
-            // simplifies testing things like `Option<char>`, since looking for `-1`
-            // is easier than looking for `1114112` (and matches clang's `WEOF`).
-            let next_up = size.sign_extend(v.end.wrapping_add(1)).unsigned_abs();
-            let next_down = size.sign_extend(v.start.wrapping_sub(1)).unsigned_abs();
-            if next_down <= next_up { move_start(v) } else { move_end(v) }
-        } else if v.start > v.end {
-            // zero is unavailable because wrapping occurs
-            move_end(v)
-        } else if v.start <= distance_end_zero {
-            if count <= v.start {
-                move_start(v)
+
+        // If only the *exact* space needed is available, both strategies pick the same place.
+        // This is common for things like `Option<NonZero<_>>` or `Option<OwnedFd>`.
+        //
+        // Notably, this currently (2026-08) covers all the *guaranteed* cases, as those all
+        // have `count == 1` and `available == 1`. (That may change in the future with
+        // things like size & alignment niches for references, however.)
+        if count == available {
+            // While they're the same place, to help make things more readable for humans
+            // we attempt to pick the approach that will give the canonical full range and
+            // thus show as `T is ..` in the debug print for the scalar.
+            // Note that we intentionally do *not* just return `WrappingRange::full` always.
+            // If it came in as `(..=3) | (5..)`, downstream consumers might be only be handling
+            // `(..=4) | (5..)` and `(..=3) | (4..)`, not other ways of specifying the same range.
+            return if v.start == 0 { move_end() } else { move_start() };
+        }
+
+        // Our goal when picking whether to put the new values before or after the existing ones
+        // is to end up with things that will be convenient for codegen later on common platforms.
+        //
+        // In particular:
+        // - We prioritize `None`-like cases, ideally letting it be encoded as zero.
+        // - If zero is unavailable, we prefer cheap predicates like sign checks.
+        // - Otherwise we use small values as typically easier to materialize.
+
+        // If zero isn't used already, we want to save it for a `count == 1` case like `None`.
+        // When reserving multiple niches, we thus try to get *closer* to zero in hopes that
+        // this type will be wrapped in an Option later and we'll have zero available.
+        // It's ok to claim zero here, though, if a later niche will still have an efficient
+        // test via `slt 0` or `sgt 0`. If the current range is `2..=5` and we need 2 more,
+        // for example, better to return `0..=5` and use `-1` for a later None than to return
+        // `2..=7` now and end up using `1` for the None later.
+        if count > 1 && !v.contains(0) {
+            let space_before_start = v.start;
+            let slack_before_start = if let Some(left) = space_before_start.checked_sub(count) {
+                (left > 0 || v.end <= signed_max).then_some(left)
             } else {
-                // moved past zero, use other bound
-                move_end(v)
-            }
-        } else {
-            let end = v.end.wrapping_add(count) & max_value;
-            let overshot_zero = (1..=v.end).contains(&end);
-            if overshot_zero {
-                // moved past zero, use other bound
-                move_start(v)
+                None
+            };
+
+            let space_after_end = (max_value - v.end).saturating_add(1);
+            let slack_after_end = if let Some(left) = space_after_end.checked_sub(count) {
+                (left > 0 || v.start > signed_max).then_some(left)
             } else {
-                move_end(v)
+                None
+            };
+
+            if slack_before_start.is_some() || slack_after_end.is_some() {
+                // Smaller in Option would prefer the None, but in Result it prefers the Ok.
+                return if slack_before_start.ok_or(()) <= slack_after_end.ok_or(()) {
+                    move_start()
+                } else {
+                    move_end()
+                };
             }
         }
+
+        // `0..=0` is a strange niche. We want one more to give `0..=1`, to match `bool`, but
+        // the default behaviour below for "symmetric around zero" would give `-1..=0` instead.
+        // Plus `0..=count` just looks nicer than `-count..=0` when seeing the scalar.
+        if let WrappingRange { start: 0, end: 0 } = v {
+            return move_end();
+        }
+
+        // Pick whichever side is *smaller in magnitude*.
+        //
+        // For `count == 1`, that naturally hits the various properties we'd like:
+        // - if `0` is available, it's obviously the smallest in magnitude.
+        // - if `0` isn't available, picking something small means
+        //   - We'll pick `-1` for `Option<char>::None`, which is easier to test
+        //     (can just use `slt 0`) than 0x11_0000 and matches Clang's `WEOF`.
+        //   - If we need a constant, a small one is more likely to be doable
+        //     with smaller code size on architectures like x64 which have load
+        //     immediate instructions of different widths.
+        //
+        // And if `count > 1` we're out of good options, so this one is tolerable.
+        let abs_before_start = size.sign_extend(v.start.wrapping_sub(1)).unsigned_abs();
+        let abs_after_end = size.sign_extend(v.end.wrapping_add(1)).unsigned_abs();
+        // If we have something like `-127..=127` in `i16`, we'd rather pick `-128`
+        // for the tie to end up at `i8`'s range. (Said otherwise, there are more
+        // negatives than positives in twos complement, so negative wins in ties.)
+        if abs_before_start <= abs_after_end { move_start() } else { move_end() }
     }
 }
 

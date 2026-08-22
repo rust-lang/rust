@@ -54,7 +54,7 @@ fn bool() {
     assert::is_transmutable::<bool, OptionLike>();
     assert::is_transmutable::<V0, OptionLike>();
     assert::is_transmutable::<V1, OptionLike>();
-    assert::is_transmutable::<V2, OptionLike>();
+    assert::is_transmutable::<V255, OptionLike>();
 }
 
 fn one_niche() {

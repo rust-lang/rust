@@ -1,0 +1,62 @@
+error: backend_repr: Scalar(u8 is ..)
+  --> $DIR/nonnull-guaranteed.rs:10:1
+   |
+LL | type OptNonZeroU8 = Option<NonZero<u8>>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(u16 is ..)
+  --> $DIR/nonnull-guaranteed.rs:14:1
+   |
+LL | type OptNonZeroU16 = Option<NonZero<u16>>;
+   | ^^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(u32 is ..)
+  --> $DIR/nonnull-guaranteed.rs:18:1
+   |
+LL | type OptNonZeroU32 = Option<NonZero<u32>>;
+   | ^^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(u64 is ..)
+  --> $DIR/nonnull-guaranteed.rs:22:1
+   |
+LL | type OptNonZeroU64 = Option<NonZero<u64>>;
+   | ^^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(u128 is ..)
+  --> $DIR/nonnull-guaranteed.rs:26:1
+   |
+LL | type OptNonZeroU128 = Option<NonZero<u128>>;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(i8 is ..)
+  --> $DIR/nonnull-guaranteed.rs:30:1
+   |
+LL | type OptNonZeroI8 = Option<NonZero<i8>>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(i16 is ..)
+  --> $DIR/nonnull-guaranteed.rs:34:1
+   |
+LL | type OptNonZeroI16 = Option<NonZero<i16>>;
+   | ^^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(i32 is ..)
+  --> $DIR/nonnull-guaranteed.rs:38:1
+   |
+LL | type OptNonZeroI32 = Option<NonZero<i32>>;
+   | ^^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(i64 is ..)
+  --> $DIR/nonnull-guaranteed.rs:42:1
+   |
+LL | type OptNonZeroI64 = Option<NonZero<i64>>;
+   | ^^^^^^^^^^^^^^^^^^
+
+error: backend_repr: Scalar(i128 is ..)
+  --> $DIR/nonnull-guaranteed.rs:46:1
+   |
+LL | type OptNonZeroI128 = Option<NonZero<i128>>;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+

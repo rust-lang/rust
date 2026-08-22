@@ -220,7 +220,7 @@ error: layout_of(NicheFirst) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: ScalarPair {
-               a: u8 is 0..=4,
+               a: u8 is (..=2) | (254..),
                b: union u8,
                b_offset: Size(1 bytes),
            },
@@ -236,16 +236,16 @@ error: layout_of(NicheFirst) = Layout {
                Niche {
                    offset: Size(0 bytes),
                    value: u8,
-                   valid_range: 0..=4,
+                   valid_range: (..=2) | (254..),
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: u8 is 0..=4,
+               tag: u8 is (..=2) | (254..),
                tag_encoding: Niche {
                    untagged_variant: 0,
                    niche_variants: 1..=2,
-                   niche_start: 3,
+                   niche_start: 254,
                },
                tag_field: 0,
                variants: [
@@ -310,7 +310,7 @@ error: layout_of(NicheSecond) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: ScalarPair {
-               a: u8 is 0..=4,
+               a: u8 is (..=2) | (254..),
                b: union u8,
                b_offset: Size(1 bytes),
            },
@@ -326,16 +326,16 @@ error: layout_of(NicheSecond) = Layout {
                Niche {
                    offset: Size(0 bytes),
                    value: u8,
-                   valid_range: 0..=4,
+                   valid_range: (..=2) | (254..),
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: u8 is 0..=4,
+               tag: u8 is (..=2) | (254..),
                tag_encoding: Niche {
                    untagged_variant: 0,
                    niche_variants: 1..=2,
-                   niche_start: 3,
+                   niche_start: 254,
                },
                tag_field: 0,
                variants: [
