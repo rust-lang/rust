@@ -153,10 +153,10 @@ impl<T: Idx> DenseBitSet<T> {
         if i >= domain_size {
             #[cold]
             #[inline(never)]
-            fn insert_fail(index: usize, domain_size: usize) {
-                panic!("inserting element at index {} but domain size is {}", index, domain_size,);
+            fn insert_fail() {
+                panic!("inserting element at larger than domain size");
             }
-            insert_fail(i, domain_size)
+            insert_fail()
         }
 
         let (word_index, mask) = word_index_and_mask(elem);
