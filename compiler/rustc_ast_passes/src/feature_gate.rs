@@ -741,7 +741,7 @@ fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
 }
 
 fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
-    if sess.opts.unstable_opts.next_solver.globally {
+    if sess.opts.unstable_opts.next_solver.globally && !features.generic_const_exprs() {
         return;
     }
 
