@@ -257,6 +257,9 @@ struct Args {
     /// Run tests with optimizations enabled.
     #[arg(long)]
     optimize_tests: bool,
+    /// Pass `--disable-minification` to rustdoc when generating docs for tests.
+    #[arg(long)]
+    disable_minification: bool,
     /// Run tests verbosely, showing all output.
     #[arg(long)]
     verbose: bool,
@@ -441,6 +444,7 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         cxxflags: args.cxxflags,
         default_codegen_backend,
         diff_command: args.compiletest_diff_tool,
+        disable_minification: args.disable_minification,
 
         edition: args.edition,
 
