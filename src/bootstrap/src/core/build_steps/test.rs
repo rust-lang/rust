@@ -1052,6 +1052,117 @@ impl CommandLineStep for StdarchVerify {
     }
 }
 
+/// Runs `core_arch`'s inline unit and `assert_instr` tests for the native
+/// targets rust already tests on (x86_64 / aarch64).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CoreArchTest {
+    build_compiler: Compiler,
+    host: TargetSelection,
+}
+
+impl CommandLineStep for CoreArchTest {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("core-arch")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CoreArchTest {
+            build_compiler: get_compiler_to_test(run.builder, run.target),
+            host: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let host = self.host;
+        if !host.contains("x86_64-unknown-linux") && !host.contains("aarch64-unknown-linux") {
+            builder.info(&format!("Skipping core_arch tests, unsupported on {host}"));
+            return;
+        }
+
+        let build_compiler = self.build_compiler;
+        builder.std(build_compiler, host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
+
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            build_compiler,
+            Mode::ToolStd,
+            host,
+            Kind::Test,
+            "library/stdarch/crates/core_arch",
+            SourceType::InTree,
+            &[],
+        );
+        cargo.env("TARGET", host.to_string().as_str());
+
+        let allowed_features = [
+            // tidy-alphabetical-start
+            "aarch64_unstable_target_feature",
+            "abi_unadjusted",
+            "abi_vectorcall",
+            "allow_internal_unstable",
+            "arm_target_feature",
+            "asm_experimental_arch",
+            "avx10_target_feature",
+            "clflushopt_target_feature",
+            "const_cmp",
+            "const_eval_select",
+            "const_trait_impl",
+            "core_intrinsics",
+            "custom_inner_attributes",
+            "decl_macro",
+            "doc_cfg",
+            "f16",
+            "fmt_helpers_for_derive",
+            "funnel_shifts",
+            "hexagon_target_feature",
+            "link_llvm_intrinsics",
+            "loongarch_target_feature",
+            "maybe_uninit_as_bytes",
+            "min_adt_const_params",
+            "mips_target_feature",
+            "movrs_target_feature",
+            "no_core",
+            "powerpc_target_feature",
+            "proc_macro_hygiene",
+            "repr_simd",
+            "riscv_target_feature",
+            "rtm_target_feature",
+            "rustc_attrs",
+            "simd_ffi",
+            "staged_api",
+            "stdarch_arm_feature_detection",
+            "stdarch_internal",
+            "stdarch_mips_feature_detection",
+            "stdarch_powerpc_feature_detection",
+            "stmt_expr_attributes",
+            "test",
+            "wasm_target_feature",
+            "x86_amx_intrinsics",
+            // tidy-alphabetical-end
+        ];
+        cargo.allow_features(&allowed_features.join(","));
+        cargo.rustflag("-Zmerge-functions=disabled");
+
+        run_cargo_test(
+            cargo,
+            &[],
+            &["core_arch".to_string()],
+            Some("core_arch"),
+            host,
+            builder,
+            record_failed_tests,
+        );
+    }
+}
+
 /// Runs stdarch's intrinsic-test binary crate to verify that Rust's `core::arch`
 /// SIMD intrinsics produce the same results as their C counterparts.
 ///
