@@ -4,7 +4,7 @@ use crate::sys::pal::c;
 // tests `error_string` above
 #[test]
 fn ntstatus_error() {
-    const STATUS_UNSUCCESSFUL: u32 = 0xc000_0001;
+    const STATUS_UNSUCCESSFUL: i32 = 0xc000_0001_u32 as i32;
     assert!(
         !Error::from_raw_os_error((STATUS_UNSUCCESSFUL | c::FACILITY_NT_BIT) as _)
             .to_string()

@@ -17,7 +17,7 @@ unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POIN
         let rec = &(*(*ExceptionInfo).ExceptionRecord);
         let code = rec.ExceptionCode;
 
-        if code == c::EXCEPTION_STACK_OVERFLOW {
+        if code == c::EXCEPTION_STACK_OVERFLOW as u32 {
             thread::with_current_name(|name| {
                 let name = name.unwrap_or("<unknown>");
                 let tid = thread::current_os_id();

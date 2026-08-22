@@ -518,7 +518,8 @@ impl<'a> Drop for ProcThreadAttributeList<'a> {
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-deleteprocthreadattributelist>
     fn drop(&mut self) {
-        let lp_attribute_list = self.attribute_list.as_mut_ptr().cast::<c_void>();
+        let lp_attribute_list =
+            self.attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>();
         unsafe { sys::c::DeleteProcThreadAttributeList(lp_attribute_list) }
     }
 }
@@ -689,7 +690,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
         // `InitializeProcThreadAttributeList` to properly initialize the list.
         sys::cvt(unsafe {
             sys::c::InitializeProcThreadAttributeList(
-                attribute_list.as_mut_ptr().cast::<c_void>(),
+                attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>(),
                 attribute_count,
                 0,
                 &mut required_size,
@@ -703,7 +704,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
         for (&attribute, value) in self.attributes.iter().take(attribute_count as usize) {
             sys::cvt(unsafe {
                 sys::c::UpdateProcThreadAttribute(
-                    attribute_list.as_mut_ptr().cast::<c_void>(),
+                    attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>(),
                     0,
                     attribute,
                     value.ptr,

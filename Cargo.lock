@@ -6537,13 +6537,13 @@ dependencies = [
 
 [[package]]
 name = "windows-bindgen"
-version = "0.66.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81b7ec123a4eadd44d1f44f76804316b477b2537abed9a2ab950b3c54afa1fcf"
+version = "0.100.0"
+source = "git+https://github.com/microsoft/windows-rs.git?rev=a40eb11994aabb4e989a04f8817f57f86ab7940e#a40eb11994aabb4e989a04f8817f57f86ab7940e"
 dependencies = [
- "serde",
- "serde_json",
- "windows-threading 0.2.1",
+ "proc-macro2",
+ "quote",
+ "windows-default",
+ "windows-metadata",
 ]
 
 [[package]]
@@ -6589,6 +6589,11 @@ dependencies = [
  "windows-result 0.4.1",
  "windows-strings 0.5.1",
 ]
+
+[[package]]
+name = "windows-default"
+version = "0.100.0"
+source = "git+https://github.com/microsoft/windows-rs.git?rev=a40eb11994aabb4e989a04f8817f57f86ab7940e#a40eb11994aabb4e989a04f8817f57f86ab7940e"
 
 [[package]]
 name = "windows-future"
@@ -6645,6 +6650,11 @@ name = "windows-link"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+
+[[package]]
+name = "windows-metadata"
+version = "0.100.0"
+source = "git+https://github.com/microsoft/windows-rs.git?rev=a40eb11994aabb4e989a04f8817f57f86ab7940e#a40eb11994aabb4e989a04f8817f57f86ab7940e"
 
 [[package]]
 name = "windows-numerics"

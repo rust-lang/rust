@@ -406,7 +406,7 @@ impl File {
         self.fsync()
     }
 
-    fn acquire_lock(&self, flags: c::LOCK_FILE_FLAGS) -> io::Result<()> {
+    fn acquire_lock(&self, flags: u32) -> io::Result<()> {
         unsafe {
             let mut overlapped: c::OVERLAPPED = mem::zeroed();
             let event = c::CreateEventW(ptr::null_mut(), c::FALSE, c::FALSE, ptr::null());
@@ -1169,7 +1169,7 @@ impl FilePermissions {
     }
 
     pub fn file_attributes(&self) -> u32 {
-        self.attrs as u32
+        self.attrs
     }
 }
 
