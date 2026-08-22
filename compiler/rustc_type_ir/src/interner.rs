@@ -24,6 +24,26 @@ use crate::{
     TraitRef, search_graph,
 };
 
+/// The central trait in the shared abstraction layer, specifying all implementation-specific
+/// details for rustc and rust-analyzer.
+///
+/// Among its essential responsibilities:
+/// - it specifies the concrete types used by each implementation via its associated types; these
+///   form the backbone of how each compiler frontend instantiates the shared IR.
+/// - it provides the context required by the solver (e.g., querying lang items, enumerating all
+///   blanket impls for a trait)
+/// - it implements [IrPrint] for formatting and tracing.
+///
+/// In rustc, it is [implemented by TyCtxt][interner-impl-doc]. In rust-analyzer, the implementing
+/// type is named [DbInterner][dbinterner-code] (as it performs most interning through the salsa
+/// database).
+///
+/// More information can also be found in the dedicated chapter in the dev-guide, in [this
+/// section][dev-guide].
+///
+/// [interner-impl-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#impl-Interner-for-TyCtxt%3C'tcx%3E
+/// [dbinterner-code]: https://github.com/rust-lang/rust-analyzer/blob/a50c1ccc9cf3dab1afdc857a965a9992fbad7a53/crates/hir-ty/src/next_solver/interner.rs#L272
+/// [dev-guide]: https://rustc-dev-guide.rust-lang.org/solve/sharing-crates-with-rust-analyzer.html#trait-interner
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
     Sized
