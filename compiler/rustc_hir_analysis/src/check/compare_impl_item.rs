@@ -1004,6 +1004,9 @@ fn report_trait_method_mismatch<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> ErrorGuaranteed {
     let tcx = infcx.tcx;
+    let x = cause.code();
+    let y = trait_sig.output();
+    tracing::info!(?cause, ?x, ?terr, ?trait_m, ?trait_sig, ?y);
     let (impl_err_span, trait_err_span) =
         extract_spans_for_error_reporting(infcx, terr, &cause, impl_m, trait_m);
 
@@ -1091,6 +1094,19 @@ fn report_trait_method_mismatch<'tcx>(
         false,
         None,
     );
+
+    if let TypeError::ArgumentSorts(_, i) = &terr
+        && let Some(ty) =
+            tcx.fn_sig(trait_m.def_id).skip_binder().inputs_and_output().skip_binder().get(*i)
+        && let ty::Param(param) = ty.kind()
+    {
+        // The expected type corresponds to a type parameter, which migh thave a default type or
+        // have been explicitly set in the `impl` with a different type.
+        let generics = tcx.generics_of(trait_m.def_id);
+        let param = generics.type_param(*param, tcx);
+        let span = tcx.def_span(param.def_id);
+        diag.span_note(span, format!("expected to match this type parameter"));
+    }
 
     diag.emit()
 }
