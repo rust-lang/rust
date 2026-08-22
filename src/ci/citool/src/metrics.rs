@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 use anyhow::Context;
 use build_helper::metrics::{JsonNode, JsonRoot, TestSuite};
@@ -53,80 +51,26 @@ pub fn download_auto_job_metrics(
 ) -> anyhow::Result<HashMap<JobName, JobMetrics>> {
     let mut jobs = HashMap::default();
 
-    struct WorkItem {
-        job: String,
-    }
-
-    struct WorkResult {
-        job: String,
-        data: anyhow::Result<JsonRoot>,
-        parent_data: Option<anyhow::Result<JsonRoot>>,
-    }
-
-    // Avoid overloading the GitHub API
-    let thread_count = std::thread::available_parallelism().map(|v| v.into()).unwrap_or(4).min(4);
-
-    // Ensure that we have enough capacity to submit all job download requests, to avoid having to
-    // interleave submission of work and reading of results.
-    let (submit_tx, submit_rx) = std::sync::mpsc::sync_channel::<WorkItem>(job_db.auto_jobs.len());
-    let submit_rx = Arc::new(Mutex::new(submit_rx));
-
-    let (result_tx, result_rx) = std::sync::mpsc::sync_channel::<WorkResult>(thread_count);
-
-    let start = Instant::now();
-    // There are many jobs to download, so we do it in parallel
-    // To avoid adding more dependencies, we create our own little thread pool.
-    std::thread::scope(|s| {
-        for _ in 0..thread_count {
-            let submit_rx = submit_rx.clone();
-            let result_tx = result_tx.clone();
-            s.spawn(move || {
-                loop {
-                    let item = {
-                        let Ok(item) = submit_rx.lock().unwrap().recv() else {
-                            break;
-                        };
-                        item
-                    };
-                    eprintln!("Downloading metrics of job {}", item.job);
-                    let data = download_job_metrics(&item.job, current);
-                    let parent_data = parent.map(|sha| download_job_metrics(&item.job, &sha));
-                    let result = WorkResult { job: item.job, data, parent_data };
-                    result_tx.send(result).unwrap();
-                }
-            });
-        }
-
-        // Submit all jobs
-        for job in &job_db.auto_jobs {
-            let item = WorkItem { job: job.name.to_string() };
-            submit_tx.send(item).unwrap();
-        }
-        drop(result_tx);
-        drop(submit_tx);
-
-        // Wait for results
-        for result in result_rx {
-            let parent = match result.parent_data {
-                Some(Ok(data)) => Some(data),
-                Some(Err(error)) => {
+    for job in &job_db.auto_jobs {
+        eprintln!("Downloading metrics of job {}", job.name);
+        let metrics_parent =
+            parent.and_then(|parent| match download_job_metrics(&job.name, parent) {
+                Ok(metrics) => Some(metrics),
+                Err(error) => {
                     eprintln!(
-                        r#"Did not find metrics for job `{}`: {error:?}.
+                        r#"Did not find metrics for job `{}` at `{parent}`: {error:?}.
 Maybe it was newly added?"#,
-                        result.job
+                        job.name
                     );
                     None
                 }
-                None => None,
-            };
-
-            jobs.insert(result.job, JobMetrics { parent, current: result.data? });
-        }
-
-        anyhow::Ok(())
-    })?;
-    eprintln!("Download finished in {:.2}", start.elapsed().as_secs_f64());
-
+            });
+        let metrics_current = download_job_metrics(&job.name, current)?;
+        jobs.insert(
+            job.name.clone(),
+            JobMetrics { parent: metrics_parent, current: metrics_current },
+        );
+    }
     Ok(jobs)
 }
 
