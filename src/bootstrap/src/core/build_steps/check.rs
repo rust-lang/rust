@@ -536,6 +536,7 @@ pub fn prepare_compiler_for_check(
             // stage 0 stdlib is used to compile build scripts and proc macros.
             builder.compiler(builder.top_stage, host)
         }
+        Mode::RustcDoc => unreachable!("RustcDoc is only used for docs"),
     };
     CompilerForCheck { build_compiler, rustc_rmeta_sysroot, std_rmeta_sysroot }
 }
