@@ -1,5 +1,5 @@
 #![crate_type = "staticlib"]
-#![feature(c_variadic_int128)]
+#![feature(c_variadic_int128, f128)]
 
 use core::ffi::{CStr, VaList, c_char, c_double, c_int, c_long, c_longlong};
 
@@ -94,6 +94,45 @@ pub unsafe extern "C" fn check_list_i128(mut ap: VaList) -> usize {
         _ => {
             // This function was called a platform where rustc does not implement
             // VaArgSafe for i128 but clang does define __int128. Rustc should add
+            // the implementation if this comes up.
+            0xFF
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn check_list_f128(mut ap: VaList) -> usize {
+    cfg_select! {
+        any(
+            all(target_arch = "x86_64", not(target_vendor = "apple"), not(target_env = "msvc")),
+            all(target_arch = "x86", not(target_vendor = "apple"), not(target_env = "msvc")),
+            all(target_arch = "powerpc64", target_endian = "little"),
+            all(
+                not(windows),
+                not(target_vendor = "apple"),
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "loongarch64",
+                    target_arch = "mips64",
+                    target_arch = "mips64r6",
+                    target_arch = "riscv64",
+                    target_arch = "s390x",
+                    target_arch = "sparc64",
+                    target_arch = "wasm32",
+                    target_arch = "wasm64",
+                ),
+            ),
+        ) => {
+            continue_if!(ap.next_arg::<f128>() == -42.0);
+            // use a 32-bit value here to test the alignment logic.
+            continue_if!(ap.next_arg::<c_int>() == 0xAAAA_AAAAu32.cast_signed());
+            continue_if!(ap.next_arg::<f128>() == f128::NEG_INFINITY);
+
+            return 0;
+        }
+        _ => {
+            // This function was called a platform where rustc does not implement
+            // VaArgSafe for f128 but clang does define _Float128. Rustc should add
             // the implementation if this comes up.
             0xFF
         }

@@ -1,6 +1,6 @@
 //@ run-pass
 //@ ignore-backends: gcc
-#![feature(const_c_variadic, c_variadic_int128, const_destruct, const_raw_ptr_comparison)]
+#![feature(const_c_variadic, c_variadic_int128, const_destruct, const_raw_ptr_comparison, f128)]
 #![allow(unused_features)] // c_variadic_int128 is only used on 64-bit targets.
 
 use std::ffi::*;
@@ -107,7 +107,36 @@ fn main() {
                 roundtrip!(i128, -1, -2);
                 roundtrip!(u128, 1, 2);
             }
-            _ => {}
+            _ => { /* unsupported */ }
+        }
+
+        cfg_select! {
+            any(
+                all(
+                    any(target_arch = "x86_64", target_arch = "x86"),
+                    not(target_vendor = "apple"),
+                    not(target_env = "msvc")
+                ),
+                all(target_arch = "powerpc64", target_endian = "little"),
+                all(
+                    not(windows),
+                    not(target_vendor = "apple"),
+                    any(
+                        target_arch = "aarch64",
+                        target_arch = "loongarch64",
+                        target_arch = "mips64",
+                        target_arch = "mips64r6",
+                        target_arch = "riscv64",
+                        target_arch = "s390x",
+                        target_arch = "sparc64",
+                        target_arch = "wasm32",
+                        target_arch = "wasm64",
+                    ),
+                ),
+            ) => {
+                roundtrip!(f128, -1.0, f128::MAX);
+            }
+            _ => { /* unsupported */ }
         }
     }
 }

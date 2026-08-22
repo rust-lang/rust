@@ -415,6 +415,36 @@ cfg_select! {
 #[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl VaArgSafe for f64 {}
 
+cfg_select! {
+    any(
+        all(target_arch = "x86_64", not(target_vendor = "apple"), not(target_env = "msvc")),
+        all(target_arch = "x86", not(target_vendor = "apple"), not(target_env = "msvc")),
+        // BE powerpc requires vsx.
+        all(target_arch = "powerpc64", target_endian = "little"),
+        all(
+            not(windows),
+            not(target_vendor = "apple"),
+            any(
+                target_arch = "aarch64",
+                target_arch = "loongarch64",
+                target_arch = "mips64",
+                target_arch = "mips64r6",
+                target_arch = "riscv32",
+                target_arch = "riscv64",
+                target_arch = "s390x",
+                target_arch = "sparc64",
+                target_arch = "wasm32",
+                target_arch = "wasm64",
+            ),
+        ),
+    ) => {
+        #[unstable_feature_bound(f128)]
+        #[unstable(feature = "f128", issue = "116909")]
+        unsafe impl VaArgSafe for f128 {}
+    }
+    _ => { /* unsupported */ }
+}
+
 #[stable(feature = "c_variadic", since = "1.99.0")]
 unsafe impl<T> VaArgSafe for *mut T {}
 #[stable(feature = "c_variadic", since = "1.99.0")]

@@ -3,12 +3,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 extern size_t check_list_0(va_list ap);
 extern size_t check_list_1(va_list ap);
 extern size_t check_list_2(va_list ap);
 extern size_t check_list_copy_0(va_list ap);
 extern size_t check_list_i128(va_list ap);
+extern size_t check_list_f128(va_list ap);
 extern size_t check_varargs_0(int fixed, ...);
 extern size_t check_varargs_1(int fixed, ...);
 extern size_t check_varargs_2(int fixed, ...);
@@ -41,6 +43,10 @@ int main(int argc, char* argv[]) {
 
 #if defined(__SIZEOF_INT128__)
     assert(test_rust(check_list_i128, (__int128)-42, 0xAAAAAAAA, (unsigned __int128)-1) == 0);
+#endif
+
+#if defined(__SIZEOF_FLOAT128__)
+    assert(test_rust(check_list_f128, (_Float128)-42.0, 0xAAAAAAAA, (_Float128)-INFINITY) == 0);
 #endif
 
     assert(check_varargs_0(0, 42, "Hello, World!") == 0);
