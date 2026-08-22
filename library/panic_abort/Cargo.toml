@@ -12,10 +12,8 @@ bench = false
 doc = false
 
 [dependencies]
+alloc = { path = "../alloc" }
 core = { path = "../rustc-std-workspace-core", package = "rustc-std-workspace-core" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 libc = { version = "0.2", default-features = false }
-
-[target.'cfg(any(target_os = "android", target_os = "zkvm"))'.dependencies]
-alloc = { path = "../alloc" }
