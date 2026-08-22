@@ -12,6 +12,7 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
     pub abi: ExternAbi,
     pub args: [Ty<'tcx>; ARGS],
     pub ret: Ty<'tcx>,
+    pub nounwind: bool,
 }
 
 /// Construct a `ShimSig` with convenient syntax:
@@ -32,6 +33,20 @@ macro_rules! shim_sig {
             abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
             args: shim_sig_args_sep!(this, [$($args)*]),
             ret: shim_sig_arg!(this, $($ret)*),
+            nounwind: false,
+        }
+    };
+}
+
+/// Same as `shim_sig!` but promises that this function will not unwind, even if the ABI allows it.
+#[macro_export]
+macro_rules! shim_sig_nounwind {
+    (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
+        |this| $crate::shims::sig::ShimSig {
+            abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
+            args: shim_sig_args_sep!(this, [$($args)*]),
+            ret: shim_sig_arg!(this, $($ret)*),
+            nounwind: true,
         }
     };
 }
@@ -121,6 +136,9 @@ macro_rules! shim_sig_arg {
     ($this:ident, ()) => {
         $this.tcx.types.unit
     };
+    ($this:ident, !) => {
+        $this.tcx.types.never
+    };
     ($this:ident, bool) => {
         $this.tcx.types.bool
     };
@@ -129,6 +147,22 @@ macro_rules! shim_sig_arg {
     };
     ($this:ident, *mut _) => {
         $this.machine.layouts.mut_raw_ptr.ty
+    };
+    ($this:ident, *_) => {
+        // Mutability does not matter for ABI.
+        $this.machine.layouts.mut_raw_ptr.ty
+    };
+    ($this:ident, fn(..) -> _) => {
+        // We currently treat fn ptrs as ABI-compatible with data ptrs so we can just use a raw ptr.
+        $this.machine.layouts.const_raw_ptr.ty
+    };
+    ($this:ident, &[$($ty:tt)*]) => {
+        rustc_middle::ty::Ty::new_ref(
+            *$this.tcx,
+            $this.tcx.lifetimes.re_erased,
+            rustc_middle::ty::Ty::new_slice(*$this.tcx, shim_sig_arg!($this, $($ty)*)),
+            rustc_middle::mir::Mutability::Not,
+        )
     };
     ($this:ident, winapi::$ty:ident) => {
         $this.windows_ty_layout(stringify!($ty)).ty
@@ -145,6 +179,7 @@ macro_rules! shim_sig_arg {
 fn check_shim_abi<'tcx>(
     this: &MiriInterpCx<'tcx>,
     callee_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    callee_nounwind: bool,
     caller_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> InterpResult<'tcx> {
     if callee_abi.conv != caller_abi.conv {
@@ -154,7 +189,8 @@ fn check_shim_abi<'tcx>(
             caller = caller_abi.conv,
         );
     }
-    if callee_abi.can_unwind && !caller_abi.can_unwind {
+    // FIXME: is this needed? Or is it enough to just check this if/when an actual unwind happens?
+    if callee_abi.can_unwind && !callee_nounwind && !caller_abi.can_unwind {
         throw_ub_format!(
             "ABI mismatch: callee may unwind, but caller-side signature prohibits unwinding",
         );
@@ -280,7 +316,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let callee_fn_abi = this.fn_abi_of_fn_ptr(fn_sig_binder, Default::default())?;
 
         // Check everything.
-        check_shim_abi(this, callee_fn_abi, caller_fn_abi)?;
+        check_shim_abi(this, callee_fn_abi, shim_sig.nounwind, caller_fn_abi)?;
         this.check_shim_symbol_clash(link_name)?;
 
         // Return arguments.

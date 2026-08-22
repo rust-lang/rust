@@ -6,6 +6,6 @@ fn main() {
     }
 
     unsafe {
-        let _ = malloc(); //~ ERROR: Undefined Behavior: incorrect number of arguments for `malloc`: got 0, expected 1
+        let _ = malloc(); //~ ERROR: expected 1 arguments, found 0 arguments
     };
 }
