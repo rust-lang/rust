@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::region_constraint::{RegionConstraint, evaluate_solver_constraint};
+use rustc_type_ir::region_constraint::{self, CanonicalFormRegionConstraint};
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, LowerAvailableDepth, PathKind};
@@ -1328,7 +1328,7 @@ where
         args
     }
 
-    pub(super) fn register_solver_region_constraint(&self, c: RegionConstraint<I>) {
+    pub(super) fn register_solver_region_constraint(&self, c: CanonicalFormRegionConstraint<I>) {
         self.delegate.register_solver_region_constraint(c);
     }
 
@@ -1666,11 +1666,11 @@ where
                 let constraint = self.delegate.get_solver_region_constraint();
                 debug_assert_eq!(
                     constraint,
-                    evaluate_solver_constraint(&constraint.clone().canonical_form())
+                    region_constraint::propagate_ambiguity(constraint.clone())
                 );
                 constraint
             } else {
-                RegionConstraint::new_true()
+                CanonicalFormRegionConstraint::new_true()
             })
         } else {
             ExternalRegionConstraints::Old(if let Certainty::Yes = certainty {
