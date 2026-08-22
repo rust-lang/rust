@@ -359,6 +359,9 @@ pub trait Interner:
         impl_def_id: Self::ImplId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
 
+    fn supertrait_def_ids(self, trait_def_id: Self::TraitId)
+    -> impl Iterator<Item = Self::TraitId>;
+
     fn impl_is_const(self, def_id: Self::ImplId) -> bool;
     fn fn_is_const(self, def_id: Self::FunctionId) -> bool;
     fn closure_is_const(self, def_id: Self::ClosureId) -> bool;
