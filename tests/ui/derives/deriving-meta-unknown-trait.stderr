@@ -4,9 +4,8 @@ error: cannot find derive macro `Eqr` in this scope
 LL | #[derive(Eqr)]
    |          ^^^
    |
+note: similarly named derive macro `Eq` defined here
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-   = note: similarly named derive macro `Eq` defined here
 help: a derive macro with a similar name exists
    |
 LL - #[derive(Eqr)]
@@ -19,10 +18,8 @@ error: cannot find derive macro `Eqr` in this scope
 LL | #[derive(Eqr)]
    |          ^^^
    |
+note: similarly named derive macro `Eq` defined here
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-   = note: similarly named derive macro `Eq` defined here
-   |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: a derive macro with a similar name exists
    |
