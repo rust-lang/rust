@@ -6,7 +6,7 @@ use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
@@ -414,11 +414,65 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
+#[derive(Clone, StableHash, TypeFoldable, TypeVisitable)]
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind<'tcx>,
     pub attributes: ThinVec<AttributeKind>,
+}
+
+impl<'tcx, __E: ::rustc_middle::ty::codec::TyEncoder<'tcx>> ::rustc_serialize::Encodable<__E>
+    for Terminator<'tcx>
+{
+    fn encode(&self, __encoder: &mut __E) {
+        match *self {
+            Terminator { ref source_info, ref kind, ref attributes } => {
+                let SourceInfo { span, scope } = source_info;
+
+                ::rustc_serialize::Encodable::<__E>::encode(span, __encoder);
+
+                let has_attrs = attributes.len() > 0;
+
+                assert!(scope.as_u32() < u32::MAX / 2);
+
+                let mut scope_to_encode = scope.as_u32() * 2;
+
+                if has_attrs {
+                    scope_to_encode += 1;
+                }
+
+                ::rustc_serialize::Encodable::<__E>::encode(&scope_to_encode, __encoder);
+
+                ::rustc_serialize::Encodable::<__E>::encode(kind, __encoder);
+
+                if has_attrs {
+                    ::rustc_serialize::Encodable::<__E>::encode(attributes, __encoder);
+                }
+            }
+        }
+    }
+}
+
+impl<'tcx, __D: ::rustc_middle::ty::codec::TyDecoder<'tcx>> ::rustc_serialize::Decodable<__D>
+    for Terminator<'tcx>
+{
+    fn decode(__decoder: &mut __D) -> Self {
+        let span = ::rustc_serialize::Decodable::decode(__decoder);
+        let scope_with_flag: u32 = ::rustc_serialize::Decodable::decode(__decoder);
+
+        let scope = scope_with_flag / 2;
+        let has_attrs = scope_with_flag % 2 == 1;
+
+        Terminator {
+            source_info: SourceInfo { span, scope: scope.into() },
+            kind: ::rustc_serialize::Decodable::decode(__decoder),
+            attributes: if has_attrs {
+                ::rustc_serialize::Decodable::decode(__decoder)
+            } else {
+                ThinVec::new()
+            },
+        }
+    }
 }
 
 impl<'tcx> Terminator<'tcx> {
