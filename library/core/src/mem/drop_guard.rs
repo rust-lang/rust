@@ -19,7 +19,7 @@ use crate::ops::{Deref, DerefMut};
 ///     // Create a new guard around a string that will
 ///     // print its value when dropped.
 ///     let s = String::from("Chashu likes tuna");
-///     let mut s = DropGuard::new(s, |s| println!("{s}"));
+///     let mut s = DropGuard::with(s, |s| println!("{s}"));
 ///
 ///     // Modify the string contained in the guard.
 ///     s.push_str("!!!");
@@ -39,11 +39,56 @@ where
     f: ManuallyDrop<F>,
 }
 
+impl DropGuard<(), UnitFn> {
+    /// Create a new instance of `DropGuard` with only a closure, no value.
+    ///
+    /// `DropGuard::new(|| ...)` is equivalent to `DropGuard::with((), |()| ...)`.
+    ///
+    /// # Example
+    ///
+    /// Enabling and then disabling a Unix terminal's [raw mode] within some
+    /// block of code is a good use for `DropGuard`. Whether the block ends
+    /// through successful completion, an unwinding panic, or early
+    /// `return`/`break`/`continue`/`?`, the raw mode guard will ensure the
+    /// disabling takes place.
+    ///
+    /// [raw mode]: https://man7.org/linux/man-pages/man3/termios.3.html#:~:text=Raw%20mode
+    ///
+    /// ```
+    /// #![feature(drop_guard)]
+    ///
+    /// use std::mem::DropGuard;
+    /// #
+    /// # struct Terminal;
+    /// # impl Terminal {
+    /// #     fn enable_raw_mode(&self) {}
+    /// #     fn disable_raw_mode(&self) {}
+    /// # }
+    /// # let terminal = Terminal;
+    ///
+    /// {
+    ///     terminal.enable_raw_mode();
+    ///     let _raw_mode_guard = DropGuard::new(|| terminal.disable_raw_mode());
+    ///
+    ///     // Write to terminal in raw mode. Upon end of this scope, raw mode ends.
+    /// }
+    /// ```
+    #[unstable(feature = "drop_guard", issue = "144426")]
+    #[must_use]
+    pub const fn new(f: impl FnOnce()) -> DropGuard<(), impl FnOnce(())> {
+        DropGuard::with((), |()| f())
+    }
+}
+
 impl<T, F> DropGuard<T, F>
 where
     F: FnOnce(T),
 {
-    /// Create a new instance of `DropGuard`.
+    /// Create a new instance of `DropGuard` holding a value of type `T`.
+    ///
+    /// The value (`inner`) is provided to the closure that runs during drop,
+    /// but also remains accessible to the surrounding code through the guard's
+    /// `Deref`/`DerefMut`.
     ///
     /// # Example
     ///
@@ -54,11 +99,11 @@ where
     /// use std::mem::DropGuard;
     ///
     /// let value = String::from("Chashu likes tuna");
-    /// let guard = DropGuard::new(value, |s| println!("{s}"));
+    /// let guard = DropGuard::with(value, |s| println!("{s}"));
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
     #[must_use]
-    pub const fn new(inner: T, f: F) -> Self {
+    pub const fn with(inner: T, f: F) -> Self {
         Self { inner: ManuallyDrop::new(inner), f: ManuallyDrop::new(f) }
     }
 
@@ -78,7 +123,7 @@ where
     /// use std::mem::DropGuard;
     ///
     /// let value = String::from("Nori likes chicken");
-    /// let guard = DropGuard::new(value, |s| println!("{s}"));
+    /// let guard = DropGuard::with(value, |s| println!("{s}"));
     /// assert_eq!(DropGuard::dismiss(guard), "Nori likes chicken");
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
@@ -156,5 +201,23 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
+    }
+}
+
+/// A private placeholder that prevents using turbofish in the `DropGuard::new`
+/// call (`DropGuard::<(), ???>::new(...)`) with anything other than `_` as the
+/// second type parameter.
+///
+/// Not publicly nameable outside libcore and not on track for stabilization.
+#[unstable(feature = "drop_guard_unit_fn", issue = "none")]
+#[allow(missing_debug_implementations)]
+pub enum UnitFn {}
+
+#[unstable(feature = "drop_guard_unit_fn", issue = "none")]
+impl FnOnce<((),)> for UnitFn {
+    type Output = ();
+
+    extern "rust-call" fn call_once(self, _args: ((),)) -> Self::Output {
+        match self {}
     }
 }
