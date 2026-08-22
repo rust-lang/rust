@@ -1415,6 +1415,24 @@ where
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
 
+        let cx = self.cx();
+
+        let wf_goal = Goal::new(
+            cx,
+            param_env,
+            ty::ClauseKind::WellFormed(
+                I::Const::new_alias(cx, ty::IsRigid::Yes, alias_const).into(),
+            ),
+        );
+
+        self.add_goal(GoalSource::AliasWellFormed, wf_goal)?;
+
+        let wf_certainty = self.try_evaluate_added_goals()?;
+
+        if matches!(wf_certainty, Certainty::Maybe(_)) {
+            return Ok(None);
+        }
+
         self.delegate.evaluate_const(param_env, alias_const, |ty| {
             self.normalize(GoalSource::Misc, param_env, ty)
         })
