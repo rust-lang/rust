@@ -13,6 +13,8 @@ use crate::sys::{AsInner, FromInner, IntoInner, c};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, sys};
 
+pub const MSG_NOSIGNAL: c_int = 0;
+
 #[allow(non_camel_case_types)]
 pub type wrlen_t = i32;
 
