@@ -1,7 +1,7 @@
 // issue: <https://github.com/rust-lang/rust/issues/11552>
 // Test nested box pattern matching inside a larger `match` statement.
 //@ run-pass
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 #[derive(Clone)]
 enum Noun {
@@ -11,7 +11,7 @@ enum Noun {
 
 fn fas(n: &Noun) -> Noun {
     match n {
-        &Noun::Cell(box Noun::Atom(2), box Noun::Cell(ref a, _)) => (**a).clone(),
+        &Noun::Cell(Noun::Atom(2), Noun::Cell(ref a, _)) => (**a).clone(),
         _ => panic!("Invalid fas pattern"),
     }
 }

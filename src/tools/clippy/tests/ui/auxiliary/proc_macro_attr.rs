@@ -1,4 +1,4 @@
-#![feature(proc_macro_hygiene, proc_macro_quote, box_patterns)]
+#![feature(proc_macro_hygiene, proc_macro_quote, deref_patterns)]
 #![allow(clippy::uninlined_format_args, clippy::useless_conversion)]
 
 extern crate proc_macro;
@@ -67,7 +67,7 @@ pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStrea
     for inner in &mut item.items {
         if let ImplItem::Fn(method) = inner
             && let Some(FnArg::Typed(pat_type)) = mut_receiver_of(&mut method.sig)
-            && let box Type::Reference(reference) = &mut pat_type.ty
+            && let Type::Reference(reference) = &mut pat_type.ty
         {
             // Target only unnamed lifetimes
             let name = match &reference.lifetime {

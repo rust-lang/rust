@@ -1,5 +1,5 @@
 error[E0433]: cannot find type `E` in this scope
-  --> $DIR/non-ADT-struct-pattern-box-pattern-ice-121463.rs:6:17
+  --> $DIR/non-ADT-struct-pattern-box-pattern-ice-121463.rs:5:17
    |
 LL |     let mut a = E::StructVar { boxed: Box::new(5_i32) };
    |                 ^ use of undeclared type `E`
@@ -10,14 +10,14 @@ LL |     let mut a = Eq::StructVar { boxed: Box::new(5_i32) };
    |                  +
 
 error[E0433]: cannot find type `E` in this scope
-  --> $DIR/non-ADT-struct-pattern-box-pattern-ice-121463.rs:9:9
+  --> $DIR/non-ADT-struct-pattern-box-pattern-ice-121463.rs:8:9
    |
-LL |         E::StructVar { box boxed } => { }
+LL |         E::StructVar { boxed } => { }
    |         ^ use of undeclared type `E`
    |
 help: a trait with a similar name exists
    |
-LL |         Eq::StructVar { box boxed } => { }
+LL |         Eq::StructVar { boxed } => { }
    |          +
 
 error: aborting due to 2 previous errors

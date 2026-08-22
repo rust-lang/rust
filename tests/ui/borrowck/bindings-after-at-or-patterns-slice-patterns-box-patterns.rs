@@ -1,5 +1,5 @@
 // Tests using a combination of pattern features has the expected borrow checking behavior
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 enum Test {
     Foo,
@@ -105,7 +105,7 @@ fn bindings_after_at_or_patterns_borrows_mut(mut x: Option<Test>) {
 
 fn bindings_after_at_box_patterns_borrows_both(mut x: Option<Box<String>>) {
     let r = match x {
-        ref foo @ Some(box ref s) => Some(foo),
+        ref foo @ Some(deref!(ref s)) => Some(foo),
         _ => None,
     };
 
@@ -117,7 +117,7 @@ fn bindings_after_at_box_patterns_borrows_both(mut x: Option<Box<String>>) {
 
 fn bindings_after_at_box_patterns_borrows_mut(mut x: Option<Box<String>>) {
     match x {
-        ref foo @ Some(box ref mut s) => (),
+        ref foo @ Some(deref!(ref mut s)) => (),
         //~^ ERROR cannot borrow
         _ => (),
     };
@@ -163,7 +163,7 @@ fn bindings_after_at_slice_patterns_or_patterns_borrows_slice(mut x: [Option<Tes
 
 fn bindings_after_at_slice_patterns_box_patterns_borrows(mut x: [Option<Box<String>>; 4]) {
     let r = match x {
-        [_, ref a @ Some(box ref b), ..] => Some(a),
+        [_, ref a @ Some(deref!(ref b)), ..] => Some(a),
         _ => None,
     };
 
@@ -179,7 +179,7 @@ fn bindings_after_at_slice_patterns_or_patterns_box_patterns_borrows(
     mut x: [Option<Box<Test>>; 4]
 ) {
     let r = match x {
-        [_, ref a @ Some(box Test::Foo | box Test::Bar), ..] => Some(a),
+        [_, ref a @ Some(deref!(Test::Foo) | deref!(Test::Bar)), ..] => Some(a),
         _ => None,
     };
 
@@ -193,7 +193,7 @@ fn bindings_after_at_slice_patterns_or_patterns_box_patterns_borrows_mut(
     mut x: [Option<Box<Test>>; 4]
 ) {
     let r = match x {
-        [_, ref mut a @ Some(box Test::Foo | box Test::Bar), ..] => Some(a),
+        [_, ref mut a @ Some(deref!(Test::Foo) | deref!(Test::Bar)), ..] => Some(a),
         _ => None,
     };
 
@@ -207,7 +207,7 @@ fn bindings_after_at_slice_patterns_or_patterns_box_patterns_borrows_binding(
     mut x: [Option<Box<Test>>; 4]
 ) {
     let r = match x {
-        ref a @ [_, ref b @ Some(box Test::Foo | box Test::Bar), ..] => Some(a),
+        ref a @ [_, ref b @ Some(deref!(Test::Foo) | deref!(Test::Bar)), ..] => Some(a),
         _ => None,
     };
 
