@@ -18,7 +18,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -34,6 +34,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument, trace};
@@ -1897,6 +1898,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             // All these projections don't add any constraints, so there's nothing to
             // do here. We check their invariants in the MIR validator after all.
             ProjectionElem::Deref
+            | ProjectionElem::PhantomDeref
             | ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
@@ -2467,6 +2469,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         _ => bug!("unexpected deref ty {:?} in {:?}", base_ty, borrowed_place),
                     }
                 }
+                ProjectionElem::PhantomDeref => {
+                    bug!("unexpected PhantomDeref in add_reborrow_constraint")
+                }
                 ProjectionElem::Field(..)
                 | ProjectionElem::Downcast(..)
                 | ProjectionElem::OpaqueCast(..)
@@ -2484,41 +2489,40 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         mutability: Mutability,
         location: Location,
-        borrowed_place: &Place<'tcx>,
-        dest_ty: Ty<'tcx>,
+        src_place: &Place<'tcx>,
+        dst_ty: Ty<'tcx>,
     ) {
         let Self { borrow_set, location_table, polonius_facts, constraints, infcx, body, .. } =
             self;
 
         debug!(
             "add_generic_reborrow_constraint({:?}, {:?}, {:?}, {:?})",
-            mutability, location, borrowed_place, dest_ty
+            mutability, location, src_place, dst_ty
         );
 
         let tcx = infcx.tcx;
         let def = body.source.def_id().expect_local();
         let upvars = tcx.closure_captures(def);
-        let field =
-            path_utils::is_upvar_field_projection(tcx, upvars, borrowed_place.as_ref(), body);
+        let field = path_utils::is_upvar_field_projection(tcx, upvars, src_place.as_ref(), body);
         let category = if let Some(field) = field {
             ConstraintCategory::ClosureUpvar(field)
         } else {
             ConstraintCategory::Boring
         };
 
-        let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
+        let src_ty = src_place.ty(self.body, tcx).ty;
 
-        let ty::Adt(dest_adt, dest_args) = dest_ty.kind() else { bug!() };
-        let [dest_arg, ..] = ***dest_args else { bug!() };
-        let ty::GenericArgKind::Lifetime(dest_region) = dest_arg.kind() else { bug!() };
-        constraints.liveness_constraints.add_location(dest_region.as_var(), location);
+        let ty::Adt(dst_adt, dst_args) = dst_ty.kind() else { bug!() };
+        let [dst_arg, ..] = ***dst_args else { bug!() };
+        let ty::GenericArgKind::Lifetime(dst_region) = dst_arg.kind() else { bug!() };
+        constraints.liveness_constraints.add_location(dst_region.as_var(), location);
 
         // In Polonius mode, we also push a `loan_issued_at` fact
         // linking the loan to the region.
         if let Some(polonius_facts) = polonius_facts {
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
             if let Some(borrows) = borrow_set.borrows_at_location(&location) {
-                let region_vid = dest_region.as_var();
+                let region_vid = dst_region.as_var();
                 for borrow_index in borrows {
                     polonius_facts.loan_issued_at.push((
                         region_vid.into(),
@@ -2530,38 +2534,70 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         if mutability.is_not() {
+            // FIXME(reborrow): this CoerceShared trait obligation takes into account lifetimes
+            // (purposefully, that's its purpose), but if the trait is implemented as
+            // `CoerceShared<Target<'a>> for Source<'a> {}` then we will here generate an invariance
+            // relationship between the CoerceShared src and dst lifetimes. That then means
+            // CoerceShared will make reborrowing or moving the source impossible.
+            //
+            // The reason why we do this obligation here (again: it's already done in THIR) is
+            // because we'd want to catch impls like `CoerceShared<Target<'static>> for Source<'a>`
+            // and, in those cases, correctly generate a `'a: 'static` bound.
+            //
+            // I'm not sure what would be the right way to resolve this conundrum.
+            let Some(coerce_shared_trait_did) = self.tcx().lang_items().coerce_shared() else {
+                bug!("HIR type check passed CoerceShared but MIR found no such lang item");
+            };
+            let coerce_shared_trait_ref =
+                ty::TraitRef::new(self.tcx(), coerce_shared_trait_did, [src_ty, dst_ty]);
+            let obligation = Obligation::new(
+                self.tcx(),
+                ObligationCause::dummy(),
+                self.infcx.param_env,
+                ty::Binder::dummy(coerce_shared_trait_ref),
+            );
+            let ocx = ObligationCtxt::new(&self.infcx);
+            ocx.register_obligation(obligation);
+            let errs = ocx.evaluate_obligations_error_on_ambiguity();
+            if !errs.no_errors() {
+                bug!("HIR type check passed CoerceShared but MIR found an issue");
+            }
+
             // FIXME(reborrow): for CoerceShared we need to relate the types manually, field by
             // field. We cannot just attempt to relate `T` and `<T as CoerceShared>::Target` by
             // calling relate_types as they are (generally) two unrelated user-defined ADTs, such as
             // `CustomMut<'a>` and `CustomRef<'a>`, or `CustomMut<'a, T>` and `CustomRef<'a, T>`.
             // Field-by-field relate_types is expected to work based on the wf-checks that the
             // CoerceShared trait performs.
-            let ty::Adt(borrowed_adt, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
-            let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
-            for dest_field in dest_adt.all_fields() {
-                let Some(borrowed_field) =
-                    borrowed_fields.iter().find(|f| f.name == dest_field.name)
-                else {
+            let ty::Adt(src_adt, src_args) = src_ty.kind() else { unreachable!() };
+            let src_fields = src_adt.all_fields().collect::<Vec<_>>();
+            for dst_field in dst_adt.all_fields() {
+                let Some(src_field) = src_fields.iter().find(|f| f.name == dst_field.name) else {
                     continue;
                 };
-                let dest_ty = dest_field.ty(tcx, dest_args).skip_norm_wip();
-                let borrowed_ty = borrowed_field.ty(tcx, borrowed_args).skip_norm_wip();
+                let dst_ty = dst_field.ty(tcx, dst_args).skip_norm_wip();
+                let src_ty = src_field.ty(tcx, src_args).skip_norm_wip();
                 if let (
-                    ty::Ref(borrow_region, _, Mutability::Mut),
-                    ty::Ref(ref_region, _, Mutability::Not),
-                ) = (borrowed_ty.kind(), dest_ty.kind())
+                    ty::Ref(src_region, _, Mutability::Mut),
+                    ty::Ref(dst_region, _, Mutability::Not),
+                ) = (src_ty.kind(), dst_ty.kind())
                 {
+                    // FIXME(reborrow): the covariance relations here seem confused even after we
+                    // flipped them around. relate_types does dst <: src while outlives does
+                    // src <: dst. That seems incomprehensible.
                     self.relate_types(
-                        borrowed_ty.peel_refs(),
+                        // dst <: src
+                        src_ty.peel_refs(),
                         ty::Variance::Covariant,
-                        dest_ty.peel_refs(),
+                        dst_ty.peel_refs(),
                         location.to_locations(),
                         category,
                     )
                     .unwrap();
                     self.constraints.outlives_constraints.push(OutlivesConstraint {
-                        sup: ref_region.as_var(),
-                        sub: borrow_region.as_var(),
+                        // 'src: 'dst
+                        sup: src_region.as_var(),
+                        sub: dst_region.as_var(),
                         locations: location.to_locations(),
                         span: location.to_locations().span(self.body),
                         category,
@@ -2570,9 +2606,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     });
                 } else {
                     self.relate_types(
-                        borrowed_ty,
+                        // dst <: src
+                        src_ty,
                         ty::Variance::Covariant,
-                        dest_ty,
+                        dst_ty,
                         location.to_locations(),
                         category,
                     )
@@ -2582,9 +2619,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         } else {
             // Exclusive reborrow
             self.relate_types(
-                borrowed_ty,
+                src_ty,
                 ty::Variance::Covariant,
-                dest_ty,
+                dst_ty,
                 location.to_locations(),
                 category,
             )

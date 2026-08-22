@@ -1,3 +1,6 @@
+//! Test that CoerceShared can resolve field type equivalence through GATs.
+//! This should eventually pass.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
