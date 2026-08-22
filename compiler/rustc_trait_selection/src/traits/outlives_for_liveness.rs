@@ -240,7 +240,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
                     def_id,
                     parent_param_env,
                     &wf_tys,
-                    t,
+                    ty::Unnormalized::new_wip(t),
                     *parent_outlived_region,
                 ),
             };
@@ -295,9 +295,14 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
                 ty::GenericArgKind::Lifetime(r) => {
                     region_known_to_outlive(tcx, def_id, param_env, &wf_tys, r, outlived_region)
                 }
-                ty::GenericArgKind::Type(t) => {
-                    ty_known_to_outlive(tcx, def_id, param_env, &wf_tys, t, outlived_region)
-                }
+                ty::GenericArgKind::Type(t) => ty_known_to_outlive(
+                    tcx,
+                    def_id,
+                    param_env,
+                    &wf_tys,
+                    ty::Unnormalized::new_wip(t),
+                    outlived_region,
+                ),
                 ty::GenericArgKind::Const(_) => false,
             })
             .collect();

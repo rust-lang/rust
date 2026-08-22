@@ -520,9 +520,14 @@ pub(crate) fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId)
                         b,
                     )
                 }
-                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) => {
-                    !ty_known_to_outlive(tcx, gat_def_id, param_env, &FxIndexSet::default(), a, b)
-                }
+                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) => !ty_known_to_outlive(
+                    tcx,
+                    gat_def_id,
+                    param_env,
+                    &FxIndexSet::default(),
+                    Unnormalized::new_wip(a),
+                    b,
+                ),
                 _ => bug!("Unexpected ClauseKind"),
             })
             .map(|clause| clause.to_string())
@@ -627,7 +632,14 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
         // reflected in a where clause on the GAT itself.
         for (ty, ty_idx) in &types {
             // In our example, requires that `Self: 'a`
-            if ty_known_to_outlive(tcx, item_def_id, param_env, wf_tys, *ty, *region_a) {
+            if ty_known_to_outlive(
+                tcx,
+                item_def_id,
+                param_env,
+                wf_tys,
+                Unnormalized::new_wip(*ty),
+                *region_a,
+            ) {
                 debug!(?ty_idx, ?region_a_idx);
                 debug!("required clause: {ty} must outlive {region_a}");
                 // Translate into the generic parameters of the GAT. In
