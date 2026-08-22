@@ -3,6 +3,7 @@ mod free_alias;
 mod inherent;
 mod opaque_types;
 
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::search_graph::LowerAvailableDepth;
 use rustc_type_ir::solve::QueryResultOrRerunNonErased;
 use rustc_type_ir::{self as ty, Interner, ProjectionClause};
@@ -48,6 +49,19 @@ where
         let unconstrained_term = self.next_term_infer_of_alias_kind(alias);
         let normalizes_to =
             goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });
+
+        // FIXME: Explain this hack. Why this is needed and why should be done here
+        if unconstrained_term.as_type().is_some() && alias.self_ty().is_ty_var() {
+            let hidden_bounds =
+                self.hidden_types_of_opaques_modulo_sub_unification(alias.self_ty());
+            if let Some(unmentioned) = ty::OpaqueHiddenTyBound::opt_unmentioned_projection(
+                self.cx(),
+                hidden_bounds.iter().flat_map(|(_, bounds)| bounds).copied(),
+                ty::ProjectionPredicate { projection_term: alias, term: unconstrained_term },
+            ) {
+                self.add_hidden_type_of_opaque(alias.self_ty(), Some(unmentioned));
+            }
+        }
 
         // We don't want candidate selection when normalizing associated terms to be impacted by
         // the expected term. Normalization should behave like a function of just the alias being

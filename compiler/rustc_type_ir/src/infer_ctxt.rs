@@ -534,17 +534,21 @@ pub trait InferCtxtLike: Sized {
     fn clone_opaque_types_lookup_table(
         &self,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
-    fn clone_duplicate_opaque_types(
+    fn clone_hidden_types_of_opaques(
         &self,
-    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
+    ) -> Vec<(<Self::Interner as Interner>::Ty, Option<ty::OpaqueHiddenTyBound<Self::Interner>>)>;
     fn clone_opaque_types_added_since(
         &self,
-        prev_entries: Self::OpaqueTypeStorageEntries,
+        prev_entries: &Self::OpaqueTypeStorageEntries,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
-    fn opaques_with_sub_unified_hidden_type(
+    fn clone_hidden_types_of_opaques_added_since(
         &self,
-        ty: TyVid,
-    ) -> Vec<ty::OpaqueAliasTy<Self::Interner>>;
+        prev_entries: &Self::OpaqueTypeStorageEntries,
+    ) -> Vec<(<Self::Interner as Interner>::Ty, Vec<ty::OpaqueHiddenTyBound<Self::Interner>>)>;
+    fn hidden_types_of_opaques_modulo_sub_unification(
+        &self,
+        ty_vid: TyVid,
+    ) -> Vec<(<Self::Interner as Interner>::Ty, Vec<ty::OpaqueHiddenTyBound<Self::Interner>>)>;
 
     fn register_hidden_type_in_storage(
         &self,
@@ -557,6 +561,11 @@ pub trait InferCtxtLike: Sized {
         opaque_type_key: ty::OpaqueTypeKey<Self::Interner>,
         hidden_ty: <Self::Interner as Interner>::Ty,
         span: <Self::Interner as Interner>::Span,
+    );
+    fn add_hidden_type_of_opaque(
+        &self,
+        hidden_ty: <Self::Interner as Interner>::Ty,
+        bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<Self::Interner>>,
     );
 
     fn reset_opaque_types(&self);

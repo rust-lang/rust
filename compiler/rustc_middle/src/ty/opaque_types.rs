@@ -11,6 +11,8 @@ use crate::ty::{
 
 pub type OpaqueTypeKey<'tcx> = rustc_type_ir::OpaqueTypeKey<TyCtxt<'tcx>>;
 
+pub type OpaqueHiddenTyBound<'tcx> = rustc_type_ir::OpaqueHiddenTyBound<TyCtxt<'tcx>>;
+
 /// Converts generic params of a TypeFoldable from one
 /// item's generics to another. Usually from a function's generics
 /// list to the opaque type's own generics.

@@ -36,7 +36,7 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     // Used to detect opaque types uses added after we've already checked them.
     //
     // See [FnCtxt::detect_opaque_types_added_during_writeback] for more details.
-    pub(super) checked_opaque_types_storage_entries: Cell<Option<OpaqueTypeStorageEntries>>,
+    pub(super) checked_opaque_types_storage_entries: Cell<Option<OpaqueTypeStorageEntries<'tcx>>>,
 
     /// Some additional `Sized` obligations badly affect type inference.
     /// These obligations are added in a later stage of typeck.
