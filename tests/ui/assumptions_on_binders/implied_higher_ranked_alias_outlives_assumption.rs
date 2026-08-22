@@ -15,6 +15,9 @@
 // }
 // rewritten to: true (via assumption)
 // rewritting to `for<'a, 'b> <T as Trait<^0, ^1>>::Assoc: 'c` would be wrong
+//
+// The `Or` evaluation fix is not enough for this one. Without
+// `normalize_equated_region_vars` it goes ambiguous (E0283).
 
 trait Trait<'a, 'b> {
     type Assoc;

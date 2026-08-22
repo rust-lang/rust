@@ -3,6 +3,11 @@
 // test that a `<T as AliasHaver>::Assoc: '!a_u1` constraint is considered to be satisfied
 // if there's a `T::Assoc: 'static` assumption in the root universe and if not that it is
 // an error :)
+//
+// The pass case is also the `Or` evaluation test: rewrite can produce an ambiguous
+// candidate next to a real one (`Assoc: 'static` at the root). Collapsing that `Or`
+// to `Ambiguity` makes REGIONCK_ENV_PASS fail with E0283. Keep the remaining
+// candidate, and keep the `Ambiguity` sibling until that candidate succeeds.
 
 #![feature(generic_const_items)]
 

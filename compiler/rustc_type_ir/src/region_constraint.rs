@@ -45,7 +45,7 @@ impl<T> Default for TransitiveRelationBuilder<T> {
     }
 }
 
-use crate::data_structures::IndexMap;
+use crate::data_structures::{HashMap, HashSet, IndexMap};
 use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
@@ -485,6 +485,12 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 
     let assumptions = infcx.get_placeholder_assumptions(u);
 
+    // Replace current-universe `'?x` with a non-var it's equated with in this `And`
+    // (`'?x: '!a` and `'!a: '?x` → `'!a`). Alias/env matching has to see that shape
+    // or `alias_outlives.rs` / `implied_higher_ranked_alias_outlives_assumption.rs`
+    // go ambiguous.
+    let constraint = normalize_equated_region_vars(infcx, constraint, u);
+
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
     //     involving things from `u` or type outlives constraints not involving things from `u`
     //
@@ -519,6 +525,147 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 
     // 5. actually evaluate the constraint to eagerly error on false
     evaluate_solver_constraint(&constraint)
+}
+
+fn normalize_equated_region_vars<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    constraint: RegionConstraint<I>,
+    u: UniverseIndex,
+) -> RegionConstraint<I> {
+    use RegionConstraint::*;
+
+    match constraint {
+        Ambiguity(_)
+        | RegionOutlives(..)
+        | PlaceholderTyOutlives(..)
+        | AliasTyOutlivesViaEnv(..) => constraint,
+        Or(constraints) => Or(constraints
+            .into_iter()
+            .map(|constraint| normalize_equated_region_vars(infcx, constraint, u))
+            .collect()),
+        And(constraints) => {
+            let constraint = And(constraints
+                .into_iter()
+                .map(|constraint| normalize_equated_region_vars(infcx, constraint, u))
+                .collect());
+
+            let mut region_outlives = vec![];
+            collect_conjunctive_region_outlives(&constraint, &mut region_outlives);
+            let replacements = compute_equated_region_var_replacements(infcx, &region_outlives, u);
+
+            if replacements.is_empty() {
+                constraint
+            } else {
+                constraint.fold_with(&mut EquatedRegionVarReplacer { cx: infcx.cx(), replacements })
+            }
+        }
+    }
+}
+
+fn compute_equated_region_var_replacements<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    region_outlives: &[(Region<I>, Region<I>)],
+    u: UniverseIndex,
+) -> HashMap<Region<I>, Region<I>> {
+    compute_equated_region_var_replacements_from(
+        region_outlives,
+        |r| is_current_universe_region_var(infcx, r, u),
+        is_region_var::<I>,
+    )
+}
+
+fn compute_equated_region_var_replacements_from<R>(
+    region_outlives: &[(R, R)],
+    mut is_current_universe_region_var: impl FnMut(R) -> bool,
+    mut is_region_var: impl FnMut(R) -> bool,
+) -> HashMap<R, R>
+where
+    R: Copy + Eq + std::hash::Hash,
+{
+    let edges: HashSet<(R, R)> = region_outlives.iter().copied().collect();
+
+    let mut equated_regions_builder = TransitiveRelationBuilder::default();
+    let mut has_equated_regions = false;
+    for (r1, r2) in region_outlives.iter().copied() {
+        // Paired outlives constraints represent region equality. Build a transitive relation so
+        // current-universe variables equated through other variables still find a non-var partner.
+        if edges.contains(&(r2, r1)) {
+            equated_regions_builder.add(r1, r2);
+            equated_regions_builder.add(r2, r1);
+            has_equated_regions = true;
+        }
+    }
+
+    if !has_equated_regions {
+        return HashMap::default();
+    }
+
+    let equated_regions = equated_regions_builder.freeze();
+    let mut seen = HashSet::default();
+    let mut replacements = HashMap::default();
+    for (r1, r2) in region_outlives.iter().copied() {
+        for candidate in [r1, r2] {
+            if !seen.insert(candidate) || !is_current_universe_region_var(candidate) {
+                continue;
+            }
+
+            // `reachable_from` already includes `candidate` when both equality edges exist.
+            // Candidates are always revars, so the partner has to come from that closure.
+            // If a var has several non-var partners, `find` just picks one; the remaining
+            // folded constraints still relate those partners, so first-match only affects
+            // representation.
+            if let Some(partner) =
+                equated_regions.reachable_from(candidate).into_iter().find(|r| !is_region_var(*r))
+            {
+                replacements.insert(candidate, partner);
+            }
+        }
+    }
+    replacements
+}
+
+fn collect_conjunctive_region_outlives<I: Interner>(
+    constraint: &RegionConstraint<I>,
+    out: &mut Vec<(Region<I>, Region<I>)>,
+) {
+    use RegionConstraint::*;
+
+    match constraint {
+        RegionOutlives(r1, r2, _) => out.push((*r1, *r2)),
+        And(constraints) => {
+            for constraint in constraints.iter() {
+                collect_conjunctive_region_outlives(constraint, out);
+            }
+        }
+        Ambiguity(_) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) | Or(..) => {}
+    }
+}
+
+fn is_current_universe_region_var<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    region: Region<I>,
+    u: UniverseIndex,
+) -> bool {
+    is_region_var::<I>(region) && max_universe(infcx, region) == u
+}
+
+fn is_region_var<I: Interner>(region: Region<I>) -> bool {
+    matches!(region.kind(), RegionKind::ReVar(_))
+}
+
+struct EquatedRegionVarReplacer<I: Interner> {
+    cx: I,
+    replacements: HashMap<Region<I>, Region<I>>,
+}
+
+impl<I: Interner> TypeFolder<I> for EquatedRegionVarReplacer<I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
+        self.replacements.get(&r).copied().unwrap_or(r)
+    }
 }
 
 /// Filter our region constraints to not include constraints between region variables from `u` and
@@ -579,7 +726,65 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
     new_constraints
 }
 
-/// Evaluate ANDs and ORs to true/false/ambiguous based on whether their arguments are true/false/ambiguous
+/// Already-evaluated OR member, used by [`combine_or`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum EvaluatedOrMember<T> {
+    True,
+    False,
+    Ambiguity,
+    Other(T),
+}
+
+/// Kleene OR of already-evaluated members.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum CombinedOr<T> {
+    True,
+    False,
+    Ambiguity,
+    /// Still-open candidates. `plus_ambiguity` means an unknown sibling must
+    /// stay beside them: unknown ∨ remaining must not drop the unknown.
+    Or {
+        remaining: Vec<T>,
+        plus_ambiguity: bool,
+    },
+}
+
+/// Combine already-evaluated OR members.
+///
+/// `true ∨ x = true`. `false` members are dropped. `unknown ∨ remaining` keeps
+/// both: collapsing to `Ambiguity` drops candidates a later universe may still
+/// satisfy, and dropping `Ambiguity` makes a later-false remaining collapse
+/// unknown ∨ false to false (spurious `NoSolution`).
+fn combine_or<T>(members: impl IntoIterator<Item = EvaluatedOrMember<T>>) -> CombinedOr<T> {
+    let mut remaining = Vec::new();
+    let mut plus_ambiguity = false;
+    for member in members {
+        match member {
+            EvaluatedOrMember::True => return CombinedOr::True,
+            EvaluatedOrMember::False => {}
+            EvaluatedOrMember::Ambiguity => plus_ambiguity = true,
+            EvaluatedOrMember::Other(c) => remaining.push(c),
+        }
+    }
+
+    if remaining.is_empty() {
+        if plus_ambiguity { CombinedOr::Ambiguity } else { CombinedOr::False }
+    } else {
+        CombinedOr::Or { remaining, plus_ambiguity }
+    }
+}
+
+/// Evaluate ANDs and ORs to true/false/ambiguous based on whether their arguments are
+/// true/false/ambiguous.
+///
+/// `Or(Ambiguity, remaining)` keeps both. Collapsing to `Ambiguity` drops
+/// candidates a later universe (or the root) may still satisfy. Dropping the
+/// `Ambiguity` sibling is also wrong: if `remaining` later becomes false,
+/// unknown ∨ false would become false.
+///
+/// `And` is the other way: one ambiguous conjunct makes the whole conjunction
+/// unknown, so we still collapse. That is deliberate, not an oversight relative
+/// to `Or`.
 #[instrument(level = "debug", ret)]
 pub fn evaluate_solver_constraint<I: Interner, S: Clone + std::fmt::Debug>(
     constraint: &RegionConstraint<I, S>,
@@ -612,25 +817,32 @@ pub fn evaluate_solver_constraint<I: Interner, S: Clone + std::fmt::Debug>(
             )
         }
         Or(or) => {
-            let mut or_constraints = Vec::new();
             let mut ambiguity = None;
-            for c in or.iter() {
+            let members = or.iter().map(|c| {
                 let evaluated_constraint = evaluate_solver_constraint(c);
-                if evaluated_constraint.is_false() {
-                    // do nothing
-                } else if evaluated_constraint.is_true() {
-                    return RegionConstraint::new_true();
+                if evaluated_constraint.is_true() {
+                    EvaluatedOrMember::True
+                } else if evaluated_constraint.is_false() {
+                    EvaluatedOrMember::False
                 } else if let Ambiguity(span) = evaluated_constraint {
                     ambiguity.get_or_insert(span);
+                    EvaluatedOrMember::Ambiguity
                 } else {
-                    or_constraints.push(evaluated_constraint);
+                    EvaluatedOrMember::Other(evaluated_constraint)
+                }
+            });
+
+            match combine_or(members) {
+                CombinedOr::True => RegionConstraint::new_true(),
+                CombinedOr::False => RegionConstraint::new_false(),
+                CombinedOr::Ambiguity => RegionConstraint::Ambiguity(ambiguity.unwrap()),
+                CombinedOr::Or { mut remaining, plus_ambiguity } => {
+                    if plus_ambiguity {
+                        remaining.push(RegionConstraint::Ambiguity(ambiguity.unwrap()));
+                    }
+                    RegionConstraint::Or(remaining.into_boxed_slice())
                 }
             }
-
-            ambiguity.map_or_else(
-                || RegionConstraint::Or(or_constraints.into_boxed_slice()),
-                RegionConstraint::Ambiguity,
-            )
         }
     }
 }
@@ -681,6 +893,12 @@ fn pull_region_outlives_constraints_out_of_universe<
             constraint
         }
         RegionOutlives(region_1, region_2, ()) => {
+            if region_1 == region_2 {
+                // `'r: 'r` is always true, including for current-universe regions.
+                // Relating a region to itself, component destructure, and normalize
+                // rewriting `'?x: '!a` + `'!a: '?x` into `'!a: '!a` can all produce this.
+                return RegionConstraint::new_true();
+            }
             let region_1_u = max_universe(infcx, region_1);
             let region_2_u = max_universe(infcx, region_2);
 
@@ -1175,3 +1393,6 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
         Ok(a)
     }
 }
+
+#[cfg(all(test, feature = "nightly"))]
+mod tests;

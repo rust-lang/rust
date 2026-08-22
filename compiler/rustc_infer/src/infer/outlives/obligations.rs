@@ -279,8 +279,38 @@ impl<'tcx> InferCtxt<'tcx> {
                         b, a, category,
                     );
                 }
-                // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-                And(nested) | Or(nested) => constraints.extend(nested),
+                And(nested) => {
+                    debug_assert!(!nested.iter().any(|c| c.is_ambig()));
+                    constraints.extend(nested);
+                }
+                // FIXME(-Zassumptions-on-binders): actually implement OR as an OR.
+                // Mixed `Or` may contain `Ambiguity` beside remaining candidates
+                // (`evaluate_solver_constraint` keeps that sibling so unknown ∨
+                // later-false does not become false). Don't emit the
+                // unknown-implied-bounds error while a concrete candidate remains.
+                // `Or([])` is false: we drop it the same way `extend` does on an
+                // empty slice. A root-false constraint has nothing to register;
+                // unsatisfied outlives are reported later by borrowck/regionck.
+                Or(nested) => {
+                    let mut ambiguity = None;
+                    let concrete: Vec<_> = nested
+                        .into_iter()
+                        .filter_map(|c| match c {
+                            Ambiguity(span) => {
+                                ambiguity.get_or_insert(span);
+                                None
+                            }
+                            c => Some(c),
+                        })
+                        .collect();
+                    if concrete.is_empty() {
+                        if let Some(span) = ambiguity {
+                            constraints.push(Ambiguity(span));
+                        }
+                    } else {
+                        constraints.extend(concrete);
+                    }
+                }
                 AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => unreachable!(),
             }
         }
