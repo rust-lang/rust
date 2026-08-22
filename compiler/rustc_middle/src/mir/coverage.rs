@@ -94,11 +94,22 @@ pub enum CoverageKind {
 
 impl Debug for CoverageKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use CoverageKind::*;
         match self {
-            SpanMarker => write!(fmt, "SpanMarker"),
-            BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
-            VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
+            CoverageKind::SpanMarker => write!(fmt, "SpanMarker"),
+            CoverageKind::BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
+            CoverageKind::VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
+        }
+    }
+}
+
+impl CoverageKind {
+    /// Returns true if this kind of coverage statement is a marker inserted during
+    /// MIR building, for use by analysis in the `InstrumentCoverage` pass, and is
+    /// no longer needed after that pass.
+    pub fn is_removed_after_analysis(&self) -> bool {
+        match self {
+            CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => true,
+            CoverageKind::VirtualCounter { .. } => false,
         }
     }
 }

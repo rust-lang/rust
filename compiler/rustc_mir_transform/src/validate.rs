@@ -8,7 +8,6 @@ use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -317,7 +316,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             }
             StatementKind::Coverage(kind) => {
                 if self.body.phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup)
-                    && let CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. } = kind
+                    && kind.is_removed_after_analysis()
                 {
                     self.fail(
                         location,
