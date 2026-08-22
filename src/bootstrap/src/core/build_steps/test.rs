@@ -2565,6 +2565,9 @@ Please disable assertions with `rust.debug-assertions = false`.
         if builder.config.rust_optimize_tests {
             cmd.arg("--optimize-tests");
         }
+        if !builder.config.docs_minification {
+            cmd.arg("--disable-minification");
+        }
         if builder.config.rust_randomize_layout {
             cmd.arg("--rust-randomized-layout");
         }
