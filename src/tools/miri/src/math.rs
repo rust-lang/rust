@@ -230,11 +230,11 @@ where
 }
 
 /// For the intrinsics:
-/// - sinf32, sinf64, sinhf, sinh
-/// - cosf32, cosf64, coshf, cosh
+/// - sin, sinhf, sinh
+/// - cos, coshf, cosh
 /// - tanhf, tanh, atanf, atan, atan2f, atan2
-/// - expf32, expf64, exp2f32, exp2f64
-/// - logf32, logf64, log2f32, log2f64, log10f32, log10f64
+/// - exp, exp2
+/// - log, log2, log10
 /// - powf32, powf64
 /// - erff, erf, erfcf, erfc
 /// - hypotf, hypot
