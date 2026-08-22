@@ -123,7 +123,7 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
 
             match &filename_components[..] {
                 // Cannot have a revision component, skip.
-                [] | [_] => return,
+                [] | [_] => continue,
                 [_, _] if !expected_revisions.is_empty() => {
                     // Found unrevisioned output files for a revisioned test.
                     check.error(format!(
@@ -132,7 +132,7 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
                         test_path.display(),
                     ));
                 }
-                [_, _] => return,
+                [_, _] => continue,
                 [_, found_revision, .., extension] => {
                     if !IGNORES.contains(found_revision)
                         && !expected_revisions.contains(*found_revision)
