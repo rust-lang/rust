@@ -13,21 +13,19 @@ pub fn add_noopt() -> i32 {
 }
 
 #[optimize(none)]
-pub fn const_branch() -> i32 {
-    // CHECK-LABEL: fn const_branch(
-    // CHECK: [[BOOL:_[0-9]+]] = const true;
-    // CHECK: switchInt(move [[BOOL]]) -> [0: [[BB_FALSE_SHIM:bb[0-9]+]], otherwise: [[BB_TRUE:bb[0-9]+]]];
-    // CHECK-NEXT: }
-    // CHECK: [[BB_FALSE_SHIM]]: {
-    // CHECK-NEXT: goto -> [[BB_FALSE:bb[0-9]+]]
-    // CHECK: [[BB_FALSE]]: {
-    // CHECK-NEXT: _0 = const 0
-    // CHECK: [[BB_TRUE]]: {
-    // CHECK-NEXT: _0 = const 1
-    // CHECK-NEXT: goto
-    // CHECK-NEXT: }
+#[allow(unused_assignments)]
+pub fn dead_store_noopt(input: i32) -> i32 {
+    // CHECK-LABEL: fn dead_store_noopt(
+    // CHECK: debug value => [[VALUE:_[0-9]+]];
+    // CHECK: [[VALUE]] = copy _1;
+    // CHECK-NEXT: [[VALUE]] = const 1_i32;
+    // CHECK-NEXT: [[VALUE]] = const 2_i32;
+    // CHECK-NEXT: _0 = copy [[VALUE]];
 
-    if true { 1 } else { 0 }
+    let mut value = input;
+    value = 1;
+    value = 2;
+    value
 }
 
 fn main() {}
