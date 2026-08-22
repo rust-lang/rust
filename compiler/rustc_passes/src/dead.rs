@@ -432,17 +432,16 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         ControlFlow::Continue(())
     }
 
-    /// Automatically generated items marked with `rustc_trivial_field_reads`
+    /// Trait impl methods marked with `rustc_trivial_field_reads`
     /// will be ignored for the purposes of dead code analysis (see PR #85200
-    /// for discussion).
+    /// for discussion, and PR #160666).
     fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
         if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
             && let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
-            && self.tcx.is_automatically_derived(impl_of.to_def_id())
-            && let trait_ref =
-                self.tcx.impl_trait_ref(impl_of).instantiate_identity().skip_norm_wip()
-            && find_attr!(self.tcx, trait_ref.def_id, RustcTrivialFieldReads)
+            && find_attr!(self.tcx, impl_item.owner_id.def_id, RustcTrivialFieldReads)
         {
+            let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity().skip_norm_wip();
+
             if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
                 && let Some(adt_def_id) = adt_def.did().as_local()
             {

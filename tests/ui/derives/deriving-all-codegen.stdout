@@ -32,6 +32,7 @@ unsafe impl ::core::clone::TrivialClone for Empty { }
 #[automatically_derived]
 impl ::core::clone::Clone for Empty {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Empty { *self }
 }
 #[automatically_derived]
@@ -39,6 +40,7 @@ impl ::core::marker::Copy for Empty { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Empty {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f, "Empty")
     }
@@ -95,6 +97,7 @@ unsafe impl ::core::clone::TrivialClone for Point { }
 #[automatically_derived]
 impl ::core::clone::Clone for Point {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Point {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
@@ -105,6 +108,7 @@ impl ::core::marker::Copy for Point { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Point {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field2_finish(f, "Point", "x",
             &self.x, "y", &&self.y)
@@ -179,6 +183,7 @@ unsafe impl ::core::clone::TrivialClone for PackedPoint { }
 #[automatically_derived]
 impl ::core::clone::Clone for PackedPoint {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> PackedPoint {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
@@ -189,6 +194,7 @@ impl ::core::marker::Copy for PackedPoint { }
 #[automatically_derived]
 impl ::core::fmt::Debug for PackedPoint {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field2_finish(f, "PackedPoint",
             "x", &{ self.x }, "y", &&{ self.y })
@@ -257,6 +263,7 @@ unsafe impl ::core::clone::TrivialClone for TupleSingleField { }
 #[automatically_derived]
 impl ::core::clone::Clone for TupleSingleField {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> TupleSingleField {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
@@ -267,6 +274,7 @@ impl ::core::marker::Copy for TupleSingleField { }
 #[automatically_derived]
 impl ::core::fmt::Debug for TupleSingleField {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field1_finish(f,
             "TupleSingleField", &&self.0)
@@ -332,6 +340,7 @@ unsafe impl ::core::clone::TrivialClone for SingleField { }
 #[automatically_derived]
 impl ::core::clone::Clone for SingleField {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> SingleField {
         let _: ::core::clone::AssertParamIsClone<bool>;
         *self
@@ -342,6 +351,7 @@ impl ::core::marker::Copy for SingleField { }
 #[automatically_derived]
 impl ::core::fmt::Debug for SingleField {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field1_finish(f, "SingleField",
             "foo", &&self.foo)
@@ -416,6 +426,7 @@ unsafe impl ::core::clone::TrivialClone for Big { }
 #[automatically_derived]
 impl ::core::clone::Clone for Big {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Big {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
@@ -426,6 +437,7 @@ impl ::core::marker::Copy for Big { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Big {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         let names: &'static _ =
             &["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
@@ -631,6 +643,7 @@ struct NonCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for NonCopy {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> NonCopy {
         NonCopy(::core::clone::Clone::clone(&self.0))
     }
@@ -643,6 +656,7 @@ struct PackedNonCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedNonCopy {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> PackedNonCopy {
         PackedNonCopy(::core::clone::Clone::clone(&{ self.0 }))
     }
@@ -654,6 +668,7 @@ struct ManualCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for ManualCopy {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> ManualCopy {
         ManualCopy(::core::clone::Clone::clone(&self.0))
     }
@@ -667,6 +682,7 @@ struct PackedManualCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedManualCopy {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> PackedManualCopy {
         PackedManualCopy(::core::clone::Clone::clone(&{ self.0 }))
     }
@@ -678,6 +694,7 @@ struct Unsized([u32]);
 #[automatically_derived]
 impl ::core::fmt::Debug for Unsized {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Unsized",
             &&self.0)
@@ -741,6 +758,7 @@ struct Generic<T: Trait, U> {
 impl<T: ::core::clone::Clone + Trait, U: ::core::clone::Clone>
     ::core::clone::Clone for Generic<T, U> where T::A: ::core::clone::Clone {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Generic<T, U> {
         Generic {
             t: ::core::clone::Clone::clone(&self.t),
@@ -757,6 +775,7 @@ impl<T: ::core::marker::Copy + Trait, U: ::core::marker::Copy>
 impl<T: ::core::fmt::Debug + Trait, U: ::core::fmt::Debug> ::core::fmt::Debug
     for Generic<T, U> where T::A: ::core::fmt::Debug {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field3_finish(f, "Generic", "t",
             &self.t, "ta", &self.ta, "u", &&self.u)
@@ -860,6 +879,7 @@ impl<T: ::core::clone::Clone + ::core::marker::Copy + Trait,
     PackedGeneric<T, U> where T::A: ::core::clone::Clone +
     ::core::marker::Copy {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> PackedGeneric<T, U> {
         PackedGeneric(::core::clone::Clone::clone(&{ self.0 }),
             ::core::clone::Clone::clone(&{ self.1 }),
@@ -877,6 +897,7 @@ impl<T: ::core::fmt::Debug + ::core::marker::Copy + Trait,
     PackedGeneric<T, U> where T::A: ::core::fmt::Debug + ::core::marker::Copy
     {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field3_finish(f, "PackedGeneric",
             &{ self.0 }, &{ self.1 }, &&{ self.2 })
@@ -983,6 +1004,7 @@ unsafe impl ::core::clone::TrivialClone for Enum0 { }
 #[automatically_derived]
 impl ::core::clone::Clone for Enum0 {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Enum0 { *self }
 }
 #[automatically_derived]
@@ -990,6 +1012,7 @@ impl ::core::marker::Copy for Enum0 { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Enum0 {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match *self {}
     }
@@ -1038,6 +1061,7 @@ enum Enum1 {
 #[automatically_derived]
 impl ::core::clone::Clone for Enum1 {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Enum1 {
         match self {
             Enum1::Single { x: __self_0 } =>
@@ -1048,6 +1072,7 @@ impl ::core::clone::Clone for Enum1 {
 #[automatically_derived]
 impl ::core::fmt::Debug for Enum1 {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Enum1::Single { x: __self_0 } =>
@@ -1115,11 +1140,13 @@ enum Fieldless1 {
 #[automatically_derived]
 impl ::core::clone::Clone for Fieldless1 {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Fieldless1 { Fieldless1::A }
 }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless1 {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f, "A")
     }
@@ -1178,6 +1205,7 @@ unsafe impl ::core::clone::TrivialClone for Fieldless { }
 #[automatically_derived]
 impl ::core::clone::Clone for Fieldless {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Fieldless { *self }
 }
 #[automatically_derived]
@@ -1185,6 +1213,7 @@ impl ::core::marker::Copy for Fieldless { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f,
             match self {
@@ -1248,6 +1277,7 @@ enum Fieldless0 { A, BBB, CC, }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless0 {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f,
             match self {
@@ -1274,6 +1304,7 @@ enum Fieldless10 {
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless10 {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         static __NAMES: &str =
             "AAAAABBBBCCDDDDDDDDEFFFFFFFFFFFFFGGGGGGHatsuneIIIIIIIJJJJJJJJJ";
@@ -1304,6 +1335,7 @@ unsafe impl ::core::clone::TrivialClone for Mixed { }
 #[automatically_derived]
 impl ::core::clone::Clone for Mixed {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Mixed {
         let _: ::core::clone::AssertParamIsClone<u32>;
         let _: ::core::clone::AssertParamIsClone<Option<u32>>;
@@ -1316,6 +1348,7 @@ impl ::core::marker::Copy for Mixed { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Mixed {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Mixed::P => ::core::fmt::Formatter::write_str(f, "P"),
@@ -1490,6 +1523,7 @@ enum Fielded { X(u32), Y(bool), Z(Option<i32>), }
 #[automatically_derived]
 impl ::core::clone::Clone for Fielded {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Fielded {
         match self {
             Fielded::X(__self_0) =>
@@ -1504,6 +1538,7 @@ impl ::core::clone::Clone for Fielded {
 #[automatically_derived]
 impl ::core::fmt::Debug for Fielded {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Fielded::X(__self_0) =>
@@ -1598,6 +1633,7 @@ enum EnumGeneric<T, U> { One(T), Two(U), }
 impl<T: ::core::clone::Clone, U: ::core::clone::Clone> ::core::clone::Clone
     for EnumGeneric<T, U> {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> EnumGeneric<T, U> {
         match self {
             EnumGeneric::One(__self_0) =>
@@ -1615,6 +1651,7 @@ impl<T: ::core::marker::Copy, U: ::core::marker::Copy> ::core::marker::Copy
 impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
     EnumGeneric<T, U> {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             EnumGeneric::One(__self_0) =>
@@ -1749,6 +1786,7 @@ unsafe impl ::core::clone::TrivialClone for Union { }
 #[automatically_derived]
 impl ::core::clone::Clone for Union {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> Union {
         let _: ::core::clone::AssertParamIsCopy<Self>;
         *self
@@ -1766,6 +1804,7 @@ unsafe impl ::core::clone::TrivialClone for FooCopyClone { }
 #[automatically_derived]
 impl ::core::clone::Clone for FooCopyClone {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> FooCopyClone {
         let _: ::core::clone::AssertParamIsClone<i32>;
         *self
@@ -1779,6 +1818,7 @@ unsafe impl ::core::clone::TrivialClone for FooCloneCopy { }
 #[automatically_derived]
 impl ::core::clone::Clone for FooCloneCopy {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> FooCloneCopy {
         let _: ::core::clone::AssertParamIsClone<i32>;
         *self
@@ -1794,6 +1834,7 @@ unsafe impl ::core::clone::TrivialClone for FooCopyAndClone { }
 #[automatically_derived]
 impl ::core::clone::Clone for FooCopyAndClone {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> FooCopyAndClone {
         let _: ::core::clone::AssertParamIsClone<i32>;
         *self
@@ -1811,6 +1852,7 @@ impl ::core::marker::Copy for FooCloneAndCopy { }
 #[automatically_derived]
 impl ::core::clone::Clone for FooCloneAndCopy {
     #[inline]
+    #[rustc_trivial_field_reads]
     fn clone(&self) -> FooCloneAndCopy {
         FooCloneAndCopy(::core::clone::Clone::clone(&self.0))
     }
