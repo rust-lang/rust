@@ -451,14 +451,23 @@ impl CommandExt for process::Command {
     }
 }
 
-#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+#[stable(
+    feature = "windows_process_extensions_main_thread_handle",
+    since = "CURRENT_RUSTC_VERSION"
+)]
 pub impl(self) trait ChildExt {
     /// Extracts the main thread raw handle, without taking ownership
-    #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+    #[stable(
+        feature = "windows_process_extensions_main_thread_handle",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     fn main_thread_handle(&self) -> BorrowedHandle<'_>;
 }
 
-#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+#[stable(
+    feature = "windows_process_extensions_main_thread_handle",
+    since = "CURRENT_RUSTC_VERSION"
+)]
 impl ChildExt for process::Child {
     fn main_thread_handle(&self) -> BorrowedHandle<'_> {
         self.handle.main_thread_handle()
