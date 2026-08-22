@@ -535,9 +535,10 @@ fn normalize_equated_region_vars<Infcx: InferCtxtLike<Interner = I>, I: Interner
     use RegionConstraint::*;
 
     match constraint {
-        Ambiguity | RegionOutlives(..) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
-            constraint
-        }
+        Ambiguity(_)
+        | RegionOutlives(..)
+        | PlaceholderTyOutlives(..)
+        | AliasTyOutlivesViaEnv(..) => constraint,
         Or(constraints) => Or(constraints
             .into_iter()
             .map(|constraint| normalize_equated_region_vars(infcx, constraint, u))
@@ -630,13 +631,13 @@ fn collect_conjunctive_region_outlives<I: Interner>(
     use RegionConstraint::*;
 
     match constraint {
-        RegionOutlives(r1, r2) => out.push((*r1, *r2)),
+        RegionOutlives(r1, r2, _) => out.push((*r1, *r2)),
         And(constraints) => {
             for constraint in constraints.iter() {
                 collect_conjunctive_region_outlives(constraint, out);
             }
         }
-        Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) | Or(..) => {}
+        Ambiguity(_) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) | Or(..) => {}
     }
 }
 

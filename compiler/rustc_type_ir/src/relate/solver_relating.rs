@@ -245,17 +245,23 @@ where
                     unreachable!("Expected bivariance to be handled in relate_with_variance")
                 }
                 _ if a == b => return Ok(a),
-                ty::Covariant => self
-                    .infcx
-                    .register_solver_region_constraint(RegionConstraint::RegionOutlives(a, b)),
-                ty::Contravariant => self
-                    .infcx
-                    .register_solver_region_constraint(RegionConstraint::RegionOutlives(b, a)),
+                ty::Covariant => self.infcx.register_solver_region_constraint(
+                    RegionConstraint::RegionOutlives(a, b, ()),
+                    self.span,
+                ),
+                ty::Contravariant => self.infcx.register_solver_region_constraint(
+                    RegionConstraint::RegionOutlives(b, a, ()),
+                    self.span,
+                ),
                 ty::Invariant => {
-                    self.infcx
-                        .register_solver_region_constraint(RegionConstraint::RegionOutlives(a, b));
-                    self.infcx
-                        .register_solver_region_constraint(RegionConstraint::RegionOutlives(b, a));
+                    self.infcx.register_solver_region_constraint(
+                        RegionConstraint::RegionOutlives(a, b, ()),
+                        self.span,
+                    );
+                    self.infcx.register_solver_region_constraint(
+                        RegionConstraint::RegionOutlives(b, a, ()),
+                        self.span,
+                    );
                 }
             }
         } else {

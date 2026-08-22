@@ -292,11 +292,20 @@ impl<'tcx> InferCtxt<'tcx> {
                 // empty slice. A root-false constraint has nothing to register;
                 // unsatisfied outlives are reported later by borrowck/regionck.
                 Or(nested) => {
-                    let had_members = !nested.is_empty();
-                    let concrete: Vec<_> = nested.into_iter().filter(|c| !c.is_ambig()).collect();
+                    let mut ambiguity = None;
+                    let concrete: Vec<_> = nested
+                        .into_iter()
+                        .filter_map(|c| match c {
+                            Ambiguity(span) => {
+                                ambiguity.get_or_insert(span);
+                                None
+                            }
+                            c => Some(c),
+                        })
+                        .collect();
                     if concrete.is_empty() {
-                        if had_members {
-                            constraints.push(Ambiguity);
+                        if let Some(span) = ambiguity {
+                            constraints.push(Ambiguity(span));
                         }
                     } else {
                         constraints.extend(concrete);

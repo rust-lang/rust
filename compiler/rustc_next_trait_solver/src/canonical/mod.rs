@@ -419,10 +419,12 @@ where
         if self.cx().assumptions_on_binders() {
             if a != b {
                 self.infcx.register_solver_region_constraint(
-                    SolverRegionConstraint::RegionOutlives(a, b),
+                    SolverRegionConstraint::RegionOutlives(a, b, ()),
+                    self.span,
                 );
                 self.infcx.register_solver_region_constraint(
-                    SolverRegionConstraint::RegionOutlives(b, a),
+                    SolverRegionConstraint::RegionOutlives(b, a, ()),
+                    self.span,
                 );
             }
         } else {
