@@ -730,7 +730,15 @@ impl<T: PointeeSized> *const T {
         let pointee_size = size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
         // SAFETY: the caller must uphold the safety contract for `ptr_offset_from_unsigned`.
-        unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
+        let offset = unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) };
+        // On 32-bit targets, this assumption can inhibit LLVM's allocation forwarding.
+        #[cfg(target_pointer_width = "64")]
+        {
+            // SAFETY: the safety contract guarantees that the pointers differ by at most
+            // `isize::MAX` bytes, so the result cannot be larger than `isize::MAX` elements.
+            unsafe { intrinsics::assume(offset <= isize::MAX as usize) };
+        }
+        offset
     }
 
     /// Calculates the distance between two pointers within the same allocation, *where it's known that
