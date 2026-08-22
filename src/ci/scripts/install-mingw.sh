@@ -12,7 +12,15 @@ LLVM_MINGW_ARCHIVE_AARCH64="llvm-mingw-20251104-ucrt-aarch64.zip"
 LLVM_MINGW_ARCHIVE_X86_64="llvm-mingw-20251104-ucrt-x86_64.zip"
 
 if isWindows && isKnownToBeMingwBuild; then
-    case "${CI_JOB_NAME}" in
+    toolchains=
+    if [[ "${CI_JOB_NAME}" == *i686-mingw* ]]; then
+        toolchains=("${CI_JOB_NAME}" "x86_64-mingw")
+    else
+        toolchains=("${CI_JOB_NAME}")
+    fi
+
+    for toolchain in "${toolchains[@]}"; do
+        case "${toolchain}" in
         *aarch64-llvm*)
             mingw_dir="clangarm64"
             mingw_archive="${LLVM_MINGW_ARCHIVE_AARCH64}"
@@ -81,4 +89,5 @@ if isWindows && isKnownToBeMingwBuild; then
         # (see https://github.com/actions/runner-images/issues/12600)
         /c/msys64/usr/bin/bash -lc ' '
     fi
+    done
 fi
