@@ -1,10 +1,12 @@
 use std::cell::{OnceCell, RefCell};
 use std::ffi::{CStr, CString};
 
+use rustc_abi::Size;
 use rustc_codegen_ssa::traits::{
-    ConstCodegenMethods, CoverageInfoBuilderMethods, MiscCodegenMethods,
+    BuilderMethods, ConstCodegenMethods, CoverageInfoBuilderMethods, MiscCodegenMethods,
 };
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
 use tracing::{debug, instrument};
@@ -28,12 +30,34 @@ pub(crate) struct CguCoverageContext<'ll, 'tcx> {
     /// hash back to an entry in the binary's `__llvm_prf_names` linker section.
     pub(crate) pgo_func_name_var_map: RefCell<FxIndexMap<Instance<'tcx>, &'ll llvm::Value>>,
 
+    /// Holds temporary variables needed for MCDC test vector computations.
+    /// Allocates as many temps as the maximum decision depth of the function,
+    /// This is done to save the status of the test vector of a "parent"
+    /// decision while evaluating the nested one in another temp.
+    pub(crate) mcdc_temporaries_map: RefCell<FxIndexMap<Instance<'tcx>, Vec<&'ll llvm::Value>>>,
+
     covfun_section_name: OnceCell<CString>,
 }
 
 impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
     pub(crate) fn new() -> Self {
-        Self { pgo_func_name_var_map: Default::default(), covfun_section_name: Default::default() }
+        Self {
+            pgo_func_name_var_map: Default::default(),
+            mcdc_temporaries_map: Default::default(),
+            covfun_section_name: Default::default(),
+        }
+    }
+
+    fn try_get_mcdc_condition_temporary(
+        &self,
+        instance: &Instance<'tcx>,
+        decision_depth: u16,
+    ) -> Option<&'ll llvm::Value> {
+        self.mcdc_temporaries_map
+            .borrow()
+            .get(instance)
+            .and_then(|map| map.get(decision_depth as usize))
+            .copied()
     }
 
     /// Returns the list of instances considered "used" in this CGU, as
@@ -84,6 +108,43 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
 impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
+    fn init_coverage(&mut self, instance: Instance<'tcx>) {
+        let Some(function_coverage_info) =
+            self.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
+        else {
+            // Early return if there is no coverage info.
+            return;
+        };
+
+        let Some(mcdc_info) = function_coverage_info.mcdc_info.as_ref() else {
+            return;
+        };
+
+        let fn_name = self.ensure_pgo_func_name_var(instance);
+        let hash = self.const_u64(function_coverage_info.function_source_hash);
+        let bitmap_bits = self.const_u32(mcdc_info.bitmap_bits as u32);
+
+        self.mcdc_parameters(fn_name, hash, bitmap_bits);
+
+        let num_temporaries = mcdc_info.num_temporaries;
+
+        let mut temporaries = vec![];
+
+        for i in 0..num_temporaries {
+            // MC/DC intrinsics will perform loads/stores that use the ABI default
+            // alignment for i32, so our variable declaration should match.
+            let align = self.tcx.data_layout.i32_align;
+            let temp = self.alloca(Size::from_bytes(4), align);
+            llvm::set_value_name(temp, format!("mcdc.temp.{i}").as_bytes());
+            self.store(self.const_i32(0), temp, align);
+            temporaries.push(temp);
+        }
+
+        // After building the list of temps, save it to the coverage context
+        self.coverage_cx().mcdc_temporaries_map.borrow_mut().insert(instance, temporaries);
+    }
+
+    #[instrument(level = "debug", skip(self))]
     fn add_coverage(&mut self, instance: Instance<'tcx>, kind: &CoverageKind) {
         // Our caller should have already taken care of inlining subtleties,
         // so we can assume that counter/expression IDs in this coverage
@@ -99,7 +160,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         // When that happens, we currently just discard those statements, so
         // the corresponding code will be undercounted.
         // FIXME(Zalathar): Find a better solution for mixed-coverage builds.
-        let Some(_coverage_cx) = &bx.cx.coverage_cx else { return };
+        let Some(coverage_cx) = &bx.cx.coverage_cx else { return };
 
         let Some(function_coverage_info) =
             bx.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
@@ -131,6 +192,39 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             }
             // If a BCB doesn't have an associated physical counter, there's nothing to codegen.
             CoverageKind::VirtualCounter { .. } => {}
+
+            // Handle MC/DC
+            CoverageKind::MCDCTmpIdxUpdate { incr, decision_depth } => {
+                let Some(temp_var) =
+                    coverage_cx.try_get_mcdc_condition_temporary(&instance, decision_depth)
+                else {
+                    bug!("temporary bitmap should have been allocated for depth {decision_depth:?}")
+                };
+                let incr = bx.const_i32(incr as i32);
+                bx.mcdc_condition_temp_update(incr, temp_var);
+            }
+            CoverageKind::MCDCTestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
+                let Some(temp_var) =
+                    coverage_cx.try_get_mcdc_condition_temporary(&instance, decision_depth)
+                else {
+                    bug!("temporary bitmap should have been allocated for depth {decision_depth:?}")
+                };
+
+                assert!(
+                    function_coverage_info
+                        .mcdc_info
+                        .as_ref()
+                        .is_some_and(|mcdc_info| bitmap_idx as usize <= mcdc_info.bitmap_bits),
+                    "bitmap_idx ({bitmap_idx:?} out of range"
+                );
+
+                let fn_name = bx.ensure_pgo_func_name_var(instance);
+                let hash = bx.const_u64(function_coverage_info.function_source_hash);
+                let bitmap_idx = bx.const_u32(bitmap_idx as u32);
+
+                bx.mcdc_tvbitmap_update(fn_name, hash, bitmap_idx, temp_var);
+                bx.mcdc_condition_temp_reset(temp_var);
+            }
         }
     }
 }

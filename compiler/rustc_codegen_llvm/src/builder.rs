@@ -2190,4 +2190,58 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) {
         self.call_intrinsic("llvm.instrprof.increment", &[], &[fn_name, hash, num_counters, index]);
     }
+
+    /// Emits a call to `llvm.instrprof.mcdc.parameters`.
+    ///
+    /// This doesn't produce any code directly, but is used as input by
+    /// the LLVM pass that handles coverage instrumentation.
+    ///
+    /// (See clang's [`CodeGenPGO::emitMCDCParameters`] for comparison.)
+    ///
+    /// [`CodeGenPGO::emitMCDCParameters`]:
+    ///     https://github.com/rust-lang/llvm-project/blob/5399a24/clang/lib/CodeGen/CodeGenPGO.cpp#L1124
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn mcdc_parameters(
+        &mut self,
+        fn_name: &'ll Value,
+        hash: &'ll Value,
+        bitmap_bits: &'ll Value,
+    ) {
+        self.call_intrinsic("llvm.instrprof.mcdc.parameters", &[], &[fn_name, hash, bitmap_bits]);
+    }
+
+    /// Call an LLVM intrinsic that uses the value in `mcdc_temp` as an index
+    /// in the function's MC/DC bitmap.
+    ///
+    /// Think of it like `func_mcdc_bitmap[bitmap_idx + mcdc_temp as u32] += 1`
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn mcdc_tvbitmap_update(
+        &mut self,
+        fn_name: &'ll Value,
+        hash: &'ll Value,
+        bitmap_idx: &'ll Value,
+        mcdc_temp: &'ll Value,
+    ) {
+        let args = &[fn_name, hash, bitmap_idx, mcdc_temp];
+        self.call_intrinsic("llvm.instrprof.mcdc.tvbitmap.update", &[], args);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn mcdc_condition_temp_reset(&mut self, mcdc_temp: &'ll Value) {
+        self.store(self.const_i32(0), mcdc_temp, self.tcx.data_layout.i32_align);
+    }
+
+    /// Increment `mcdc_temp` by `cond_incr` to keep track of the execution
+    /// path in an MC/DC instrumented decision.
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn mcdc_condition_temp_update(
+        &mut self,
+        cond_incr: &'ll Value,
+        mcdc_temp: &'ll Value,
+    ) {
+        let align = self.tcx.data_layout.i32_align;
+        let current_tv_index = self.load(self.cx.type_i32(), mcdc_temp, align);
+        let new_tv_index = self.add(current_tv_index, cond_incr);
+        self.store(new_tv_index, mcdc_temp, align);
+    }
 }

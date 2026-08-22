@@ -1,6 +1,7 @@
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, CoverageInfoHi, CoverageKind, Mapping, MappingKind,
+    BlockMarkerId, BranchSpan, CoverageInfoHi, CoverageKind, FunctionMCDCExtraInfo, Mapping,
+    MappingKind,
 };
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
@@ -9,6 +10,7 @@ use rustc_span::ExpnKind;
 use crate::coverage::expansion::{self, ExpnTree};
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::hir_info::ExtractedHirInfo;
+use crate::coverage::mcdc;
 use crate::coverage::spans::extract_refined_covspans;
 
 /// Indicates why mapping extraction failed, for debug-logging purposes.
@@ -21,6 +23,7 @@ pub(crate) enum MappingsError {
 #[derive(Default)]
 pub(crate) struct ExtractedMappings {
     pub(crate) mappings: Vec<Mapping>,
+    pub(crate) mcdc_data: Option<(Vec<mcdc::MCDCMetaMapping>, FunctionMCDCExtraInfo)>,
 }
 
 /// Extracts coverage-relevant spans from MIR, and uses them to create
@@ -40,14 +43,16 @@ pub(crate) fn extract_mappings_from_mir<'tcx>(
 
     extract_branch_mappings(mir_body, hir_info, graph, &expn_tree, &mut mappings);
 
-    if mappings.is_empty() {
+    let mcdc_data = mcdc::extract_mcdc_mappings(mir_body, hir_info, graph, &expn_tree);
+
+    if mappings.is_empty() && mcdc_data.is_none() {
         tracing::debug!("no mappings were extracted");
         return Err(MappingsError::NoMappings);
     }
-    Ok(ExtractedMappings { mappings })
+    Ok(ExtractedMappings { mappings, mcdc_data })
 }
 
-fn resolve_block_markers(
+pub(crate) fn resolve_block_markers(
     coverage_info_hi: &CoverageInfoHi,
     mir_body: &mir::Body<'_>,
 ) -> IndexVec<BlockMarkerId, Option<BasicBlock>> {

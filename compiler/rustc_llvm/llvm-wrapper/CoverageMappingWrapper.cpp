@@ -38,6 +38,32 @@ static coverage::Counter fromRust(LLVMRustCounter Counter) {
 }
 
 // Must match the layout of
+// `rustc_codegen_llvm::coverageinfo::ffi::mcdc::DecisionParameters`.
+struct LLVMRustMCDCDecisionParameters {
+  uint32_t BitmapIdx;
+  uint16_t NumConditions;
+};
+
+// Must match the layout of
+// `rustc_codegen_llvm::coverageinfo::ffi::mcdc::ConditionRegion`.
+struct LLVMRustMCDCConditionParameters {
+  int16_t ConditionID;
+  int16_t ConditionIDs[2];
+};
+
+static coverage::mcdc::BranchParameters
+fromRust(LLVMRustMCDCConditionParameters Params) {
+  return coverage::mcdc::BranchParameters(
+      Params.ConditionID, {Params.ConditionIDs[0], Params.ConditionIDs[1]});
+}
+
+static coverage::mcdc::DecisionParameters
+fromRust(LLVMRustMCDCDecisionParameters Params) {
+  return coverage::mcdc::DecisionParameters(Params.BitmapIdx,
+                                            Params.NumConditions);
+}
+
+// Must match the layout of
 // `rustc_codegen_llvm::coverageinfo::ffi::CoverageSpan`.
 struct LLVMRustCoverageSpan {
   uint32_t FileID;
@@ -66,6 +92,22 @@ struct LLVMRustCoverageBranchRegion {
   LLVMRustCoverageSpan Span;
   LLVMRustCounter TrueCount;
   LLVMRustCounter FalseCount;
+};
+
+// Must match the layout of
+// `rustc_codegen_llvm::coverageinfo::ffi::mcdc::DecisionRegion`.
+struct LLVMRustCoverageMCDCDecisionRegion {
+  LLVMRustCoverageSpan Span;
+  LLVMRustMCDCDecisionParameters MCDCDecisionParams;
+};
+
+// Must match the layout of
+// `rustc_codegen_llvm::coverageinfo::ffi::mcdc::ConditionRegion`.
+struct LLVMRustCoverageMCDCConditionRegion {
+  LLVMRustCoverageSpan Span;
+  LLVMRustCounter TrueCount;
+  LLVMRustCounter FalseCount;
+  LLVMRustMCDCConditionParameters MCDCConditionParams;
 };
 
 // FFI equivalent of enum `llvm::coverage::CounterExpression::ExprKind`
@@ -121,7 +163,10 @@ extern "C" void LLVMRustCoverageWriteFunctionMappingsToBuffer(
     const LLVMRustCoverageExpansionRegion *ExpansionRegions,
     size_t NumExpansionRegions,
     const LLVMRustCoverageBranchRegion *BranchRegions, size_t NumBranchRegions,
-    RustStringRef BufferOut) {
+    const LLVMRustCoverageMCDCConditionRegion *MCDCConditionRegions,
+    size_t NumMCDCConditionRegions,
+    const LLVMRustCoverageMCDCDecisionRegion *MCDCDecisionRegions,
+    size_t NumMCDCDecisionRegions, RustStringRef BufferOut) {
   // Convert from FFI representation to LLVM representation.
 
   // Expressions:
@@ -136,7 +181,8 @@ extern "C" void LLVMRustCoverageWriteFunctionMappingsToBuffer(
 
   std::vector<coverage::CounterMappingRegion> MappingRegions;
   MappingRegions.reserve(NumCodeRegions + NumExpansionRegions +
-                         NumBranchRegions);
+                         NumBranchRegions + NumMCDCConditionRegions +
+                         NumMCDCDecisionRegions);
 
   // Code regions:
   for (const auto &Region : ArrayRef(CodeRegions, NumCodeRegions)) {
@@ -158,6 +204,25 @@ extern "C" void LLVMRustCoverageWriteFunctionMappingsToBuffer(
         fromRust(Region.TrueCount), fromRust(Region.FalseCount),
         Region.Span.FileID, Region.Span.LineStart, Region.Span.ColumnStart,
         Region.Span.LineEnd, Region.Span.ColumnEnd));
+  }
+
+  // MC/DC condition regions
+  for (const auto &Region :
+       ArrayRef(MCDCConditionRegions, NumMCDCConditionRegions)) {
+    MappingRegions.push_back(coverage::CounterMappingRegion::makeBranchRegion(
+        fromRust(Region.TrueCount), fromRust(Region.FalseCount),
+        Region.Span.FileID, Region.Span.LineStart, Region.Span.ColumnStart,
+        Region.Span.LineEnd, Region.Span.ColumnEnd,
+        fromRust(Region.MCDCConditionParams)));
+  }
+
+  // MC/DC decision regions
+  for (const auto &Region :
+       ArrayRef(MCDCDecisionRegions, NumMCDCDecisionRegions)) {
+    MappingRegions.push_back(coverage::CounterMappingRegion::makeDecisionRegion(
+        fromRust(Region.MCDCDecisionParams), Region.Span.FileID,
+        Region.Span.LineStart, Region.Span.ColumnStart, Region.Span.LineEnd,
+        Region.Span.ColumnEnd));
   }
 
   // Write the converted expressions and mappings to a byte buffer.

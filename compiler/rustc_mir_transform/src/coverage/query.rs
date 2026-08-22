@@ -109,6 +109,13 @@ fn coverage_ids_info<'tcx>(
                 bcb_needs_counter.insert(true_bcb);
                 bcb_needs_counter.insert(false_bcb);
             }
+            MappingKind::MCDCCondition { true_bcb, false_bcb, .. } => {
+                // Not actually necessary for MC/DC, but needed to have branch
+                // coverage when instrumenting for MC/DC.
+                bcb_needs_counter.insert(true_bcb);
+                bcb_needs_counter.insert(false_bcb);
+            }
+            MappingKind::MCDCDecision { .. } => {}
         }
     }
 
