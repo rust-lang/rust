@@ -224,10 +224,19 @@ where
 
                 // FIXME(generic_const_exprs): Implement handling for generic
                 // const expressions here.
-                if let Some(_normalized) = self.evaluate_const(param_env, alias_const)? {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                } else {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                match self.evaluate_const(param_env, alias_const)? {
+                    crate::delegate::EvaluateConstResult::Evaluated(_) => {
+                        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    }
+                    crate::delegate::EvaluateConstResult::TooGeneric => {
+                        self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                    }
+                    crate::delegate::EvaluateConstResult::NonValTree(_) => {
+                        self.cx().delay_bug(
+                            "Type system constant with non valtree'able type evaluated but no error emitted",
+                        );
+                        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    }
                 }
             }
 

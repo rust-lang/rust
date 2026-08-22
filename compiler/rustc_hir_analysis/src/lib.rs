@@ -194,6 +194,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         {
             tcx.ensure_ok().typeck(item_def_id);
         }
+        if def_kind == DefKind::AnonConst {
+            let _: Result<(), ErrorGuaranteed> =
+                check::check_assoc_const_equality(tcx, item_def_id);
+        }
         // Ensure we generate the new `DefId` before finishing `check_crate`.
         // Afterwards we freeze the list of `DefId`s.
         if tcx.needs_coroutine_by_move_body_def_id(item_def_id.to_def_id()) {

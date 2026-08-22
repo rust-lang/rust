@@ -28,6 +28,14 @@ pub(crate) struct UnableToConstructConstantValue<'a> {
     pub alias_const: ty::AliasConst<'a>,
 }
 
+#[derive(Diagnostic)]
+#[diag("pointers cannot be reliably compared during const eval")]
+#[note("see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information")]
+pub(crate) struct RawPtrComparisonErr {
+    #[primary_span]
+    pub span: Span,
+}
+
 pub(crate) struct NegativePositiveConflict<'tcx> {
     pub impl_span: Span,
     pub trait_desc: ty::TraitRef<'tcx>,

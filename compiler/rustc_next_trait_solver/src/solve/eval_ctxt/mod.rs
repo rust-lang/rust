@@ -28,7 +28,7 @@ use crate::canonical::{
     response_no_constraints_raw,
 };
 use crate::coherence;
-use crate::delegate::SolverDelegate;
+use crate::delegate::{EvaluateConstResult, SolverDelegate};
 use crate::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use crate::placeholder::BoundVarReplacer;
 use crate::solve::eval_ctxt::fast_path::{
@@ -1410,7 +1410,7 @@ where
         &mut self,
         param_env: I::ParamEnv,
         alias_const: ty::AliasConst<I>,
-    ) -> Result<Option<I::Const>, NoSolutionOrRerunNonErased> {
+    ) -> Result<EvaluateConstResult<I>, NoSolutionOrRerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
@@ -1428,11 +1428,11 @@ where
         alias_const: ty::AliasConst<I>,
     ) -> QueryResultOrRerunNonErased<I> {
         match self.evaluate_const(param_env, alias_const)? {
-            Some(evaluated) => {
+            EvaluateConstResult::Evaluated(evaluated) => {
                 self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            None if self.cx().features().generic_const_args() => {
+            EvaluateConstResult::TooGeneric if self.cx().features().generic_const_args() => {
                 // HACK(khyperia): calling `resolve_vars_if_possible` here shouldn't be necessary,
                 // `try_evaluate_const` calls `resolve_vars_if_possible` already. However, we want
                 // to check `has_non_region_infer` against the type with vars resolved (i.e. check
@@ -1457,9 +1457,16 @@ where
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
             }
-            None => {
+            EvaluateConstResult::TooGeneric => {
                 // Legacy behavior: always treat as ambiguous
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+            EvaluateConstResult::NonValTree(_) => {
+                let guar = self.cx().delay_bug(
+                    "Type system constant with non valtree'able type evaluated but no error emitted",
+                );
+                self.eq(param_env, expected_term, Const::new_error(self.cx(), guar).into())?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
         }
     }
