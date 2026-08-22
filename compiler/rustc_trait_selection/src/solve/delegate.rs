@@ -520,7 +520,8 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             predicates: vec![],
             recursion_limit: usize::min(16, tcx.recursion_limit().0),
         };
-        let _ = self.enter_next_solver_overflow_fcw(|| self.visit_proof_tree(goal, &mut visitor));
+        let _ = self
+            .with_disabled_next_solver_overflow_fcw(|| self.visit_proof_tree(goal, &mut visitor));
         tcx.emit_node_span_lint(
             RECURSION_DEPTH_EXCEEDING_LIMIT,
             CRATE_HIR_ID,

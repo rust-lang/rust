@@ -1558,7 +1558,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// We need to disable the fcw if we're already in a fcw emitting to avoid
     /// indefinite triggering.
-    pub fn enter_next_solver_overflow_fcw<F, R>(&self, mut f: F) -> R
+    pub fn with_disabled_next_solver_overflow_fcw<F, R>(&self, mut f: F) -> R
     where
         F: FnMut() -> R,
     {
