@@ -3,7 +3,9 @@
 
 use crate::intrinsics::const_eval_select;
 
+#[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
 const LO_USIZE: usize = usize::repeat_u8(0x01);
+#[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
 const HI_USIZE: usize = usize::repeat_u8(0x80);
 const USIZE_BYTES: usize = size_of::<usize>();
 
@@ -14,6 +16,7 @@ const USIZE_BYTES: usize = size_of::<usize>();
 /// "The idea is to subtract one from each of the bytes and then look for
 /// bytes where the borrow propagated all the way to the most significant
 /// bit."
+#[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
 #[inline]
 const fn contains_zero_byte(x: usize) -> bool {
     x.wrapping_sub(LO_USIZE) & !x & HI_USIZE != 0
@@ -25,7 +28,7 @@ const fn contains_zero_byte(x: usize) -> bool {
 pub const fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     // Fast path for small slices.
     let result =
-        if text.len() < 2 * USIZE_BYTES { memchr_naive(x, text) } else { memchr_aligned(x, text) };
+        if text.len() < 2 * USIZE_BYTES { memchr_naive(x, text) } else { memchr_wide(x, text) };
     if let Some(index) = result {
         // SAFETY: Both implementations only return an index from within `text`.
         unsafe { crate::hint::assert_unchecked(index < text.len()) };
@@ -50,7 +53,7 @@ const fn memchr_naive(x: u8, text: &[u8]) -> Option<usize> {
 }
 
 #[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
-const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
+const fn memchr_wide(x: u8, text: &[u8]) -> Option<usize> {
     // The runtime version behaves the same as the compiletime version, it's
     // just more optimized.
     const_eval_select!(
@@ -58,68 +61,156 @@ const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
         if const {
             memchr_naive(x, text)
         } else {
-            // Scan for a single byte value by reading two `usize` words at a time.
-            //
-            // Split `text` in three parts
-            // - unaligned initial part, before the first word aligned address in text
-            // - body, scan by 2 words at a time
-            // - the last remaining part, < 2 word size
-
-            // search up to an aligned boundary
-            let len = text.len();
-            let ptr = text.as_ptr();
-            let mut offset = ptr.align_offset(USIZE_BYTES);
-
-            if offset > 0 {
-                offset = offset.min(len);
-                let slice = &text[..offset];
-                if let Some(index) = memchr_naive(x, slice) {
-                    return Some(index);
-                }
-            }
-
-            // search the body of the text
-            let repeated_x = usize::repeat_u8(x);
-            while offset <= len - 2 * USIZE_BYTES {
-                // SAFETY: the while's predicate guarantees a distance of at least 2 * usize_bytes
-                // between the offset and the end of the slice.
-                unsafe {
-                    let u = *(ptr.add(offset) as *const usize);
-                    let v = *(ptr.add(offset + USIZE_BYTES) as *const usize);
-
-                    // break if there is a matching byte
-                    let zu = contains_zero_byte(u ^ repeated_x);
-                    let zv = contains_zero_byte(v ^ repeated_x);
-                    if zu || zv {
-                        break;
-                    }
-                }
-                offset += USIZE_BYTES * 2;
-            }
-
-            // Find the byte after the point the body loop stopped.
-            // FIXME(const-hack): Use `?` instead.
-            // FIXME(const-hack, fee1-dead): use range slicing
-            let slice =
-            // SAFETY: offset is within bounds
-                unsafe { super::from_raw_parts(text.as_ptr().add(offset), text.len() - offset) };
-            if let Some(i) = memchr_naive(x, slice) { Some(offset + i) } else { None }
+            #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+            { memchr_vectored(x, text) }
+            #[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
+            { memchr_aligned(x, text) }
         }
     )
+}
+
+/// Scan for a single byte value by reading two `usize` words at a time.
+///
+/// Only called from the runtime arm of `memchr_wide`'s `const_eval_select`,
+/// so it does not need to be (and cannot be: `align_offset`) a `const fn`.
+#[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
+fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
+    // Split `text` in three parts
+    // - unaligned initial part, before the first word aligned address in text
+    // - body, scan by 2 words at a time
+    // - the last remaining part, < 2 word size
+
+    // search up to an aligned boundary
+    let len = text.len();
+    let ptr = text.as_ptr();
+    let mut offset = ptr.align_offset(USIZE_BYTES);
+
+    if offset > 0 {
+        offset = offset.min(len);
+        let slice = &text[..offset];
+        if let Some(index) = memchr_naive(x, slice) {
+            return Some(index);
+        }
+    }
+
+    // search the body of the text
+    let repeated_x = usize::repeat_u8(x);
+    while offset <= len - 2 * USIZE_BYTES {
+        // SAFETY: the while's predicate guarantees a distance of at least 2 * usize_bytes
+        // between the offset and the end of the slice.
+        unsafe {
+            let u = *(ptr.add(offset) as *const usize);
+            let v = *(ptr.add(offset + USIZE_BYTES) as *const usize);
+
+            // break if there is a matching byte
+            let zu = contains_zero_byte(u ^ repeated_x);
+            let zv = contains_zero_byte(v ^ repeated_x);
+            if zu || zv {
+                break;
+            }
+        }
+        offset += USIZE_BYTES * 2;
+    }
+
+    // Find the byte after the point the body loop stopped.
+    // LLVM cannot prove `offset <= len` here, so `&text[offset..]`
+    // emits an unreachable  bounds-check panic branch.
+    // SAFETY: offset is within bounds
+    let slice = unsafe { super::from_raw_parts(ptr.add(offset), len - offset) };
+    memchr_naive(x, slice).map(|i| offset + i)
+}
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+const CHUNK_SIZE: usize = 64;
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+const VECTOR_SIZE: usize = 16;
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+#[inline]
+fn chunk_contains(x: u8, chunk: &[u8; CHUNK_SIZE]) -> bool {
+    use crate::simd::cmp::SimdPartialEq;
+    use crate::simd::u8x16;
+
+    let needle = u8x16::splat(x);
+    let (vectors, _) = chunk.as_chunks::<VECTOR_SIZE>();
+    let any = u8x16::from_array(vectors[0]).simd_eq(needle)
+        | u8x16::from_array(vectors[1]).simd_eq(needle)
+        | u8x16::from_array(vectors[2]).simd_eq(needle)
+        | u8x16::from_array(vectors[3]).simd_eq(needle);
+    any.any()
+}
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+#[inline]
+fn vector_contains(x: u8, vector: &[u8; VECTOR_SIZE]) -> bool {
+    use crate::simd::cmp::SimdPartialEq;
+    use crate::simd::u8x16;
+
+    u8x16::from_array(*vector).simd_eq(u8x16::splat(x)).any()
+}
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+#[inline]
+fn memchr_vectored(x: u8, text: &[u8]) -> Option<usize> {
+    // Main loop: one any-match reduction per 64 bytes, so the long-latency
+    // horizontal reduction runs once per four vectors rather than per load.
+    let (chunks, _) = text.as_chunks::<CHUNK_SIZE>();
+    let mut offset = 0;
+    for chunk in chunks {
+        if chunk_contains(x, chunk) {
+            break;
+        }
+        offset += CHUNK_SIZE;
+    }
+
+    // SAFETY: `offset` advances by whole chunks of the `as_chunks`
+    // decomposition, so `offset <= text.len()`.
+    unsafe { crate::hint::assert_unchecked(offset <= text.len()) };
+
+    // Single-vector steps: sweep the tail left by the unrolled loop, and
+    // narrow a 64-byte hit down to the 16-byte block containing the match.
+    let (vectors, _) = text[offset..].as_chunks::<VECTOR_SIZE>();
+    for vector in vectors {
+        if vector_contains(x, vector) {
+            break;
+        }
+        offset += VECTOR_SIZE;
+    }
+
+    // SAFETY: as above, `offset` only advanced by whole vectors.
+    unsafe { crate::hint::assert_unchecked(offset <= text.len()) };
+
+    // Exact index recovery within the candidate 16-byte block, or the final
+    // < 16-byte scalar tail.
+    match text[offset..].iter().position(|&b| b == x) {
+        Some(i) => Some(offset + i),
+        None => None,
+    }
 }
 
 /// Returns the last index matching the byte `x` in `text`.
 #[inline]
 #[must_use]
 pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
-    let result = memrchr_aligned(x, text);
+    let result = {
+        #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+        {
+            memrchr_vectored(x, text)
+        }
+        #[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
+        {
+            memrchr_aligned(x, text)
+        }
+    };
     if let Some(index) = result {
-        // SAFETY: `memrchr_aligned` only returns the index of a matching byte in `text`.
+        // SAFETY: every implementation only returns the index of a matching byte in `text`.
         unsafe { crate::hint::assert_unchecked(index < text.len()) };
     }
     result
 }
 
+#[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
 fn memrchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
     // Scan for a single byte value by reading two `usize` words at a time.
     //
@@ -170,4 +261,34 @@ fn memrchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
 
     // Find the byte before the point the body loop stopped.
     text[..offset].iter().rposition(|elt| *elt == x)
+}
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+#[inline]
+fn memrchr_vectored(x: u8, text: &[u8]) -> Option<usize> {
+    let (_, chunks) = text.as_rchunks::<CHUNK_SIZE>();
+    let mut end = text.len();
+    for chunk in chunks.iter().rev() {
+        if chunk_contains(x, chunk) {
+            break;
+        }
+        end -= CHUNK_SIZE;
+    }
+
+    // SAFETY: `end` decreases by whole chunks of the `as_rchunks`
+    // decomposition, so `end <= text.len()`.
+    unsafe { crate::hint::assert_unchecked(end <= text.len()) };
+
+    let (_, vectors) = text[..end].as_rchunks::<VECTOR_SIZE>();
+    for vector in vectors.iter().rev() {
+        if vector_contains(x, vector) {
+            break;
+        }
+        end -= VECTOR_SIZE;
+    }
+
+    // SAFETY: as above, `end` only decreased by whole vectors.
+    unsafe { crate::hint::assert_unchecked(end <= text.len()) };
+
+    text[..end].iter().rposition(|&b| b == x)
 }
