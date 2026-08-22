@@ -470,9 +470,7 @@ impl char {
     }
 
     /// An extended version of `escape_debug` that optionally permits escaping
-    /// Extended Grapheme codepoints, single quotes, and double quotes. This
-    /// allows us to format characters like nonspacing marks better when they're
-    /// at the start of a string, and allows escaping single quotes in
+    /// single quotes and double quotes. This allows escaping single quotes in
     /// characters, and double quotes in strings.
     #[inline]
     pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
@@ -495,7 +493,7 @@ impl char {
             _ if self.is_control()
                 || self.is_private_use()
                 || self.is_whitespace()
-                || args.escape_grapheme_extender && self.is_grapheme_extender()
+                || self.is_grapheme_extender()
                 || self.is_default_ignorable()
                 || self.is_format_control()
                 || !self.is_assigned() =>
@@ -2454,16 +2452,6 @@ impl char {
 }
 
 pub(crate) struct EscapeDebugExtArgs {
-    /// Escape Grapheme Extender codepoints?
-    ///
-    /// Note that this excludes
-    /// U+FF9E HALFWIDTH KATAKANA VOICED SOUND MARK
-    /// and U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK,
-    /// which are never escaped, as graphically
-    /// they are not combining. See <https://github.com/microsoft/terminal/issues/18087>
-    /// for background on these characters.
-    pub(crate) escape_grapheme_extender: bool,
-
     /// Escape single quotes?
     pub(crate) escape_single_quote: bool,
 
@@ -2472,11 +2460,8 @@ pub(crate) struct EscapeDebugExtArgs {
 }
 
 impl EscapeDebugExtArgs {
-    pub(crate) const ESCAPE_ALL: Self = Self {
-        escape_grapheme_extender: true,
-        escape_single_quote: true,
-        escape_double_quote: true,
-    };
+    pub(crate) const ESCAPE_ALL: Self =
+        Self { escape_single_quote: true, escape_double_quote: true };
 }
 
 #[inline]
