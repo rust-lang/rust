@@ -90,6 +90,8 @@ impl RawWaker {
 /// pointers to *different* functions can compare equal (since identical functions can be
 /// deduplicated within a codegen unit).
 ///
+/// This struct is guaranteed to be aligned to at least 8 bytes.
+///
 /// # Thread safety
 /// If the [`RawWaker`] will be used to construct a [`Waker`] then
 /// these functions must all be thread-safe (even though [`RawWaker`] is
@@ -106,6 +108,7 @@ impl RawWaker {
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[allow(unpredictable_function_pointer_comparisons)]
 #[derive(PartialEq, Copy, Clone, Debug)]
+#[repr(align(8))] // For bit-stuffing pointers we guarantee align >= 8.
 pub struct RawWakerVTable {
     /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
     /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.
