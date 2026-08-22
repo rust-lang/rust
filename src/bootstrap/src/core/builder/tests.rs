@@ -1026,16 +1026,17 @@ mod snapshot {
         [doc] cargo (book) <host>
         [doc] rustc 1 <host> -> Clippy 2 <host>
         [doc] clippy (book) <host>
+        [doc] rustc 1 <host> -> BuildHelper 2 <host>
         [doc] rustc 1 <host> -> Miri 2 <host>
+        [doc] rustc 1 <host> -> Tidy 2 <host>
+        [doc] rustc 1 <host> -> Bootstrap 2 <host>
+        [doc] rustc 1 <host> -> RunMakeSupport 2 <host>
+        [doc] rustc 1 <host> -> Compiletest 2 <host>
+        [doc] rustc 1 <host> -> compiler-doc 2 <host>
         [doc] embedded-book (book) <host>
         [doc] edition-guide (book) <host>
         [doc] style-guide (book) <host>
-        [doc] rustc 1 <host> -> Tidy 2 <host>
-        [doc] rustc 1 <host> -> Bootstrap 2 <host>
         [doc] rustc 1 <host> -> releases 2 <host>
-        [doc] rustc 1 <host> -> RunMakeSupport 2 <host>
-        [doc] rustc 1 <host> -> BuildHelper 2 <host>
-        [doc] rustc 1 <host> -> Compiletest 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         "
         );

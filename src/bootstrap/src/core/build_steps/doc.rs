@@ -20,9 +20,9 @@ use crate::core::builder::{
     crate_description,
 };
 use crate::core::compiler::Compiler;
-use crate::core::config::{Config, TargetSelection};
+use crate::core::config::TargetSelection;
 use crate::core::session::{FileType, Mode};
-use crate::utils::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
+use crate::utils::helpers::{submodule_path_of, t, up_to_date};
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {
@@ -871,6 +871,170 @@ pub fn prepare_doc_compiler(
     build_compiler
 }
 
+/// Generate the combined compiler docs for a given toolchain.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct CompilerDoc {
+    build_compiler: Compiler,
+    target: TargetSelection,
+    stage: u32,
+}
+
+impl CompilerDoc {
+    /// Document `stage` compiler for the given `target`.
+    pub(crate) fn for_stage(builder: &Builder<'_>, stage: u32, target: TargetSelection) -> Self {
+        let build_compiler = prepare_doc_compiler(builder, target, stage);
+        Self { build_compiler, target, stage }
+    }
+}
+
+impl CommandLineStep for CompilerDoc {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("compiler-doc")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.compiler_docs
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CompilerDoc::for_stage(run.builder, run.builder.top_stage, run.target));
+    }
+
+    /// Generates compiler documentation.
+    ///
+    /// This will generate all documentation for compiler and dependencies.
+    /// Compiler documentation is distributed separately, so we make sure
+    /// we do not merge it with the other documentation from std, test and
+    /// proc_macros. This is largely just a wrapper around `cargo doc`.
+    fn run(self, builder: &Builder<'_>) {
+        let CompilerDoc { target, build_compiler, stage } = self;
+
+        // This is the intended out directory for compiler documentation.
+        let out = builder.compiler_doc_out(target);
+        t!(fs::create_dir_all(&out));
+
+        let _guard =
+            builder.msg(Kind::Doc, format!("compiler-doc"), Mode::Rustc, build_compiler, target);
+
+        let mut cmd = builder.rustdoc_cmd(build_compiler);
+
+        cmd.arg("--enable-index-page").arg("-Zunstable-options").arg("-o").arg(&out);
+
+        if !builder.config.docs_minification {
+            cmd.arg("--disable-minification");
+        }
+
+        #[derive(serde_derive::Deserialize)]
+        struct FingerprintData {
+            doc_parts: Vec<PathBuf>,
+        }
+
+        let rustc_stage = Rustc::for_stage(builder, stage, target);
+        builder.ensure(rustc_stage.clone());
+        let out_dir = builder.stage_out(build_compiler, Mode::Rustc).join(target);
+        // Cargo puts proc macros in `target/doc` even if you pass `--target`
+        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
+        let proc_macro_out_dir = builder.stage_out(build_compiler, Mode::Rustc);
+        // Copy crate docs into place.
+        for krate in &*rustc_stage.crates {
+            let dir_name = krate.replace('-', "_");
+            let crate_doc_dir = out_dir.join("doc").join(&dir_name);
+            let proc_macro_doc_dir = proc_macro_out_dir.join("doc").join(&dir_name);
+            let doc_out = out.join(&dir_name);
+            t!(fs::create_dir_all(&doc_out));
+            if proc_macro_doc_dir.exists() {
+                builder.cp_link_r(&proc_macro_doc_dir, &doc_out);
+            } else if crate_doc_dir.exists() {
+                builder.cp_link_r(&crate_doc_dir, &doc_out);
+            } else if !builder.config.dry_run() {
+                panic!("no docs found for {krate} in {}", crate_doc_dir.display());
+            }
+            // Making sure the directory exists and is not empty.
+            if !builder.config.dry_run() {
+                assert!(doc_out.exists(), "{}", doc_out.display());
+                assert!(
+                    doc_out.read_dir().expect(&dir_name).next().is_some(),
+                    "{}",
+                    doc_out.display()
+                );
+            }
+        }
+        if !builder.config.dry_run() {
+            let fingerprint_rustc =
+                t!(std::fs::read_to_string(&out_dir.join(".rustdoc_fingerprint.json")));
+            let fingerprint_rustc: FingerprintData = t!(serde_json::from_str(&fingerprint_rustc));
+            for part in fingerprint_rustc.doc_parts.iter() {
+                cmd.arg("--read-doc-meta-dir").arg(out_dir.join(part).parent().unwrap());
+            }
+        }
+
+        macro_rules! merge_tool_doc {
+            ($tool: ident, $builder: ident, $target: ident) => {{
+                let tool_stage = $tool::new($builder, $target);
+                builder.ensure(tool_stage.clone());
+                let out_dir = builder.stage_out(build_compiler, tool_stage.mode).join(target);
+                let proc_macro_out_dir = builder.stage_out(build_compiler, tool_stage.mode);
+                for krate in $tool::crates() {
+                    let dir_name = krate.replace('-', "_");
+                    let crate_doc_dir = out_dir.join("doc").join(&dir_name);
+                    let proc_macro_doc_dir = proc_macro_out_dir.join("doc").join(&dir_name);
+                    let doc_out = out.join(&dir_name);
+                    t!(fs::create_dir_all(&doc_out));
+                    if proc_macro_doc_dir.exists() {
+                        builder.cp_link_r(&proc_macro_doc_dir, &doc_out);
+                    } else if crate_doc_dir.exists() {
+                        builder.cp_link_r(&crate_doc_dir, &doc_out);
+                    } else if !builder.config.dry_run() {
+                        panic!("no docs found for {krate} in {}", crate_doc_dir.display());
+                    }
+                    // Making sure the directory exists and is not empty.
+                    if !builder.config.dry_run() {
+                        assert!(doc_out.exists(), "{}", doc_out.display());
+                        assert!(
+                            doc_out.read_dir().expect(&dir_name).next().is_some(),
+                            "{}",
+                            doc_out.display()
+                        );
+                    }
+                }
+            }};
+        }
+
+        merge_tool_doc!(BuildHelper, builder, target);
+        merge_tool_doc!(Rustdoc, builder, target);
+        merge_tool_doc!(Rustfmt, builder, target);
+        merge_tool_doc!(Clippy, builder, target);
+        merge_tool_doc!(Miri, builder, target);
+        merge_tool_doc!(Cargo, builder, target);
+        merge_tool_doc!(Tidy, builder, target);
+        merge_tool_doc!(Bootstrap, builder, target);
+        merge_tool_doc!(RunMakeSupport, builder, target);
+        merge_tool_doc!(Compiletest, builder, target);
+
+        if !builder.config.dry_run() {
+            let out_dir_tool = builder.stage_out(build_compiler, Mode::ToolTarget).join(target);
+            let fingerprint_tool =
+                t!(std::fs::read_to_string(&out_dir_tool.join(".rustdoc_fingerprint.json")));
+            let fingerprint_tool: FingerprintData = t!(serde_json::from_str(&fingerprint_tool));
+            for part in fingerprint_tool.doc_parts.iter() {
+                cmd.arg("--read-doc-meta-dir").arg(out_dir_tool.join(part).parent().unwrap());
+            }
+        }
+
+        cmd.run(builder);
+
+        // Handle `--open`.
+        builder.open_in_browser(out.join("index.html"));
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::doc("compiler-doc", self.target).built_by(self.build_compiler))
+    }
+}
+
 /// Document the compiler for the given `target` using rustdoc from `build_compiler`.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
@@ -925,10 +1089,6 @@ impl CommandLineStep for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
 
-        // This is the intended out directory for compiler documentation.
-        let out = builder.compiler_doc_out(target);
-        t!(fs::create_dir_all(&out));
-
         // Build the standard library, so that proc-macros can use it.
         // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
         let build_compiler = self.build_compiler;
@@ -977,8 +1137,6 @@ impl CommandLineStep for Rustc {
         cargo.rustdocflag("--extern-html-root-url");
         cargo.rustdocflag("ena=https://docs.rs/ena/latest/");
 
-        let mut to_open = None;
-
         let out_dir = builder.stage_out(build_compiler, Mode::Rustc).join(target).join("doc");
         for krate in &*self.crates {
             // Create all crate output directories first to make sure rustdoc uses
@@ -987,41 +1145,22 @@ impl CommandLineStep for Rustc {
             let dir_name = krate.replace('-', "_");
             t!(fs::create_dir_all(out_dir.join(&*dir_name)));
             cargo.arg("-p").arg(krate);
-            if to_open.is_none() {
-                to_open = Some(dir_name);
-            }
         }
-
-        // This uses a shared directory so that librustdoc documentation gets
-        // correctly built and merged with the rustc documentation.
-        //
-        // This is needed because rustdoc is built in a different directory from
-        // rustc. rustdoc needs to be able to see everything, for example when
-        // merging the search index, or generating local (relative) links.
-        symlink_dir_force(&builder.config, &out, &out_dir);
-        // Cargo puts proc macros in `target/doc` even if you pass `--target`
-        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
-        let proc_macro_out_dir = builder.stage_out(build_compiler, Mode::Rustc).join("doc");
-        symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
         cargo.into_cmd().run(builder);
 
-        if !builder.config.dry_run() {
-            // Sanity check on linked compiler crates
-            for krate in &*self.crates {
-                let dir_name = krate.replace('-', "_");
-                // Making sure the directory exists and is not empty.
-                assert!(out.join(&*dir_name).read_dir().unwrap().next().is_some());
-            }
-        }
-
-        if builder.paths.iter().any(|path| path.ends_with("compiler")) {
-            // For `x.py doc compiler --open`, open `rustc_middle` by default.
-            let index = out.join("rustc_middle").join("index.html");
-            builder.open_in_browser(index);
-        } else if let Some(krate) = to_open {
-            // Let's open the first crate documentation page:
-            let index = out.join(krate).join("index.html");
+        // We open rustc_middle as the default if invoked as `x.py doc --open RELEASES.md`
+        // with no particular explicit doc requested (e.g. library/core).
+        if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
+            let index = if builder.paths.iter().any(|path| path.ends_with("compiler")) {
+                // For `x.py doc compiler --open`, open `rustc_middle` by default.
+                out_dir.join("rustc_middle").join("index.html")
+            } else if let Some(krate) = self.crates.first() {
+                // Let's open the first crate documentation page:
+                out_dir.join(krate).join("index.html")
+            } else {
+                out_dir
+            };
             builder.open_in_browser(index);
         }
     }
@@ -1048,6 +1187,34 @@ macro_rules! tool_doc {
             target: TargetSelection,
         }
 
+        impl $tool {
+            fn new(builder: &Builder<'_>, target: TargetSelection) -> $tool {
+                let target = target;
+                let build_compiler = match $mode {
+                    Mode::ToolRustcPrivate => {
+                        // Rustdoc needs the rustc sysroot available to build.
+                        let compilers = RustcPrivateCompilers::new(builder, builder.top_stage, target);
+
+                        // Build rustc docs so that we generate relative links.
+                        builder.ensure(Rustc::from_build_compiler(builder, compilers.build_compiler(), target));
+                        compilers.build_compiler()
+                    }
+                    Mode::ToolTarget => {
+                        // when shipping multiple docs together in one folder,
+                        // they all need to use the same rustdoc version
+                        prepare_doc_compiler(builder, builder.host_target, builder.top_stage)
+                    }
+                    _ => {
+                        panic!("Unexpected tool mode for documenting: {:?}", $mode);
+                    }
+                };
+                $tool { build_compiler, mode: $mode, target }
+            }
+            fn crates() -> &'static [&'static str] {
+                &$($crates)?[..]
+            }
+        }
+
         impl CommandLineStep for $tool {
             type Output = ();
             const IS_HOST: bool = true;
@@ -1061,27 +1228,7 @@ macro_rules! tool_doc {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                let target = run.target;
-                let build_compiler = match $mode {
-                    Mode::ToolRustcPrivate => {
-                        // Rustdoc needs the rustc sysroot available to build.
-                        let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, target);
-
-                        // Build rustc docs so that we generate relative links.
-                        run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
-                        compilers.build_compiler()
-                    }
-                    Mode::ToolTarget => {
-                        // when shipping multiple docs together in one folder,
-                        // they all need to use the same rustdoc version
-                        prepare_doc_compiler(run.builder, run.builder.host_target, run.builder.top_stage)
-                    }
-                    _ => {
-                        panic!("Unexpected tool mode for documenting: {:?}", $mode);
-                    }
-                };
-
-                run.builder.ensure($tool { build_compiler, mode: $mode, target });
+                run.builder.ensure($tool::new(run.builder, run.target));
             }
 
             /// Generates documentation for a tool.
@@ -1142,15 +1289,11 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--generate-link-to-definition");
 
                 let out_dir = builder.stage_out(build_compiler, mode).join(target).join("doc");
+                let proc_macro_out_dir = builder.stage_out(build_compiler, mode).join("doc");
                 $(for krate in $crates {
                     let dir_name = krate.replace("-", "_");
                     t!(fs::create_dir_all(out_dir.join(&*dir_name)));
                 })?
-
-                // Symlink compiler docs to the output directory of rustdoc documentation.
-                symlink_dir_force(&builder.config, &out, &out_dir);
-                let proc_macro_out_dir = builder.stage_out(build_compiler, mode).join("doc");
-                symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
                 let _guard = builder.msg(Kind::Doc, stringify!($tool).to_lowercase(), None, build_compiler, target);
                 cargo.into_cmd().run(builder);
@@ -1160,7 +1303,11 @@ macro_rules! tool_doc {
                     $(for krate in $crates {
                         let dir_name = krate.replace("-", "_");
                         // Making sure the directory exists and is not empty.
-                        assert!(out.join(&*dir_name).read_dir().unwrap().next().is_some());
+                        let doc_out = out_dir.join(&*dir_name);
+                        let proc_macro_doc_out = proc_macro_out_dir.join(&*dir_name);
+                        let dir = if proc_macro_doc_out.exists() { proc_macro_doc_out } else { doc_out };
+                        assert!(dir.exists(), "{}", dir.display());
+                        assert!(dir.read_dir().expect(&dir_name).next().is_some());
                     })?
                 }
             }
@@ -1342,26 +1489,6 @@ impl CommandLineStep for UnstableBookGen {
         cmd.run(builder);
         out
     }
-}
-
-fn symlink_dir_force(config: &Config, original: &Path, link: &Path) {
-    if config.dry_run() {
-        return;
-    }
-    if let Ok(m) = fs::symlink_metadata(link) {
-        if m.file_type().is_dir() {
-            t!(fs::remove_dir_all(link));
-        } else {
-            // handle directory junctions on windows by falling back to
-            // `remove_dir`.
-            t!(fs::remove_file(link).or_else(|_| fs::remove_dir(link)));
-        }
-    }
-
-    t!(
-        symlink_dir(config, original, link),
-        format!("failed to create link from {} -> {}", link.display(), original.display())
-    );
 }
 
 /// Builds the Rust compiler book.
