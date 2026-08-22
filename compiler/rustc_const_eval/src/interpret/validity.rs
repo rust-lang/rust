@@ -1528,15 +1528,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     BackendRepr::Memory { .. } => unreachable!()
                 }
             }
-            ty::Adt(adt, _) if adt.is_maybe_dangling() => {
-                let old_may_dangle = mem::replace(&mut self.may_dangle, true);
-
-                let inner = self.ecx.project_field(val, FieldIdx::ZERO)?;
-                self.visit_value(&inner)?;
-
-                self.may_dangle = old_may_dangle;
-            }
             _ => {
+                let may_dangle = self.may_dangle || val.layout.ty.is_like_maybe_dangling();
+                let old_may_dangle = mem::replace(&mut self.may_dangle, may_dangle);
+
                 // default handler
                 try_validation!(
                     self.walk_value(val),
@@ -1546,6 +1541,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     Ub(InvalidVTableTrait { vtable_dyn_type, expected_dyn_type }) =>
                         InvalidMetaWrongTrait { expected_dyn_type, vtable_dyn_type },
                 );
+
+                self.may_dangle = old_may_dangle;
             }
         }
 
