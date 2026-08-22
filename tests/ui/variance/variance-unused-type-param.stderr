@@ -69,11 +69,75 @@ LL | struct DoubleNothing<T> {
    |                      ^ unused type parameter
 LL |
 LL |     s: SomeStruct<T>,
-   |                   - `T` is named here, but is likely unused in the containing type
+   |                   - `T` is named here, but `SomeStruct` does not use it
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-error: aborting due to 8 previous errors
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:37:22
+   |
+LL | struct NestedNothing<T> {
+   |                      ^ unused type parameter
+LL |
+LL |     s: SomeStruct<Vec<T>>,
+   |                       - `T` is named here, but `SomeStruct` does not use it
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-For more information about this error, try `rustc --explain E0392`.
+error[E0091]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:42:14
+   |
+LL | type Discard<T> = ();
+   |              ^ unused type parameter
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:45:25
+   |
+LL | struct ThroughTypeAlias<T>(Discard<T>);
+   |                         ^          - `T` is named here, but `Discard` does not use it
+   |                         |
+   |                         unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `B` is never used
+  --> $DIR/variance-unused-type-param.rs:49:24
+   |
+LL | struct SecondUnused<A, B> { a: A }
+   |                        ^ unused type parameter
+   |
+   = help: consider removing `B`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `B` to be a const parameter, use `const B: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:52:25
+   |
+LL | struct UsesSecondUnused<T>(SecondUnused<u32, T>);
+   |                         ^                    - `T` is named here, but `SecondUnused` does not use it
+   |                         |
+   |                         unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:58:31
+   |
+LL | struct ThroughForwardingAlias<T>(Forward<T>);
+   |                               ^          - `T` is named here, but `Forward` does not use it
+   |                               |
+   |                               unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0091, E0392.
+For more information about an error, try `rustc --explain E0091`.
