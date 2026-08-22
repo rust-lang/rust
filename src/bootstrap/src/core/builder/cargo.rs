@@ -4,16 +4,13 @@ use std::sync::OnceLock;
 use std::{env, fs};
 
 use super::{Builder, Kind};
-use crate::core::build_steps::compile::is_lto_stage;
 use crate::core::build_steps::llvm::prebuilt_llvm_output;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::compiler::Compiler;
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::toml::pgo::PgoConfig;
-use crate::core::config::{
-    CompressDebuginfo, Config, DryRun, RustcLto, SplitDebuginfo, TargetSelection,
-};
+use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
 use crate::core::session::{CLang, GitRepo, Mode, RemapScheme};
 use crate::utils::build_stamp;
 use crate::utils::exec::{BootstrapCommand, command};
@@ -449,34 +446,10 @@ impl Cargo {
             let cc = ccacheify(&builder.cc(target));
             self.command.env(format!("CC_{triple_underscored}"), &cc);
 
-            // Compiling C deps, like jemalloc and llvm-wrapper, should be with
-            // the same LTO mode as the Rust code they are linked into.
-            //
-            // Std's C deps, e.g. compiler_builtins, ship inside rlibs that
-            // end users consume directly. Building with `-flto` may break
-            // non-LLVM linkers or mismatch on bitcode versions. Therefore we
-            // must not build std in LTO mode here.
-            let lto_cflag = if matches!(self.mode, Mode::Rustc | Mode::ToolRustcPrivate)
-                && is_lto_stage(&self.compiler)
-                && builder.cc_tool(target).is_like_clang()
-            {
-                match builder.config.rust_lto {
-                    RustcLto::Thin => Some("-flto=thin"),
-                    RustcLto::Fat => Some("-flto=full"),
-                    RustcLto::ThinLocal | RustcLto::Off => None,
-                }
-            } else {
-                None
-            };
-
-            // Extend `CXXFLAGS_$TARGET` with our extra flags.
+            // Extend `CFLAGS_$TARGET` with our extra flags.
             let env = format!("CFLAGS_{triple_underscored}");
             let mut cflags =
                 builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
-            if let Some(lto_cflag) = lto_cflag {
-                cflags.push(' ');
-                cflags.push_str(lto_cflag);
-            }
             if let Ok(var) = std::env::var(&env) {
                 cflags.push(' ');
                 cflags.push_str(&var);
@@ -498,10 +471,6 @@ impl Cargo {
                 let env = format!("CXXFLAGS_{triple_underscored}");
                 let mut cxxflags =
                     builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
-                if let Some(lto_cflag) = lto_cflag {
-                    cxxflags.push(' ');
-                    cxxflags.push_str(lto_cflag);
-                }
                 if let Ok(var) = std::env::var(&env) {
                     cxxflags.push(' ');
                     cxxflags.push_str(&var);
