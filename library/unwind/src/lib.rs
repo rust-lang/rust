@@ -1,5 +1,6 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
+#![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(link_cfg)]
 #![feature(rustc_attrs)]
