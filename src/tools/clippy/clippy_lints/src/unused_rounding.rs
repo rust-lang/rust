@@ -33,7 +33,7 @@ declare_clippy_lint! {
 declare_lint_pass!(UnusedRounding => [UNUSED_ROUNDING]);
 
 fn is_useless_rounding(cx: &EarlyContext<'_>, expr: &Expr) -> Option<(Symbol, String)> {
-    if let ExprKind::MethodCall(box MethodCall {
+    if let ExprKind::MethodCall(MethodCall {
         seg: name_ident,
         receiver,
         ..
