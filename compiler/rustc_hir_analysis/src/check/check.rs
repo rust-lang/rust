@@ -755,6 +755,26 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 }
 
+fn check_function_clauses(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+    let clauses = tcx.clauses_of(def_id);
+    let param_env = tcx.param_env(def_id);
+    enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+        for (clause, span) in clauses.clauses {
+            wfcx.register_obligation(Obligation::new(
+                tcx,
+                ObligationCause::new(
+                    *span,
+                    def_id,
+                    ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id))),
+                ),
+                param_env,
+                *clause,
+            ));
+        }
+        Ok(())
+    })
+}
+
 pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let mut res = Ok(());
     let generics = tcx.generics_of(def_id);
@@ -814,9 +834,9 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
         DefKind::Fn => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().clauses_of(def_id);
             tcx.ensure_ok().fn_sig(def_id);
             tcx.ensure_ok().codegen_fn_attrs(def_id);
+            res = res.and(check_function_clauses(tcx, def_id));
             if let Some(i) = tcx.intrinsic(def_id) {
                 intrinsic::check_intrinsic_type(
                     tcx,
