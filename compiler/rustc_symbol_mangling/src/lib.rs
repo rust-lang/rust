@@ -104,7 +104,7 @@ mod v0;
 
 pub mod test;
 
-pub use v0::{mangle_cgu, mangle_internal_symbol};
+pub use v0::{eh_personality_symbol, mangle_cgu, mangle_internal_symbol};
 
 /// Offload kernels need custom v0 symbol treatment because the host
 /// and device compilation passes run with different `stable_crate_id`s
