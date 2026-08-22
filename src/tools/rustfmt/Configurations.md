@@ -2469,7 +2469,13 @@ specific version of rustfmt is used in your CI, use this option.
   requirement, matching how Cargo treats dependency version requirements.
 - **Stable**: No (tracking issue: [#3386](https://github.com/rust-lang/rustfmt/issues/3386))
 
-#### Default matching (new minor or patch versions):
+#### New minor or patch versions (default behavior):
+
+```toml
+required_version="^1.0.0"
+```
+
+This is the default behavior, so that is equivalent to:
 
 ```toml
 required_version="1.0.0"

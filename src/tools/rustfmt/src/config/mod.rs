@@ -244,8 +244,7 @@ impl PartialConfig {
 fn check_semver_version(range_requirement: &str, actual: &str) -> bool {
     // A bare version (no comparator prefix) is left as `semver`'s own default,
     // which is a caret requirement, matching how Cargo treats dependency version
-    // requirements. Callers who want the old exact-match behavior can opt in
-    // explicitly with the `=` operator, e.g. `required_version = "=1.2.3"`.
+    // requirements.
     let version_req = match semver::VersionReq::parse(range_requirement) {
         Ok(r) => r,
         Err(e) => {
@@ -1565,8 +1564,6 @@ make_backup = false
 
         #[test]
         fn test_explicit_exact_match() {
-            // The old exact-match default is still available by opting in
-            // with the `=` operator.
             assert!(check_semver_version("=1.0.0", "1.0.0"));
             assert!(!check_semver_version("=1.0.0", "1.1.0"));
             assert!(!check_semver_version("=1.0.0", "1.0.1"));
