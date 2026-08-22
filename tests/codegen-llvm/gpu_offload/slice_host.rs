@@ -5,8 +5,8 @@
 // This test verifies that offload is properly handling slices passing them properly to the device
 
 #![feature(abi_gpu_kernel)]
+#![feature(gpu_offload)]
 #![feature(rustc_attrs)]
-#![feature(core_intrinsics)]
 #![no_main]
 
 // CHECK: @anon.[[ID:.*]].0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
@@ -27,7 +27,10 @@
 #[unsafe(no_mangle)]
 fn main() {
     let mut x = [0.0f32, 0.0, 0.0, 0.0];
-    core::intrinsics::offload::<_, _, ()>(foo, [1, 1, 1], [1, 1, 1], 0, ((&mut x) as &mut [f32],));
+    core::offload::offload! {
+        kernel = foo,
+        args = ((&mut x) as &mut [f32],),
+    }
 }
 
 unsafe extern "C" {

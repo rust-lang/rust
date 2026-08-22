@@ -1,7 +1,6 @@
 //! Errors emitted by `rustc_hir_analysis`.
 
 use rustc_abi::ExternAbi;
-use rustc_data_structures::Limit;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
@@ -10,6 +9,7 @@ use rustc_errors::{
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Ident, Span, Symbol};
+use rustc_structures::Limit;
 pub(crate) mod wrong_number_of_generic_args;
 
 mod precise_captures;

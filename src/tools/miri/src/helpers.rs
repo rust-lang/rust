@@ -12,8 +12,8 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, FnSigKind, IntTy, Ty, TyCtxt, UintTy};
-use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
+use rustc_structures::CrateType;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::Os;
 

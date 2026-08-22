@@ -23,9 +23,9 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
+use crate::core::session::{FileType, Mode};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, add_dylib_path, exe, t};
-use crate::{FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -140,6 +140,7 @@ impl Step for ToolBuild {
         let pgo_config = match self.path {
             "src/tools/rustdoc" => Some(&builder.config.rustdoc_pgo),
             "src/tools/cargo" => Some(&builder.config.cargo_pgo),
+            "src/tools/clippy" => Some(&builder.config.clippy_pgo),
             _ => None,
         };
         if let Some(pgo_config) = pgo_config {

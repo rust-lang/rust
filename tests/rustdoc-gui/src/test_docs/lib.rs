@@ -679,12 +679,12 @@ pub mod long_list {
     //!
     //! Another list:
     //!
-    //! * [`TryFromBytes`](#a) indicates that a type may safely be converted from certain byte
-    //!   sequence (conditional on runtime checks)
-    //! * [`FromZeros`](#a) indicates that a sequence of zero bytes represents a valid instance of
-    //!   a type
-    //! * [`FromBytes`](#a) indicates that a type may safely be converted from an arbitrary byte
-    //!   sequence
+    //! 100. [`TryFromBytes`](#a) indicates that a type may safely be converted from certain byte
+    //!      sequence (conditional on runtime checks)
+    //! 101. [`FromZeros`](#a) indicates that a sequence of zero bytes represents a valid instance of
+    //!      a type
+    //! 102. [`FromBytes`](#a) indicates that a type may safely be converted from an arbitrary byte
+    //!      sequence
 }
 
 pub struct ImplDoc;

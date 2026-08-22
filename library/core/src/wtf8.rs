@@ -49,7 +49,9 @@ impl fmt::Debug for CodePoint {
 impl CodePoint {
     /// Unsafely creates a new `CodePoint` without checking the value.
     ///
-    /// Only use when `value` is known to be less than or equal to 0x10FFFF.
+    /// # Safety
+    ///
+    /// `value` must be less than or equal to 0x10FFFF.
     #[inline]
     pub unsafe fn from_u32_unchecked(value: u32) -> CodePoint {
         // SAFETY: Guaranteed by caller.
@@ -210,8 +212,9 @@ impl Wtf8 {
 
     /// Creates a WTF-8 slice from a WTF-8 byte slice.
     ///
-    /// Since the byte slice is not checked for valid WTF-8, this functions is
-    /// marked unsafe.
+    /// # Safety
+    ///
+    /// `value` must contain well-formed WTF-8.
     #[inline]
     pub unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
         // SAFETY: start with &[u8], end with fancy &[u8]
@@ -220,8 +223,9 @@ impl Wtf8 {
 
     /// Creates a mutable WTF-8 slice from a mutable WTF-8 byte slice.
     ///
-    /// Since the byte slice is not checked for valid WTF-8, this functions is
-    /// marked unsafe.
+    /// # Safety
+    ///
+    /// `value` must contain well-formed WTF-8.
     #[inline]
     pub unsafe fn from_mut_bytes_unchecked(value: &mut [u8]) -> &mut Wtf8 {
         // SAFETY: start with &mut [u8], end with fancy &mut [u8]

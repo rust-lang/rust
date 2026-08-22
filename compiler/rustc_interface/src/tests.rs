@@ -8,7 +8,6 @@ use rustc_abi::Align;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::ColorConfig;
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_hir::attrs::{CollapseMacroDebuginfo, NativeLibKind};
 use rustc_lint_defs::Level;
 use rustc_session::config::{
     AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CodegenRetagOptions, CoverageLevel,
@@ -26,6 +25,7 @@ use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, getopts};
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, sym};
+use rustc_structures::{CollapseMacroDebuginfo, NativeLibKind};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel,
@@ -852,7 +852,13 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(mir_preserve_ub, true);
     tracked!(move_size_limit, Some(4096));
-    tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
+
+    // tidy-alphabetical-end
+    // FIXME(#160895): We don't test this when the next-solver is enabled by default.
+    if option_env!("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY").is_none() {
+        tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
+    }
+    // tidy-alphabetical-start
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
     tracked!(no_profiler_runtime, true);

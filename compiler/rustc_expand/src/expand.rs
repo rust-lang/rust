@@ -19,7 +19,6 @@ use rustc_attr_parsing::{
     AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
     eval_config_entry, parse_cfg, validate_attr,
 };
-use rustc_data_structures::Limit;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::PResult;
 use rustc_feature::Features;
@@ -32,6 +31,7 @@ use rustc_parse::parser::{
 use rustc_session::diagnostics::feature_err;
 use rustc_span::hygiene::SyntaxContext;
 use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sym};
+use rustc_structures::Limit;
 use smallvec::SmallVec;
 
 use crate::base::*;

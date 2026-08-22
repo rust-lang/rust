@@ -963,6 +963,8 @@ class MSVCEnumSyntheticProvider:
 
 
 def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    if valobj.TypeIsPointerType():
+        valobj = valobj.Dereference()
     enum_synth = MSVCEnumSyntheticProvider(valobj.GetNonSyntheticValue(), _dict)
     variant_names: SBType = valobj.target.FindFirstType(
         f"{enum_synth.valobj.GetTypeName()}::VariantNames"
@@ -1182,19 +1184,44 @@ class StdSliceSyntheticProvider:
 
 
 class MSVCStdSliceSyntheticProvider(StdSliceSyntheticProvider):
+    type_name: Optional[str] = None
+
     def get_type_name(self) -> str:
+        if self.type_name is not None:
+            return self.type_name
+
         name = self.valobj.GetTypeName()
 
         if name.startswith("ref_mut"):
-            # remove "ref_mut$<slice2$<" and trailing "> >"
-            name = name[17:-3]
-            ref = "&mut "
-        else:
-            # remove "ref$<slice2$<" and trailing "> >"
-            name = name[13:-3]
-            ref = "&"
+            name = name[len("ref_mut$<slice2$<") :].rstrip("> ")
+            self.type_name = f"&mut [{name}]"
+        elif name.startswith("ref"):
+            name = name[len("ref$<slice2$<") :].rstrip("> ")
+            self.type_name = f"&[{name}]"
+        elif name.startswith("ptr_mut"):
+            name = name[len("ptr_mut$<slice2$<") :].rstrip("> ")
+            self.type_name = f"*mut [{name}]"
+        elif name.startswith("ptr_const"):
+            name = name[len("ptr_const$<slice2$<") :].rstrip("> ")
+            self.type_name = f"*const [{name}]"
+        elif name.startswith("alloc::boxed::Box"):
+            prefix_len = len("alloc::boxed::Box<slice2$<")
+            suffix_len = len(">,alloc::alloc::Global>")
+            if name.endswith(",alloc::alloc::Global>"):
+                name = name[prefix_len : len(name) - suffix_len]
 
-        return "".join([ref, "[", name, "]"])
+                self.type_name = f"Box<[{name}]>"
+            else:
+                [element_name, alloc_name] = name[prefix_len:].split(">", 1)
+
+                name = f"{element_name}{alloc_name}"
+
+                # alloc name contains the trailing ">", so we don't need to add it
+                self.type_name = f"Box<[{element_name}]{alloc_name}"
+        else:
+            self.type_name = name
+
+        return self.type_name
 
 
 def StdSliceSummaryProvider(valobj, dict):
