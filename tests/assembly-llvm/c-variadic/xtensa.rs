@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //
 //@ revisions: XTENSA
 //@ [XTENSA] compile-flags: -Copt-level=3 --target xtensa-esp32-none-elf

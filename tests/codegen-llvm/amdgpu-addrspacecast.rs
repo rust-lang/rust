@@ -4,8 +4,8 @@
 //@ needs-llvm-components: amdgpu
 //@ add-minicore
 //@ revisions: LLVM21 LLVM22
-//@ [LLVM21] max-llvm-major-version: 21
-//@ [LLVM22] min-llvm-version: 22
+//@ [LLVM21] llvm-version: <=21
+//@ [LLVM22] llvm-version: >=22
 #![feature(no_core)]
 #![no_core]
 

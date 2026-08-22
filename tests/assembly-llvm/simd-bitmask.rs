@@ -8,10 +8,10 @@
 //@ [x86-avx512] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx512] compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512dq
 //@ [x86-avx512] needs-llvm-components: x86
-//@ [aarch64] min-llvm-version: 23
+//@ [aarch64] llvm-version: >=23
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
-//@ [aarch64-llvm-pre-23] max-llvm-major-version: 22
+//@ [aarch64-llvm-pre-23] llvm-version: <=22
 //@ [aarch64-llvm-pre-23] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64-llvm-pre-23] needs-llvm-components: aarch64
 //@ assembly-output: emit-asm

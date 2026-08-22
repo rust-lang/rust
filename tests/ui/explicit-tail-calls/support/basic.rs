@@ -1,7 +1,7 @@
 //@ build-pass
 //@ ignore-backends: gcc
 //@ add-minicore
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //
 //@ revisions: i686
 //@[i686] compile-flags: --target i686-unknown-linux-gnu

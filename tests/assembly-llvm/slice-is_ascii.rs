@@ -9,7 +9,7 @@
 // No longer optimizes as desired, tracked at:
 // https://github.com/rust-lang/rust/issues/154141
 // https://github.com/llvm/llvm-project/issues/209216
-//@ max-llvm-major-version: 22
+//@ llvm-version: <=22
 
 #![feature(str_internals)]
 

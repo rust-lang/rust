@@ -1,7 +1,7 @@
 //! Regression test for #142519
 //@ only-x86_64
 //@ compile-flags: -O
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 
 #![crate_type = "lib"]
 

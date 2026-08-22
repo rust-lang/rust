@@ -1,7 +1,7 @@
 //@ compile-flags: -Copt-level=3
 //@ revisions: LLVM22 LLVM23
-//@ [LLVM22] max-llvm-major-version: 22
-//@ [LLVM23] min-llvm-version: 23
+//@ [LLVM22] llvm-version: <=22
+//@ [LLVM23] llvm-version: >=23
 // Test that `pow` can use a faster implementation when `base` is a
 // known power of two
 

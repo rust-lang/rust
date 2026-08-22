@@ -4,10 +4,10 @@
 // - Rust to LLVM IR: https://godbolt.org/z/sM914e4fo
 // - LLVM IR to assembly: https://godbolt.org/z/5Y7naa4cY
 //
-//@revisions: x86_64 aarch64 riscv64
-//@assembly-output: emit-asm
-//@min-llvm-version: 23
-//@compile-flags: -C opt-level=3
+//@ revisions: x86_64 aarch64 riscv64
+//@ assembly-output: emit-asm
+//@ llvm-version: >=23
+//@ compile-flags: -C opt-level=3
 //
 //@[x86_64] compile-flags: -C target-feature=+pclmulqdq,+avx2 -Cllvm-args=-x86-asm-syntax=intel
 //@[x86_64] only-x86_64-unknown-linux-gnu

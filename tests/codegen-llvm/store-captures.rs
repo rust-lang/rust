@@ -1,4 +1,4 @@
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //@ compile-flags: -O -C no-prepopulate-passes
 
 #![crate_type = "lib"]

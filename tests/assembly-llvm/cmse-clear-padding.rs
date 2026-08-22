@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //@ assembly-output: emit-asm
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib -Copt-level=1
 //@ needs-llvm-components: arm
