@@ -124,4 +124,10 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     /// Release canonicalizer state, either by deallocating it (the default) or by clearing it and
     /// stashing it for later reuse.
     fn release_canonicalizer_state(&self, _: CanonicalizerState<Self::Interner>) {}
+
+    fn emit_next_solver_overflow_fcw(
+        &self,
+        goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
+        span: <Self::Interner as Interner>::Span,
+    );
 }
