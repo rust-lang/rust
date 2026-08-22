@@ -38,6 +38,7 @@ use crate::core::builder::{
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
+use crate::core::session::{CLang, GitRepo, Mode};
 use crate::core::{android, debuggers};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -47,7 +48,6 @@ use crate::utils::helpers::{
     target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, GitRepo, Mode};
 
 mod compiletest;
 pub mod failed_tests;
@@ -3288,6 +3288,9 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     builder.do_if_verbose(|| println!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
+    // FIXME(#160895): While the new solver is enabled by default on nightly,
+    // we don't want to use it in our tests for now.
+    cmd.arg("-Znext-solver=coherence");
     // allow for unstable options such as new editions
     cmd.arg("-Z");
     cmd.arg("unstable-options");
@@ -3360,7 +3363,7 @@ impl CommandLineStep for CrateLibrustc {
 ///
 /// Returns whether the test succeeded.
 fn run_cargo_test<'a>(
-    cargo: builder::Cargo,
+    mut cargo: builder::Cargo,
     libtest_args: &[&str],
     crates: &[String],
     description: impl Into<Option<&'a str>>,
@@ -3373,6 +3376,10 @@ fn run_cargo_test<'a>(
         Mode::Std => compiler.stage,
         _ => compiler.stage + 1,
     };
+
+    // FIXME(#160895): While the new solver is enabled by default on nightly,
+    // we don't want to use it in our tests for now.
+    cargo.rustdocflag("-Znext-solver=coherence");
 
     let mut cargo = prepare_cargo_test(cargo, libtest_args, crates, target, builder);
     let _time = helpers::timeit(builder);

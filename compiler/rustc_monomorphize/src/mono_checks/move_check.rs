@@ -1,5 +1,4 @@
 use rustc_abi::Size;
-use rustc_data_structures::Limit;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::LARGE_ASSIGNMENTS;
@@ -7,6 +6,7 @@ use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Spanned, sym};
+use rustc_structures::Limit;
 use tracing::{debug, trace};
 
 use crate::diagnostics::LargeAssignmentsLint;

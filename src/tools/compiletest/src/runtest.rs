@@ -91,7 +91,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
 }
 
 /// The platform-specific library name
-fn get_lib_name(name: &str, aux_type: AuxType) -> Option<String> {
+fn get_lib_name(name: &str, aux_type: AuxType, wasm_proc_macros: bool) -> Option<String> {
     match aux_type {
         AuxType::Bin => None,
         // In some cases (e.g. MUSL), we build a static
@@ -99,6 +99,8 @@ fn get_lib_name(name: &str, aux_type: AuxType) -> Option<String> {
         // In this case, the only path we can pass
         // with '--extern-meta' is the '.rlib' file
         AuxType::Lib => Some(format!("lib{name}.rlib")),
+        // FIXME maybe use `rustc --print file-names` instead?
+        AuxType::ProcMacro if wasm_proc_macros => Some(format!("{name}.wasm")),
         AuxType::Dylib | AuxType::ProcMacro => Some(dylib_name(name)),
     }
 }
@@ -1038,6 +1040,9 @@ impl<'test> TestCx<'test> {
             .arg(file_to_doc)
             .arg("-A")
             .arg("internal_features")
+            // FIXME(#160895): While the new solver is enabled by default on nightly,
+            // we don't want to use it in our tests for now.
+            .arg("-Znext-solver=coherence")
             .args(&self.props.compile_flags)
             .args(&self.props.doc_flags);
 
@@ -1248,7 +1253,8 @@ impl<'test> TestCx<'test> {
                           aux_name: &str,
                           aux_path: &str,
                           aux_type: AuxType| {
-            let lib_name = get_lib_name(&path_to_crate_name(aux_path), aux_type);
+            let lib_name =
+                get_lib_name(&path_to_crate_name(aux_path), aux_type, self.config.wasm_proc_macros);
             if let Some(lib_name) = lib_name {
                 let modifiers_and_name = match extern_modifiers {
                     Some(modifiers) => format!("{modifiers}:{aux_name}"),
@@ -1279,7 +1285,11 @@ impl<'test> TestCx<'test> {
         // to `-Zcodegen-backend` when compiling the test file.
         if let Some(aux_file) = &self.props.aux.codegen_backend {
             let aux_type = self.build_auxiliary(aux_file, aux_dir, None);
-            if let Some(lib_name) = get_lib_name(aux_file.trim_end_matches(".rs"), aux_type) {
+            if let Some(lib_name) = get_lib_name(
+                aux_file.trim_end_matches(".rs"),
+                aux_type,
+                self.config.wasm_proc_macros,
+            ) {
                 let lib_path = aux_dir.join(&lib_name);
                 rustc.arg(format!("-Zcodegen-backend={}", lib_path));
             }
@@ -1872,6 +1882,10 @@ impl<'test> TestCx<'test> {
                 }
             },
         }
+
+        // FIXME(#160895): While the new solver is enabled by default on nightly,
+        // we don't want to use it in our tests for now.
+        compiler.args(["-Znext-solver=coherence"]);
 
         match self.config.compare_mode {
             Some(CompareMode::Polonius) => {

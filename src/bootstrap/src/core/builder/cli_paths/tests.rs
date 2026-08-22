@@ -2,8 +2,8 @@ use std::collections::{BTreeSet, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use crate::Build;
 use crate::core::builder::{Builder, CommandLineStepDescription};
+use crate::core::session::Build;
 use crate::utils::tests::TestCtx;
 
 fn render_steps_for_cli_args(args_str: &str) -> String {

@@ -27,14 +27,14 @@ use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_session::Session;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
-    CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
-    TargetModifier,
+    ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers, TargetModifier,
 };
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_structures::CrateType;
 use rustc_target::spec::{PanicStrategy, Target};
 use tracing::{debug, info};
 
@@ -716,13 +716,21 @@ impl CStore {
             // Load the proc macro crate for the host
             proc_macro_locator.for_proc_macro(sess, path_kind);
 
-            let Some(host_result) =
+            if let Some(host_result) =
                 self.load(&mut proc_macro_locator, &mut CrateRejections::default())?
-            else {
-                return Ok(None);
-            };
+            {
+                Ok(Some((host_result, None)))
+            } else if sess.opts.unstable_opts.wasm_proc_macros {
+                // Load the proc macro crate for wasm
+                proc_macro_locator.for_wasm_proc_macro(sess, path_kind);
 
-            Ok(Some((host_result, None)))
+                match self.load(&mut proc_macro_locator, &mut CrateRejections::default())? {
+                    Some(host_result) => Ok(Some((host_result, None))),
+                    None => Ok(None),
+                }
+            } else {
+                Ok(None)
+            }
         }
     }
 

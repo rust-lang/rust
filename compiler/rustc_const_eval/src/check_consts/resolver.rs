@@ -247,7 +247,7 @@ impl<'mir, 'tcx, Q> FlowSensitiveAnalysis<'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    pub(super) fn new(_: Q, ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
+    pub(super) fn new(ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
         FlowSensitiveAnalysis { ccx, _qualif: PhantomData }
     }
 
@@ -309,7 +309,7 @@ impl<C> DebugWithContext<C> for State {
 
         if self.borrow != old.borrow {
             f.write_str("borrow: ")?;
-            self.qualif.fmt_diff_with(&old.borrow, ctxt, f)?;
+            self.borrow.fmt_diff_with(&old.borrow, ctxt, f)?;
             f.write_str("\n")?;
         }
 

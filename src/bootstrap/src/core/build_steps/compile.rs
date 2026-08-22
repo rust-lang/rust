@@ -33,13 +33,14 @@ use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
     Allocator, CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
 };
+use crate::core::session::{CLang, DependencyType, FileType, GitRepo, Mode};
 use crate::utils::build_stamp;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{CLang, DependencyType, FileType, GitRepo, Mode, debug, trace};
+use crate::{debug, trace};
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1373,8 +1374,9 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 
     let nightly = builder.config.channel == "nightly" || builder.config.channel == "dev";
     if nightly {
-        // We want to enable Polonius Alpha by default on nighty
+        // We want to enable Polonius Alpha and Next Trait Solver by default on nighty
         cargo.env("CFG_DEFAULT_POLONIUS_NEXT", "1");
+        cargo.env("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY", "1");
     }
 
     // These conditionals represent a tension between three forces:

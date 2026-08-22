@@ -1850,7 +1850,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_clauses(
-                    args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),
+                    args.terms().map(|t| ty::ClauseKind::WellFormed(t.into())),
                     locations,
                     ConstraintCategory::Boring,
                 );

@@ -1432,6 +1432,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
     ty: Ty<'tcx>,
 ) -> SmallVec<Option<&'ll DIType>> {
     if let ty::Adt(def, args) = *ty.kind() {
+        // FIXME: also do consts?
         if args.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did());
             let names = get_parameter_names(cx, generics);

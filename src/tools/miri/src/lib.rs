@@ -73,6 +73,7 @@ extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_structures;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 // Linking `rustc_driver` pulls in the required  object code as the rest of the rustc crates are
@@ -200,4 +201,7 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     // Deduplicating diagnostics means we miss events when tracking what happens during an
     // execution. Let's not do that.
     "-Zdeduplicate-diagnostics=no",
+    // FIXME(#160895): the new solver is enabled by default on nightly, but we
+    // don't want to use it in Miri for now. Remove once that's reverted.
+    "-Znext-solver=coherence",
 ];
