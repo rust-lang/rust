@@ -1,25 +1,91 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/call-ambig-trait-object-method.rs:19:7
+  --> $DIR/call-ambig-trait-object-method.rs:40:18
    |
-LL |     x.foo();
-   |       ^^^ multiple `foo` found
+LL |     assert_eq!(x.foo(), 1);
+   |                  ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `T`
-  --> $DIR/call-ambig-trait-object-method.rs:6:5
+  --> $DIR/call-ambig-trait-object-method.rs:4:5
    |
-LL |     fn foo(&self);
-   |     ^^^^^^^^^^^^^^
+LL |     fn foo(&self) -> i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
-  --> $DIR/call-ambig-trait-object-method.rs:10:5
+  --> $DIR/call-ambig-trait-object-method.rs:9:5
    |
-LL |     fn foo(&self) {}
+LL |     fn foo(&self) -> i32 {
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     assert_eq!(x.foo(), 1);
+LL +     assert_eq!(T::foo(&x), 1);
+   |
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/call-ambig-trait-object-method.rs:42:18
+   |
+LL |     assert_eq!(x.bar(), ());
+   |                  ^^^ multiple `bar` found
+   |
+note: candidate #1 is defined in the trait `T`
+  --> $DIR/call-ambig-trait-object-method.rs:5:5
+   |
+LL |     fn bar(&self) -> i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
+  --> $DIR/call-ambig-trait-object-method.rs:13:5
+   |
+LL |     fn bar(&self) {}
    |     ^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL -     x.foo();
-LL +     T::foo(&x);
+LL -     assert_eq!(x.bar(), ());
+LL +     assert_eq!(T::bar(&x), ());
    |
 
-error: aborting due to 1 previous error
+error[E0034]: multiple applicable items in scope
+  --> $DIR/call-ambig-trait-object-method.rs:44:25
+   |
+LL |     assert_eq!(<dyn T>::foo(x), 1);
+   |                         ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in the trait `T`
+  --> $DIR/call-ambig-trait-object-method.rs:4:5
+   |
+LL |     fn foo(&self) -> i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
+  --> $DIR/call-ambig-trait-object-method.rs:9:5
+   |
+LL |     fn foo(&self) -> i32 {
+   |     ^^^^^^^^^^^^^^^^^^^^
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     assert_eq!(<dyn T>::foo(x), 1);
+LL +     assert_eq!(T::foo(x), 1);
+   |
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/call-ambig-trait-object-method.rs:47:25
+   |
+LL |     assert_eq!(<dyn T>::bar(x), ());
+   |                         ^^^ multiple `bar` found
+   |
+note: candidate #1 is defined in the trait `T`
+  --> $DIR/call-ambig-trait-object-method.rs:5:5
+   |
+LL |     fn bar(&self) -> i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
+  --> $DIR/call-ambig-trait-object-method.rs:13:5
+   |
+LL |     fn bar(&self) {}
+   |     ^^^^^^^^^^^^^
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     assert_eq!(<dyn T>::bar(x), ());
+LL +     assert_eq!(T::bar(x), ());
+   |
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0034`.

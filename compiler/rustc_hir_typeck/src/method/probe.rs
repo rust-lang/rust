@@ -65,6 +65,7 @@ pub(crate) struct ProbeContext<'a, 'tcx> {
     steps: &'tcx [CandidateStep<'tcx>],
 
     inherent_candidates: Vec<Candidate<'tcx>>,
+    dyn_extension_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
     impl_dups: FxHashSet<DefId>,
 
@@ -112,6 +113,19 @@ pub(crate) struct Candidate<'tcx> {
     pub(crate) item: ty::AssocItem,
     pub(crate) kind: CandidateKind<'tcx>,
     pub(crate) import_ids: &'tcx [LocalDefId],
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum InherentOrExtension {
+    /// Inherent candidates
+    Inherent,
+    /// Candidates for a trait object's supertraits
+    /// (but not the trait itself).
+    /// Take precedence over other extension candidates,
+    /// but not inherent candidates
+    DynExtension,
+    /// Extension candidates
+    Extension,
 }
 
 #[derive(Debug, Clone)]
@@ -381,6 +395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(probe_cx
                     .inherent_candidates
                     .into_iter()
+                    .chain(probe_cx.dyn_extension_candidates)
                     .chain(probe_cx.extension_candidates)
                     .collect())
             },
@@ -614,7 +629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ),
                             import_ids: &[],
                         },
-                        false,
+                        InherentOrExtension::Extension,
                     );
                 }
             };
@@ -810,6 +825,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             method_name,
             return_type,
             inherent_candidates: Vec::new(),
+            dyn_extension_candidates: Vec::new(),
             extension_candidates: Vec::new(),
             impl_dups: FxHashSet::default(),
             orig_steps_var_values,
@@ -826,6 +842,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn reset(&mut self) {
         self.inherent_candidates.clear();
+        self.dyn_extension_candidates.clear();
         self.extension_candidates.clear();
         self.impl_dups.clear();
         self.private_candidates.clear();
@@ -846,7 +863,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // CANDIDATE ASSEMBLY
 
-    fn push_candidate(&mut self, candidate: Candidate<'tcx>, is_inherent: bool) {
+    fn push_candidate(&mut self, candidate: Candidate<'tcx>, is_inherent: InherentOrExtension) {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
             let container_id = item.container_id(self.tcx);
@@ -857,11 +874,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             true
         };
         if is_accessible {
-            if is_inherent {
-                self.inherent_candidates.push(candidate);
-            } else {
-                self.extension_candidates.push(candidate);
-            }
+            let list_to_push_to = match is_inherent {
+                InherentOrExtension::Inherent => &mut self.inherent_candidates,
+                InherentOrExtension::DynExtension => &mut self.dyn_extension_candidates,
+                InherentOrExtension::Extension => &mut self.extension_candidates,
+            };
+            list_to_push_to.push(candidate);
         } else {
             self.private_candidates.push(candidate);
         }
@@ -902,9 +920,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
                     self.fcx.instantiate_canonical(self.span, self_ty);
 
-                self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id(), receiver_steps);
                 self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps);
+                self.assemble_dyn_extension_candidates(generalized_self_ty);
             }
             ty::Adt(def, _) => {
                 let def_id = def.did();
@@ -987,13 +1005,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     kind: InherentImplCandidate { impl_def_id, receiver_steps },
                     import_ids: &[],
                 },
-                true,
+                InherentOrExtension::Inherent,
             );
         }
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_inherent_candidates_from_object(&mut self, self_ty: Ty<'tcx>) {
+    fn assemble_dyn_extension_candidates(&mut self, self_ty: Ty<'tcx>) {
         let principal = match self_ty.kind() {
             ty::Dynamic(data, ..) => Some(data),
             _ => None,
@@ -1019,7 +1037,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             |this, new_trait_ref, item| {
                 this.push_candidate(
                     Candidate { item, kind: ObjectCandidate(new_trait_ref), import_ids: &[] },
-                    true,
+                    if new_trait_ref == trait_ref {
+                        InherentOrExtension::Inherent
+                    } else {
+                        InherentOrExtension::DynExtension
+                    },
                 );
             },
         );
@@ -1054,7 +1076,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.assemble_candidates_for_bounds(bounds, |this, poly_trait_ref, item| {
             this.push_candidate(
                 Candidate { item, kind: WhereClauseCandidate(poly_trait_ref), import_ids: &[] },
-                true,
+                InherentOrExtension::Inherent,
             );
         });
     }
@@ -1154,7 +1176,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 import_ids,
                                 kind: TraitCandidate(bound_trait_ref, lint_ambiguous),
                             },
-                            false,
+                            InherentOrExtension::Extension,
                         );
                     }
                 }
@@ -1177,7 +1199,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         import_ids,
                         kind: TraitCandidate(ty::Binder::dummy(trait_ref), lint_ambiguous),
                     },
-                    false,
+                    InherentOrExtension::Extension,
                 );
             }
         }
@@ -1191,6 +1213,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let mut names: Vec<_> = self
             .inherent_candidates
             .iter()
+            .chain(&self.dyn_extension_candidates)
             .chain(&self.extension_candidates)
             .filter(|candidate| candidate_filter(&candidate.item))
             .filter(|candidate| {
@@ -1716,9 +1739,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> Option<PickResult<'tcx>> {
         debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
 
-        for (kind, candidates) in
-            [("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
-        {
+        for (kind, candidates) in [
+            ("inherent", &self.inherent_candidates),
+            ("dyn extension", &self.dyn_extension_candidates),
+            ("extension", &self.extension_candidates),
+        ] {
             debug!("searching {} candidates", kind);
             let res = self.consider_candidates(
                 self_ty,
