@@ -2063,6 +2063,18 @@ fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
     let owner_span = match owner_node {
         hir::Node::Item(item) => match item.kind {
             hir::ItemKind::Fn { body: owner_id, .. } => tcx.hir_span(owner_id.hir_id),
+            hir::ItemKind::Const(..) | hir::ItemKind::Static(..) => item.span,
+            hir::ItemKind::Enum(..) => {
+                let variant = tcx
+                    .hir_parent_iter(hir_id)
+                    .find_map(|(_, node)| match node {
+                        hir::Node::Variant(variant) => Some(variant),
+                        _ => None,
+                    })
+                    .unwrap();
+
+                variant.span
+            }
             _ => {
                 bug!("Drop location span error: need to handle more ItemKind '{:?}'", item.kind);
             }
