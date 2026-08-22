@@ -553,6 +553,11 @@ pub(crate) struct Config {
     /// *only* applied to the [`PassFailMode::RunPass`] test crate and not its auxiliaries.
     pub(crate) optimize_tests: bool,
 
+    /// Whether rustdoc should disable CSS/JS minification when generating docs for tests.
+    ///
+    /// Forwarded from bootstrap's `build.docs-minification = false`.
+    pub(crate) disable_minification: bool,
+
     /// Target platform tuple.
     pub(crate) target: String,
 
