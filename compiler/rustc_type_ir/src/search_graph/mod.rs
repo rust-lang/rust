@@ -18,6 +18,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter;
 use std::marker::PhantomData;
+use std::ops::Sub;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -275,6 +276,14 @@ pub enum LowerAvailableDepth {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct AvailableDepth(usize);
+
+impl Sub<RequiredDepth> for AvailableDepth {
+    type Output = AvailableDepth;
+    fn sub(self, rhs: RequiredDepth) -> AvailableDepth {
+        AvailableDepth(self.0.checked_sub(rhs.0).unwrap())
+    }
+}
+
 impl AvailableDepth {
     /// Returns the remaining depth allowed for nested goals.
     ///
@@ -867,9 +876,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             evaluation_result.encountered_overflow,
             UpdateParentGoalCtxt::Ordinary {
                 nested_goals: &evaluation_result.nested_goals,
-                min_reachable_available_depth: AvailableDepth(
-                    available_depth.0 - evaluation_result.required_depth.0,
-                ),
+                min_reachable_available_depth: available_depth - evaluation_result.required_depth,
             },
         );
         let result = evaluation_result.result;
@@ -1273,9 +1280,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 encountered_overflow,
                 UpdateParentGoalCtxt::Ordinary {
                     nested_goals,
-                    min_reachable_available_depth: AvailableDepth(
-                        available_depth.0 - required_depth.0,
-                    ),
+                    min_reachable_available_depth: available_depth - required_depth,
                 },
             );
 
