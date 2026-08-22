@@ -15,8 +15,11 @@ pub(crate) const UNSUPPORTED_CONCAT_ELEM_ERR: &str = "expected identifier or str
 /// A meta-variable expression, for expansions based on properties of meta-variables.
 #[derive(Debug, PartialEq, Encodable, Decodable)]
 pub(crate) enum MetaVarExpr {
-    /// Unification of two or more identifiers.
-    Concat(Box<[MetaVarExprConcatElem]>),
+    /// Unification of two or more identifiers/literals/metavariables into an identifier.
+    ConcatIdent(Box<[MetaVarExprConcatElem]>),
+
+    /// Unification of two or more identifiers/literals/metavariables into a string literal.
+    ConcatStr(Box<[MetaVarExprConcatElem]>),
 
     /// The number of repetitions of an identifier.
     Count(Ident, usize),
@@ -73,7 +76,12 @@ impl MetaVarExpr {
 
         let mut iter = args.iter();
         let rslt = match ident.name {
-            sym::concat => parse_concat(&mut iter, psess, outer_span, ident.span)?,
+            sym::concat => {
+                MetaVarExpr::ConcatIdent(parse_concat(&mut iter, psess, outer_span, ident.span)?)
+            }
+            sym::concat_str => {
+                MetaVarExpr::ConcatStr(parse_concat(&mut iter, psess, outer_span, ident.span)?)
+            }
             sym::count => parse_count(&mut iter, psess, ident.span)?,
             sym::ignore => {
                 eat_dollar(&mut iter, psess, ident.span)?;
@@ -95,7 +103,7 @@ impl MetaVarExpr {
 
     pub(crate) fn for_each_metavar<A>(&self, mut aux: A, mut cb: impl FnMut(A, &Ident) -> A) -> A {
         match self {
-            MetaVarExpr::Concat(elems) => {
+            MetaVarExpr::ConcatIdent(elems) | MetaVarExpr::ConcatStr(elems) => {
                 for elem in elems {
                     if let MetaVarExprConcatElem::Var(ident) = elem {
                         aux = cb(aux, ident)
@@ -175,7 +183,7 @@ fn parse_concat<'psess>(
     psess: &'psess ParseSess,
     outer_span: Span,
     expr_ident_span: Span,
-) -> PResult<'psess, MetaVarExpr> {
+) -> PResult<'psess, Box<[MetaVarExprConcatElem]>> {
     let mut result = Vec::new();
     loop {
         let is_var = try_eat_dollar(iter);
@@ -210,7 +218,7 @@ fn parse_concat<'psess>(
             .dcx()
             .struct_span_err(expr_ident_span, "`concat` must have at least two elements"));
     }
-    Ok(MetaVarExpr::Concat(result.into()))
+    Ok(result.into())
 }
 
 /// Parse a meta-variable `count` expression: `count(ident[, depth])`
