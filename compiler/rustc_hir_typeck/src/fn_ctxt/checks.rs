@@ -935,6 +935,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err = fn_call_diag_ctxt.initial_final_diagnostic();
         fn_call_diag_ctxt.suggest_confusable(&mut err);
+        fn_call_diag_ctxt.detect_missing_turbofish(&mut err);
 
         // As we encounter issues, keep track of what we want to provide for the suggestion.
 
@@ -3189,6 +3190,42 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
             return;
+        }
+    }
+
+    fn detect_missing_turbofish(&self, err: &mut Diag<'_>) {
+        let mut iter = self.provided_args.iter().peekable();
+        while let Some(arg) = iter.next() {
+            let hir::ExprKind::Binary(lt, lt_left, lt_right) = arg.kind else {
+                continue;
+            };
+            let hir::BinOpKind::Lt = lt.node else { continue };
+            let hir::ExprKind::Path(_) = lt_left.kind else { continue };
+            let hir::ExprKind::Path(_) = lt_right.kind else { continue };
+
+            let Some(mut next) = iter.next() else { break };
+            loop {
+                match next.kind {
+                    hir::ExprKind::Binary(gt, gt_left, gt_right)
+                        if let hir::BinOpKind::Gt = gt.node
+                            && let hir::ExprKind::Path(_) = gt_left.kind
+                            && let hir::ExprKind::Call(..) = gt_right.kind =>
+                    {
+                        // We've encountered a likely missing turbofish error, for which we've already
+                        // emitted a more targeted diagnostic during name resolution making this one
+                        // redundant (`LateResolutionVisitor::detect_missing_turbofish`).
+                        err.downgrade_to_delayed_bug();
+                    }
+                    hir::ExprKind::Path(_) => {
+                        if let Some(n) = iter.next() {
+                            next = n;
+                            continue;
+                        }
+                    }
+                    _ => {}
+                }
+                break;
+            }
         }
     }
 

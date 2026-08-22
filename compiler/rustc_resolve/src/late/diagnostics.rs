@@ -1632,6 +1632,170 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
     }
 
+    /// When encountering `Ty < Ty, Ty > call()` in function and method call arguments, suggest
+    /// using the turbofish and silence redundant resolve errors.
+    pub(in crate::late) fn detect_missing_turbofish(&mut self, arguments: &'ast [Box<Expr>]) {
+        if self.use_injections.is_empty() {
+            // Avoid doing unnecessary work, we would have had resolve errors by now if this mistake
+            // had happened.
+            return;
+        }
+        let mut iter = arguments.iter().peekable();
+        // Look through every call argument expression, when encountering `a < b`, try to find a
+        // closing `c > ::d()` that would make the whole thing be syntactically valid as a
+        // fully-qualified path `a::<b, c>::d()`.
+        while let Some(arg) = iter.next() {
+            // foo(left < right, bar, baz>::qux())
+            //     ^^^^   ^^^^^
+            let ExprKind::Binary(lt, left, right) = &arg.kind else { continue };
+            // foo(left < right, bar, baz>::qux())
+            //          ^
+            let ast::BinOpKind::Lt = lt.node else {
+                continue;
+            };
+            // foo(left < right, bar, baz>::qux())
+            //     ^^^^ is a path
+            let ExprKind::Path(_, lt_left) = &left.kind else { continue };
+            // foo(a::B < right, bar, baz>::qux())
+            //     ^  ^ lt_left_segments
+            let lt_left_segments: Vec<_> = lt_left.segments.iter().map(|seg| seg.into()).collect();
+            // `a::B` is a type-like.
+            let lt_res = if let PathResult::NonModule(res) =
+                self.resolve_path(&lt_left_segments, Some(TypeNS), None, PathSource::Expr(None))
+                && let Some(lt_res) = res.full_res()
+            {
+                lt_res
+            } else {
+                continue;
+            };
+
+            // Same thing we do for `left`, for `right`:
+            // foo(left < right, bar, baz>::qux())
+            //            ^^^^^ is a path
+            let ExprKind::Path(_, lt_right) = &right.kind else { continue };
+            let lt_right_segments: Vec<_> =
+                lt_right.segments.iter().map(|seg| seg.into()).collect();
+            if let PathResult::NonModule(res) =
+                self.resolve_path(&lt_right_segments, Some(TypeNS), None, PathSource::Expr(None))
+                && let Some(_res) = res.full_res()
+            {
+            } else {
+                continue;
+            }
+
+            // foo(left < right, bar,   baz>::qux())
+            //           next is ^^^ or ^^^^^^^^^^^
+            let Some(mut next) = iter.next() else {
+                break;
+            };
+            let mut other_path_spans = vec![];
+            loop {
+                match &next.kind {
+                    // foo(left < right, bar, baz>::qux())
+                    //                        ^^^^^^^^^
+                    ExprKind::Binary(gt, gt_left, gt_right)
+                        // foo(left < right, bar, baz>::qux())
+                        //                           ^
+                        if let ast::BinOpKind::Gt = gt.node
+                            // foo(left < right, bar, baz>::qux())
+                            //                        ^^^
+                            && let ExprKind::Path(_, gt_left) = &gt_left.kind
+                            // foo(left < right, bar, baz>::qux())
+                            //                            ^^^^^^^
+                            && let ExprKind::Call(call_expr, _) = &gt_right.kind
+                            && let ExprKind::Path(_, call_path) = &call_expr.kind
+                            && let gt_left_segments = gt_left
+                                .segments
+                                .iter()
+                                .map(|seg| seg.into())
+                                .collect::<Vec<_>>()
+                            && let PathResult::NonModule(res) = self.resolve_path(
+                                &gt_left_segments,
+                                Some(TypeNS),
+                                None,
+                                PathSource::Expr(None),
+                            )
+                            && let Some(_res) = res.full_res() =>
+                    {
+                        // We've encountered an expression where we have `Ty < Ty, Ty > call(...)`.
+                        // A binop between two types is non-sensical in (current?) Rust, and the
+                        // presence of two binops separated by a comma of less-than followed by
+                        // greater-than heavily implies a missing turbofish in an expression.
+                        let mut any = false;
+                        let spans: Vec<Span> = lt_left_segments
+                            .iter()
+                            .map(|s| s.ident.span)
+                            .chain(lt_right_segments.iter().map(|s| s.ident.span))
+                            .chain(gt_left_segments.iter().map(|s| s.ident.span))
+                            .chain(gt_left_segments.iter().map(|s| s.ident.span))
+                            .chain(call_path.segments.iter().map(|seg| seg.span()))
+                            .chain(other_path_spans.iter().cloned())
+                            .collect();
+                        for injection in self.use_injections.iter_mut() {
+                            // Silence all already constructed resolution errors that are contained
+                            // by the likely missing turbofish.
+                            if injection.path.iter().any(|s| spans.contains(&s.ident.span)) {
+                                any = true;
+                                injection.err.downgrade_to_delayed_bug();
+                            }
+                        }
+                        if any {
+                            let sp = MultiSpan::from(vec![lt.span, gt.span]);
+                            let mut err =
+                                self.r.tcx.dcx().struct_span_err(sp, "can't compare two types");
+                            err.span_label(
+                                gt.span,
+                                "these are parsed as \"less than\" and \"greater than\"",
+                            );
+                            let name = if let Some(def_id) = lt_res.opt_def_id()
+                                && let Some(name) = self.r.tcx.opt_item_name(def_id)
+                            {
+                                name.to_string()
+                            } else {
+                                lt_right_segments
+                                    .iter()
+                                    .map(|s| s.ident.name.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("::")
+                            };
+                            err.span_suggestion_verbose(
+                                lt.span.shrink_to_lo(),
+                                format!(
+                                    "you likely intended to write type `{name}` with type parameters, but \
+                                    type parameters in expression contexts require the use of the \
+                                    \"turbofish\" `::<>`",
+                                ),
+                                "::".to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                            err.emit();
+                        }
+                    }
+
+                    // foo(left < right, bat, bar, baz>::qux())
+                    //                   ^^^
+                    ExprKind::Path(_, path) => {
+                        // foo(left < right, bat, bar,   baz>::qux())
+                        //                        ^^^ or ^^^^^^^^^^^
+                        if let Some(n) = iter.next() {
+                            next = n;
+                            other_path_spans.extend(path.segments.iter().map(|seg| seg.ident.span));
+                            // Only case where we don't break from the `loop` advancing the parsed
+                            // call arguments , we've encountered a path that is likely one of the
+                            // type parameters for the missing turbofish.
+                            continue;
+                        }
+                    }
+
+                    _ => {}
+                }
+                // This doesn't look like a turbofish, look for more missing turbofishes on the
+                // following arguments.
+                break;
+            }
+        }
+    }
+
     fn suggest_at_operator_in_slice_pat_with_range(&self, err: &mut Diag<'_>, path: &[Segment]) {
         let Some(pat) = self.diag_metadata.current_pat else { return };
         let (bound, side, range) = match &pat.kind {
