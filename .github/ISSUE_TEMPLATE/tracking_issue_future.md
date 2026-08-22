@@ -10,7 +10,7 @@ are for lints that implement a future-incompatible warning.
 
 Remember to add team labels to the tracking issue.
 For something that affects the language, this would be `T-lang`, and for libs
-it would be `T-libs-api`.
+it would be `T-libs`.
 Also check for any `A-` labels to add.
 -->
 
