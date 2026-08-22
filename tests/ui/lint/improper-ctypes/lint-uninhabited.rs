@@ -26,6 +26,8 @@ struct HalfHiddenUninhabited {
     zst_uninh: !,
 }
 
+// TODO: inhabitedness detection from other mods/crates
+
 extern "C" {
 
     fn bad_entry(e: AlsoUninhabited); //~ ERROR: uses type `AlsoUninhabited`

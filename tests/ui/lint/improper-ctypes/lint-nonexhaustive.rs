@@ -1,4 +1,3 @@
-//@ check-pass
 #![deny(improper_ctypes)]
 
 //@ aux-build: extern_crate_types.rs
@@ -26,10 +25,19 @@ extern "C" {
 }
 // END
 
-use ext_crate::NonExhaustiveStruct;
+//FIXME these tests feel almost pointless given they concern types that need
+// to be behind indirections... but soon.
+pub extern "C" fn fnptr_wrapper(
+    _use_struct: extern "C" fn(s: ext_crate::NonExhaustiveStruct),
+    //~^ ERROR `extern` callback uses type `NonExhaustiveStruct`
 
-extern "C" {
-    pub fn use_struct(s: *mut NonExhaustiveStruct);
-}
+    _use_enum: extern "C" fn(s: ext_crate::NonExhaustiveEnum),
+    //~^ ERROR `extern` callback uses type `NonExhaustiveEnum`
+    _use_enumwbv: extern "C" fn(s: ext_crate::NonExhaustiveEnumWithBadVariant),
+    //~^ ERROR `extern` callback uses type `NonExhaustiveEnumWithBadVariant`
+    _use_pureenum: extern "C" fn(s: ext_crate::NonExhaustivePureEnum),
+    _use_optionlike: extern "C" fn(s: ext_crate::NonExhaustiveOptionLike),
+    //~^ ERROR `extern` callback uses type `NonExhaustiveOptionLike`
+){}
 
 fn main() {}
