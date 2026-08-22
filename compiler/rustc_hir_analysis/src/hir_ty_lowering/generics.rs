@@ -403,7 +403,7 @@ pub fn check_generic_arg_count_for_value_path(
 
 /// Checks that the correct number of generic arguments have been provided.
 /// This is used both for datatypes and function calls.
-#[instrument(skip(cx, gen_pos), level = "debug")]
+#[instrument(skip(cx, gen_pos), level = "info")]
 pub(crate) fn check_generic_arg_count(
     cx: &dyn HirTyLowerer<'_>,
     def_id: DefId,
@@ -413,6 +413,8 @@ pub(crate) fn check_generic_arg_count(
     has_self: bool,
 ) -> GenericArgCountResult {
     let gen_args = seg.args();
+    let tcx = cx.tcx();
+    let kind = tcx.def_kind(def_id);
     let default_counts = gen_params.own_defaults();
     let param_counts = gen_params.own_counts();
     // If we have any `Vec<foo: Bar>` constraint, where `Bar` is unresolved, the user likely meant
@@ -450,7 +452,23 @@ pub(crate) fn check_generic_arg_count(
         prohibit_assoc_item_constraint(cx, c, None);
     }
 
-    let tcx = cx.tcx();
+    // hidden lifetimes may not be specified explicitly.
+    // if it doesn't show up in the function signature,
+    // it can't be written as a lifetime arg.
+    //
+    // While most hidden lifetimes are late-bound (e.g. `fn(_: &u32)` ),
+    // there are some cases (complicated and involve associated types)
+    // where an early-bound lifetime parameter can be hidden from the function signature.
+
+    let hidden_early_lifetimes =
+        gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count();
+
+    debug!(?hidden_early_lifetimes);
+
+    if kind.is_fn_like() {
+        debug!("we are using fn-like {:?} ({gen_pos:?})", tcx.item_name(def_id));
+    }
+    debug!("# gen_args = {}", gen_args.args.len());
 
     // Suppress this warning for delegations as it is compiler generated and lifetimes are
     // propagated while late-bound lifetimes may be present.
@@ -496,9 +514,15 @@ pub(crate) fn check_generic_arg_count(
         Err(reported)
     };
 
-    let min_expected_lifetime_args = if infer_lifetimes { 0 } else { param_counts.lifetimes };
-    let max_expected_lifetime_args = param_counts.lifetimes;
+    let min_expected_lifetime_args =
+        if infer_lifetimes { 0 } else { param_counts.lifetimes - hidden_early_lifetimes };
+    debug!(?min_expected_lifetime_args);
+
+    let max_expected_lifetime_args = param_counts.lifetimes - hidden_early_lifetimes;
+    debug!(?max_expected_lifetime_args);
+
     let num_provided_lifetime_args = gen_args.num_lifetime_args();
+    debug!(?num_provided_lifetime_args);
 
     let lifetimes_correct = check_lifetime_args(
         min_expected_lifetime_args,
@@ -562,7 +586,7 @@ pub(crate) fn check_generic_arg_count(
                     .map(|param| param.name)
                     .collect();
                 if constraint_names == param_names {
-                    let has_assoc_ty_with_same_name = if let DefKind::Trait = tcx.def_kind(def_id) {
+                    let has_assoc_ty_with_same_name = if let DefKind::Trait = kind {
                         gen_args.constraints.iter().any(|constraint| {
                             traits::supertrait_def_ids(tcx, def_id).any(|trait_did| {
                                 cx.probe_trait_that_defines_assoc_item(
