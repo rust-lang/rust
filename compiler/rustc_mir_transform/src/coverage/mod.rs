@@ -1,4 +1,4 @@
-use rustc_middle::mir::coverage::{CoverageKind, FunctionCoverageInfo};
+use rustc_middle::mir::coverage::{CoverageKind, FunctionCoverageInfo, Mapping};
 use rustc_middle::mir::{self, BasicBlock, Statement, StatementKind, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, debug_span, trace};
@@ -14,6 +14,7 @@ mod from_mir;
 mod graph;
 mod hir_info;
 mod mappings;
+mod mcdc;
 pub(super) mod query;
 mod spans;
 #[cfg(test)]
@@ -69,7 +70,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     ////////////////////////////////////////////////////
     // Extract coverage spans and other mapping info from MIR.
-    let ExtractedMappings { mappings } =
+    let ExtractedMappings { mut mappings, mcdc_data } =
         match mappings::extract_mappings_from_mir(tcx, mir_body, &hir_info, &graph) {
             Ok(m) => m,
             Err(error) => {
@@ -87,6 +88,18 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     // Inject coverage statements into MIR.
     inject_coverage_statements(mir_body, &graph);
 
+    let mcdc_info = mcdc_data.map(|(mcdc_mappings, mcdc_info)| {
+        // Insert statements according to mappings meta data.
+        mcdc::inject_statements_for_decisions(mir_body, &graph, &mcdc_mappings);
+
+        // Make regular mappings from meta mappings and push them in the mapping list.
+        mappings.extend(mcdc_mappings.into_iter().flat_map(|(decision, conditions)| {
+            [decision.into()].into_iter().chain(conditions.into_iter().map(Mapping::from))
+        }));
+
+        mcdc_info
+    });
+
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
 
@@ -94,6 +107,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
         priority_list,
 
         mappings,
+        mcdc_info,
     }));
 }
 
@@ -105,7 +119,11 @@ fn inject_coverage_statements<'tcx>(mir_body: &mut mir::Body<'tcx>, graph: &Cove
     }
 }
 
-fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb: BasicBlock) {
+pub(crate) fn inject_statement(
+    mir_body: &mut mir::Body<'_>,
+    counter_kind: CoverageKind,
+    bb: BasicBlock,
+) {
     debug!("  injecting statement {counter_kind:?} for {bb:?}");
     let data = &mut mir_body[bb];
     let source_info = data.terminator().source_info;

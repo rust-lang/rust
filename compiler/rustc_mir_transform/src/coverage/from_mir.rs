@@ -98,7 +98,11 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         StatementKind::Coverage(CoverageKind::BlockMarker { .. }) => None,
 
         // These coverage statements should not exist prior to coverage instrumentation.
-        StatementKind::Coverage(CoverageKind::VirtualCounter { .. }) => bug!(
+        StatementKind::Coverage(
+            CoverageKind::VirtualCounter { .. }
+            | CoverageKind::MCDCTmpIdxUpdate { .. }
+            | CoverageKind::MCDCTestVectorBitmapUpdate { .. },
+        ) => bug!(
             "Unexpected coverage statement found during coverage instrumentation: {statement:?}"
         ),
     }

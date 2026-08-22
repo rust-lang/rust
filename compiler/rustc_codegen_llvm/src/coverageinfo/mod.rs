@@ -131,6 +131,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             }
             // If a BCB doesn't have an associated physical counter, there's nothing to codegen.
             CoverageKind::VirtualCounter { .. } => {}
+            CoverageKind::MCDCTmpIdxUpdate { .. } => unimplemented!(),
+            CoverageKind::MCDCTestVectorBitmapUpdate { .. } => unimplemented!(),
         }
     }
 }
