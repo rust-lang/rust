@@ -21,9 +21,9 @@ mod closure;
 use crate::diagnostics::{
     AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd,
-    InvalidLegacyConstGenericArg, MatchArmWithNoBody, MoveExprOnlyInPlainClosures,
-    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign, UseConstGenericArg,
-    YieldInClosure,
+    InvalidLegacyConstGenericArg, MatchArmWithNoBody, MoveExprOnlyInSupportedContexts,
+    NestedMoveExprWithoutEnclosingContext, NeverPatternWithBody, NeverPatternWithGuard,
+    UnderscoreExprLhsAssign, UseConstGenericArg, YieldInClosure,
 };
 use crate::{
     AllowReturnTypeNotation, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
@@ -36,30 +36,20 @@ pub(super) struct WillCreateDefIdsVisitor;
 struct MoveExprInitializer<'a> {
     /// The `NodeId` of the outer `move(...)` expression.
     id: NodeId,
-    /// Span of the `move` token, used for the generated binding name.
-    move_kw_span: Span,
     /// The expression inside `move(...)`; e.g. `foo.bar` in `move(foo.bar)`.
     expr: &'a Expr,
 }
 
-/// State for `move(...)` expressions found while lowering one plain closure body.
+/// State for `move(...)` expressions found while lowering one closure-like body.
+#[derive(Default)]
 pub(super) struct MoveExprState<'hir> {
-    pub(super) bindings: NodeMap<(Ident, HirId)>,
     pub(super) occurrences: Vec<MoveExprOccurrence<'hir>>,
-}
-
-impl<'hir> Default for MoveExprState<'hir> {
-    fn default() -> Self {
-        Self { bindings: NodeMap::default(), occurrences: Vec::new() }
-    }
 }
 
 pub(super) struct MoveExprOccurrence<'hir> {
     id: NodeId,
-    ident: Ident,
     pat: &'hir hir::Pat<'hir>,
     binding: HirId,
-    explicit_capture: bool,
 }
 
 /// Looks up the initializer expression for each `move(...)` occurrence.
@@ -73,20 +63,22 @@ impl<'a> MoveExprInitializerFinder<'a> {
         this.visit_expr(expr);
         this.initializers
     }
+
+    fn collect_block(block: &'a Block) -> Vec<MoveExprInitializer<'a>> {
+        let mut this = Self { initializers: Vec::new() };
+        this.visit_block(block);
+        this.initializers
+    }
 }
 
 impl<'a> Visitor<'a> for MoveExprInitializerFinder<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         match &expr.kind {
-            ExprKind::Move(inner, move_kw_span) => {
+            ExprKind::Move(inner, _) => {
                 self.visit_expr(inner);
-                self.initializers.push(MoveExprInitializer {
-                    id: expr.id,
-                    move_kw_span: *move_kw_span,
-                    expr: inner,
-                });
+                self.initializers.push(MoveExprInitializer { id: expr.id, expr: inner });
             }
-            ExprKind::Closure(..) | ExprKind::Gen(..) | ExprKind::ConstBlock(..) => {}
+            ExprKind::ConstBlock(..) => {}
             _ => walk_expr(self, expr),
         }
     }
@@ -129,13 +121,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (result, state)
     }
 
-    fn record_move_expr(
-        &mut self,
-        id: NodeId,
-        inner: &Expr,
-        move_kw_span: Span,
-        explicit_capture: bool,
-    ) -> (Ident, HirId) {
+    fn with_move_expr_initializer<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        let old = self.lowering_move_expr_initializer;
+        self.lowering_move_expr_initializer = true;
+        let result = f(self);
+        self.lowering_move_expr_initializer = old;
+        result
+    }
+
+    fn record_move_expr(&mut self, id: NodeId, inner: &Expr, move_kw_span: Span) -> (Ident, HirId) {
         let index = self
             .move_expr_bindings
             .last()
@@ -145,11 +139,72 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (pat, binding) = self.pat_ident(inner.span, ident);
         let Some(state) = self.move_expr_bindings.last_mut().and_then(|state| state.as_mut())
         else {
-            span_bug!(move_kw_span, "`move(...)` lowered without a plain closure body state");
+            span_bug!(move_kw_span, "`move(...)` lowered without a closure-like body state");
         };
-        state.bindings.insert(id, (ident, binding));
-        state.occurrences.push(MoveExprOccurrence { id, ident, pat, binding, explicit_capture });
+        state.occurrences.push(MoveExprOccurrence { id, pat, binding });
         (ident, binding)
+    }
+
+    fn lower_expr_with_move_exprs(
+        &mut self,
+        expr: hir::Expr<'hir>,
+        move_expr_state: MoveExprState<'hir>,
+        body: &Expr,
+        whole_span: Span,
+    ) -> hir::Expr<'hir> {
+        let initializers = MoveExprInitializerFinder::collect(body);
+        self.lower_expr_with_move_expr_initializers(expr, move_expr_state, initializers, whole_span)
+    }
+
+    fn lower_expr_with_move_exprs_in_block(
+        &mut self,
+        expr: hir::Expr<'hir>,
+        move_expr_state: MoveExprState<'hir>,
+        body: &Block,
+        whole_span: Span,
+    ) -> hir::Expr<'hir> {
+        let initializers = MoveExprInitializerFinder::collect_block(body);
+        self.lower_expr_with_move_expr_initializers(expr, move_expr_state, initializers, whole_span)
+    }
+
+    fn lower_expr_with_move_expr_initializers(
+        &mut self,
+        expr: hir::Expr<'hir>,
+        move_expr_state: MoveExprState<'hir>,
+        initializers: Vec<MoveExprInitializer<'_>>,
+        whole_span: Span,
+    ) -> hir::Expr<'hir> {
+        if move_expr_state.occurrences.is_empty() {
+            return expr;
+        }
+
+        let initializers = initializers
+            .into_iter()
+            .map(|initializer| (initializer.id, initializer.expr))
+            .collect::<NodeMap<_>>();
+        let mut stmts = Vec::with_capacity(move_expr_state.occurrences.len());
+        for occurrence in &move_expr_state.occurrences {
+            // Evaluate the expression inside `move(...)` before creating the
+            // closure/coroutine and store it in a synthetic local:
+            // `|| move(foo).bar` becomes roughly
+            // `let __move_expr_0 = foo; || __move_expr_0.bar`.
+            let expr = initializers[&occurrence.id];
+            // This state has already been popped, so a nested `move(...)` in
+            // the initializer is recorded by the immediately enclosing
+            // closure-like body instead of this one.
+            let init = self.with_move_expr_initializer(|this| this.lower_expr(expr));
+            stmts.push(self.stmt_let_pat(
+                None,
+                expr.span,
+                Some(init),
+                occurrence.pat,
+                hir::LocalSource::Normal,
+            ));
+        }
+
+        let stmts = self.arena.alloc_from_iter(stmts);
+        let block = self.block_all(whole_span, stmts, Some(self.arena.alloc(expr)));
+        self.expr(whole_span, hir::ExprKind::Block(block, None))
     }
 
     fn lower_exprs(&mut self, exprs: &[Box<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -304,19 +359,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 if !self.tcx.features().move_expr() {
                     return self.expr_err(*move_kw_span, self.dcx().has_errors().unwrap());
                 }
-                if let Some(state) = self.move_expr_bindings.last().and_then(Option::as_ref) {
-                    let existing = state.bindings.get(&e.id).copied();
-                    let (ident, binding) = existing.unwrap_or_else(|| {
-                        for nested in MoveExprInitializerFinder::collect(inner) {
-                            self.record_move_expr(
-                                nested.id,
-                                nested.expr,
-                                nested.move_kw_span,
-                                false,
-                            );
-                        }
-                        self.record_move_expr(e.id, inner, *move_kw_span, true)
-                    });
+                if self.move_expr_bindings.last().is_some_and(Option::is_some) {
+                    let (ident, binding) = self.record_move_expr(e.id, inner, *move_kw_span);
                     hir::ExprKind::Path(hir::QPath::Resolved(
                         None,
                         self.arena.alloc(hir::Path {
@@ -332,9 +376,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ],
                         }),
                     ))
+                } else if self.lowering_move_expr_initializer && self.move_expr_bindings.is_empty()
+                {
+                    let guar = self
+                        .dcx()
+                        .emit_err(NestedMoveExprWithoutEnclosingContext { span: *move_kw_span });
+                    hir::ExprKind::Err(guar)
                 } else {
-                    let guar =
-                        self.dcx().emit_err(MoveExprOnlyInPlainClosures { span: *move_kw_span });
+                    let guar = self
+                        .dcx()
+                        .emit_err(MoveExprOnlyInSupportedContexts { span: *move_kw_span });
                     hir::ExprKind::Err(guar)
                 }
             }
@@ -345,22 +396,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     CoroutineKind::Gen => hir::CoroutineDesugaring::Gen,
                     CoroutineKind::AsyncGen => hir::CoroutineDesugaring::AsyncGen,
                 };
-                self.make_desugared_coroutine_expr(
-                    *capture_clause,
-                    e.id,
-                    None,
-                    *decl_span,
+                let (kind, move_expr_state) =
+                    self.with_move_expr_bindings(Some(MoveExprState::default()), |this| {
+                        this.make_desugared_coroutine_expr(
+                            *capture_clause,
+                            e.id,
+                            None,
+                            *decl_span,
+                            e.span,
+                            desugaring_kind,
+                            hir::CoroutineSource::Block,
+                            |this| {
+                                this.with_new_scopes(e.span, |this| this.lower_block_expr(block))
+                            },
+                        )
+                    });
+                let Some(move_expr_state) = move_expr_state else {
+                    span_bug!(
+                        *decl_span,
+                        "coroutine block lowering did not return `move(...)` state"
+                    );
+                };
+                let expr = hir::Expr { hir_id: expr_hir_id, kind, span };
+                return self.lower_expr_with_move_exprs_in_block(
+                    expr,
+                    move_expr_state,
+                    block,
                     e.span,
-                    desugaring_kind,
-                    hir::CoroutineSource::Block,
-                    |this| {
-                        this.with_new_scopes(e.span, |this| {
-                            let (expr, _) = this
-                                .with_move_expr_bindings(None, |this| this.lower_block_expr(block));
-                            expr
-                        })
-                    },
-                )
+                );
             }
             ExprKind::Block(blk, opt_label) => {
                 // Different from loops, label of block resolves to block id rather than
@@ -864,6 +927,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (params, res)
         });
 
+        let explicit_captures: &'hir [hir::ExplicitCapture] = match coroutine_source {
+            hir::CoroutineSource::Block
+                if let Some(move_expr_state) =
+                    self.move_expr_bindings.last().and_then(Option::as_ref) =>
+            {
+                self.arena.alloc_from_iter(
+                    move_expr_state
+                        .occurrences
+                        .iter()
+                        .map(|occurrence| hir::ExplicitCapture { var_hir_id: occurrence.binding }),
+                )
+            }
+            _ => &[],
+        };
+
         // `static |<_task_context?>| -> <return_ty> { <body> }`:
         hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
             def_id: closure_def_id,
@@ -876,7 +954,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_arg_span: None,
             kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
-            explicit_captures: &[],
+            explicit_captures,
         }))
     }
 
