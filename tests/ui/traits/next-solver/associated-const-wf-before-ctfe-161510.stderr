@@ -1,0 +1,33 @@
+error[E0053]: associated constant `K` has an incompatible generic parameter for trait `Owner`
+  --> $DIR/associated-const-wf-before-ctfe-161510.rs:12:18
+   |
+LL | trait Owner {
+   |       -----
+LL |     type const K<const N: u16>: u16;
+   |                  ------------ expected const parameter of type `u16`
+...
+LL | impl Owner for () {
+   | -----------------
+LL |     type const K<const N: u32>: u32 = N;
+   |                  ^^^^^^^^^^^^ found const parameter of type `u32`
+
+error[E0271]: type mismatch resolving `<() as Owner>::K<9> == 0`
+  --> $DIR/associated-const-wf-before-ctfe-161510.rs:19:11
+   |
+LL |     take1(());
+   |     ----- ^^ expected `0`, found `9`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: expected constant `0`
+              found constant `9`
+note: required by a bound in `take1`
+  --> $DIR/associated-const-wf-before-ctfe-161510.rs:16:24
+   |
+LL | fn take1(_: impl Owner<K<9> = 0>) {}
+   |                        ^^^^^^^^ required by this bound in `take1`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0053, E0271.
+For more information about an error, try `rustc --explain E0053`.
