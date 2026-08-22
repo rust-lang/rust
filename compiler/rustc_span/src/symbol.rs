@@ -1021,6 +1021,7 @@ symbols! {
         format_placeholder,
         format_unsafe_arg,
         fp,
+        fpregs,
         framework,
         freeze,
         freeze_impls,
