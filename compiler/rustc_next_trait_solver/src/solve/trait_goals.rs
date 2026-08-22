@@ -225,6 +225,19 @@ where
             return Err(NoSolution.into());
         }
 
+        // Fast path: when the feature is disabled,
+        // assume all types implement `Move`.
+        //
+        // This will trivially make the addition of
+        // `Move` backward compatible with trait bounds
+        if !cx.features().move_trait()
+            && cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move)
+        {
+            return ecx
+                .probe_builtin_trait_candidate(BuiltinImplSource::Trivial)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes));
+        }
+
         if let Some(result) = ecx.disqualify_auto_trait_candidate_due_to_possible_impl(goal) {
             return result;
         }
@@ -1342,7 +1355,9 @@ where
 
             // Backward compatibility for default auto traits.
             // Test: ui/traits/default_auto_traits/extern-types.rs
-            ty::Foreign(..) if self.cx().is_default_trait(goal.predicate.def_id()) => check_impls(),
+            ty::Foreign(..) if self.cx().is_implicit_trait(goal.predicate.def_id(), false) => {
+                check_impls()
+            }
 
             // These types cannot be structurally decomposed into constituent
             // types, and therefore have no built-in auto impl.

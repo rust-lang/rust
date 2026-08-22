@@ -38,6 +38,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 pub use self::coherence::{
@@ -66,7 +67,7 @@ pub use self::specialize::{
 pub use self::structural_normalize::StructurallyNormalizeExt;
 pub use self::util::{
     BoundVarReplacer, PlaceholderReplacer, elaborate, expand_trait_aliases, impl_item_is_final,
-    sizedness_fast_path, supertrait_def_ids, supertraits, transitive_bounds_that_define_assoc_item,
+    implicit_fast_path, supertrait_def_ids, supertraits, transitive_bounds_that_define_assoc_item,
     upcast_choices, with_replaced_escaping_bound_vars,
 };
 use crate::error_reporting::InferCtxtErrorExt;
@@ -105,6 +106,12 @@ impl<'tcx> FulfillmentError<'tcx> {
                 false
             }
         }
+    }
+}
+
+impl<'tcx> EngineError<'tcx> for FulfillmentError<'tcx> {
+    fn try_report_errors(infcx: &InferCtxt<'tcx>, errors: ThinVec<Self>) {
+        infcx.err_ctxt().report_fulfillment_errors(errors);
     }
 }
 
