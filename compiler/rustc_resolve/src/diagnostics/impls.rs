@@ -34,7 +34,7 @@ use rustc_session::Session;
 use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::def_id::ModId;
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::edition::Edition;
+use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{
@@ -283,6 +283,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     continue;
                 }
                 diag.multipart_suggestion(msg, suggestions, applicability);
+            }
+
+            if let Some(help) = err.help {
+                diag.span_suggestions_with_style(
+                    Span::default(),
+                    help,
+                    std::iter::empty::<String>(),
+                    Applicability::Unspecified,
+                    SuggestionStyle::HideCodeAlways,
+                );
             }
 
             if let Some(candidates) = &err.candidates {
@@ -1145,7 +1155,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     sub_unreachable,
                 })
             }
-            ResolutionError::FailedToResolve { segment, label, suggestion, module, message } => {
+            ResolutionError::FailedToResolve {
+                segment,
+                label,
+                suggestion,
+                help,
+                module,
+                message,
+            } => {
                 let mut err = struct_span_code_err!(self.dcx(), span, E0433, "{message}");
                 err.span_label(span, label);
 
@@ -1155,6 +1172,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         return err;
                     }
                     err.multipart_suggestion(msg, suggestions, applicability);
+                }
+
+                if let Some(help) = help {
+                    err.span_suggestions_with_style(
+                        Span::default(),
+                        help,
+                        std::iter::empty::<String>(),
+                        Applicability::Unspecified,
+                        SuggestionStyle::HideCodeAlways,
+                    );
                 }
 
                 let module = match module {
@@ -1405,17 +1432,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             VisResolutionError::AncestorOnly(span) => {
                 self.dcx().create_err(diagnostics::AncestorOnly(span))
             }
-            VisResolutionError::FailedToResolve(span, segment, label, suggestion, message) => self
-                .into_struct_error(
-                    span,
-                    ResolutionError::FailedToResolve {
-                        segment,
-                        label,
-                        suggestion,
-                        module: None,
-                        message,
-                    },
-                ),
+            VisResolutionError::FailedToResolve {
+                span,
+                segment,
+                label,
+                suggestion,
+                help,
+                message,
+            } => self.into_struct_error(
+                span,
+                ResolutionError::FailedToResolve {
+                    segment,
+                    label,
+                    suggestion,
+                    help,
+                    module: None,
+                    message,
+                },
+            ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.dcx().create_err(diagnostics::ExpectedModuleFound { span, res, path_str })
             }
@@ -2966,7 +3000,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         failed_segment_idx: usize,
         ident: Ident,
         diag_metadata: Option<&DiagMetadata<'_>>,
-    ) -> (String, String, Option<Suggestion>) {
+    ) -> (String, String, Option<Suggestion>, Option<String>) {
         let is_last = failed_segment_idx == path.len() - 1;
         let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
         let module_def_id = match module {
@@ -3012,6 +3046,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         String::from("a similar path exists"),
                         Applicability::MaybeIncorrect,
                     )),
+                    None,
                 )
             } else if ident.name == sym::core {
                 (
@@ -3022,14 +3057,40 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         "try using `std` instead of `core`".to_string(),
                         Applicability::MaybeIncorrect,
                     )),
+                    None,
                 )
             } else if ident.name == kw::Underscore {
                 (
                     "invalid crate or module name `_`".to_string(),
                     "`_` is not a valid crate or module name".to_string(),
                     None,
+                    None,
                 )
             } else if self.tcx.sess.is_rust_2015() {
+                let crate_is_available = self.tcx.sess.opts.externs.get(ident.as_str()).is_some();
+                let (suggestion_message, help) = if crate_is_available {
+                    let edition_help = format!(
+                        "consider upgrading to a newer edition (latest is \
+                         {LATEST_STABLE_EDITION}) to avoid needing `extern crate`"
+                    );
+                    ("`extern crate` is required on Rust 2015".to_string(), Some(edition_help))
+                } else if was_invoked_from_cargo() {
+                    (
+                        format!(
+                            "if you wanted to use a crate named `{ident}`, use `cargo add \
+                             {ident}` to add it to your `Cargo.toml` and import it in your code",
+                        ),
+                        None,
+                    )
+                } else {
+                    (
+                        format!(
+                            "you might be missing a crate named `{ident}`, add it to your \
+                             project and import it in your code",
+                        ),
+                        None,
+                    )
+                };
                 (
                     format!("cannot find module or crate `{ident}` in {scope}"),
                     format!("use of unresolved module or unlinked crate `{ident}`"),
@@ -3038,23 +3099,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             self.current_crate_outer_attr_insert_span,
                             format!("extern crate {ident};\n"),
                         )],
-                        if was_invoked_from_cargo() {
-                            format!(
-                                "if you wanted to use a crate named `{ident}`, use `cargo add \
-                                 {ident}` to add it to your `Cargo.toml` and import it in your \
-                                 code",
-                            )
+                        suggestion_message,
+                        if crate_is_available {
+                            Applicability::MachineApplicable
                         } else {
-                            format!(
-                                "you might be missing a crate named `{ident}`, add it to your \
-                                 project and import it in your code",
-                            )
+                            Applicability::MaybeIncorrect
                         },
-                        Applicability::MaybeIncorrect,
                     )),
+                    help,
                 )
             } else {
-                (message, format!("could not find `{ident}` in the crate root"), None)
+                (message, format!("could not find `{ident}` in the crate root"), None, None)
             }
         } else if failed_segment_idx > 0 {
             let parent = path[failed_segment_idx - 1].ident.name;
@@ -3120,17 +3175,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     );
                 };
             }
-            (message, msg, None)
+            (message, msg, None, None)
         } else if ident.name == kw::SelfUpper {
             // As mentioned above, `opt_ns` being `None` indicates a module path in import.
             // We can use this to improve a confusing error for, e.g. `use Self::Variant` in an
             // impl
             if opt_ns.is_none() {
-                (message, "`Self` cannot be used in imports".to_string(), None)
+                (message, "`Self` cannot be used in imports".to_string(), None, None)
             } else {
                 (
                     message,
                     "`Self` is only available in impls, traits, and type definitions".to_string(),
+                    None,
                     None,
                 )
             }
@@ -3193,7 +3249,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else {
                 format!("use of undeclared type `{ident}`")
             };
-            (message, label, None)
+            (message, label, None, None)
         } else {
             let mut suggestion = None;
             if ident.name == sym::alloc {
@@ -3225,7 +3281,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ) {
                 let descr = binding.res().descr();
                 let message = format!("cannot find module or crate `{ident}` in {scope}");
-                (message, format!("{descr} `{ident}` is not a crate or module"), suggestion)
+                (message, format!("{descr} `{ident}` is not a crate or module"), suggestion, None)
             } else {
                 let suggestion = if suggestion.is_some() {
                     suggestion
@@ -3243,7 +3299,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 } else {
                     Some((
                         vec![],
-                        format!("you might be missing a crate named `{ident}`",),
+                        format!("you might be missing a crate named `{ident}`"),
                         Applicability::MaybeIncorrect,
                     ))
                 };
@@ -3252,6 +3308,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     message,
                     format!("use of unresolved module or unlinked crate `{ident}`"),
                     suggestion,
+                    None,
                 )
             }
         }
@@ -3261,7 +3318,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &self,
         ident: Ident,
         path: std::path::PathBuf,
-    ) -> Option<(Vec<(Span, String)>, String, Applicability)> {
+    ) -> Option<Suggestion> {
         Some((
             vec![(self.current_crate_outer_attr_insert_span, format!("mod {ident};\n"))],
             format!(
