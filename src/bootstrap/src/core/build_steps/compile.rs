@@ -1395,7 +1395,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     if builder.config.llvm_enabled(target) {
         let building_llvm_is_expensive = prebuilt_llvm_output(builder, target).is_none();
 
-        let skip_llvm = (builder.kind == Kind::Check) && building_llvm_is_expensive;
+        let skip_llvm = (cargo.kind() == Kind::Check) && building_llvm_is_expensive;
         if !skip_llvm {
             rustc_llvm_env(builder, cargo, target)
         }
