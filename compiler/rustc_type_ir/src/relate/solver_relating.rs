@@ -152,6 +152,22 @@ where
         let a = infcx.shallow_resolve(a);
         let b = infcx.shallow_resolve(b);
 
+        // Relating an earlier argument may have constrained inference variables
+        // nested inside these aliases. `shallow_resolve` does not resolve such
+        // nested variables, so check whether resolving them makes the aliases
+        // identical before introducing a normalization goal.
+        if matches!(
+            (a.kind(), b.kind()),
+            (ty::Alias(ty::IsRigid::No, _), ty::Alias(ty::IsRigid::No, _),)
+        ) {
+            let resolved_a = infcx.resolve_vars_if_possible(a);
+            let resolved_b = infcx.resolve_vars_if_possible(b);
+
+            if resolved_a == resolved_b {
+                return Ok(resolved_a);
+            }
+        }
+
         if self.cache.contains(&(self.ambient_variance, a, b)) {
             return Ok(a);
         }
