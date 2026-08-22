@@ -60,7 +60,7 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
         // FIXME(https://github.com/rust-lang/rust/issues/77425):
         // Drop this exception once there is a stable attribute to suppress the
         // const item mutation lint for a single specific const only.
-        let ty = self.tcx.type_of(def_id).skip_binder();
+        let ty = self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
         // `needs_drop` is overly conservative for types that contain type
         // parameters (e.g. `Self` in a trait associated const): it always
         // returns `true` because the parameter *might* implement Drop, even
