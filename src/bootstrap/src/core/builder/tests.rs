@@ -2704,8 +2704,7 @@ mod snapshot {
             ctx.config("clippy")
                 .path("miri")
                 .stage(1)
-                .render_steps(), @r"
-        [build] llvm <host>
+                .render_steps(), @"
         [check] rustc 0 <host> -> rustc 1 <host>
         [clippy] rustc 0 <host> -> miri 1 <host>
         ");

@@ -17,7 +17,7 @@
 //! You can also view the generated code by using `cargo expand`:
 //!
 //! ```bash
-//! cargo install cargo-expand          # this is necessary only once
+//! cargo install --locked cargo-expand # this is necessary only once
 //! cd compiler/rustc_span
 //! # The specific version number in CFG_RELEASE doesn't matter.
 //! # The output is large.

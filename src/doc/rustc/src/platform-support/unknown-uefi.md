@@ -111,7 +111,7 @@ executing UEFI applications as well. See its documentation for details.
 
 The [uefi-run] rust tool is a simple
 wrapper around `qemu` that can spawn UEFI applications in qemu. You can install
-it via `cargo install uefi-run` and execute qemu applications as
+it via `cargo install --locked uefi-run` and execute qemu applications as
 `uefi-run ./application.efi`.
 
 ## Cross-compilation toolchains and C code

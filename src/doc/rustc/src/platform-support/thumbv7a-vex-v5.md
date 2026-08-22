@@ -63,7 +63,7 @@ The [cargo-v5](https://github.com/vexide/cargo-v5) tool is capable of creating b
 To install the tool, run:
 
 ```sh
-cargo install cargo-v5
+cargo install --locked cargo-v5
 ```
 
 The following fields in your project's `Cargo.toml` are read by `cargo-v5` to configure upload behavior:

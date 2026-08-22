@@ -48,7 +48,7 @@
 //!
 //! [ill-formed-utf-16]: https://simonsapin.github.io/wtf-8/#ill-formed-utf-16
 //! [`collect`]: crate::iter::Iterator::collect
-//! [U+FFFD]: crate::char::REPLACEMENT_CHARACTER
+//! [U+FFFD]: char::REPLACEMENT_CHARACTER
 //! [`std::ffi`]: crate::ffi
 
 #![stable(feature = "rust1", since = "1.0.0")]
