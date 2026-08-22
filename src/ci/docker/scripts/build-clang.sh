@@ -50,6 +50,11 @@ hide_output \
       -DRUNTIMES_CMAKE_ARGS="-DCMAKE_CXX_FLAGS=\"--gcc-toolchain=/rustroot\"" \
       -DC_INCLUDE_DIRS="$INC"
 
+echo "foobar"
+ls -lha /rustroot/lib/gcc
+ls -lha /rustroot/lib/gcc/aarch64-unknown-linux-gnu/9.5.0/plugin/include/
+ls -lha -R /rustroot/lib/gcc
+
 hide_output make -j$(nproc)
 hide_output make install
 
