@@ -763,6 +763,25 @@ fn test_bench_once_iter() {
 }
 
 #[test]
+fn test_bench_once_iter_excluding_setup() {
+    fn f(b: &mut Bencher) -> Result<(), String> {
+        b.iter_excluding_setup(
+            Vec::with_capacity(64),
+            |v| {
+                v.clear();
+                v.extend(0..64);
+            },
+            |v| {
+                v.iter_mut().for_each(|x| *x += 1);
+                assert_eq!(v.iter().sum::<usize>(), (1..65).sum());
+            },
+        );
+        Ok(())
+    }
+    bench::run_once(f).unwrap();
+}
+
+#[test]
 fn test_bench_no_iter() {
     fn f(_: &mut Bencher) -> Result<(), String> {
         Ok(())
