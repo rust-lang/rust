@@ -454,15 +454,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
+        return_slot: ReturnSlot<&'ll Value>,
         args: &[&'ll Value],
         then: &'ll BasicBlock,
         catch: &'ll BasicBlock,
         funclet: Option<&Funclet<'ll>>,
         instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
+        // If this function returns indirectly (`PassMode::Indirect`),
+        // the `return_slot` should be the first argument.
+        let args = match return_slot {
+            ReturnSlot::Direct => args.to_vec(),
+            ReturnSlot::Indirect(sret_ptr) => {
+                let mut args = args.to_vec();
+                args.insert(0, sret_ptr);
+                args
+            }
+        };
         debug!("invoke {:?} with args ({:?})", llfn, args);
-
-        let args = self.check_call("invoke", llty, llfn, args);
+        let args = self.check_call("invoke", llty, llfn, &args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -1463,13 +1473,23 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
+        return_slot: ReturnSlot<&'ll Value>,
         args: &[&'ll Value],
         funclet: Option<&Funclet<'ll>>,
         callee_instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
+        // If this function returns indirectly (`PassMode::Indirect`),
+        // the `return_slot` should be the first argument.
+        let args = match return_slot {
+            ReturnSlot::Direct => args.to_vec(),
+            ReturnSlot::Indirect(sret_ptr) => {
+                let mut args = args.to_vec();
+                args.insert(0, sret_ptr);
+                args
+            }
+        };
         debug!("call {:?} with args ({:?})", llfn, args);
-
-        let args = self.check_call("call", llty, llfn, args);
+        let args = self.check_call("call", llty, llfn, &args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
@@ -1530,12 +1550,21 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         caller_attrs: Option<&CodegenFnAttrs>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Value,
+        return_slot: ReturnSlot<Self::Value>,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
         callee_instance: Option<Instance<'tcx>>,
     ) {
-        let call =
-            self.call(llty, caller_attrs, Some(fn_abi), llfn, args, funclet, callee_instance);
+        let call = self.call(
+            llty,
+            caller_attrs,
+            Some(fn_abi),
+            llfn,
+            return_slot,
+            args,
+            funclet,
+            callee_instance,
+        );
         llvm::LLVMSetTailCallKind(call, llvm::TailCallKind::MustTail);
 
         match &fn_abi.ret.mode {
@@ -1875,7 +1904,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         args: &[&'ll Value],
     ) -> &'ll Value {
         let (ty, f) = self.cx.get_intrinsic(base_name.into(), type_params);
-        self.call(ty, None, None, f, args, None, None)
+        // No LLVM intrinsic returns its data indirectly (via `sret`).
+        self.call(ty, None, None, f, ReturnSlot::Direct, args, None, None)
     }
 
     fn call_lifetime_intrinsic(&mut self, intrinsic: &'static str, ptr: &'ll Value, size: Size) {
@@ -2084,6 +2114,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     None,
                     None,
                     ubsan_handler,
+                    ReturnSlot::Direct,
                     &[diag_data, function_address, self.const_usize(0)],
                     None,
                     None,

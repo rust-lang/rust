@@ -779,6 +779,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         fn_attrs.as_deref(),
                         Some(fn_abi),
                         fn_ptr,
+                        ReturnSlot::Direct,
                         &[],
                         None,
                         Some(instance),
