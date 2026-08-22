@@ -106,6 +106,8 @@ where
                     unreachable!("expected trait or projection predicate as an assumption")
                 }
             });
+            let trait_ref = ecx.instantiate_binder_with_infer(trait_ref);
+            ecx.eq(goal.param_env, goal.predicate.trait_ref(cx), trait_ref)?;
 
             match structural_traits::predicates_for_object_candidate(
                 ecx,
