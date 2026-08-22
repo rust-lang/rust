@@ -49,7 +49,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             std::mem::swap(&mut impl_items1, &mut impl_items2);
         }
 
-        for &item1 in impl_items1.in_definition_order() {
+        for &item1 in impl_items1.named_items() {
             let collision = impl_items2
                 .filter_by_name_unhygienic(item1.name())
                 .any(|&item2| self.compare_hygienically(item1, item2));
@@ -74,7 +74,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
         let mut seen_items = FxIndexMap::default();
         let mut res = Ok(());
-        for impl_item in impl_items.in_definition_order() {
+        for &impl_item in impl_items.named_items() {
             let span = self.tcx.def_span(impl_item.def_id);
             let ident = impl_item.ident(self.tcx);
 
@@ -111,7 +111,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         let impl_items2 = self.tcx.associated_items(impl2);
 
         let mut res = Ok(());
-        for &item1 in impl_items1.in_definition_order() {
+        for &item1 in impl_items1.named_items() {
             let collision = impl_items2
                 .filter_by_name_unhygienic(item1.name())
                 .find(|&&item2| self.compare_hygienically(item1, item2));
@@ -228,7 +228,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                 // First obtain a list of existing connected region ids
                 let mut idents_to_add = SmallVec::<[Symbol; 8]>::new();
                 let mut ids = impl_items
-                    .in_definition_order()
+                    .named_items()
                     .filter_map(|item| {
                         let entry = connected_region_ids.entry(item.name());
                         if let IndexEntry::Occupied(e) = &entry {

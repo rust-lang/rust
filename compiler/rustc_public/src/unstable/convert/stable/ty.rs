@@ -1070,9 +1070,14 @@ impl<'tcx> Stable<'tcx> for ty::AssocKind {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        use crate::ty::{AssocKind, AssocTypeData};
+        use crate::ty::{AssocConstData, AssocKind, AssocTypeData};
         match *self {
-            ty::AssocKind::Const { name, .. } => AssocKind::Const { name: name.to_string() },
+            ty::AssocKind::Const { data, .. } => AssocKind::Const {
+                data: match data {
+                    ty::AssocConstData::Named(name) => AssocConstData::Named(name.to_string()),
+                    ty::AssocConstData::Anonymous => AssocConstData::Anonymous,
+                },
+            },
             ty::AssocKind::Fn { name, has_self } => {
                 AssocKind::Fn { name: name.to_string(), has_self }
             }

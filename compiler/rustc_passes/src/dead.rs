@@ -844,6 +844,17 @@ fn maybe_record_as_seed<'tcx>(
             }
         }
         DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::AssocTy => {
+            // As with free constants named `_`, associated constants named `_` are always live.
+            if let hir::Node::ImplItem(impl_item) = tcx.hir_node_by_def_id(owner_id.def_id)
+                && impl_item.is_anon_const()
+            {
+                push_into_worklist(WorkItem {
+                    id: owner_id.def_id,
+                    propagated: ComesFromAllowExpect::No,
+                    own: ComesFromAllowExpect::No,
+                });
+            }
+
             if allow_dead_code.is_none() {
                 let parent = tcx.local_parent(owner_id.def_id);
                 match tcx.def_kind(parent) {
