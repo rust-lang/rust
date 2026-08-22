@@ -22,7 +22,9 @@ use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
-use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
+use crate::core::build_steps::synthetic_targets::{
+    PanicStrategy, SyntheticTargetWithPanicStrategy, get_target_specs,
+};
 use crate::core::build_steps::test::compiletest::CompiletestMode;
 use crate::core::build_steps::test::failed_tests::{RecordFailedTests, SetupFailedTestsFile};
 use crate::core::build_steps::tool::{
@@ -2164,8 +2166,8 @@ test!(CoverageRunRustdoc {
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MirOpt {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
+    compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl CommandLineStep for MirOpt {
@@ -2181,44 +2183,109 @@ impl CommandLineStep for MirOpt {
 
     fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(MirOpt { compiler, target: run.target });
+
+        // The mir-opt tests check four distinct configurations, the cross-product of the
+        // following two axes:
+        // - Bit-width: 32-bit and 64-bit
+        // - Panic strategy: unwind and abort
+
+        // Return the bitwidth and panic strategy of the default (usually host) target
+        let get_bitwidth_and_panic_strategy = || -> (u64, PanicStrategy) {
+            if run.builder.config.dry_run() {
+                return (64, PanicStrategy::Unwind);
+            }
+
+            let specs = get_target_specs(run.builder, compiler, run.target);
+            let specs = specs.as_object();
+            let bitwidth = specs
+                .and_then(|obj| obj.get("target-pointer-width"))
+                .and_then(|v| v.as_i64())
+                .map(|v| v as u64)
+                .unwrap_or(64);
+            let panic_strategy = specs
+                .and_then(|obj| obj.get("panic-strategy"))
+                .and_then(|v| v.as_str())
+                .map(|v| match v {
+                    "unwind" => PanicStrategy::Unwind,
+                    _ => PanicStrategy::Abort,
+                })
+                // The default panic strategy is unwind
+                .unwrap_or(PanicStrategy::Unwind);
+            (bitwidth, panic_strategy)
+        };
+
+        // Here we generate several configurations of this step to evaluate multiple targets.
+        let targets = if run.builder.config.cmd.bless() {
+            // When blessing, we generate a fixed set of 4 targets that cover all the
+            // possible combinations. This selection covers all our tier 1 operating systems and
+            // architectures using only tier 1 targets.
+
+            // We also include the host target, since some tests use very specific `only` clauses
+            // that are not covered by the target set below.
+
+            let (bitwidth, strategy) = get_bitwidth_and_panic_strategy();
+            let mut targets = vec![(bitwidth, strategy, run.target)];
+
+            // 64-bit and 32-bit panic=unwind
+            for (bitwidth, target) in
+                [(64, "aarch64-unknown-linux-gnu"), (32, "i686-pc-windows-msvc")]
+            {
+                targets.push((bitwidth, PanicStrategy::Unwind, TargetSelection::from_user(target)));
+            }
+
+            // 64-bit and 32-bit panic=abort
+            for (bitwidth, target) in [(64, "x86_64-apple-darwin"), (32, "i686-unknown-linux-musl")]
+            {
+                let target = TargetSelection::from_user(target);
+                let panic_abort_target = run
+                    .builder
+                    .ensure(SyntheticTargetWithPanicStrategy::panic_abort(compiler, target));
+                targets.push((bitwidth, PanicStrategy::Abort, panic_abort_target));
+            }
+            // This is a small optimization for local blessing.
+            // If we figure out that the host target already has a given bitwidth/panic strategy
+            // combination, we do not add the fixed targets to the list.
+            let mut unique = HashSet::new();
+            targets.retain(|(bitwidth, strategy, _)| unique.insert((*bitwidth, *strategy)));
+
+            targets.into_iter().map(|(_, _, target)| target).collect()
+        } else {
+            // When not blessing, we could also test all four configurations. But that would make
+            // local tests quite slow. So instead, we check the current target, and then the
+            // current target with switched panic strategy.
+            // On CI, we should be running this test for both 32-bit and 64-bit targets, so together
+            // this should check all possible configurations on CI.
+
+            // The complicated thing here is how to figure out the panic strategy of the current
+            // target. In theory, we could just assume that in most situations, the target is
+            // panic=unwind, and force generation of panic=abort. But to ensure that we do this
+            // properly, we actually query the compiler to figure out the panic strategy, and then
+            // generate a synthetic target with the opposite strategy.
+            let panic_strategy = get_bitwidth_and_panic_strategy().1;
+            let synthetic_target = if panic_strategy == PanicStrategy::Unwind {
+                run.builder
+                    .ensure(SyntheticTargetWithPanicStrategy::panic_abort(compiler, run.target))
+            } else {
+                run.builder
+                    .ensure(SyntheticTargetWithPanicStrategy::panic_unwind(compiler, run.target))
+            };
+            vec![run.target, synthetic_target]
+        };
+
+        for target in targets {
+            run.builder.ensure(MirOpt { compiler, target });
+        }
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let run = |target| {
-            builder.ensure(Compiletest {
-                test_compiler: self.compiler,
-                target,
-                mode: CompiletestMode::MirOpt,
-                suite: "mir-opt",
-                path: "tests/mir-opt",
-                compare_mode: None,
-            })
-        };
-
-        run(self.target);
-
-        // Run more targets with `--bless`. But we always run the host target first, since some
-        // tests use very specific `only` clauses that are not covered by the target set below.
-        if builder.config.cmd.bless() {
-            // All that we really need to do is cover all combinations of 32/64-bit and unwind/abort,
-            // but while we're at it we might as well flex our cross-compilation support. This
-            // selection covers all our tier 1 operating systems and architectures using only tier
-            // 1 targets.
-
-            for target in ["aarch64-unknown-linux-gnu", "i686-pc-windows-msvc"] {
-                run(TargetSelection::from_user(target));
-            }
-
-            for target in ["x86_64-apple-darwin", "i686-unknown-linux-musl"] {
-                let target = TargetSelection::from_user(target);
-                let panic_abort_target = builder.ensure(MirOptPanicAbortSyntheticTarget {
-                    compiler: self.compiler,
-                    base: target,
-                });
-                run(panic_abort_target);
-            }
-        }
+        builder.ensure(Compiletest {
+            test_compiler: self.compiler,
+            target: self.target,
+            mode: CompiletestMode::MirOpt,
+            suite: "mir-opt",
+            path: "tests/mir-opt",
+            compare_mode: None,
+        });
     }
 }
 
