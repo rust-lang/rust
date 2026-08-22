@@ -10,6 +10,7 @@ use run_make_support::{diff, rustc};
 
 fn main() {
     let out = rustc()
+        .edition("2015")
         .env("RUSTC_BOOTSTRAP", "-1")
         .input("missing-bound.rs")
         .run_fail()
