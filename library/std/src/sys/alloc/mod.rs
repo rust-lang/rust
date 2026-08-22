@@ -64,7 +64,13 @@ unsafe fn realloc_fallback(ptr: *mut u8, old_layout: Layout, new_size: usize) ->
 }
 
 cfg_select! {
-    any(target_family = "unix", target_os = "wasi", target_os = "teeos", target_os = "trusty") => {
+    any(
+        target_family = "unix",
+        target_os = "qurt",
+        target_os = "wasi",
+        target_os = "teeos",
+        target_os = "trusty"
+    ) => {
         mod unix;
         use unix as imp;
     }
