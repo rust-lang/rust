@@ -5,6 +5,7 @@ use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
+use tracing::debug;
 
 use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
@@ -32,7 +33,7 @@ use crate::universal_regions::UniversalRegions;
 /// That `LocalizedConstraintGraph` can create these edges on-demand during traversal, and we
 /// therefore model them as a pair of `LocalizedNode` vertices.
 ///
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(super) struct LocalizedNode {
     pub region: RegionVid,
     pub point: PointIndex,
@@ -72,6 +73,7 @@ impl LocalizedConstraintGraph {
         let mut logical_edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
 
         for outlives_constraint in outlives_constraints {
+            debug!(?outlives_constraint);
             match outlives_constraint.locations {
                 Locations::All(_) => {
                     logical_edges
@@ -104,6 +106,7 @@ impl LocalizedConstraintGraph {
         borrow_set: &BorrowSet<'tcx>,
         visitor: &mut impl LocalizedConstraintGraphVisitor,
     ) {
+        debug!("Traversing localised constraint graph");
         let live_regions = liveness.points();
 
         let mut visited = FxHashSet::default();
@@ -112,6 +115,7 @@ impl LocalizedConstraintGraph {
         // Compute reachability per loan by traversing each loan's subgraph starting from where it
         // is introduced.
         for (loan_idx, loan) in borrow_set.iter_enumerated() {
+            debug!("Handling loan {loan:?}");
             visited.clear();
             stack.clear();
 
@@ -119,12 +123,14 @@ impl LocalizedConstraintGraph {
                 region: loan.region,
                 point: liveness.point_from_location(loan.reserve_location),
             };
+            debug!("Starting at {:?}, {:?}", start_node.region, start_node.point);
             stack.push(start_node);
 
             while let Some(node) = stack.pop() {
                 if !visited.insert(node) {
                     continue;
                 }
+                debug!("Visiting node {node:?}");
 
                 // We've reached a node we haven't visited before.
                 let location = liveness.location_from_point(node.point);
@@ -247,6 +253,7 @@ fn compute_forward_successor(
     live_region_variances: &BTreeMap<RegionVid, ConstraintDirection>,
     is_universal_region: bool,
 ) -> Option<LocalizedNode> {
+    debug!("Computing forward (CFG) successor for {region:?}");
     // 1. Universal regions are semantically live at all points.
     if is_universal_region {
         let succ = LocalizedNode { region, point: next_point };
@@ -255,6 +262,7 @@ fn compute_forward_successor(
 
     // 2. Otherwise, gather the edges due to explicit region liveness, when applicable.
     if !live_regions.contains(region, next_point) {
+        debug!("Region {region:?} isn't live at successor {next_point:?}; traversal stops.");
         return None;
     }
 
@@ -275,6 +283,7 @@ fn compute_forward_successor(
         ConstraintDirection::Backward => {
             // Contravariant cases: loans flow in the inverse direction, but we're only interested
             // in forward successors and there are none here.
+            debug!("Constraint direction is backwards; {region:?} has no forward successors");
             None
         }
         ConstraintDirection::Forward | ConstraintDirection::Bidirectional => {
@@ -296,9 +305,13 @@ fn compute_backward_successor(
     live_regions: &SparseIntervalMatrix<RegionVid, PointIndex>,
     live_region_variances: &BTreeMap<RegionVid, ConstraintDirection>,
 ) -> Option<LocalizedNode> {
+    debug!("compute_backward_successor to {region:?}");
     // Liveness flows into the regions live at the next point. So, in a backwards view, we'll link
     // the region from the current point, if it's live there, to the previous point.
     if !live_regions.contains(region, current_point) {
+        debug!(
+            "Backwards successor: {region:?} not live at current point {current_point:?}; bailing out!"
+        );
         return None;
     }
 
@@ -306,6 +319,8 @@ fn compute_backward_successor(
     // the same comment in `compute_forward_successor`.
     let direction =
         live_region_variances.get(&region).unwrap_or(&ConstraintDirection::Bidirectional);
+
+    debug!("Direction was: {direction:?}");
 
     match direction {
         ConstraintDirection::Forward => {

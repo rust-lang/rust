@@ -5,6 +5,7 @@ use rustc_middle::ty::relate::{
     self, Relate, RelateResult, TypeRelation, relate_args_with_variances,
 };
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeVisitable};
+use tracing::debug;
 
 use super::{ConstraintDirection, PoloniusContext};
 use crate::universal_regions::UniversalRegions;
@@ -17,6 +18,7 @@ impl PoloniusContext {
         universal_regions: &UniversalRegions<'tcx>,
         value: impl TypeVisitable<TyCtxt<'tcx>> + Relate<TyCtxt<'tcx>>,
     ) {
+        debug!("Recording variance for {value:?}");
         let mut extractor = VarianceExtractor {
             tcx,
             ambient_variance: ty::Variance::Covariant,
@@ -85,6 +87,11 @@ impl<'tcx> VarianceExtractor<'_, 'tcx> {
                 }
             })
             .or_insert(direction);
+
+        debug!(
+            "Region {region:?} has variance {variance:?}, direction is now {:?}",
+            self.directions.get(&region).unwrap()
+        );
     }
 }
 
@@ -114,14 +121,18 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for VarianceExtractor<'_, 'tcx> {
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
+        debug!("Relate with variance {a:?}, {b:?}, {variance:?}, {:?}", self.ambient_variance);
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
+        debug!(?self.ambient_variance);
         let r = self.relate(a, b)?;
         self.ambient_variance = old_ambient_variance;
+        debug!(?self.ambient_variance);
         Ok(r)
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        debug!("relate tys: {a:?}, {b:?}");
         assert_eq!(a, b); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
         relate::structurally_relate_tys(self, a, b)
     }
@@ -131,6 +142,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for VarianceExtractor<'_, 'tcx> {
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        debug!("Relating region {a:?}");
         assert_eq!(a, b); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
         self.record_variance(a, self.ambient_variance);
         Ok(a)
@@ -141,6 +153,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for VarianceExtractor<'_, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        debug!("Relating const {a:?}");
         assert_eq!(a, b); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
         relate::structurally_relate_consts(self, a, b)
     }
@@ -153,6 +166,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for VarianceExtractor<'_, 'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
+        debug!("Relating binder {a:?}");
         self.relate(a.skip_binder(), a.skip_binder())?;
         Ok(a)
     }
