@@ -15,16 +15,32 @@ fn main() {
     }
     match Some(false) {
         Some(_),
-        //~^ ERROR unexpected `,` in pattern
-        //~| HELP try adding parentheses to match on a tuple
-        //~| HELP or a vertical bar to match on alternative
+        //~^ ERROR `match` arm with no body
+        //~| HELP add a body after the pattern
     }
+    // The comma is only taken for a missing body when parenthesising the patterns (or joining
+    // them with `|`) wouldn't give the arm a body either.
     match Some(false) {
         Some(_),
         //~^ ERROR unexpected `,` in pattern
         //~| HELP try adding parentheses to match on a tuple
         //~| HELP or a vertical bar to match on alternative
         _ => {}
+    }
+    match Some(false) {
+        Some(_),
+        //~^ ERROR unexpected `,` in pattern
+        //~| HELP try adding parentheses to match on a tuple
+        //~| HELP or a vertical bar to match on alternative
+        None if true => {}
+    }
+    // A typo for `=>` still starts a body, so the comma is not taken for a missing one.
+    match Some(false) {
+        Some(_),
+        //~^ ERROR unexpected `,` in pattern
+        //~| HELP try adding parentheses to match on a tuple
+        //~| HELP or a vertical bar to match on alternative
+        _ = {}
     }
     match Some(false) {
         Some(_) if true
