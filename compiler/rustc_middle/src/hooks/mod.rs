@@ -113,6 +113,9 @@ declare_hooks! {
 
     /// Serializes all eligible query return values into the on-disk cache.
     hook encode_query_values(encoder: &mut CacheEncoder<'_, 'tcx>) -> ();
+
+    /// Determines whether an item is annotated with `#[doc(hidden)]`.
+    hook is_doc_hidden(def_id: DefId) -> bool;
 }
 
 #[cold]
