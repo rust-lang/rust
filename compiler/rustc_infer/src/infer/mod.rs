@@ -1242,24 +1242,33 @@ impl<'tcx> InferCtxt<'tcx> {
         if let ty::Infer(v) = *ty.kind() {
             match v {
                 ty::TyVar(v) => {
-                    // Not entirely obvious: if `typ` is a type variable,
-                    // it can be resolved to an int/float variable, which
-                    // can then be recursively resolved, hence the
-                    // recursion. Note though that we prevent type
-                    // variables from unifying to other type variables
-                    // directly (though they may be embedded
-                    // structurally), and we prevent cycles in any case,
-                    // so this recursion should always be of very limited
-                    // depth.
+                    // Not entirely obvious: if `ty` is a type variable, it can be resolved to an
+                    // int/float variable, which can then be recursively resolved, hence the
+                    // recursion. Note though that we prevent type variables from unifying to other
+                    // type variables directly (though they may be embedded structurally), and we
+                    // prevent cycles in any case, so this recursion should always be of very
+                    // limited depth.
                     //
-                    // Note: if these two lines are combined into one we get
-                    // dynamic borrow errors on `self.inner`.
-                    let (root_vid, value) =
-                        self.inner.borrow_mut().type_variables().probe_with_root_vid(v);
-                    value.known().map_or_else(
-                        || if root_vid == v { ty } else { Ty::new_var(self.tcx, root_vid) },
-                        |t| self.shallow_resolve(t),
-                    )
+                    // It's a small perf win to do a fast lookup first in the hope that `v` is the
+                    // root, and then fall back if not. (Note: the same fast/slow split isn't worth
+                    // doing for the `IntVar`/`FloatVar` cases below.)
+                    let value = self.inner.borrow().try_type_variables_probe_ref(v).copied();
+                    match value {
+                        Some(value) => {
+                            // `v` is the root.
+                            value.known().map_or(ty, |t| self.shallow_resolve(t))
+                        }
+                        None => {
+                            // The slower case. Note: the borrow must be completed before the
+                            // recursive call occurs.
+                            let (root_vid, value) =
+                                self.inner.borrow_mut().type_variables().probe_with_root_vid(v);
+                            value.known().map_or_else(
+                                || Ty::new_var(self.tcx, root_vid),
+                                |t| self.shallow_resolve(t),
+                            )
+                        }
+                    }
                 }
 
                 ty::IntVar(v) => {
