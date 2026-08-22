@@ -115,7 +115,7 @@ use crate::ty::print::PrintTraitRefExt;
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, LitToConstInput, PseudoCanonicalInput,
-    SizedTraitKind, Ty, TyCtxt, TyCtxtFeed,
+    RequiredDepth, SizedTraitKind, Ty, TyCtxt, TyCtxtFeed,
 };
 use crate::{mir, thir};
 
@@ -2643,7 +2643,7 @@ rustc_queries! {
     /// Used by `-Znext-solver` to compute proof trees.
     query evaluate_root_goal_for_proof_tree_raw(
         key: (solve::CanonicalInput<'tcx>, usize)
-    ) -> (solve::QueryResult<'tcx>, &'tcx solve::inspect::Probe<TyCtxt<'tcx>>) {
+    ) -> (solve::QueryResult<'tcx>, &'tcx solve::inspect::Probe<TyCtxt<'tcx>>, RequiredDepth) {
         no_hash
         desc { "computing proof tree for `{}` with depth `{}`", key.0.canonical.value.goal.predicate, key.1 }
     }
