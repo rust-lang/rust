@@ -1,0 +1,24 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/deeply-normalize-ambiguous-alias-issue-160875.rs:35:5
+   |
+LL |     x
+   |     ^ not found in this scope
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/deeply-normalize-ambiguous-alias-issue-160875.rs:32:17
+   |
+LL | const fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/deeply-normalize-ambiguous-alias-issue-160875.rs:32:17
+   |
+LL | const fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0478.
+For more information about an error, try `rustc --explain E0425`.

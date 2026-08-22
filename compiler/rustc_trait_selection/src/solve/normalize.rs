@@ -245,6 +245,13 @@ where
         return Err(errors);
     }
 
+    // `normalize_with_universes` replaces aliases whose `NormalizesTo` goal was
+    // ambiguous with a fresh infer var and defers the goal to `fulfill_cx`.
+    // Fulfillment may constrain these variables, but `value` still contains the
+    // inference nodes produced while folding. Resolve it before returning so
+    // constrained variables do not escape as stale inference nodes.
+    let value = at.infcx.resolve_vars_if_possible(value);
+
     Ok((value, stalled_coroutine_goals))
 }
 
