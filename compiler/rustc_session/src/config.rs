@@ -1773,6 +1773,21 @@ fn parse_jobs_all(
         },
     };
 
+    // If reproducible compilation is enabled we lower frontend parallelism to 1,
+    // hopefully we'll be able to do better in the future.
+    let reproducible = match parse_reproducible(matches.opt_str("reproducible").as_deref()) {
+        Ok(reproducible) => reproducible,
+        Err(()) => {
+            let msg = "`--reproducible`: expected of of `none`, `binaries`, `diagnostics`, \
+                       or `binaries,diagnostics`";
+            early_dcx.early_fatal(msg);
+        }
+    };
+    let frontend = match frontend {
+        Some(n) if !reproducible || n.get() == 1 => Some(n), // respect `sync`
+        _ => None,
+    };
+
     Jobs { frontend, backend, linker }
 }
 
@@ -1805,6 +1820,16 @@ fn parse_jobs_one(
     };
     // `Jobs` uses `usize` for more convenient use, even if the actual values are limited to `u8`.
     (n > 1).then_some(NonZero::new(usize::from(n)).unwrap())
+}
+
+fn parse_reproducible(s: Option<&str>) -> Result<bool, ()> {
+    match s {
+        None | Some("none") => Ok(false),
+        Some("binaries" | "diagnostics" | "binaries,diagnostics" | "diagnostics,binaries") => {
+            Ok(true)
+        }
+        _ => Err(()),
+    }
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
@@ -2146,6 +2171,14 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "jobs-linker",
             "Limit on the number of parallel jobs used by linker",
             "<N>",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "reproducible",
+            "Try making some of the compiler outputs reproducible, possibly at cost of compilation speed",
+            "BOOL",
         ),
     ];
     options.extend(verbose_only.into_iter().map(|mut opt| {
