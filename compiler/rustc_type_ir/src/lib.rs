@@ -1,3 +1,24 @@
+//! This crate is an abstraction layer, shared between rustc and rust-analyzer, to help with the
+//! overlapping responsibilities (like type inference and trait solving), reduce duplication, and
+//! maintain consistent behavior between the two implementations.
+//!
+//! It defines fundamental interfaces for types, predicates, and the context required by the next
+//! trait solver.
+//!
+//! Both rustc and rust-analyzer immplement these traits for their own concrete implementations, and
+//! `rustc_next_trait_solver` is written to be generic over these abstractions.
+//!
+//! In addition to these interfaces, it also contains components built on top of the abstraction
+//! layer, for example elaboration logic, and the search graph machinery used by the solver, as well
+//! as items that do not need compiler-specific implementations.
+//!
+//! Note that rust-analyzer is built with a stable compiler, while rustc uses unstable features, so
+//! this crate and some of its dependencies need to separate unstable code under the `nightly`
+//! feature.
+//!
+//! There are more details available in a [dedicated dev-guide
+//! chapter](https://rustc-dev-guide.rust-lang.org/solve/sharing-crates-with-rust-analyzer.html).
+
 #![cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir")]
 // tidy-alphabetical-start
 #![allow(rustc::direct_use_of_rustc_type_ir)]
