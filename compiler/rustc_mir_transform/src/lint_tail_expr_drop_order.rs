@@ -76,7 +76,7 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
             }
             MovePathIndexAtBlock::Unknown => {
                 if let TerminatorKind::Drop { place, .. } = &terminator.kind
-                    && let LookupResult::Exact(idx) | LookupResult::Parent(Some(idx)) =
+                    && let LookupResult::Exact(idx) | LookupResult::Parent { mpi: idx, .. } =
                         self.move_data.rev_lookup.find(place.as_ref())
                 {
                     // Since we are working with MIRs at a very early stage, observing a `drop`
