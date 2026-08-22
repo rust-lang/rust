@@ -43,6 +43,13 @@ fn main() {
     // There must be at least one rlib (libstd itself, plus many others)
     assert!(!all_rlibs.is_empty(), "no rlibs found in target libdir {target_libdir:?}");
 
+    let source_root = source_root();
+    let cargo_home = std::env::var("CARGO_HOME").map(PathBuf::from);
+    let mut local_roots = vec![("source-root", source_root.to_string_lossy())];
+    if let Ok(cargo_home) = &cargo_home {
+        local_roots.push(("cargo-home", cargo_home.to_string_lossy()));
+    }
+
     for rlib in &all_rlibs {
         // Use a stable symlink name based on the crate part (before the '-<hash>' suffix).
         // e.g. "libstd-92abaa9b58c011c1.rlib" → "libstd.rlib"
@@ -63,32 +70,49 @@ fn main() {
         }
 
         let stdout = completed.stdout_utf8();
-        let source_root = source_root();
-        let root = source_root.to_string_lossy();
 
-        if let Some((i, _)) =
-            stdout.lines().enumerate().find(|(_, line)| line.contains(root.as_ref()))
-        {
-            let lines: Vec<_> = stdout.lines().collect();
+        for (kind, root) in &local_roots {
+            if let Some((i, _)) =
+                stdout.lines().enumerate().find(|(_, line)| line.contains(root.as_ref()))
+            {
+                let lines: Vec<_> = stdout.lines().collect();
 
-            let start = i.saturating_sub(2);
-            let end = (i + 3).min(lines.len());
+                let start = i.saturating_sub(2);
+                let end = (i + 3).min(lines.len());
 
-            eprintln!("leaked source-root path found in {link_name}:");
+                eprintln!("leaked {kind} path found in {link_name}:");
 
-            for line in &lines[start..end] {
-                eprintln!("{line}");
+                for line in &lines[start..end] {
+                    eprintln!("{line}");
+                }
+
+                panic!("found leaked {kind} path in {link_name}");
             }
-
-            panic!("found leaked source-root path in {link_name}");
         }
 
         // Check that remapped paths are present if the rlib has debug info.
         if stdout.contains("DW_TAG_compile_unit") {
             assert!(
-                stdout.contains("/rustc/") || stdout.contains("/rust/deps"),
+                stdout.contains("/rustc/") || stdout.contains("/cargo/registry/"),
                 "Expected remapped paths in dwarfdump output for {link_name}",
             );
+        }
+    }
+
+    // `-Zembed-metadata=no` creates separate rmeta that may leak absolute paths
+    let all_rmetas =
+        shallow_find_files(&target_libdir, |p| p.extension().is_some_and(|ext| ext == "rmeta"));
+    assert!(!all_rmetas.is_empty(), "no rmeta files found in target libdir {target_libdir:?}");
+
+    for rmeta in &all_rmetas {
+        let filename = rmeta.file_name().unwrap().to_string_lossy();
+        let bytes = rfs::read(rmeta);
+
+        for (kind, root) in &local_roots {
+            let root = root.as_bytes();
+            if bytes.windows(root.len()).any(|window| window == root) {
+                panic!("found leaked {kind} path in {filename}");
+            }
         }
     }
 }

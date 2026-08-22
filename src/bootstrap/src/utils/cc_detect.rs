@@ -27,9 +27,8 @@ use std::path::{Path, PathBuf};
 
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{CompressDebuginfo, TargetSelection};
-use crate::core::session::{Build, CLang, GitRepo};
+use crate::core::session::{Build, CLang};
 use crate::utils::exec::{BootstrapCommand, command};
-
 /// Creates and configures a new [`cc::Build`] instance for the given target.
 fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
     let mut cfg = cc::Build::new();
@@ -125,7 +124,7 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
 
     build.cc.insert(target, compiler.clone());
     let mut cflags = build.cc_handled_cflags(target, CLang::C);
-    cflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
+    cflags.extend(build.cc_unhandled_cflags(target, CLang::C));
 
     // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
     // We'll need one anyways if the target triple is also a host triple
@@ -152,7 +151,7 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     build.do_if_verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
     if let Ok(cxx) = build.cxx(target) {
         let mut cxxflags = build.cc_handled_cflags(target, CLang::Cxx);
-        cxxflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
+        cxxflags.extend(build.cc_unhandled_cflags(target, CLang::Cxx));
         build.do_if_verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
         build.do_if_verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
     }

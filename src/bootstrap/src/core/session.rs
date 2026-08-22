@@ -29,11 +29,6 @@ use crate::utils::helpers::{
 };
 use crate::{debug, trace};
 
-pub(crate) enum GitRepo {
-    Rustc,
-    Llvm,
-}
-
 /// Global configuration for the build system.
 ///
 /// This structure transitively contains all configuration for the build system.
@@ -995,38 +990,29 @@ impl Build {
         })
     }
 
-    pub(crate) fn debuginfo_map_to(
-        &self,
-        which: GitRepo,
-        remap_scheme: RemapScheme,
-    ) -> Option<String> {
+    pub(crate) fn debuginfo_map_to(&self, remap_scheme: RemapScheme) -> Option<String> {
         if !self.config.rust_remap_debuginfo {
             return None;
         }
 
-        match which {
-            GitRepo::Rustc => {
-                let sha = self.rust_sha().unwrap_or(&self.version);
+        let sha = self.rust_sha().unwrap_or(&self.version);
 
-                match remap_scheme {
-                    RemapScheme::Compiler => {
-                        // For compiler sources, remap via `/rustc-dev/{sha}` to allow
-                        // distinguishing between compiler sources vs library sources, since
-                        // `rustc-dev` dist component places them under
-                        // `$sysroot/lib/rustlib/rustc-src/rust` as opposed to `rust-src`'s
-                        // `$sysroot/lib/rustlib/src/rust`.
-                        //
-                        // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
-                        // `try_to_translate_virtual_to_real`.
-                        Some(format!("/rustc-dev/{sha}"))
-                    }
-                    RemapScheme::NonCompiler => {
-                        // For non-compiler sources, use `/rustc/{sha}` remapping scheme.
-                        Some(format!("/rustc/{sha}"))
-                    }
-                }
+        match remap_scheme {
+            RemapScheme::Compiler => {
+                // For compiler sources, remap via `/rustc-dev/{sha}` to allow
+                // distinguishing between compiler sources vs library sources, since
+                // `rustc-dev` dist component places them under
+                // `$sysroot/lib/rustlib/rustc-src/rust` as opposed to `rust-src`'s
+                // `$sysroot/lib/rustlib/src/rust`.
+                //
+                // Keep this scheme in sync with `rustc_metadata::rmeta::decoder`'s
+                // `try_to_translate_virtual_to_real`.
+                Some(format!("/rustc-dev/{sha}"))
             }
-            GitRepo::Llvm => Some(String::from("/rustc/llvm")),
+            RemapScheme::NonCompiler => {
+                // For non-compiler sources, use `/rustc/{sha}` remapping scheme.
+                Some(format!("/rustc/{sha}"))
+            }
         }
     }
 
@@ -1069,12 +1055,7 @@ impl Build {
     }
 
     /// Returns extra C flags that `cc-rs` doesn't handle.
-    pub(crate) fn cc_unhandled_cflags(
-        &self,
-        target: TargetSelection,
-        which: GitRepo,
-        c: CLang,
-    ) -> Vec<String> {
+    pub(crate) fn cc_unhandled_cflags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
         let mut base = Vec::new();
 
         // If we're compiling C++ on macOS then we add a flag indicating that
@@ -1091,16 +1072,6 @@ impl Build {
             base.push("-fno-omit-frame-pointer".into());
         }
 
-        if let Some(map_to) = self.debuginfo_map_to(which, RemapScheme::NonCompiler) {
-            let map = format!("{}={}", self.src.display(), map_to);
-            let cc = self.cc_tool(target);
-            if cc.is_like_clang() || cc.is_like_gnu() {
-                base.push(format!("-fdebug-prefix-map={map}"));
-            } else if cc.is_like_clang_cl() {
-                base.push("-Xclang".into());
-                base.push(format!("-fdebug-prefix-map={map}"));
-            }
-        }
         base
     }
 

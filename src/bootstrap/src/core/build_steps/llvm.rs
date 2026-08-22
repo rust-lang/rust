@@ -21,14 +21,13 @@ use crate::core::builder::{
     Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
 };
 use crate::core::config::{Config, LlvmCiMode, LlvmPgoGenerationMode, TargetSelection};
-use crate::core::session::{CLang, GitRepo};
+use crate::core::session::CLang;
 use crate::trace;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-
 /// Path where a file containing the link type (dynamic or static) is stored in the LLVM CI tarball.
 pub const LLVM_CI_LINK_TYPE_PATH: &str = "link-type.txt";
 
@@ -798,6 +797,27 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {version}, need >=21\n\n")
 }
 
+/// C/C++ debug info remap flags for LLVM build.
+///
+/// The remap is observable when LLVM is compiled with debug info,
+/// for example, with `llvm.release-debuginfo = true`.
+fn debuginfo_map_cflags(builder: &Builder<'_>, target: TargetSelection) -> Vec<String> {
+    if !builder.config.rust_remap_debuginfo {
+        return Vec::new();
+    }
+
+    let mut flags = Vec::new();
+    let map = format!("{}=/rustc/llvm", builder.src.display());
+    let cc = builder.cc_tool(target);
+    if cc.is_like_clang() || cc.is_like_gnu() {
+        flags.push(format!("-fdebug-prefix-map={map}"));
+    } else if cc.is_like_clang_cl() {
+        flags.push("-Xclang".into());
+        flags.push(format!("-fdebug-prefix-map={map}"));
+    }
+    flags
+}
+
 fn configure_cmake(
     builder: &Builder<'_>,
     target: TargetSelection,
@@ -962,7 +982,8 @@ fn configure_cmake(
     for flag in builder
         .cc_handled_cflags(target, CLang::C)
         .into_iter()
-        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::C))
+        .chain(builder.cc_unhandled_cflags(target, CLang::C))
+        .chain(debuginfo_map_cflags(builder, target))
         .filter(|flag| !suppressed_compiler_flag_prefixes.iter().any(|p| flag.starts_with(p)))
     {
         cflags.push(" ");
@@ -983,7 +1004,8 @@ fn configure_cmake(
     for flag in builder
         .cc_handled_cflags(target, CLang::Cxx)
         .into_iter()
-        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::Cxx))
+        .chain(builder.cc_unhandled_cflags(target, CLang::Cxx))
+        .chain(debuginfo_map_cflags(builder, target))
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
                 .iter()
