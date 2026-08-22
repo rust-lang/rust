@@ -3052,16 +3052,11 @@ where
 
     #[inline]
     fn count(mut self) -> usize {
-        let Some((mut previous, rest)) = self.slice.split_first() else {
-            return 0;
-        };
-
-        let mut count = 1;
-        for current in rest {
-            count += usize::from(!(self.predicate)(previous, current));
-            previous = current;
+        if self.slice.is_empty() {
+            0
+        } else {
+            1 + self.slice.array_windows().filter(|&[a, b]| !(self.predicate)(a, b)).count()
         }
-        count
     }
 
     #[inline]
