@@ -449,27 +449,37 @@ impl Cargo {
             let cc = ccacheify(&builder.cc(target));
             self.command.env(format!("CC_{triple_underscored}"), &cc);
 
-            // Compiling C deps, like jemalloc and llvm-wrapper, should be with
-            // the same LTO mode as the Rust code they are linked into.
+            // Compiling C deps, like jemalloc and llvm-wrapper, should use the same LTO mode as
+            // the Rust code they are linked into. We don't pass the checks cc-rs uses to
+            // auto-enable that so we have to do it ourselves.
             //
-            // Std's C deps, e.g. compiler_builtins, ship inside rlibs that
-            // end users consume directly. Building with `-flto` may break
-            // non-LLVM linkers or mismatch on bitcode versions. Therefore we
-            // must not build std in LTO mode here.
+            // However, some of these files get distributed via rustup, and the user may then use
+            // non-LLVM linkers. If we turn on regular LTO (which stores LLVM bitcode and nothing
+            // else), only LLVM linkers can deal with those files. Therefore we have to use "fat
+            // LTO" and include both machine code and LLVM bitcode.
+            //
+            // We don't do this for `std` as this may make std bigger and it is generally a
+            // non-trivial configuration we do not want to risk. (`std` does have C deps, e.g.
+            // compiler_builtins, so this is relevant.)
             let lto_cflag = if matches!(self.mode, Mode::Rustc | Mode::ToolRustcPrivate)
                 && is_lto_stage(&self.compiler)
                 && builder.cc_tool(target).is_like_clang()
             {
-                match builder.config.rust_lto {
-                    RustcLto::Thin => Some("-flto=thin"),
-                    RustcLto::Fat => Some("-flto=full"),
+                let lto_cflag = match builder.config.rust_lto {
+                    RustcLto::Thin => Some("-flto=thin -ffat-lto-objects"),
+                    RustcLto::Fat => Some("-flto=full -ffat-lto-objects"),
                     RustcLto::ThinLocal | RustcLto::Off => None,
+                };
+                // Make sure the linker actually uses the fat LTO part.
+                if lto_cflag.is_some() {
+                    self.rustflags.arg("-Clink-args=-Wl,--fat-lto-objects");
                 }
+                lto_cflag
             } else {
                 None
             };
 
-            // Extend `CXXFLAGS_$TARGET` with our extra flags.
+            // Extend `CFLAGS_$TARGET` with our extra flags.
             let env = format!("CFLAGS_{triple_underscored}");
             let mut cflags =
                 builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
