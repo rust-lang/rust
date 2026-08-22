@@ -1,0 +1,18 @@
+error[E0599]: no associated function or constant named `custom` found for struct `Local` in the current scope
+  --> $DIR/macro-generated-extern-crate.rs:12:12
+   |
+LL | struct Local;
+   | ------------ associated function or constant `custom` not found for this struct
+...
+LL |     Local::custom();
+   |            ^^^^^^ associated function or constant not found in `Local`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `MyTrait` which provides `custom` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use macro_generated_extern_crate::MyTrait;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

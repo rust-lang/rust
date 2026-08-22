@@ -16,7 +16,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
-use rustc_hir::definitions::Definitions;
+use rustc_hir::definitions::{DefPathData, Definitions};
 use rustc_index::IndexVec;
 use rustc_lint_defs as lint;
 use rustc_lint_defs::builtin::UNUSED_CRATE_DEPENDENCIES;
@@ -1318,14 +1318,24 @@ impl CStore {
                 let cnum =
                     self.resolve_crate(tcx, name, item.span, dep_kind, CrateOrigin::Extern)?;
 
-                let path_len = definitions.def_path(def_id).data.len();
+                let def_path = definitions.def_path(def_id);
+                // An extern crate is only globally nameable if every segment in its path
+                // is in the type namespace (i.e., it is purely nested inside modules).
+                // If any segment is in the value namespace (e.g. inside a fn or const),
+                // it is unnameable from outside that block.
+                let is_unnameable =
+                    def_path.data.iter().any(|d| !matches!(d.data, DefPathData::TypeNs(_)));
                 self.update_extern_crate(
                     cnum,
                     name,
                     ExternCrate {
-                        src: ExternCrateSource::Extern(def_id.to_def_id()),
+                        src: if is_unnameable {
+                            ExternCrateSource::Path
+                        } else {
+                            ExternCrateSource::Extern(def_id.to_def_id())
+                        },
                         span: item.span,
-                        path_len,
+                        path_len: if is_unnameable { usize::MAX } else { def_path.data.len() },
                         dependency_of: LOCAL_CRATE,
                     },
                 );
