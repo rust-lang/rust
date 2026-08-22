@@ -2277,6 +2277,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // running compiler in stage 2 when plugins run.
         let query_compiler;
         let (stage, stage_id) = if suite == "ui-fulldeps" && test_compiler.stage == 1 {
+            builder.info("Warning: running ui-fulldeps tests in stage 1 might cause failures");
+
             // Even when using the stage 0 compiler, we also need to provide the stage 1 compiler
             // so that compiletest can query it for target information.
             query_compiler = Some(test_compiler);
