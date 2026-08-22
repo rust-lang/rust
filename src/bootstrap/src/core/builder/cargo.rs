@@ -1250,9 +1250,7 @@ impl Builder<'_> {
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
-        if matches!(mode, Mode::Std) {
-            cargo.arg("-Zembed-metadata=no");
-        }
+        cargo.arg("-Zembed-metadata=no");
 
         if self.config.dump_bootstrap_shims {
             prepare_shims_dump_dir(self);
