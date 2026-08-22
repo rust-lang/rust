@@ -46,12 +46,15 @@
 use std::assert_matches;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def::DefKind;
 use rustc_span::def_id::LocalModId;
 use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
 use crate::query::Providers;
-use crate::ty::{self, DefId, Ty, TyCtxt, TypeVisitableExt, TypingEnv, VariantDef, Visibility};
+use crate::ty::{
+    self, AdtDef, DefId, Ty, TyCtxt, TypeVisitableExt, TypingEnv, VariantDef, Visibility,
+};
 
 pub mod inhabited_predicate;
 
@@ -59,7 +62,7 @@ pub use inhabited_predicate::InhabitedPredicate;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
-        inhabited_predicate_adt,
+        inhabited_predicate_for_def,
         inhabited_predicate_type,
         is_opsem_inhabited_raw,
         ..*providers
@@ -68,46 +71,62 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 /// Returns an `InhabitedPredicate` that is generic over type parameters and
 /// requires calling [`InhabitedPredicate::instantiate`]
-fn inhabited_predicate_adt(tcx: TyCtxt<'_>, def_id: DefId) -> InhabitedPredicate<'_> {
-    if let Some(def_id) = def_id.as_local() {
-        tcx.ensure_ok().check_representability(def_id);
+fn inhabited_predicate_for_def(tcx: TyCtxt<'_>, def_id: DefId) -> InhabitedPredicate<'_> {
+    match tcx.def_kind(def_id) {
+        DefKind::Enum => {
+            if let Some(def_id) = def_id.as_local() {
+                tcx.ensure_ok().check_representability(def_id);
+            }
+            let adt = tcx.adt_def(def_id);
+            InhabitedPredicate::any(tcx, adt.variants().iter().map(|v| v.inhabited_predicate(tcx)))
+        }
+        DefKind::Struct => {
+            if let Some(def_id) = def_id.as_local() {
+                tcx.ensure_ok().check_representability(def_id);
+            }
+            let adt = tcx.adt_def(def_id);
+            variant_inhabited_predicate(tcx, adt, adt.non_enum_variant())
+        }
+        DefKind::Variant => {
+            let adt = tcx.adt_def(tcx.parent(def_id));
+            let variant = adt.variant_with_id(def_id);
+            variant_inhabited_predicate(tcx, adt, variant)
+        }
+        def_kind => bug!("unexpected DefKind: {def_kind:?}"),
     }
-
-    let adt = tcx.adt_def(def_id);
-    InhabitedPredicate::any(
-        tcx,
-        adt.variants().iter().map(|variant| variant.inhabited_predicate(tcx, adt)),
-    )
 }
 
-impl<'tcx> VariantDef {
-    /// Calculates the forest of `DefId`s from which this variant is visibly uninhabited.
-    pub fn inhabited_predicate(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        adt: ty::AdtDef<'_>,
-    ) -> InhabitedPredicate<'tcx> {
-        debug_assert!(!adt.is_union());
-        InhabitedPredicate::all(
-            tcx,
-            self.fields.iter().map(|field| {
-                let pred = tcx
-                    .type_of(field.did)
-                    .instantiate_identity()
-                    .skip_norm_wip()
-                    .inhabited_predicate(tcx);
-                if adt.is_enum() {
-                    return pred;
-                }
-                match field.vis {
-                    Visibility::Public => pred,
-                    Visibility::Restricted(from) => {
-                        InhabitedPredicate::NotInModule(from).or(tcx, pred)
-                    }
-                }
-            }),
-        )
+impl VariantDef {
+    pub fn inhabited_predicate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx> {
+        if self.fields.is_empty() {
+            return InhabitedPredicate::True;
+        }
+        tcx.inhabited_predicate_for_def(self.def_id)
     }
+}
+
+fn variant_inhabited_predicate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adt: AdtDef<'tcx>,
+    variant: &VariantDef,
+) -> InhabitedPredicate<'tcx> {
+    InhabitedPredicate::all(
+        tcx,
+        variant.fields.iter().map(|field| {
+            let pred = tcx
+                .type_of(field.did)
+                .instantiate_identity()
+                .skip_norm_wip()
+                .inhabited_predicate(tcx);
+            if adt.is_enum() {
+                return pred;
+            }
+            match field.vis {
+                Visibility::Public => pred,
+                Visibility::Restricted(from) => InhabitedPredicate::NotInModule(from).or(tcx, pred),
+            }
+        }),
+    )
 }
 
 impl<'tcx> Ty<'tcx> {
@@ -228,7 +247,7 @@ impl<'tcx> Ty<'tcx> {
 /// N.B. this query should only be called through `Ty::inhabited_predicate`
 fn inhabited_predicate_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InhabitedPredicate<'tcx> {
     match *ty.kind() {
-        Adt(adt, args) => tcx.inhabited_predicate_adt(adt.did()).instantiate(tcx, args),
+        Adt(adt, args) => tcx.inhabited_predicate_for_def(adt.did()).instantiate(tcx, args),
 
         Tuple(tys) => {
             InhabitedPredicate::all(tcx, tys.iter().map(|ty| ty.inhabited_predicate(tcx)))
