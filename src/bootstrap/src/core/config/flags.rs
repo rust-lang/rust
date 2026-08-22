@@ -280,9 +280,6 @@ pub enum Subcommand {
     /// Compile either the compiler or libraries, using cargo check
     Check {
         #[arg(long)]
-        /// Check all targets
-        all_targets: bool,
-        #[arg(long)]
         /// Pass `--timings` to Cargo to get crate build timings
         timings: bool,
     },

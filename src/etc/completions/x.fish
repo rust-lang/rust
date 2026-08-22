@@ -177,7 +177,6 @@ complete -c x -n "__fish_x_using_subcommand check" -l llvm-profile-use -d 'use P
 complete -c x -n "__fish_x_using_subcommand check" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x -n "__fish_x_using_subcommand check" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand check" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
-complete -c x -n "__fish_x_using_subcommand check" -l all-targets -d 'Check all targets'
 complete -c x -n "__fish_x_using_subcommand check" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x -n "__fish_x_using_subcommand check" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand check" -s q -l quiet -d 'use quiet output'
@@ -215,7 +214,6 @@ complete -c x -n "__fish_x_using_subcommand c" -l llvm-profile-use -d 'use PGO p
 complete -c x -n "__fish_x_using_subcommand c" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
 complete -c x -n "__fish_x_using_subcommand c" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x -n "__fish_x_using_subcommand c" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
-complete -c x -n "__fish_x_using_subcommand c" -l all-targets -d 'Check all targets'
 complete -c x -n "__fish_x_using_subcommand c" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x -n "__fish_x_using_subcommand c" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
 complete -c x -n "__fish_x_using_subcommand c" -s q -l quiet -d 'use quiet output'

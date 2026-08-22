@@ -384,6 +384,16 @@ impl CommandLineStep for Rustc {
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
         }
+        // When we run `x check compiler --all-targets`, then the `Rustc` step is executed in
+        // two "modes" - one with all in-tree rustc crates, and a second time with empty crates
+        // in `PrepareRustcRmetaSysroot`, to prepare .rmeta files for RustcPrivate tools.
+        // If we use `--all-targets` for both, then we will end up with a duplicated .rmeta file
+        // in the sysroot, which breaks everything.
+        // So we only use `--all-targets` for the default case where crates are empty.
+        // This will also be used when someone does `x check compiler/<rustc-crate>`.
+        if !self.crates.is_empty() {
+            cargo.arg("--all-targets");
+        }
 
         let _guard = builder.msg(
             self.check_kind.to_kind(),
