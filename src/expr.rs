@@ -1009,10 +1009,15 @@ impl<'a> ControlFlow<'a> {
             .config
             .max_width()
             .saturating_sub(constr_shape.used_width() + offset + brace_overhead);
+        let first_line_indent = if context.config.style_edition() >= StyleEdition::Edition2027 {
+            shape.indent.width()
+        } else {
+            shape.used_width()
+        };
         let force_newline_brace = (pat_expr_string.contains('\n')
             || pat_expr_string.len() > one_line_budget)
             && (!last_line_extendable(&pat_expr_string)
-                || last_line_offsetted(shape.used_width(), &pat_expr_string));
+                || last_line_offsetted(first_line_indent, &pat_expr_string));
 
         // Try to format if-else on single line.
         if self.allow_single_line && context.config.single_line_if_else_max_width() > 0 {
