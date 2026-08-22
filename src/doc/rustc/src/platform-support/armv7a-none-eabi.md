@@ -49,10 +49,10 @@ disabled as needed with `-C target-feature=(+/-)`.
 
 In general, the following four combinations are possible:
 
-- VFPv3-D16, target feature `+vfp3` and `-d32`
-- VFPv3-D32, target feature `+vfp3` and `+d32`
-- VFPv4-D16, target feature `+vfp4` and `-d32`
-- VFPv4-D32, target feature `+vfp4` and `+d32`
+- VFPv3-D16, target default
+- VFPv3-D32, target feature `+d32`
+- VFPv4-D16, llvm target feature `+vfp4d16`
+- VFPv4-D32, target feature `+vfp4`
 
 An Armv7-A processor may optionally include a NEON hardware unit which
 provides Single Instruction Multiple Data (SIMD) operations. The
@@ -62,6 +62,10 @@ be added to inform the compiler about the availability of NEON.
 You can refer to the [arm-none-eabi](arm-none-eabi.md) documentation for a
 generic guide on target feature and target CPU specification and how to enable
 and disable them via `.cargo/config.toml` file.
+
+> **Note**: From version 1.94 up to 1.99 the hardfloat targets required `VFPv3-D32` as a minimum as
+> they erroneously enabled the `d32` feature. Breakage introduced as a result of correcting this can
+> be fixed by passing `-Ctarget-feature=+d32` to Rust.
 
 [vfp]: https://developer.arm.com/documentation/den0013/0400/Floating-Point/Floating-point-basics-and-the-IEEE-754-standard/ARM-VFP
 

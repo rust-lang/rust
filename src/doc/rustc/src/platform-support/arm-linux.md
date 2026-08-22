@@ -215,3 +215,7 @@ export CXX_arm_unknown_linux_gnueabi=arm-linux-gnueabi-g++
 export CC_arm_unknown_linux_gnueabi=arm-linux-gnueabi-gcc
 cargo +nightly build -Zbuild-std --target=arm-unknown-linux-gnueabi
 ```
+
+> **Note**: From version 1.94 up to 1.99, some hardfloat targets required `VFPv3-D32` as a minimum
+> as they erroneously enabled the `d32` feature. Breakage introduced as a result of correcting this
+> can be fixed by passing `-Ctarget-feature=+d32` to Rust.

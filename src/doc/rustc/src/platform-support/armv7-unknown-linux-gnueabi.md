@@ -38,6 +38,10 @@ ar = "arm-linux-gnu-ar"
 linker = "arm-linux-gnu-gcc"
 ```
 
+> **Note**: From version 1.94 up to 1.99 the hardfloat target required `VFPv3-D32` as a minimum as it
+> erroneously enabled the `d32` feature. Breakage introduced as a result of correcting this can be
+> fixed by passing `-Ctarget-feature=+d32` to Rust.
+
 ## Building Rust programs
 
 These targets is distributed through `rustup`, and otherwise requires no special configuration.

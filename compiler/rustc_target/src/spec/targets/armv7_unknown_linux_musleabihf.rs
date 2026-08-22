@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
-            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
+            features: "-d32,+v7,+vfp3d16,+thumb2".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
             // FIXME(compiler-team#422): musl targets should be dynamically linked by default.

@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
             cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
-            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
+            features: "-d32,+v7,+vfp3d16,+thumb2".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
             llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),
