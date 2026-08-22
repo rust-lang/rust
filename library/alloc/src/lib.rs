@@ -127,7 +127,6 @@
 #![feature(derive_const)]
 #![feature(diagnostic_on_move)]
 #![feature(dispatch_from_dyn)]
-#![feature(drop_guard)]
 #![feature(ergonomic_clones)]
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
