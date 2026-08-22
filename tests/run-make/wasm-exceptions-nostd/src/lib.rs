@@ -5,8 +5,10 @@
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
+#![feature(panic_unwind)]
 
 extern crate alloc;
+extern crate unwind;
 
 /// This module allows us to use `Box`, `String`, ... even in no-std
 mod arena_alloc;
