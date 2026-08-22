@@ -357,42 +357,64 @@ impl CStore {
                 return;
             }
             let extern_crate = data.name();
-            let flag_name = opt_name.clone();
             let flag_name_prefixed = format!("-{}{}", prefix, opt_name);
+
+            let diag = format!(
+                "mixing `{flag_name_prefixed}` will cause an ABI mismatch in crate `{local_crate}`"
+            );
+            let mut diag = tcx.dcx().struct_err(diag);
+            diag.help(format!("the `{flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"));
 
             match (flag_local_value, flag_extern_value) {
                 (Some(local_value), Some(extern_value)) => {
-                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiers {
-                        extern_crate,
-                        local_crate,
-                        flag_name,
-                        flag_name_prefixed,
-                        local_value: local_value.to_string(),
-                        extern_value: extern_value.to_string(),
-                    })
+                    diag.note(format!("`{flag_name_prefixed}={local_value}` in this crate is incompatible with `{flag_name_prefixed}={extern_value}` in dependency `{extern_crate}`"));
+                    diag.help(format!("set `{flag_name_prefixed}={extern_value}` in this crate or `{flag_name_prefixed}={local_value}` in `{extern_crate}`"));
                 }
                 (None, Some(extern_value)) => {
-                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersLMissed {
-                        extern_crate,
-                        local_crate,
-                        flag_name,
-                        flag_name_prefixed,
-                        extern_value: extern_value.to_string(),
-                        has_extern_value: !extern_value.is_empty(),
-                    })
+                    let has_extern_value = !extern_value.is_empty();
+                    diag.note(format!("`{flag_name_prefixed}` is unset in this crate which is incompatible with {} in dependency `{extern_crate}`",
+                        if has_extern_value {
+                            format!("`{flag_name_prefixed}={extern_value}`")
+                        } else {
+                            format!("`{flag_name_prefixed}` being set")
+                        }
+                    ));
+                    diag.help(format!(
+                        "set {} in this crate or unset `{flag_name_prefixed}` in `{extern_crate}`",
+                        if has_extern_value {
+                            format!("`{flag_name_prefixed}={extern_value}`")
+                        } else {
+                            format!("`{flag_name_prefixed}`")
+                        }
+                    ));
                 }
                 (Some(local_value), None) => {
-                    tcx.dcx().emit_err(diagnostics::IncompatibleTargetModifiersRMissed {
-                        extern_crate,
-                        local_crate,
-                        flag_name,
-                        flag_name_prefixed,
-                        local_value: local_value.to_string(),
-                        has_local_value: !local_value.is_empty(),
-                    })
+                    let has_local_value = !local_value.is_empty();
+                    diag.note(format!("{} in this crate is incompatible with `{flag_name_prefixed}` being unset in dependency `{extern_crate}`",
+                        if has_local_value {
+                            format!("`{flag_name_prefixed}={local_value}`")
+                        } else {
+                            format!("`{flag_name_prefixed}` being set")
+                        }
+                    ));
+                    diag.help(format!(
+                        "unset `{flag_name_prefixed}` in this crate or set {} in `{extern_crate}`",
+                        if has_local_value {
+                            format!("`{flag_name_prefixed}={local_value}`")
+                        } else {
+                            format!("`{flag_name_prefixed}`")
+                        }
+                    ));
                 }
                 (None, None) => panic!("Incorrect target modifiers report_diff(None, None)"),
             };
+
+            if flag_name_prefixed == "-Zcodegen-backend" {
+                diag.help("this crate has `-Zllvm-target-features` set, which means mixing different codegen backends is unsafe");
+            }
+
+            diag.help(format!("if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={opt_name}` to silence this error"));
+            diag.emit();
         };
         let mut it1 = mods.iter().map(tmod_extender);
         let mut it2 = dep_mods.iter().map(tmod_extender);

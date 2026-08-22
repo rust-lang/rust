@@ -157,6 +157,24 @@ mod target_modifier_consistency_check {
         };
         l_tech_value == r_tech_value
     }
+    pub(super) fn codegen_backend(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        let l_val = l.value_name.as_str();
+        let r_val = match r {
+            Some(r) => r.value_name.as_str(),
+            None => option_env!("CFG_DEFAULT_CODEGEN_BACKEND").unwrap_or("dummy"),
+        };
+        if l_val == r_val {
+            // Same codegen backend: all good.
+            return true;
+        }
+        // If the codegen backends differ, there must be no LLVM target features. (Those are
+        // themselves a target modifier so we know they are consistent across the crate graph.)
+        sess.opts.unstable_opts.llvm_target_feature.is_empty()
+    }
 }
 
 impl TargetModifier {
@@ -176,6 +194,9 @@ impl TargetModifier {
                     return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
                         sess, self, other,
                     );
+                }
+                UnstableOptionsTargetModifiers::CodegenBackend => {
+                    return target_modifier_consistency_check::codegen_backend(sess, self, other);
                 }
                 _ => {}
             },
@@ -2413,7 +2434,7 @@ options! {
         "show all expected values in check-cfg diagnostics (default: no)"),
     checksum_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_cargo_src_file_hash, [TRACKED],
         "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
-    codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
+    codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED] { TARGET_MODIFIER: CodegenBackend },
         "the backend to use"),
     codegen_emit_retag: Option<CodegenRetagOptions> = (None, parse_codegen_retag_options, [TRACKED],
         "emit retag function calls in generated code"),
