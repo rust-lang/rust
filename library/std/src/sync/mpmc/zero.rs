@@ -280,6 +280,11 @@ impl<T> Channel<T> {
         })
     }
 
+    /// Returns `true` when the channel is disconnected.
+    pub(crate) fn is_disconnected(&self) -> bool {
+        self.inner.lock().unwrap().is_disconnected
+    }
+
     /// Disconnects the channel and wakes up all blocked senders and receivers.
     ///
     /// Returns `true` if this call disconnected the channel.

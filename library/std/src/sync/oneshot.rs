@@ -212,6 +212,26 @@ impl<T> Receiver<T> {
 
     // Fallible methods.
 
+    /// Returns `Ok(true)` if the sender has sent a value over the channel.
+    ///
+    /// Returns `Ok(false)` if no value has been sent, but the corresponding [`Sender`] still exists
+    /// (hasn't been dropped yet).
+    ///
+    /// Once this method has returned `Ok(true)`, then any of the `recv` methods are guaranteed to
+    /// return the value successfully without blocking.
+    ///
+    /// Returns a [`RecvError`] if the corresponding [`Sender`] has disconnected before a value was
+    /// sent.
+    pub fn is_ready(&self) -> Result<bool, RecvError> {
+        if !self.inner.is_empty() {
+            Ok(true)
+        } else if self.inner.is_disconnected() {
+            Err(RecvError)
+        } else {
+            Ok(false)
+        }
+    }
+
     /// Attempts to return a pending value on this receiver without blocking.
     ///
     /// # Examples
