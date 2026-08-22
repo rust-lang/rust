@@ -1100,53 +1100,91 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let tcx = self.tcx();
         let bounds = tcx.explicit_item_bounds(def_id);
 
-        // Mirror `pretty_print_opaque_impl_type`'s sized-bound handling:
-        // positive `Sized` and `MetaSized` are absorbed into the synthetic
-        // suffix below; negative `Sized` (`?Sized`) falls through and is
-        // printed inline. We only ever look at clause *kinds* here, so the
-        // identity-instantiated bounds carry all the information we need.
-        let mut trait_emits = 0usize;
-        let mut lifetimes_count = 0usize;
-        let mut has_sized_bound = false;
-        let mut has_negative_sized_bound = false;
-        let mut has_meta_sized_bound = false;
+        // Only the *number* of printed components matters here, and that is
+        // invariant under instantiation, so identity args are enough.
+        let collected = self.collect_opaque_bounds(
+            bounds
+                .iter_identity_copied()
+                .map(Unnormalized::skip_norm_wip)
+                .map(|(clause, _)| clause),
+        );
 
-        for (predicate, _) in bounds.iter_identity_copied().map(Unnormalized::skip_norm_wip) {
-            match predicate.kind().skip_binder() {
-                ty::ClauseKind::Trait(pred) => match tcx.as_lang_item(pred.def_id()) {
-                    Some(LangItem::Sized) => match pred.polarity {
-                        ty::ClausePolarity::Positive => {
-                            has_sized_bound = true;
+        collected.printed_component_count(tcx.features().sized_hierarchy()) > 1
+    }
+
+    /// Gather the `+`-joined components of an opaque type's item bounds, in the
+    /// order `pretty_print_opaque_impl_type` prints them.
+    fn collect_opaque_bounds(
+        &self,
+        clauses: impl Iterator<Item = ty::Clause<'tcx>>,
+    ) -> OpaqueBounds<'tcx> {
+        let tcx = self.tcx();
+
+        let mut collected = OpaqueBounds {
+            traits: FxIndexMap::default(),
+            fn_traits: FxIndexMap::default(),
+            lifetimes: SmallVec::new(),
+            has_sized_bound: false,
+            has_negative_sized_bound: false,
+            has_meta_sized_bound: false,
+        };
+
+        for predicate in clauses {
+            let bound_predicate = predicate.kind();
+
+            match bound_predicate.skip_binder() {
+                ty::ClauseKind::Trait(pred) => {
+                    // With `feature(sized_hierarchy)`, don't print `?Sized` as an alias for
+                    // `MetaSized`, and skip sizedness bounds to be added at the end.
+                    match tcx.as_lang_item(pred.def_id()) {
+                        Some(LangItem::Sized) => match pred.polarity {
+                            ty::ClausePolarity::Positive => {
+                                collected.has_sized_bound = true;
+                                continue;
+                            }
+                            ty::ClausePolarity::Negative => {
+                                collected.has_negative_sized_bound = true
+                            }
+                        },
+                        Some(LangItem::MetaSized) => {
+                            collected.has_meta_sized_bound = true;
+                            continue;
                         }
-                        ty::ClausePolarity::Negative => {
-                            has_negative_sized_bound = true;
-                            trait_emits += 1;
+                        Some(LangItem::PointeeSized) => {
+                            bug!("`PointeeSized` is removed during lowering");
                         }
-                    },
-                    Some(LangItem::MetaSized) => {
-                        has_meta_sized_bound = true;
+                        _ => (),
                     }
-                    Some(LangItem::PointeeSized) => {}
-                    _ => trait_emits += 1,
-                },
-                ty::ClauseKind::TypeOutlives(_) => lifetimes_count += 1,
+
+                    self.insert_trait_and_projection(
+                        bound_predicate.rebind(pred),
+                        None,
+                        &mut collected.traits,
+                        &mut collected.fn_traits,
+                    );
+                }
+                ty::ClauseKind::Projection(pred) => {
+                    let proj = bound_predicate.rebind(pred);
+                    let trait_ref = proj.map_bound(|proj| TraitClause {
+                        trait_ref: proj.projection_term.trait_ref(tcx),
+                        polarity: ty::ClausePolarity::Positive,
+                    });
+
+                    self.insert_trait_and_projection(
+                        trait_ref,
+                        Some((proj.item_def_id(), proj.term())),
+                        &mut collected.traits,
+                        &mut collected.fn_traits,
+                    );
+                }
+                ty::ClauseKind::TypeOutlives(outlives) => {
+                    collected.lifetimes.push(outlives.1);
+                }
                 _ => {}
             }
         }
 
-        // The synthetic suffix in `pretty_print_opaque_impl_type` emits at most
-        // one extra bound (`Sized` / `?Sized` / `MetaSized` / `PointeeSized`).
-        let using_sized_hierarchy = tcx.features().sized_hierarchy();
-        let add_sized = has_sized_bound && (trait_emits == 0 || has_negative_sized_bound);
-        let add_maybe_sized =
-            has_meta_sized_bound && !has_negative_sized_bound && !using_sized_hierarchy;
-        let has_pointee_sized =
-            !has_sized_bound && !has_meta_sized_bound && !has_negative_sized_bound;
-        let synthetic = add_sized
-            || add_maybe_sized
-            || (using_sized_hierarchy && (has_meta_sized_bound || has_pointee_sized));
-
-        trait_emits + lifetimes_count + usize::from(synthetic) > 1
+        collected
     }
 
     fn pretty_print_opaque_impl_type(
@@ -1160,68 +1198,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // by looking up the projections associated with the def_id.
         let bounds = tcx.explicit_item_bounds(def_id);
 
-        let mut traits = FxIndexMap::default();
-        let mut fn_traits = FxIndexMap::default();
-        let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
-
-        let mut has_sized_bound = false;
-        let mut has_negative_sized_bound = false;
-        let mut has_meta_sized_bound = false;
-
-        for (predicate, _) in
-            bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
-        {
-            let bound_predicate = predicate.kind();
-
-            match bound_predicate.skip_binder() {
-                ty::ClauseKind::Trait(pred) => {
-                    // With `feature(sized_hierarchy)`, don't print `?Sized` as an alias for
-                    // `MetaSized`, and skip sizedness bounds to be added at the end.
-                    match tcx.as_lang_item(pred.def_id()) {
-                        Some(LangItem::Sized) => match pred.polarity {
-                            ty::ClausePolarity::Positive => {
-                                has_sized_bound = true;
-                                continue;
-                            }
-                            ty::ClausePolarity::Negative => has_negative_sized_bound = true,
-                        },
-                        Some(LangItem::MetaSized) => {
-                            has_meta_sized_bound = true;
-                            continue;
-                        }
-                        Some(LangItem::PointeeSized) => {
-                            bug!("`PointeeSized` is removed during lowering");
-                        }
-                        _ => (),
-                    }
-
-                    self.insert_trait_and_projection(
-                        bound_predicate.rebind(pred),
-                        None,
-                        &mut traits,
-                        &mut fn_traits,
-                    );
-                }
-                ty::ClauseKind::Projection(pred) => {
-                    let proj = bound_predicate.rebind(pred);
-                    let trait_ref = proj.map_bound(|proj| TraitClause {
-                        trait_ref: proj.projection_term.trait_ref(tcx),
-                        polarity: ty::ClausePolarity::Positive,
-                    });
-
-                    self.insert_trait_and_projection(
-                        trait_ref,
-                        Some((proj.item_def_id(), proj.term())),
-                        &mut traits,
-                        &mut fn_traits,
-                    );
-                }
-                ty::ClauseKind::TypeOutlives(outlives) => {
-                    lifetimes.push(outlives.1);
-                }
-                _ => {}
-            }
-        }
+        let OpaqueBounds {
+            mut traits,
+            fn_traits,
+            lifetimes,
+            has_sized_bound,
+            has_negative_sized_bound,
+            has_meta_sized_bound,
+        } = self.collect_opaque_bounds(
+            bounds
+                .iter_instantiated_copied(tcx, args)
+                .map(Unnormalized::skip_norm_wip)
+                .map(|(clause, _)| clause),
+        );
 
         write!(self, "impl ")?;
 
@@ -1375,7 +1364,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// Insert the trait ref and optionally a projection type associated with it into either the
     /// traits map or fn_traits map, depending on if the trait is in the Fn* family of traits.
     fn insert_trait_and_projection(
-        &mut self,
+        &self,
         trait_pred: ty::PolyTraitClause<'tcx>,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
         traits: &mut FxIndexMap<
@@ -3742,4 +3731,52 @@ pub fn provide(providers: &mut Providers) {
 pub struct OpaqueFnEntry<'tcx> {
     kind: ty::ClosureKind,
     return_ty: Option<ty::Binder<'tcx, Term<'tcx>>>,
+}
+
+/// The `+`-joined components of an `impl Trait`, gathered from its item bounds.
+///
+/// [`PrettyPrinter::pretty_print_opaque_impl_type`] renders these, and
+/// [`PrettyPrinter::opaque_has_multiple_bounds`] counts them to decide whether
+/// the opaque needs disambiguating parens. Both go through
+/// [`PrettyPrinter::collect_opaque_bounds`] so that the two never disagree.
+pub struct OpaqueBounds<'tcx> {
+    traits: FxIndexMap<ty::PolyTraitClause<'tcx>, FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>>,
+    fn_traits: FxIndexMap<
+        (ty::Binder<'tcx, (&'tcx ty::List<Ty<'tcx>>, Ty<'tcx>)>, bool),
+        OpaqueFnEntry<'tcx>,
+    >,
+    lifetimes: SmallVec<[ty::Region<'tcx>; 1]>,
+    has_sized_bound: bool,
+    has_negative_sized_bound: bool,
+    has_meta_sized_bound: bool,
+}
+
+impl<'tcx> OpaqueBounds<'tcx> {
+    /// Whether the sizedness suffix adds a component of its own, mirroring the
+    /// tail of `pretty_print_opaque_impl_type`.
+    fn prints_sized_suffix(&self, using_sized_hierarchy: bool) -> bool {
+        let nothing_printed_yet = self.fn_traits.is_empty() && self.traits.is_empty();
+        let add_sized =
+            self.has_sized_bound && (nothing_printed_yet || self.has_negative_sized_bound);
+        let add_maybe_sized =
+            self.has_meta_sized_bound && !self.has_negative_sized_bound && !using_sized_hierarchy;
+        let has_pointee_sized_bound =
+            !self.has_sized_bound && !self.has_meta_sized_bound && !self.has_negative_sized_bound;
+
+        add_sized
+            || add_maybe_sized
+            || (using_sized_hierarchy && (self.has_meta_sized_bound || has_pointee_sized_bound))
+    }
+
+    /// How many `+`-joined components the opaque actually prints as. Lifetimes
+    /// are only rendered outside of forced-trimmed mode, so they only count
+    /// when they will be printed.
+    fn printed_component_count(&self, using_sized_hierarchy: bool) -> usize {
+        let lifetimes = if with_forced_trimmed_paths() { 0 } else { self.lifetimes.len() };
+
+        self.fn_traits.len()
+            + self.traits.len()
+            + lifetimes
+            + usize::from(self.prints_sized_suffix(using_sized_hierarchy))
+    }
 }
