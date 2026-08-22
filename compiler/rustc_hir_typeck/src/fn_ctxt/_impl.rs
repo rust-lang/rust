@@ -1033,6 +1033,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         path_span: Span,
         hir_id: HirId,
+        has_args: bool,
     ) -> (Ty<'tcx>, Res) {
         let tcx = self.tcx;
 
@@ -1280,17 +1281,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "the `Self` constructor can only be used with tuple or unit structs",
                     );
                     if let Some(adt_def) = ty.normalized.ty_adt_def() {
-                        match adt_def.adt_kind() {
-                            AdtKind::Enum => {
-                                err.help("did you mean to use one of the enum's variants?");
-                            }
-                            AdtKind::Struct | AdtKind::Union => {
-                                err.span_suggestion(
-                                    span,
-                                    "use curly brackets",
-                                    "Self { /* fields */ }",
-                                    Applicability::HasPlaceholders,
-                                );
+                        let def_id = self.body_def_id.to_def_id();
+                        if let Some(assoc) = tcx.opt_associated_item(def_id)
+                            && assoc.is_method()
+                            && !has_args
+                        {
+                            let self_ty =
+                                tcx.fn_sig(def_id).instantiate_identity().skip_binder().inputs()[0];
+                            let applicability = if let ty::Adt(..) = self_ty.kind() {
+                                // We're within a method that takes ownership of `Self`, likely a
+                                // builder, so this is most likely a typo.
+                                Applicability::MachineApplicable
+                            } else {
+                                // We still might have meant `self` instead of `Self`.
+                                Applicability::MaybeIncorrect
+                            };
+                            err.span_suggestion_verbose(
+                                span,
+                                format!(
+                                    "you might have meant to refer to the `self` binding of type \
+                                     `{self_ty}`",
+                                ),
+                                "self".to_string(),
+                                applicability,
+                            );
+                        } else {
+                            match adt_def.adt_kind() {
+                                AdtKind::Enum => {
+                                    err.span_help(
+                                        tcx.def_span(adt_def.did()),
+                                        if adt_def.variants().is_empty() {
+                                            "the enum is unconstructable because it has no variants"
+                                        } else {
+                                            "you might have meant to use one of the enum's variants"
+                                        },
+                                    );
+                                }
+                                AdtKind::Struct | AdtKind::Union => {
+                                    err.span_suggestion_verbose(
+                                        span,
+                                        "use curly brackets",
+                                        "Self { /* fields */ }",
+                                        Applicability::HasPlaceholders,
+                                    );
+                                }
                             }
                         }
                     }

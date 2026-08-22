@@ -915,7 +915,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rustc_hir::PatExprKind::Path(qpath) => {
                 let (res, opt_ty, segments) =
                     self.resolve_ty_and_res_fully_qualified_call(qpath, lt.hir_id, lt.span);
-                self.instantiate_value_path(segments, opt_ty, res, lt.span, lt.span, lt.hir_id).0
+                self.instantiate_value_path(
+                    segments, opt_ty, res, lt.span, lt.span, lt.hir_id, false,
+                )
+                .0
             }
         };
         self.write_ty(lt.hir_id, ty);
@@ -1627,7 +1630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Find the type of the path pattern, for later checking.
         let (pat_ty, pat_res) =
-            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id);
+            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id, false);
         Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::Path { res, pat_res, segments } })
     }
 
@@ -1789,8 +1792,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Type-check the path.
-        let (pat_ty, res) =
-            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
+        let (pat_ty, res) = self
+            .instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id, false);
         if !pat_ty.is_fn() {
             return report_unexpected_res(res);
         }
