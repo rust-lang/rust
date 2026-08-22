@@ -2,7 +2,7 @@ use std::cmp;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_data_structures::undo_log::Rollback;
+use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
@@ -19,6 +19,8 @@ use crate::infer::InferCtxtUndoLogs;
 pub(crate) enum UndoLog<'tcx> {
     EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
     SubRelation(sv::UndoLog<ut::Delegate<TyVidSubKey>>),
+    StalledGoalRevision(u64),
+    StalledGoalSubRevision(u64),
 }
 
 /// Convert from a specific kind of undo to the more general UndoLog
@@ -52,6 +54,12 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
         match undo {
             UndoLog::EqRelation(undo) => self.eq_relations.reverse(undo),
             UndoLog::SubRelation(undo) => self.sub_unification_table.reverse(undo),
+            UndoLog::StalledGoalRevision(revision) => {
+                self.stalled_goal_revision = revision;
+            }
+            UndoLog::StalledGoalSubRevision(revision) => {
+                self.stalled_goal_sub_revision = revision;
+            }
         }
     }
 }
@@ -83,6 +91,16 @@ pub(crate) struct TypeVariableStorage<'tcx> {
     /// type of `x` is only a supertype of the argument of `returns_arg`. We
     /// still want to suggest specifying the type of the argument.
     sub_unification_table: ut::UnificationTableStorage<TyVidSubKey>,
+
+    // Revisions for inference changes relevant to stalled type-variable
+    // goals. Revision changes participate in the inference undo log so
+    // rolling back a snapshot restores them together with inference state.
+    stalled_goal_revision: u64,
+    stalled_goal_sub_revision: u64,
+
+    /// Only track stalled-goal revisions for inference contexts using
+    /// the next trait solver.
+    track_stalled_goal_revisions: bool,
 }
 
 pub(crate) struct TypeVariableTable<'a, 'tcx> {
@@ -140,6 +158,10 @@ impl<'tcx> TypeVariableValue<'tcx> {
 }
 
 impl<'tcx> TypeVariableStorage<'tcx> {
+    pub(crate) fn new(track_stalled_goal_revisions: bool) -> Self {
+        Self { track_stalled_goal_revisions, ..Default::default() }
+    }
+
     #[inline]
     pub(crate) fn with_log<'a>(
         &'a mut self,
@@ -161,9 +183,28 @@ impl<'tcx> TypeVariableStorage<'tcx> {
     pub(crate) fn sub_unification_table_ref(&self) -> &ut::UnificationTableStorage<TyVidSubKey> {
         &self.sub_unification_table
     }
+
+    #[inline]
+    pub(crate) fn stalled_goal_revisions(&self) -> (u64, u64) {
+        (self.stalled_goal_revision, self.stalled_goal_sub_revision)
+    }
 }
 
 impl<'tcx> TypeVariableTable<'_, 'tcx> {
+    #[inline]
+    fn bump_stalled_goal_revision(&mut self) {
+        let revision = self.storage.stalled_goal_revision;
+        self.undo_log.push(UndoLog::StalledGoalRevision(revision));
+        self.storage.stalled_goal_revision = revision.wrapping_add(1);
+    }
+
+    #[inline]
+    fn bump_stalled_goal_sub_revision(&mut self) {
+        let revision = self.storage.stalled_goal_sub_revision;
+        self.undo_log.push(UndoLog::StalledGoalSubRevision(revision));
+        self.storage.stalled_goal_sub_revision = revision.wrapping_add(1);
+    }
+
     /// Returns the origin that was given when `vid` was created.
     ///
     /// Note that this function does not return care whether
@@ -178,6 +219,12 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub(crate) fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
+
+        if self.storage.track_stalled_goal_revisions {
+            self.bump_stalled_goal_revision();
+            self.bump_stalled_goal_sub_revision();
+        }
+
         self.eq_relations().union(a, b);
         self.sub_unification_table().union(a, b);
     }
@@ -189,6 +236,11 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub(crate) fn sub_unify(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
+
+        if self.storage.track_stalled_goal_revisions {
+            self.bump_stalled_goal_sub_revision();
+        }
+
         self.sub_unification_table().union(a, b);
     }
 
@@ -204,6 +256,11 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             "instantiating type variable `{vid:?}` twice: new-value = {ty:?}, old-value={:?}",
             self.eq_relations().probe_value(vid)
         );
+
+        if self.storage.track_stalled_goal_revisions {
+            self.bump_stalled_goal_revision();
+        }
+
         self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
     }
 

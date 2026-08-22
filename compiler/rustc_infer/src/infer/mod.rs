@@ -164,12 +164,12 @@ pub struct InferCtxtInner<'tcx> {
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
-    fn new() -> InferCtxtInner<'tcx> {
+    fn new(next_trait_solver: bool) -> InferCtxtInner<'tcx> {
         InferCtxtInner {
             undo_log: InferCtxtUndoLogs::default(),
 
             projection_cache: Default::default(),
-            type_variable_storage: Default::default(),
+            type_variable_storage: type_variable::TypeVariableStorage::new(next_trait_solver),
             const_unification_storage: Default::default(),
             int_unification_storage: Default::default(),
             float_unification_storage: Default::default(),
@@ -677,7 +677,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             considering_regions,
             in_hir_typeck,
             skip_leak_check,
-            inner: RefCell::new(InferCtxtInner::new()),
+            inner: RefCell::new(InferCtxtInner::new(next_trait_solver)),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
@@ -1591,6 +1591,19 @@ impl<'tcx> InferCtxt<'tcx> {
         debug_assert!(!param_env.has_infer());
         debug_assert!(!param_env.has_placeholders());
         self.typing_env(param_env).as_query_input(value)
+    }
+
+    #[inline]
+    pub fn stalled_goal_revisions(&self) -> (u64, u64) {
+        self.inner.borrow().type_variable_storage.stalled_goal_revisions()
+    }
+
+    #[inline]
+    pub fn stalled_goal_sub_var_is_root(&self, vid: ty::TyVid) -> bool {
+        let inner = self.inner.borrow();
+        let table = inner.type_variable_storage.sub_unification_table_ref();
+
+        (vid.as_u32() as usize) < table.len() && table.try_probe_value(vid).is_some()
     }
 
     /// The returned function is used in a fast path. If it returns `true` the variable is

@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 use std::mem;
 
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
@@ -9,7 +10,8 @@ use rustc_infer::traits::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
 use rustc_next_trait_solver::solve::{
-    GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _, StalledOnCoroutines,
+    GoalEvaluation, GoalStalledOn, GoalStalledOnOpaques, HasChanged, SolverDelegateEvalExt as _,
+    StalledOnCoroutines, TyOrConstInferVar,
 };
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -44,6 +46,22 @@ pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
     /// gets rolled back. Because of this we explicitly check that we only
     /// use the context in exactly this snapshot.
     usable_in_snapshot: usize,
+
+    last_stalled_goal_revision: u64,
+    last_stalled_goal_sub_revision: u64,
+
+    /// Over-approximation of sub-unification roots referenced by
+    /// trackable stalled obligations.
+    stalled_sub_roots: FxIndexSet<ty::TyVid>,
+
+    /// Whether any trackable stalled obligation requires the opaque
+    /// type storage to remain empty.
+    stalled_on_empty_opaques: bool,
+
+    /// Whether every pending obligation can use the context-wide
+    /// stalled-goal fast path.
+    all_pending_trackable: bool,
+
     _errors: PhantomData<E>,
 }
 
@@ -129,11 +147,39 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
             "new trait solver fulfillment context created when \
             infcx is set up for old trait solver"
         );
+        let (revision, sub_revision) = infcx.stalled_goal_revisions();
+
         FulfillmentCtxt {
             obligations: Default::default(),
             usable_in_snapshot: infcx.num_open_snapshots(),
+            last_stalled_goal_revision: revision,
+            last_stalled_goal_sub_revision: sub_revision,
+            stalled_sub_roots: Default::default(),
+            stalled_on_empty_opaques: false,
+            all_pending_trackable: true,
             _errors: PhantomData,
         }
+    }
+
+    fn record_trackable_stalled_on(
+        stalled_on: &GoalStalledOn<TyCtxt<'tcx>>,
+        stalled_sub_roots: &mut FxIndexSet<ty::TyVid>,
+        stalled_on_empty_opaques: &mut bool,
+    ) -> bool {
+        if stalled_on.stalled_vars.iter().any(|var| !matches!(*var, TyOrConstInferVar::Ty(_))) {
+            return false;
+        }
+
+        match stalled_on.opaques {
+            GoalStalledOnOpaques::No => {}
+            GoalStalledOnOpaques::Yes { num_opaques_in_storage: 0, .. } => {
+                *stalled_on_empty_opaques = true;
+            }
+            GoalStalledOnOpaques::Yes { .. } => return false,
+        }
+
+        stalled_sub_roots.extend(stalled_on.sub_roots.iter().copied());
+        true
     }
 
     fn inspect_evaluated_obligation(
@@ -172,10 +218,23 @@ where
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe(_) => {
+                    if let Some(stalled_on) = &stalled_on {
+                        if !Self::record_trackable_stalled_on(
+                            stalled_on,
+                            &mut self.stalled_sub_roots,
+                            &mut self.stalled_on_empty_opaques,
+                        ) {
+                            self.all_pending_trackable = false;
+                        }
+                    } else {
+                        self.all_pending_trackable = false;
+                    }
+
                     self.obligations.register(obligation, stalled_on);
                 }
             }
         } else {
+            self.all_pending_trackable = false;
             self.obligations.register(obligation, None);
         }
     }
@@ -195,9 +254,45 @@ where
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = TraitErrors::NoErrors;
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+
+        let (revision, sub_revision) = infcx.stalled_goal_revisions();
+
+        if self.obligations.pending.is_empty() {
+            self.last_stalled_goal_revision = revision;
+            self.last_stalled_goal_sub_revision = sub_revision;
+            self.stalled_sub_roots.clear();
+            self.stalled_on_empty_opaques = false;
+            self.all_pending_trackable = true;
+            return errors;
+        }
+
+        if !infcx.tcx.disable_trait_solver_fast_paths()
+            && self.all_pending_trackable
+            && self.last_stalled_goal_revision == revision
+        {
+            let sub_roots_unchanged = self.last_stalled_goal_sub_revision == sub_revision
+                || self
+                    .stalled_sub_roots
+                    .iter()
+                    .all(|&vid| infcx.stalled_goal_sub_var_is_root(vid));
+
+            let opaques_unchanged = !self.stalled_on_empty_opaques
+                || infcx.inner.borrow_mut().opaque_types().is_empty();
+
+            if sub_roots_unchanged && opaques_unchanged {
+                self.last_stalled_goal_sub_revision = sub_revision;
+                return errors;
+            }
+        }
+
         loop {
+            let (pass_revision, pass_sub_revision) = infcx.stalled_goal_revisions();
+
             let mut any_changed = false;
             let mut overflowed = false;
+            let mut all_pending_trackable = true;
+            let mut stalled_on_empty_opaques = false;
+            let stalled_sub_roots = &mut self.stalled_sub_roots;
 
             self.obligations.pending.retain_mut(|(obligation, opt_stalled_on)| {
                 if overflowed {
@@ -209,6 +304,14 @@ where
                 if let Some(stalled_on) = opt_stalled_on
                     && delegate.goal_remains_stalled(stalled_on)
                 {
+                    if !Self::record_trackable_stalled_on(
+                        stalled_on,
+                        stalled_sub_roots,
+                        &mut stalled_on_empty_opaques,
+                    ) {
+                        all_pending_trackable = false;
+                    }
+
                     return true;
                 }
 
@@ -279,17 +382,38 @@ where
                         // Update `opt_stalled_on` goal, for the next retain_mut, because we are
                         // running until a fixpoint.
                         *opt_stalled_on = stalled_on;
+
+                        if let Some(stalled_on) = opt_stalled_on {
+                            if !Self::record_trackable_stalled_on(
+                                stalled_on,
+                                stalled_sub_roots,
+                                &mut stalled_on_empty_opaques,
+                            ) {
+                                all_pending_trackable = false;
+                            }
+                        } else {
+                            all_pending_trackable = false;
+                        }
+
                         true
                     }
                 }
             });
             if overflowed {
+                self.all_pending_trackable = false;
                 self.obligations.on_fulfillment_overflow(infcx);
                 // Only return true errors that we have accumulated while processing.
                 return errors;
             }
 
             if !any_changed {
+                self.all_pending_trackable = all_pending_trackable;
+                self.stalled_on_empty_opaques = stalled_on_empty_opaques;
+                self.last_stalled_goal_revision = pass_revision;
+                self.last_stalled_goal_sub_revision = pass_sub_revision;
+
+                self.stalled_sub_roots.retain(|&vid| infcx.stalled_goal_sub_var_is_root(vid));
+
                 break;
             }
         }
