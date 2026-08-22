@@ -1,0 +1,56 @@
+// MIR for `<impl at $DIR/cmp_splat.rs:39:1: 39:31>::min_splatted_inner` after built
+
+fn <impl at $DIR/cmp_splat.rs:39:1: 39:31>::min_splatted_inner(_1: T, _2: T, _3: ()) -> T {
+    debug v1 => _1;
+    debug v2 => _2;
+    let mut _0: T;
+    let mut _4: T;
+    let mut _5: T;
+
+    bb0: {
+        StorageLive(_4);
+        _4 = move _1;
+        StorageLive(_5);
+        _5 = move _2;
+        _0 = <T as Ord>::min(move _4, move _5) -> [return: bb2, unwind: bb5];
+    }
+
+    bb1: {
+        FakeRead(ForMatchedPlace(None), _3);
+        unreachable;
+    }
+
+    bb2: {
+        StorageDead(_5);
+        StorageDead(_4);
+        drop(_2) -> [return: bb3, unwind: bb8];
+    }
+
+    bb3: {
+        drop(_1) -> [return: bb4, unwind: bb9];
+    }
+
+    bb4: {
+        return;
+    }
+
+    bb5 (cleanup): {
+        drop(_5) -> [return: bb6, unwind terminate(cleanup)];
+    }
+
+    bb6 (cleanup): {
+        drop(_4) -> [return: bb7, unwind terminate(cleanup)];
+    }
+
+    bb7 (cleanup): {
+        drop(_2) -> [return: bb8, unwind terminate(cleanup)];
+    }
+
+    bb8 (cleanup): {
+        drop(_1) -> [return: bb9, unwind terminate(cleanup)];
+    }
+
+    bb9 (cleanup): {
+        resume;
+    }
+}
