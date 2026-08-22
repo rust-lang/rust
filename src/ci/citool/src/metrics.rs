@@ -92,11 +92,7 @@ pub fn download_auto_job_metrics(
                     let data = download_job_metrics(&item.job, current);
                     let parent_data = parent.map(|sha| download_job_metrics(&item.job, &sha));
                     let result = WorkResult { job: item.job, data, parent_data };
-
-                    // If the receiver was dropped, end processing downloads
-                    if result_tx.send(result).is_err() {
-                        break;
-                    }
+                    result_tx.send(result).unwrap();
                 }
             });
         }
@@ -115,7 +111,7 @@ pub fn download_auto_job_metrics(
                 Some(Ok(data)) => Some(data),
                 Some(Err(error)) => {
                     eprintln!(
-                        r#"Did not find parent metrics for job `{}`: {error:?}.
+                        r#"Did not find metrics for job `{}`: {error:?}.
 Maybe it was newly added?"#,
                         result.job
                     );
@@ -124,15 +120,7 @@ Maybe it was newly added?"#,
                 None => None,
             };
 
-            jobs.insert(
-                result.job.clone(),
-                JobMetrics {
-                    parent,
-                    current: result.data.with_context(|| {
-                        anyhow::anyhow!("Could not download metrics for job `{}`", result.job)
-                    })?,
-                },
-            );
+            jobs.insert(result.job, JobMetrics { parent, current: result.data? });
         }
 
         anyhow::Ok(())
