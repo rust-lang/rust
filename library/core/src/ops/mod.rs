@@ -156,6 +156,8 @@ mod unsize;
 pub use self::arith::{Add, Div, Mul, Neg, Rem, Sub};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::arith::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
+#[allow(clippy::useless_attribute)]
+#[allow(unused_unstable_reexport_attributes)] // FIXME(#161153)
 #[unstable(feature = "async_fn_traits", issue = "none")]
 pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]

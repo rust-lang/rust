@@ -152,6 +152,7 @@ pub mod hardwired {
             UNUSED_MUT,
             UNUSED_QUALIFICATIONS,
             UNUSED_UNSAFE,
+            UNUSED_UNSTABLE_REEXPORT_ATTRIBUTES,
             UNUSED_VARIABLES,
             UNUSED_VISIBILITIES,
             USELESS_DEPRECATED,
@@ -2789,6 +2790,37 @@ declare_lint! {
     pub USELESS_DEPRECATED,
     Deny,
     "detects deprecation attributes with no effect",
+}
+
+declare_lint! {
+    /// The `unused_unstable_reexport_attributes` lint detects `#[unstable]` attributes
+    /// on re-exports where the attribute does not make the re-exported path unstable.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(staged_api)]
+    /// #![stable(feature = "test", since = "1.0.0")]
+    ///
+    /// #[stable(feature = "test", since = "1.0.0")]
+    /// pub struct S;
+    ///
+    /// #[unstable(feature = "reexport", issue = "none")]
+    /// pub use crate::S as T;
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Stability attributes on re-exports do not currently change the
+    /// stability of an otherwise stable re-exported item.
+    pub UNUSED_UNSTABLE_REEXPORT_ATTRIBUTES,
+    Deny,
+    "detects ineffective `#[unstable]` attributes on re-exports",
+    @feature_gate = staged_api;
 }
 
 declare_lint! {
