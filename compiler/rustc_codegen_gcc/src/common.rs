@@ -1,9 +1,10 @@
 use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{self as abi, HasDataLayout};
+use rustc_abi::{self as abi, HasDataLayout, Size};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
 };
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::Mutability;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
@@ -115,7 +116,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             Mutability::Mut => {
                 self.static_addr_of_mut(const_alloc_to_gcc(self, alloc), alloc.inner().align, None)
             }
-            _ => self.static_addr_of(alloc, None),
+            _ => self.static_addr_of(alloc, None, None),
         };
         if !self.sess().fewer_names() {
             // FIXME(antoyo): set value name.
@@ -323,7 +324,8 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
         cv: Scalar,
         layout: abi::Scalar,
         ty: Type<'gcc>,
-        _schema: Option<&PointerAuthSchema>,
+        _ptrauth_schema: Option<PointerAuthSchema>,
+        _ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
     ) -> RValue<'gcc> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
