@@ -1,4 +1,5 @@
 use std::mem;
+use std::rc::Rc;
 
 use rustc_index::IndexVec;
 use rustc_middle::mir::*;
@@ -11,6 +12,7 @@ use super::{
     Init, InitIndex, InitKind, InitLocation, LocationMap, LookupResult, MoveData, MoveOut,
     MoveOutIndex, MovePath, MovePathIndex, MovePathLookup, MoveSubPath, MoveSubPathResult,
 };
+use crate::points::DenseLocationMap;
 
 struct MoveDataBuilder<'a, 'tcx, F> {
     body: &'a Body<'tcx>,
@@ -47,13 +49,15 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             })
             .collect();
 
+        let location_map = Rc::new(DenseLocationMap::new(body));
+
         MoveDataBuilder {
             body,
             loc: Location::START,
             tcx,
             data: MoveData {
                 move_outs: IndexVec::new(),
-                move_out_loc_map: LocationMap::new(body),
+                move_out_loc_map: LocationMap::new(Rc::clone(&location_map)),
                 rev_lookup: MovePathLookup {
                     locals,
                     projections: Default::default(),
@@ -62,7 +66,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 move_paths,
                 move_out_path_map,
                 inits: IndexVec::new(),
-                init_loc_map: LocationMap::new(body),
+                init_loc_map: LocationMap::new(location_map),
                 init_path_map,
             },
             filter,
