@@ -12,6 +12,7 @@ use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;
 use self::shims::unix::linux::foreign_items as linux;
 use self::shims::unix::macos::foreign_items as macos;
+use self::shims::unix::netbsd::foreign_items as netbsd;
 use self::shims::unix::solarish::foreign_items as solarish;
 use crate::concurrency::cpu_affinity::CpuAffinityMask;
 use crate::shims::alloc::EvalContextExt as _;
@@ -42,6 +43,7 @@ pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
                 Os::Linux => linux::is_dyn_sym(name),
                 Os::MacOs => macos::is_dyn_sym(name),
                 Os::Solaris | Os::Illumos => solarish::is_dyn_sym(name),
+                Os::NetBsd => netbsd::is_dyn_sym(name),
                 _ => false,
             },
     }
@@ -1540,6 +1542,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         ),
                     Os::Solaris | Os::Illumos =>
                         solarish::EvalContextExt::emulate_foreign_item_inner(
+                            this, link_name, abi, args, dest,
+                        ),
+                    Os::NetBsd =>
+                        netbsd::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
                     _ => interp_ok(EmulateItemResult::NotSupported),
