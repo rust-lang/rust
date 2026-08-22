@@ -458,6 +458,195 @@ assert_eq!(
 );
 ```
 
+### `cfg_select!`
+
+An invocation of the `cfg_select!` macro contains a sequence of arms. Each arm
+has a configuration predicate (or the wildcard `_`), then `=>`, then a body. The
+body is either a block or an expression. In this section, *block* means a plain
+block expression that has no label and no keyword (such as `unsafe`) before it.
+
+Use braces as the delimiters of the invocation. If an invocation has parentheses
+or square brackets as its delimiters, change them to braces. In item and
+statement position, do not put a semicolon after the closing brace.
+
+Always break after the opening brace and before the closing brace. Put each arm
+on its own line, block-indented once:
+
+```rust
+cfg_select! {
+    unix => {
+        fn foo() {
+            // Unix-specific functionality.
+        }
+    }
+    target_pointer_width = "32" => {
+        fn foo() {
+            // Non-Unix, 32-bit functionality.
+        }
+    }
+    _ => {
+        fn foo() {
+            // Fallback implementation.
+        }
+    }
+}
+
+let is_unix_str = cfg_select! {
+    unix => "unix",
+    _ => "not unix",
+};
+```
+
+Write the body as an expression, without braces around it, if and only if all of
+the following are true:
+
+- The body is a single expression.
+- The expression is not a control-flow expression.
+- The expression has no line comments.
+- The first line of the expression fits on the same line as the end of the
+  predicate and the `=>`. (A [combinable expression](#combinable-expressions)
+  can satisfy this even when it spans multiple lines.)
+
+Otherwise, write the body as a block, and block-indent the contents of the
+block. As an exception, if the body is a block that contains only a macro call,
+keep the block. (The reason is that the expanded form of the macro could contain
+a trailing semicolon.)
+
+If the body is a block, do not put a comma after it. Otherwise, put a comma
+after the body, including on the last arm. A block expression with a label or a
+keyword before it, such as an `unsafe` block, is an expression under these
+rules, not a block. For example:
+
+```rust
+    target_has_atomic = "64" => unsafe {
+        ...
+    },
+```
+
+Put the `=>` on the same line as the end of the predicate. If the body is a
+block, put the opening brace of the block on the same line as the `=>`. If the
+`=>` and the brace do not fit there, break the predicate, as specified below. If
+no rule below breaks the predicate, put the `=>` and the brace together on a new
+line. Put that line at the same indent as the arm. Never end a line with the
+`=>`. Never put the `=>` and the opening brace of a block body on different
+lines.
+
+Prefer to keep the whole predicate on one line. The line must also have room for
+the `=>` and, if the body is a block, for the opening brace of the block.
+
+A *predicate function* is a predicate of the form `name(...)`, such as
+`any(...)`, `all(...)`, or `not(...)`. If a predicate function does not fit on
+one line, break it as follows:
+
+- Break after the opening parenthesis.
+- Put each argument on its own line, block-indented once.
+- Format each argument with these same rules, recursively.
+- Put a trailing comma after the last argument.
+- Put the closing parenthesis at the start of a new line, with the same indent
+  as the line where the predicate starts.
+
+For example:
+
+```rust
+    all(
+        target_arch = "x86_64",
+        target_env = "gnu",
+        not(any(target_os = "os1", target_os = "os2")),
+    ) => {
+        ...
+    }
+```
+
+If the predicate fits on one line but the `=>` and the brace do not, break the
+predicate function. For example:
+
+```rust
+    // Assume that only the predicate fits in the max width.
+    any(
+        target_os = "os1",
+        target_os = "os2",
+    ) => {
+        ...
+    }
+```
+
+As an exception, if the only argument of a predicate function is another
+predicate function, combine the two. Write their names and opening parentheses
+on one line, and write the two closing parentheses together on one line. Combine
+the two only if their names and opening parentheses fit on one line. If they do
+not fit, do not combine. Instead, break the outer predicate function as
+specified above. For example:
+
+```rust
+    not(any(
+        target_os = "os3",
+        feature = "a-rather-long-and-unwieldy-feature-name-for-this-example",
+    )) => {
+        ...
+    }
+```
+
+As an exception, if every argument is a single identifier or a single literal,
+do not put each one on its own line. Instead, fit as many of them as possible on
+each line, and break lines only after commas. For example:
+
+```rust
+    any(
+        one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, thirteen,
+        fourteen, fifteen, sixteen,
+    ) => {
+        ...
+    }
+```
+
+If a predicate of the form `name = "value"` does not fit on one line, break
+before the `=`. Block-indent the continuation line once. After this break, use a
+block for the body. Put the `=>` and the opening brace together on a new line,
+at the same indent as the arm:
+
+```rust
+cfg_select! {
+    // Assume that the following predicate does not fit in the max width.
+    feature
+        = "an-extremely-long-and-unwieldy-feature-name"
+    => {
+        ...
+    }
+    _ => {}
+}
+```
+
+Format the value as an expression. If the value is a [combinable
+expression](#combinable-expressions), do not break before the `=`. Instead,
+write the name, the `=`, and the value's first line on one line. Put the `=>`
+after the end of the value. For example:
+
+```rust
+    // Assume that the following predicate does not fit in the max width.
+    feature = m!(
+        one,
+        two
+    ) => {
+        ...
+    }
+```
+
+Combine in this way only if the name, the `=`, and the value's first line fit on
+one line. If they do not fit, break before the `=`, as specified above, and put
+the value on the continuation line. For example:
+
+```rust
+    // Assume that the name and the value's first line do not fit on one line.
+    feature
+        = m!(
+            one,
+            two
+        )
+    => {
+        ...
+    }
+```
+
 ## Chains of fields and method calls
 
 A chain is a sequence of field accesses, method calls, and/or uses of the try
