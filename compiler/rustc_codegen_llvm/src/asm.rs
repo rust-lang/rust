@@ -165,7 +165,8 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     ConstScalar::Ptr(ptr, _) => {
                         let (prov, _) = ptr.prov_and_relative_offset();
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                        let value = self.cx.alloc_to_backend(global_alloc, false, None).unwrap();
+                        let value =
+                            self.cx.alloc_to_backend(global_alloc, false, None, None).unwrap();
                         inputs.push(value);
                         op_idx.insert(idx, constraints.len());
                         constraints.push("s".to_string());
@@ -454,8 +455,9 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                 ConstScalar::Ptr(ptr, _) => {
                                     let (prov, offset) = ptr.prov_and_relative_offset();
                                     let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                                    let llval =
-                                        self.alloc_to_backend(global_alloc, true, None).unwrap();
+                                    let llval = self
+                                        .alloc_to_backend(global_alloc, true, None, None)
+                                        .unwrap();
 
                                     self.add_compiler_used_global(llval);
                                     let symbol = llvm::build_string(|s| unsafe {
