@@ -840,6 +840,10 @@ fn doc_std(
         .arg("--no-deps")
         .arg("--target-dir")
         .arg(&*target_dir.to_string_lossy())
+        // Will be stabilized soon -> let's dogfood it.
+        // Generally provides significant perf improvements, though not noticeable
+        // for std.
+        .arg("-Zrustdoc-mergeable-info")
         .arg("-Zskip-rustdoc-fingerprint")
         .arg("-Zrustdoc-map")
         .rustdocflag("--extern-html-root-url")
