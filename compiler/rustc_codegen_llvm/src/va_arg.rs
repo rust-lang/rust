@@ -1233,6 +1233,18 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             // sparc64 is a big-endian target and stores variable arguments right-adjusted.
             ForceRightAdjust::Yes,
         ),
+        Arch::Sparc => {
+            std::assert_matches!(stability, CVariadicStatus::Unstable { .. });
+            emit_ptr_va_arg(
+                bx,
+                addr,
+                target_ty,
+                PassMode::Direct,
+                SlotSize::Bytes4,
+                AllowHigherAlign::No,
+                ForceRightAdjust::No,
+            )
+        }
         Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => emit_ptr_va_arg(
             bx,
             addr,
@@ -1256,7 +1268,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
         Arch::Bpf => bug!("bpf does not support c-variadic functions"),
         Arch::SpirV => bug!("spirv does not support c-variadic functions"),
 
-        Arch::Sparc | Arch::Avr | Arch::M68k | Arch::Msp430 => {
+        Arch::Avr | Arch::M68k | Arch::Msp430 => {
             std::assert_matches!(stability, CVariadicStatus::Unstable { .. });
 
             // Clang uses the LLVM implementation for these architectures.
