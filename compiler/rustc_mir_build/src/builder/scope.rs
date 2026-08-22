@@ -791,15 +791,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (None, Some(_)) => {
                 panic!("`return`, `become` and `break` with value and must have a destination")
             }
-            (None, None) => {
-                if self.tcx.sess.instrument_coverage() {
-                    // Normally we wouldn't build any MIR in this case, but that makes it
-                    // harder for coverage instrumentation to extract a relevant span for
-                    // `continue` expressions. So here we inject a dummy statement with the
-                    // desired span.
-                    self.cfg.push_coverage_span_marker(block, source_info);
-                }
-            }
+            (None, None) => {}
         }
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;

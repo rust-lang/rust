@@ -19,7 +19,6 @@
           Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).12);
           Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).2);
           Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).3);
-          Coverage::SpanMarker;
           Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).4);
           StorageLive(_1);
           Coverage::Point(Expr, HirId(DefId(0:3 ~ instrument_coverage_cleanup[820a]::main).5);

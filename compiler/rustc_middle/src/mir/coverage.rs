@@ -90,12 +90,6 @@ pub enum CoverageKind {
     /// indicated by [`PointKind`]. Injected during MIR building.
     Point { point_kind: PointKind, hir_id: HirId },
 
-    /// Marks a span that might otherwise not be represented in MIR, so that
-    /// coverage instrumentation can associate it with its enclosing block/BCB.
-    ///
-    /// Should be erased before codegen (at some point after `InstrumentCoverage`).
-    SpanMarker,
-
     /// Marks its enclosing basic block with an ID that can be referred to by
     /// side data in [`CoverageInfoHi`].
     ///
@@ -116,7 +110,6 @@ impl Debug for CoverageKind {
             CoverageKind::Point { point_kind, hir_id } => {
                 write!(fmt, "Point({point_kind:?}, {hir_id:?}")
             }
-            CoverageKind::SpanMarker => write!(fmt, "SpanMarker"),
             CoverageKind::BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
             CoverageKind::VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
         }
@@ -129,9 +122,7 @@ impl CoverageKind {
     /// no longer needed after that pass.
     pub fn is_removed_after_analysis(&self) -> bool {
         match self {
-            CoverageKind::Point { .. }
-            | CoverageKind::SpanMarker
-            | CoverageKind::BlockMarker { .. } => true,
+            CoverageKind::Point { .. } | CoverageKind::BlockMarker { .. } => true,
             CoverageKind::VirtualCounter { .. } => false,
         }
     }
