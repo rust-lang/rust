@@ -96,6 +96,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         target_rustcflags: Default::default(),
         rust_randomized_layout: Default::default(),
         optimize_tests: Default::default(),
+        disable_minification: Default::default(),
         target: Default::default(),
         host: Default::default(),
         cdb: Default::default(),
