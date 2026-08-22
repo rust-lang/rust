@@ -222,6 +222,9 @@ pub struct PerOwnerResolverData<'tcx> {
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>> = Default::default(),
 
+    /// Paths that use items exported or re-exported from a private dependency.
+    pub paths_from_private_deps: NodeMap<CrateNum> = Default::default(),
+
     /// The id of the owner
     pub id: ast::NodeId,
     /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
@@ -261,6 +264,8 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
 pub struct ResolverAstLowering<'tcx> {
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
+
+    pub paths_from_private_deps: NodeMap<CrateNum>,
 
     pub next_node_id: ast::NodeId,
 

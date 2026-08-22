@@ -1471,6 +1471,9 @@ pub struct Resolver<'ra, 'tcx> {
 
     potentially_unnecessary_qualifications: Vec<UnnecessaryQualification<'ra>> = Vec::new(),
 
+    /// Paths that reference items imported from private dependencies
+    paths_from_private_deps: NodeMap<CrateNum> = NodeMap::default(),
+
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
@@ -1984,6 +1987,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,
+            paths_from_private_deps: self.paths_from_private_deps,
             next_node_id: self.next_node_id,
             owners: self.owners,
             lint_buffer: Steal::new(self.lint_buffer),

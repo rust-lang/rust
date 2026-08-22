@@ -5,6 +5,7 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_lint_defs::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
@@ -2064,6 +2065,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             module_had_parse_errors = true;
                         }
                         module = Some(ModuleOrUniformRoot::Module(self.expect_module(def_id)));
+                        if let Some(finalize) = finalize
+                            && let Some(ns) = opt_ns
+                        {
+                            self.record_path_pointing_to_private_crate(finalize, ns, binding);
+                        }
                         record_segment_res(self.reborrow(), finalize, res, id);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
                         if binding.is_import() {
@@ -2076,13 +2082,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         return PathResult::NonModule(PartialRes::new(res));
                     } else if res == Res::Err {
                         return PathResult::NonModule(PartialRes::new(Res::Err));
-                    } else if opt_ns.is_some() && (is_last || maybe_assoc) {
+                    } else if let Some(ns) = opt_ns
+                        && (is_last || maybe_assoc)
+                    {
                         if let Some(finalize) = finalize {
                             self.get_mut().lint_if_path_starts_with_module(
                                 finalize,
                                 path,
                                 second_binding,
                             );
+                            self.record_path_pointing_to_private_crate(finalize, ns, binding);
                         }
                         record_segment_res(self.reborrow(), finalize, res, id);
                         return PathResult::NonModule(PartialRes::with_unresolved_segments(
@@ -2194,5 +2203,40 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             None if path.is_empty() => ModuleOrUniformRoot::CurrentScope,
             _ => bug!("resolve_path: non-empty path `{:?}` has no module", path),
         })
+    }
+
+    fn record_path_pointing_to_private_crate<'r>(
+        self: &mut CmResolver<'r, 'ra, 'tcx>,
+        finalize: Finalize,
+        ns: Namespace,
+        binding: Decl<'ra>,
+    ) {
+        if ns != TypeNS || finalize.stage != Stage::Late {
+            return;
+        }
+
+        let Some(krate) = entry_crate(binding) else { return };
+
+        if !self.tcx.is_extern_private_dep(krate) {
+            return;
+        }
+
+        self.get_mut().current_owner.paths_from_private_deps.insert(finalize.node_id, krate);
+        // .expect("paths_from_private_deps should be written at most once per node ID"); // but it isn't...
+    }
+}
+
+fn entry_crate(decl: Decl<'_>) -> Option<CrateNum> {
+    match decl.kind {
+        DeclKind::Import { source_decl, .. } => entry_crate(source_decl),
+        DeclKind::Def(res) => {
+            if let Res::Def(_, def_id) = res
+                && def_id.is_crate_root()
+            {
+                return Some(def_id.krate);
+            }
+            let module_krate = decl.parent_module?.opt_def_id()?.krate;
+            (module_krate != LOCAL_CRATE).then_some(module_krate)
+        }
     }
 }
