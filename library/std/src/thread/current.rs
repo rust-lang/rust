@@ -116,24 +116,30 @@ pub(super) mod id {
     }
 }
 
-/// Tries to set the thread handle for the current thread. Fails if a handle was
-/// already set or if the thread ID of `thread` would change an already-set ID.
-pub(super) fn set_current(thread: Thread) -> Result<(), Thread> {
-    if CURRENT.get() != NONE {
-        return Err(thread);
+/// Sets the thread handle for the current thread.
+///
+/// This is only called from [`super::lifecycle::ThreadInit::init`]. If
+/// `thread::current()` ran earlier on this thread (e.g. during `DLL_THREAD_ATTACH`
+/// on Windows), replace the temporary handle from [`init_current`] with the one from
+/// `thread::spawn`.
+pub(super) fn set_current(thread: Thread) {
+    let current = CURRENT.get();
+    if current > DESTROYED {
+        // SAFETY: `current` points to a valid `Thread` created by `init_current`.
+        unsafe {
+            CURRENT.set(DESTROYED);
+            drop(Thread::from_raw(current));
+        }
+    } else if current == BUSY {
+        rtabort!(
+            "set_current() was called while init_current() is in progress, \
+            which indicates a bug in the Rust threading implementation"
+        );
     }
 
-    match id::get() {
-        Some(id) if id == thread.id() => {}
-        None => id::set(thread.id()),
-        _ => return Err(thread),
-    }
-
-    // Make sure that `crate::rt::thread_cleanup` will be run, which will
-    // call `drop_current`.
+    id::set(thread.id());
     crate::sys::thread_local::guard::enable();
     CURRENT.set(thread.into_raw().cast_mut());
-    Ok(())
 }
 
 /// Gets the unique identifier of the thread which invokes it.
