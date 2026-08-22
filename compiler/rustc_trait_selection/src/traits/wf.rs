@@ -10,8 +10,8 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, DelayedSet, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -77,6 +77,7 @@ pub fn obligations<'tcx>(
         out: PredicateObligations::new(),
         recursion_depth,
         item: None,
+        visited_tys: Default::default(),
     };
     wf.add_wf_preds_for_term(term);
     debug!("wf::obligations({:?}, body_def_id={:?}) = {:?}", term, body_def_id, wf.out);
@@ -114,6 +115,7 @@ pub fn unnormalized_obligations<'tcx>(
         out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
+        visited_tys: Default::default(),
     };
     wf.add_wf_preds_for_term(term);
     Some(wf.out)
@@ -139,6 +141,7 @@ pub fn trait_obligations<'tcx>(
         out: PredicateObligations::new(),
         recursion_depth: 0,
         item: Some(item),
+        visited_tys: Default::default(),
     };
     wf.add_wf_preds_for_trait_pred(trait_pred, Elaborate::All);
     debug!(obligations = ?wf.out);
@@ -166,6 +169,7 @@ pub fn clause_obligations<'tcx>(
         out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
+        visited_tys: Default::default(),
     };
 
     // It's ok to skip the binder here because wf code is prepared for it
@@ -210,6 +214,7 @@ struct WfPredicates<'a, 'tcx> {
     out: PredicateObligations<'tcx>,
     recursion_depth: usize,
     item: Option<&'tcx hir::Item<'tcx>>,
+    visited_tys: DelayedSet<Ty<'tcx>>,
 }
 
 /// Controls whether we "elaborate" supertraits and so forth on the WF
@@ -721,6 +726,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
         debug!("wf bounds for t={:?} t.kind={:#?}", t, t.kind());
+
+        if !self.visited_tys.insert(t) {
+            return;
+        }
 
         let tcx = self.tcx();
 
