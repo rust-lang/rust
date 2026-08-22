@@ -347,6 +347,16 @@ impl fmt::Debug for Once {
     }
 }
 
+#[stable(feature = "once_default", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+const impl Default for Once {
+    /// Creates a new `Once` value, same as [`Once::new`].
+    #[inline]
+    fn default() -> Once {
+        Once::new()
+    }
+}
+
 impl OnceState {
     /// Returns `true` if the associated [`Once`] was poisoned prior to the
     /// invocation of the closure passed to [`Once::call_once_force()`].
