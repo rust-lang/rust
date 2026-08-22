@@ -329,51 +329,62 @@ fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
     !path.is_empty() && is_sep_byte(path[0])
 }
 
+/// How many leading `.`s of a file name are held back from the stem/extension split.
+///
+/// Splitting inside them could leave a stem of `.` or `..`, which names a directory rather than
+/// a file. Three is enough to rule that out while still letting `...` — a file name in its own
+/// right — carry an extension.
+const MAX_LEADING_DOTS: usize = 3;
+
+/// Where the stem/extension split may start: after the leading run of `.`s, capped at
+/// [`MAX_LEADING_DOTS`].
+fn stem_start(slice: &[u8]) -> usize {
+    slice
+        .iter()
+        .take(MAX_LEADING_DOTS)
+        .position(|b| *b != b'.')
+        .unwrap_or(slice.len().min(MAX_LEADING_DOTS))
+}
+
 // basic workhorse for splitting stem and extension
 fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
-    if file.as_encoded_bytes() == b".." {
+    let slice = file.as_encoded_bytes();
+    let start = stem_start(slice);
+
+    let Some(dot) = slice[start..].iter().rposition(|b| *b == b'.') else {
         return (Some(file), None);
-    }
+    };
+    let dot = start + dot;
 
     // The unsafety here stems from converting between &OsStr and &[u8]
     // and back. This is safe to do because (1) we only look at ASCII
     // contents of the encoding and (2) new &OsStr values are produced
     // only from ASCII-bounded slices of existing &OsStr values.
-    let mut iter = file.as_encoded_bytes().rsplitn(2, |b| *b == b'.');
-    let after = iter.next();
-    let before = iter.next();
-    if before == Some(b"") {
-        (Some(file), None)
-    } else {
-        unsafe {
-            (
-                before.map(|s| OsStr::from_encoded_bytes_unchecked(s)),
-                after.map(|s| OsStr::from_encoded_bytes_unchecked(s)),
-            )
-        }
+    unsafe {
+        (
+            Some(OsStr::from_encoded_bytes_unchecked(&slice[..dot])),
+            Some(OsStr::from_encoded_bytes_unchecked(&slice[dot + 1..])),
+        )
     }
 }
 
 fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
     let slice = file.as_encoded_bytes();
-    if slice == b".." {
+    let start = stem_start(slice);
+
+    let Some(dot) = slice[start..].iter().position(|b| *b == b'.') else {
         return (file, None);
-    }
+    };
+    let dot = start + dot;
 
     // The unsafety here stems from converting between &OsStr and &[u8]
     // and back. This is safe to do because (1) we only look at ASCII
     // contents of the encoding and (2) new &OsStr values are produced
     // only from ASCII-bounded slices of existing &OsStr values.
-    let i = match slice[1..].iter().position(|b| *b == b'.') {
-        Some(i) => i + 1,
-        None => return (file, None),
-    };
-    let before = &slice[..i];
-    let after = &slice[i + 1..];
     unsafe {
         (
-            OsStr::from_encoded_bytes_unchecked(before),
-            Some(OsStr::from_encoded_bytes_unchecked(after)),
+            OsStr::from_encoded_bytes_unchecked(&slice[..dot]),
+            Some(OsStr::from_encoded_bytes_unchecked(&slice[dot + 1..])),
         )
     }
 }
@@ -2877,8 +2888,12 @@ impl Path {
     ///
     /// * [`None`], if there is no file name;
     /// * The entire file name if there is no embedded `.`;
-    /// * The entire file name if the file name begins with `.` and has no other `.`s within;
+    /// * The entire file name if the file name begins with up to three `.` and has no other `.`s
+    ///   within;
     /// * Otherwise, the portion of the file name before the final `.`
+    ///
+    /// Up to three leading `.`s are held back from the split, so the stem is itself always a file
+    /// name — never `.` or `..`.
     ///
     /// # Examples
     ///
@@ -2887,6 +2902,8 @@ impl Path {
     ///
     /// assert_eq!("foo", Path::new("foo.rs").file_stem().unwrap());
     /// assert_eq!("foo.tar", Path::new("foo.tar.gz").file_stem().unwrap());
+    /// assert_eq!(".gitignore", Path::new(".gitignore").file_stem().unwrap());
+    /// assert_eq!("..gitignore", Path::new("..gitignore").file_stem().unwrap());
     /// ```
     ///
     /// # See Also
@@ -2907,9 +2924,12 @@ impl Path {
     ///
     /// * [`None`], if there is no file name;
     /// * The entire file name if there is no embedded `.`;
-    /// * The portion of the file name before the first non-beginning `.`;
-    /// * The entire file name if the file name begins with `.` and has no other `.`s within;
-    /// * The portion of the file name before the second `.` if the file name begins with `.`
+    /// * The entire file name if the file name begins with up to three `.` and has no other `.`s
+    ///   within;
+    /// * Otherwise, the portion of the file name before the first `.` that does not begin it
+    ///
+    /// As with [`Path::file_stem`], up to three leading `.`s are held back from the split, so the
+    /// prefix is itself always a file name — never `.` or `..`.
     ///
     /// [`self.file_name`]: Path::file_name
     ///
@@ -2922,6 +2942,8 @@ impl Path {
     /// assert_eq!("foo", Path::new("foo.tar.gz").file_prefix().unwrap());
     /// assert_eq!(".config", Path::new(".config").file_prefix().unwrap());
     /// assert_eq!(".config", Path::new(".config.toml").file_prefix().unwrap());
+    /// assert_eq!("..config", Path::new("..config.toml").file_prefix().unwrap());
+    /// assert_eq!("...config", Path::new("...config.toml").file_prefix().unwrap());
     /// ```
     ///
     /// # See Also
@@ -2942,7 +2964,7 @@ impl Path {
     ///
     /// * [`None`], if there is no file name;
     /// * [`None`], if there is no embedded `.`;
-    /// * [`None`], if the file name begins with `.` and has no other `.`s within;
+    /// * [`None`], if the file name begins with up to three `.` and has no other `.`s within;
     /// * Otherwise, the portion of the file name after the final `.`
     ///
     /// [`self.file_name`]: Path::file_name
@@ -2954,6 +2976,9 @@ impl Path {
     ///
     /// assert_eq!("rs", Path::new("foo.rs").extension().unwrap());
     /// assert_eq!("gz", Path::new("foo.tar.gz").extension().unwrap());
+    /// assert_eq!(None, Path::new(".gitignore").extension());
+    /// assert_eq!(None, Path::new("..gitignore").extension());
+    /// assert_eq!(None, Path::new("...gitignore").extension());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
@@ -3150,27 +3175,38 @@ impl Path {
     }
 
     fn _with_extension(&self, extension: &OsStr) -> PathBuf {
-        let self_len = self.as_os_str().len();
+        validate_extension(extension);
+
         let self_bytes = self.as_os_str().as_encoded_bytes();
 
-        let (new_capacity, slice_to_copy) = match self.extension() {
-            None => {
-                // Enough capacity for the extension and the dot
-                let capacity = self_len + extension.len() + 1;
-                let whole_path = self_bytes;
-                (capacity, whole_path)
-            }
-            Some(previous_extension) => {
-                let capacity = self_len + extension.len() - previous_extension.len();
-                let path_till_dot = &self_bytes[..self_len - previous_extension.len()];
-                (capacity, path_till_dot)
+        // Like `set_extension`, keep everything up to and including the file
+        // stem and replace the rest. A path with no file stem has no extension
+        // to set, and is copied unchanged.
+        let (slice_to_copy, set_extension) = match self.file_stem() {
+            None => (self_bytes, false),
+            Some(file_stem) => {
+                let file_stem = file_stem.as_encoded_bytes();
+                let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
+                let start = self_bytes.as_ptr().addr();
+                (&self_bytes[..end_file_stem.wrapping_sub(start)], true)
             }
         };
+
+        let add_dot_and_extension = set_extension && !extension.is_empty();
+        let new_capacity =
+            slice_to_copy.len() + if add_dot_and_extension { extension.len() + 1 } else { 0 };
 
         let mut new_path = PathBuf::with_capacity(new_capacity);
         // SAFETY: The path is empty, so cannot have surrogate halves.
         unsafe { new_path.inner.extend_from_slice_unchecked(slice_to_copy) };
-        new_path.set_extension(extension);
+
+        if add_dot_and_extension {
+            new_path.inner.push(".");
+            // SAFETY: Since a UTF-8 string was just pushed, it is not possible
+            // for the buffer to end with a surrogate half.
+            unsafe { new_path.inner.extend_from_slice_unchecked(extension.as_encoded_bytes()) };
+        }
+
         new_path
     }
 
