@@ -18,7 +18,6 @@ pub use self::c_str::FromBytesUntilNulError;
 #[doc(inline)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 pub use self::c_str::FromBytesWithNulError;
-use crate::fmt;
 
 #[stable(feature = "c_str_module", since = "1.88.0")]
 pub mod c_str;
@@ -48,6 +47,7 @@ pub use self::primitives::{c_ptrdiff_t, c_size_t, c_ssize_t};
 #[lang = "c_void"]
 #[repr(u8)]
 #[stable(feature = "core_c_void", since = "1.30.0")]
+#[allow(missing_debug_implementations)]
 pub enum c_void {
     #[unstable(
         feature = "c_void_variant",
@@ -63,13 +63,6 @@ pub enum c_void {
     )]
     #[doc(hidden)]
     __variant2,
-}
-
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl fmt::Debug for c_void {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("c_void").finish()
-    }
 }
 
 // Link the MSVC default lib
