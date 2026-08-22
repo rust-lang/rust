@@ -1,5 +1,5 @@
 extern crate compiler_builtins;
-use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
+use compiler_builtins::mem::{memcmp, memcpy, memmove, memset, wcslen};
 
 const WORD_SIZE: usize = core::mem::size_of::<usize>();
 
@@ -283,4 +283,13 @@ fn memset_backward_aligned() {
         core::ptr::write_bytes(reference.0.as_mut_ptr().add(3 + WORD_SIZE), 0xCC, 17);
         assert_eq!(arr.0, reference.0);
     }
+}
+
+#[test]
+fn wide_string_length() {
+    let s = [0];
+    assert_eq!(unsafe { wcslen(s.as_ptr()) }, 0);
+
+    let s = [97, 98, 99, 0];
+    assert_eq!(unsafe { wcslen(s.as_ptr()) }, 3);
 }
