@@ -22,6 +22,8 @@
 extern crate shared;
 extern crate reexport;
 
+use reexport::Shared;
+
 pub fn leaks_priv() -> shared::Shared {
     //~^ error: type `Shared` from private dependency 'shared' in public interface
     shared::Shared
@@ -29,4 +31,8 @@ pub fn leaks_priv() -> shared::Shared {
 
 pub fn leaks_pub() -> reexport::Shared {
     reexport::Shared
+}
+
+pub fn leaks_pub_use() -> Shared {
+    Shared
 }
