@@ -997,8 +997,6 @@ pub(crate) struct ElidedAnonymousLifetimeReportError {
     #[primary_span]
     #[label("explicit lifetime name needed here")]
     pub(crate) span: Span,
-    #[subdiagnostic]
-    pub(crate) suggestion: Option<ElidedAnonymousLifetimeReportErrorSuggestion>,
 }
 
 #[derive(Diagnostic)]
@@ -1024,18 +1022,6 @@ pub(crate) struct AnonymousLifetimeNonGatReportError {
         "in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type"
     )]
     pub(crate) decl: MultiSpan,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "consider introducing a higher-ranked lifetime here",
-    applicability = "machine-applicable"
-)]
-pub(crate) struct ElidedAnonymousLifetimeReportErrorSuggestion {
-    #[suggestion_part(code = "for<'a> ")]
-    pub(crate) lo: Span,
-    #[suggestion_part(code = "'a ")]
-    pub(crate) hi: Span,
 }
 
 #[derive(Diagnostic)]

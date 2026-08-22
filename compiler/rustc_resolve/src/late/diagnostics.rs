@@ -174,7 +174,10 @@ enum TypoCandidate {
     Shadowed(Res, Option<Span>),
     None,
 }
-
+enum SuggestMode {
+    E0106,
+    E0637,
+}
 impl TypoCandidate {
     fn to_opt_suggestion(self) -> Option<TypoSuggestion> {
         match self {
@@ -3820,33 +3823,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         self.suggest_introducing_lifetime_filtered(err, name, |_| true, suggest);
     }
 
-    pub(crate) fn suggest_introducing_lifetime_for_assoc_ty_binding(
-        &self,
-        err: &mut Diag<'_>,
-        lifetime: Span,
-    ) {
-        self.suggest_introducing_lifetime_filtered(
-            err,
-            None,
-            |kind| {
-                !matches!(
-                    kind,
-                    LifetimeBinderKind::FnPtrType
-                        | LifetimeBinderKind::PolyTrait
-                        | LifetimeBinderKind::WhereBound
-                )
-            },
-            |err, _higher_ranked, span, message, intro_sugg, _| {
-                err.multipart_suggestion(
-                    message,
-                    vec![(span, intro_sugg), (lifetime.shrink_to_hi(), "'a ".to_string())],
-                    Applicability::MaybeIncorrect,
-                );
-                false
-            },
-        );
-    }
-
     fn suggest_introducing_lifetime_filtered(
         &self,
         err: &mut Diag<'_>,
@@ -4069,6 +4045,23 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             &mut err,
             lifetime_refs,
             function_param_lifetimes,
+            SuggestMode::E0106,
+        );
+        err.emit()
+    }
+    pub(crate) fn report_missing_lifetime_is_banned<'a>(
+        &mut self,
+        lifetime_refs: &'a MissingLifetime,
+    ) -> ErrorGuaranteed {
+        let mut err =
+            self.r.dcx().create_err(crate::diagnostics::ElidedAnonymousLifetimeReportError {
+                span: lifetime_refs.span,
+            });
+        self.add_missing_lifetime_specifiers_label(
+            &mut err,
+            [lifetime_refs],
+            None,
+            SuggestMode::E0637,
         );
         err.emit()
     }
@@ -4078,16 +4071,20 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         err: &mut Diag<'_>,
         lifetime_refs: impl Clone + IntoIterator<Item = &'a MissingLifetime>,
         function_param_lifetimes: Option<(Vec<MissingLifetime>, Vec<ElisionFnParameter>)>,
+        suggest_mode: SuggestMode,
     ) {
-        for &lt in lifetime_refs.clone() {
-            err.span_label(
-                lt.span,
-                format!(
-                    "expected {} lifetime parameter{}",
-                    if lt.count == 1 { "named".to_string() } else { lt.count.to_string() },
-                    pluralize!(lt.count),
-                ),
-            );
+        // E0637 already labels the lifetime itself, so only add labels to E0106
+        if matches!(suggest_mode, SuggestMode::E0106) {
+            for &lt in lifetime_refs.clone() {
+                err.span_label(
+                    lt.span,
+                    format!(
+                        "expected {} lifetime parameter{}",
+                        if lt.count == 1 { "named".to_string() } else { lt.count.to_string() },
+                        pluralize!(lt.count),
+                    ),
+                );
+            }
         }
 
         let mut in_scope_lifetimes: Vec<_> = self
@@ -4183,59 +4180,107 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             [(existing, _)] => existing.name,
             _ => Symbol::intern("'lifetime"),
         };
-
+        // A lifetime name that doesn't clash with the existing lifetimes
+        #[allow(rustc::symbol_intern_string_literal)]
+        let available_lifetime_name = ('a'..='z')
+            .map(|c| Symbol::intern(&format!("'{c}")))
+            .find(|candidate| !in_scope_lifetimes.iter().any(|(ident, _)| ident.name == *candidate))
+            .unwrap_or(Symbol::intern("'lifetime"));
         let mut spans_suggs: Vec<_> = Vec::new();
         let source_map = self.r.tcx.sess.source_map();
-        let build_sugg = |lt: MissingLifetime| match lt.kind {
+        let build_sugg = |lt: MissingLifetime, to: Symbol| match lt.kind {
             MissingLifetimeKind::Underscore => {
                 debug_assert_eq!(lt.count, 1);
-                (lt.span, existing_name.to_string())
+                (lt.span, to.to_string())
             }
             MissingLifetimeKind::Ampersand => {
                 debug_assert_eq!(lt.count, 1);
-                (lt.span.shrink_to_hi(), format!("{existing_name} "))
+                (lt.span.shrink_to_hi(), format!("{to} "))
             }
             MissingLifetimeKind::Comma => {
-                let sugg: String = std::iter::repeat_n(existing_name.as_str(), lt.count)
-                    .intersperse(", ")
-                    .collect();
+                let sugg: String =
+                    std::iter::repeat_n(to.as_str(), lt.count).intersperse(", ").collect();
                 let is_empty_brackets = source_map.span_followed_by(lt.span, ">").is_some();
                 let sugg = if is_empty_brackets { sugg } else { format!("{sugg}, ") };
                 (lt.span.shrink_to_hi(), sugg)
             }
             MissingLifetimeKind::Brackets => {
                 let sugg: String = std::iter::once("<")
-                    .chain(std::iter::repeat_n(existing_name.as_str(), lt.count).intersperse(", "))
+                    .chain(std::iter::repeat_n(to.as_str(), lt.count).intersperse(", "))
                     .chain([">"])
                     .collect();
                 (lt.span.shrink_to_hi(), sugg)
             }
         };
         for &lt in lifetime_refs.clone() {
-            spans_suggs.push(build_sugg(lt));
+            spans_suggs.push(build_sugg(lt, existing_name));
         }
         debug!(?spans_suggs);
         match in_scope_lifetimes.len() {
             0 => {
                 if let Some((param_lifetimes, _)) = function_param_lifetimes {
                     for lt in param_lifetimes {
-                        spans_suggs.push(build_sugg(lt))
+                        spans_suggs.push(build_sugg(lt, existing_name))
                     }
                 }
-                self.suggest_introducing_lifetime(
-                    err,
-                    None,
-                    |err, higher_ranked, span, message, intro_sugg, _| {
-                        err.multipart_suggestion(
-                            message,
-                            std::iter::once((span, intro_sugg))
-                                .chain(spans_suggs.clone())
-                                .collect(),
-                            Applicability::MaybeIncorrect,
-                        );
-                        higher_ranked
-                    },
-                );
+                // For associated type bindings, e.g.
+                // `fn f<I: IntoIterator<Item = &T>>()`, introduce a named lifetime
+                // on an enclosing generics binder instead:
+                // `fn f<'a, I: IntoIterator<Item = &'a T>>()`.
+                if matches!(suggest_mode, SuggestMode::E0637)
+                    && self.diag_metadata.in_assoc_ty_binding
+                {
+                    // Skip HRTB binders
+                    self.suggest_introducing_lifetime_filtered(
+                        err,
+                        None,
+                        |kind| {
+                            !matches!(
+                                kind,
+                                LifetimeBinderKind::FnPtrType
+                                    | LifetimeBinderKind::PolyTrait
+                                    | LifetimeBinderKind::WhereBound
+                            )
+                        },
+                        |err, _, span, message, intro_sugg, _| {
+                            err.multipart_suggestion(
+                                message,
+                                std::iter::once((span, intro_sugg))
+                                    .chain(spans_suggs.clone())
+                                    .collect(),
+                                Applicability::MaybeIncorrect,
+                            );
+                            false
+                        },
+                    );
+                } else {
+                    self.suggest_introducing_lifetime_filtered(
+                        err,
+                        None,
+                        // E0637 should only use HRTB binder, E0106 may use any binder.
+                        |kind| {
+                            matches!(suggest_mode, SuggestMode::E0106)
+                                || matches!(
+                                    kind,
+                                    LifetimeBinderKind::PolyTrait | LifetimeBinderKind::WhereBound,
+                                )
+                        },
+                        |err, higher_ranked, span, message, intro_sugg, _| {
+                            err.multipart_suggestion(
+                                message,
+                                std::iter::once((span, intro_sugg))
+                                    .chain(spans_suggs.clone())
+                                    .collect(),
+                                Applicability::MaybeIncorrect,
+                            );
+                            if matches!(suggest_mode, SuggestMode::E0637) {
+                                false
+                            } else {
+                                higher_ranked
+                            }
+                        },
+                    );
+                }
             }
             1 => {
                 let post = if maybe_static {
@@ -4260,6 +4305,35 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     spans_suggs,
                     Applicability::MaybeIncorrect,
                 );
+                if matches!(suggest_mode, SuggestMode::E0637)
+                    && !self.diag_metadata.in_assoc_ty_binding
+                {
+                    // Also suggest introducing an HRTB for E0637 errors.
+                    let mut new_lifetime_suggs = Vec::new();
+                    for lt in lifetime_refs.clone() {
+                        new_lifetime_suggs.push(build_sugg(*lt, available_lifetime_name));
+                    }
+                    self.suggest_introducing_lifetime_filtered(
+                        err,
+                        Some(Ident::new(available_lifetime_name, DUMMY_SP)),
+                        |kind| {
+                            matches!(
+                                kind,
+                                LifetimeBinderKind::PolyTrait | LifetimeBinderKind::WhereBound,
+                            )
+                        },
+                        |err, _, span, message, intro_sugg, _| {
+                            err.multipart_suggestion(
+                                message,
+                                std::iter::once((span, intro_sugg))
+                                    .chain(new_lifetime_suggs.clone())
+                                    .collect(),
+                                Applicability::MaybeIncorrect,
+                            );
+                            false
+                        },
+                    );
+                }
                 if maybe_static {
                     // FIXME: what follows are general suggestions, but we'd want to perform some
                     // minimal flow analysis to provide more accurate suggestions. For example, if
@@ -4510,6 +4584,35 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         "consider using one of the available lifetimes here",
                         spans_suggs,
                         Applicability::HasPlaceholders,
+                    );
+                }
+                if matches!(suggest_mode, SuggestMode::E0637)
+                    && !self.diag_metadata.in_assoc_ty_binding
+                {
+                    // Also suggest introducing an HRTB for E0637 errors.
+                    let mut new_lifetime_suggs = Vec::new();
+                    for lt in lifetime_refs.clone() {
+                        new_lifetime_suggs.push(build_sugg(*lt, available_lifetime_name));
+                    }
+                    self.suggest_introducing_lifetime_filtered(
+                        err,
+                        Some(Ident::new(available_lifetime_name, DUMMY_SP)),
+                        |kind| {
+                            matches!(
+                                kind,
+                                LifetimeBinderKind::PolyTrait | LifetimeBinderKind::WhereBound,
+                            )
+                        },
+                        |err, _, span, message, intro_sugg, _| {
+                            err.multipart_suggestion(
+                                message,
+                                std::iter::once((span, intro_sugg))
+                                    .chain(new_lifetime_suggs.clone())
+                                    .collect(),
+                                Applicability::MaybeIncorrect,
+                            );
+                            false
+                        },
                     );
                 }
             }
