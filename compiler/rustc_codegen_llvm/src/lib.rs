@@ -333,6 +333,8 @@ impl CodegenBackend for LlvmCodegenBackend {
             sym::unchecked_funnel_shl,
             sym::unchecked_funnel_shr,
             sym::carrying_mul_add,
+            sym::integer_max,
+            sym::integer_min,
 
             // Fallback via libm, but the LLVM intrinsic is used instead.
             sym::sinf16, sym::sinf32, sym::sinf64,
