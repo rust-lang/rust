@@ -47,7 +47,6 @@
 #![feature(cstr_display)]
 #![feature(debug_closure_helpers)]
 #![feature(dec2flt)]
-#![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
 #![feature(exact_div)]
