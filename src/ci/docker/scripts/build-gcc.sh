@@ -16,7 +16,7 @@ cd binutils-build
 
 hide_output ../binutils-$BINUTILS/configure --prefix="$BINUTILS_ROOT_PATH" --disable-werror
 hide_output make -j$(nproc)
-hide_output make install
+make install
 
 cd ..
 rm -rf binutils-build binutils-$BINUTILS
