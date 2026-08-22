@@ -34,9 +34,10 @@ impl<I: fmt::Debug, P> fmt::Debug for MapWhile<I, P> {
 }
 
 #[stable(feature = "iter_map_while", since = "1.57.0")]
-impl<B, I: Iterator, P> Iterator for MapWhile<I, P>
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<B, I: [const] Iterator + [const] Destruct, P> Iterator for MapWhile<I, P>
 where
-    P: FnMut(I::Item) -> Option<B>,
+    P: [const] FnMut(I::Item) -> Option<B> + [const] Destruct,
 {
     type Item = B;
 
@@ -56,18 +57,18 @@ where
     fn try_fold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R
     where
         Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Output = Acc>,
+        Fold: [const] FnMut(Acc, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = Acc>,
     {
         let Self { iter, predicate } = self;
-        iter.try_fold(init, |acc, x| match predicate(x) {
+        iter.try_fold(init, const |acc, x| match predicate(x) {
             Some(item) => ControlFlow::from_try(fold(acc, item)),
             None => ControlFlow::Break(try { acc }),
         })
         .into_try()
     }
 
-    impl_fold_via_try_fold! { fold -> try_fold }
+    impl_fold_via_try_fold! { const fold -> try_fold }
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
