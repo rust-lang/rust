@@ -139,11 +139,13 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     // so we can ignore those.
     match infcx.typing_mode_raw().assert_not_erased() {
         // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
-        TypingMode::Coherence
-        | TypingMode::Typeck { .. }
+        TypingMode::Typeck { .. }
         | TypingMode::PostTypeckUntilBorrowck { .. }
         | TypingMode::PostBorrowck { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
         TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {}
+        TypingMode::Coherence => {
+            unreachable!("we do not expect to use old solver in coherence anymore")
+        }
     }
 
     value.has_type_flags(flags)
@@ -428,8 +430,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.selcx.typing_mode() {
                     // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
-                    TypingMode::Coherence
-                    | TypingMode::Typeck { .. }
+                    TypingMode::Typeck { .. }
                     | TypingMode::PostTypeckUntilBorrowck { .. }
                     | TypingMode::PostBorrowck { .. } => ty.super_fold_with(self),
                     TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {
@@ -450,6 +451,9 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.depth -= 1;
                         folded_ty
+                    }
+                    TypingMode::Coherence => {
+                        unreachable!("we do not expect to use old solver in coherence anymore")
                     }
                 }
             }

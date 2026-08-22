@@ -846,6 +846,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+                    debug_assert!(
+                        !self.typing_mode().is_coherence(),
+                        "we do not expect to use old solver in coherence anymore"
+                    );
+
                     if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate { .. })) {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.
@@ -856,10 +861,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         //
                         // Note that this is only sound as projection candidates of opaque types
                         // are always applicable for auto traits.
-                    } else if self.typing_mode().is_coherence() {
-                        // We do not emit auto trait candidates for opaque types in coherence.
-                        // Doing so can result in weird dependency cycles.
-                        candidates.ambiguous = true;
                     } else if self.infcx.can_define_opaque_ty(def_id) {
                         // We do not emit auto trait candidates for opaque types in their defining scope, as
                         // we need to know the hidden type first, which we can't reliably know within the defining

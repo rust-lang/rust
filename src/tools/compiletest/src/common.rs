@@ -172,7 +172,6 @@ string_enum! {
     pub(crate) enum CompareMode {
         Polonius => "polonius",
         NextSolver => "next-solver",
-        NextSolverCoherence => "next-solver-coherence",
         SplitDwarf => "split-dwarf",
         SplitDwarfSingle => "split-dwarf-single",
     }

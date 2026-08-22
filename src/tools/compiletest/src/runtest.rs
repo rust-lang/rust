@@ -1042,7 +1042,7 @@ impl<'test> TestCx<'test> {
             .arg("internal_features")
             // FIXME(#160895): While the new solver is enabled by default on nightly,
             // we don't want to use it in our tests for now.
-            .arg("-Znext-solver=coherence")
+            .arg("-Znext-solver=no")
             .args(&self.props.compile_flags)
             .args(&self.props.doc_flags);
 
@@ -1885,7 +1885,7 @@ impl<'test> TestCx<'test> {
 
         // FIXME(#160895): While the new solver is enabled by default on nightly,
         // we don't want to use it in our tests for now.
-        compiler.args(["-Znext-solver=coherence"]);
+        compiler.args(["-Znext-solver=no"]);
 
         match self.config.compare_mode {
             Some(CompareMode::Polonius) => {
@@ -1893,9 +1893,6 @@ impl<'test> TestCx<'test> {
             }
             Some(CompareMode::NextSolver) => {
                 compiler.args(&["-Znext-solver"]);
-            }
-            Some(CompareMode::NextSolverCoherence) => {
-                compiler.args(&["-Znext-solver=coherence"]);
             }
             Some(CompareMode::SplitDwarf) if self.config.target.contains("windows") => {
                 compiler.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);

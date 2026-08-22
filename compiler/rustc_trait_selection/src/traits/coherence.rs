@@ -35,8 +35,7 @@ use crate::solve::{SolverDelegate, deeply_normalize_for_diagnostics, inspect};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{
-    FulfillmentErrorCode, NormalizeExt, Obligation, ObligationCause, PredicateObligation,
-    SelectionContext, SkipLeakCheck, util,
+    FulfillmentErrorCode, Obligation, ObligationCause, PredicateObligation, SkipLeakCheck, util,
 };
 
 /// The "header" of an impl is everything outside the body: a Self type, a trait
@@ -79,21 +78,6 @@ pub(crate) fn suggest_increasing_recursion_limit<'tcx, G: EmissionGuarantee>(
     }
 
     suggest_new_overflow_limit(tcx, err);
-}
-
-#[derive(Debug, Clone, Copy)]
-enum TrackAmbiguityCauses {
-    Yes,
-    No,
-}
-
-impl TrackAmbiguityCauses {
-    fn is_yes(self) -> bool {
-        match self {
-            TrackAmbiguityCauses::Yes => true,
-            TrackAmbiguityCauses::No => false,
-        }
-    }
 }
 
 /// If there are types that satisfy both impls, returns `Some`
@@ -159,42 +143,7 @@ fn overlapping_impls(
     overlap_mode: OverlapMode,
     is_of_trait: bool,
 ) -> Option<OverlapResult<'_>> {
-    if tcx.next_trait_solver_in_coherence() {
-        overlap(
-            tcx,
-            TrackAmbiguityCauses::Yes,
-            skip_leak_check,
-            impl1_def_id,
-            impl2_def_id,
-            overlap_mode,
-            is_of_trait,
-        )
-    } else {
-        let _overlap_with_bad_diagnostics = overlap(
-            tcx,
-            TrackAmbiguityCauses::No,
-            skip_leak_check,
-            impl1_def_id,
-            impl2_def_id,
-            overlap_mode,
-            is_of_trait,
-        )?;
-
-        // In the case where we detect an error, run the check again, but
-        // this time tracking intercrate ambiguity causes for better
-        // diagnostics. (These take time and can lead to false errors.)
-        let overlap = overlap(
-            tcx,
-            TrackAmbiguityCauses::Yes,
-            skip_leak_check,
-            impl1_def_id,
-            impl2_def_id,
-            overlap_mode,
-            is_of_trait,
-        )
-        .unwrap();
-        Some(overlap)
-    }
+    overlap(tcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode, is_of_trait)
 }
 
 fn fresh_impl_header<'tcx>(
@@ -219,27 +168,11 @@ fn fresh_impl_header<'tcx>(
     }
 }
 
-fn fresh_impl_header_normalized<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl_def_id: DefId,
-    is_of_trait: bool,
-) -> ImplHeader<'tcx> {
-    let header = fresh_impl_header(infcx, impl_def_id, is_of_trait);
-
-    let InferOk { value: mut header, obligations } =
-        infcx.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(header));
-
-    header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
-    header
-}
-
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// where-clauses)? If so, returns an `ImplHeader` that unifies the two impls.
 #[instrument(level = "debug", skip(tcx))]
 fn overlap<'tcx>(
     tcx: TyCtxt<'tcx>,
-    track_ambiguity_causes: TrackAmbiguityCauses,
     skip_leak_check: SkipLeakCheck,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
@@ -262,13 +195,9 @@ fn overlap<'tcx>(
     let infcx = tcx
         .infer_ctxt()
         .skip_leak_check(skip_leak_check.is_yes())
-        .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
+        .with_next_trait_solver(true)
         .enable_next_solver_overflow_fcw(false)
         .build(TypingMode::Coherence);
-    let selcx = &mut SelectionContext::new(&infcx);
-    if track_ambiguity_causes.is_yes() {
-        selcx.enable_tracking_intercrate_ambiguity_causes();
-    }
 
     // For the purposes of this check, we don't bring any placeholder
     // types into scope; instead, we replace the generic types with
@@ -276,21 +205,12 @@ fn overlap<'tcx>(
     // empty environment.
     let param_env = ty::ParamEnv::empty();
 
-    let impl1_header = if tcx.next_trait_solver_in_coherence() {
-        fresh_impl_header(selcx.infcx, impl1_def_id, is_of_trait)
-    } else {
-        fresh_impl_header_normalized(selcx.infcx, param_env, impl1_def_id, is_of_trait)
-    };
-    let impl2_header = if tcx.next_trait_solver_in_coherence() {
-        fresh_impl_header(selcx.infcx, impl2_def_id, is_of_trait)
-    } else {
-        fresh_impl_header_normalized(selcx.infcx, param_env, impl2_def_id, is_of_trait)
-    };
+    let impl1_header = fresh_impl_header(&infcx, impl1_def_id, is_of_trait);
+    let impl2_header = fresh_impl_header(&infcx, impl2_def_id, is_of_trait);
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
-    let mut obligations =
-        equate_impl_headers(selcx.infcx, param_env, &impl1_header, &impl2_header)?;
+    let mut obligations = equate_impl_headers(&infcx, param_env, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
     obligations.extend(
@@ -301,7 +221,7 @@ fn overlap<'tcx>(
 
     let mut overflowing_predicates = Vec::new();
     if overlap_mode.use_implicit_negative() {
-        match impl_intersection_has_impossible_obligation(selcx, &obligations) {
+        match impl_intersection_has_impossible_obligation(&infcx, &obligations) {
             IntersectionHasImpossibleObligations::Yes => return None,
             IntersectionHasImpossibleObligations::No { overflowing_predicates: p } => {
                 overflowing_predicates = p
@@ -318,10 +238,8 @@ fn overlap<'tcx>(
 
     let intercrate_ambiguity_causes = if !overlap_mode.use_implicit_negative() {
         Default::default()
-    } else if infcx.next_trait_solver() {
-        compute_intercrate_ambiguity_causes(&infcx, &obligations)
     } else {
-        selcx.take_intercrate_ambiguity_causes()
+        compute_intercrate_ambiguity_causes(&infcx, &obligations)
     };
 
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
@@ -337,9 +255,7 @@ fn overlap<'tcx>(
     let mut impl_header = infcx.resolve_vars_if_possible(impl1_header);
 
     // Deeply normalize the impl header for diagnostics, ignoring any errors if this fails.
-    if infcx.next_trait_solver() {
-        impl_header = deeply_normalize_for_diagnostics(&infcx, param_env, impl_header);
-    }
+    impl_header = deeply_normalize_for_diagnostics(&infcx, param_env, impl_header);
 
     Some(OverlapResult {
         impl_header,
@@ -377,7 +293,7 @@ fn equate_impl_headers<'tcx>(
 enum IntersectionHasImpossibleObligations<'tcx> {
     Yes,
     No {
-        /// With `-Znext-solver=coherence`, some obligations may
+        /// With the next solver, some obligations may
         /// fail if only the user increased the recursion limit.
         ///
         /// We return those obligations here and mention them in the
@@ -404,78 +320,53 @@ enum IntersectionHasImpossibleObligations<'tcx> {
 /// of the two impls above to be empty.
 ///
 /// Importantly, this works even if there isn't a `impl !Error for MyLocalType`.
-#[instrument(level = "debug", skip(selcx), ret)]
-fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
+#[instrument(level = "debug", skip(infcx), ret)]
+fn impl_intersection_has_impossible_obligation<'a, 'tcx>(
+    infcx: &InferCtxt<'tcx>,
     obligations: &'a [PredicateObligation<'tcx>],
 ) -> IntersectionHasImpossibleObligations<'tcx> {
-    let infcx = selcx.infcx;
+    // A fast path optimization, try evaluating all goals with
+    // a very low recursion depth and bail if any of them don't
+    // hold.
+    if !obligations.iter().all(|o| {
+        <&SolverDelegate<'tcx>>::from(infcx)
+            .root_goal_may_hold_with_depth(8, Goal::new(infcx.tcx, o.param_env, o.predicate))
+    }) {
+        return IntersectionHasImpossibleObligations::Yes;
+    }
 
-    if infcx.next_trait_solver() {
-        // A fast path optimization, try evaluating all goals with
-        // a very low recursion depth and bail if any of them don't
-        // hold.
-        if !obligations.iter().all(|o| {
-            <&SolverDelegate<'tcx>>::from(infcx)
-                .root_goal_may_hold_with_depth(8, Goal::new(infcx.tcx, o.param_env, o.predicate))
-        }) {
-            return IntersectionHasImpossibleObligations::Yes;
-        }
+    let ocx = ObligationCtxt::new(infcx);
+    ocx.register_obligations(obligations.iter().cloned());
+    let hard_errors = ocx.try_evaluate_obligations();
+    if let TraitErrors::HasErrors(hard_errors) = hard_errors {
+        assert!(
+            hard_errors.iter().all(|e| e.is_true_error()),
+            "should not have detected ambiguity during first pass"
+        );
+        return IntersectionHasImpossibleObligations::Yes;
+    }
 
-        let ocx = ObligationCtxt::new(infcx);
-        ocx.register_obligations(obligations.iter().cloned());
-        let hard_errors = ocx.try_evaluate_obligations();
-        if let TraitErrors::HasErrors(hard_errors) = hard_errors {
-            assert!(
-                hard_errors.iter().all(|e| e.is_true_error()),
-                "should not have detected ambiguity during first pass"
-            );
-            return IntersectionHasImpossibleObligations::Yes;
-        }
+    // Make a new `ObligationCtxt` and re-prove the ambiguities with a richer
+    // `FulfillmentError`. This is so that we can detect overflowing obligations
+    // without needing to run the `BestObligation` visitor on true errors.
+    let ambiguities = ocx.into_pending_obligations();
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
+    ocx.register_obligations(ambiguities);
+    let errors_and_ambiguities = ocx.evaluate_obligations_error_on_ambiguity();
+    // We only care about the obligations that are *definitely* true errors.
+    // Ambiguities do not prove the disjointness of two impls.
+    let (errors, ambiguities): (Vec<_>, Vec<_>) =
+        errors_and_ambiguities.into_iter().partition(|error| error.is_true_error());
+    assert!(errors.is_empty(), "should not have ambiguities during second pass");
 
-        // Make a new `ObligationCtxt` and re-prove the ambiguities with a richer
-        // `FulfillmentError`. This is so that we can detect overflowing obligations
-        // without needing to run the `BestObligation` visitor on true errors.
-        let ambiguities = ocx.into_pending_obligations();
-        let ocx = ObligationCtxt::new_with_diagnostics(infcx);
-        ocx.register_obligations(ambiguities);
-        let errors_and_ambiguities = ocx.evaluate_obligations_error_on_ambiguity();
-        // We only care about the obligations that are *definitely* true errors.
-        // Ambiguities do not prove the disjointness of two impls.
-        let (errors, ambiguities): (Vec<_>, Vec<_>) =
-            errors_and_ambiguities.into_iter().partition(|error| error.is_true_error());
-        assert!(errors.is_empty(), "should not have ambiguities during second pass");
-
-        IntersectionHasImpossibleObligations::No {
-            overflowing_predicates: ambiguities
-                .into_iter()
-                .filter(|error| {
-                    matches!(error.code, FulfillmentErrorCode::Ambiguity { overflow: Some(true) })
-                })
-                .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
-                .collect(),
-        }
-    } else {
-        for obligation in obligations {
-            // We use `evaluate_root_obligation` to correctly track intercrate
-            // ambiguity clauses.
-            let evaluation_result = selcx.evaluate_root_obligation(obligation);
-
-            match evaluation_result {
-                Ok(result) => {
-                    if !result.may_apply() {
-                        return IntersectionHasImpossibleObligations::Yes;
-                    }
-                }
-                // If overflow occurs, we need to conservatively treat the goal as possibly holding,
-                // since there can be instantiations of this goal that don't overflow and result in
-                // success. While this isn't much of a problem in the old solver, since we treat overflow
-                // fatally, this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>.
-                Err(_overflow) => {}
-            }
-        }
-
-        IntersectionHasImpossibleObligations::No { overflowing_predicates: Vec::new() }
+    IntersectionHasImpossibleObligations::No {
+        overflowing_predicates: ambiguities
+            .into_iter()
+            .filter(|error| {
+                matches!(error.code, FulfillmentErrorCode::Ambiguity { overflow: Some(true) })
+            })
+            .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
+            .collect(),
     }
 }
 

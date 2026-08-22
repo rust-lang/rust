@@ -872,7 +872,6 @@ The possible compare modes are:
 
 - `polonius` — Runs with Polonius with `-Zpolonius=next`.
 - `next-solver` — Runs with the next trait solver with `-Znext-solver`.
-- `next-solver-coherence` — Runs coherence with the next trait solver with `-Znext-solver=coherence`.
 - `split-dwarf` — Runs with unpacked split-DWARF with `-Csplit-debuginfo=unpacked`.
 - `split-dwarf-single` — Runs with packed split-DWARF with `-Csplit-debuginfo=packed`.
 

@@ -230,7 +230,7 @@ impl TestContext {
                 "-Zdeduplicate-diagnostics=no",
                 // FIXME(#160895): While the new solver is enabled by default on nightly,
                 // we don't want to use it in our tests for now.
-                "-Znext-solver=coherence",
+                "-Znext-solver=no",
                 "-Dwarnings",
             ]
             .map(OsString::from),
@@ -339,7 +339,7 @@ fn run_ui_cargo(cx: &TestContext) {
     config.program.envs.extend([
         // FIXME(#160895): While the new solver is enabled by default on nightly,
         // we don't want to use it in our tests for now.
-        ("RUSTFLAGS".into(), Some("-Dwarnings -Znext-solver=coherence".into())),
+        ("RUSTFLAGS".into(), Some("-Dwarnings -Znext-solver=no".into())),
         ("CARGO_INCREMENTAL".into(), Some("0".into())),
     ]);
     // We need to do this while we still have a rustc in the `program` field.

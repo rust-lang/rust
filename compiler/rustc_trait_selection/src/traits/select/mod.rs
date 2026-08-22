@@ -12,7 +12,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, find_attr};
+use rustc_hir::{self as hir};
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::at::ToTrace;
@@ -36,7 +36,6 @@ use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
 use self::SelectionCandidate::*;
-use super::coherence::{self, Conflict};
 use super::project::ProjectionTermObligation;
 use super::util::closure_trait_ref_and_return_type;
 use super::{
@@ -108,14 +107,6 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// important for checking for trait bounds that recursively
     /// require themselves.
     freshener: TypeFreshener<'cx, 'tcx>,
-
-    /// If `intercrate` is set, we remember predicates which were
-    /// considered ambiguous because of impls potentially added in other crates.
-    /// This is used in coherence to give improved diagnostics.
-    /// We don't do his until we detect a coherence error because it can
-    /// lead to false overflow results (#47139) and because always
-    /// computing it may negatively impact performance.
-    intercrate_ambiguity_causes: Option<FxIndexSet<IntercrateAmbiguityCause<'tcx>>>,
 
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
@@ -194,7 +185,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
             freshener: TypeFreshener::new(infcx),
-            intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -209,27 +199,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> SelectionContext<'cx, 'tcx> {
         debug!(?query_mode, "with_query_mode");
         SelectionContext { query_mode, ..SelectionContext::new(infcx) }
-    }
-
-    /// Enables tracking of intercrate ambiguity causes. See
-    /// the documentation of [`Self::intercrate_ambiguity_causes`] for more.
-    pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
-        assert!(self.typing_mode().is_coherence());
-        assert!(self.intercrate_ambiguity_causes.is_none());
-
-        self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
-        debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
-    }
-
-    /// Gets the intercrate ambiguity causes collected since tracking
-    /// was enabled and disables tracking at the same time. If
-    /// tracking is not enabled, just returns an empty vector.
-    pub fn take_intercrate_ambiguity_causes(
-        &mut self,
-    ) -> FxIndexSet<IntercrateAmbiguityCause<'tcx>> {
-        assert!(self.typing_mode().is_coherence());
-
-        self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
 
     pub fn tcx(&self) -> TyCtxt<'tcx> {
@@ -368,42 +337,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        if let Err(conflict) = self.is_knowable(stack) {
-            debug!("coherence stage: not knowable");
-            if self.intercrate_ambiguity_causes.is_some() {
-                debug!("evaluate_stack: intercrate_ambiguity_causes is some");
-                // Heuristics: show the diagnostics when there are no candidates in crate.
-                if let Ok(candidate_set) = self.assemble_candidates(stack) {
-                    let mut no_candidates_apply = true;
-
-                    for c in candidate_set.vec.iter() {
-                        if self.evaluate_candidate(stack, c)?.may_apply() {
-                            no_candidates_apply = false;
-                            break;
-                        }
-                    }
-
-                    if !candidate_set.ambiguous && no_candidates_apply {
-                        let trait_ref = self.infcx.resolve_vars_if_possible(
-                            stack.obligation.predicate.skip_binder().trait_ref,
-                        );
-                        if !trait_ref.references_error() {
-                            let self_ty = trait_ref.self_ty();
-                            let self_ty = self_ty.has_concrete_skeleton().then(|| self_ty);
-                            let cause = if let Conflict::Upstream = conflict {
-                                IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_ref, self_ty }
-                            } else {
-                                IntercrateAmbiguityCause::DownstreamCrate { trait_ref, self_ty }
-                            };
-                            debug!(?cause, "evaluate_stack: pushing cause");
-                            self.intercrate_ambiguity_causes.as_mut().unwrap().insert(cause);
-                        }
-                    }
-                }
-            }
-            return Ok(None);
-        }
-
         let candidate_set = self.assemble_candidates(stack)?;
 
         if candidate_set.ambiguous {
@@ -441,7 +374,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report "`Bar` does
         // not implement `Clone`".
         if candidates.len() == 1 {
-            return self.filter_reservation_impls(candidates.pop().unwrap());
+            let candidate = candidates.pop().unwrap();
+            return Ok(Some(candidate));
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -488,13 +422,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
             let candidate_preference_mode =
                 CandidatePreferenceMode::compute(self.tcx(), stack.obligation.predicate.def_id());
-            if let Some(candidate) =
-                self.winnow_candidates(has_non_region_infer, candidate_preference_mode, candidates)
-            {
-                self.filter_reservation_impls(candidate)
-            } else {
-                Ok(None)
-            }
+            Ok(self.winnow_candidates(has_non_region_infer, candidate_preference_mode, candidates))
         }
     }
 
@@ -1009,8 +937,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        if !self.typing_mode().is_coherence()
-            && obligation.is_global()
+        debug_assert!(
+            !self.typing_mode().is_coherence(),
+            "we do not expect to use old solver in coherence anymore"
+        );
+
+        if obligation.is_global()
             && obligation.param_env.caller_bounds().iter().all(|bound| bound.has_param())
         {
             // If a param env has no global bounds, global obligations do not
@@ -1443,58 +1375,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         result
     }
 
-    /// filter_reservation_impls filter reservation impl for any goal as ambiguous
-    #[instrument(level = "debug", skip(self))]
-    fn filter_reservation_impls(
-        &mut self,
-        candidate: SelectionCandidate<'tcx>,
-    ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        let tcx = self.tcx();
-        // Treat reservation impls as ambiguity.
-        if let ImplCandidate(def_id) = candidate
-            && let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id)
-        {
-            if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                let message = find_attr!(tcx, def_id, RustcReservationImpl(message) => *message);
-                if let Some(message) = message {
-                    debug!(
-                        "filter_reservation_impls: \
-                                 reservation impl ambiguity on {:?}",
-                        def_id
-                    );
-                    intercrate_ambiguity_clauses
-                        .insert(IntercrateAmbiguityCause::ReservationImpl { message });
-                }
-            }
-            return Ok(None);
-        }
-        Ok(Some(candidate))
-    }
-
-    fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
-        let obligation = &stack.obligation;
-        match self.typing_mode() {
-            TypingMode::Coherence => {}
-            TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
-            | TypingMode::Reflection
-            | TypingMode::PostBorrowck { .. }
-            | TypingMode::PostAnalysis
-            | TypingMode::Codegen => return Ok(()),
-        }
-
-        debug!("is_knowable()");
-
-        let predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
-
-        // Okay to skip binder because of the nature of the
-        // trait-ref-is-knowable check, which does not care about
-        // bound regions.
-        let trait_ref = predicate.skip_binder().trait_ref;
-
-        coherence::trait_ref_is_knowable(self.infcx, trait_ref, |ty| Ok::<_, !>(ty)).into_ok()
-    }
-
     /// Returns `true` if the global caches can be used.
     fn can_use_global_caches(
         &self,
@@ -1509,13 +1389,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self.typing_mode() {
-            // Avoid using the global cache during coherence and just rely
-            // on the local cache. It is really just a simplification to
-            // avoid us having to fear that coherence results "pollute"
-            // the master cache. Since coherence executes pretty quickly,
-            // it's not worth going to more trouble to increase the
-            // hit-rate, I don't think.
-            TypingMode::Coherence => false,
             // Avoid using the global cache when we're defining opaque types
             // as their hidden type may impact the result of candidate selection.
             //
@@ -1541,6 +1414,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // FIXME(#132279): This is still incorrect as we treat opaque types
             // and default associated items differently between these two modes.
             TypingMode::PostAnalysis | TypingMode::Codegen => true,
+            TypingMode::Coherence => {
+                unreachable!("we do not expect to use old solver in coherence anymore")
+            }
         }
     }
 
@@ -2560,7 +2436,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         nested_obligations.extend(obligations);
 
         match self.typing_mode() {
-            TypingMode::Coherence => {}
             TypingMode::Reflection
                 if !self.tcx().impl_is_fully_generic_for_reflection(impl_def_id) =>
             {
@@ -2579,6 +2454,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     debug!("reservation impls only apply in intercrate mode");
                     return Err(());
                 }
+            }
+            TypingMode::Coherence => {
+                unreachable!("we do not expect old solver in coherence anymore")
             }
         }
 
@@ -2920,12 +2798,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             TypingMode::Typeck { defining_opaque_types_and_generators: stalled_generators } => {
                 def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
             }
-            TypingMode::Coherence
-            | TypingMode::PostAnalysis
+            TypingMode::PostAnalysis
             | TypingMode::Reflection
             | TypingMode::Codegen
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowck { defined_opaque_types: _ } => false,
+            TypingMode::Coherence => {
+                unreachable!("we do not expect to use old solver in coherence anymore")
+            }
         }
     }
 }

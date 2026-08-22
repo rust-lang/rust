@@ -20,7 +20,6 @@
 #![feature(never_type)]
 #![feature(option_into_flat_iter)]
 #![feature(try_blocks)]
-#![feature(unwrap_infallible)]
 #![feature(yeet_expr)]
 #![recursion_limit = "512"] // For rustdoc
 // tidy-alphabetical-end
