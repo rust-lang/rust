@@ -4305,7 +4305,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `fold` when a more succinct alternative exists.
     /// Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
-    /// `sum` or `product`.
+    /// `sum` or `product`, and for folds over an `Option`'s iterator which could be
+    /// replaced by `map_or`.
     ///
     /// ### Why is this bad?
     /// Readability.
@@ -4313,11 +4314,15 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// (0..3).fold(false, |acc, x| acc || x > 2);
+    /// # let opt = Some(1);
+    /// opt.iter().fold(0, |acc, x| acc | x);
     /// ```
     ///
     /// Use instead:
     /// ```no_run
     /// (0..3).any(|x| x > 2);
+    /// # let opt = Some(1);
+    /// opt.as_ref().map_or(0, |x| 0 | x);
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub UNNECESSARY_FOLD,
@@ -5550,7 +5555,7 @@ impl Methods {
                 },
                 (sym::fold, [init, acc]) => {
                     manual_try_fold::check(cx, expr, init, acc, call_span, self.msrv);
-                    unnecessary_fold::check(cx, expr, init, acc, span);
+                    unnecessary_fold::check(cx, expr, recv, init, acc, span);
                 },
                 (sym::for_each, [arg]) => match method_call(recv) {
                     Some((sym::inspect, _, [_], span2, _)) => inspect_for_each::check(cx, expr, span2),
