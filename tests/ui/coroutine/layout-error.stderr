@@ -3,6 +3,11 @@ error[E0425]: cannot find value `Foo` in this scope
    |
 LL |         let a = Foo;
    |                 ^^^ not found in this scope
+   |
+help: consider importing this similarly named function
+   |
+LL + use crate::foo;
+   |
 
 error: aborting due to 1 previous error
 
