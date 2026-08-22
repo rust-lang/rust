@@ -33,13 +33,15 @@ use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node, find_
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, ExprId, LocalVarId, Param, ParamId, PatKind, Thir};
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol};
+use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::LintLevel;
@@ -477,15 +479,6 @@ fn construct_fn<'tcx>(
     let arguments = &thir.params;
 
     let return_ty = fn_sig.output();
-    let coroutine = match tcx.type_of(fn_def).instantiate_identity().skip_norm_wip().kind() {
-        ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
-            tcx.coroutine_kind(fn_def).unwrap(),
-            args.as_coroutine().yield_ty(),
-            args.as_coroutine().resume_ty(),
-        ))),
-        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
-        ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
-    };
 
     if let Some((dialect, phase)) =
         find_attr!(tcx, fn_id, CustomMir(dialect, phase) => (dialect, phase))
@@ -514,6 +507,23 @@ fn construct_fn<'tcx>(
     };
 
     let infcx = tcx.infer_ctxt().build(typing_mode);
+
+    // `instantiate_identity` yields an `Unnormalized` type. Normalize it
+    // instead of `skip_norm_wip`, so coroutine yield/resume types are rigid.
+    let ty = normalize_type_of(&infcx, fn_def, span, tcx.type_of(fn_def).instantiate_identity());
+    if let Err(guar) = ty.error_reported() {
+        return construct_error(tcx, fn_def, guar);
+    }
+    let coroutine = match ty.kind() {
+        ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
+            tcx.coroutine_kind(fn_def).unwrap(),
+            args.as_coroutine().yield_ty(),
+            args.as_coroutine().resume_ty(),
+        ))),
+        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
+        ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
+    };
+
     let mut builder = Builder::new(
         thir,
         infcx,
@@ -560,6 +570,31 @@ fn construct_fn<'tcx>(
     };
 
     body
+}
+
+fn normalize_type_of<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    def_id: LocalDefId,
+    span: Span,
+    ty: Unnormalized<'tcx, Ty<'tcx>>,
+) -> Ty<'tcx> {
+    if !infcx.next_trait_solver() {
+        return ty.skip_norm_wip();
+    }
+
+    let ocx = ObligationCtxt::new(infcx);
+    let cause = ObligationCause::misc(span, def_id);
+    let param_env = infcx.tcx.param_env(def_id);
+    match ocx.deeply_normalize(&cause, param_env, ty) {
+        Ok(normalized) => normalized,
+        Err(_) => {
+            infcx.dcx().span_delayed_bug(span, format!("failed to normalize type of `{def_id:?}`"));
+            // Preserve the outer type constructor for the caller. Returning
+            // `Ty::Error` here would make it hit the catch-all `span_bug!`
+            // below, instead of recovering from the normalization failure.
+            ty::set_aliases_to_rigid(infcx.tcx, ty.skip_norm_wip())
+        }
+    }
 }
 
 fn construct_const<'a, 'tcx>(

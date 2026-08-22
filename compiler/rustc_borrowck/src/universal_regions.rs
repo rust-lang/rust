@@ -21,16 +21,19 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
-use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::infer::{NllRegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCause;
 use rustc_macros::extension;
 use rustc_middle::mir::RETURN_PLACE;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, BoundVariableKind, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts,
-    List, RegionExt, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
+    List, RegionExt, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode,
+    fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, kw, sym};
+use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
 use crate::BorrowckInferCtxt;
@@ -133,12 +136,40 @@ pub(crate) enum DefiningTy<'tcx> {
     GlobalAsm(DefId),
 }
 
+fn normalize_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
+    let ty = tcx.type_of(def_id).instantiate_identity();
+    if !tcx.next_trait_solver_globally() {
+        return ty.skip_norm_wip();
+    }
+
+    let typing_mode = TypingMode::borrowck(tcx, def_id);
+    let infcx = tcx.infer_ctxt().build(typing_mode);
+    let ocx = ObligationCtxt::new(&infcx);
+    let span = tcx.def_span(def_id);
+    let cause = ObligationCause::misc(span, def_id);
+    match ocx.deeply_normalize(&cause, tcx.param_env(def_id), ty) {
+        Ok(ty) => ty,
+        Err(_) => {
+            infcx.dcx().span_delayed_bug(
+                span,
+                format!("failed to normalize defining type of `{def_id:?}`"),
+            );
+            // Preserve the outer type constructor for `DefiningTy::new`.
+            // Returning `Ty::Error` would make its catch-all `span_bug!`
+            // fire before the delayed bug can be recovered from.
+            ty::set_aliases_to_rigid(tcx, ty.skip_norm_wip())
+        }
+    }
+}
+
 impl<'tcx> DefiningTy<'tcx> {
     #[instrument(level = "debug", skip(tcx), ret)]
     pub(crate) fn new(tcx: TyCtxt<'tcx>, body_def_id: LocalDefId) -> DefiningTy<'tcx> {
         match tcx.hir_body_owner_kind(body_def_id) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = tcx.type_of(body_def_id).instantiate_identity().skip_norm_wip();
+                // Normalize after instantiation so coroutine yield/resume
+                // types in the args are rigid under the new solver.
+                let defining_ty = normalize_type_of(tcx, body_def_id);
                 match *defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
                     ty::Coroutine(def_id, args) => DefiningTy::Coroutine(def_id, args),
