@@ -1606,6 +1606,46 @@ impl<T: ?Sized> Rc<T> {
     pub unsafe fn decrement_strong_count(ptr: *const T) {
         unsafe { Self::decrement_strong_count_in(ptr, Global) }
     }
+
+    /// Gets the number of strong (`Rc`) pointers to the allocation behind the given raw pointer.
+    ///
+    /// This method does not consume or drop the `Rc` behind this pointer.
+    ///
+    /// # Safety
+    ///
+    /// The pointer must point to (and have valid metadata for) the value inside a live `Rc`
+    /// allocation, such as a pointer returned by [`Rc::into_raw`],
+    /// [`Rc::into_raw_with_allocator`], or [`Rc::as_ptr`].
+    /// `T` must have the same alignment as that value.
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// least 1) for the duration of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_raw_get_strong)]
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::new(5);
+    /// let _also_five = Rc::clone(&five);
+    /// let ptr = Rc::into_raw(five);
+    ///
+    /// unsafe {
+    ///     assert_eq!(2, Rc::strong_count_from_raw(ptr));
+    ///
+    ///     // Convert back to an `Rc` to avoid leaking memory.
+    ///     let five = Rc::from_raw(ptr);
+    ///     assert_eq!(2, Rc::strong_count(&five));
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "arc_raw_get_strong", issue = "157021")]
+    pub unsafe fn strong_count_from_raw(ptr: *const T) -> usize {
+        let offset = unsafe { data_offset(ptr) };
+        // Reverse the offset to find the original RcInner.
+        let rc_ptr = unsafe { ptr.byte_sub(offset) as *mut RcInner<T> };
+        unsafe { (*rc_ptr).strong.get() }
+    }
 }
 
 impl<T: ?Sized, A: Allocator> Rc<T, A> {
