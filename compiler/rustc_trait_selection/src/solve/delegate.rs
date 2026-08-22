@@ -169,7 +169,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 } else if trait_pred.polarity() == ty::ClausePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
-                            let predicate = self.resolve_vars_if_possible(goal.predicate);
+                            let predicate = self.deeply_resolve_ignoring_regions(goal.predicate);
                             if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
                                 Outcome::TriviallyHolds
                             } else {
@@ -177,8 +177,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                             }
                         }
                         Some(LangItem::Copy | LangItem::Clone) => {
-                            let self_ty =
-                                self.resolve_vars_if_possible(trait_pred.self_ty().skip_binder());
+                            let self_ty = self.deeply_resolve_ignoring_regions(
+                                trait_pred.self_ty().skip_binder(),
+                            );
                             // Unlike `Sized` traits, which always prefer the built-in impl,
                             // `Copy`/`Clone` may be shadowed by a param-env candidate which
                             // could force a lifetime error or guide inference. While that's
@@ -220,7 +221,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     return Outcome::NoFastPath;
                 }
 
-                let ty = self.resolve_vars_if_possible(outlives.0);
+                let ty = self.deeply_resolve_ignoring_regions(outlives.0);
                 let mut infer_collector = CollectNonRegionInfer {
                     infers: Default::default(),
                     visited: Default::default(),
@@ -452,7 +453,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 | TypingMode::Reflection
                 | TypingMode::PostBorrowck { .. } => false,
                 TypingMode::PostAnalysis | TypingMode::Codegen => {
-                    let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
+                    let poly_trait_ref = self.deeply_resolve_ignoring_regions(goal_trait_ref);
                     !poly_trait_ref.still_further_specializable()
                 }
                 TypingMode::ErasedNotCoherence(MayBeErased) => {

@@ -38,7 +38,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             param_env: obligation.param_env,
             cause: obligation.cause.clone(),
             recursion_depth: obligation.recursion_depth,
-            predicate: self.infcx.resolve_vars_if_possible(obligation.predicate),
+            predicate: self.infcx.deeply_resolve_ignoring_regions(obligation.predicate),
         };
 
         if obligation.predicate.skip_binder().self_ty().is_ty_var() {
@@ -209,7 +209,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         self.infcx.probe(|_| {
-            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
+            let poly_trait_predicate =
+                self.infcx.deeply_resolve_ignoring_regions(obligation.predicate);
             let placeholder_trait_predicate =
                 self.infcx.enter_forall_and_leak_universe(poly_trait_predicate);
 
@@ -928,7 +929,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         self.infcx.probe(|_snapshot| {
-            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
+            let poly_trait_predicate =
+                self.infcx.deeply_resolve_ignoring_regions(obligation.predicate);
             self.infcx.enter_forall(poly_trait_predicate, |placeholder_trait_predicate| {
                 let self_ty = placeholder_trait_predicate.self_ty();
                 let principal_trait_ref = match self_ty.kind() {
@@ -1374,7 +1376,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
+        let self_ty = self.infcx.deeply_resolve_ignoring_regions(obligation.self_ty());
 
         match self_ty.skip_binder().kind() {
             ty::FnPtr(..) => candidates.vec.push(BuiltinCandidate),

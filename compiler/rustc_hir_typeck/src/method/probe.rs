@@ -2134,8 +2134,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             for nested_obligation in candidate.nested_obligations() {
                                 if !self.infcx.predicate_may_hold(&nested_obligation) {
                                     possibly_unsatisfied_predicates.push((
-                                        self.resolve_vars_if_possible(nested_obligation.predicate),
-                                        Some(self.resolve_vars_if_possible(obligation.predicate)),
+                                        self.deeply_resolve_ignoring_regions(
+                                            nested_obligation.predicate,
+                                        ),
+                                        Some(
+                                            self.deeply_resolve_ignoring_regions(
+                                                obligation.predicate,
+                                            ),
+                                        ),
                                         Some(nested_obligation.cause),
                                     ));
                                 }
@@ -2207,9 +2213,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // Evaluate those obligations to see if they might possibly hold.
             for error in ocx.try_evaluate_obligations() {
                 result = ProbeResult::NoMatch;
-                let nested_predicate = self.resolve_vars_if_possible(error.obligation.predicate);
+                let nested_predicate =
+                    self.deeply_resolve_ignoring_regions(error.obligation.predicate);
                 if let Some(trait_predicate) = trait_predicate
-                    && nested_predicate == self.resolve_vars_if_possible(trait_predicate)
+                    && nested_predicate == self.deeply_resolve_ignoring_regions(trait_predicate)
                 {
                     // Don't report possibly unsatisfied predicates if the root
                     // trait obligation from a `TraitCandidate` is unsatisfied.
@@ -2217,7 +2224,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 } else {
                     possibly_unsatisfied_predicates.push((
                         nested_predicate,
-                        Some(self.resolve_vars_if_possible(error.root_obligation.predicate))
+                        Some(self.deeply_resolve_ignoring_regions(error.root_obligation.predicate))
                             .filter(|root_predicate| *root_predicate != nested_predicate),
                         Some(error.obligation.cause),
                     ));
@@ -2338,7 +2345,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         return false;
                     }
 
-                    !self.resolve_vars_if_possible(self_ty).is_ty_var()
+                    !self.deeply_resolve_ignoring_regions(self_ty).is_ty_var()
                 });
                 if constrained_opaque {
                     debug!("opaque type has been constrained");

@@ -399,12 +399,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
     /// If `ty` is an unresolved type variable, returns its root vid.
     fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
-        Some(self.root_var(self.shallow_resolve(ty).ty_vid()?))
+        Some(self.shallow_resolve(ty).ty_vid()?)
     }
 
     /// If `ty` is an unresolved float type variable, returns its root vid.
     pub(crate) fn root_float_vid(&self, ty: Ty<'tcx>) -> Option<ty::FloatVid> {
-        Some(self.root_float_var(self.shallow_resolve(ty).float_vid()?))
+        Some(self.shallow_resolve(ty).float_vid()?)
     }
 
     /// Given a set of diverging vids and coercions, walk the HIR to gather a

@@ -158,7 +158,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
             GenericArgKind::Type(mut t1) => {
                 // Scraped constraints may have had inference vars.
-                t1 = self.infcx.resolve_vars_if_possible(t1);
+                t1 = self.infcx.deeply_resolve_ignoring_regions(t1);
 
                 let implicit_region_bound =
                     ty::Region::new_var(tcx, universal_regions.implicit_region_bound());

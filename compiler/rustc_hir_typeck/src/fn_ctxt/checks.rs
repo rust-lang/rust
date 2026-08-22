@@ -247,7 +247,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut expected_input_tys: Option<Vec<_>> = expectation
             .only_has_type(self)
             .and_then(|expected_output| {
-                let formal_output = self.resolve_vars_with_obligations(formal_output);
+                let formal_output =
+                    self.deeply_resolve_ignoring_regions_with_obligations(formal_output);
                 // FIXME(#149379): This operation results in expected input
                 // types which are potentially not well-formed or for whom the
                 // function where-bounds don't actually hold. This results
@@ -284,7 +285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Ok(Some(
                             formal_input_tys
                                 .iter()
-                                .map(|&ty| self.resolve_vars_if_possible(ty))
+                                .map(|&ty| self.deeply_resolve_ignoring_regions(ty))
                                 .collect::<Vec<_>>(),
                         ))
                     })
@@ -388,7 +389,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Cause selection errors caused by resolving a single argument to point at the
             // argument and not the call. This lets us customize the span pointed to in the
             // fulfillment error to be more accurate.
-            let coerced_ty = self.resolve_vars_with_obligations(coerced_ty);
+            let coerced_ty = self.deeply_resolve_ignoring_regions_with_obligations(coerced_ty);
 
             let coerce_error =
                 self.coerce(provided_arg, checked_ty, coerced_ty, AllowTwoPhase::Yes, None).err();
@@ -542,7 +543,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     ty::FnDef(..) => {
                         let fn_ptr = Ty::new_fn_ptr(self.tcx, arg_ty.fn_sig(self.tcx));
-                        let fn_ptr = self.resolve_vars_if_possible(fn_ptr).to_string();
+                        let fn_ptr = self.deeply_resolve_ignoring_regions(fn_ptr).to_string();
 
                         let fn_item_spa = arg.span;
                         tcx.sess.dcx().emit_err(diagnostics::PassFnItemToVariadicFunction {
@@ -573,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .copied()
                     .zip_eq(expected_input_tys.iter().copied())
-                    .map(|vars| self.resolve_vars_if_possible(vars)),
+                    .map(|vars| self.deeply_resolve_ignoring_regions(vars)),
             );
 
             self.report_arg_errors(
@@ -653,7 +654,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let formal_input_tupled_ty = formal_input_tys[first_tupled_arg_index_usz];
         // Keep the type variable if the argument is splatted, so we can force it to be a tuple later.
         let tuple_type = if tuple_arguments.is_splatted() {
-            let callee_tuple_type = self.resolve_vars_with_obligations(formal_input_tupled_ty);
+            let callee_tuple_type =
+                self.deeply_resolve_ignoring_regions_with_obligations(formal_input_tupled_ty);
             if callee_tuple_type.is_ty_var()
                 && let Some(tupled_args_count) = tupled_args_count
             {
@@ -1836,7 +1838,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 param.param.span(),
                                 format!(
                                     "this parameter needs to match the {} type of {deps_list}",
-                                    self.resolve_vars_if_possible(
+                                    self.deeply_resolve_ignoring_regions(
                                         formal_and_expected_inputs[param.deps[0]].1
                                     )
                                     .sort_string(self.tcx),
@@ -1860,7 +1862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 format!(
                                     "{deps_list} need{} to match the {} type of this parameter",
                                     pluralize!((deps.len() != 1) as u32),
-                                    self.resolve_vars_if_possible(expected_ty)
+                                    self.deeply_resolve_ignoring_regions(expected_ty)
                                         .sort_string(self.tcx),
                                 ),
                             );
@@ -2039,7 +2041,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 let expected_display_type = self
-                    .resolve_vars_if_possible(formal_and_expected_inputs[idx].1)
+                    .deeply_resolve_ignoring_regions(formal_and_expected_inputs[idx].1)
                     .sort_string(self.tcx);
                 let label = if idxs_matched == params_with_generics.len() - 1 {
                     format!(
@@ -3334,7 +3336,7 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
                     .expr_ty_adjusted_opt(expr)
                     .unwrap_or_else(|| Ty::new_misc_error(self.call_ctxt.fn_ctxt.tcx));
                 (
-                    self.call_ctxt.fn_ctxt.resolve_vars_if_possible(ty),
+                    self.call_ctxt.fn_ctxt.deeply_resolve_ignoring_regions(ty),
                     self.normalize_span(expr.span),
                 )
             })

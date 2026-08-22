@@ -497,7 +497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected = if let AdjustMode::Peel { .. } = adjust_mode
             && pat.default_binding_modes
         {
-            self.resolve_vars_with_obligations(expected)
+            self.deeply_resolve_ignoring_regions_with_obligations(expected)
         } else {
             expected
         };
@@ -794,14 +794,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         lt.kind
                     );
                 }
-                // Call `resolve_vars_if_possible` here for inline const blocks.
-                let lit_ty = self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt));
+                // Call `deeply_resolve_ignoring_regions` here for inline const blocks.
+                let lit_ty = self.deeply_resolve_ignoring_regions(self.check_pat_expr_unadjusted(lt));
                 // If `deref_patterns` is enabled, allow `if let "foo" = &&"foo" {}`.
                 if self.tcx.features().deref_patterns() {
                     let mut peeled_ty = lit_ty;
                     let mut pat_ref_layers = 0;
                     while let ty::Ref(_, inner_ty, mutbl) =
-                        *self.resolve_vars_with_obligations(peeled_ty).kind()
+                        *self.deeply_resolve_ignoring_regions_with_obligations(peeled_ty).kind()
                     {
                         // We rely on references at the head of constants being immutable.
                         debug_assert!(mutbl.is_not());
@@ -947,7 +947,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match *expected.kind() {
                 // Allow `b"...": &[u8]`
                 ty::Ref(_, inner_ty, _)
-                    if self.resolve_vars_with_obligations(inner_ty).is_slice() =>
+                    if self
+                        .deeply_resolve_ignoring_regions_with_obligations(inner_ty)
+                        .is_slice() =>
                 {
                     trace!(?expr.hir_id.local_id, "polymorphic byte string lit");
                     pat_ty = Ty::new_imm_ref(
@@ -976,7 +978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // string literal patterns to have type `str`. This is accounted for when lowering to MIR.
         if self.tcx.features().deref_patterns()
             && matches!(lit_kind, ast::LitKind::Str(..))
-            && self.resolve_vars_with_obligations(expected).is_str()
+            && self.deeply_resolve_ignoring_regions_with_obligations(expected).is_str()
         {
             pat_ty = self.tcx.types.str_;
         }
@@ -994,7 +996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cause = self.pattern_cause(ti, span);
         if let Err(mut err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
             // If scrutinee is String and pattern is &str, suggest .as_str()
-            let expected = self.resolve_vars_with_obligations(expected);
+            let expected = self.deeply_resolve_ignoring_regions_with_obligations(expected);
             if let ty::Adt(adt, _) = expected.kind()
                 && self.tcx.is_lang_item(adt.did(), LangItem::String)
                 && pat_ty.is_ref()
@@ -1032,7 +1034,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // be peeled to `str` while ty here is still `&str`, if we don't
                 // err early here, a rather confusing unification error will be
                 // emitted instead).
-                let ty = self.resolve_vars_with_obligations(ty);
+                let ty = self.deeply_resolve_ignoring_regions_with_obligations(ty);
                 let fail =
                     !(ty.is_numeric() || ty.is_char() || ty.is_ty_var() || ty.references_error());
                 Some((fail, ty, expr.span))
@@ -1111,13 +1113,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "only `char` and numeric types are allowed in range patterns"
         );
         let msg = |ty| {
-            let ty = self.resolve_vars_if_possible(ty);
+            let ty = self.deeply_resolve_ignoring_regions(ty);
             format!("this is of type `{ty}` but it should be `char` or numeric")
         };
         let mut one_side_err = |first_span, first_ty, second: Option<(bool, Ty<'tcx>, Span)>| {
             err.span_label(first_span, msg(first_ty));
             if let Some((_, ty, sp)) = second {
-                let ty = self.resolve_vars_if_possible(ty);
+                let ty = self.deeply_resolve_ignoring_regions(ty);
                 self.endpoint_has_type(&mut err, sp, ty);
             }
         };
@@ -1293,7 +1295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let var_ty = self.local_ty(span, var_id);
         if let Err(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
-            let var_ty = self.resolve_vars_if_possible(var_ty);
+            let var_ty = self.deeply_resolve_ignoring_regions(var_ty);
             let msg = format!("first introduced with type `{var_ty}` here");
             err.span_label(self.tcx.hir_span(var_id), msg);
             let in_match = self.tcx.hir_parent_iter(var_id).any(|(_, n)| {
@@ -1311,7 +1313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &mut err,
                 span,
                 var_ty,
-                self.resolve_vars_if_possible(ty),
+                self.deeply_resolve_ignoring_regions(ty),
                 ba,
             );
             err.emit();
@@ -2764,7 +2766,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [source_ty],
         );
         let target_ty = self.normalize(span, Unnormalized::new_wip(target_ty));
-        self.resolve_vars_with_obligations(target_ty)
+        self.deeply_resolve_ignoring_regions_with_obligations(target_ty)
     }
 
     /// Check if the interior of a deref pattern (either explicit or implicit) has any `ref mut`
@@ -2812,7 +2814,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pat_info.max_ref_mutbl = pat_info.max_ref_mutbl.cap_to_weakly_not(pat_prefix_span);
         }
 
-        expected = self.resolve_vars_with_obligations(expected);
+        expected = self.deeply_resolve_ignoring_regions_with_obligations(expected);
         // Determine whether we're consuming an inherited reference and resetting the default
         // binding mode, based on edition and enabled experimental features.
         if let ByRef::Yes(inh_pin, inh_mut) = pat_info.binding_mode
@@ -3103,7 +3105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
-        let expected = self.resolve_vars_with_obligations(expected);
+        let expected = self.deeply_resolve_ignoring_regions_with_obligations(expected);
 
         // If the pattern is irrefutable and `expected` is an infer ty, we try to equate it
         // to an array if the given pattern allows it. See issue #76342
@@ -3281,7 +3283,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(span) = ti.span
             && let Some(_) = ti.origin_expr
         {
-            let resolved_ty = self.resolve_vars_if_possible(ti.expected);
+            let resolved_ty = self.deeply_resolve_ignoring_regions(ti.expected);
             let (is_slice_or_array_or_vector, resolved_ty) =
                 self.is_slice_or_array_or_vector(resolved_ty);
             match resolved_ty.kind() {

@@ -29,9 +29,10 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, InferConst, OpaqueTypeKey, ProvisionalHiddenType,
-    PseudoCanonicalInput, RegionExt, Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    GenericArgsRef, GenericParamDefKind, InferConst, InferTy, IntVid, OpaqueTypeKey,
+    ProvisionalHiddenType, PseudoCanonicalInput, RegionExt, Term, Ty, TyCtxt, TyVid, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode,
+    fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::{CanonicalizerState, MayBeErased};
@@ -1214,111 +1215,226 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
-        self.resolve_vars_if_possible(t).to_string()
+        self.deeply_resolve_ignoring_regions(t).to_string()
     }
 
-    /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
-    /// universe index of `TyVar(vid)`.
-    pub fn try_resolve_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
-        use self::type_variable::TypeVariableValue;
+    /// If `TyVar(vid)` resolves to a type, return that type.
+    /// Else, return the universe index of `TyVar(vid)`.
+    ///
+    /// Also return the root `TyVid` of `vid`.
+    /// This is more efficient than calling [`try_resolve_ty_var`](Self::try_resolve_ty_var)
+    /// followed by [`root_ty_var`](Self::root_ty_var).
+    pub fn try_resolve_ty_var_with_root(
+        &self,
+        vid: TyVid,
+    ) -> (Result<Ty<'tcx>, ty::UniverseIndex>, TyVid) {
+        let (root, value) = self.inner.borrow_mut().type_variables().probe_with_root_vid(vid);
 
-        match self.inner.borrow_mut().type_variables().probe(vid) {
-            TypeVariableValue::Known { value } => Ok(value),
+        (
+            match value {
+                TypeVariableValue::Known { value } => Ok(self.shallow_resolve_non_recursive(value)),
+                TypeVariableValue::Unknown { universe } => Err(universe),
+            },
+            root,
+        )
+    }
+
+    /// If `TyVar(vid)` resolves to a type, return that type.
+    /// Else, return the universe index of `TyVar(vid)`.
+    pub fn try_resolve_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
+        let value = self.inner.borrow_mut().type_variables().probe(vid);
+
+        match value {
+            TypeVariableValue::Known { value } => Ok(self.shallow_resolve_non_recursive(value)),
             TypeVariableValue::Unknown { universe } => Err(universe),
         }
     }
 
     /// If `vid` resolves to a type, return that type. Otherwise return the root variable id for `vid`.
     pub fn shallow_resolve_ty_var_or_get_root(&self, vid: TyVid) -> Result<Ty<'tcx>, TyVid> {
-        let (root, value) = self.inner.borrow_mut().type_variables().probe_with_root_vid(vid);
+        let (res, root) = self.try_resolve_ty_var_with_root(vid);
+        res.map_err(|_| root)
+    }
 
+    /// Resolve a type variable to a type, if known.
+    /// Otherwise return a type with the root vid in it.
+    #[inline(always)]
+    fn shallow_resolve_ty_var_with_ty(&self, v: TyVid, ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
+        let (root_vid, value) = self.inner.borrow_mut().type_variables().inlined_probe_with_vid(v);
         match value {
-            TypeVariableValue::Known { value } => Ok(value),
-            TypeVariableValue::Unknown { universe: _ } => Err(root),
+            // Not entirely obvious:
+            // It's possible for a type variable to resolve to an int/float variable.
+            // When that happens, the int/float variable may itself already be resolved
+            // to an int/float, which is the type we actually want to return, not the variable.
+            //
+            // Only one step of this is ever possible. We never resolve type variables to other
+            // type variables. Therefore, we use [`shallow_resolve_non_recursive`](Self::shallow_resolve_non_recursive),
+            // to call into a version of shallow_resolve that only knows about int/float variables
+            // and panics (and notably: doesn't recurse again) when it sees type variables.
+            // That way the compiler knows the recursion can only ever go two deep, which helps performance.
+            //
+            // `ty` is a type that we may already have available, which represents the `TyVid`.
+            // In cases where we do, this can aid performance.
+            TypeVariableValue::Known { value } => self.shallow_resolve_non_recursive(value),
+            TypeVariableValue::Unknown { .. } => {
+                if root_vid == v
+                    && let Some(ty) = ty
+                {
+                    ty
+                } else {
+                    Ty::new_var(self.tcx, root_vid)
+                }
+            }
         }
     }
 
-    pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Infer(v) = *ty.kind() {
-            match v {
-                ty::TyVar(v) => {
-                    // Not entirely obvious: if `typ` is a type variable,
-                    // it can be resolved to an int/float variable, which
-                    // can then be recursively resolved, hence the
-                    // recursion. Note though that we prevent type
-                    // variables from unifying to other type variables
-                    // directly (though they may be embedded
-                    // structurally), and we prevent cycles in any case,
-                    // so this recursion should always be of very limited
-                    // depth.
-                    //
-                    // Note: if these two lines are combined into one we get
-                    // dynamic borrow errors on `self.inner`.
-                    let (root_vid, value) =
-                        self.inner.borrow_mut().type_variables().probe_with_root_vid(v);
-                    value.known().map_or_else(
-                        || if root_vid == v { ty } else { Ty::new_var(self.tcx, root_vid) },
-                        |t| self.shallow_resolve(t),
-                    )
+    /// Resolve a type variable to an integer type, if known.
+    /// Otherwise return a type with the root int vid in it.
+    ///
+    /// `ty` is a type that we may already have available, which represents the `IntVid`.
+    /// In cases where we do, this can aid performance.
+    #[inline(always)]
+    fn shallow_resolve_int_var_with_ty(&self, v: IntVid, ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
+        let (root, value) =
+            self.inner.borrow_mut().int_unification_table().inlined_probe_key_value(v);
+        match value {
+            ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
+            ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
+            ty::IntVarValue::Unknown => {
+                if root == v
+                    && let Some(ty) = ty
+                {
+                    ty
+                } else {
+                    Ty::new_int_var(self.tcx, root)
                 }
-
-                ty::IntVar(v) => {
-                    let (root, value) =
-                        self.inner.borrow_mut().int_unification_table().inlined_probe_key_value(v);
-                    match value {
-                        ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
-                        ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
-                        ty::IntVarValue::Unknown => {
-                            if root == v {
-                                ty
-                            } else {
-                                Ty::new_int_var(self.tcx, root)
-                            }
-                        }
-                    }
-                }
-
-                ty::FloatVar(v) => {
-                    let (root, value) = self
-                        .inner
-                        .borrow_mut()
-                        .float_unification_table()
-                        .inlined_probe_key_value(v);
-                    match value {
-                        ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
-                        ty::FloatVarValue::Unknown => {
-                            if root == v {
-                                ty
-                            } else {
-                                Ty::new_float_var(self.tcx, root)
-                            }
-                        }
-                    }
-                }
-
-                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => ty,
             }
+        }
+    }
+
+    /// Resolve a type variable to a float type, if known.
+    /// Otherwise return a type with the root float vid in it.
+    ///
+    /// `ty` is a type that we may already have available, which represents the `FloatVid`.
+    /// In cases where we do, this can aid performance.
+    #[inline(always)]
+    fn shallow_resolve_float_var_with_ty(&self, v: FloatVid, ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
+        let (root, value) =
+            self.inner.borrow_mut().float_unification_table().inlined_probe_key_value(v);
+        match value {
+            ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
+            ty::FloatVarValue::Unknown => {
+                if root == v
+                    && let Some(ty) = ty
+                {
+                    ty
+                } else {
+                    Ty::new_float_var(self.tcx, root)
+                }
+            }
+        }
+    }
+
+    /// Resolve a const variable to a const, if known.
+    /// Otherwise return a const with the root const vid in it.
+    ///
+    /// `ct` is const type that we may already have available, which represents the `ConstVid`.
+    /// In cases where we do, this can aid performance.
+    #[inline(always)]
+    fn shallow_resolve_const_var_with_ct(
+        &self,
+        v: ConstVid,
+        ct: Option<ty::Const<'tcx>>,
+    ) -> ty::Const<'tcx> {
+        let (root, value) =
+            self.inner.borrow_mut().const_unification_table().inlined_probe_key_value(v);
+        match value {
+            ConstVariableValue::Known { value } => value,
+            ConstVariableValue::Unknown { .. } => {
+                if root.vid == v
+                    && let Some(ct) = ct
+                {
+                    ct
+                } else {
+                    ty::Const::new_var(self.tcx, root.vid)
+                }
+            }
+        }
+    }
+
+    /// Shallow resolve a type/int infer var, panics on type variables.
+    ///
+    /// See docs on [`shallow_resolve_ty_var`](Self::shallow_resolve_ty_var) for why this exists.
+    #[inline(never)]
+    // Cold because the case in which a tyvar resolves to an intvar which resolves to a type is
+    // quite rare. It's way more common for `shallow_resolve_non_recursive` to return ty.
+    #[cold]
+    fn shallow_resolve_infer_non_recursive(&self, infer: InferTy, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match infer {
+            ty::TyVar(_) => {
+                unreachable!()
+            }
+            ty::IntVar(v) => self.shallow_resolve_int_var_with_ty(v, Some(ty)),
+            ty::FloatVar(v) => self.shallow_resolve_float_var_with_ty(v, Some(ty)),
+            ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => ty,
+        }
+    }
+
+    #[inline(always)]
+    fn shallow_resolve_infer(&self, infer: InferTy, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match infer {
+            ty::TyVar(v) => self.shallow_resolve_ty_var_with_ty(v, Some(ty)),
+            ty::IntVar(v) => self.shallow_resolve_int_var_with_ty(v, Some(ty)),
+            ty::FloatVar(v) => self.shallow_resolve_float_var_with_ty(v, Some(ty)),
+            ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => ty,
+        }
+    }
+
+    /// Shallow resolve a type, panics on type variables.
+    /// See [`shallow_resolve`](Self::shallow_resolve) for more docs.
+    ///
+    /// See docs on [`shallow_resolve_ty_var`](Self::shallow_resolve_ty_var) for why this alternate
+    /// version of shallow_resolve exists.
+    #[inline(always)]
+    fn shallow_resolve_non_recursive(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Infer(infer) = *ty.kind() {
+            self.shallow_resolve_infer_non_recursive(infer, ty)
         } else {
             ty
         }
     }
 
+    /// Resolve a type variable. Resolving means the following:
+    ///
+    /// - If a `Ty` is a rigid type (like, an integer, or some ADT), do nothing.
+    /// - If a `Ty` is a type infer variable, but has been equated with an actual type,
+    ///   return that type.
+    /// - If a `Ty` is an int or float infer variable, and has been equated with an integer
+    ///   or floating point type, return that type.
+    /// - If a `Ty` is any kind of infer variable that has been equated, but not yet with a rigid
+    ///   type, then this set of equated variables forms an equivalence class. One of the variables
+    ///   in that equivalent class is said to be the root variable, and resolving makes sure to
+    ///   consistently return this root variable. This is beneficial for caching.
+    ///   This behavior, of returning roots, changed in <https://github.com/rust-lang/rust/pull/158447>.
+    ///
+    /// Otherwise, resolving simply does nothing.
+    ///
+    /// The "shallow" part of the name refers to the fact that types may themselves contain more
+    /// type variables. e.g. The field types of a struct. `shallow_resolve` does not recurse into
+    /// these nested variables. If that's what you want, use [`deeply_resolve_ignoring_regions`](Self::deeply_resolve_ignoring_regions),
+    /// or better [`deeply_resolve`](rustc_type_ir::deeply_resolve), if you can, which *does* resolve regions.
+    pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Infer(infer) = *ty.kind() { self.shallow_resolve_infer(infer, ty) } else { ty }
+    }
+
+    /// See docs on [`shallow_resolve`](Self::shallow_resolve) for more explanation.
+    /// It's the same, but for consts.
     pub fn shallow_resolve_const(&self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(infer_ct) => match infer_ct {
-                InferConst::Var(vid) => {
-                    let (root, value) = self
-                        .inner
-                        .borrow_mut()
-                        .const_unification_table()
-                        .inlined_probe_key_value(vid);
-                    value.known().unwrap_or_else(|| {
-                        if root.vid == vid { ct } else { ty::Const::new_var(self.tcx, root.vid) }
-                    })
-                }
+                InferConst::Var(vid) => self.shallow_resolve_const_var_with_ct(vid, Some(ct)),
                 InferConst::Fresh(_) => ct,
             },
-
             ty::ConstKind::Param(_)
             | ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Placeholder(_)
@@ -1329,6 +1445,8 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// See docs on [`shallow_resolve`](Self::shallow_resolve) for more explanation.
+    /// It's the same, but for terms (types or consts).
     pub fn shallow_resolve_term(&self, term: ty::Term<'tcx>) -> ty::Term<'tcx> {
         match term.kind() {
             ty::TermKind::Ty(ty) => self.shallow_resolve(ty).into(),
@@ -1336,7 +1454,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
+    pub fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
     }
 
@@ -1365,38 +1483,36 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Resolves an int var to a rigid int type, if it was constrained to one,
     /// or else the root int var in the unification table.
-    pub fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
-        let mut inner = self.inner.borrow_mut();
-        let value = inner.int_unification_table().probe_value(vid);
-        match value {
-            ty::IntVarValue::IntType(ty) => Ty::new_int(self.tcx, ty),
-            ty::IntVarValue::UintType(ty) => Ty::new_uint(self.tcx, ty),
-            ty::IntVarValue::Unknown => {
-                Ty::new_int_var(self.tcx, inner.int_unification_table().find(vid))
-            }
-        }
+    pub fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
+        self.shallow_resolve_int_var_with_ty(vid, None)
     }
 
     /// Resolves a float var to a rigid int type, if it was constrained to one,
     /// or else the root float var in the unification table.
-    pub fn opportunistic_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
-        let mut inner = self.inner.borrow_mut();
-        let value = inner.float_unification_table().probe_value(vid);
-        match value {
-            ty::FloatVarValue::Known(ty) => Ty::new_float(self.tcx, ty),
-            ty::FloatVarValue::Unknown => {
-                Ty::new_float_var(self.tcx, inner.float_unification_table().find(vid))
-            }
-        }
+    pub fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
+        self.shallow_resolve_float_var_with_ty(vid, None)
     }
 
-    /// Where possible, replaces type/const variables in
-    /// `value` with their final value. Note that region variables
-    /// are unaffected. If a type/const variable has not been unified, it
-    /// is left as is. This is an idempotent operation that does
-    /// not affect inference state in any way and so you can do it
-    /// at will.
-    pub fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    /// Resolves a type var to a rigid type, if it was constrained to one,
+    /// or else the root type var in the unification table.
+    pub fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
+        self.shallow_resolve_ty_var_with_ty(vid, None)
+    }
+
+    /// Resolves a type var to a rigid type, if it was constrained to one,
+    /// or else the root type var in the unification table.
+    pub fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
+        self.shallow_resolve_const_var_with_ct(vid, None)
+    }
+
+    /// Where possible, replaces type/const variables in `value` with their final value.
+    /// If a type/const variable has not (yet) been unified, it is left as is.
+    ///
+    /// This is an idempotent operation that does not affect inference state in any way,
+    /// which means it's safe to call this function at will.
+    ///
+    /// Region variables are unaffected.
+    pub fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -1406,7 +1522,7 @@ impl<'tcx> InferCtxt<'tcx> {
         if !value.has_non_region_infer() {
             return value;
         }
-        let mut r = resolve::OpportunisticVarResolver::new(self);
+        let mut r = resolve::DeepResolverIgnoringRegions::new(self);
         value.fold_with(&mut r)
     }
 
@@ -1421,6 +1537,29 @@ impl<'tcx> InferCtxt<'tcx> {
         value.fold_with(&mut r)
     }
 
+    /// If `ConstVar(vid)` resolves to a const, return that const.
+    /// Else, return the universe index of `ConstVar(vid)`.
+    ///
+    /// Also return the root `ConstVid` of `vid`.
+    /// This is more efficient than calling [`try_resolve_const_var`](Self::try_resolve_const_var)
+    /// followed by [`root_const_var`](Self::root_const_var).
+    pub fn try_resolve_const_var_with_root(
+        &self,
+        vid: ty::ConstVid,
+    ) -> (Result<ty::Const<'tcx>, ty::UniverseIndex>, ty::ConstVid) {
+        let (root, value) =
+            self.inner.borrow_mut().const_unification_table().inlined_probe_key_value(vid);
+        (
+            match value {
+                ConstVariableValue::Known { value } => Ok(value),
+                ConstVariableValue::Unknown { origin: _, universe } => Err(universe),
+            },
+            root.vid,
+        )
+    }
+
+    /// If `ConstVar(vid)` resolves to a const, return that const.
+    /// Else, return the universe index of `ConstVar(vid)`.
     pub fn try_resolve_const_var(
         &self,
         vid: ty::ConstVid,

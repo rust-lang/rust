@@ -218,7 +218,7 @@ fn fulfill_implication<'tcx>(
 
     // Now resolve the *generic parameters* we built for the target earlier, replacing
     // the inference variables inside with whatever we got from fulfillment.
-    Ok(infcx.resolve_vars_if_possible(target_args))
+    Ok(infcx.deeply_resolve_ignoring_regions(target_args))
 }
 
 pub(super) fn specialization_enabled_in(tcx: TyCtxt<'_>, _: LocalCrate) -> bool {
