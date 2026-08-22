@@ -814,7 +814,7 @@ where
     let len_original = buf.len();
     // SAFETY: invalid UTF-8 discarded before return or unwind
     let buf_vec = unsafe { buf.as_mut_vec() };
-    let mut g = DropGuard::new((len_original, buf_vec), |(len, buf)| unsafe {
+    let mut g = DropGuard::with((len_original, buf_vec), |(len, buf)| unsafe {
         buf.set_len(len);
     });
     let ret = f(g.1);
