@@ -31,7 +31,7 @@ use crate::string::String;
 use crate::sync::Arc;
 use crate::vec::Vec;
 
-/// An owned, growable string of well-formed WTF-8 data.
+/// An owned, growable string of [well-formed WTF-8](https://wtf-8.codeberg.page/#well-formed) data.
 ///
 /// Similar to `String`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
@@ -104,8 +104,9 @@ impl Wtf8Buf {
 
     /// Creates a WTF-8 string from a WTF-8 byte vec.
     ///
-    /// Since the byte vec is not checked for valid WTF-8, this function is
-    /// marked unsafe.
+    /// # Safety
+    ///
+    /// `value` must contain [well-formed WTF-8](https://wtf-8.codeberg.page/#well-formed).
     #[inline]
     pub unsafe fn from_bytes_unchecked(value: Vec<u8>) -> Wtf8Buf {
         Wtf8Buf { bytes: value, is_known_utf8: false }
@@ -147,12 +148,15 @@ impl Wtf8Buf {
                 Ok(ch) => string.push_char(ch),
                 Err(surrogate) => {
                     let surrogate = surrogate.unpaired_surrogate();
-                    // Surrogates are known to be in the code point range.
+                    // SAFETY: Surrogates are known to be in the code point range.
                     let code_point = unsafe { CodePoint::from_u32_unchecked(surrogate as u32) };
                     // The string will now contain an unpaired surrogate.
                     string.is_known_utf8 = false;
-                    // Skip the WTF-8 concatenation check,
-                    // surrogate pairs are already decoded by decode_utf16
+                    // SAFETY: `decode_utf16` reports only unpaired surrogates here,
+                    // so this code point cannot form a surrogate pair with the
+                    // preceding and succeeding contents. The existing buffer is
+                    // well-formed WTF-8, and appending this encoded surrogate
+                    // preserves that invariant.
                     unsafe {
                         string.push_code_point_unchecked(code_point);
                     }
@@ -165,6 +169,14 @@ impl Wtf8Buf {
     /// Appends the given `char` to the end of this string.
     /// This does **not** include the WTF-8 concatenation check or `is_known_utf8` check.
     /// Copied from String::push.
+    ///
+    /// # Safety
+    ///
+    /// `self` must contain [well-formed WTF-8](https://wtf-8.codeberg.page/#well-formed),
+    /// and appending `code_point` must preserve that invariant. In particular,
+    /// `code_point` must not be a trailing surrogate if `self` ends with a leading surrogate.
+    ///
+    /// If `self.is_known_utf8` is true, `code_point` must not be a surrogate.
     unsafe fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
         let mut bytes = [0; char::MAX_LEN_UTF8];
         let bytes = encode_utf8_raw(code_point.to_u32(), &mut bytes);
@@ -173,14 +185,13 @@ impl Wtf8Buf {
 
     #[inline]
     pub fn as_slice(&self) -> &Wtf8 {
+        // SAFETY: `self` maintains `bytes` as well-formed WTF-8.
         unsafe { Wtf8::from_bytes_unchecked(&self.bytes) }
     }
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut Wtf8 {
-        // Safety: `Wtf8` doesn't expose any way to mutate the bytes that would
-        // cause them to change from well-formed UTF-8 to ill-formed UTF-8,
-        // which would break the assumptions of the `is_known_utf8` field.
+        // SAFETY: `self` maintains `bytes` as well-formed WTF-8.
         unsafe { Wtf8::from_mut_bytes_unchecked(&mut self.bytes) }
     }
 
@@ -262,6 +273,7 @@ impl Wtf8Buf {
 
     #[inline]
     pub fn leak<'a>(self) -> &'a mut Wtf8 {
+        // SAFETY: `self` maintains `bytes` as well-formed WTF-8.
         unsafe { Wtf8::from_mut_bytes_unchecked(self.bytes.leak()) }
     }
 
@@ -336,7 +348,7 @@ impl Wtf8Buf {
             self.is_known_utf8 = false;
         }
 
-        // No newly paired surrogates at the boundary.
+        // SAFETY: We have checked that no newly paired surrogates at the boundary.
         unsafe { self.push_code_point_unchecked(code_point) }
     }
 
@@ -371,6 +383,7 @@ impl Wtf8Buf {
     /// the original WTF-8 string is returned instead.
     pub fn into_string(self) -> Result<String, Wtf8Buf> {
         if self.is_known_utf8 || self.next_surrogate(0).is_none() {
+            // SAFETY: We have checked that `self.bytes` contains valid UTF-8.
             Ok(unsafe { String::from_utf8_unchecked(self.bytes) })
         } else {
             Err(self)
@@ -392,18 +405,23 @@ impl Wtf8Buf {
                 self.bytes[surrogate_pos..pos].copy_from_slice("\u{FFFD}".as_bytes());
             }
         }
+        // SAFETY: Now `self.bytes` contains valid UTF-8.
         unsafe { String::from_utf8_unchecked(self.bytes) }
     }
 
     /// Converts this `Wtf8Buf` into a boxed `Wtf8`.
     #[inline]
     pub fn into_box(self) -> Box<Wtf8> {
-        // SAFETY: relies on `Wtf8` being `repr(transparent)`.
+        // SAFETY: `Wtf8` is a transparent wrapper around `[u8]`, and
+        // `self.bytes.into_boxed_slice()` returns a `Box<[u8]>`.
+        // Therefore, transmuting `Box<[u8]>` to `Box<Wtf8>` is safe.
         unsafe { mem::transmute(self.bytes.into_boxed_slice()) }
     }
 
     /// Converts a `Box<Wtf8>` into a `Wtf8Buf`.
     pub fn from_box(boxed: Box<Wtf8>) -> Wtf8Buf {
+        // SAFETY: `Wtf8` is a transparent wrapper around `[u8]`, and `boxed` is
+        // a `Box<Wtf8>`. Therefore, transmuting `Box<Wtf8>` to `Box<[u8]>` is safe.
         let bytes: Box<[u8]> = unsafe { mem::transmute(boxed) };
         Wtf8Buf { bytes: bytes.into_vec(), is_known_utf8: false }
     }
@@ -411,6 +429,13 @@ impl Wtf8Buf {
     /// Provides plumbing to core `Vec::extend_from_slice`.
     /// More well behaving alternative to allowing outer types
     /// full mutable access to the core `Vec`.
+    ///
+    /// # Safety
+    ///
+    /// `self` and `other` must contain [well-formed WTF-8](https://wtf-8.codeberg.page/#well-formed),
+    /// and appending `other` to `self` must preserve that invariant.
+    /// In particular, `self` must not end with a leading surrogate,
+    /// or `other` must not start with a trailing surrogate.
     #[inline]
     pub unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
         self.bytes.extend_from_slice(other);
@@ -468,6 +493,8 @@ pub(super) fn to_owned(slice: &Wtf8) -> Wtf8Buf {
 /// This only copies the data if necessary (if it contains any surrogate).
 pub(super) fn to_string_lossy(slice: &Wtf8) -> Cow<'_, str> {
     let Some((surrogate_pos, _)) = slice.next_surrogate(0) else {
+        // SAFETY: `next_surrogate` found no surrogate, so the well-formed WTF-8
+        // bytes are valid UTF-8.
         return Cow::Borrowed(unsafe { str::from_utf8_unchecked(slice.as_bytes()) });
     };
     let wtf8_bytes = slice.as_bytes();
@@ -484,6 +511,8 @@ pub(super) fn to_string_lossy(slice: &Wtf8) -> Cow<'_, str> {
             }
             None => {
                 utf8_bytes.extend_from_slice(&wtf8_bytes[pos..]);
+                // SAFETY: Every surrogate was replaced with `"\u{FFFD}"`,
+                // and the remaining bytes are valid UTF-8, so `utf8_bytes` is valid UTF-8.
                 return Cow::Owned(unsafe { String::from_utf8_unchecked(utf8_bytes) });
             }
         }
@@ -516,12 +545,16 @@ impl Wtf8 {
     #[rustc_allow_incoherent_impl]
     pub fn into_box(&self) -> Box<Wtf8> {
         let boxed: Box<[u8]> = self.as_bytes().into();
+        // SAFETY: `Wtf8` is a transparent wrapper around `[u8]`, and `boxed` is
+        // a `Box<[u8]>`. Therefore, transmuting `Box<[u8]>` to `Box<Wtf8>` is safe.
         unsafe { mem::transmute(boxed) }
     }
 
     #[rustc_allow_incoherent_impl]
     pub fn empty_box() -> Box<Wtf8> {
         let boxed: Box<[u8]> = Default::default();
+        // SAFETY: `Wtf8` is a transparent wrapper around `[u8]`, and `boxed` is
+        // an empty `Box<[u8]>`. Therefore, transmuting it to `Box<Wtf8>` is safe.
         unsafe { mem::transmute(boxed) }
     }
 
@@ -529,12 +562,14 @@ impl Wtf8 {
     #[rustc_allow_incoherent_impl]
     pub fn into_arc(&self) -> Arc<Wtf8> {
         let arc: Arc<[u8]> = Arc::from(self.as_bytes());
+        // SAFETY: `Wtf8` is a transparent wrapper around `[u8]`.
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Wtf8) }
     }
 
     #[rustc_allow_incoherent_impl]
     pub fn into_rc(&self) -> Rc<Wtf8> {
         let rc: Rc<[u8]> = Rc::from(self.as_bytes());
+        // SAFETY: `Wtf8` is a transparent wrapper around `[u8]`.
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Wtf8) }
     }
 
@@ -554,6 +589,7 @@ impl Wtf8 {
 #[inline]
 fn decode_surrogate_pair(lead: u16, trail: u16) -> char {
     let code_point = 0x10000 + ((((lead - 0xD800) as u32) << 10) | (trail - 0xDC00) as u32);
+    // SAFETY: The computed `code_point` is in 0x10000..=0x10FFFF and is not a surrogate.
     unsafe { char::from_u32_unchecked(code_point) }
 }
 
