@@ -268,7 +268,13 @@ impl<'a> CharIndices<'a> {
     #[must_use]
     #[stable(feature = "char_indices_offset", since = "1.82.0")]
     pub fn offset(&self) -> usize {
-        self.front_offset
+        let offset = self.front_offset;
+
+        // SAFETY: `front_offset` starts at zero and only advances within the original `str`,
+        // whose byte length cannot exceed `isize::MAX`.
+        unsafe { crate::intrinsics::assume(offset <= isize::MAX as usize) }
+
+        offset
     }
 }
 
