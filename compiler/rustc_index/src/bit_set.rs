@@ -147,12 +147,18 @@ impl<T: Idx> DenseBitSet<T> {
     /// Insert `elem`. Returns whether the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
-        assert!(
-            elem.index() < self.domain_size,
-            "inserting element at index {} but domain size is {}",
-            elem.index(),
-            self.domain_size,
-        );
+        let i = elem.index();
+        let domain_size = self.domain_size;
+
+        if i >= domain_size {
+            #[cold]
+            #[inline(never)]
+            fn insert_fail(index: usize, domain_size: usize) {
+                panic!("inserting element at index {} but domain size is {}", index, domain_size,);
+            }
+            insert_fail(i, domain_size)
+        }
+
         let (word_index, mask) = word_index_and_mask(elem);
         let word_ref = &mut self.words[word_index];
         let word = *word_ref;
