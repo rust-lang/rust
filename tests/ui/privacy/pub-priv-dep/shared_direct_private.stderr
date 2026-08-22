@@ -1,5 +1,5 @@
 error: type `Shared` from private dependency 'shared' in public interface
-  --> $DIR/shared_direct_private.rs:25:24
+  --> $DIR/shared_direct_private.rs:27:24
    |
 LL | pub fn leaks_priv() -> shared::Shared {
    |                        ^^^^^^^^^^^^^^
