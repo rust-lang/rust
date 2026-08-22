@@ -411,17 +411,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let expected_inner = match unop {
-            hir::UnOp::Not | hir::UnOp::Neg => expected,
-            hir::UnOp::Deref => NoExpectation,
+        // Help inference out with negative numeric literals by propagating our type expectation.
+        // They only possible `Not` and `Neg` impls for them have the same input and output types,
+        // and inferring numeric variables early gives us better diagnostics in `check_user_unop`.
+        let expected_inner = if unop == hir::UnOp::Neg
+            && let hir::ExprKind::Lit(lit) = oprnd.kind
+            && matches!(lit.node, ast::LitKind::Int(..) | ast::LitKind::Float(..))
+        {
+            expected
+        } else {
+            NoExpectation
         };
+
+        // TODO: clean this up. the hack needs to see inference state *before* typecking `oprnd` to
+        // avoid accidentally allowing new `match`es :(
+        let opt_hack_expected_ty = match unop {
+            hir::UnOp::Deref => None,
+            hir::UnOp::Not | hir::UnOp::Neg => {
+                match oprnd.kind {
+                    // Blocks will always force coercions if the expectation is `ExpectHasType(..)`.
+                    ExprKind::Block(..) => expected.only_has_type(self),
+                    // `match`es won't force coercions to `()` or to uninferred type variables.
+                    ExprKind::Match(..) => expected
+                        .try_structurally_resolve_and_adjust_for_branches(self)
+                        .only_has_type(self)
+                        .filter(|&ety| ety != tcx.types.unit),
+                    // Some other expression kinds would also force a coercion to `expected`, but
+                    // we're limiting the hack to the most common cases of breakage.
+                    _ => None,
+                }
+            }
+        };
+
         let oprnd_t = self.check_expr_with_expectation(oprnd, expected_inner);
 
         if let Err(guar) = oprnd_t.error_reported() {
             return Ty::new_error(tcx, guar);
         }
 
-        let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+        // HACK(TODO: lint name): Previously, we always propagated `expected` to the operand for
+        // negation operators. This was wrong, but it helped inference in some cases. To reduce
+        // breakage from not doing that anymore, try using the expected result type for the operand
+        // type if we can't infer the operand type and the operand is a block or `match` that would
+        // previously have used the expected result type as a coercion target.
+        // TODO: clean this up and probably also pull it out into a helper function
+        let oprnd_t = self.resolve_vars_with_obligations(oprnd_t);
+        let oprnd_t = if !oprnd_t.is_ty_var() {
+            oprnd_t
+        } else if let Some(expected_ty) = opt_hack_expected_ty {
+            // TODO: commit_if_ok the sup if we don't want to preserve occurs check errors
+            self.demand_suptype(expr.span, expected_ty, oprnd_t);
+            // TODO: fcw if this resolves
+            self.structurally_resolve_type(expr.span, oprnd_t)
+        } else {
+            // FIXME(#26830): We don't need to error here.
+            // TODO: explain: erroring here keeps the hack from from affecting otherwise-fine code
+            self.type_must_be_known_at_this_point(expr.span, oprnd_t)
+        };
+
         match unop {
             hir::UnOp::Deref => self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
                 let mut err =
@@ -433,13 +480,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, err.emit())
             }),
             hir::UnOp::Not => {
-                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
-                // If it's builtin, we can reuse the type, this helps inference.
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected);
+                // If it's builtin, we can reuse the operand type, this helps inference.
                 if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
             }
             hir::UnOp::Neg => {
-                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
-                // If it's builtin, we can reuse the type, this helps inference.
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected);
+                // If it's builtin, we can reuse the operand type, this helps inference.
                 if oprnd_t.is_numeric() { oprnd_t } else { result }
             }
         }
