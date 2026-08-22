@@ -349,6 +349,13 @@ pub fn current_os_id() -> Option<u64> {
     // The OS thread ID is used rather than `pthread_self` so as to match what will be displayed
     // for process inspection (debuggers, trace, `top`, etc.).
     cfg_select! {
+        all(target_os = "linux", target_env = "musl") => {
+            // Under fat LTO, weak-linking `gettid` can turn strong declarations weak.
+            // musl provides `gettid`, so call it directly. See #154439.
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pid_t = unsafe { libc::gettid() };
+            Some(id as u64)
+        }
         // Most platforms have a function returning a `pid_t` or int, which is an `i32`.
         any(target_os = "android", target_os = "linux") => {
             use crate::sys::pal::weak::syscall;
