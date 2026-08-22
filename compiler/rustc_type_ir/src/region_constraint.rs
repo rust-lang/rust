@@ -481,32 +481,46 @@ fn normalize_equated_region_vars<Infcx: InferCtxtLike<Interner = I>, I: Interner
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
 ) -> RegionConstraint<I> {
-    use RegionConstraint::*;
+    // Every `And` in the `Or` is a separate branch, so regions equated inside one of
+    // them may only be replaced within that branch.
+    let or_constraint = Or(constraint
+        .or_constraint
+        .0
+        .into_iter()
+        .map(|and| normalize_equated_region_vars_in_and(infcx, and, u))
+        .collect());
 
-    match constraint {
-        Ambiguity | RegionOutlives(..) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
-            constraint
-        }
-        Or(constraints) => Or(constraints
-            .into_iter()
-            .map(|constraint| normalize_equated_region_vars(infcx, constraint, u))
-            .collect()),
-        And(constraints) => {
-            let constraint = And(constraints
-                .into_iter()
-                .map(|constraint| normalize_equated_region_vars(infcx, constraint, u))
-                .collect());
+    // The outer `And` is conjoined with every branch, so its replacements apply to the
+    // whole constraint.
+    let replacements = compute_equated_region_var_replacements(
+        infcx,
+        &conjunctive_region_outlives(&constraint.and_constraint),
+        u,
+    );
+    let constraint = RegionConstraint { and_constraint: constraint.and_constraint, or_constraint };
+    let constraint = if replacements.is_empty() {
+        constraint
+    } else {
+        constraint.fold_with(&mut EquatedRegionVarReplacer { cx: infcx.cx(), replacements })
+    };
 
-            let mut region_outlives = vec![];
-            collect_conjunctive_region_outlives(&constraint, &mut region_outlives);
-            let replacements = compute_equated_region_var_replacements(infcx, &region_outlives, u);
+    // Replacing regions can make previously distinct leaves equal, so rebuild the
+    // canonical form instead of handing back a constraint with duplicates in it.
+    RegionConstraint::new_from_or(constraint.splatted_and_constraints())
+}
 
-            if replacements.is_empty() {
-                constraint
-            } else {
-                constraint.fold_with(&mut EquatedRegionVarReplacer { cx: infcx.cx(), replacements })
-            }
-        }
+fn normalize_equated_region_vars_in_and<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    and: And<I>,
+    u: UniverseIndex,
+) -> And<I> {
+    let replacements =
+        compute_equated_region_var_replacements(infcx, &conjunctive_region_outlives(&and), u);
+
+    if replacements.is_empty() {
+        and
+    } else {
+        And::new(and.fold_with(&mut EquatedRegionVarReplacer { cx: infcx.cx(), replacements }).0)
     }
 }
 
@@ -572,21 +586,16 @@ where
     replacements
 }
 
-fn collect_conjunctive_region_outlives<I: Interner>(
-    constraint: &RegionConstraint<I>,
-    out: &mut Vec<(Region<I>, Region<I>)>,
-) {
-    use RegionConstraint::*;
+fn conjunctive_region_outlives<I: Interner>(and: &And<I>) -> Vec<(Region<I>, Region<I>)> {
+    use LeafRegionConstraint::*;
 
-    match constraint {
-        RegionOutlives(r1, r2) => out.push((*r1, *r2)),
-        And(constraints) => {
-            for constraint in constraints.iter() {
-                collect_conjunctive_region_outlives(constraint, out);
-            }
-        }
-        Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) | Or(..) => {}
-    }
+    and.0
+        .iter()
+        .filter_map(|c| match c {
+            RegionOutlives(r1, r2, ()) => Some((*r1, *r2)),
+            Ambiguity(_) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => None,
+        })
+        .collect()
 }
 
 fn is_current_universe_region_var<Infcx: InferCtxtLike<Interner = I>, I: Interner>(

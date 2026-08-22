@@ -2,7 +2,7 @@ use tracing::{debug, instrument};
 
 use self::combine::{PredicateEmittingRelation, super_combine_consts, super_combine_tys};
 use crate::data_structures::DelayedSet;
-use crate::region_constraint::RegionConstraint;
+use crate::region_constraint::{LeafRegionConstraint, RegionConstraint};
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
 use crate::solve::{Goal, VisibleForLeakCheck};
@@ -240,22 +240,23 @@ where
     #[instrument(skip(self), level = "trace")]
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if self.cx().assumptions_on_binders() {
+            let region_outlives =
+                |a, b| RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b, ()));
+
             match self.ambient_variance {
                 ty::Bivariant => {
                     unreachable!("Expected bivariance to be handled in relate_with_variance")
                 }
                 _ if a == b => return Ok(a),
-                ty::Covariant => self
-                    .infcx
-                    .register_solver_region_constraint(RegionConstraint::RegionOutlives(a, b)),
-                ty::Contravariant => self
-                    .infcx
-                    .register_solver_region_constraint(RegionConstraint::RegionOutlives(b, a)),
+                ty::Covariant => {
+                    self.infcx.register_solver_region_constraint(region_outlives(a, b), self.span)
+                }
+                ty::Contravariant => {
+                    self.infcx.register_solver_region_constraint(region_outlives(b, a), self.span)
+                }
                 ty::Invariant => {
-                    self.infcx
-                        .register_solver_region_constraint(RegionConstraint::RegionOutlives(a, b));
-                    self.infcx
-                        .register_solver_region_constraint(RegionConstraint::RegionOutlives(b, a));
+                    self.infcx.register_solver_region_constraint(region_outlives(a, b), self.span);
+                    self.infcx.register_solver_region_constraint(region_outlives(b, a), self.span);
                 }
             }
         } else {
