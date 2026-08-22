@@ -90,13 +90,13 @@ pub enum TypeKind {
     /// Unions.
     Union,
     /// Primitive boolean type.
-    Bool(Bool),
+    Bool,
     /// Primitive character type.
-    Char(Char),
+    Char,
     /// Primitive signed and unsigned integer type.
-    Int(Int),
+    Int,
     /// Primitive floating-point type.
-    Float(Float),
+    Float,
     /// String slice type.
     Str(Str),
     /// References.
@@ -197,42 +197,6 @@ pub struct GenericType {
 pub struct Const {
     /// The const's type.
     pub ty: TypeId,
-}
-
-/// Compile-time type information about `bool`.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Bool {
-    // No additional information to provide for now.
-}
-
-/// Compile-time type information about `char`.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Char {
-    // No additional information to provide for now.
-}
-
-/// Compile-time type information about signed and unsigned integer types.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Int {
-    /// The bit width of the signed integer type.
-    pub bits: u32,
-    /// Whether the integer type is signed.
-    pub signed: bool,
-}
-
-/// Compile-time type information about floating-point types.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Float {
-    /// The bit width of the floating-point type.
-    pub bits: u32,
 }
 
 /// Compile-time type information about string slice types.
