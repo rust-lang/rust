@@ -305,6 +305,84 @@ impl Command {
         self.get_program_cstr().count_bytes() + 1
     }
 
+    /// An internal helper function that replicates the behavior of execvpe for all unix
+    /// platforms. Not all unix platforms support `execvpe` syscall, so this needs to be
+    /// implemented manually through `execve`. Thix exec function is called in the context
+    /// of the current process; all forking must be done outside of this function (e.g.
+    /// `Command::exec` does not fork, `Command::spawn` does fork).
+    unsafe fn execvpe(
+        &self,
+        maybe_envp: Option<&CStringArray>,
+        paths: Option<&[u8]>,
+        buf: &mut [crate::mem::MaybeUninit<u8>],
+    ) -> Result<(), io::Error> {
+        let file = self.get_program_cstr();
+        let file_as_bytes = file.to_bytes_with_nul();
+        let argv = self.get_argv();
+        let envp_ptr =
+            maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(unsafe { *sys::env::environ() });
+        let paths = paths.unwrap_or(self.get_default_path().as_encoded_bytes());
+
+        // Path searching does not occur when our file contains a `/`
+        if file_as_bytes.contains(&b'/') {
+            libc::execve(file.as_ptr(), argv.as_ptr(), envp_ptr);
+        } else {
+            let mut got_perm_denied = false;
+            for path in paths.split(|b| *b == b':') {
+                let path_len = path.len();
+
+                // Copy path to execute in the pre-allocated buffer accordingly
+                // Use the current path entry, plus a '/' if nonempty, plus the file to
+                // execute.
+                if path_len != 0 {
+                    buf[0..path_len].write_copy_of_slice(path);
+                    if path[path_len - 1] != b'/' {
+                        buf[path_len].write(b'/');
+                        buf[path_len + 1..path_len + 1 + file_as_bytes.len()]
+                            .write_copy_of_slice(file_as_bytes);
+                    } else {
+                        buf[path_len..path_len + file_as_bytes.len()]
+                            .write_copy_of_slice(file_as_bytes);
+                    }
+                } else {
+                    buf[0..file_as_bytes.len()].write_copy_of_slice(file_as_bytes);
+                }
+
+                // Try executing on path
+                libc::execve(buf.as_ptr().cast(), argv.as_ptr(), envp_ptr);
+                let err = crate::sys::io::errno();
+
+                match err {
+                    // Record that we got a 'Permission Denied' error in the event that if we
+                    // find no executable to use, we should report that there was a usable
+                    // executable but we were denied access to it.
+                    libc::EACCES => got_perm_denied = true,
+                    // Try the next path.
+                    libc::ENOENT
+                    | libc::ESTALE
+                    | libc::ENOTDIR
+                    | libc::ENODEV
+                    | libc::ETIMEDOUT => {}
+                    // Any other error returned by execve should be returned. For example,
+                    // ENAMETOOLONG is an error that is returned due to security risks on
+                    // executing the wrong program through setting a very long path
+                    _ => return Err(io::Error::from_raw_os_error(err)),
+                }
+            }
+
+            // At least one failure was due to lack of permissions, so we should
+            // report that failure first
+            if got_perm_denied {
+                return Err(io::Error::from_raw_os_error(libc::EACCES));
+            }
+
+            // No paths were executable
+            return Err(io::Error::from_raw_os_error(libc::ENOENT));
+        }
+
+        Ok(())
+    }
+
     // And at this point we've reached a special time in the life of the
     // child. The child must now be considered hamstrung and unable to
     // do anything other than syscalls really. Consider the following
@@ -447,69 +525,7 @@ impl Command {
             callback()?;
         }
 
-        let file = self.get_program_cstr();
-        let file_as_bytes = file.to_bytes_with_nul();
-        let argv = self.get_argv();
-        let envp_ptr =
-            maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(unsafe { *sys::env::environ() });
-        let paths = paths.unwrap_or(self.get_default_path().as_encoded_bytes());
-
-        // Path searching does not occur when our file contains a `/`
-        if file_as_bytes.contains(&b'/') {
-            libc::execve(file.as_ptr(), argv.as_ptr(), envp_ptr);
-        } else {
-            let mut got_perm_denied = false;
-            for path in paths.split(|b| *b == b':') {
-                let path_len = path.len();
-
-                // Copy path to execute in the pre-allocated buffer accordingly
-                // Use the current path entry, plus a '/' if nonempty, plus the file to
-                // execute.
-                if path_len != 0 {
-                    buf[0..path_len].write_copy_of_slice(path);
-                    if path[path_len - 1] != b'/' {
-                        buf[path_len].write(b'/');
-                        buf[path_len + 1..path_len + 1 + file_as_bytes.len()]
-                            .write_copy_of_slice(file_as_bytes);
-                    } else {
-                        buf[path_len..path_len + file_as_bytes.len()]
-                            .write_copy_of_slice(file_as_bytes);
-                    }
-                } else {
-                    buf[0..file_as_bytes.len()].write_copy_of_slice(file_as_bytes);
-                }
-
-                // Try executing on path
-                libc::execve(buf.as_ptr().cast(), argv.as_ptr(), envp_ptr);
-                let err = crate::sys::io::errno();
-
-                match err {
-                    // Record that we got a 'Permission Denied' error in the event that if we
-                    // find no executable to use, we should report that there was a usable
-                    // executable but we were denied access to it.
-                    libc::EACCES => got_perm_denied = true,
-                    // Try the next path.
-                    libc::ENOENT
-                    | libc::ESTALE
-                    | libc::ENOTDIR
-                    | libc::ENODEV
-                    | libc::ETIMEDOUT => {}
-                    // Any other error returned by execve should be returned. For example,
-                    // ENAMETOOLONG is an error that is returned due to security risks on
-                    // executing the wrong program through setting a very long path
-                    _ => return Err(io::Error::from_raw_os_error(err)),
-                }
-            }
-
-            // At least one failure was due to lack of permissions, so we should
-            // report that failure first
-            if got_perm_denied {
-                return Err(io::Error::from_raw_os_error(libc::EACCES));
-            }
-
-            // No paths were executable
-            return Err(io::Error::from_raw_os_error(libc::ENOENT));
-        }
+        self.execvpe(maybe_envp, paths, buf)?;
 
         Err(io::Error::last_os_error())
     }
