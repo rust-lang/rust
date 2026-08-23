@@ -349,7 +349,7 @@ impl Range {
     }
 }
 
-fn deconstruct(c: char) -> (u16, u16) {
+fn deconstruct(c: char) -> (u32, u16) {
     let c = c as u32;
     let plane = (c >> 16) as u16;
     let low = c as u16;
@@ -391,7 +391,7 @@ fn lookup(input: char, l1_lut: &L1Lut) -> Option<[char; 3]> {
         }
     };
 
-    if let Ok(idx) = l2_lut.multis.binary_search_by_key(&input_low, |&(p, _)| p) {
+    if let Ok(idx) = l2_lut.multis.binary_search_by_key(&input_low as u32, |&(p, _)| p) {
         // SAFETY: binary search guarantees that the index is in bounds.
         let &(_, output_lows) = unsafe { l2_lut.multis.get_unchecked(idx) };
         // SAFETY: Table data are guaranteed to be valid Unicode.
