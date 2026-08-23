@@ -45,9 +45,9 @@ use rustc_interface::util::DummyCodegenBackend;
 use rustc_log::tracing::debug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
-use rustc_structures::CrateType;
-use rustc_session::config::{ ErrorOutputType, OptLevel};
+use rustc_session::config::{ErrorOutputType, OptLevel};
 use rustc_session::{EarlyDiagCtxt, Session};
+use rustc_structures::CrateType;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 

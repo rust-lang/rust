@@ -6,7 +6,8 @@ use miri::{InterpResult, interp_ok};
 use rustc_middle::mir::interpret::AllocId;
 
 use crate::debugger::{
-    BreakpointSetResult, CommandResult, DebuggerCommand, PrirodaContext, StepResult,
+    BreakpointSetResult, CommandResult, DebuggerCommand, ExecutionResult, PrirodaContext,
+    StepResult,
 };
 
 pub(crate) struct Cli;
@@ -46,12 +47,23 @@ impl Cli {
         session: &PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx, bool> {
         match command_res {
-            CommandResult::ExecutionStopped(result) => {
-                if matches!(result, StepResult::Breakpoint) {
-                    println!("Hit breakpoint");
-                }
-                Self::print_location(session);
-            }
+            CommandResult::Execution(result) =>
+                match result {
+                    ExecutionResult::Stopped(step) =>
+                        match step {
+                            StepResult::Step => Self::print_location(session),
+                            StepResult::Breakpoint => {
+                                println!("Hit breakpoint");
+                                Self::print_location(session);
+                            }
+                            StepResult::Exception { ref message } =>
+                                Self::print_exception_stop(message, session),
+                        },
+                    ExecutionResult::ProgramExited { code } => {
+                        println!("program finished with exit code {code}");
+                    }
+                    ExecutionResult::Rejected { message } => println!("{message}"),
+                },
             CommandResult::BreakpointResult(res) =>
                 match res {
                     BreakpointSetResult::Added(path, line) => {
@@ -107,6 +119,11 @@ impl Cli {
         interp_ok(true)
     }
 
+    fn print_exception_stop<'tcx>(message: &str, session: &PrirodaContext<'tcx>) {
+        println!("program stopped with error: {message}");
+        Self::print_location(session);
+    }
+
     fn parse_command(&self, input: &str) -> Option<DebuggerCommand> {
         // TODO: look at the Spanned crate for how to easily produce errors in
         // rustc's style while manually parsing text input.
@@ -121,6 +138,8 @@ impl Cli {
             // FIXME: empty line should repats last command user typed not exeute specific command.
             "" | "si" | "stepi" => Some(DebuggerCommand::StepI),
             "s" | "step" => Some(DebuggerCommand::Step),
+            "n" | "next" => Some(DebuggerCommand::Next),
+            "out" | "stepout" => Some(DebuggerCommand::StepOut),
             "q" | "quit" => Some(DebuggerCommand::TerminateSession),
             "c" | "continue" => Some(DebuggerCommand::Continue),
             "b" | "break" => self.parse_breakpoint(args),
