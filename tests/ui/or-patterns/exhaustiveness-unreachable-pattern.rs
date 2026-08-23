@@ -51,10 +51,12 @@ fn main() {
 
     match (0,) {
         (1 | 1,) => {} //~ ERROR unreachable
+        //~^ ERROR useless pattern
         _ => {}
     }
     match 0 {
         (0 | 1) | 1 => {} //~ ERROR unreachable
+        //~^ ERROR useless pattern
         _ => {}
     }
     match 0 {
@@ -63,25 +65,28 @@ fn main() {
         0 | (0 | 0) => {}
         //~^ ERROR unreachable
         //~| ERROR unreachable
+        //~| ERROR useless pattern
         _ => {}
     }
     match None {
         // There is only one error that correctly points to the whole subpattern
-        Some(0) |
+        Some(0) | //~ ERROR useless pattern
             Some( //~ ERROR unreachable
                 0 | 0) => {}
         _ => {}
     }
     match [0; 2] {
-        [0
+        [0 //~ ERROR useless pattern
             | 0 //~ ERROR unreachable
-        , 0
+        , 0 //~ ERROR useless pattern
             | 0] => {} //~ ERROR unreachable
         _ => {}
     }
     match (true, 0) {
         (true, 0 | 0) => {} //~ ERROR unreachable
+        //~^ ERROR useless pattern
         (_, 0 | 0) => {} //~ ERROR unreachable
+        //~^ ERROR useless pattern
         _ => {}
     }
     match &[][..] {
@@ -168,6 +173,7 @@ fn main() {
 
 fn unreachable_in_param((_ | (_, _)): (bool, bool)) {}
 //~^ ERROR unreachable
+//~| ERROR useless pattern
 
 fn unreachable_in_binding() {
     let bool_pair = (true, true);
@@ -175,8 +181,10 @@ fn unreachable_in_binding() {
 
     let (_ | (_, _)) = bool_pair;
     //~^ ERROR unreachable
+    //~| ERROR useless pattern
     for (_ | (_, _)) in [bool_pair] {}
     //~^ ERROR unreachable
+    //~| ERROR useless pattern
 
     let (Some(_) | Some(true)) = bool_option else { return };
     //~^ ERROR unreachable

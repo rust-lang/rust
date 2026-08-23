@@ -7,11 +7,13 @@ fn main() {
     match 0u8 {
         0
             | 0 => {} //~ ERROR unreachable pattern
+        //~^^ ERROR useless pattern
         _ => {}
     }
     match Some(0u8) {
         Some(0)
             | Some(0) => {} //~ ERROR unreachable pattern
+        //~^^ ERROR useless pattern
         _ => {}
     }
     match (0u8, 0u8) {
@@ -54,4 +56,5 @@ fn main() {
         _ => {},
     }
     let (0 | 0) = 0 else { return }; //~ ERROR unreachable pattern
+    //~^ ERROR useless pattern
 }

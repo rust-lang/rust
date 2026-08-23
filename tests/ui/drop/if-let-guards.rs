@@ -8,6 +8,8 @@
 //@ run-pass
 
 #![deny(rust_2024_compatibility)]
+// The `_ | _ | _ if ..` patterns are deliberate: several candidates sharing a guard.
+#![allow(unreachable_patterns)]
 
 use core::{cell::RefCell, ops::Drop};
 

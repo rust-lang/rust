@@ -80,9 +80,12 @@ fn main() {
 
     if let (0
         //~^ NOTE matches all the relevant values
+        //~| ERROR useless pattern
+        //~| NOTE all the values this pattern matches are already matched
         | 0, _) = (0, 0) {}
         //~^ ERROR unreachable pattern
         //~| NOTE no value can reach this
+        //~| NOTE matches all the values this pattern does
 
     match (true, true) {
         (_, true) if false => {} // Guarded patterns don't cover others

@@ -3,6 +3,9 @@
 
 //@ run-pass
 
+// Some patterns intentionally contain useless alternatives (e.g. `0 | _`) to test their lowering.
+#![allow(unreachable_patterns)]
+
 #[derive(Debug, PartialEq)]
 enum MatchArm {
     Arm(usize),

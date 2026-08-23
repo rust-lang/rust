@@ -89,22 +89,31 @@ LL |         (Err(_), Err(_)) => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:83:11
+  --> $DIR/explain-unreachable-pats.rs:85:11
    |
 LL |     if let (0
    |             - matches all the relevant values
-LL |
+...
 LL |         | 0, _) = (0, 0) {}
    |           ^ no value can reach this
 
+error: useless pattern
+  --> $DIR/explain-unreachable-pats.rs:81:13
+   |
+LL |     if let (0
+   |             ^ all the values this pattern matches are already matched by the rest of the or-pattern
+...
+LL |         | 0, _) = (0, 0) {}
+   |           - matches all the values this pattern does
+
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:93:9
+  --> $DIR/explain-unreachable-pats.rs:96:9
    |
 LL |         (_, true) => {}
    |         ^^^^^^^^^ no value can reach this
    |
 note: multiple earlier patterns match some of the same values
-  --> $DIR/explain-unreachable-pats.rs:93:9
+  --> $DIR/explain-unreachable-pats.rs:96:9
    |
 LL |         (true, _) => {}
    |         --------- matches some of the same values
@@ -116,7 +125,7 @@ LL |         (_, true) => {}
    |         ^^^^^^^^^ collectively making this unreachable
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:106:9
+  --> $DIR/explain-unreachable-pats.rs:109:9
    |
 LL |         (true, _) => {}
    |         --------- matches all the relevant values
@@ -125,7 +134,7 @@ LL |         (true, true) => {}
    |         ^^^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:118:9
+  --> $DIR/explain-unreachable-pats.rs:121:9
    |
 LL |         (_, true, 0..10) => {}
    |         ---------------- matches all the relevant values
@@ -133,5 +142,5 @@ LL |         (_, true, 0..10) => {}
 LL |         (_, true, 3) => {}
    |         ^^^^^^^^^^^^ no value can reach this
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 
