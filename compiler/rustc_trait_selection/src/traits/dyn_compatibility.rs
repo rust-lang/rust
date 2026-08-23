@@ -13,9 +13,10 @@ use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::BoundRegionConversionTime;
+use rustc_infer::traits::util::ClauseWithSupertraitSpan;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, Clause, EarlyBinder, GenericArgs, PolyProjectionClause, ProjectionClause, Ty, TyCtxt,
+    self, EarlyBinder, GenericArgs, PolyProjectionClause, ProjectionClause, Ty, TyCtxt,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized, Upcast, elaborate,
 };
@@ -993,30 +994,36 @@ fn incoherent_supertrait_assocs(
     let clauses = tcx
         .clauses_of(trait_def_id)
         .instantiate_identity(tcx)
-        .clauses
         .into_iter()
-        .map(Unnormalized::skip_norm_wip);
+        .map(|(clause, span)| ClauseWithSupertraitSpan::new(clause.skip_norm_wip(), span));
     // Map from associated items to projection clauses that apply to them.
-    let mut projs_for_assoc = FxHashMap::<DefId, Vec<PolyProjectionClause<'_>>>::default();
-    elaborate(tcx, clauses).filter_map(Clause::as_projection_clause).flat_map(move |proj| {
-        let prev_projs = projs_for_assoc.entry(proj.item_def_id()).or_default();
-        let violations: Vec<_> = prev_projs
-            .iter()
-            .copied()
-            .filter(move |&prev_proj| {
-                !does_pair_have_coherent_supertrait_assocs(tcx, trait_def_id, prev_proj, proj)
-            })
-            .map(move |_| {
-                DynCompatibilityViolation::IncoherentSupertraitAssocs(
-                    tcx.item_name(proj.item_def_id()),
-                    tcx.def_ident_span(proj.item_def_id())
-                        .expect("Associated items should have a def_ident_span"),
-                )
-            })
-            .collect();
-        prev_projs.push(proj);
-        violations
-    })
+    let mut projs_for_assoc = FxHashMap::<DefId, Vec<(PolyProjectionClause<'_>, Span)>>::default();
+    elaborate(tcx, clauses)
+        .filter_map(|x| Some((x.clause.as_projection_clause()?, x.supertrait_span)))
+        .flat_map(move |(proj, span)| {
+            let prev_projs = projs_for_assoc.entry(proj.item_def_id()).or_default();
+            let violations: Vec<_> = prev_projs
+                .iter()
+                .copied()
+                .filter(move |&(prev_proj, _)| {
+                    !does_pair_have_coherent_supertrait_assocs(tcx, trait_def_id, prev_proj, proj)
+                })
+                .map(move |(prev_proj, prev_span)| {
+                    // Putting proj before prev_proj seems to match the source code order,
+                    // at least in the tests.
+                    DynCompatibilityViolation::IncoherentSupertraitAssocs(
+                        tcx.item_name(proj.item_def_id()),
+                        [span, prev_span],
+                        ty::print::with_no_trimmed_paths!([
+                            proj.to_string(),
+                            prev_proj.to_string(),
+                        ]),
+                    )
+                })
+                .collect();
+            prev_projs.push((proj, span));
+            violations
+        })
 }
 
 #[instrument(level = "debug", skip(tcx), ret)]

@@ -6,11 +6,12 @@ LL | fn one_check<T, U>(_: &dyn OneSubSub<T, U>) {}
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/conflicting-bounds-different-generics-transitive.rs:8:10
+  --> $DIR/conflicting-bounds-different-generics-transitive.rs:10:33
    |
-LL |     type Assoc;
-   |          ^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits
-...
+LL | trait OneSub<T, U>: OneSuper<T, Assoc = u32> + OneSuper<U, Assoc = u64> {}
+   |                                 ^^^^^^^^^^^                ^^^^^^^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits: `<Self as OneSuper<T>>::Assoc == u32` and `<Self as OneSuper<U>>::Assoc == u64`
+   |                                 |
+   |                                 ...because it has conflicting associated item bounds for `Assoc` in supertraits: `<Self as OneSuper<T>>::Assoc == u32` and `<Self as OneSuper<U>>::Assoc == u64`
 LL | trait OneSubSub<T, U>: OneSub<T, U> {}
    |       --------- this trait is not dyn compatible...
 
@@ -22,13 +23,14 @@ LL | fn two_check<T, U>(_: &dyn TwoSubSub<T, U>) {}
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/conflicting-bounds-different-generics-transitive.rs:20:10
+  --> $DIR/conflicting-bounds-different-generics-transitive.rs:22:30
    |
-LL |     type Assoc;
-   |          ^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits
-...
+LL | trait TwoSub<T>: TwoSuper<T, Assoc = u32> {}
+   |                              ^^^^^^^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits: `<Self as TwoSuper<T>>::Assoc == u32` and `<Self as TwoSuper<U>>::Assoc == u64`
 LL | trait TwoSubSub<T, U>: TwoSub<T> + TwoSuper<U, Assoc = u64> {}
-   |       --------- this trait is not dyn compatible...
+   |       ---------                                ^^^^^^^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits: `<Self as TwoSuper<T>>::Assoc == u32` and `<Self as TwoSuper<U>>::Assoc == u64`
+   |       |
+   |       this trait is not dyn compatible...
 
 error: aborting due to 2 previous errors
 

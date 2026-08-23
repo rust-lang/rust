@@ -795,11 +795,10 @@ pub enum DynCompatibilityViolation {
     /// Checking this predicate is conceptually like checking for
     /// the coherence of the builtin impls for `dyn`, to make sure that the
     /// associated type/const don't conflict with each other between the impls.
-    //
-    // FIXME: Improve diagnostics for this.
-    // * Tell the user the exact projections involved that are in conflict
-    // * Point to where the projection bound was written
-    IncoherentSupertraitAssocs(Symbol, Span),
+    ///
+    /// The two spans point to where the associated type bound is written.
+    /// The two strings are the pre-rendered user-facing text for the bounds, with generics.
+    IncoherentSupertraitAssocs(Symbol, [Span; 2], [String; 2]),
 }
 
 impl DynCompatibilityViolation {
@@ -869,8 +868,8 @@ impl DynCompatibilityViolation {
             Self::GenericAssocTy(name, _) => {
                 format!("it contains generic associated type `{name}`").into()
             }
-            Self::IncoherentSupertraitAssocs(name, _) => {
-                format!("it has conflicting associated item bounds for `{name}` in supertraits")
+            Self::IncoherentSupertraitAssocs(name, _, [bound_1, bound_2]) => {
+                format!("it has conflicting associated item bounds for `{name}` in supertraits: `{bound_1}` and `{bound_2}`")
                     .into()
             }
         }
@@ -913,13 +912,15 @@ impl DynCompatibilityViolation {
             | Self::SupertraitConst(spans) => spans.clone(),
             Self::Method(_, _, span)
             | Self::AssocConst(_, _, span)
-            | Self::GenericAssocTy(_, span)
-            | Self::IncoherentSupertraitAssocs(_, span) => {
+            | Self::GenericAssocTy(_, span) => {
                 if *span != DUMMY_SP {
                     smallvec![*span]
                 } else {
                     smallvec![]
                 }
+            }
+            Self::IncoherentSupertraitAssocs(_, spans, _) => {
+                spans.iter().copied().filter(|span| *span != DUMMY_SP).collect()
             }
         }
     }

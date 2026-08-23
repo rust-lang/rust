@@ -6,13 +6,13 @@ LL |     require_trait::<'a, A1, A2, dyn Sub<'a, A1, A2>, C>(payload)
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/conflicting-bounds-different-generics-unsound.rs:11:10
+  --> $DIR/conflicting-bounds-different-generics-unsound.rs:14:34
    |
-LL |     type Assoc;
-   |          ^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits
-...
 LL | trait Sub<'a, A1, A2>: Super<A1, Assoc = Src<'a>> + Super<A2, Assoc = Dst> {}
-   |       --- this trait is not dyn compatible...
+   |       ---                        ^^^^^^^^^^^^^^^              ^^^^^^^^^^^ ...because it has conflicting associated item bounds for `Assoc` in supertraits: `<Self as Super<A1>>::Assoc == &'a std::boxed::Box<i32>` and `<Self as Super<A2>>::Assoc == &'static std::boxed::Box<i32>`
+   |       |                          |
+   |       |                          ...because it has conflicting associated item bounds for `Assoc` in supertraits: `<Self as Super<A1>>::Assoc == &'a std::boxed::Box<i32>` and `<Self as Super<A2>>::Assoc == &'static std::boxed::Box<i32>`
+   |       this trait is not dyn compatible...
 
 error: aborting due to 1 previous error
 
