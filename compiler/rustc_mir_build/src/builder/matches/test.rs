@@ -181,9 +181,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // The aggregate comparisons, unlike the long-standing string ones, are
                 // asserted not to unwind, since an unwind edge would make
                 // borrow-checking stricter than for the `SwitchInt`s they replace.
-                // That is sound because a constant is only allowed in a pattern if its
-                // type is structural match, so the array/slice impl and every element
-                // impl it delegates to are derived or primitive, and cannot panic.
+                // That is sound because they are only used for element types whose
+                // `PartialEq` impl compares the aggregates directly with the
+                // `compare_bytes` and `raw_eq` intrinsics, which cannot panic.
                 let can_unwind = matches!(test.kind, TestKind::StringEq { .. });
                 self.non_scalar_compare(
                     block,

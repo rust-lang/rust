@@ -18,6 +18,16 @@ use crate::builder::matches::{
 /// unlikely to be more expensive than a `PartialEq::eq` call.
 const AGGREGATE_EQ_MIN_LEN: usize = 4;
 
+/// Whether arrays and slices with this element type may be compared as an aggregate.
+///
+/// We rely on `PartialEq::eq` agreeing with structural equality and on it not
+/// panicking, so we restrict ourselves to the primitives that
+/// `core::cmp::BytewiseEq` is implemented for. For those, the comparison of the
+/// whole aggregate is done by the `compare_bytes` and `raw_eq` intrinsics.
+fn is_bytewise_comparable(element_ty: Ty<'_>) -> bool {
+    matches!(element_ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_))
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Check if we can use aggregate `PartialEq::eq` comparisons for constant array/slice patterns.
     /// This is not possible in const contexts, because `PartialEq` is not const-stable yet.
@@ -40,7 +50,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         element_count: usize,
     ) -> Option<ty::Value<'tcx>> {
         let value = pattern.extra.as_deref()?.expanded_const_value?;
-        if element_count < AGGREGATE_EQ_MIN_LEN || !self.can_use_aggregate_eq() {
+        let (ty::Array(element_ty, _) | ty::Slice(element_ty)) = *pattern.ty.kind() else {
+            return None;
+        };
+        if element_count < AGGREGATE_EQ_MIN_LEN
+            || !is_bytewise_comparable(element_ty)
+            || !self.can_use_aggregate_eq()
+        {
             return None;
         }
         Some(value)

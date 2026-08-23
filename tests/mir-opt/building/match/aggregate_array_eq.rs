@@ -1,10 +1,10 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ compile-flags: -Zmir-opt-level=0
 
-// Verify that matching against an array/slice pattern that was expanded from
-// a constant (a named constant or a byte-string literal) produces a single
-// `PartialEq::eq` call rather than element-by-element comparisons. The call
-// must be marked as non-unwinding.
+// Verify that matching against an array/slice pattern of a bytewise-comparable
+// primitive type that was expanded from a constant (a named constant or a
+// byte-string literal) produces a single `PartialEq::eq` call rather than
+// element-by-element comparisons. The call must be marked as non-unwinding.
 //
 // Hand-written array patterns must keep the element-by-element comparisons:
 // they only borrow the scrutinee for as long as `PartialEq::eq` would, but
@@ -36,15 +36,13 @@ pub fn handwritten_array_match(x: [u8; 4]) -> bool {
 #[derive(PartialEq, Eq)]
 pub struct Element(u8);
 
-// The element type does not have to be a primitive: the aggregate comparison
-// calls `<[Element; 4] as PartialEq>::eq`, which in turn calls the derived
-// `PartialEq` implementation for `Element`.
+// The aggregate comparison is limited to bytewise-comparable primitive element
+// types, whose `PartialEq` implementation is known not to panic.
 // EMIT_MIR aggregate_array_eq.custom_element_array_match.built.after.mir
 pub fn custom_element_array_match(x: [Element; 4]) -> bool {
     // CHECK-LABEL: fn custom_element_array_match(
-    // CHECK: <[Element; 4] as PartialEq>::eq
-    // CHECK-SAME: unwind unreachable
-    // CHECK-NOT: switchInt(copy _1[
+    // CHECK-NOT: PartialEq
+    // CHECK: switchInt
     const EXPECTED: [Element; 4] = [Element(1), Element(2), Element(3), Element(4)];
     matches!(x, EXPECTED)
 }
