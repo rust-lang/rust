@@ -1,36 +1,21 @@
-  //! Checks that `#[rustc_trivial_field_reads]` applies per method
-  //! (issue #160621)
+//! Checks that `#[rustc_trivial_field_reads]` applies per method
+//! (issue #160621)
 
-  #![feature(rustc_attrs)]
-  #![deny(dead_code)]
+#![feature(rustc_attrs)]
+#![deny(dead_code)]
 
-  trait Access {
-      fn get_a(&self) -> u32;
-      fn get_b(&self) -> u32;
-  }
+trait Access {
+    fn get_a(&self) -> u32;
+    fn get_b(&self) -> u32;
+}
 
-  struct S {
+struct S {
     a: u32, //~ ERROR field `a` is never read
     b: u32
-  }
+}
 
-  impl Access for S {
-      #[rustc_trivial_field_reads]
-      fn get_a(&self) -> u32 {
-          self.a
-      }
-
-      fn get_b(&self) -> u32 {
-          self.b
-      }
-  }
-
-  struct T {
-    a: u32,
-    b: u32
-  }
-
-  impl Access for T {
+impl Access for S {
+    #[rustc_trivial_field_reads]
     fn get_a(&self) -> u32 {
         self.a
     }
@@ -38,9 +23,40 @@
     fn get_b(&self) -> u32 {
         self.b
     }
-  }
+}
 
-  fn main() {
+struct T {
+    a: u32,
+    b: u32
+}
+
+impl Access for T {
+    fn get_a(&self) -> u32 {
+        self.a
+    }
+
+    fn get_b(&self) -> u32 {
+        self.b
+    }
+}
+
+struct Square {
+    width: u32, //~ ERROR field `width` is never read
+    height: u32
+}
+
+impl Square {
+    #[rustc_trivial_field_reads]
+    fn width(&self) -> u32 {
+        self.width
+    }
+
+    fn height(&self) -> u32 {
+        self.height
+    }
+}
+
+fn main() {
     let s = S {
         a: 0,
         b: 0
@@ -56,4 +72,8 @@
 
     let _ = t.get_a();
     let _ = t.get_b();
-  }
+
+    let square = Square { width: 0, height: 0 };
+    let _ = square.width();
+    let _ = square.height();
+}
