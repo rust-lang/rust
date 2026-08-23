@@ -282,10 +282,7 @@ where
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool {
         self.probe(|| {
-            EvalCtxt::enter_root(self, self.cx().recursion_limit(), I::Span::dummy(), |ecx| {
-                ecx.evaluate_goal(GoalSource::Misc, goal, None)
-            })
-            .is_ok_and(|r| match r.certainty {
+            self.evaluate_root_goal(goal, I::Span::dummy(), None).is_ok_and(|r| match r.certainty {
                 Certainty::Yes => true,
                 Certainty::Maybe(MaybeInfo {
                     cause: _,
