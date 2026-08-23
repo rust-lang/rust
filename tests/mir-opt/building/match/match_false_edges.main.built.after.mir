@@ -120,7 +120,6 @@ fn main() -> () {
 
     bb15: {
         StorageDead(_8);
-        FakeRead(ForMatchGuard, _3);
         FakeRead(ForGuardBinding, _7);
         StorageLive(_6);
         _6 = copy ((_2 as Some).0: i32);
@@ -137,6 +136,7 @@ fn main() -> () {
     bb17: {
         StorageDead(_8);
         StorageDead(_7);
+        FakeRead(ForMatchGuard, _3);
         goto -> bb13;
     }
 
@@ -147,7 +147,6 @@ fn main() -> () {
     bb19: {
         StorageDead(_13);
         StorageDead(_12);
-        FakeRead(ForMatchGuard, _3);
         FakeRead(ForGuardBinding, _11);
         StorageLive(_10);
         _10 = copy ((_2 as Some).0: i32);
@@ -165,6 +164,7 @@ fn main() -> () {
         StorageDead(_13);
         StorageDead(_12);
         StorageDead(_11);
+        FakeRead(ForMatchGuard, _3);
         goto -> bb10;
     }
 

@@ -17,13 +17,14 @@
    LL|      1|            println!("zero");
    LL|      1|        }
    LL|      3|        Some(x) if x % 2 == 0 => {
-                           ^2             ^2
+                           ^2             ^1
   ------------------
   |  Branch (LL:20): [True: 2, False: 1]
   ------------------
    LL|      2|            println!("is nonzero and even");
    LL|      2|        }
    LL|      1|        Some(x) if x % 3 == 0 => {
+                                          ^0
   ------------------
   |  Branch (LL:20): [True: 1, False: 0]
   ------------------
