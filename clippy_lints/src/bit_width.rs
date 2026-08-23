@@ -98,35 +98,29 @@ impl ManualBitWidth {
 
 impl LateLintPass<'_> for ManualBitWidth {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
-        match expr.kind {
-            // `T::BITS - n.leading_zeros()`
-            ExprKind::Binary(op, left, right)
-                if op.node == BinOpKind::Sub
-                    && let ExprKind::MethodCall(leading_zeros, recv, [], _) = right.kind
-                    && leading_zeros.ident.name == sym::leading_zeros
-                    && let ExprKind::Path(QPath::TypeRelative(hir_ty, segment)) = left.kind
-                    && segment.ident.name == sym::BITS
-                    && let right_ty = cx.typeck_results().expr_ty(recv)
-                    && let Some(right_int_kind) = get_int_kind(cx, right_ty)
-                    && let left_ty = cx.typeck_results().node_type(hir_ty.hir_id)
-                    && let Some(left_int_kind) = get_int_kind(cx, left_ty)
-                    && self.msrv.meets(cx, msrvs::BIT_WIDTH)
-                    && left.span.eq_ctxt(right.span)
-                    && !is_from_proc_macro(cx, expr) =>
-            {
-                if left_int_kind == right_int_kind {
-                    // manual implementation of bit_width
-                    emit_manual_bit_width(cx, recv, expr, right_int_kind);
-                } else {
-                    // mismatched calling types
-                    emit_type_mismatch(cx, recv, expr, right_int_kind);
-                }
-            },
-            _ => {},
+        // `T::BITS - n.leading_zeros()`
+        if let ExprKind::Binary(op, left, right) = expr.kind
+            && op.node == BinOpKind::Sub
+            && let ExprKind::MethodCall(leading_zeros, recv, [], _) = right.kind
+            && leading_zeros.ident.name == sym::leading_zeros
+            && let ExprKind::Path(QPath::TypeRelative(hir_ty, segment)) = left.kind
+            && segment.ident.name == sym::BITS
+            && !expr.span.in_external_macro(cx.sess().source_map())
+            && let right_ty = cx.typeck_results().expr_ty(recv)
+            && let Some(right_int_kind) = get_int_kind(cx, right_ty)
+            && let left_ty = cx.typeck_results().node_type(hir_ty.hir_id)
+            && let Some(left_int_kind) = get_int_kind(cx, left_ty)
+            && self.msrv.meets(cx, msrvs::BIT_WIDTH)
+            && left.span.eq_ctxt(right.span)
+            && !is_from_proc_macro(cx, expr)
+        {
+            if left_int_kind == right_int_kind {
+                // manual implementation of bit_width
+                emit_manual_bit_width(cx, recv, expr, right_int_kind);
+            } else {
+                // mismatched calling types
+                emit_type_mismatch(cx, recv, expr, right_int_kind);
+            }
         }
     }
 }

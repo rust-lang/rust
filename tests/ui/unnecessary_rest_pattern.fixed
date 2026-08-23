@@ -32,6 +32,10 @@ mod m {
     }
 }
 
+type Variant = VariantKind;
+
+struct VariantKind;
+
 fn main() {
     let s = S { a: 1, b: 2, c: 3 };
 
@@ -87,4 +91,14 @@ fn main() {
 
     let Sm { .. } = Sm::default();
     let Sm { a: _, b: _, .. } = Sm::default();
+
+    let variant = Variant {};
+
+    let Variant {  } = variant;
+    //~^ unnecessary_rest_pattern
+
+    match variant {
+        Variant {  } => {},
+        //~^ unnecessary_rest_pattern
+    }
 }

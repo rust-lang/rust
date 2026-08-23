@@ -7,6 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
+use rustc_middle::ty;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,9 +65,13 @@ impl<'tcx> LateLintPass<'tcx> for LargeFuture {
             && let ty = cx.typeck_results().expr_ty(arg)
             && let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
             && implements_trait(cx, ty, future_trait_def_id, &[])
-            && let Ok(layout) = cx
-                .tcx
-                .layout_of(cx.typing_env().with_codegen_normalized(cx.tcx).as_query_input(ty))
+            && let typing_env = cx.typing_env().with_codegen_normalized(cx.tcx)
+            // Aliases that were rigid during type checking can be revealed in codegen mode.
+            && let Ok(ty) = cx.tcx.try_normalize_erasing_regions(
+                typing_env,
+                ty::set_aliases_to_non_rigid(cx.tcx, ty),
+            )
+            && let Ok(layout) = cx.tcx.layout_of(typing_env.as_query_input(ty))
             && let size = layout.layout.size()
             && size >= Size::from_bytes(self.future_size_threshold)
         {

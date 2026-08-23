@@ -1,153 +1,150 @@
-//@aux-build:proc_macro_derive.rs
-#![feature(rustc_private)]
+//@aux-build:proc_macros.rs
+
 #![warn(clippy::used_underscore_binding)]
-#![expect(clippy::disallowed_names, clippy::eq_op, clippy::uninlined_format_args)]
+#![expect(clippy::explicit_auto_deref, clippy::no_effect)]
 
-#[macro_use]
-extern crate proc_macro_derive;
+extern crate proc_macros;
 
-// This should not trigger the lint. There's underscore binding inside the external derive that
-// would trigger the `used_underscore_binding` lint.
-#[derive(DeriveSomething)]
-struct Baz;
+use core::marker::PhantomData;
+use proc_macros::{external, inline_macros};
 
-macro_rules! test_macro {
-    () => {{
-        let _foo = 42;
-        _foo + 1
-    }};
-}
-
-/// Tests that we lint if we use a binding with a single leading underscore
-fn prefix_underscore(_foo: u32) -> u32 {
-    _foo + 1
-    //~^ used_underscore_binding
-}
-
-/// Tests that we lint if we use a `_`-variable defined outside within a macro expansion
-fn in_macro_or_desugar(_foo: u32) {
-    println!("{}", _foo);
-    //~^ used_underscore_binding
-    assert_eq!(_foo, _foo);
-    //~^ used_underscore_binding
-    //~| used_underscore_binding
-
-    test_macro!() + 1;
-}
-
-// Struct for testing use of fields prefixed with an underscore
-struct StructFieldTest {
-    _underscore_field: u32,
-}
-
-/// Tests that we lint the use of a struct field which is prefixed with an underscore
-fn in_struct_field() {
-    let mut s = StructFieldTest { _underscore_field: 0 };
-    s._underscore_field += 1;
-    //~^ used_underscore_binding
-}
-
-/// Tests that we do not lint if the struct field is used in code created with derive.
-#[derive(Clone, Debug)]
-pub struct UnderscoreInStruct {
-    _foo: u32,
-}
-
-/// Tests that we do not lint if the underscore is not a prefix
-fn non_prefix_underscore(some_foo: u32) -> u32 {
-    some_foo + 1
-}
-
-/// Tests that we do not lint if we do not use the binding (simple case)
-fn unused_underscore_simple(_foo: u32) -> u32 {
-    1
-}
-
-/// Tests that we do not lint if we do not use the binding (complex case). This checks for
-/// compatibility with the built-in `unused_variables` lint.
-fn unused_underscore_complex(mut _foo: u32) -> u32 {
-    _foo += 1;
-    _foo = 2;
-    1
-}
-
-/// Test that we do not lint for multiple underscores
-fn multiple_underscores(__foo: u32) -> u32 {
-    __foo + 1
-}
-
-// Non-variable bindings with preceding underscore
-fn _fn_test() {}
-struct _StructTest;
-enum _EnumTest {
-    _Empty,
-    _Value(_StructTest),
-}
-
-/// Tests that we do not lint for non-variable bindings
-fn non_variables() {
-    _fn_test();
-    let _s = _StructTest;
-    let _e = match _EnumTest::_Value(_StructTest) {
-        _EnumTest::_Empty => 0,
-        _EnumTest::_Value(_st) => 1,
-    };
-    let f = _fn_test;
-    f();
-}
-
-// Tests that we do not lint if the binding comes from await desugaring,
-// but we do lint the awaited expression. See issue 5360.
-async fn await_desugaring() {
-    async fn foo() {}
-    fn uses_i(_i: i32) {}
-
-    foo().await;
-    ({
-        let _i = 5;
-        uses_i(_i);
-        //~^ used_underscore_binding
-        foo()
-    })
-    .await
-}
-
-struct PhantomField<T> {
-    _marker: std::marker::PhantomData<T>,
-}
-
-impl<T> std::fmt::Debug for PhantomField<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("PhantomField").field("_marker", &self._marker).finish()
-    }
-}
-
-struct AllowedField {
-    #[allow(clippy::used_underscore_binding)]
-    _allowed: usize,
-}
-
-struct ExpectedField {
-    #[expect(clippy::used_underscore_binding)]
-    _expected: usize,
-}
-
-fn lint_levels(allowed: AllowedField, expected: ExpectedField) {
-    let _ = allowed._allowed;
-    let _ = expected._expected;
-}
-
+#[inline_macros]
 fn main() {
-    let foo = 0u32;
-    // tests of unused_underscore lint
-    let _ = prefix_underscore(foo);
-    in_macro_or_desugar(foo);
-    in_struct_field();
-    // possible false positives
-    let _ = non_prefix_underscore(foo);
-    let _ = unused_underscore_simple(foo);
-    let _ = unused_underscore_complex(foo);
-    let _ = multiple_underscores(foo);
-    non_variables();
-    await_desugaring();
+    // Declaration only.
+    {
+        let _a = 0;
+    }
+    // Check various reads.
+    {
+        let _a = 0;
+        let _b = &0;
+        let _c = (0, &0);
+        let _d = String::new();
+
+        _a; //~ used_underscore_binding
+        *_b; //~ used_underscore_binding
+        _c.0; //~ used_underscore_binding
+        *_c.1; //~ used_underscore_binding
+        _d.is_empty(); //~ used_underscore_binding
+    }
+    // Check that we match rustc on what a use is.
+    {
+        let mut _a = 0;
+        let mut _b = (0, 0);
+        let mut c = 0;
+        let mut _c = &mut c;
+        let mut d = (0, 0);
+        let _d = &mut d;
+
+        _a = 0;
+        _b.0 = 0;
+        _c = &mut c;
+        *_c = 0; //~ used_underscore_binding
+        _d.0 = 0; //~ used_underscore_binding
+        (*_d).0 = 0; //~ used_underscore_binding
+    }
+    // Check field access.
+    {
+        struct X<'a> {
+            _x: &'a mut (u32, u32),
+        };
+
+        let mut a = (0, 0);
+        let mut b = (0, 0);
+        let mut c = X { _x: &mut a };
+
+        c._x; //~ used_underscore_binding
+        c._x = &mut b; //~ used_underscore_binding
+        *c._x; //~ used_underscore_binding
+        *c._x = (0, 0); //~ used_underscore_binding
+        (*c._x).0 = 0; //~ used_underscore_binding
+        c._x.0 = 0; //~ used_underscore_binding
+    }
+    // Await desugaring contains a used underscore binding.
+    {
+        async fn f1() {}
+        async fn f2() {
+            f1().await;
+            {
+                let _a = 0;
+                _a; //~ used_underscore_binding
+                f1()
+            }
+            .await;
+        }
+    }
+    // Ignore phantom fields
+    {
+        struct X {
+            _marker: PhantomData<u32>,
+        }
+        let a = X { _marker: PhantomData };
+        a._marker;
+    }
+    // Ignore multiple underscores
+    {
+        struct X {
+            __x: u32,
+        }
+        let __a = 0;
+        let b = X { __x: 0 };
+        __a;
+        b.__x;
+    }
+    // Check compound assignment
+    {
+        let mut _a = 0;
+        let mut _b = (0, 0);
+        let mut _c = 0.0;
+        let mut _d = String::new();
+
+        _a += 0;
+        _b.0 -= 0;
+        _b.1 |= 0;
+        _c *= 1.0;
+        _d += ""; //~ used_underscore_binding
+    }
+    // Expect on the binding
+    {
+        struct X {
+            #[expect(clippy::used_underscore_binding)]
+            _x: u32,
+        }
+        #[expect(clippy::used_underscore_binding)]
+        let _a = 0;
+        let b = X { _x: 0 };
+
+        _a;
+        b._x;
+    }
+    // Check macros
+    {
+        struct X {
+            _x: u32,
+        };
+
+        let _a = 0;
+        let _b = (0, 0);
+        let mut _c = 0;
+        let mut _d = (0, 0);
+        let e = X { _x: 0 };
+        let mut f = X { _x: 0 };
+
+        inline!({
+            $(@expr _a); //~ used_underscore_binding
+            $(@expr _b.0); //~ used_underscore_binding
+            $(@expr _c) = 0;
+            $(@expr _d.0) = 0;
+            $(@expr e._x); //~ used_underscore_binding
+            $(@expr f._x) = 0; //~ used_underscore_binding
+        });
+        external!({
+            $_a; //~ used_underscore_binding
+            $(_b.0); //~ used_underscore_binding
+            $_c = 0;
+            $(_d.0) = 0;
+            $(e._x); //~ used_underscore_binding
+            $(f._x) = 0; //~ used_underscore_binding
+        });
+    }
 }
