@@ -1040,7 +1040,7 @@ pub mod conversions {
             }
         };
 
-        let my_input_low: u32 = input_low;
+        let my_input_low: u32 = input_low.into();
         if let Ok(idx) = l2_lut.multis.binary_search_by_key(&my_input_low, |&(p, _)| p) {
             // SAFETY: binary search guarantees that the index is in bounds.
             let &(_, output_lows) = unsafe { l2_lut.multis.get_unchecked(idx) };
