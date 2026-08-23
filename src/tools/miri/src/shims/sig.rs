@@ -340,9 +340,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_shim_sig<'a, const N: usize>(
         &self,
         shim_sig: fn(&MiriInterpCx<'tcx>) -> ShimSig<'tcx, N>,
-        link_name: Symbol,
-        caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        caller_args: &'a [OpTy<'tcx>],
+        // We take these as a tuple so that this takes less space on the caller side.
+        (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &'a [OpTy<'tcx>]),
     ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
         let this = self.eval_context_ref();
 
@@ -367,9 +366,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn check_shim_sig_variadic<'a, const N: usize>(
         &self,
         shim_sig: fn(&MiriInterpCx<'tcx>) -> ShimSig<'tcx, N>,
-        link_name: Symbol,
-        caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        caller_args: &'a [OpTy<'tcx>],
+        // We take these as a tuple so that this takes less space on the caller side.
+        (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &'a [OpTy<'tcx>]),
     ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
         let this = self.eval_context_ref();
 

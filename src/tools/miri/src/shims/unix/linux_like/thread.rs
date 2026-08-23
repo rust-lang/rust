@@ -17,9 +17,7 @@ pub fn prctl<'tcx>(
 ) -> InterpResult<'tcx> {
     let ([op], varargs) = ecx.check_shim_sig_variadic(
         shim_sig_variadic!(extern "C" fn(i32) -> i32),
-        link_name,
-        abi,
-        args,
+        (link_name, abi, args),
     )?;
 
     let pr_set_name = ecx.eval_libc_i32("PR_SET_NAME");
