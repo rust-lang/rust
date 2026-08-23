@@ -6,6 +6,6 @@ fn main() {
     }
 
     unsafe {
-        let _ = malloc(1, 2); //~ ERROR: expected 1 arguments, found 2 arguments
+        let _ = malloc(1, 2); //~ ERROR: takes 1 argument, but 2 arguments were given
     };
 }

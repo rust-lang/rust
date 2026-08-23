@@ -5,6 +5,6 @@ fn main() {
 
     unsafe {
         abort(1);
-        //~^ ERROR: expected 0 arguments, found 1 arguments
+        //~^ ERROR: takes 0 arguments, but 1 argument was given
     }
 }

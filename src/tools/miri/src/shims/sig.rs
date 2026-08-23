@@ -172,13 +172,14 @@ macro_rules! shim_sig_arg {
 /// Helper function to compare two ABIs.
 fn check_shim_abi<'tcx>(
     this: &MiriInterpCx<'tcx>,
+    link_name: Symbol,
     callee_abi: &FnAbi<'tcx, Ty<'tcx>>,
     callee_nounwind: bool,
     caller_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> InterpResult<'tcx> {
     if callee_abi.conv != caller_abi.conv {
         throw_ub_format!(
-            r#"calling a function with calling convention "{callee}" using caller calling convention "{caller}""#,
+            r#"ABI mismatch: `{link_name}` has calling convention "{callee}", but the caller is using calling convention "{caller}""#,
             callee = callee_abi.conv,
             caller = caller_abi.conv,
         );
@@ -186,25 +187,27 @@ fn check_shim_abi<'tcx>(
     // FIXME: is this needed? Or is it enough to just check this if/when an actual unwind happens?
     if callee_abi.can_unwind && !callee_nounwind && !caller_abi.can_unwind {
         throw_ub_format!(
-            "ABI mismatch: callee may unwind, but caller-side signature prohibits unwinding",
+            "ABI mismatch: callee may unwind, but caller asumes that no unwinding will occur",
         );
     }
     if caller_abi.c_variadic && !callee_abi.c_variadic {
         throw_ub_format!(
-            "ABI mismatch: calling a non-variadic function with a variadic caller-side signature"
+            "ABI mismatch: `{link_name}` is a non-variadic function, but the caller is using a variadic signature"
         );
     }
     if !caller_abi.c_variadic && callee_abi.c_variadic {
         throw_ub_format!(
-            "ABI mismatch: calling a variadic function with a non-variadic caller-side signature"
+            "ABI mismatch: `{link_name}` is a variadic function, but the caller is using a non-variadic signature"
         );
     }
 
     if callee_abi.fixed_count != caller_abi.fixed_count {
         throw_ub_format!(
-            "ABI mismatch: expected {} arguments, found {} arguments ",
+            "ABI mismatch: calling `{link_name}` which takes {} argument{}, but {} argument{} given",
             callee_abi.fixed_count,
-            caller_abi.fixed_count
+            if callee_abi.fixed_count == 1 { "" } else { "s" },
+            caller_abi.fixed_count,
+            if caller_abi.fixed_count == 1 { " was" } else { "s were" },
         );
     }
 
@@ -311,7 +314,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let callee_fn_abi = this.fn_abi_of_fn_ptr(fn_sig_binder, Default::default())?;
 
         // Check everything.
-        check_shim_abi(this, callee_fn_abi, shim_sig.nounwind, caller_fn_abi)?;
+        check_shim_abi(this, link_name, callee_fn_abi, shim_sig.nounwind, caller_fn_abi)?;
         this.check_shim_symbol_clash(link_name)?;
 
         // Return arguments.

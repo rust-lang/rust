@@ -1,4 +1,4 @@
-error: Undefined Behavior: ABI mismatch: expected 0 arguments, found 1 arguments 
+error: Undefined Behavior: ABI mismatch: calling `abort` which takes 0 arguments, but 1 argument was given
   --> tests/fail/function_calls/check_arg_count_abort.rs:LL:CC
    |
 LL |         abort(1);
