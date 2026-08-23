@@ -790,6 +790,9 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::dreg) => "e",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::qreg) => "e",
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Err => unreachable!(),
     }
@@ -896,6 +899,9 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::dreg) => cx.type_f64(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::qreg) => cx.type_f128(),
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),

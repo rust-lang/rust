@@ -960,6 +960,8 @@ const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("leoncasa", Unstable(sym::sparc_target_feature), &[]),
     ("v8plus", Unstable(sym::sparc_target_feature), &[]),
+    // FIXME: It's unclear what this feature means when `v8plus` is disabled on 32-bit SPARC. See
+    // the discussion around https://github.com/rust-lang/rust/pull/160949#discussion_r3806194355.
     ("v9", Unstable(sym::sparc_target_feature), &[]),
     // tidy-alphabetical-end
 ];
