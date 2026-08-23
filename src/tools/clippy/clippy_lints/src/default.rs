@@ -101,7 +101,8 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 format!("calling `{replacement}` is more clear than this expression"),
                 "try",
                 replacement,
-                Applicability::Unspecified, // First resolve the TODO above
+                // The trimmed path may not be in scope, so the suggestion cannot be machine-applicable.
+                Applicability::Unspecified,
             );
         }
     }

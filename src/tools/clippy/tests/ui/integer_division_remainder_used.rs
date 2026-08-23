@@ -38,6 +38,13 @@ fn main() {
     let i = a / &4;
     //~^ integer_division_remainder_used
 
+    // should trigger on DivAssign and RemAssign
+    let mut j = 10;
+    j /= 2;
+    //~^ integer_division_remainder_used
+    j %= 3;
+    //~^ integer_division_remainder_used
+
     // should not trigger on custom Div and Rem
     let w = CustomOps(3);
     let x = CustomOps(4);
