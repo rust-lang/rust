@@ -10,14 +10,8 @@
 
 // This tests the float classification functions, for regular runtime code and for const evaluation.
 
-#[cfg(not(ctfe))]
 use std::hint::black_box;
 use std::num::FpCategory::*;
-#[cfg(ctfe)]
-#[allow(unused)]
-const fn black_box<T>(x: T) -> T {
-    x
-}
 
 #[cfg(not(ctfe))]
 macro_rules! assert_test {
