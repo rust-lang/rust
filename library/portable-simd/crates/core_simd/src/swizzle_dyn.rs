@@ -1,3 +1,7 @@
+// Allow these FCW: anyone soundly using the intrinsics has to enable
+// the target feature, and that will generate a warning for them.
+#![allow(aarch64_softfloat_neon, x86_softfloat_sse)]
+
 use crate::simd::Simd;
 use core::mem;
 
