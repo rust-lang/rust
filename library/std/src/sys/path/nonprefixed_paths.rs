@@ -233,6 +233,10 @@ impl<'a> Iterator for Components<'a> {
                         &self.path[end_ind..]
                     };
 
+                    if !self.is_done() {
+                        self.state = State::Relative;
+                    }
+
                     return Some(Component::RootDir);
                 }
                 _ => {
@@ -250,29 +254,19 @@ impl<'a> Iterator for Components<'a> {
 
 impl<'a> DoubleEndedIterator for Components<'a> {
     fn next_back(&mut self) -> Option<Component<'a>> {
-        match self.state {
-            State::Done => None,
-            State::Absolute => {
-                let back = self.normalize_back();
-                // Since we normalize upfront, we only return the
-                // root component when our path bytes are fully consumed
-                // Otherwise, we treat this as the same as a relative component
-                if self.is_done() {
-                    self.path = &[];
-                    Some(Component::RootDir)
-                } else {
-                    let (back_ind, comp) = self.parse_next_back_component(back);
-                    self.path = &self.path[..back_ind];
-                    comp
-                }
-            }
-            State::Relative => {
-                let back = self.normalize_back();
+        if !self.is_done() {
+            let back = self.normalize_back();
+            if self.is_done() {
+                self.path = &[];
+                return Some(Component::RootDir);
+            } else {
                 let (back_ind, comp) = self.parse_next_back_component(back);
                 self.path = &self.path[..back_ind];
-                comp
+                return comp;
             }
         }
+
+        None
     }
 }
 
