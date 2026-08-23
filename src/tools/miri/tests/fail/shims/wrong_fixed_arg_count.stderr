@@ -1,4 +1,4 @@
-error: Undefined Behavior: incorrect number of fixed arguments for variadic function `open`: got 1, expected 2
+error: Undefined Behavior: ABI mismatch: calling `open` which takes 2 fixed (non-variadic) arguments, but 1 argument was given
   --> tests/fail/shims/wrong_fixed_arg_count.rs:LL:CC
    |
 LL |         open(c_path.as_ptr(), /* value does not matter */ 0)
