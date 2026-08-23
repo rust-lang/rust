@@ -1,5 +1,5 @@
 error: non-standard lint formulation
-  --> tests/ui-internal/check_formulation.rs:24:5
+  --> tests/ui-internal/check_formulation.rs:23:5
    |
 LL |     /// Check for lint formulations that are correct
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #![deny(clippy::almost_standard_lint_formulation)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: non-standard lint formulation
-  --> tests/ui-internal/check_formulation.rs:35:5
+  --> tests/ui-internal/check_formulation.rs:34:5
    |
 LL |     /// Detects uses of incorrect formulations
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

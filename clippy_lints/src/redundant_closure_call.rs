@@ -163,10 +163,6 @@ fn get_parent_call_exprs<'tcx>(
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
         if let ExprKind::Call(recv, _) = expr.kind
             // don't lint if the receiver is a call, too.
             // we do this in order to prevent linting multiple times; consider:
@@ -174,6 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
             //           ^^  we only want to lint for this call (but we walk up the calls to consider both calls).
             // without this check, we'd end up linting twice.
             && !matches!(recv.kind, ExprKind::Call(..))
+            && !expr.span.in_external_macro(cx.sess().source_map())
             // Check if `recv` comes from a macro expansion. If it does, make sure that it's an expansion that is
             // the same as the one the call is in.
             // For instance, let's assume `x!()` returns a closure:

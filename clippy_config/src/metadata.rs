@@ -34,7 +34,7 @@ impl ConfMetadata {
                         .format_with("\n", |doc, f| f(&doc.strip_prefix(" ").unwrap_or(doc))),
                     self.0.default,
                     self.0.lints.iter().format_with("\n", |name, f| f(&format_args!(
-                        "* [`{name}`](https://rust-lang.github.io/rust-clippy/master/index.html#{name})"
+                        "* [`{name}`](https://rust-lang.github.io/rust-clippy/main/index.html#{name})"
                     ))),
                 )
             }
