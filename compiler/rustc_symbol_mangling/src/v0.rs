@@ -735,7 +735,16 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
 
             if !has_move_bound {
-                unimplemented!("Handle mangling of !Move symbols")
+                let move_trait = tcx
+                    .lang_items()
+                    .move_trait()
+                    .expect("The Move trait is always defined in presence of ?Move bounds");
+
+                // FIXME(zannabianca1997): this is ugly
+                p.push("N");
+                p.push("t");
+                p.print_def_path(move_trait, &[])?;
+                p.push("1?");
             }
 
             Ok(())
