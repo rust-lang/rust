@@ -1392,6 +1392,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| {
             p.recover_vcs_conflict_marker();
+
             let mut attr_span = None;
             let attrs = p.parse_outer_attributes()?;
             if !attrs.is_empty() {
@@ -1399,7 +1400,9 @@ impl<'a> Parser<'a> {
                 attr_span =
                     Some(raw_attrs.first().unwrap().span.to(raw_attrs.last().unwrap().span));
             }
+
             let use_tree = p.parse_use_tree(use_token_span, prefix)?;
+
             if let Some(attr_span) = attr_span {
                 p.emit_error_attr_in_use_tree(use_token_span, prefix, use_tree.span(), attr_span);
             }
@@ -1409,67 +1412,56 @@ impl<'a> Parser<'a> {
         .map(|(r, _)| r)
     }
 
-    fn emit_error_attr_in_use_tree<'b>(
+    fn emit_error_attr_in_use_tree(
         &self,
         use_token_span: Span,
-        prefix: Option<&'b UsePathList<'b>>,
+        mut prefix: Option<&UsePathList<'_>>,
         use_tree_span: Span,
         attr_span: Span,
     ) {
-        {
-            let mut prefix = prefix;
-            let Ok(attr) = self.psess.source_map().span_to_snippet(attr_span) else {
-                return;
-            };
+        let Ok(attr) = self.psess.source_map().span_to_snippet(attr_span) else { return };
 
-            let prefix = {
-                let mut tmp = Vec::new();
-                while let Some(prefix_) = prefix {
-                    tmp.push(prefix_.elements);
-                    prefix = prefix_.prev;
-                }
-                tmp.reverse();
-                tmp.iter().flat_map(|segments| segments.iter()).collect::<Vec<_>>()
-            };
+        let prefix: Vec<_> = {
+            let mut tmp = Vec::new();
+            while let Some(prefix_) = prefix {
+                tmp.push(prefix_.elements);
+                prefix = prefix_.prev;
+            }
+            tmp.reverse();
+            tmp.into_iter().flatten().collect()
+        };
 
-            let prefix =
-                prefix
-                    .iter()
-                    .map(|segment| {
-                        if segment.ident.name == kw::PathRoot { "" } else { segment.ident.as_str() }
-                    })
-                    .collect::<Vec<_>>()
-                    .join("::");
+        let prefix: String = prefix
+            .iter()
+            .map(|seg| if seg.ident.name == kw::PathRoot { "" } else { seg.ident.as_str() })
+            .intersperse("::")
+            .collect();
 
-            let mut comma_reached = false;
-            let Ok(tree_span) = self.psess.source_map().span_extend_while(use_tree_span, |c| {
-                if comma_reached {
-                    return false;
-                }
-                comma_reached = c == ',';
-                c.is_whitespace() || comma_reached
-            }) else {
-                return;
-            };
+        let mut comma_reached = false;
+        let Ok(tree_span) = self.psess.source_map().span_extend_while(use_tree_span, |c| {
+            if comma_reached {
+                return false;
+            }
+            comma_reached = c == ',';
+            c.is_whitespace() || comma_reached
+        }) else {
+            return;
+        };
 
-            let Ok(use_tree) = self.psess.source_map().span_to_snippet(use_tree_span) else {
-                return;
-            };
+        let Ok(use_tree) = self.psess.source_map().span_to_snippet(use_tree_span) else { return };
 
-            // FIXME: duplicate the attributes that are at the root of the initial use-item.
-            let code = format!("{attr}\nuse {prefix}::{use_tree};\n");
+        // FIXME: duplicate the attributes that are at the root of the initial use-item.
+        let code = format!("{attr}\nuse {prefix}::{use_tree};\n");
 
-            let err = crate::diagnostics::AttrInUseTree {
+        self.dcx().emit_err(crate::diagnostics::AttrInUseTree {
+            attr_span,
+            sub: Some(crate::diagnostics::AttrInUseTreeSugg {
+                use_lo: use_token_span.shrink_to_lo(),
                 attr_span,
-                sub: Some(crate::diagnostics::AttrInUseTreeSugg {
-                    use_lo: use_token_span.shrink_to_lo(),
-                    attr_span,
-                    tree_span,
-                    code,
-                }),
-            };
-            self.dcx().emit_err(err);
-        }
+                tree_span,
+                code,
+            }),
+        });
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
