@@ -1,9 +1,8 @@
-use rustc_abi::{CanonAbi, Size};
+use rustc_abi::Size;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::thread::{EvalContextExt as _, ThreadNameResult};
 use crate::*;
 
@@ -16,14 +15,21 @@ pub fn prctl<'tcx>(
     args: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    let ([op], varargs) = ecx.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
+    let ([op], varargs) = ecx.check_shim_sig_variadic(
+        shim_sig_variadic!(extern "C" fn(i32) -> i32),
+        link_name,
+        abi,
+        args,
+    )?;
 
     let pr_set_name = ecx.eval_libc_i32("PR_SET_NAME");
     let pr_get_name = ecx.eval_libc_i32("PR_GET_NAME");
 
     let res = match ecx.read_scalar(op)?.to_i32()? {
         op if op == pr_set_name => {
-            let [name] = check_min_vararg_count("prctl(PR_SET_NAME, ...)", varargs)?;
+            let ([name], _) =
+                ecx.check_varargs(shim_varargs![*_], varargs, "prctl(PR_SET_NAME, ...)")?;
+
             let name = ecx.read_scalar(name)?;
             let thread = ecx.pthread_self()?;
             // The Linux kernel silently truncates long names.
@@ -34,7 +40,9 @@ pub fn prctl<'tcx>(
             Scalar::from_u32(0)
         }
         op if op == pr_get_name => {
-            let [name] = check_min_vararg_count("prctl(PR_GET_NAME, ...)", varargs)?;
+            let ([name], _) =
+                ecx.check_varargs(shim_varargs![*_], varargs, "prctl(PR_GET_NAME, ...)")?;
+
             let name = ecx.read_scalar(name)?;
             let thread = ecx.pthread_self()?;
             let len = Scalar::from_target_usize(TASK_COMM_LEN, ecx);

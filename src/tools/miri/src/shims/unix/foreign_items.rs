@@ -6,7 +6,7 @@ use rustc_abi::{CanonAbi, Size};
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::Os;
+use rustc_target::spec::{Env, Os};
 
 use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;
@@ -315,8 +315,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "fcntl" => {
-                let ([fd_num, cmd], varargs) =
-                    this.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
+                let ([fd_num, cmd], varargs) = this.check_shim_sig_variadic(
+                    shim_sig_variadic!(extern "C" fn(i32, i32) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
                 let result = this.fcntl(fd_num, cmd, varargs)?;
                 this.write_scalar(result, dest)?;
             }
@@ -362,8 +366,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "ioctl" => {
-                let ([fd, op], varargs) =
-                    this.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
+                // The type of `op` depends on the libc. :(
+                // glibc, BSD use `unsigned long`, the rest uses `int`.
+                let op_is_ulong = match this.tcx.sess.target.os {
+                    Os::FreeBsd | Os::NetBsd | Os::MacOs => true,
+                    Os::Linux if this.tcx.sess.target.env == Env::Gnu => true,
+                    _ => false,
+                };
+                let ([fd, op], varargs) = this.check_shim_sig_variadic(
+                    if op_is_ulong {
+                        shim_sig_variadic!(extern "C" fn(i32, usize) -> i32)
+                    } else {
+                        shim_sig_variadic!(extern "C" fn(i32, i32) -> i32)
+                    },
+                    link_name,
+                    abi,
+                    args,
+                )?;
                 let result = this.ioctl(fd, op, varargs)?;
                 this.write_scalar(result, dest)?;
             }
@@ -372,8 +391,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "open" => {
                 // `open` is variadic, the third argument is only present when the second argument
                 // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
-                let ([path_raw, flag], varargs) =
-                    this.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
+                let ([path_raw, flag], varargs) = this.check_shim_sig_variadic(
+                    shim_sig_variadic!(extern "C" fn(*_, i32) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
                 let result = this.open(path_raw, flag, varargs)?;
                 this.write_scalar(result, dest)?;
             }
