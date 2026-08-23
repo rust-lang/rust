@@ -253,7 +253,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    fn check_shim_sig_lenient<'a, const N: usize>(
+    /// 'Lenient' signature check. Deprecated; use `check_shim_sig` instead.
+    fn check_shim_sig_deprecated<'a, const N: usize>(
         &mut self,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         exp_abi: CanonAbi,

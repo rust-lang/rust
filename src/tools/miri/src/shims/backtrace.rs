@@ -116,7 +116,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let [ptr, flags] = this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+        let [ptr, flags] = this.check_shim_sig_deprecated(abi, CanonAbi::Rust, link_name, args)?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
 
