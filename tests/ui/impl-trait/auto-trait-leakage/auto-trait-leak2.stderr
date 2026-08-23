@@ -10,11 +10,11 @@ LL |     send(before());
    |     required by a bound introduced by this call
    |
    = help: within `impl Fn(i32)`, the trait `Send` is not implemented for `Rc<Cell<i32>>`
-note: required because it's used within this closure
-  --> $DIR/auto-trait-leak2.rs:11:5
+note: required because `p` is used within this closure
+  --> $DIR/auto-trait-leak2.rs:11:14
    |
 LL |     move |x| p.set(x)
-   |     ^^^^^^^^
+   |              ^
 note: required because it appears within the type `impl Fn(i32)`
   --> $DIR/auto-trait-leak2.rs:6:16
    |
@@ -38,11 +38,11 @@ LL | fn after() -> impl Fn(i32) {
    |               ------------ within this `impl Fn(i32)`
    |
    = help: within `impl Fn(i32)`, the trait `Send` is not implemented for `Rc<Cell<i32>>`
-note: required because it's used within this closure
-  --> $DIR/auto-trait-leak2.rs:39:5
+note: required because `p` is used within this closure
+  --> $DIR/auto-trait-leak2.rs:39:14
    |
 LL |     move |x| p.set(x)
-   |     ^^^^^^^^
+   |              ^
 note: required because it appears within the type `impl Fn(i32)`
   --> $DIR/auto-trait-leak2.rs:34:15
    |
