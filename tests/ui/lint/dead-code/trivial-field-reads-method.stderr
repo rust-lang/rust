@@ -29,5 +29,13 @@ LL | struct U {
 LL |     a: u32,
    |     ^
 
-error: aborting due to 3 previous errors
+error: field `a` is never read
+  --> $DIR/trivial-field-reads-method.rs:74:5
+   |
+LL | struct Whatever {
+   |        -------- field in this struct
+LL |     a: u32,
+   |     ^
+
+error: aborting due to 4 previous errors
 

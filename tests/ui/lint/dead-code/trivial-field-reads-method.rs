@@ -1,4 +1,4 @@
-//! Checks that `#[rustc_trivial_field_reads]` applies per method
+//! Checks that `#[rustc_trivial_field_reads]` on the allowed targets
 //! (issue #160621)
 
 #![feature(rustc_attrs)]
@@ -70,6 +70,26 @@ fn bar(u: &U) -> u32 {
     u.b
 }
 
+struct Whatever {
+    a: u32, //~ ERROR field `a` is never read
+    b: u32,
+}
+
+trait ReadWhatever {
+    #[rustc_trivial_field_reads]
+    fn read_a(&self, value: &Whatever) -> u32 {
+        value.a
+    }
+
+    fn read_b(&self, value: &Whatever) -> u32 {
+        value.b
+    }
+}
+
+struct Reader;
+
+impl ReadWhatever for Reader {}
+
 fn main() {
     let s = S {
         a: 0,
@@ -94,4 +114,10 @@ fn main() {
     let u = U { a: 0, b:0 };
     let _ = foo(&u);
     let _ = bar(&u);
+
+    let whatever = Whatever { a: 0, b: 0 };
+    let reader = Reader;
+
+    let _ = reader.read_a(&whatever);
+    let _ = reader.read_b(&whatever);
 }

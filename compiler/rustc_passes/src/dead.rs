@@ -444,10 +444,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         ControlFlow::Continue(())
     }
 
-    /// Trait impl methods marked with `rustc_trivial_field_reads`
-    /// will be ignored for the purposes of dead code analysis (see PR #85200
-    /// for discussion, and PR #160666).
-    fn should_ignore_impl_item(&mut self, node: Node<'_>) {
+    /// Records trait impls skipped so that we can note that its fields look unused in the error message
+    fn record_impl_item_to_ignore(&mut self, node: Node<'_>) {
         if let Node::ImplItem(impl_item) = node
             && let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
             && let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
@@ -468,8 +466,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     ) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
         let node = self.tcx.hir_node_by_def_id(def_id);
 
+        // Items marked with `rustc_trivial_field_reads` will be ignored for the purposes
+        // of dead code analysis (see PR #85200 for discussion, and PR #160666)
         if find_attr!(self.tcx, def_id, RustcTrivialFieldReads) {
-            self.should_ignore_impl_item(node);
+            self.record_impl_item_to_ignore(node);
             return ControlFlow::Continue(());
         }
 
