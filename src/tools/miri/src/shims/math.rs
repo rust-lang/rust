@@ -38,7 +38,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "erff"
             | "erfcf"
             => {
-                let [f] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
+                let [f] = this.check_shim_sig_deprecated(abi, CanonAbi::C , link_name, args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
 
                 let res = math::fixed_float_value(this, link_name.as_str(), &[f]).unwrap_or_else(|| {
@@ -81,7 +81,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "atan2f"
             | "fdimf"
             => {
-                let [f1, f2] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
+                let [f1, f2] = this.check_shim_sig_deprecated(abi, CanonAbi::C , link_name, args)?;
                 let f1 = this.read_scalar(f1)?.to_f32()?;
                 let f2 = this.read_scalar(f2)?.to_f32()?;
 
@@ -125,7 +125,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "erf"
             | "erfc"
             => {
-                let [f] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
+                let [f] = this.check_shim_sig_deprecated(abi, CanonAbi::C , link_name, args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
 
                 let res = math::fixed_float_value(this, link_name.as_str(), &[f]).unwrap_or_else(|| {
@@ -168,7 +168,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "atan2"
             | "fdim"
             => {
-                let [f1, f2] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
+                let [f1, f2] = this.check_shim_sig_deprecated(abi, CanonAbi::C , link_name, args)?;
                 let f1 = this.read_scalar(f1)?.to_f64()?;
                 let f2 = this.read_scalar(f2)?.to_f64()?;
 
@@ -199,7 +199,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "ldexp"
             | "scalbn"
             => {
-                let [x, exp] = this.check_shim_sig_lenient(abi, CanonAbi::C , link_name, args)?;
+                let [x, exp] = this.check_shim_sig_deprecated(abi, CanonAbi::C , link_name, args)?;
                 // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
                 let x = this.read_scalar(x)?.to_f64()?;
                 let exp = this.read_scalar(exp)?.to_i32()?;
@@ -209,7 +209,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "lgammaf_r" => {
-                let [x, signp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [x, signp] =
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let x = this.read_scalar(x)?.to_f32()?;
                 let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
 
@@ -228,7 +229,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "lgamma_r" => {
-                let [x, signp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [x, signp] =
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let x = this.read_scalar(x)?.to_f64()?;
                 let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
 

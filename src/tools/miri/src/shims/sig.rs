@@ -12,6 +12,7 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
     pub abi: ExternAbi,
     pub args: [Ty<'tcx>; ARGS],
     pub ret: Ty<'tcx>,
+    pub nounwind: bool,
 }
 
 /// Construct a `ShimSig` with convenient syntax:
@@ -22,7 +23,7 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
 /// The following types are supported:
 /// - primitive integer types
 /// - `()`
-/// - (thin) raw pointers, written `*const _` and `*mut _` since the pointee type is irrelevant
+/// - (thin) raw pointers, written `*_` since the mutability and pointee type are irrelevant
 /// - `$crate::$mod::...::$ty` for a type from the given crate (most commonly that is `libc`)
 /// - `winapi::$ty` for a type from `std::sys::pal::windows::c`
 #[macro_export]
@@ -32,6 +33,20 @@ macro_rules! shim_sig {
             abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
             args: shim_sig_args_sep!(this, [$($args)*]),
             ret: shim_sig_arg!(this, $($ret)*),
+            nounwind: false,
+        }
+    };
+}
+
+/// Same as `shim_sig!` but promises that this function will not unwind, even if the ABI allows it.
+#[macro_export]
+macro_rules! shim_sig_nounwind {
+    (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
+        |this| $crate::shims::sig::ShimSig {
+            abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
+            args: shim_sig_args_sep!(this, [$($args)*]),
+            ret: shim_sig_arg!(this, $($ret)*),
+            nounwind: true,
         }
     };
 }
@@ -43,9 +58,9 @@ macro_rules! shim_sig {
 /// # Examples
 ///
 /// ```ignore
-/// shim_sig_args_sep!(this, [*const _, i32, libc::off64_t]);
+/// shim_sig_args_sep!(this, [*_, i32, libc::off64_t]);
 /// // expands to:
-/// [shim_sig_arg!(*const _), shim_sig_arg!(i32), shim_sig_arg!(libc::off64_t)];
+/// [shim_sig_arg!(*_), shim_sig_arg!(i32), shim_sig_arg!(libc::off64_t)];
 /// ```
 #[macro_export]
 macro_rules! shim_sig_args_sep {
@@ -121,14 +136,27 @@ macro_rules! shim_sig_arg {
     ($this:ident, ()) => {
         $this.tcx.types.unit
     };
+    ($this:ident, !) => {
+        $this.tcx.types.never
+    };
     ($this:ident, bool) => {
         $this.tcx.types.bool
     };
-    ($this:ident, *const _) => {
+    ($this:ident, *_) => {
+        // Mutability does not matter for ABI.
+        $this.machine.layouts.mut_raw_ptr.ty
+    };
+    ($this:ident, fn(..) -> _) => {
+        // We currently treat fn ptrs as ABI-compatible with data ptrs so we can just use a raw ptr.
         $this.machine.layouts.const_raw_ptr.ty
     };
-    ($this:ident, *mut _) => {
-        $this.machine.layouts.mut_raw_ptr.ty
+    ($this:ident, &[$($ty:tt)*]) => {
+        rustc_middle::ty::Ty::new_ref(
+            *$this.tcx,
+            $this.tcx.lifetimes.re_erased,
+            rustc_middle::ty::Ty::new_slice(*$this.tcx, shim_sig_arg!($this, $($ty)*)),
+            rustc_middle::mir::Mutability::Not,
+        )
     };
     ($this:ident, winapi::$ty:ident) => {
         $this.windows_ty_layout(stringify!($ty)).ty
@@ -144,37 +172,42 @@ macro_rules! shim_sig_arg {
 /// Helper function to compare two ABIs.
 fn check_shim_abi<'tcx>(
     this: &MiriInterpCx<'tcx>,
+    link_name: Symbol,
     callee_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    callee_nounwind: bool,
     caller_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> InterpResult<'tcx> {
     if callee_abi.conv != caller_abi.conv {
         throw_ub_format!(
-            r#"calling a function with calling convention "{callee}" using caller calling convention "{caller}""#,
+            r#"ABI mismatch: `{link_name}` has calling convention "{callee}", but the caller is using calling convention "{caller}""#,
             callee = callee_abi.conv,
             caller = caller_abi.conv,
         );
     }
-    if callee_abi.can_unwind && !caller_abi.can_unwind {
+    // FIXME: is this needed? Or is it enough to just check this if/when an actual unwind happens?
+    if callee_abi.can_unwind && !callee_nounwind && !caller_abi.can_unwind {
         throw_ub_format!(
-            "ABI mismatch: callee may unwind, but caller-side signature prohibits unwinding",
+            "ABI mismatch: callee may unwind, but caller asumes that no unwinding will occur",
         );
     }
     if caller_abi.c_variadic && !callee_abi.c_variadic {
         throw_ub_format!(
-            "ABI mismatch: calling a non-variadic function with a variadic caller-side signature"
+            "ABI mismatch: `{link_name}` is a non-variadic function, but the caller is using a variadic signature"
         );
     }
     if !caller_abi.c_variadic && callee_abi.c_variadic {
         throw_ub_format!(
-            "ABI mismatch: calling a variadic function with a non-variadic caller-side signature"
+            "ABI mismatch: `{link_name}` is a variadic function, but the caller is using a non-variadic signature"
         );
     }
 
     if callee_abi.fixed_count != caller_abi.fixed_count {
         throw_ub_format!(
-            "ABI mismatch: expected {} arguments, found {} arguments ",
+            "ABI mismatch: calling `{link_name}` which takes {} argument{}, but {} argument{} given",
             callee_abi.fixed_count,
-            caller_abi.fixed_count
+            if callee_abi.fixed_count == 1 { "" } else { "s" },
+            caller_abi.fixed_count,
+            if caller_abi.fixed_count == 1 { " was" } else { "s were" },
         );
     }
 
@@ -223,7 +256,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    fn check_shim_sig_lenient<'a, const N: usize>(
+    /// 'Lenient' signature check. Deprecated; use `check_shim_sig` instead.
+    fn check_shim_sig_deprecated<'a, const N: usize>(
         &mut self,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         exp_abi: CanonAbi,
@@ -280,7 +314,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let callee_fn_abi = this.fn_abi_of_fn_ptr(fn_sig_binder, Default::default())?;
 
         // Check everything.
-        check_shim_abi(this, callee_fn_abi, caller_fn_abi)?;
+        check_shim_abi(this, link_name, callee_fn_abi, shim_sig.nounwind, caller_fn_abi)?;
         this.check_shim_symbol_clash(link_name)?;
 
         // Return arguments.
