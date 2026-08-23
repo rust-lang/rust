@@ -2,11 +2,12 @@
 //@ revisions: opt noopt ctfe
 //@[opt] compile-flags: -O
 //@[noopt] compile-flags: -Zmir-opt-level=0
-//@ min-llvm-version: 22
-//@ compile-flags: --check-cfg=cfg(target_has_reliable_f16)
+//@ min-llvm-version: 23
+//@ compile-flags: --check-cfg=cfg(target_has_reliable_f16,target_has_reliable_f128)
 // ignore-tidy-file-linelength
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![cfg_attr(target_has_reliable_f16, feature(f16))]
+#![cfg_attr(target_has_reliable_f128, feature(f128))]
 
 // This tests the float classification functions, for regular runtime code and for const evaluation.
 
@@ -59,6 +60,13 @@ macro_rules! suite {
             #[allow(unused)]
             type $tyname = f64;
             suite_inner!(f64 => $($tt)*);
+        }
+
+        #[cfg(target_has_reliable_f128)]
+        fn f128() {
+            #[allow(unused)]
+            type $tyname = f128;
+            suite_inner!(f128 => $($tt)*);
         }
     }
 }
@@ -124,5 +132,6 @@ fn main() {
     f16();
     f32();
     f64();
-    // FIXME(f128): also test f128
+    #[cfg(target_has_reliable_f128)]
+    f128();
 }
