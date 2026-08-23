@@ -10,46 +10,40 @@
 
 // This tests the float classification functions, for regular runtime code and for const evaluation.
 
-
-use std::num::FpCategory::*;
-
 #[cfg(not(ctfe))]
 use std::hint::black_box;
+use std::num::FpCategory::*;
 #[cfg(ctfe)]
 #[allow(unused)]
-const fn black_box<T>(x: T) -> T { x }
+const fn black_box<T>(x: T) -> T {
+    x
+}
 
 #[cfg(not(ctfe))]
 macro_rules! assert_test {
-    ($a:expr, NonDet) => {
-        {
-            // Compute `a`, but do not compare with anything as the result is non-deterministic.
-            let _val = $a;
-        }
-    };
-    ($a:expr, $b:ident) => {
-        {
-            // Let-bind to avoid promotion.
-            // No black_box here! That can mask x87 failures.
-            let a = $a;
-            let b = $b;
-            assert_eq!(a, b, "{} produces wrong result", stringify!($a));
-        }
-    };
+    ($a:expr, NonDet) => {{
+        // Compute `a`, but do not compare with anything as the result is non-deterministic.
+        let _val = $a;
+    }};
+    ($a:expr, $b:ident) => {{
+        // Let-bind to avoid promotion.
+        // No black_box here! That can mask x87 failures.
+        let a = $a;
+        let b = $b;
+        assert_eq!(a, b, "{} produces wrong result", stringify!($a));
+    }};
 }
 #[cfg(ctfe)]
 macro_rules! assert_test {
-    ($a:expr, NonDet) => {
-        {
-            // Compute `a`, but do not compare with anything as the result is non-deterministic.
-            const _: () = { let _val = $a; };
-        }
-    };
-    ($a:expr, $b:ident) => {
-        {
-            const _: () = assert!(matches!($a, $b));
-        }
-    };
+    ($a:expr, NonDet) => {{
+        // Compute `a`, but do not compare with anything as the result is non-deterministic.
+        const _: () = {
+            let _val = $a;
+        };
+    }};
+    ($a:expr, $b:ident) => {{
+        const _: () = assert!(matches!($a, $b));
+    }};
 }
 
 macro_rules! suite {
