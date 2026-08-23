@@ -11,3 +11,10 @@ optimize = false
 targets = "AArch64;X86;Patmos"
 experimental-targets = "Patmos"
 link-shared = false
+
+[target.patmos-unknown-none]
+# Bandaid fix to resolve the compiler_builtin soft-float helpers (__adddf3 et. al.) to make Platin actually resolve them,
+# because otherwise Platin will complain about "__any__" being unresolvable, so this makes sure it is linked correctly.
+rustflags = ["-C", "codegen-units=1", "-C", "embed-bitcode=yes"]
+
+# This was a meeeeeeeesssssssssssssssssssssssssssssssssssssssss

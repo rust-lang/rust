@@ -68,6 +68,65 @@ How to rebuild the PML fast
 cmake --build build --target LLVMPatmosCodeGen
 ```
 
+### C++ link fails with "member of archive is not a bitcode file"
+
+If `clang` fails with something like:
+
+```
+llvm-link: error: member of archive is not a bitcode file: 'clzsi2.c.obj'
+```
+
+Your `librt.a` is broken. The Patmos toolchain links C++/C code at the
+bitcode level, so every object inside `librt.a` needs to be LLVM bitcode, not
+a native ELF object.
+
+This happens when compiler-rt gets built with the wrong toolchain pointed at
+by `CMAKE_PROGRAM_PATH` — for example a `build-compiler-rt/CMakeCache.txt`
+left over from configuring against a *different* LLVM checkout's
+`build/bin`. When that happens, compiler-rt silently compiles to native
+objects instead of bitcode, and copying the result into `librt.a` gives you
+this exact error. (This took hours to resolve)
+
+Check what's actually in `librt.a`:
+
+```zsh
+llvm-ar x build/patmos-unknown-unknown-elf/lib/librt.a clzsi2.c.obj
+file clzsi2.c.obj
+```
+
+- `clzsi2.c.obj: LLVM IR bitcode` looks good, `librt.a` is fine, look elsewhere.
+- `clzsi2.c.obj: ELF 32-bit MSB relocatable...` something 🅱️roke, re🅱️uild compiler-rt (and have a nice day)
+
+In order to rebuild it correctly:
+
+```zsh
+rm -rf build-compiler-rt
+mkdir build-compiler-rt && cd build-compiler-rt
+cmake ../compiler-rt \
+  -DCMAKE_TOOLCHAIN_FILE=../compiler-rt/cmake/patmos-clang-toolchain.cmake \
+  -DCMAKE_PROGRAM_PATH="$(pwd)/../build/bin" \
+  -DCOMPILER_RT_INCLUDE_TESTS=ON
+make -j4
+```
+
+`CMAKE_PROGRAM_PATH` must point at *this same tree's* `build/bin` — not
+another LLVM checkout's. That's the whole bug, every time.
+
+Then install the result:
+
+```zsh
+cp lib/generic/libclang_rt.builtins-patmos.a \
+   ../build/patmos-unknown-unknown-elf/lib/librt.a
+```
+
+Verify again with the `llvm-ar x` / `file` check above before moving on.
+If you don't have time to debug why a given tree's compiler-rt build keeps
+emitting native objects, you can copy a known-good, bitcode-verified
+`librt.a` from another Patmos LLVM build of the same LLVM version, it's a
+plain archive of target-independent bitcode, so it's portable across trees.
+I wouldn't trust to rely on it long term, but it may help you just get the results if you
+know it had worked before.
+
 ## Podman/Pre-CI setup
 
 ```zsh

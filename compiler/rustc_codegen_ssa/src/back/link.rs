@@ -3029,13 +3029,62 @@ fn add_static_crate(
     let src = &codegen_results.crate_info.used_crate_source[&cnum];
     let cratepath = src.rlib.as_ref().unwrap();
 
+
+    // TODO / Unstable (as hecc) - This implementation is a bandaid to add compiler-rt like
+    // behaviour onto the Rust compiler, which in turn we need to rebuild rustc "core" everytime
+    // when we want to use floats in the Rust code, hemorrhaging with the increased compile times.
+    // There should be a better implementation long term use of this compiler fork!
+
+    // Also see /rust/compiler/rustc_target/src/spec/mod.rs
+
+    // Some targets (like Patmos, for now) run a whole-program bitcode/LTO pipeline where a libcall
+    // (e.g. a soft-float helper like `__adddf3`) can be introduced by SelectionDAG
+    // legalization during the single final codegen step, with no corresponding IR-level call
+    // ever appearing in any module. Such a libcall never shows up as an unresolved symbol at
+    // ordinary link time, so normal (non-whole-archive) static linking of the sysroot crate
+    // providing it (for example, `compiler_builtins`) can silently leave it out of the LTO-merged
+    // module, even though the final binary happens to link fine (the symbol gets resolved
+    // separately, post-LTO, against the crate's native code). Opting a crate name in via
+    // `lto_whole_archive_sysroot_crates` forces it to always be whole-archived when
+    // linker-plugin-LTO is active, mirroring Clang's Patmos driver behaviour, which always merges
+    // all of compiler-rt's bitcode unconditionally rather than relying on symbol-driven extraction.
+    let crate_name = codegen_results.crate_info.crate_name[&cnum];
+    let whole_archive = sess.opts.cg.linker_plugin_lto.enabled()
+        && sess
+            .target
+            .options
+            .lto_whole_archive_sysroot_crates
+            .iter()
+            .any(|c| crate_name.as_str() == &**c);
+
     let mut link_upstream =
-        |path: &Path| cmd.link_staticlib_by_path(&rehome_lib_path(sess, path), false);
+        |path: &Path| cmd.link_staticlib_by_path(&rehome_lib_path(sess, path), whole_archive);
 
     if !are_upstream_rust_objects_already_included(sess)
         || ignored_for_lto(sess, &codegen_results.crate_info, cnum)
     {
-        link_upstream(cratepath);
+        if whole_archive {
+            // `--whole-archive` pulls in every member of the archive, including the rlib's
+            // metadata member (an `.rmeta` blob, not a valid object file), which temporarily
+            // stops the linker. Strip it out first, same as the normal LTO-altering path below does
+            let dst = tmpdir.join(cratepath.file_name().unwrap());
+            let mut archive = archive_builder_builder.new_archive_builder(sess);
+            if let Err(error) = archive.add_archive(
+                cratepath,
+                Box::new(move |f| f == METADATA_FILENAME),
+            ) {
+                // TODO: Emit a better suggestion
+                sess.dcx().emit_fatal(errors::RlibArchiveBuildFailure {
+                    path: cratepath.clone(),
+                    error,
+                });
+            }
+            if archive.build(&dst) {
+                link_upstream(&dst);
+            }
+        } else {
+            link_upstream(cratepath);
+        }
         return;
     }
 

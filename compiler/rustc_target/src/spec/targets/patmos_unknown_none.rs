@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Abi, Arch, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Abi, Arch, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs};
 
 pub(crate) fn target() -> Target {
     let options = TargetOptions {
@@ -22,6 +22,10 @@ pub(crate) fn target() -> Target {
         //
         eh_frame_header: false,
         emit_debug_gdb_scripts: false,
+        // Force oft-float helpers (__adddf3 etc.), which introduced by SelectionDAG legalization
+        // to exist in the Rust code, because Platin will complain and it would not be able to
+        // resolve and thus analyse the code for WCET analysis.
+        lto_whole_archive_sysroot_crates: cvs!["compiler_builtins"],
         ..Default::default()
     };
 

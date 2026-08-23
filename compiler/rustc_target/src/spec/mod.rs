@@ -2548,6 +2548,27 @@ pub struct TargetOptions {
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.
     pub llvm_args: StaticCow<[StaticCow<str>]>,
 
+    // TODO / Unstable (as hecc) - This implementation is a bandaid to add compiler-rt like
+    // behaviour onto the Rust compiler, which in turn we need to rebuild rustc "core" everytime
+    // when we want to use floats in the Rust code, hemorrhaging with the increased compile times.
+    // There should be a better implementation long term use of this compiler fork!
+
+    // Also see rust/compiler/rustc_codegen_ssa/src/back/link.rs
+
+    /// Names of upstream sysroot crates (e.g. "compiler_builtins") that should always be
+    /// statically linked with `--whole-archive` (or platform equivalent) semantics, but only
+    /// when `-C linker-plugin-lto` is also active for this build. This exists for targets
+    /// (like Patmos) whose whole-program bitcode needs every symbol from these
+    /// crates unconditionally present in the single merged module before final codegen, which
+    /// mirrors how Clang's Patmos driver always fully merges compiler-rt's bitcode
+    /// (fyi: all of compiler-rt must always be available) rather than relying on ordinary
+    /// undefined-symbol-driven archive extraction, which cannot see library calls that are only
+    /// synthesized later during SelectionDAG legalization (soft-float helpers like
+    /// `__adddf3`) and therefore never appear as an unresolved reference at link time.
+    /// Defaults to empty, meaning no behavior change from ordinary (non-whole-archive) static
+    /// linking for any target that doesn't explicitly opt in.
+    pub lto_whole_archive_sysroot_crates: StaticCow<[StaticCow<str>]>,
+
     /// Whether to use legacy .ctors initialization hooks rather than .init_array. Defaults
     /// to false (uses .init_array).
     pub use_ctors_section: bool,
@@ -2829,6 +2850,7 @@ impl Default for TargetOptions {
             rustc_abi: None,
             relax_elf_relocations: false,
             llvm_args: cvs![],
+            lto_whole_archive_sysroot_crates: cvs![],
             use_ctors_section: false,
             eh_frame_header: true,
             has_thumb_interworking: false,
