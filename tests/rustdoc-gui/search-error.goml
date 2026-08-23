@@ -8,7 +8,7 @@ define-function: (
     [theme, error_background],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
-        wait-for-false: "#search-tabs .count.loading"
+        call-function: ("wait-for-search-results", {})
         wait-for: "#search .error code"
         assert-css: ("#search .error code", {"background-color": |error_background|})
     }
