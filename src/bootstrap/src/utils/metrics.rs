@@ -17,7 +17,7 @@ use build_helper::metrics::{
 use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
 use crate::core::builder::{Builder, Step};
-use crate::core::session::Build;
+use crate::core::session::Session;
 use crate::utils::helpers::t;
 
 // Update this number whenever a breaking change is made to the build metrics.
@@ -156,11 +156,11 @@ impl BuildMetrics {
         step.cpu_usage_time_sec += cpu as f64 / 100.0 * elapsed.as_secs_f64();
     }
 
-    pub(crate) fn persist(&self, build: &Build) {
+    pub(crate) fn persist(&self, sess: &Session) {
         let mut state = self.state.borrow_mut();
         assert!(state.running_steps.is_empty(), "steps are still executing");
 
-        let dest = build.out.join("metrics.json");
+        let dest = sess.out.join("metrics.json");
 
         let mut system = System::new_with_specifics(
             RefreshKind::nothing().with_cpu(CpuRefreshKind::everything()),
@@ -222,7 +222,7 @@ impl BuildMetrics {
             format_version: CURRENT_FORMAT_VERSION,
             system_stats,
             invocations,
-            ci_metadata: get_ci_metadata(build.config.ci_env),
+            ci_metadata: get_ci_metadata(sess.config.ci_env),
         };
 
         t!(std::fs::create_dir_all(dest.parent().unwrap()));

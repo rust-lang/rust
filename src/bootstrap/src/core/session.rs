@@ -39,13 +39,8 @@ pub(crate) enum GitRepo {
 /// This structure transitively contains all configuration for the build system.
 /// All filesystem-encoded configuration is in `config`, all flags are in
 /// `flags`, and then parsed or probed information is listed in the keys below.
-///
-/// This structure is a parameter of almost all methods in the build system,
-/// although most functions are implemented as free functions rather than
-/// methods specifically on this structure itself (to make it easier to
-/// organize).
-pub(crate) struct Build {
-    /// User-specified configuration from `bootstrap.toml`.
+pub(crate) struct Session {
+    /// User-specified configuration from command-line flags and `bootstrap.toml`.
     pub(crate) config: Config,
 
     // Version information
@@ -227,8 +222,8 @@ impl FileType {
 }
 
 macro_rules! forward {
-    ( $( $fn:ident( $($param:ident: $ty:ty),* ) $( -> $ret:ty)? ),+ $(,)? ) => {
-        impl Build {
+    ($( $fn:ident( $($param:ident: $ty:ty),* ) $( -> $ret:ty)? ),+ $(,)? ) => {
+        impl Session {
             $(
                 pub(crate) fn $fn(&self, $($param: $ty),* ) $( -> $ret)? {
                     self.config.$fn( $($param),* )
@@ -266,12 +261,12 @@ impl From<Compiler> for TargetAndStage {
     }
 }
 
-impl Build {
+impl Session {
     /// Creates a new set of build configuration from the `flags` on the command
     /// line and the filesystem `config`.
     ///
     /// By default all build output will be placed in the current directory.
-    pub(crate) fn new(mut config: Config) -> Build {
+    pub(crate) fn new(mut config: Config) -> Session {
         let src = config.src.clone();
         let out = config.out.clone();
 
@@ -361,7 +356,7 @@ impl Build {
             config.description = Some("built from a source tarball".to_owned());
         }
 
-        let mut build = Build {
+        let mut sess = Session {
             initial_lld,
             initial_relative_libdir,
             initial_rustc: config.initial_rustc.clone(),
@@ -410,10 +405,10 @@ impl Build {
 
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
-        let local_version_verbose = command(&build.initial_rustc)
+        let local_version_verbose = command(&sess.initial_rustc)
             .run_in_dry_run()
             .args(["--version", "--verbose"])
-            .run_capture_stdout(&build)
+            .run_capture_stdout(&sess)
             .stdout();
         let local_release = local_version_verbose
             .lines()
@@ -422,26 +417,26 @@ impl Build {
             .unwrap()
             .trim();
         if local_release.split('.').take(2).eq(version.split('.').take(2)) {
-            build.do_if_verbose(|| println!("auto-detected local-rebuild {local_release}"));
-            build.local_rebuild = true;
+            sess.do_if_verbose(|| println!("auto-detected local-rebuild {local_release}"));
+            sess.local_rebuild = true;
         }
 
-        build.do_if_verbose(|| println!("finding compilers"));
-        crate::utils::cc_detect::fill_compilers(&mut build);
+        sess.do_if_verbose(|| println!("finding compilers"));
+        crate::utils::cc_detect::fill_compilers(&mut sess);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
         // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
         //
         // Similarly, for `setup` we don't actually need submodules or cargo metadata.
-        if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
-            build.do_if_verbose(|| println!("running sanity check"));
-            crate::core::sanity::check(&mut build);
+        if !matches!(sess.config.cmd, Subcommand::Setup { .. }) {
+            sess.do_if_verbose(|| println!("running sanity check"));
+            crate::core::sanity::check(&mut sess);
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
             // Cargo.toml files.
             let rust_submodules = ["library/backtrace"];
             for s in rust_submodules {
-                build.require_submodule(
+                sess.require_submodule(
                     s,
                     Some(
                         "The submodule is required for the standard library \
@@ -450,30 +445,30 @@ impl Build {
                 );
             }
             // Now, update all existing submodules.
-            build.update_existing_submodules();
+            sess.update_existing_submodules();
 
-            build.do_if_verbose(|| println!("learning about cargo"));
-            crate::core::metadata::build(&mut build);
+            sess.do_if_verbose(|| println!("learning about cargo"));
+            crate::core::metadata::build(&mut sess);
         }
 
         // Create symbolic link to use host sysroot from a consistent path (e.g., in the rust-analyzer config file).
-        let build_triple = build.out.join(build.host_target);
+        let build_triple = sess.out.join(sess.host_target);
         t!(fs::create_dir_all(&build_triple));
-        let host = build.out.join("host");
+        let host = sess.out.join("host");
         if host.is_symlink() {
             // Left over from a previous build; overwrite it.
-            // This matters if `build.build` has changed between invocations.
+            // This matters if `sess.host_target` has changed between invocations.
             #[cfg(windows)]
             t!(fs::remove_dir(&host));
             #[cfg(not(windows))]
             t!(fs::remove_file(&host));
         }
         t!(
-            symlink_dir(&build.config, &build_triple, &host),
+            symlink_dir(&sess.config, &build_triple, &host),
             format!("symlink_dir({} => {}) failed", host.display(), build_triple.display())
         );
 
-        build
+        sess
     }
 
     /// Updates a submodule, and exits with a failure if submodule management
@@ -488,10 +483,10 @@ impl Build {
         feature = "tracing",
         instrument(
             level = "trace",
-            name = "Build::require_submodule",
+            name = "Session::require_submodule",
             skip_all,
             fields(submodule = submodule),
-        ),
+        )
     )]
     pub(crate) fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
         if self.rust_info().is_from_tarball() {
@@ -566,7 +561,7 @@ impl Build {
     }
 
     /// Executes the entire build, as configured by the flags and configuration.
-    #[cfg_attr(feature = "tracing", instrument(level = "debug", name = "Build::build", skip_all))]
+    #[cfg_attr(feature = "tracing", instrument(level = "debug", name = "Session::build", skip_all))]
     pub(crate) fn build(&mut self) {
         trace!("setting up job management");
         unsafe {
@@ -884,7 +879,7 @@ impl Build {
 
     /// Return a `Group` guard for a [`Step`] that:
     /// - Performs `action`
-    ///   - If the action is `Kind::Test`, use [`Build::msg_test`] instead.
+    ///   - If the action is `Kind::Test`, use [`Session::msg_test`] instead.
     /// - On `what`
     ///   - Where `what` possibly corresponds to a `mode`
     /// - `action` is performed with/on the given compiler (`target_and_stage`).
@@ -907,7 +902,7 @@ impl Build {
         let action = action.into();
         assert!(
             action != Kind::Test,
-            "Please use `Build::msg_test` instead of `Build::msg(Kind::Test)`"
+            "Please use `Session::msg_test` instead of `Session::msg(Kind::Test)`"
         );
 
         let actual_stage = match mode.into() {
@@ -946,7 +941,7 @@ impl Build {
     }
 
     /// Return a `Group` guard for a [`Step`] that tests `what` with the given `stage` and `target`.
-    /// Use this instead of [`Build::msg`] for test steps, because for them it is not always clear
+    /// Use this instead of [`Session::msg`] for test steps, because for them it is not always clear
     /// what exactly is a build compiler.
     ///
     /// [`Step`]: crate::core::builder::Step
@@ -1863,7 +1858,7 @@ to download LLVM rather than building it.
     }
 }
 
-impl AsRef<ExecutionContext> for Build {
+impl AsRef<ExecutionContext> for Session {
     fn as_ref(&self) -> &ExecutionContext {
         &self.config.exec_ctx
     }

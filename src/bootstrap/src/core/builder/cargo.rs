@@ -646,7 +646,7 @@ impl Builder<'_> {
         // from out of tree it shouldn't matter, since x.py is only used for
         // building in-tree.
         let color_logs = ["RUSTDOC_LOG_COLOR", "RUSTC_LOG_COLOR", "RUST_LOG_COLOR"];
-        match self.build.config.color {
+        match self.sess.config.color {
             Color::Always => {
                 cargo.arg("--color=always");
                 for log in &color_logs {
@@ -1172,14 +1172,14 @@ impl Builder<'_> {
         match mode {
             Mode::Rustc | Mode::Codegen => {
                 if let Some(ref map_to) =
-                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
+                    self.sess.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
                     // Tell the compiler which prefix was used for remapping the standard library
                     cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
                 }
 
                 if let Some(ref map_to) =
-                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::Compiler)
+                    self.sess.debuginfo_map_to(GitRepo::Rustc, RemapScheme::Compiler)
                 {
                     // Tell the compiler which prefix was used for remapping the compiler it-self
                     cargo.env("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR", map_to);
@@ -1190,14 +1190,14 @@ impl Builder<'_> {
                         format!("compiler/={map_to}/compiler"),
                         // rustc creates absolute paths (in part bc of the `rust-src` unremap
                         // and for working directory) so let's remap the build directory as well.
-                        format!("{}={map_to}", self.build.src.display()),
+                        format!("{}={map_to}", self.sess.src.display()),
                         // remap OUT_DIR so they don't leak into artifacts.
-                        format!("{}={map_to}/out", self.build.out.display()),
+                        format!("{}={map_to}/out", self.sess.out.display()),
                         // on windows, rustc may use forward slashes internally
                         #[cfg(windows)]
                         format!(
                             "{}={map_to}\\out",
-                            self.build.out.display().to_string().replace('/', "\\")
+                            self.sess.out.display().to_string().replace('/', "\\")
                         ),
                     ]
                     .join("\t");
@@ -1210,7 +1210,7 @@ impl Builder<'_> {
             | Mode::ToolStd
             | Mode::ToolTarget => {
                 if let Some(ref map_to) =
-                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
+                    self.sess.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
                     // When building the standard library sources, we want to apply the std remap scheme.
                     let map = [
@@ -1218,14 +1218,14 @@ impl Builder<'_> {
                         format!("library/={map_to}/library"),
                         // rustc creates absolute paths (in part bc of the `rust-src` unremap
                         // and for working directory) so let's remap the build directory as well.
-                        format!("{}={map_to}", self.build.src.display()),
+                        format!("{}={map_to}", self.sess.src.display()),
                         // remap OUT_DIR so they don't leak into artifacts.
-                        format!("{}={map_to}/out", self.build.out.display()),
+                        format!("{}={map_to}/out", self.sess.out.display()),
                         // on windows, rustc may use forward slashes internally
                         #[cfg(windows)]
                         format!(
                             "{}={map_to}\\out",
-                            self.build.out.display().to_string().replace('/', "\\")
+                            self.sess.out.display().to_string().replace('/', "\\")
                         ),
                     ]
                     .join("\t");
@@ -1236,7 +1236,7 @@ impl Builder<'_> {
 
         if self.config.rust_remap_debuginfo {
             let mut env_var = OsString::new();
-            if let Some(vendor) = self.build.vendored_crates_path() {
+            if let Some(vendor) = self.sess.vendored_crates_path() {
                 env_var.push(vendor);
                 env_var.push("=/rust/deps");
             } else {
@@ -1261,8 +1261,8 @@ impl Builder<'_> {
             prepare_shims_dump_dir(self);
 
             cargo
-                .env("DUMP_BOOTSTRAP_SHIMS", self.build.out.join("bootstrap-shims-dump"))
-                .env("BUILD_OUT", &self.build.out)
+                .env("DUMP_BOOTSTRAP_SHIMS", self.sess.out.join("bootstrap-shims-dump"))
+                .env("BUILD_OUT", &self.sess.out)
                 .env("CARGO_HOME", t!(home::cargo_home()));
         };
 
