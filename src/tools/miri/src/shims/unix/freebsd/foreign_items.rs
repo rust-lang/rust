@@ -174,7 +174,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // https://github.com/freebsd/freebsd-src/blob/3542d60fb8042474f66fbf2d779ed8c5a80d0f78/sys/sys/utsname.h#L64
                 // https://github.com/freebsd/freebsd-src/blob/3542d60fb8042474f66fbf2d779ed8c5a80d0f78/lib/libc/gen/uname.c#L44
                 let [size, uname] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *mut _) -> i32),
+                    shim_sig!(extern "C" fn(i32, *_) -> i32),
                     link_name,
                     abi,
                     args,

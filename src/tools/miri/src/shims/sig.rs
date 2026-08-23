@@ -23,7 +23,7 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
 /// The following types are supported:
 /// - primitive integer types
 /// - `()`
-/// - (thin) raw pointers, written `*const _` and `*mut _` since the pointee type is irrelevant
+/// - (thin) raw pointers, written `*_` since the mutability and pointee type are irrelevant
 /// - `$crate::$mod::...::$ty` for a type from the given crate (most commonly that is `libc`)
 /// - `winapi::$ty` for a type from `std::sys::pal::windows::c`
 #[macro_export]
@@ -58,9 +58,9 @@ macro_rules! shim_sig_nounwind {
 /// # Examples
 ///
 /// ```ignore
-/// shim_sig_args_sep!(this, [*const _, i32, libc::off64_t]);
+/// shim_sig_args_sep!(this, [*_, i32, libc::off64_t]);
 /// // expands to:
-/// [shim_sig_arg!(*const _), shim_sig_arg!(i32), shim_sig_arg!(libc::off64_t)];
+/// [shim_sig_arg!(*_), shim_sig_arg!(i32), shim_sig_arg!(libc::off64_t)];
 /// ```
 #[macro_export]
 macro_rules! shim_sig_args_sep {
@@ -141,12 +141,6 @@ macro_rules! shim_sig_arg {
     };
     ($this:ident, bool) => {
         $this.tcx.types.bool
-    };
-    ($this:ident, *const _) => {
-        $this.machine.layouts.const_raw_ptr.ty
-    };
-    ($this:ident, *mut _) => {
-        $this.machine.layouts.mut_raw_ptr.ty
     };
     ($this:ident, *_) => {
         // Mutability does not matter for ABI.

@@ -328,7 +328,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Miri-specific extern functions
             "miri_alloc" => {
                 let [size, align] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(usize, usize) -> *mut _),
+                    shim_sig!(extern "Rust" fn(usize, usize) -> *_),
                     link_name,
                     abi,
                     args,
@@ -349,7 +349,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_dealloc" => {
                 let [ptr, old_size, align] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*mut _, usize, usize) -> ()),
+                    shim_sig!(extern "Rust" fn(*_, usize, usize) -> ()),
                     link_name,
                     abi,
                     args,
@@ -367,7 +367,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_track_alloc" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*const _) -> ()),
+                    shim_sig!(extern "Rust" fn(*_) -> ()),
                     link_name,
                     abi,
                     args,
@@ -387,7 +387,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_start_unwind" => {
                 let [payload] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*mut _) -> !),
+                    shim_sig!(extern "Rust" fn(*_) -> !),
                     link_name,
                     abi,
                     args,
@@ -402,7 +402,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_get_alloc_id" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*const _) -> u64),
+                    shim_sig!(extern "Rust" fn(*_) -> u64),
                     link_name,
                     abi,
                     args,
@@ -436,7 +436,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This associates a name to a tag. Very useful for debugging, and also makes
                 // tests more strict.
                 let [ptr, nth_parent, name] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*const _, u8, &[u8]) -> ()),
+                    shim_sig!(extern "Rust" fn(*_, u8, &[u8]) -> ()),
                     link_name,
                     abi,
                     args,
@@ -454,7 +454,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_static_root" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*const _) -> ()),
+                    shim_sig!(extern "Rust" fn(*_) -> ()),
                     link_name,
                     abi,
                     args,
@@ -581,7 +581,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 use rustc_abi::AlignFromBytesError;
 
                 let [ptr, align] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*const _, usize) -> ()),
+                    shim_sig!(extern "Rust" fn(*_, usize) -> ()),
                     link_name,
                     abi,
                     args,
@@ -669,7 +669,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Standard C allocation
             "malloc" => {
                 let [size] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(usize) -> *mut _),
+                    shim_sig!(extern "C" fn(usize) -> *_),
                     link_name,
                     abi,
                     args,
@@ -688,7 +688,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "calloc" => {
                 let [items, elem_size] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(usize, usize) -> *mut _),
+                    shim_sig!(extern "C" fn(usize, usize) -> *_),
                     link_name,
                     abi,
                     args,
@@ -707,18 +707,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "free" => {
-                let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*mut _) -> ()),
-                    link_name,
-                    abi,
-                    args,
-                )?;
+                let [ptr] =
+                    this.check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), link_name, abi, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 this.free(ptr)?;
             }
             "realloc" => {
                 let [old_ptr, new_size] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*mut _, usize) -> *mut _),
+                    shim_sig!(extern "C" fn(*_, usize) -> *_),
                     link_name,
                     abi,
                     args,
@@ -740,7 +736,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
 
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*mut _) -> usize),
+                    shim_sig!(extern "C" fn(*_) -> usize),
                     link_name,
                     abi,
                     args,
@@ -773,7 +769,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // C memory handling functions
             "memcmp" => {
                 let [left, right, n] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*const _, *const _, usize) -> i32),
+                    shim_sig!(extern "C" fn(*_, *_, usize) -> i32),
                     link_name,
                     abi,
                     args,
@@ -806,7 +802,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "memchr" => {
                 let [ptr, val, num] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*const _, i32, usize) -> *const _),
+                    shim_sig!(extern "C" fn(*_, i32, usize) -> *_),
                     link_name,
                     abi,
                     args,
@@ -835,7 +831,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.check_target_os(&[Os::Linux, Os::Android, Os::FreeBsd], link_name)?;
 
                 let [ptr, val, num] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*const _, i32, usize) -> *const _),
+                    shim_sig!(extern "C" fn(*_, i32, usize) -> *_),
                     link_name,
                     abi,
                     args,
@@ -861,7 +857,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "strlen" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*const _) -> usize),
+                    shim_sig!(extern "C" fn(*_) -> usize),
                     link_name,
                     abi,
                     args,
@@ -876,7 +872,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "strnlen" => {
                 let [ptr, num] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*const _, usize) -> usize),
+                    shim_sig!(extern "C" fn(*_, usize) -> usize),
                     link_name,
                     abi,
                     args,
@@ -894,7 +890,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "wcslen" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*const _) -> usize),
+                    shim_sig!(extern "C" fn(*_) -> usize),
                     link_name,
                     abi,
                     args,
@@ -909,7 +905,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "memcpy" => {
                 let [ptr_dest, ptr_src, n] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*mut _, *const _, usize) -> *mut _),
+                    shim_sig!(extern "C" fn(*_, *_, usize) -> *_),
                     link_name,
                     abi,
                     args,
@@ -928,7 +924,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "strcpy" => {
                 let [ptr_dest, ptr_src] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*mut _, *const _) -> *mut _),
+                    shim_sig!(extern "C" fn(*_, *_) -> *_),
                     link_name,
                     abi,
                     args,
@@ -948,7 +944,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "memset" => {
                 let [ptr_dest, val, n] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*mut _, i32, usize) -> *mut _),
+                    shim_sig!(extern "C" fn(*_, i32, usize) -> *_),
                     link_name,
                     abi,
                     args,

@@ -124,7 +124,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_bind" => {
                 let [socket, address, address_len] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *const _, libc::socklen_t) -> i32),
+                    shim_sig!(extern "C" fn(i32, *_, libc::socklen_t) -> i32),
                     link_name,
                     abi,
                     args,
@@ -134,7 +134,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_connect" => {
                 let [socket, address, address_len] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *const _, libc::socklen_t) -> i32),
+                    shim_sig!(extern "C" fn(i32, *_, libc::socklen_t) -> i32),
                     link_name,
                     abi,
                     args,
@@ -143,7 +143,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_getaddrinfo" => {
                 let [node, service, hints, res] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*const _, *const _, *const _, *mut _) -> i32),
+                    shim_sig!(extern "C" fn(*_, *_, *_, *_) -> i32),
                     link_name,
                     abi,
                     args,
@@ -153,7 +153,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_getsockopt" => {
                 let [socket, level, option_name, option_value, option_len] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, i32, i32, *mut _, *mut _) -> i32),
+                    shim_sig!(extern "C" fn(i32, i32, i32, *_, *_) -> i32),
                     link_name,
                     abi,
                     args,
