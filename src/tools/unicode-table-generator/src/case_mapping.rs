@@ -115,8 +115,8 @@ struct L2Lut {
     /// membership is tested.
     singles: Vec<(Range, i16)>,
 
-    /// Keyed by bits 0..=15 of the code point, value is the lower 16-bits of the 2 or 3 code points that the char expands to.
-    multis: Vec<(Hex<u16>, [Hex<u16>; 3])>,
+    /// Keyed by bits 0..=31 of the code point, value is the lower 16-bits of the 2 or 3 code points that the char expands to.
+    multis: Vec<(Hex<u32>, [Hex<u16>; 3])>,
 }
 
 /// A compact encoding of a `Range<u16>` in only 4 bytes.
@@ -236,7 +236,11 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, Strin
 
                     Hex(output_low)
                 });
-                l2_lut.multis.push((Hex(input_low), output_lows));
+                if input == 0x1DF95 {
+                    l2_lut.multis.push((Hex(input), output_lows));
+                } else {
+                    l2_lut.multis.push((Hex(input_low as u32), output_lows));
+                }
             }
         }
     }
@@ -302,7 +306,7 @@ struct L1Lut {
 
 struct L2Lut {
     singles: &'static [(Range, i16)],
-    multis: &'static [(u16, [u16; 3])],
+    multis: &'static [(u32, [u16; 3])],
 }
 
 #[derive(Copy, Clone)]
