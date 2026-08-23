@@ -21,5 +21,13 @@ LL | struct Square {
 LL |     width: u32,
    |     ^^^^^
 
-error: aborting due to 2 previous errors
+error: field `a` is never read
+  --> $DIR/trivial-field-reads-method.rs:60:5
+   |
+LL | struct U {
+   |        - field in this struct
+LL |     a: u32,
+   |     ^
+
+error: aborting due to 3 previous errors
 

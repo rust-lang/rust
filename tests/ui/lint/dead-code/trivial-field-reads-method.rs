@@ -56,6 +56,20 @@ impl Square {
     }
 }
 
+struct U {
+    a: u32, //~ ERROR field `a` is never read
+    b: u32
+}
+
+#[rustc_trivial_field_reads]
+fn foo(u: &U) -> u32 {
+    u.a
+}
+
+fn bar(u: &U) -> u32 {
+    u.b
+}
+
 fn main() {
     let s = S {
         a: 0,
@@ -76,4 +90,8 @@ fn main() {
     let square = Square { width: 0, height: 0 };
     let _ = square.width();
     let _ = square.height();
+
+    let u = U { a: 0, b:0 };
+    let _ = foo(&u);
+    let _ = bar(&u);
 }

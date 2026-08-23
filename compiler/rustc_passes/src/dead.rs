@@ -59,7 +59,7 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::Ctor(..)
-        | DefKind::ForeignMod => !find_attr!(tcx, def_id, RustcTrivialFieldReads),
+        | DefKind::ForeignMod => true,
 
         DefKind::TyParam
         | DefKind::ConstParam
@@ -447,12 +447,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// Trait impl methods marked with `rustc_trivial_field_reads`
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion, and PR #160666).
-    fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
-        if !find_attr!(self.tcx, impl_item.owner_id.def_id, RustcTrivialFieldReads) {
-            return false;
-        }
-
-        if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
+    fn should_ignore_impl_item(&mut self, node: Node<'_>) {
+        if let Node::ImplItem(impl_item) = node
+            && let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
             && let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
         {
             let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity().skip_norm_wip();
@@ -463,8 +460,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 self.ignored_derived_traits.entry(adt_def_id).or_default().insert(trait_ref.def_id);
             }
         }
-
-        true
     }
 
     fn visit_node(
@@ -473,9 +468,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     ) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
         let node = self.tcx.hir_node_by_def_id(def_id);
 
-        if let Node::ImplItem(impl_item) = node
-            && self.should_ignore_impl_item(impl_item)
-        {
+        if find_attr!(self.tcx, def_id, RustcTrivialFieldReads) {
+            self.should_ignore_impl_item(node);
             return ControlFlow::Continue(());
         }
 

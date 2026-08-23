@@ -404,6 +404,7 @@ impl NoArgsAttributeParser for RustcTrivialFieldReadsParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Fn),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
