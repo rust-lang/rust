@@ -60,9 +60,10 @@ pub(crate) const LLVM_TOOLS: &[&str] = &[
     "llvm-ar",       // used for creating and modifying archive files
     "llvm-as",       // used to convert LLVM assembly to LLVM bitcode
     "llvm-dis",      // used to disassemble LLVM bitcode
-    "llvm-link",     // Used to link LLVM bitcode
-    "llc",           // used to compile LLVM bytecode
-    "opt",           // used to optimize LLVM bytecode
+    "llvm-link",     // used to link LLVM bitcode
+    "llc",           // used to compile LLVM IR
+    "opt",           // used to optimize LLVM IR
+    "llubi",         // used to execute LLVM while checking for Undefined Behavior
 ];
 
 /// LLD file names for all flavors.
