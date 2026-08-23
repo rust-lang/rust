@@ -137,12 +137,6 @@ fn make_opts() -> Options {
     );
     opts.optopt(
         "",
-        "style-edition",
-        "The edition of the Style Guide (unstable).",
-        "[2015|2018|2021|2024]",
-    );
-    opts.optopt(
-        "",
         "color",
         "Use colored output (if supported)",
         "[always|never|auto]",
