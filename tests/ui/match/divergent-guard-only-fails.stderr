@@ -1,0 +1,39 @@
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-only-fails.rs:9:22
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         // These guards can fail but not succeed after assigning `x = None`.
+LL |         Some(_) if { x = None; false } && return => {}
+   |                      ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-only-fails.rs:11:32
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         Some(_) if false || ({ x = None; false } && return) => {}
+   |                                ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `a` in match guard
+  --> $DIR/divergent-guard-only-fails.rs:22:16
+   |
+LL |     match a[0] {
+   |           ---- value is immutable in match guard
+LL |         // These guards can fail but not succeed after assigning `a = &[]`.
+LL |         _ if { a = &[]; false } && return => {}
+   |                ^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `a` in match guard
+  --> $DIR/divergent-guard-only-fails.rs:24:26
+   |
+LL |     match a[0] {
+   |           ---- value is immutable in match guard
+...
+LL |         _ if false || ({ a = &[]; false } && return) => {}
+   |                          ^^^^^^^ cannot assign
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0510`.
