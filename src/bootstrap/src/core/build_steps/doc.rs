@@ -840,7 +840,6 @@ fn doc_std(
         .arg("--no-deps")
         .arg("--target-dir")
         .arg(&*target_dir.to_string_lossy())
-        .arg("-Zskip-rustdoc-fingerprint")
         .arg("-Zrustdoc-map")
         .rustdocflag("--extern-html-root-url")
         .rustdocflag("std_detect=https://docs.rs/std_detect/latest/")
@@ -916,8 +915,7 @@ impl CommandLineStep for CompilerDoc {
         let out = builder.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        let _guard =
-            builder.msg(Kind::Doc, format!("compiler-doc"), Mode::Rustc, build_compiler, target);
+        let _guard = builder.msg(Kind::Doc, "compiler-doc", Mode::Rustc, build_compiler, target);
 
         let mut cmd = builder.rustdoc_cmd(build_compiler);
 
@@ -964,7 +962,7 @@ impl CommandLineStep for CompilerDoc {
         }
         if !builder.config.dry_run() {
             let fingerprint_rustc =
-                t!(std::fs::read_to_string(&out_dir.join(".rustdoc_fingerprint.json")));
+                t!(std::fs::read_to_string(out_dir.join(".rustdoc_fingerprint.json")));
             let fingerprint_rustc: FingerprintData = t!(serde_json::from_str(&fingerprint_rustc));
             for part in fingerprint_rustc.doc_parts.iter() {
                 cmd.arg("--read-doc-meta-dir").arg(out_dir.join(part).parent().unwrap());
@@ -1017,7 +1015,7 @@ impl CommandLineStep for CompilerDoc {
         if !builder.config.dry_run() {
             let out_dir_tool = builder.stage_out(build_compiler, Mode::ToolTarget).join(target);
             let fingerprint_tool =
-                t!(std::fs::read_to_string(&out_dir_tool.join(".rustdoc_fingerprint.json")));
+                t!(std::fs::read_to_string(out_dir_tool.join(".rustdoc_fingerprint.json")));
             let fingerprint_tool: FingerprintData = t!(serde_json::from_str(&fingerprint_tool));
             for part in fingerprint_tool.doc_parts.iter() {
                 cmd.arg("--read-doc-meta-dir").arg(out_dir_tool.join(part).parent().unwrap());
@@ -1125,7 +1123,6 @@ impl CommandLineStep for Rustc {
         cargo.rustdocflag("--generate-macro-expansion");
 
         compile::rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
-        cargo.arg("-Zskip-rustdoc-fingerprint");
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
         // Do link to dependencies on `docs.rs` however using `rustdoc-map`.
@@ -1189,7 +1186,6 @@ macro_rules! tool_doc {
 
         impl $tool {
             fn new(builder: &Builder<'_>, target: TargetSelection) -> $tool {
-                let target = target;
                 let build_compiler = match $mode {
                     Mode::ToolRustcPrivate => {
                         // Rustdoc needs the rustc sysroot available to build.
@@ -1269,7 +1265,6 @@ macro_rules! tool_doc {
                     cargo.allow_features(allow_features);
                 }
 
-                cargo.arg("-Zskip-rustdoc-fingerprint");
                 // Only include compiler crates, no dependencies of those, such as `libc`.
                 cargo.arg("--no-deps");
 
