@@ -31,7 +31,7 @@ use crate::sync::Mutex;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::io::errno_location;
 
-pub struct ThreadInfo {
+pub(crate) struct ThreadInfo {
     pub tid: u64,
     pub name: Option<Box<str>>,
     pub guard_page_range: Range<usize>,
@@ -59,7 +59,7 @@ impl Drop for UnlockOnDrop {
 /// is aborted shortly after this function is called.
 ///
 /// This function is guaranteed to be async-signal-safe if `f` is too.
-pub fn with_current_info<R>(f: impl FnOnce(Option<&ThreadInfo>) -> R) -> R {
+pub(crate) fn with_current_info<R>(f: impl FnOnce(Option<&ThreadInfo>) -> R) -> R {
     let this = errno_location().addr();
     let mut attempt = 0;
     let _guard = loop {
@@ -109,7 +109,7 @@ fn spin_lock_in_setup(this: usize) -> UnlockOnDrop {
     }
 }
 
-pub fn set_current_info(guard_page_range: Range<usize>) {
+pub(crate) fn set_current_info(guard_page_range: Range<usize>) {
     let tid = crate::thread::current_os_id();
     let name = crate::thread::with_current_name(|name| name.map(Box::from));
 
@@ -122,7 +122,7 @@ pub fn set_current_info(guard_page_range: Range<usize>) {
     thread_info.insert(this, ThreadInfo { tid, name, guard_page_range });
 }
 
-pub fn delete_current_info() {
+pub(crate) fn delete_current_info() {
     let this = errno_location().addr();
     let _lock_guard = LOCK.lock();
     let _spin_guard = spin_lock_in_setup(this);

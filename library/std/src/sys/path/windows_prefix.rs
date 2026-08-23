@@ -59,7 +59,7 @@ impl<'a> PrefixParserSlice<'a, '_> {
     }
 }
 
-pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
+pub(crate) fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
     use Prefix::{DeviceNS, Disk, UNC, Verbatim, VerbatimDisk, VerbatimUNC};
 
     let parser = PrefixParser::<8>::new(path);

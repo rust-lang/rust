@@ -2,7 +2,7 @@
 mod tests;
 
 #[cfg(not(target_os = "espidf"))]
-pub fn page_size() -> usize {
+pub(crate) fn page_size() -> usize {
     unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
 }
 
@@ -13,7 +13,7 @@ pub fn page_size() -> usize {
 /// [posix_confstr]:
 ///     https://pubs.opengroup.org/onlinepubs/9799919799/functions/confstr.html
 #[cfg(target_vendor = "apple")]
-pub fn confstr(
+pub(crate) fn confstr(
     key: crate::ffi::c_int,
     size_hint: Option<usize>,
 ) -> crate::io::Result<crate::ffi::OsString> {
@@ -69,7 +69,7 @@ pub fn confstr(
 }
 
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
-pub fn glibc_version() -> Option<(usize, usize)> {
+pub(crate) fn glibc_version() -> Option<(usize, usize)> {
     use crate::ffi::CStr;
 
     unsafe extern "C" {

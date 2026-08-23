@@ -19,7 +19,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
 }
 
 #[cfg(not(target_os = "espidf"))]
-pub fn getcwd() -> io::Result<PathBuf> {
+pub(crate) fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::with_capacity(512);
     loop {
         unsafe {
@@ -51,20 +51,20 @@ pub fn chdir(_p: &path::Path) -> io::Result<()> {
 }
 
 #[cfg(not(target_os = "espidf"))]
-pub fn chdir(p: &path::Path) -> io::Result<()> {
+pub(crate) fn chdir(p: &path::Path) -> io::Result<()> {
     let result = run_path_with_cstr(p, &|p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
     if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
 }
 
 // This can't just be `impl Iterator` because that requires `'a` to be live on
 // drop (see #146045).
-pub type SplitPaths<'a> = iter::Map<
+pub(crate) type SplitPaths<'a> = iter::Map<
     slice::Split<'a, u8, impl FnMut(&u8) -> bool + 'static>,
     impl FnMut(&[u8]) -> PathBuf + 'static,
 >;
 
 #[define_opaque(SplitPaths)]
-pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
+pub(crate) fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
     fn is_separator(&b: &u8) -> bool {
         b == PATH_SEPARATOR
     }
@@ -77,9 +77,9 @@ pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
 }
 
 #[derive(Debug)]
-pub struct JoinPathsError;
+pub(crate) struct JoinPathsError;
 
-pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
+pub(crate) fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where
     I: Iterator<Item = T>,
     T: AsRef<OsStr>,
@@ -272,7 +272,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     target_os = "nuttx",
     target_os = "emscripten"
 ))]
-pub fn current_exe() -> io::Result<PathBuf> {
+pub(crate) fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
         Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::const_error!(
             io::ErrorKind::Uncategorized,
@@ -294,7 +294,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 }
 
 #[cfg(target_vendor = "apple")]
-pub fn current_exe() -> io::Result<PathBuf> {
+pub(crate) fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let mut sz: u32 = 0;
         #[expect(deprecated)]
@@ -417,7 +417,7 @@ fn darwin_temp_dir() -> PathBuf {
         })
 }
 
-pub fn temp_dir() -> PathBuf {
+pub(crate) fn temp_dir() -> PathBuf {
     crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
         cfg_select! {
             target_vendor = "apple" => darwin_temp_dir(),
@@ -427,7 +427,7 @@ pub fn temp_dir() -> PathBuf {
     })
 }
 
-pub fn home_dir() -> Option<PathBuf> {
+pub(crate) fn home_dir() -> Option<PathBuf> {
     return crate::env::var_os("HOME")
         .filter(|s| !s.is_empty())
         .or_else(|| unsafe { fallback() })

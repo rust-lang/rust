@@ -170,7 +170,7 @@ fn retry<T: PartialEq>(
     }
 }
 
-pub fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
+pub(super) fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
     let mut buffer = DirBuff::new();
     let mut dirlist = vec![dir];
 

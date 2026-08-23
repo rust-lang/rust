@@ -13,7 +13,7 @@ pub(crate) const NOT_FILE_ERROR: Error = io::const_error!(
     "the source path is neither a regular file nor a symlink to a regular file",
 );
 
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+pub(crate) fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let mut reader = fs::File::open(from)?;
     let metadata = reader.metadata()?;
 
@@ -54,7 +54,7 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     ignore_notfound(fs::remove_dir(path))
 }
 
-pub fn exists(path: &Path) -> io::Result<bool> {
+pub(crate) fn exists(path: &Path) -> io::Result<bool> {
     match fs::metadata(path) {
         Ok(_) => Ok(true),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
@@ -62,12 +62,12 @@ pub fn exists(path: &Path) -> io::Result<bool> {
     }
 }
 
-pub struct Dir {
+pub(crate) struct Dir {
     path: PathBuf,
 }
 
 impl Dir {
-    pub fn open(path: &Path, _opts: &OpenOptions) -> io::Result<Self> {
+    pub(crate) fn open(path: &Path, _opts: &OpenOptions) -> io::Result<Self> {
         path.canonicalize().map(|path| Self { path })
     }
 
@@ -77,19 +77,19 @@ impl Dir {
         Self::open(path, &opts)
     }
 
-    pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
+    pub(crate) fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         File::open(&self.path.join(path), opts)
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub(crate) fn metadata(&self) -> io::Result<FileAttr> {
         self.path.metadata().map(|m| m.into_inner())
     }
 
-    pub fn remove_file(&self, path: &Path) -> io::Result<()> {
+    pub(crate) fn remove_file(&self, path: &Path) -> io::Result<()> {
         remove_file(self.path.join(path))
     }
 
-    pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
+    pub(crate) fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
         rename(self.path.join(from), to_dir.path.join(to))
     }
 

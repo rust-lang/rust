@@ -7,7 +7,7 @@ use crate::sys::handle::Handle;
 use crate::sys::{FromInner, IntoInner, api, c};
 use crate::{mem, ptr};
 
-pub struct ChildPipe {
+pub(crate) struct ChildPipe {
     inner: Handle,
 }
 
@@ -229,18 +229,18 @@ pub(super) fn spawn_pipe_relay(
 }
 
 impl ChildPipe {
-    pub fn handle(&self) -> &Handle {
+    pub(crate) fn handle(&self) -> &Handle {
         &self.inner
     }
-    pub fn into_handle(self) -> Handle {
+    pub(crate) fn into_handle(self) -> Handle {
         self.inner
     }
 
-    pub fn try_clone(&self) -> io::Result<Self> {
+    pub(crate) fn try_clone(&self) -> io::Result<Self> {
         self.inner.duplicate(0, false, c::DUPLICATE_SAME_ACCESS).map(|inner| ChildPipe { inner })
     }
 
-    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
             let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
             let ptr = buf.as_mut_ptr();
@@ -259,7 +259,7 @@ impl ChildPipe {
         }
     }
 
-    pub fn read_buf(&self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
+    pub(crate) fn read_buf(&self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let result = unsafe {
             let len = crate::cmp::min(buf.capacity(), u32::MAX as usize) as u32;
             let ptr = buf.as_mut().as_mut_ptr().cast::<u8>();
@@ -284,20 +284,20 @@ impl ChildPipe {
         }
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    pub(crate) fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
     }
 
     #[inline]
-    pub fn is_read_vectored(&self) -> bool {
+    pub(crate) fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
     }
 
-    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+    pub(crate) fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
         self.handle().read_to_end(buf)
     }
 
-    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+    pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
         unsafe {
             let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
             self.alertable_io_internal(|overlapped, callback| {
@@ -306,12 +306,12 @@ impl ChildPipe {
         }
     }
 
-    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+    pub(crate) fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
     }
 
     #[inline]
-    pub fn is_write_vectored(&self) -> bool {
+    pub(crate) fn is_write_vectored(&self) -> bool {
         self.inner.is_write_vectored()
     }
 
@@ -412,7 +412,7 @@ impl ChildPipe {
     }
 }
 
-pub fn read_output(
+pub(crate) fn read_output(
     p1: ChildPipe,
     v1: &mut Vec<u8>,
     p2: ChildPipe,

@@ -1,7 +1,7 @@
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sys::sync::futex::{Futex, Primitive, futex_wait, futex_wake, futex_wake_all};
 
-pub struct RwLock {
+pub(crate) struct RwLock {
     // The state consists of a 30-bit reader counter, a 'readers waiting' flag, and a 'writers waiting' flag.
     // Bits 0..30:
     //   0: Unlocked
@@ -79,19 +79,19 @@ fn has_reached_max_readers(state: Primitive) -> bool {
 
 impl RwLock {
     #[inline]
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self { state: Futex::new(0), writer_notify: Futex::new(0) }
     }
 
     #[inline]
-    pub fn try_read(&self) -> bool {
+    pub(crate) fn try_read(&self) -> bool {
         self.state
             .try_update(Acquire, Relaxed, |s| is_read_lockable(s).then(|| s + READ_LOCKED))
             .is_ok()
     }
 
     #[inline]
-    pub fn read(&self) {
+    pub(crate) fn read(&self) {
         let state = self.state.load(Relaxed);
         if !is_read_lockable(state)
             || self
@@ -107,7 +107,7 @@ impl RwLock {
     ///
     /// The `RwLock` must be read-locked (N readers) in order to call this.
     #[inline]
-    pub unsafe fn read_unlock(&self) {
+    pub(crate) unsafe fn read_unlock(&self) {
         let state = self.state.fetch_sub(READ_LOCKED, Release) - READ_LOCKED;
 
         // It's impossible for a reader to be waiting on a read-locked RwLock,
@@ -162,14 +162,14 @@ impl RwLock {
     }
 
     #[inline]
-    pub fn try_write(&self) -> bool {
+    pub(crate) fn try_write(&self) -> bool {
         self.state
             .try_update(Acquire, Relaxed, |s| is_unlocked(s).then(|| s + WRITE_LOCKED))
             .is_ok()
     }
 
     #[inline]
-    pub fn write(&self) {
+    pub(crate) fn write(&self) {
         if self.state.compare_exchange_weak(0, WRITE_LOCKED, Acquire, Relaxed).is_err() {
             self.write_contended();
         }
@@ -179,7 +179,7 @@ impl RwLock {
     ///
     /// The `RwLock` must be write-locked (single writer) in order to call this.
     #[inline]
-    pub unsafe fn write_unlock(&self) {
+    pub(crate) unsafe fn write_unlock(&self) {
         let state = self.state.fetch_sub(WRITE_LOCKED, Release) - WRITE_LOCKED;
 
         debug_assert!(is_unlocked(state));
@@ -193,7 +193,7 @@ impl RwLock {
     ///
     /// The `RwLock` must be write-locked (single writer) in order to call this.
     #[inline]
-    pub unsafe fn downgrade(&self) {
+    pub(crate) unsafe fn downgrade(&self) {
         // Removes all write bits and adds a single read bit.
         let state = self.state.fetch_add(DOWNGRADE, Release);
         debug_assert!(is_write_locked(state), "RwLock must be write locked to call `downgrade`");

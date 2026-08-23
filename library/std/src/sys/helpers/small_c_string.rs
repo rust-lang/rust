@@ -14,12 +14,15 @@ const NUL_ERR: io::Error =
     io::const_error!(io::ErrorKind::InvalidInput, "file name contained an unexpected NUL byte");
 
 #[inline]
-pub fn run_path_with_cstr<T>(path: &Path, f: &dyn Fn(&CStr) -> io::Result<T>) -> io::Result<T> {
+pub(crate) fn run_path_with_cstr<T>(
+    path: &Path,
+    f: &dyn Fn(&CStr) -> io::Result<T>,
+) -> io::Result<T> {
     run_with_cstr(path.as_os_str().as_encoded_bytes(), f)
 }
 
 #[inline]
-pub fn run_with_cstr<T>(bytes: &[u8], f: &dyn Fn(&CStr) -> io::Result<T>) -> io::Result<T> {
+pub(crate) fn run_with_cstr<T>(bytes: &[u8], f: &dyn Fn(&CStr) -> io::Result<T>) -> io::Result<T> {
     // Dispatch and dyn erase the closure type to prevent mono bloat.
     // See https://github.com/rust-lang/rust/pull/121101.
     if bytes.len() >= MAX_STACK_ALLOCATION {

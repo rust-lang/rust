@@ -1,3 +1,5 @@
+#![allow(unreachable_pub)]
+
 use crate::ffi::OsString;
 use crate::num::NonZero;
 use crate::ops::Try;
@@ -12,7 +14,7 @@ impl !Sync for Args {}
 
 impl Args {
     #[inline]
-    pub fn new(args: Vec<OsString>) -> Self {
+    pub(crate) fn new(args: Vec<OsString>) -> Self {
         Args { iter: args.into_iter() }
     }
 }

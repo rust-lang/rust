@@ -10,21 +10,21 @@
 #[cfg(test)]
 mod tests;
 
-pub mod eh;
+pub(crate) mod eh;
 
-pub struct DwarfReader {
+pub(crate) struct DwarfReader {
     pub ptr: *const u8,
 }
 
 impl DwarfReader {
-    pub fn new(ptr: *const u8) -> DwarfReader {
+    pub(crate) fn new(ptr: *const u8) -> DwarfReader {
         DwarfReader { ptr }
     }
 
     /// Read a type T and then bump the pointer by that amount.
     ///
     /// DWARF streams are "packed", so all types must be read at align 1.
-    pub unsafe fn read<T: Copy>(&mut self) -> T {
+    pub(crate) unsafe fn read<T: Copy>(&mut self) -> T {
         unsafe {
             let result = self.ptr.cast::<T>().read_unaligned();
             self.ptr = self.ptr.byte_add(size_of::<T>());
@@ -33,7 +33,7 @@ impl DwarfReader {
     }
 
     /// ULEB128 and SLEB128 encodings are defined in Section 7.6 - "Variable Length Data".
-    pub unsafe fn read_uleb128(&mut self) -> u64 {
+    pub(crate) unsafe fn read_uleb128(&mut self) -> u64 {
         let mut shift: usize = 0;
         let mut result: u64 = 0;
         let mut byte: u8;
@@ -48,7 +48,7 @@ impl DwarfReader {
         result
     }
 
-    pub unsafe fn read_sleb128(&mut self) -> i64 {
+    pub(crate) unsafe fn read_sleb128(&mut self) -> i64 {
         let mut shift: u32 = 0;
         let mut result: u64 = 0;
         let mut byte: u8;

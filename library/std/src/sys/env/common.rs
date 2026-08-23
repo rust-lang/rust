@@ -1,3 +1,5 @@
+#![allow(unreachable_pub)]
+
 use crate::ffi::OsString;
 use crate::{fmt, vec};
 

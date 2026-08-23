@@ -11,12 +11,12 @@ use crate::sys::pal::api::WinError;
 use crate::sys::pal::{api, c, cvt, fill_utf16_buf, os2path};
 use crate::{fmt, io, ptr};
 
-pub struct SplitPaths<'a> {
+pub(crate) struct SplitPaths<'a> {
     data: EncodeWide<'a>,
     must_yield: bool,
 }
 
-pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
+pub(crate) fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
     SplitPaths { data: unparsed.encode_wide(), must_yield: true }
 }
 
@@ -57,9 +57,9 @@ impl<'a> Iterator for SplitPaths<'a> {
 }
 
 #[derive(Debug)]
-pub struct JoinPathsError;
+pub(crate) struct JoinPathsError;
 
-pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
+pub(crate) fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where
     I: Iterator<Item = T>,
     T: AsRef<OsStr>,
@@ -95,15 +95,15 @@ impl fmt::Display for JoinPathsError {
 
 impl crate::error::Error for JoinPathsError {}
 
-pub fn current_exe() -> io::Result<PathBuf> {
+pub(crate) fn current_exe() -> io::Result<PathBuf> {
     fill_utf16_buf(|buf, sz| unsafe { c::GetModuleFileNameW(ptr::null_mut(), buf, sz) }, os2path)
 }
 
-pub fn getcwd() -> io::Result<PathBuf> {
+pub(crate) fn getcwd() -> io::Result<PathBuf> {
     fill_utf16_buf(|buf, sz| unsafe { c::GetCurrentDirectoryW(sz, buf) }, os2path)
 }
 
-pub fn chdir(p: &path::Path) -> io::Result<()> {
+pub(crate) fn chdir(p: &path::Path) -> io::Result<()> {
     let p: &OsStr = p.as_ref();
     let mut p = p.encode_wide().collect::<Vec<_>>();
     p.push(0);
@@ -111,7 +111,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     cvt(unsafe { c::SetCurrentDirectoryW(p.as_ptr()) }).map(drop)
 }
 
-pub fn temp_dir() -> PathBuf {
+pub(crate) fn temp_dir() -> PathBuf {
     fill_utf16_buf(|buf, sz| unsafe { c::GetTempPath2W(sz, buf) }, os2path).unwrap()
 }
 
@@ -171,7 +171,7 @@ fn home_dir_crt() -> Option<PathBuf> {
     None
 }
 
-pub fn home_dir() -> Option<PathBuf> {
+pub(crate) fn home_dir() -> Option<PathBuf> {
     crate::env::var_os("USERPROFILE")
         .filter(|s| !s.is_empty())
         .map(PathBuf::from)

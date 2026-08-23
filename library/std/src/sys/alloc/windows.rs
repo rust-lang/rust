@@ -163,21 +163,21 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
     }
 }
 
-pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+pub(crate) unsafe fn alloc(layout: Layout) -> *mut u8 {
     // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
     let zeroed = false;
     unsafe { allocate(layout, zeroed) }
 }
 
 #[inline]
-pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+pub(crate) unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
     let zeroed = true;
     unsafe { allocate(layout, zeroed) }
 }
 
 #[inline]
-pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
+pub(crate) unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
     let block = {
         if layout.align() <= MIN_ALIGN {
             ptr
@@ -200,7 +200,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 }
 
 #[inline]
-pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+pub(crate) unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
     if layout.align() <= MIN_ALIGN {
         // because `ptr` has been successfully allocated with this allocator,
         // there must be a valid process heap.

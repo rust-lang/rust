@@ -9,11 +9,11 @@ cfg_select! {
         target_os = "fuchsia",
     ) => {
         mod unix;
-        pub use unix::*;
+        pub(crate) use unix::*;
     }
     all(target_os = "windows", not(target_vendor = "win7")) => {
         mod windows;
-        pub use windows::*;
+        pub(super) use windows::*;
     }
     target_os = "hermit" => {
         mod hermit;

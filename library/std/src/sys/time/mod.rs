@@ -42,4 +42,4 @@ cfg_select! {
     }
 }
 
-pub use imp::{Instant, SystemTime, UNIX_EPOCH};
+pub(crate) use imp::{Instant, SystemTime, UNIX_EPOCH};

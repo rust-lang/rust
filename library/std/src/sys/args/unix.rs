@@ -5,7 +5,7 @@
 
 #![allow(dead_code)] // runtime init functions not used during testing
 
-pub use super::common::Args;
+pub(crate) use super::common::Args;
 use crate::ffi::CStr;
 #[cfg(target_os = "hermit")]
 use crate::os::hermit::ffi::OsStringExt;
@@ -13,12 +13,12 @@ use crate::os::hermit::ffi::OsStringExt;
 use crate::os::unix::ffi::OsStringExt;
 
 /// One-time global initialization.
-pub unsafe fn init(argc: isize, argv: *const *const u8) {
+pub(crate) unsafe fn init(argc: isize, argv: *const *const u8) {
     unsafe { imp::init(argc, argv) }
 }
 
 /// Returns the command line arguments
-pub fn args() -> Args {
+pub(crate) fn args() -> Args {
     let (argc, argv) = imp::argc_argv();
 
     let mut vec = Vec::with_capacity(argc as usize);
@@ -108,7 +108,7 @@ mod imp {
     }
 
     #[inline(always)]
-    pub unsafe fn init(argc: isize, argv: *const *const u8) {
+    pub(crate) unsafe fn init(argc: isize, argv: *const *const u8) {
         // on GNU/Linux if we are main then we will init argv and argc twice, it "duplicates work"
         // BUT edge-cases are real: only using .init_array can break most emulators, dlopen, etc.
         unsafe { really_init(argc, argv) };
@@ -134,7 +134,7 @@ mod imp {
         init_wrapper
     };
 
-    pub fn argc_argv() -> (isize, *const *const c_char) {
+    pub(crate) fn argc_argv() -> (isize, *const *const c_char) {
         // Load ARGC and ARGV, which hold the unmodified system-provided
         // argc/argv, so we can read the pointed-to memory without atomics or
         // synchronization.
@@ -167,12 +167,12 @@ mod imp {
 mod imp {
     use crate::ffi::c_char;
 
-    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
+    pub(super) unsafe fn init(_argc: isize, _argv: *const *const u8) {
         // No need to initialize anything in here, `libdyld.dylib` has already
         // done the work for us.
     }
 
-    pub fn argc_argv() -> (isize, *const *const c_char) {
+    pub(super) fn argc_argv() -> (isize, *const *const c_char) {
         // SAFETY: The returned pointer points to a static initialized early
         // in the program lifetime by `libdyld.dylib`, and as such is always
         // valid.

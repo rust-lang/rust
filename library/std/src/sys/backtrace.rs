@@ -159,7 +159,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
 /// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
-pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
+pub(crate) fn __rust_begin_short_backtrace<F, T>(f: F) -> T
 where
     F: FnOnce() -> T,
 {
@@ -175,7 +175,7 @@ where
 /// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
-pub fn __rust_end_short_backtrace<F, T>(f: F) -> T
+pub(crate) fn __rust_end_short_backtrace<F, T>(f: F) -> T
 where
     F: FnOnce() -> T,
 {
@@ -190,7 +190,7 @@ where
 /// Prints the filename of the backtrace frame.
 ///
 /// See also `output`.
-pub fn output_filename(
+pub(crate) fn output_filename(
     fmt: &mut fmt::Formatter<'_>,
     bows: BytesOrWideString<'_>,
     print_fmt: PrintFmt,
@@ -233,6 +233,6 @@ pub fn set_image_base() {
 }
 
 #[cfg(not(all(target_vendor = "fortanix", target_env = "sgx")))]
-pub fn set_image_base() {
+pub(crate) fn set_image_base() {
     // nothing to do for platforms other than SGX
 }

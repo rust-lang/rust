@@ -16,7 +16,7 @@ use crate::cell::Cell;
 use crate::ptr;
 use crate::sys::c::{self, FLS_OUT_OF_INDEXES};
 
-pub type Key = u32;
+pub(super) type Key = u32;
 
 unsafe fn create(dtor: c::PFLS_CALLBACK_FUNCTION) -> Key {
     let key_result = unsafe { c::FlsAlloc(dtor) };
@@ -107,7 +107,7 @@ impl Drop for EnableGuard {
 }
 
 /// Set up the current thread to invoke `cleanup` when it finishes.
-pub fn enable() {
+pub(crate) fn enable() {
     let registered = if cfg!(target_thread_local) {
         #[thread_local]
         static REGISTERED: Cell<bool> = Cell::new(false);

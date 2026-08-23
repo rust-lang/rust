@@ -40,7 +40,7 @@ impl<F: FnPtr> DlsymWeak<F> {
     /// If the signature of `F` does not match the signature of the symbol (if
     /// it exists), calling the function pointer returned by `get()` is
     /// undefined behaviour.
-    pub const unsafe fn new(name: &'static CStr) -> Self {
+    pub(crate) const unsafe fn new(name: &'static CStr) -> Self {
         DlsymWeak {
             name: name.as_ptr(),
             func: AtomicPtr::new(ptr::without_provenance_mut(1)),
@@ -49,7 +49,7 @@ impl<F: FnPtr> DlsymWeak<F> {
     }
 
     #[inline]
-    pub fn get(&self) -> Option<F> {
+    pub(crate) fn get(&self) -> Option<F> {
         // The caller is presumably going to read through this value
         // (by calling the function we've dlsymed). This means we'd
         // need to have loaded it with at least C11's consume

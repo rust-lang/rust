@@ -36,7 +36,7 @@ const EMPTY: i8 = 0;
 const NOTIFIED: i8 = 1;
 const PARKED: i8 = -1;
 
-pub struct Parker {
+pub(crate) struct Parker {
     semaphore: dispatch_semaphore_t,
     state: Atomic<i8>,
 }
@@ -45,7 +45,7 @@ unsafe impl Sync for Parker {}
 unsafe impl Send for Parker {}
 
 impl Parker {
-    pub unsafe fn new_in_place(parker: *mut Parker) {
+    pub(crate) unsafe fn new_in_place(parker: *mut Parker) {
         let semaphore = dispatch_semaphore_create(0);
         assert!(
             !semaphore.is_null(),
@@ -55,7 +55,7 @@ impl Parker {
     }
 
     // Does not need `Pin`, but other implementation do.
-    pub unsafe fn park(self: Pin<&Self>) {
+    pub(crate) unsafe fn park(self: Pin<&Self>) {
         // The semaphore counter must be zero at this point, because unparking
         // threads will not actually increase it until we signalled that we
         // are waiting.
@@ -82,7 +82,7 @@ impl Parker {
     }
 
     // Does not need `Pin`, but other implementation do.
-    pub unsafe fn park_timeout(self: Pin<&Self>, dur: Duration) {
+    pub(crate) unsafe fn park_timeout(self: Pin<&Self>, dur: Duration) {
         if self.state.fetch_sub(1, Acquire) == NOTIFIED {
             return;
         }
@@ -108,7 +108,7 @@ impl Parker {
     }
 
     // Does not need `Pin`, but other implementation do.
-    pub fn unpark(self: Pin<&Self>) {
+    pub(crate) fn unpark(self: Pin<&Self>) {
         let state = self.state.swap(NOTIFIED, Release);
         if state == PARKED {
             unsafe {

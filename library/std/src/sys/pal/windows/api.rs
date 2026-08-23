@@ -35,7 +35,7 @@ use core::marker::PhantomData;
 use super::c;
 
 /// Creates a null-terminated UTF-16 string from a str.
-pub macro wide_str($str:literal) {{
+pub(crate) macro wide_str($str:literal) {{
     const _: () = {
         if core::slice::memchr::memchr(0, $str.as_bytes()).is_some() {
             panic!("null terminated strings cannot contain interior nulls");
@@ -45,7 +45,7 @@ pub macro wide_str($str:literal) {{
 }}
 
 /// Creates a UTF-16 string from a str without null termination.
-pub macro utf16($str:expr) {{
+pub(crate) macro utf16($str:expr) {{
     const UTF8: &str = $str;
     const UTF16_LEN: usize = crate::sys::pal::windows::api::utf16_len(UTF8);
     const UTF16: [u16; UTF16_LEN] = crate::sys::pal::windows::api::to_utf16(UTF8);
@@ -56,7 +56,7 @@ pub macro utf16($str:expr) {{
 mod tests;
 
 /// Gets the UTF-16 length of a UTF-8 string, for use in the wide_str macro.
-pub const fn utf16_len(s: &str) -> usize {
+pub(crate) const fn utf16_len(s: &str) -> usize {
     let s = s.as_bytes();
     let mut i = 0;
     let mut len = 0;
@@ -78,7 +78,7 @@ pub const fn utf16_len(s: &str) -> usize {
 /// Const convert UTF-8 to UTF-16, for use in the wide_str macro.
 ///
 /// Note that this is designed for use in const contexts so is not optimized.
-pub const fn to_utf16<const UTF16_LEN: usize>(s: &str) -> [u16; UTF16_LEN] {
+pub(crate) const fn to_utf16<const UTF16_LEN: usize>(s: &str) -> [u16; UTF16_LEN] {
     let mut output = [0_u16; UTF16_LEN];
     let mut pos = 0;
     let s = s.as_bytes();
@@ -171,7 +171,7 @@ const fn win32_size_of<T: Sized>() -> u32 {
 /// * `as_ptr` must return a pointer to memory that is readable up to `size` bytes.
 /// * `CLASS` must accurately reflect the type pointed to by `as_ptr`. E.g.
 /// the `FILE_BASIC_INFO` structure has the class `FileBasicInfo`.
-pub unsafe trait SetFileInformation {
+pub(crate) unsafe trait SetFileInformation {
     /// The type of information to set.
     const CLASS: i32;
     /// A pointer to the file information to set.
@@ -217,7 +217,7 @@ unsafe impl SizedSetFileInformation for c::FILE_IO_PRIORITY_HINT_INFO {
 }
 
 #[inline]
-pub fn set_file_information_by_handle<T: SetFileInformation>(
+pub(crate) fn set_file_information_by_handle<T: SetFileInformation>(
     handle: c::HANDLE,
     info: &T,
 ) -> Result<(), WinError> {
@@ -239,7 +239,7 @@ pub fn set_file_information_by_handle<T: SetFileInformation>(
 /// Gets the error from the last function.
 /// This must be called immediately after the function that sets the error to
 /// avoid the risk of another function overwriting it.
-pub fn get_last_error() -> WinError {
+pub(crate) fn get_last_error() -> WinError {
     // SAFETY: This just returns a thread-local u32 and has no other effects.
     unsafe { WinError { code: c::GetLastError() } }
 }
@@ -250,11 +250,11 @@ pub fn get_last_error() -> WinError {
 /// Check the documentation of the Windows API function being called for expected errors.
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct WinError {
+pub(crate) struct WinError {
     pub code: u32,
 }
 impl WinError {
-    pub const fn new(code: u32) -> Self {
+    pub(crate) const fn new(code: u32) -> Self {
         Self { code }
     }
 }
@@ -268,28 +268,28 @@ impl WinError {
     /// Success is not an error.
     /// Some Windows APIs do use this to distinguish between a zero return and an error return
     /// but we should never return this to users as an error.
-    pub const SUCCESS: Self = Self::new(c::ERROR_SUCCESS);
+    pub(crate) const SUCCESS: Self = Self::new(c::ERROR_SUCCESS);
     // tidy-alphabetical-start
-    pub const ACCESS_DENIED: Self = Self::new(c::ERROR_ACCESS_DENIED);
-    pub const ALREADY_EXISTS: Self = Self::new(c::ERROR_ALREADY_EXISTS);
-    pub const BAD_NETPATH: Self = Self::new(c::ERROR_BAD_NETPATH);
-    pub const BAD_NET_NAME: Self = Self::new(c::ERROR_BAD_NET_NAME);
-    pub const CANT_ACCESS_FILE: Self = Self::new(c::ERROR_CANT_ACCESS_FILE);
-    pub const DELETE_PENDING: Self = Self::new(c::ERROR_DELETE_PENDING);
-    pub const DIRECTORY: Self = Self::new(c::ERROR_DIRECTORY);
-    pub const DIR_NOT_EMPTY: Self = Self::new(c::ERROR_DIR_NOT_EMPTY);
-    pub const FILE_NOT_FOUND: Self = Self::new(c::ERROR_FILE_NOT_FOUND);
-    pub const INSUFFICIENT_BUFFER: Self = Self::new(c::ERROR_INSUFFICIENT_BUFFER);
-    pub const INVALID_FUNCTION: Self = Self::new(c::ERROR_INVALID_FUNCTION);
-    pub const INVALID_HANDLE: Self = Self::new(c::ERROR_INVALID_HANDLE);
-    pub const INVALID_PARAMETER: Self = Self::new(c::ERROR_INVALID_PARAMETER);
-    pub const NOT_FOUND: Self = Self::new(c::ERROR_NOT_FOUND);
-    pub const NOT_SUPPORTED: Self = Self::new(c::ERROR_NOT_SUPPORTED);
-    pub const NO_MORE_FILES: Self = Self::new(c::ERROR_NO_MORE_FILES);
-    pub const OPERATION_ABORTED: Self = Self::new(c::ERROR_OPERATION_ABORTED);
-    pub const PATH_NOT_FOUND: Self = Self::new(c::ERROR_PATH_NOT_FOUND);
-    pub const SHARING_VIOLATION: Self = Self::new(c::ERROR_SHARING_VIOLATION);
-    pub const TIMEOUT: Self = Self::new(c::ERROR_TIMEOUT);
+    pub(crate) const ACCESS_DENIED: Self = Self::new(c::ERROR_ACCESS_DENIED);
+    pub(crate) const ALREADY_EXISTS: Self = Self::new(c::ERROR_ALREADY_EXISTS);
+    pub(crate) const BAD_NETPATH: Self = Self::new(c::ERROR_BAD_NETPATH);
+    pub(crate) const BAD_NET_NAME: Self = Self::new(c::ERROR_BAD_NET_NAME);
+    pub(crate) const CANT_ACCESS_FILE: Self = Self::new(c::ERROR_CANT_ACCESS_FILE);
+    pub(crate) const DELETE_PENDING: Self = Self::new(c::ERROR_DELETE_PENDING);
+    pub(crate) const DIRECTORY: Self = Self::new(c::ERROR_DIRECTORY);
+    pub(crate) const DIR_NOT_EMPTY: Self = Self::new(c::ERROR_DIR_NOT_EMPTY);
+    pub(crate) const FILE_NOT_FOUND: Self = Self::new(c::ERROR_FILE_NOT_FOUND);
+    pub(crate) const INSUFFICIENT_BUFFER: Self = Self::new(c::ERROR_INSUFFICIENT_BUFFER);
+    pub(crate) const INVALID_FUNCTION: Self = Self::new(c::ERROR_INVALID_FUNCTION);
+    pub(crate) const INVALID_HANDLE: Self = Self::new(c::ERROR_INVALID_HANDLE);
+    pub(crate) const INVALID_PARAMETER: Self = Self::new(c::ERROR_INVALID_PARAMETER);
+    pub(crate) const NOT_FOUND: Self = Self::new(c::ERROR_NOT_FOUND);
+    pub(crate) const NOT_SUPPORTED: Self = Self::new(c::ERROR_NOT_SUPPORTED);
+    pub(crate) const NO_MORE_FILES: Self = Self::new(c::ERROR_NO_MORE_FILES);
+    pub(crate) const OPERATION_ABORTED: Self = Self::new(c::ERROR_OPERATION_ABORTED);
+    pub(crate) const PATH_NOT_FOUND: Self = Self::new(c::ERROR_PATH_NOT_FOUND);
+    pub(crate) const SHARING_VIOLATION: Self = Self::new(c::ERROR_SHARING_VIOLATION);
+    pub(crate) const TIMEOUT: Self = Self::new(c::ERROR_TIMEOUT);
     // tidy-alphabetical-end
 }
 
@@ -301,7 +301,7 @@ impl WinError {
 /// the Length field then you can test if the string is null terminated by inspecting
 /// the u16 directly after the string. You cannot otherwise depend on nul termination.
 #[derive(Copy, Clone)]
-pub struct UnicodeStrRef<'a> {
+pub(crate) struct UnicodeStrRef<'a> {
     s: c::UNICODE_STRING,
     lifetime: PhantomData<&'a [u16]>,
 }
@@ -322,19 +322,19 @@ impl UnicodeStrRef<'_> {
         }
     }
 
-    pub const fn from_slice_with_nul(slice: &[u16]) -> Self {
+    pub(crate) const fn from_slice_with_nul(slice: &[u16]) -> Self {
         if !slice.is_empty() {
             debug_assert!(slice[slice.len() - 1] == 0);
         }
         Self::new(slice, true)
     }
 
-    pub const fn from_slice(slice: &[u16]) -> Self {
+    pub(crate) const fn from_slice(slice: &[u16]) -> Self {
         Self::new(slice, false)
     }
 
     /// Returns a pointer to the underlying UNICODE_STRING
-    pub const fn as_ptr(&self) -> *const c::UNICODE_STRING {
+    pub(crate) const fn as_ptr(&self) -> *const c::UNICODE_STRING {
         &self.s
     }
 }
@@ -352,7 +352,7 @@ impl UnicodeStrRef<'_> {
 /// **NOTE:** we lack a UNICODE_STRING builder type as we don't currently have
 /// a use for it. If needing to dynamically build a UNICODE_STRING, the builder
 /// should try to ensure there's a nul one past the end of the string.
-pub macro unicode_str {
+pub(crate) macro unicode_str {
     ($str:literal) => {const {
         crate::sys::pal::windows::api::UnicodeStrRef::from_slice_with_nul(
             crate::sys::pal::windows::api::wide_str!($str),

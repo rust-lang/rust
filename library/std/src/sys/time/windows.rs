@@ -11,22 +11,22 @@ use crate::{fmt, mem};
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct Instant {
+pub(crate) struct Instant {
     // This duration is relative to an arbitrary microsecond epoch
     // from the winapi QueryPerformanceCounter function.
     t: Duration,
 }
 
 #[derive(Copy, Clone)]
-pub struct SystemTime {
+pub(crate) struct SystemTime {
     t: c::FILETIME,
 }
 
-pub const UNIX_EPOCH: SystemTime =
+pub(crate) const UNIX_EPOCH: SystemTime =
     SystemTime::from_intervals(11_644_473_600 * INTERVALS_PER_SEC as i64);
 
 impl Instant {
-    pub fn now() -> Instant {
+    pub(crate) fn now() -> Instant {
         // High precision timing on windows operates in "Performance Counter"
         // units, as returned by the WINAPI QueryPerformanceCounter function.
         // These relate to seconds by a factor of QueryPerformanceFrequency.
@@ -46,7 +46,7 @@ impl Instant {
         Self { t: Duration::from_nanos(instant_nsec) }
     }
 
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
+    pub(crate) fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         // On windows there's a threshold below which we consider two timestamps
         // equivalent due to measurement error. For more details + doc link,
         // check the docs on epsilon.
@@ -58,20 +58,20 @@ impl Instant {
         }
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+    pub(crate) fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant { t: self.t.checked_add(*other)? })
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
+    pub(crate) fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant { t: self.t.checked_sub(*other)? })
     }
 }
 
 impl SystemTime {
-    pub const MAX: SystemTime = SystemTime::from_intervals(i64::MAX);
-    pub const MIN: SystemTime = SystemTime::from_intervals(0);
+    pub(crate) const MAX: SystemTime = SystemTime::from_intervals(i64::MAX);
+    pub(crate) const MIN: SystemTime = SystemTime::from_intervals(0);
 
-    pub fn now() -> SystemTime {
+    pub(crate) fn now() -> SystemTime {
         unsafe {
             let mut t: SystemTime = mem::zeroed();
             c::GetSystemTimePreciseAsFileTime(&mut t.t);
@@ -92,7 +92,7 @@ impl SystemTime {
         (self.t.dwLowDateTime as i64) | ((self.t.dwHighDateTime as i64) << 32)
     }
 
-    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
+    pub(crate) fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         let me = self.intervals();
         let other = other.intervals();
         if me >= other {
@@ -102,12 +102,12 @@ impl SystemTime {
         }
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub(crate) fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
         let intervals = self.intervals().checked_add(checked_dur2intervals(other)?)?;
         Some(SystemTime::from_intervals(intervals))
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub(crate) fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         // Windows does not support times before 1601, hence why we don't
         // support negatives. In order to tackle this, we try to convert the
         // resulting value into an u64, which should obviously fail in the case

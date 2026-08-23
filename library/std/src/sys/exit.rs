@@ -19,7 +19,7 @@ cfg_select! {
         /// * If it is called again on the same thread as the first call, it will abort.
         /// * If it is called again on a different thread, it will wait in a loop
         ///   (waiting for the process to exit).
-        pub fn unique_thread_exit() {
+        pub(crate) fn unique_thread_exit() {
             use crate::ffi::c_int;
             use crate::ptr;
             use crate::sync::atomic::AtomicPtr;
@@ -69,7 +69,7 @@ cfg_select! {
         /// Mitigation is ***NOT*** implemented on this platform, either because this platform
         /// is not affected, or because mitigation is not yet implemented for this platform.
         #[cfg_attr(any(test, doctest), expect(dead_code))]
-        pub fn unique_thread_exit() {
+        pub(crate) fn unique_thread_exit() {
             // Mitigation not required on platforms where `exit` is thread-safe.
         }
     }
@@ -91,7 +91,7 @@ cfg_select! {
     _ => {}
 }
 
-pub fn exit(code: i32) -> ! {
+pub(crate) fn exit(code: i32) -> ! {
     cfg_select! {
         target_os = "hermit" => unsafe { hermit_abi::exit(code) },
         target_os = "linux" => unsafe {

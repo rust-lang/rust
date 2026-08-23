@@ -3,11 +3,11 @@
 cfg_select! {
     unix => {
         mod unix;
-        pub use unix::{Pipe, pipe};
+        pub(crate) use unix::{Pipe, pipe};
     }
     windows => {
         mod windows;
-        pub use windows::{Pipe, pipe};
+        pub(crate) use windows::{Pipe, pipe};
     }
     target_os = "motor" => {
         mod motor;

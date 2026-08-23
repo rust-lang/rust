@@ -2,7 +2,7 @@ use core::slice::memchr;
 
 use libc::c_char;
 
-pub use super::common::Env;
+pub(crate) use super::common::Env;
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::io;
 use crate::os::unix::prelude::*;
@@ -34,7 +34,7 @@ use crate::sys::helpers::run_with_cstr;
 // environment variables to protect against `setenv`, so using that might be
 // desirable anyhow? Though it also means that we have to link to Foundation.
 #[cfg(target_vendor = "apple")]
-pub unsafe fn environ() -> *mut *const *const c_char {
+pub(crate) unsafe fn environ() -> *mut *const *const c_char {
     unsafe { libc::_NSGetEnviron() as *mut *const *const c_char }
 }
 
@@ -55,7 +55,7 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 
 // Use the `environ` static which is part of POSIX.
 #[cfg(not(any(target_os = "freebsd", target_vendor = "apple")))]
-pub unsafe fn environ() -> *mut *const *const c_char {
+pub(crate) unsafe fn environ() -> *mut *const *const c_char {
     unsafe extern "C" {
         static mut environ: *const *const c_char;
     }
@@ -64,13 +64,13 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 
 static ENV_LOCK: RwLock<()> = RwLock::new(());
 
-pub fn env_read_lock() -> impl Drop {
+pub(crate) fn env_read_lock() -> impl Drop {
     ENV_LOCK.read().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
-pub fn env() -> Env {
+pub(crate) fn env() -> Env {
     unsafe {
         let _guard = env_read_lock();
         let mut result = Vec::new();
@@ -109,7 +109,7 @@ pub fn env() -> Env {
     }
 }
 
-pub fn getenv(k: &OsStr) -> Option<OsString> {
+pub(crate) fn getenv(k: &OsStr) -> Option<OsString> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
     run_with_cstr(k.as_bytes(), &|k| {
@@ -129,7 +129,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     .flatten()
 }
 
-pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+pub(crate) unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     run_with_cstr(k.as_bytes(), &|k| {
         run_with_cstr(v.as_bytes(), &|v| {
             let _guard = ENV_LOCK.write();
@@ -138,7 +138,7 @@ pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     })
 }
 
-pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
+pub(crate) unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
     run_with_cstr(n.as_bytes(), &|nbuf| {
         let _guard = ENV_LOCK.write();
         cvt(unsafe { libc::unsetenv(nbuf.as_ptr()) }).map(drop)

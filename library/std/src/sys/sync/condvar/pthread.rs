@@ -8,13 +8,13 @@ use crate::sys::pal::sync as pal;
 use crate::sys::sync::{Mutex, OnceBox};
 use crate::time::{Duration, Instant};
 
-pub struct Condvar {
+pub(crate) struct Condvar {
     cvar: OnceBox<pal::Condvar>,
     mutex: Atomic<usize>,
 }
 
 impl Condvar {
-    pub const fn new() -> Condvar {
+    pub(crate) const fn new() -> Condvar {
         Condvar { cvar: OnceBox::new(), mutex: AtomicUsize::new(0) }
     }
 
@@ -41,19 +41,19 @@ impl Condvar {
     }
 
     #[inline]
-    pub fn notify_one(&self) {
+    pub(crate) fn notify_one(&self) {
         // SAFETY: we called `init` above.
         unsafe { self.get().notify_one() }
     }
 
     #[inline]
-    pub fn notify_all(&self) {
+    pub(crate) fn notify_all(&self) {
         // SAFETY: we called `init` above.
         unsafe { self.get().notify_all() }
     }
 
     #[inline]
-    pub unsafe fn wait(&self, mutex: &Mutex) {
+    pub(crate) unsafe fn wait(&self, mutex: &Mutex) {
         // SAFETY: the caller guarantees that the lock is owned, thus the mutex
         // must have been initialized already.
         let mutex = unsafe { mutex.pal.get_unchecked() };
@@ -64,7 +64,7 @@ impl Condvar {
         unsafe { self.get().wait(mutex) }
     }
 
-    pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
+    pub(crate) unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         // SAFETY: the caller guarantees that the lock is owned, thus the mutex
         // must have been initialized already.
         let mutex = unsafe { mutex.pal.get_unchecked() };

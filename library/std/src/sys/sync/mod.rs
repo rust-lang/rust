@@ -6,10 +6,10 @@ mod once_box;
 mod rwlock;
 mod thread_parking;
 
-pub use condvar::Condvar;
-pub use mutex::Mutex;
-pub use once::{Once, OnceState};
+pub(crate) use condvar::Condvar;
+pub(crate) use mutex::Mutex;
+pub(crate) use once::{Once, OnceState};
 #[allow(unused)] // Only used on some platforms.
 use once_box::OnceBox;
-pub use rwlock::RwLock;
-pub use thread_parking::Parker;
+pub(crate) use rwlock::RwLock;
+pub(crate) use thread_parking::Parker;

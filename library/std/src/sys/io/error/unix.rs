@@ -41,7 +41,7 @@ unsafe extern "C" {
     #[cfg_attr(target_os = "aix", link_name = "_Errno")]
     // SAFETY: this will always return the same pointer on a given thread.
     #[unsafe(ffi_const)]
-    pub safe fn errno_location() -> *mut c_int;
+    pub(crate) safe fn errno_location() -> *mut c_int;
 }
 
 /// Returns the platform-specific value of errno
@@ -52,7 +52,7 @@ unsafe extern "C" {
     target_os = "wasi"
 )))]
 #[inline]
-pub fn errno() -> i32 {
+pub(crate) fn errno() -> i32 {
     unsafe { (*errno_location()) as i32 }
 }
 
@@ -68,7 +68,7 @@ pub fn errno() -> i32 {
     target_os = "wasi",
 )))]
 #[inline]
-pub fn set_errno(e: i32) {
+pub(crate) fn set_errno(e: i32) {
     unsafe { *errno_location() = e as c_int }
 }
 
@@ -131,11 +131,11 @@ pub fn set_errno(val: i32) {
 }
 
 #[inline]
-pub fn is_interrupted(errno: i32) -> bool {
+pub(crate) fn is_interrupted(errno: i32) -> bool {
     errno == libc::EINTR
 }
 
-pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
+pub(crate) fn decode_error_kind(errno: i32) -> io::ErrorKind {
     use io::ErrorKind::*;
     match errno as libc::c_int {
         libc::E2BIG => ArgumentListTooLong,
@@ -195,7 +195,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
 
 /// Gets a detailed string description for the given error number.
 #[cfg(any(target_family = "unix", target_os = "wasi"))]
-pub fn format_error(errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+pub(crate) fn format_error(errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     const TMPBUF_SZ: usize = if cfg!(target_os = "wasi") { 1024 } else { 128 };
 
     unsafe extern "C" {

@@ -2,14 +2,14 @@
 
 use crate::io;
 
-pub mod conf;
+pub(crate) mod conf;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
-pub mod stack_overflow;
-pub mod sync;
+pub(crate) mod stack_overflow;
+pub(crate) mod sync;
 pub mod thread_parking;
-pub mod time;
-pub mod weak;
+pub(crate) mod time;
+pub(crate) mod weak;
 
 #[cfg(target_os = "espidf")]
 pub fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
@@ -19,7 +19,7 @@ pub fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 // See `fn init()` in `library/std/src/rt.rs` for docs on `sigpipe`.
-pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
+pub(crate) unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // The standard streams might be closed on application startup. To prevent
     // std::io::{stdin, stdout,stderr} objects from using other unrelated file
     // resources opened later, we reopen standards streams when they are closed.
@@ -158,10 +158,10 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             // See the other file for docs. NOTE: Make sure to keep them in
             // sync!
             mod sigpipe {
-                pub const DEFAULT: u8 = 0;
-                pub const INHERIT: u8 = 1;
-                pub const SIG_IGN: u8 = 2;
-                pub const SIG_DFL: u8 = 3;
+                pub(crate) const DEFAULT: u8 = 0;
+                pub(crate) const INHERIT: u8 = 1;
+                pub(crate) const SIG_IGN: u8 = 2;
+                pub(crate) const SIG_DFL: u8 = 3;
             }
 
             let (on_broken_pipe_used, handler) = match sigpipe {
@@ -214,13 +214,13 @@ pub(crate) fn on_broken_pipe_used() -> bool {
 // NOTE: this is not guaranteed to run, for example when the program aborts, and
 //       is not guaranteed to run on the main thread (#161018 was caused by that
 //       mistaken assumption).
-pub unsafe fn cleanup() {}
+pub(crate) unsafe fn cleanup() {}
 
 #[allow(unused_imports)]
-pub use libc::signal;
+pub(crate) use libc::signal;
 
 #[doc(hidden)]
-pub trait IsMinusOne {
+pub(crate) trait IsMinusOne {
     fn is_minus_one(&self) -> bool;
 }
 
@@ -236,12 +236,12 @@ impl_is_minus_one! { i8 i16 i32 i64 isize }
 
 /// Converts native return values to Result using the *-1 means error is in `errno`*  convention.
 /// Non-error values are `Ok`-wrapped.
-pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
+pub(crate) fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
     if t.is_minus_one() { Err(io::Error::last_os_error()) } else { Ok(t) }
 }
 
 /// `-1` → look at `errno` → retry on `EINTR`. Otherwise `Ok()`-wrap the closure return value.
-pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
+pub(crate) fn cvt_r<T, F>(mut f: F) -> io::Result<T>
 where
     T: IsMinusOne,
     F: FnMut() -> T,
@@ -256,7 +256,7 @@ where
 
 #[allow(dead_code)] // Not used on all platforms.
 /// Zero means `Ok()`, all other values are treated as raw OS errors. Does not look at `errno`.
-pub fn cvt_nz(error: libc::c_int) -> io::Result<()> {
+pub(crate) fn cvt_nz(error: libc::c_int) -> io::Result<()> {
     if error == 0 { Ok(()) } else { Err(io::Error::from_raw_os_error(error)) }
 }
 
@@ -296,7 +296,7 @@ pub fn cvt_nz(error: libc::c_int) -> io::Result<()> {
 // stdlib doesn't use libc stdio buffering.  In a typical Rust program, which
 // does not use C stdio, even a buggy libc::abort() is, in fact, safe.
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-pub fn abort_internal() -> ! {
+pub(crate) fn abort_internal() -> ! {
     unsafe { libc::abort() }
 }
 

@@ -26,14 +26,14 @@ cfg_select! {
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod env;
 
-pub use env::CommandEnvs;
+pub(crate) use env::CommandEnvs;
 #[unstable(feature = "command_resolved_envs", issue = "149070")]
 pub use env::CommandResolvedEnvs;
 #[cfg(target_os = "linux")]
-pub use imp::PidFd;
+pub(crate) use imp::PidFd;
 #[cfg(target_family = "unix")]
-pub use imp::getppid;
-pub use imp::{
+pub(crate) use imp::getppid;
+pub(crate) use imp::{
     ChildPipe, Command, CommandArgs, EnvKey, ExitCode, ExitStatus, ExitStatusError, Process, Stdio,
     getpid, read_output,
 };
@@ -51,7 +51,7 @@ pub use imp::{
     ),
     target_os = "windows"
 ))]
-pub fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+pub(crate) fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
     let (mut process, mut pipes) = cmd.spawn(Stdio::MakePipe, false)?;
 
     drop(pipes.stdin.take());

@@ -5,7 +5,7 @@ use crate::os::windows::ffi::OsStringExt;
 use crate::sys::pal::c;
 use crate::sys::pal::winsock::{self, cvt};
 
-pub fn hostname() -> Result<OsString> {
+pub(crate) fn hostname() -> Result<OsString> {
     winsock::startup();
 
     // The documentation of GetHostNameW says that a buffer size of 256 is

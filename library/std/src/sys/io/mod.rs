@@ -6,11 +6,11 @@ mod is_terminal {
     cfg_select! {
         any(target_family = "unix", target_os = "wasi") => {
             mod isatty;
-            pub use isatty::*;
+            pub(crate) use isatty::*;
         }
         target_os = "windows" => {
             mod windows;
-            pub use windows::*;
+            pub(crate) use windows::*;
         }
         target_os = "hermit" => {
             mod hermit;
@@ -30,13 +30,13 @@ mod is_terminal {
 mod kernel_copy;
 
 #[allow(unused_imports, reason = "only used by certain target configurations")]
-pub use alloc_crate::io::DEFAULT_BUF_SIZE;
+pub(crate) use alloc_crate::io::DEFAULT_BUF_SIZE;
 #[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
 #[cfg(all(
     target_family = "unix",
     not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems"))
 ))]
-pub use error::errno_location;
+pub(crate) use error::errno_location;
 #[cfg(any(
     all(
         target_family = "unix",
@@ -50,6 +50,6 @@ pub use error::errno_location;
     ),
     target_os = "wasi",
 ))]
-pub use error::set_errno;
-pub use error::{decode_error_kind, errno, format_error, is_interrupted};
-pub use is_terminal::is_terminal;
+pub(crate) use error::set_errno;
+pub(crate) use error::{decode_error_kind, errno, format_error, is_interrupted};
+pub(crate) use is_terminal::is_terminal;

@@ -46,7 +46,7 @@ mod impl_linux {
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;
 
-    pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
+    pub(crate) fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
         let ucred_size = size_of::<ucred>();
 
         // Trivial sanity checks.
@@ -107,7 +107,7 @@ mod impl_apple {
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;
 
-    pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
+    pub(crate) fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
         let mut cred = UCred { uid: 1, gid: 1, pid: None };
         unsafe {
             let ret = getpeereid(socket.as_raw_fd(), &mut cred.uid, &mut cred.gid);

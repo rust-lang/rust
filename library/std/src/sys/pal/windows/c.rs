@@ -8,6 +8,7 @@
 use core::ffi::{CStr, c_int, c_uint, c_ulong, c_ushort, c_void};
 use core::ptr;
 
+#[allow(unreachable_pub)]
 mod windows_sys;
 pub use windows_sys::*;
 

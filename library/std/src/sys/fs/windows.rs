@@ -23,16 +23,16 @@ use crate::{fmt, ptr, slice};
 mod tests;
 
 mod dir;
-pub use dir::Dir;
+pub(crate) use dir::Dir;
 mod remove_dir_all;
 use remove_dir_all::remove_dir_all_iterative;
 
-pub struct File {
+pub(crate) struct File {
     handle: Handle,
 }
 
 #[derive(Clone)]
-pub struct FileAttr {
+pub(crate) struct FileAttr {
     attributes: u32,
     creation_time: c::FILETIME,
     last_access_time: c::FILETIME,
@@ -46,12 +46,12 @@ pub struct FileAttr {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct FileType {
+pub(crate) struct FileType {
     is_directory: bool,
     is_symlink: bool,
 }
 
-pub struct ReadDir {
+pub(crate) struct ReadDir {
     handle: Option<FindNextFileHandle>,
     root: Arc<PathBuf>,
     first: Option<c::WIN32_FIND_DATAW>,
@@ -62,7 +62,7 @@ struct FindNextFileHandle(c::HANDLE);
 unsafe impl Send for FindNextFileHandle {}
 unsafe impl Sync for FindNextFileHandle {}
 
-pub struct DirEntry {
+pub(crate) struct DirEntry {
     root: Arc<PathBuf>,
     data: c::WIN32_FIND_DATAW,
 }
@@ -71,7 +71,7 @@ unsafe impl Send for OpenOptions {}
 unsafe impl Sync for OpenOptions {}
 
 #[derive(Clone, Debug)]
-pub struct OpenOptions {
+pub(crate) struct OpenOptions {
     // generic
     read: bool,
     write: bool,
@@ -91,12 +91,12 @@ pub struct OpenOptions {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FilePermissions {
+pub(crate) struct FilePermissions {
     attrs: u32,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct FileTimes {
+pub(crate) struct FileTimes {
     accessed: Option<c::FILETIME>,
     modified: Option<c::FILETIME>,
     created: Option<c::FILETIME>,
@@ -110,7 +110,7 @@ impl fmt::Debug for c::FILETIME {
 }
 
 #[derive(Debug)]
-pub struct DirBuilder;
+pub(crate) struct DirBuilder;
 
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -173,29 +173,29 @@ impl DirEntry {
         Some(DirEntry { root: root.clone(), data: *wfd })
     }
 
-    pub fn path(&self) -> PathBuf {
+    pub(crate) fn path(&self) -> PathBuf {
         self.root.join(self.file_name())
     }
 
-    pub fn file_name(&self) -> OsString {
+    pub(crate) fn file_name(&self) -> OsString {
         let filename = truncate_utf16_at_nul(&self.data.cFileName);
         OsString::from_wide(filename)
     }
 
-    pub fn file_type(&self) -> io::Result<FileType> {
+    pub(crate) fn file_type(&self) -> io::Result<FileType> {
         Ok(FileType::new(
             self.data.dwFileAttributes,
             /* reparse_tag = */ self.data.dwReserved0,
         ))
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub(crate) fn metadata(&self) -> io::Result<FileAttr> {
         Ok(self.data.into())
     }
 }
 
 impl OpenOptions {
-    pub fn new() -> OpenOptions {
+    pub(crate) fn new() -> OpenOptions {
         OpenOptions {
             // generic
             read: false,
@@ -216,49 +216,49 @@ impl OpenOptions {
         }
     }
 
-    pub fn read(&mut self, read: bool) {
+    pub(crate) fn read(&mut self, read: bool) {
         self.read = read;
     }
-    pub fn write(&mut self, write: bool) {
+    pub(crate) fn write(&mut self, write: bool) {
         self.write = write;
     }
-    pub fn append(&mut self, append: bool) {
+    pub(crate) fn append(&mut self, append: bool) {
         self.append = append;
     }
-    pub fn truncate(&mut self, truncate: bool) {
+    pub(crate) fn truncate(&mut self, truncate: bool) {
         self.truncate = truncate;
     }
-    pub fn create(&mut self, create: bool) {
+    pub(crate) fn create(&mut self, create: bool) {
         self.create = create;
     }
-    pub fn create_new(&mut self, create_new: bool) {
+    pub(crate) fn create_new(&mut self, create_new: bool) {
         self.create_new = create_new;
     }
 
-    pub fn custom_flags(&mut self, flags: u32) {
+    pub(crate) fn custom_flags(&mut self, flags: u32) {
         self.custom_flags = flags;
     }
-    pub fn access_mode(&mut self, access_mode: u32) {
+    pub(crate) fn access_mode(&mut self, access_mode: u32) {
         self.access_mode = Some(access_mode);
     }
-    pub fn share_mode(&mut self, share_mode: u32) {
+    pub(crate) fn share_mode(&mut self, share_mode: u32) {
         self.share_mode = share_mode;
     }
-    pub fn attributes(&mut self, attrs: u32) {
+    pub(crate) fn attributes(&mut self, attrs: u32) {
         self.attributes = attrs;
     }
-    pub fn security_qos_flags(&mut self, flags: u32) {
+    pub(crate) fn security_qos_flags(&mut self, flags: u32) {
         // We have to set `SECURITY_SQOS_PRESENT` here, because one of the valid flags we can
         // receive is `SECURITY_ANONYMOUS = 0x0`, which we can't check for later on.
         self.security_qos_flags = flags | c::SECURITY_SQOS_PRESENT;
     }
-    pub fn inherit_handle(&mut self, inherit: bool) {
+    pub(crate) fn inherit_handle(&mut self, inherit: bool) {
         self.inherit_handle = inherit;
     }
-    pub fn freeze_last_access_time(&mut self, freeze: bool) {
+    pub(crate) fn freeze_last_access_time(&mut self, freeze: bool) {
         self.freeze_last_access_time = freeze;
     }
-    pub fn freeze_last_write_time(&mut self, freeze: bool) {
+    pub(crate) fn freeze_last_write_time(&mut self, freeze: bool) {
         self.freeze_last_write_time = freeze;
     }
 
@@ -339,7 +339,7 @@ impl OpenOptions {
 }
 
 impl File {
-    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+    pub(crate) fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = maybe_verbatim(path)?;
         // SAFETY: maybe_verbatim returns null-terminated strings
         let path = unsafe { WCStr::from_wchars_with_null_unchecked(&path) };
@@ -401,12 +401,12 @@ impl File {
         }
     }
 
-    pub fn fsync(&self) -> io::Result<()> {
+    pub(crate) fn fsync(&self) -> io::Result<()> {
         cvt(unsafe { c::FlushFileBuffers(self.handle.as_raw_handle()) })?;
         Ok(())
     }
 
-    pub fn datasync(&self) -> io::Result<()> {
+    pub(crate) fn datasync(&self) -> io::Result<()> {
         self.fsync()
     }
 
@@ -451,15 +451,15 @@ impl File {
         }
     }
 
-    pub fn lock(&self) -> io::Result<()> {
+    pub(crate) fn lock(&self) -> io::Result<()> {
         self.acquire_lock(c::LOCKFILE_EXCLUSIVE_LOCK)
     }
 
-    pub fn lock_shared(&self) -> io::Result<()> {
+    pub(crate) fn lock_shared(&self) -> io::Result<()> {
         self.acquire_lock(0)
     }
 
-    pub fn try_lock(&self) -> Result<(), TryLockError> {
+    pub(crate) fn try_lock(&self) -> Result<(), TryLockError> {
         let result = cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
@@ -481,7 +481,7 @@ impl File {
         }
     }
 
-    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
+    pub(crate) fn try_lock_shared(&self) -> Result<(), TryLockError> {
         let result = cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
@@ -503,7 +503,7 @@ impl File {
         }
     }
 
-    pub fn unlock(&self) -> io::Result<()> {
+    pub(crate) fn unlock(&self) -> io::Result<()> {
         // Unlock the handle twice because LockFileEx() allows a file handle to acquire
         // both an exclusive and shared lock, in which case the documentation states that:
         // "...two unlock operations are necessary to unlock the region; the first unlock operation
@@ -518,13 +518,13 @@ impl File {
         }
     }
 
-    pub fn truncate(&self, size: u64) -> io::Result<()> {
+    pub(crate) fn truncate(&self, size: u64) -> io::Result<()> {
         let info = c::FILE_END_OF_FILE_INFO { EndOfFile: size as i64 };
         api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
     #[cfg(not(target_vendor = "uwp"))]
-    pub fn file_attr(&self) -> io::Result<FileAttr> {
+    pub(crate) fn file_attr(&self) -> io::Result<FileAttr> {
         unsafe {
             let mut info: c::BY_HANDLE_FILE_INFORMATION = mem::zeroed();
             cvt(c::GetFileInformationByHandle(self.handle.as_raw_handle(), &mut info))?;
@@ -619,53 +619,57 @@ impl File {
         }
     }
 
-    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.handle.read(buf)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    pub(crate) fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.handle.read_vectored(bufs)
     }
 
     #[inline]
-    pub fn is_read_vectored(&self) -> bool {
+    pub(crate) fn is_read_vectored(&self) -> bool {
         self.handle.is_read_vectored()
     }
 
-    pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+    pub(crate) fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.handle.read_at(buf, offset)
     }
 
-    pub fn read_buf(&self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
+    pub(crate) fn read_buf(&self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.handle.read_buf(cursor)
     }
 
-    pub fn read_buf_at(&self, cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
+    pub(crate) fn read_buf_at(
+        &self,
+        cursor: BorrowedCursor<'_, u8>,
+        offset: u64,
+    ) -> io::Result<()> {
         self.handle.read_buf_at(cursor, offset)
     }
 
-    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+    pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.handle.write(buf)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+    pub(crate) fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.handle.write_vectored(bufs)
     }
 
     #[inline]
-    pub fn is_write_vectored(&self) -> bool {
+    pub(crate) fn is_write_vectored(&self) -> bool {
         self.handle.is_write_vectored()
     }
 
-    pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+    pub(crate) fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.handle.write_at(buf, offset)
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    pub(crate) fn flush(&self) -> io::Result<()> {
         Ok(())
     }
 
-    pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
+    pub(crate) fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
         let (whence, pos) = match pos {
             // Casting to `i64` is fine, `SetFilePointerEx` reinterprets this
             // integer as `u64`.
@@ -679,7 +683,7 @@ impl File {
         Ok(newpos as u64)
     }
 
-    pub fn size(&self) -> Option<io::Result<u64>> {
+    pub(crate) fn size(&self) -> Option<io::Result<u64>> {
         let mut result = 0;
         Some(
             cvt(unsafe { c::GetFileSizeEx(self.handle.as_raw_handle(), &mut result) })
@@ -687,11 +691,11 @@ impl File {
         )
     }
 
-    pub fn tell(&self) -> io::Result<u64> {
+    pub(crate) fn tell(&self) -> io::Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
 
-    pub fn duplicate(&self) -> io::Result<File> {
+    pub(crate) fn duplicate(&self) -> io::Result<File> {
         Ok(Self { handle: self.handle.try_clone()? })
     }
 
@@ -775,7 +779,7 @@ impl File {
         }
     }
 
-    pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
+    pub(crate) fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
         let info = c::FILE_BASIC_INFO {
             CreationTime: 0,
             LastAccessTime: 0,
@@ -786,7 +790,7 @@ impl File {
         api::set_file_information_by_handle(self.handle.as_raw_handle(), &info).io_result()
     }
 
-    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+    pub(crate) fn set_times(&self, times: FileTimes) -> io::Result<()> {
         let is_zero = |t: c::FILETIME| t.dwLowDateTime == 0 && t.dwHighDateTime == 0;
         if times.accessed.is_some_and(is_zero)
             || times.modified.is_some_and(is_zero)
@@ -1077,43 +1081,43 @@ impl fmt::Debug for File {
 }
 
 impl FileAttr {
-    pub fn size(&self) -> u64 {
+    pub(crate) fn size(&self) -> u64 {
         self.file_size
     }
 
-    pub fn perm(&self) -> FilePermissions {
+    pub(crate) fn perm(&self) -> FilePermissions {
         FilePermissions { attrs: self.attributes }
     }
 
-    pub fn attrs(&self) -> u32 {
+    pub(crate) fn attrs(&self) -> u32 {
         self.attributes
     }
 
-    pub fn file_type(&self) -> FileType {
+    pub(crate) fn file_type(&self) -> FileType {
         FileType::new(self.attributes, self.reparse_tag)
     }
 
-    pub fn modified(&self) -> io::Result<SystemTime> {
+    pub(crate) fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(self.last_write_time))
     }
 
-    pub fn accessed(&self) -> io::Result<SystemTime> {
+    pub(crate) fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(self.last_access_time))
     }
 
-    pub fn created(&self) -> io::Result<SystemTime> {
+    pub(crate) fn created(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(self.creation_time))
     }
 
-    pub fn modified_u64(&self) -> u64 {
+    pub(crate) fn modified_u64(&self) -> u64 {
         to_u64(&self.last_write_time)
     }
 
-    pub fn accessed_u64(&self) -> u64 {
+    pub(crate) fn accessed_u64(&self) -> u64 {
         to_u64(&self.last_access_time)
     }
 
-    pub fn created_u64(&self) -> u64 {
+    pub(crate) fn created_u64(&self) -> u64 {
         to_u64(&self.creation_time)
     }
 
@@ -1121,15 +1125,15 @@ impl FileAttr {
         self.change_time.as_ref().map(to_u64)
     }
 
-    pub fn volume_serial_number(&self) -> Option<u32> {
+    pub(crate) fn volume_serial_number(&self) -> Option<u32> {
         self.volume_serial_number
     }
 
-    pub fn number_of_links(&self) -> Option<u32> {
+    pub(crate) fn number_of_links(&self) -> Option<u32> {
         self.number_of_links
     }
 
-    pub fn file_index(&self) -> Option<u64> {
+    pub(crate) fn file_index(&self) -> Option<u64> {
         self.file_index
     }
 }
@@ -1160,11 +1164,11 @@ fn to_u64(ft: &c::FILETIME) -> u64 {
 }
 
 impl FilePermissions {
-    pub fn readonly(&self) -> bool {
+    pub(crate) fn readonly(&self) -> bool {
         self.attrs & c::FILE_ATTRIBUTE_READONLY != 0
     }
 
-    pub fn set_readonly(&mut self, readonly: bool) {
+    pub(crate) fn set_readonly(&mut self, readonly: bool) {
         if readonly {
             self.attrs |= c::FILE_ATTRIBUTE_READONLY;
         } else {
@@ -1172,7 +1176,7 @@ impl FilePermissions {
         }
     }
 
-    pub fn file_attributes(&self) -> u32 {
+    pub(crate) fn file_attributes(&self) -> u32 {
         self.attrs as u32
     }
 }
@@ -1184,15 +1188,15 @@ impl FromInner<u32> for FilePermissions {
 }
 
 impl FileTimes {
-    pub fn set_accessed(&mut self, t: SystemTime) {
+    pub(crate) fn set_accessed(&mut self, t: SystemTime) {
         self.accessed = Some(t.into_inner());
     }
 
-    pub fn set_modified(&mut self, t: SystemTime) {
+    pub(crate) fn set_modified(&mut self, t: SystemTime) {
         self.modified = Some(t.into_inner());
     }
 
-    pub fn set_created(&mut self, t: SystemTime) {
+    pub(crate) fn set_created(&mut self, t: SystemTime) {
         self.created = Some(t.into_inner());
     }
 }
@@ -1207,36 +1211,36 @@ impl FileType {
         };
         FileType { is_directory, is_symlink }
     }
-    pub fn is_dir(&self) -> bool {
+    pub(crate) fn is_dir(&self) -> bool {
         !self.is_symlink && self.is_directory
     }
-    pub fn is_file(&self) -> bool {
+    pub(crate) fn is_file(&self) -> bool {
         !self.is_symlink && !self.is_directory
     }
-    pub fn is_symlink(&self) -> bool {
+    pub(crate) fn is_symlink(&self) -> bool {
         self.is_symlink
     }
-    pub fn is_symlink_dir(&self) -> bool {
+    pub(crate) fn is_symlink_dir(&self) -> bool {
         self.is_symlink && self.is_directory
     }
-    pub fn is_symlink_file(&self) -> bool {
+    pub(crate) fn is_symlink_file(&self) -> bool {
         self.is_symlink && !self.is_directory
     }
 }
 
 impl DirBuilder {
-    pub fn new() -> DirBuilder {
+    pub(crate) fn new() -> DirBuilder {
         DirBuilder
     }
 
-    pub fn mkdir(&self, p: &Path) -> io::Result<()> {
+    pub(crate) fn mkdir(&self, p: &Path) -> io::Result<()> {
         let p = maybe_verbatim(p)?;
         cvt(unsafe { c::CreateDirectoryW(p.as_ptr(), ptr::null_mut()) })?;
         Ok(())
     }
 }
 
-pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+pub(super) fn readdir(p: &Path) -> io::Result<ReadDir> {
     // We push a `*` to the end of the path which cause the empty path to be
     // treated as the current directory. So, for consistency with other platforms,
     // we explicitly error on the empty path.
@@ -1299,7 +1303,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     }
 }
 
-pub fn unlink(path: &WCStr) -> io::Result<()> {
+pub(super) fn unlink(path: &WCStr) -> io::Result<()> {
     if unsafe { c::DeleteFileW(path.as_ptr()) } == 0 {
         let err = api::get_last_error();
         // if `DeleteFileW` fails with ERROR_ACCESS_DENIED then try to remove
@@ -1322,7 +1326,7 @@ pub fn unlink(path: &WCStr) -> io::Result<()> {
     }
 }
 
-pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
+pub(super) fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
     if unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING) } == 0 {
         let err = api::get_last_error();
         // if `MoveFileExW` fails with ERROR_ACCESS_DENIED then try to move
@@ -1393,12 +1397,12 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
     Ok(())
 }
 
-pub fn rmdir(p: &WCStr) -> io::Result<()> {
+pub(super) fn rmdir(p: &WCStr) -> io::Result<()> {
     cvt(unsafe { c::RemoveDirectoryW(p.as_ptr()) })?;
     Ok(())
 }
 
-pub fn remove_dir_all(path: &WCStr) -> io::Result<()> {
+pub(super) fn remove_dir_all(path: &WCStr) -> io::Result<()> {
     // Open a file or directory without following symlinks.
     let mut opts = OpenOptions::new();
     opts.access_mode(c::FILE_LIST_DIRECTORY);
@@ -1416,7 +1420,7 @@ pub fn remove_dir_all(path: &WCStr) -> io::Result<()> {
     remove_dir_all_iterative(file).io_result()
 }
 
-pub fn readlink(path: &WCStr) -> io::Result<PathBuf> {
+pub(super) fn readlink(path: &WCStr) -> io::Result<PathBuf> {
     // Open the link with no access mode, instead of generic read.
     // By default FILE_LIST_DIRECTORY is denied for the junction "C:\Documents and Settings", so
     // this is needed for a common case.
@@ -1427,11 +1431,11 @@ pub fn readlink(path: &WCStr) -> io::Result<PathBuf> {
     file.readlink()
 }
 
-pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
+pub(super) fn symlink(original: &Path, link: &Path) -> io::Result<()> {
     symlink_inner(original, link, false)
 }
 
-pub fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> {
+pub(crate) fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> {
     let original = to_u16s(original)?;
     let link = maybe_verbatim(link)?;
     let flags = if dir { c::SYMBOLIC_LINK_FLAG_DIRECTORY } else { 0 };
@@ -1461,7 +1465,7 @@ pub fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> 
 }
 
 #[cfg(not(target_vendor = "uwp"))]
-pub fn link(original: &WCStr, link: &WCStr) -> io::Result<()> {
+pub(super) fn link(original: &WCStr, link: &WCStr) -> io::Result<()> {
     cvt(unsafe { c::CreateHardLinkW(link.as_ptr(), original.as_ptr(), ptr::null_mut()) })?;
     Ok(())
 }
@@ -1471,7 +1475,7 @@ pub fn link(_original: &WCStr, _link: &WCStr) -> io::Result<()> {
     return Err(io::const_error!(io::ErrorKind::Unsupported, "hard link are not supported on UWP"));
 }
 
-pub fn stat(path: &WCStr) -> io::Result<FileAttr> {
+pub(super) fn stat(path: &WCStr) -> io::Result<FileAttr> {
     match metadata(path, ReparsePoint::Follow) {
         Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
             if let Ok(attrs) = lstat(path) {
@@ -1485,7 +1489,7 @@ pub fn stat(path: &WCStr) -> io::Result<FileAttr> {
     }
 }
 
-pub fn lstat(path: &WCStr) -> io::Result<FileAttr> {
+pub(super) fn lstat(path: &WCStr) -> io::Result<FileAttr> {
     metadata(path, ReparsePoint::Open)
 }
 
@@ -1561,14 +1565,14 @@ fn metadata(path: &WCStr, reparse: ReparsePoint) -> io::Result<FileAttr> {
     }
 }
 
-pub fn set_perm(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
+pub(super) fn set_perm(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
     unsafe {
         cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs))?;
         Ok(())
     }
 }
 
-pub fn set_perm_nofollow(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
+pub(super) fn set_perm_nofollow(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
     let mut opts = OpenOptions::new();
     opts.access_mode(c::FILE_WRITE_ATTRIBUTES);
     // `FILE_FLAG_OPEN_REPARSE_POINT` for no_follow behavior
@@ -1577,7 +1581,7 @@ pub fn set_perm_nofollow(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
     file.set_permissions(perm)
 }
 
-pub fn set_times(p: &WCStr, times: FileTimes) -> io::Result<()> {
+pub(super) fn set_times(p: &WCStr, times: FileTimes) -> io::Result<()> {
     let mut opts = OpenOptions::new();
     opts.access_mode(c::FILE_WRITE_ATTRIBUTES);
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
@@ -1585,7 +1589,7 @@ pub fn set_times(p: &WCStr, times: FileTimes) -> io::Result<()> {
     file.set_times(times)
 }
 
-pub fn set_times_nofollow(p: &WCStr, times: FileTimes) -> io::Result<()> {
+pub(super) fn set_times_nofollow(p: &WCStr, times: FileTimes) -> io::Result<()> {
     let mut opts = OpenOptions::new();
     opts.access_mode(c::FILE_WRITE_ATTRIBUTES);
     // `FILE_FLAG_OPEN_REPARSE_POINT` for no_follow behavior
@@ -1666,7 +1670,7 @@ fn get_path_fallback(handle: c::HANDLE) -> Option<PathBuf> {
     .flatten()
 }
 
-pub fn canonicalize(p: &WCStr) -> io::Result<PathBuf> {
+pub(super) fn canonicalize(p: &WCStr) -> io::Result<PathBuf> {
     let mut opts = OpenOptions::new();
     // No read or write permissions are necessary
     opts.access_mode(0);
@@ -1676,7 +1680,7 @@ pub fn canonicalize(p: &WCStr) -> io::Result<PathBuf> {
     get_path(f.handle)
 }
 
-pub fn copy(from: &WCStr, to: &WCStr) -> io::Result<u64> {
+pub(super) fn copy(from: &WCStr, to: &WCStr) -> io::Result<u64> {
     unsafe extern "system" fn callback(
         _TotalFileSize: i64,
         _TotalBytesTransferred: i64,
@@ -1709,7 +1713,7 @@ pub fn copy(from: &WCStr, to: &WCStr) -> io::Result<u64> {
     Ok(size as u64)
 }
 
-pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
+pub(crate) fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     // Create and open a new directory in one go.
     let mut opts = OpenOptions::new();
     opts.create_new(true);
@@ -1744,7 +1748,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     };
     // Defined inline so we don't have to mess about with variable length buffer.
     #[repr(C)]
-    pub struct MountPointBuffer {
+    pub(crate) struct MountPointBuffer {
         ReparseTag: u32,
         ReparseDataLength: u16,
         Reserved: u16,
@@ -1802,7 +1806,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
 }
 
 // Try to see if a file exists but, unlike `exists`, report I/O errors.
-pub fn exists(path: &WCStr) -> io::Result<bool> {
+pub(super) fn exists(path: &WCStr) -> io::Result<bool> {
     // Open the file to ensure any symlinks are followed to their target.
     let mut opts = OpenOptions::new();
     // No read, write, etc access rights are needed.

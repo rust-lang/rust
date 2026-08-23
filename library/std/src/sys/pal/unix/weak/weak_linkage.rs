@@ -21,12 +21,12 @@ pub(crate) struct ExternWeak<F: Copy> {
 
 impl<F: Copy> ExternWeak<F> {
     #[inline]
-    pub fn new(weak_ptr: Option<F>) -> Self {
+    pub(crate) fn new(weak_ptr: Option<F>) -> Self {
         ExternWeak { weak_ptr }
     }
 
     #[inline]
-    pub fn get(&self) -> Option<F> {
+    pub(crate) fn get(&self) -> Option<F> {
         self.weak_ptr
     }
 }

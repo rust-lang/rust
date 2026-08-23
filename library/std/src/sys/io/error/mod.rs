@@ -21,11 +21,11 @@ cfg_select! {
     }
     any(target_family = "unix", target_os = "wasi", target_os = "teeos") => {
         mod unix;
-        pub use unix::*;
+        pub(crate) use unix::*;
     }
     target_os = "windows" => {
         mod windows;
-        pub use windows::*;
+        pub(crate) use windows::*;
     }
     target_os = "xous" => {
         mod xous;

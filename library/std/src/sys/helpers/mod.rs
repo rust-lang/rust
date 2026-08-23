@@ -16,15 +16,15 @@ mod tests;
 #[cfg_attr(not(target_os = "netbsd"), allow(unused))] // Not used on all platforms.
 pub use c_opaque::COpaque;
 #[cfg_attr(not(target_os = "linux"), allow(unused))] // Not used on all platforms.
-pub use small_c_string::{run_path_with_cstr, run_with_cstr};
+pub(crate) use small_c_string::{run_path_with_cstr, run_with_cstr};
 #[cfg_attr(not(target_os = "windows"), allow(unused))] // Not used on all platforms.
-pub use wstr::WStrUnits;
+pub(crate) use wstr::WStrUnits;
 
 /// Computes `(value*numerator)/denom` without overflow, as long as both
 /// `numerator*denom` and the overall result fit into `u64` (which is the case
 /// for our time conversions).
 #[cfg_attr(not(target_os = "windows"), allow(unused))] // Not used on all platforms.
-pub fn mul_div_u64(value: u64, numerator: u64, denom: u64) -> u64 {
+pub(crate) fn mul_div_u64(value: u64, numerator: u64, denom: u64) -> u64 {
     let q = value / denom;
     let r = value % denom;
     // Decompose value as (value/denom*denom + value%denom),
@@ -34,7 +34,7 @@ pub fn mul_div_u64(value: u64, numerator: u64, denom: u64) -> u64 {
 }
 
 #[cfg_attr(not(target_os = "linux"), allow(unused))] // Not used on all platforms.
-pub fn ignore_notfound<T>(result: crate::io::Result<T>) -> crate::io::Result<()> {
+pub(crate) fn ignore_notfound<T>(result: crate::io::Result<T>) -> crate::io::Result<()> {
     match result {
         Err(err) if err.kind() == crate::io::ErrorKind::NotFound => Ok(()),
         Ok(_) => Ok(()),

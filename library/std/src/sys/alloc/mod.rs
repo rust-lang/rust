@@ -110,7 +110,7 @@ cfg_select! {
     }
 }
 
-pub use imp::{alloc, dealloc, realloc};
+pub(crate) use imp::{alloc, dealloc, realloc};
 
 cfg_select! {
     any(target_os = "hermit", target_os = "solid_asp3", target_os = "uefi", target_os = "zkvm") => {
@@ -124,6 +124,6 @@ cfg_select! {
         }
     }
     _ => {
-        pub use imp::alloc_zeroed;
+        pub(crate) use imp::alloc_zeroed;
     }
 }

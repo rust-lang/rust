@@ -14,7 +14,7 @@ use crate::time::Duration;
 use crate::{cmp, mem, ptr, sys};
 
 #[allow(non_camel_case_types)]
-pub type wrlen_t = i32;
+pub(crate) type wrlen_t = i32;
 
 pub(super) mod netc {
     //! BSD socket compatibility shim
@@ -26,7 +26,7 @@ pub(super) mod netc {
 
     use crate::sys::c::{self, ADDRESS_FAMILY, ADDRINFOA, SOCKADDR, SOCKET};
     // re-exports from Windows API bindings.
-    pub use crate::sys::c::{
+    pub(crate) use crate::sys::c::{
         ADDRESS_FAMILY as sa_family_t, ADDRINFOA as addrinfo, IP_ADD_MEMBERSHIP,
         IP_DROP_MEMBERSHIP, IP_MULTICAST_LOOP, IP_MULTICAST_TTL, IP_TTL, IPPROTO_IP, IPPROTO_IPV6,
         IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP, IPV6_MULTICAST_LOOP, IPV6_V6ONLY, SO_BROADCAST,
@@ -36,41 +36,41 @@ pub(super) mod netc {
     };
 
     #[allow(non_camel_case_types)]
-    pub type socklen_t = c_int;
+    pub(crate) type socklen_t = c_int;
 
-    pub const AF_INET: i32 = c::AF_INET as i32;
-    pub const AF_INET6: i32 = c::AF_INET6 as i32;
+    pub(crate) const AF_INET: i32 = c::AF_INET as i32;
+    pub(crate) const AF_INET6: i32 = c::AF_INET6 as i32;
 
     // The following two structs use a union in the generated bindings but
     // our cross-platform code expects a normal field so it's redefined here.
     // As a consequence, we also need to redefine other structs that use this struct.
     #[repr(C)]
     #[derive(Copy, Clone)]
-    pub struct in_addr {
+    pub(crate) struct in_addr {
         pub s_addr: u32,
     }
 
     #[repr(C)]
     #[derive(Copy, Clone)]
-    pub struct in6_addr {
+    pub(crate) struct in6_addr {
         pub s6_addr: [u8; 16],
     }
 
     #[repr(C)]
-    pub struct ip_mreq {
+    pub(crate) struct ip_mreq {
         pub imr_multiaddr: in_addr,
         pub imr_interface: in_addr,
     }
 
     #[repr(C)]
-    pub struct ipv6_mreq {
+    pub(crate) struct ipv6_mreq {
         pub ipv6mr_multiaddr: in6_addr,
         pub ipv6mr_interface: c_uint,
     }
 
     #[repr(C)]
     #[derive(Copy, Clone)]
-    pub struct sockaddr_in {
+    pub(crate) struct sockaddr_in {
         pub sin_family: ADDRESS_FAMILY,
         pub sin_port: c_ushort,
         pub sin_addr: in_addr,
@@ -79,7 +79,7 @@ pub(super) mod netc {
 
     #[repr(C)]
     #[derive(Copy, Clone)]
-    pub struct sockaddr_in6 {
+    pub(crate) struct sockaddr_in6 {
         pub sin6_family: ADDRESS_FAMILY,
         pub sin6_port: c_ushort,
         pub sin6_flowinfo: c_ulong,
@@ -87,10 +87,15 @@ pub(super) mod netc {
         pub sin6_scope_id: c_ulong,
     }
 
-    pub unsafe fn send(socket: SOCKET, buf: *const c_void, len: c_int, flags: c_int) -> c_int {
+    pub(crate) unsafe fn send(
+        socket: SOCKET,
+        buf: *const c_void,
+        len: c_int,
+        flags: c_int,
+    ) -> c_int {
         unsafe { c::send(socket, buf.cast::<u8>(), len, flags) }
     }
-    pub unsafe fn sendto(
+    pub(crate) unsafe fn sendto(
         socket: SOCKET,
         buf: *const c_void,
         len: c_int,
@@ -100,7 +105,7 @@ pub(super) mod netc {
     ) -> c_int {
         unsafe { c::sendto(socket, buf.cast::<u8>(), len, flags, addr, addrlen) }
     }
-    pub unsafe fn getaddrinfo(
+    pub(crate) unsafe fn getaddrinfo(
         node: *const c_char,
         service: *const c_char,
         hints: *const ADDRINFOA,
@@ -110,7 +115,7 @@ pub(super) mod netc {
     }
 }
 
-pub use crate::sys::pal::winsock::{cvt, cvt_gai, cvt_r, startup as init};
+pub(crate) use crate::sys::pal::winsock::{cvt, cvt_gai, cvt_r, startup as init};
 
 #[expect(missing_debug_implementations)]
 pub struct Socket(OwnedSocket);

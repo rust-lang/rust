@@ -28,7 +28,7 @@ use crate::{cmp, env, fmt, ptr};
 
 mod child_pipe;
 
-pub use self::child_pipe::{ChildPipe, read_output};
+pub(crate) use self::child_pipe::{ChildPipe, read_output};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -146,7 +146,7 @@ impl AsRef<OsStr> for EnvKey {
     }
 }
 
-pub struct Command {
+pub(crate) struct Command {
     program: OsString,
     args: Vec<Arg>,
     env: CommandEnv,
@@ -165,7 +165,7 @@ pub struct Command {
     desktop: Option<Vec<u16>>,
 }
 
-pub enum Stdio {
+pub(crate) enum Stdio {
     Inherit,
     InheritSpecific { from_stdio_id: u32 },
     Null,
@@ -175,7 +175,7 @@ pub enum Stdio {
 }
 
 impl Command {
-    pub fn new(program: &OsStr) -> Command {
+    pub(crate) fn new(program: &OsStr) -> Command {
         Command {
             program: program.to_os_string(),
             args: Vec::new(),
@@ -196,86 +196,86 @@ impl Command {
         }
     }
 
-    pub fn arg(&mut self, arg: &OsStr) {
+    pub(crate) fn arg(&mut self, arg: &OsStr) {
         self.args.push(Arg::Regular(arg.to_os_string()))
     }
-    pub fn env_mut(&mut self) -> &mut CommandEnv {
+    pub(crate) fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }
-    pub fn cwd(&mut self, dir: &OsStr) {
+    pub(crate) fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(dir.to_os_string())
     }
-    pub fn stdin(&mut self, stdin: Stdio) {
+    pub(crate) fn stdin(&mut self, stdin: Stdio) {
         self.stdin = Some(stdin);
     }
-    pub fn stdout(&mut self, stdout: Stdio) {
+    pub(crate) fn stdout(&mut self, stdout: Stdio) {
         self.stdout = Some(stdout);
     }
-    pub fn stderr(&mut self, stderr: Stdio) {
+    pub(crate) fn stderr(&mut self, stderr: Stdio) {
         self.stderr = Some(stderr);
     }
-    pub fn creation_flags(&mut self, flags: u32) {
+    pub(crate) fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
     }
 
-    pub fn show_window(&mut self, cmd_show: Option<u16>) {
+    pub(crate) fn show_window(&mut self, cmd_show: Option<u16>) {
         self.show_window = cmd_show;
     }
 
-    pub fn force_quotes(&mut self, enabled: bool) {
+    pub(crate) fn force_quotes(&mut self, enabled: bool) {
         self.force_quotes_enabled = enabled;
     }
 
-    pub fn raw_arg(&mut self, command_str_to_append: &OsStr) {
+    pub(crate) fn raw_arg(&mut self, command_str_to_append: &OsStr) {
         self.args.push(Arg::Raw(command_str_to_append.to_os_string()))
     }
 
-    pub fn startupinfo_fullscreen(&mut self, enabled: bool) {
+    pub(crate) fn startupinfo_fullscreen(&mut self, enabled: bool) {
         self.startupinfo_fullscreen = enabled;
     }
 
-    pub fn startupinfo_untrusted_source(&mut self, enabled: bool) {
+    pub(crate) fn startupinfo_untrusted_source(&mut self, enabled: bool) {
         self.startupinfo_untrusted_source = enabled;
     }
 
-    pub fn startupinfo_force_feedback(&mut self, enabled: Option<bool>) {
+    pub(crate) fn startupinfo_force_feedback(&mut self, enabled: Option<bool>) {
         self.startupinfo_force_feedback = enabled;
     }
 
-    pub fn desktop(&mut self, desktop: &OsStr) {
+    pub(crate) fn desktop(&mut self, desktop: &OsStr) {
         self.desktop = Some(desktop.encode_wide().chain([0]).collect());
     }
 
-    pub fn get_program(&self) -> &OsStr {
+    pub(crate) fn get_program(&self) -> &OsStr {
         &self.program
     }
 
-    pub fn get_args(&self) -> CommandArgs<'_> {
+    pub(crate) fn get_args(&self) -> CommandArgs<'_> {
         let iter = self.args.iter();
         CommandArgs { iter }
     }
 
-    pub fn get_envs(&self) -> CommandEnvs<'_> {
+    pub(crate) fn get_envs(&self) -> CommandEnvs<'_> {
         self.env.iter()
     }
 
-    pub fn get_env_clear(&self) -> bool {
+    pub(crate) fn get_env_clear(&self) -> bool {
         self.env.does_clear()
     }
 
-    pub fn get_resolved_envs(&self) -> CommandResolvedEnvs {
+    pub(crate) fn get_resolved_envs(&self) -> CommandResolvedEnvs {
         CommandResolvedEnvs::new(self.env.capture())
     }
 
-    pub fn get_current_dir(&self) -> Option<&Path> {
+    pub(crate) fn get_current_dir(&self) -> Option<&Path> {
         self.cwd.as_ref().map(Path::new)
     }
 
-    pub fn inherit_handles(&mut self, inherit_handles: bool) {
+    pub(crate) fn inherit_handles(&mut self, inherit_handles: bool) {
         self.inherit_handles = inherit_handles;
     }
 
-    pub fn spawn(
+    pub(crate) fn spawn(
         &mut self,
         default: Stdio,
         needs_stdin: bool,
@@ -283,7 +283,7 @@ impl Command {
         self.spawn_with_attributes(default, needs_stdin, None)
     }
 
-    pub fn spawn_with_attributes(
+    pub(crate) fn spawn_with_attributes(
         &mut self,
         default: Stdio,
         needs_stdin: bool,
@@ -713,13 +713,13 @@ impl From<io::Stderr> for Stdio {
 /// The lifetime of this value is linked to the lifetime of the actual
 /// process - the Process destructor calls self.finish() which waits
 /// for the process to terminate.
-pub struct Process {
+pub(crate) struct Process {
     handle: Handle,
     main_thread_handle: Handle,
 }
 
 impl Process {
-    pub fn kill(&mut self) -> io::Result<()> {
+    pub(crate) fn kill(&mut self) -> io::Result<()> {
         let result = unsafe { c::TerminateProcess(self.handle.as_raw_handle(), 1) };
         if result == c::FALSE {
             let error = api::get_last_error();
@@ -733,15 +733,15 @@ impl Process {
         Ok(())
     }
 
-    pub fn id(&self) -> u32 {
+    pub(crate) fn id(&self) -> u32 {
         unsafe { c::GetProcessId(self.handle.as_raw_handle()) }
     }
 
-    pub fn main_thread_handle(&self) -> BorrowedHandle<'_> {
+    pub(crate) fn main_thread_handle(&self) -> BorrowedHandle<'_> {
         self.main_thread_handle.as_handle()
     }
 
-    pub fn wait(&mut self) -> io::Result<ExitStatus> {
+    pub(crate) fn wait(&mut self) -> io::Result<ExitStatus> {
         unsafe {
             let res = c::WaitForSingleObject(self.handle.as_raw_handle(), c::INFINITE);
             if res != c::WAIT_OBJECT_0 {
@@ -753,7 +753,7 @@ impl Process {
         }
     }
 
-    pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+    pub(crate) fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         unsafe {
             match c::WaitForSingleObject(self.handle.as_raw_handle(), 0) {
                 c::WAIT_OBJECT_0 => {}
@@ -768,26 +768,26 @@ impl Process {
         }
     }
 
-    pub fn handle(&self) -> &Handle {
+    pub(crate) fn handle(&self) -> &Handle {
         &self.handle
     }
 
-    pub fn into_handle(self) -> Handle {
+    pub(crate) fn into_handle(self) -> Handle {
         self.handle
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
-pub struct ExitStatus(u32);
+pub(crate) struct ExitStatus(u32);
 
 impl ExitStatus {
-    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+    pub(crate) fn exit_ok(&self) -> Result<(), ExitStatusError> {
         match NonZero::<u32>::try_from(self.0) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
         }
     }
-    pub fn code(&self) -> Option<i32> {
+    pub(crate) fn code(&self) -> Option<i32> {
         Some(self.0 as i32)
     }
 }
@@ -815,7 +815,7 @@ impl fmt::Display for ExitStatus {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatusError(NonZero<u32>);
+pub(crate) struct ExitStatusError(NonZero<u32>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
@@ -824,20 +824,20 @@ impl Into<ExitStatus> for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZero<i32>> {
+    pub(crate) fn code(self) -> Option<NonZero<i32>> {
         Some((u32::from(self.0) as i32).try_into().unwrap())
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitCode(u32);
+pub(crate) struct ExitCode(u32);
 
 impl ExitCode {
-    pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
-    pub const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
+    pub(crate) const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
+    pub(crate) const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
 
     #[inline]
-    pub fn as_i32(&self) -> i32 {
+    pub(crate) fn as_i32(&self) -> i32 {
         self.0 as i32
     }
 }
@@ -978,7 +978,7 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
     }
 }
 
-pub struct CommandArgs<'a> {
+pub(crate) struct CommandArgs<'a> {
     iter: crate::slice::Iter<'a, Arg>,
 }
 
@@ -1009,6 +1009,6 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
     }
 }
 
-pub fn getpid() -> u32 {
+pub(crate) fn getpid() -> u32 {
     unsafe { c::GetCurrentProcessId() }
 }

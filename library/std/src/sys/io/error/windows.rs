@@ -4,16 +4,16 @@ use crate::{fmt, io, ptr};
 #[cfg(test)]
 mod tests;
 
-pub fn errno() -> i32 {
+pub(crate) fn errno() -> i32 {
     api::get_last_error().code as i32
 }
 
 #[inline]
-pub fn is_interrupted(_errno: i32) -> bool {
+pub(crate) fn is_interrupted(_errno: i32) -> bool {
     false
 }
 
-pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
+pub(crate) fn decode_error_kind(errno: i32) -> io::ErrorKind {
     use io::ErrorKind::*;
 
     match errno as u32 {
@@ -95,7 +95,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
 }
 
 /// Gets a detailed string description for the given error number.
-pub fn format_error(mut errnum: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+pub(crate) fn format_error(mut errnum: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let mut buf = [0 as c::WCHAR; 2048];
 
     unsafe {

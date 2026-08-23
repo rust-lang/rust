@@ -317,30 +317,30 @@ impl Drop for PanicGuard {
 }
 
 /// The public inner `RwLock` type.
-pub struct RwLock {
+pub(crate) struct RwLock {
     state: AtomicState,
 }
 
 impl RwLock {
     #[inline]
-    pub const fn new() -> RwLock {
+    pub(crate) const fn new() -> RwLock {
         RwLock { state: AtomicPtr::new(UNLOCKED) }
     }
 
     #[inline]
-    pub fn try_read(&self) -> bool {
+    pub(crate) fn try_read(&self) -> bool {
         self.state.try_update(Acquire, Relaxed, read_lock).is_ok()
     }
 
     #[inline]
-    pub fn read(&self) {
+    pub(crate) fn read(&self) {
         if !self.try_read() {
             self.lock_contended(false)
         }
     }
 
     #[inline]
-    pub fn try_write(&self) -> bool {
+    pub(crate) fn try_write(&self) -> bool {
         // Atomically set the `LOCKED` bit. This is lowered to a single atomic instruction on most
         // modern processors (e.g. "lock bts" on x86 and "ldseta" on modern AArch64), and therefore
         // is more efficient than `try_update(lock(true))`, which can spuriously fail if a new
@@ -349,7 +349,7 @@ impl RwLock {
     }
 
     #[inline]
-    pub fn write(&self) {
+    pub(crate) fn write(&self) {
         if !self.try_write() {
             self.lock_contended(true)
         }
@@ -452,7 +452,7 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn read_unlock(&self) {
+    pub(crate) unsafe fn read_unlock(&self) {
         match self.state.try_update(Release, Acquire, |state| {
             if state.addr() & QUEUED == 0 {
                 // If there are no threads queued, simply decrement the reader count.
@@ -505,7 +505,7 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn write_unlock(&self) {
+    pub(crate) unsafe fn write_unlock(&self) {
         if let Err(state) =
             self.state.compare_exchange(without_provenance_mut(LOCKED), UNLOCKED, Release, Relaxed)
         {
@@ -561,7 +561,7 @@ impl RwLock {
     ///
     /// * The lock must be write-locked by this thread.
     #[inline]
-    pub unsafe fn downgrade(&self) {
+    pub(crate) unsafe fn downgrade(&self) {
         // Optimistically change the state from write-locked with a single writer and no waiters to
         // read-locked with a single reader and no waiters.
         if let Err(state) = self.state.compare_exchange(

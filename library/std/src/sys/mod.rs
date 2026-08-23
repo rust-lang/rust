@@ -5,33 +5,33 @@ mod helpers;
 mod pal;
 mod personality;
 
-pub mod alloc;
-pub mod args;
-pub mod backtrace;
-pub mod cmath;
-pub mod env;
-pub mod env_consts;
-pub mod exit;
-pub mod fd;
-pub mod fs;
-pub mod io;
-pub mod net;
-pub mod os_str;
-pub mod path;
-pub mod paths;
-pub mod pipe;
-pub mod platform_version;
-pub mod process;
-pub mod random;
-pub mod stdio;
-pub mod sync;
-pub mod thread;
-pub mod thread_local;
-pub mod time;
+pub(crate) mod alloc;
+pub(crate) mod args;
+pub(crate) mod backtrace;
+pub(crate) mod cmath;
+pub(crate) mod env;
+pub(crate) mod env_consts;
+pub(crate) mod exit;
+pub(crate) mod fd;
+pub(crate) mod fs;
+pub(crate) mod io;
+pub(crate) mod net;
+pub(crate) mod os_str;
+pub(crate) mod path;
+pub(crate) mod paths;
+pub(crate) mod pipe;
+pub(crate) mod platform_version;
+pub(crate) mod process;
+pub(crate) mod random;
+pub(crate) mod stdio;
+pub(crate) mod sync;
+pub(crate) mod thread;
+pub(crate) mod thread_local;
+pub(crate) mod time;
 
 // FIXME(117276): remove this, move feature implementations into individual
 //                submodules.
-pub use pal::*;
+pub(crate) use pal::*;
 
 /// A trait for viewing representations from std types.
 #[cfg_attr(not(target_os = "linux"), allow(unused))]

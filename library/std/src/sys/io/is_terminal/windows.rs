@@ -2,7 +2,7 @@ use crate::ffi::c_void;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 use crate::sys::c;
 
-pub fn is_terminal(h: &impl AsHandle) -> bool {
+pub(crate) fn is_terminal(h: &impl AsHandle) -> bool {
     handle_is_console(h.as_handle())
 }
 

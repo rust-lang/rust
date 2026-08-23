@@ -3,11 +3,11 @@
 cfg_select! {
     any(target_family = "unix", target_os = "hermit", target_os = "wasi") => {
         mod unix;
-        pub use unix::*;
+        pub(crate) use unix::*;
     }
     target_os = "windows" => {
         mod windows;
-        pub use windows::*;
+        pub(crate) use windows::*;
     }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;

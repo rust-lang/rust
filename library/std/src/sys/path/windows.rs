@@ -7,15 +7,15 @@ use crate::{io, ptr};
 #[cfg(test)]
 mod tests;
 
-pub use super::windows_prefix::parse_prefix;
+pub(crate) use super::windows_prefix::parse_prefix;
 
 path_separator_bytes!(b'\\', b'/');
 
-pub const HAS_PREFIXES: bool = true;
+pub(crate) const HAS_PREFIXES: bool = true;
 
 /// A null terminated wide string.
 #[repr(transparent)]
-pub struct WCStr([u16]);
+pub(crate) struct WCStr([u16]);
 
 impl WCStr {
     /// Convert a slice to a WCStr without checks.
@@ -26,21 +26,24 @@ impl WCStr {
     /// # Safety
     ///
     /// The slice must end in a null.
-    pub unsafe fn from_wchars_with_null_unchecked(s: &[u16]) -> &Self {
+    pub(crate) unsafe fn from_wchars_with_null_unchecked(s: &[u16]) -> &Self {
         unsafe { &*(s as *const [u16] as *const Self) }
     }
 
-    pub fn as_ptr(&self) -> *const u16 {
+    pub(crate) fn as_ptr(&self) -> *const u16 {
         self.0.as_ptr()
     }
 
-    pub fn count_bytes(&self) -> usize {
+    pub(crate) fn count_bytes(&self) -> usize {
         self.0.len()
     }
 }
 
 #[inline]
-pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&WCStr) -> io::Result<T>) -> io::Result<T> {
+pub(crate) fn with_native_path<T>(
+    path: &Path,
+    f: &dyn Fn(&WCStr) -> io::Result<T>,
+) -> io::Result<T> {
     let path = maybe_verbatim(path)?;
     // SAFETY: maybe_verbatim returns null-terminated strings
     let path = unsafe { WCStr::from_wchars_with_null_unchecked(&path) };
@@ -48,11 +51,11 @@ pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&WCStr) -> io::Result<T>) -> 
 }
 
 #[inline]
-pub const fn is_verbatim_sep(b: u8) -> bool {
+pub(crate) const fn is_verbatim_sep(b: u8) -> bool {
     b == b'\\'
 }
 
-pub fn is_verbatim(path: &[u16]) -> bool {
+pub(crate) fn is_verbatim(path: &[u16]) -> bool {
     path.starts_with(utf16!(r"\\?\")) || path.starts_with(utf16!(r"\??\"))
 }
 

@@ -3,9 +3,9 @@ use crate::os::fd::FromRawFd;
 use crate::sys::fd::FileDesc;
 use crate::sys::pal::cvt;
 
-pub type Pipe = FileDesc;
+pub(crate) type Pipe = FileDesc;
 
-pub fn pipe() -> io::Result<(Pipe, Pipe)> {
+pub(crate) fn pipe() -> io::Result<(Pipe, Pipe)> {
     let mut fds = [0; 2];
 
     // The only known way right now to create atomically set the CLOEXEC flag is

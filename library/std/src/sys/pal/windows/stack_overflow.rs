@@ -4,7 +4,7 @@ use crate::sys::c;
 use crate::thread;
 
 /// Reserve stack space for use in stack overflow exceptions.
-pub fn reserve_stack() {
+pub(crate) fn reserve_stack() {
     let result = unsafe { c::SetThreadStackGuarantee(&mut 0x5000) };
     // Reserving stack space is not critical so we allow it to fail in the released build of libstd.
     // We still use debug assert here so that CI will test that we haven't made a mistake calling the function.
@@ -28,7 +28,7 @@ unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POIN
     }
 }
 
-pub fn init() {
+pub(crate) fn init() {
     // SAFETY: `vectored_handler` has the correct ABI and is safe to call during exception handling.
     unsafe {
         let result = c::AddVectoredExceptionHandler(0, Some(vectored_handler));

@@ -3,36 +3,36 @@ use crate::sys::pal::time::Timespec;
 use crate::time::Duration;
 use crate::{fmt, io};
 
-pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
+pub(crate) const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SystemTime {
+pub(crate) struct SystemTime {
     pub(crate) t: Timespec,
 }
 
 impl SystemTime {
-    pub const MAX: SystemTime = SystemTime { t: Timespec::MAX };
+    pub(crate) const MAX: SystemTime = SystemTime { t: Timespec::MAX };
 
-    pub const MIN: SystemTime = SystemTime { t: Timespec::MIN };
+    pub(crate) const MIN: SystemTime = SystemTime { t: Timespec::MIN };
 
     #[cfg_attr(any(target_os = "horizon", target_os = "hurd", target_os = "teeos"), expect(unused))]
-    pub fn new(tv_sec: i64, tv_nsec: i64) -> Result<SystemTime, io::Error> {
+    pub(crate) fn new(tv_sec: i64, tv_nsec: i64) -> Result<SystemTime, io::Error> {
         Ok(SystemTime { t: Timespec::new(tv_sec, tv_nsec)? })
     }
 
-    pub fn now() -> SystemTime {
+    pub(crate) fn now() -> SystemTime {
         SystemTime { t: Timespec::now(libc::CLOCK_REALTIME) }
     }
 
-    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
+    pub(crate) fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         self.t.sub_timespec(&other.t)
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub(crate) fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime { t: self.t.checked_add_duration(other)? })
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub(crate) fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime { t: self.t.checked_sub_duration(other)? })
     }
 }
@@ -47,7 +47,7 @@ impl fmt::Debug for SystemTime {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Instant {
+pub(crate) struct Instant {
     t: Timespec,
 }
 
@@ -69,20 +69,20 @@ impl Instant {
     #[cfg(not(target_vendor = "apple"))]
     pub(crate) const CLOCK_ID: libc::clockid_t = libc::CLOCK_MONOTONIC;
 
-    pub fn now() -> Instant {
+    pub(crate) fn now() -> Instant {
         // https://pubs.opengroup.org/onlinepubs/9799919799/functions/clock_getres.html
         Instant { t: Timespec::now(Self::CLOCK_ID) }
     }
 
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
+    pub(crate) fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         self.t.sub_timespec(&other.t).ok()
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+    pub(crate) fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant { t: self.t.checked_add_duration(other)? })
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
+    pub(crate) fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant { t: self.t.checked_sub_duration(other)? })
     }
 
@@ -99,7 +99,7 @@ impl Instant {
     /// performed precisely, this ceils the result up to the nearest
     /// representable value.
     #[cfg(target_vendor = "apple")]
-    pub fn into_mach_absolute_time_ceil(self) -> Option<u128> {
+    pub(crate) fn into_mach_absolute_time_ceil(self) -> Option<u128> {
         #[repr(C)]
         struct mach_timebase_info {
             numer: u32,

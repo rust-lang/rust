@@ -3,7 +3,7 @@ use crate::os::windows::prelude::*;
 use crate::sys::pal::{c, cvt, fill_utf16_buf, to_u16s};
 use crate::{fmt, io, ptr, slice};
 
-pub struct Env {
+pub(crate) struct Env {
     base: *mut c::WCHAR,
     iter: EnvIterator,
 }
@@ -71,7 +71,7 @@ impl Drop for Env {
     }
 }
 
-pub fn env() -> Env {
+pub(crate) fn env() -> Env {
     unsafe {
         let ch = c::GetEnvironmentStringsW();
         if ch.is_null() {
@@ -81,7 +81,7 @@ pub fn env() -> Env {
     }
 }
 
-pub fn getenv(k: &OsStr) -> Option<OsString> {
+pub(crate) fn getenv(k: &OsStr) -> Option<OsString> {
     let k = to_u16s(k).ok()?;
     fill_utf16_buf(
         |buf, sz| unsafe { c::GetEnvironmentVariableW(k.as_ptr(), buf, sz) },
@@ -90,7 +90,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     .ok()
 }
 
-pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+pub(crate) unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     // SAFETY: We ensure that k and v are null-terminated wide strings.
     unsafe {
         let k = to_u16s(k)?;
@@ -100,7 +100,7 @@ pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     }
 }
 
-pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
+pub(crate) unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
     // SAFETY: We ensure that v is a null-terminated wide strings.
     unsafe {
         let v = to_u16s(n)?;

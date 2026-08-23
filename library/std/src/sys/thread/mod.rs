@@ -1,3 +1,5 @@
+#![allow(unreachable_pub)]
+
 cfg_select! {
     target_os = "hermit" => {
         mod hermit;

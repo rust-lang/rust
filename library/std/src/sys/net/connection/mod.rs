@@ -7,7 +7,7 @@ cfg_select! {
         target_os = "solid_asp3",
     ) => {
         mod socket;
-        pub use socket::*;
+        pub(crate) use socket::*;
     }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;

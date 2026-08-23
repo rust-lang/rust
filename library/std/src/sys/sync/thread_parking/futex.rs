@@ -11,7 +11,7 @@ const PARKED: State = State::MAX;
 const EMPTY: State = 0;
 const NOTIFIED: State = 1;
 
-pub struct Parker {
+pub(crate) struct Parker {
     state: Futex,
 }
 
@@ -38,13 +38,13 @@ pub struct Parker {
 impl Parker {
     /// Constructs the futex parker. The UNIX parker implementation
     /// requires this to happen in-place.
-    pub unsafe fn new_in_place(parker: *mut Parker) {
+    pub(crate) unsafe fn new_in_place(parker: *mut Parker) {
         unsafe { parker.write(Self { state: Futex::new(EMPTY) }) };
     }
 
     // Assumes this is only called by the thread that owns the Parker,
     // which means that `self.state != PARKED`.
-    pub unsafe fn park(self: Pin<&Self>) {
+    pub(crate) unsafe fn park(self: Pin<&Self>) {
         // Change NOTIFIED=>EMPTY or EMPTY=>PARKED, and directly return in the
         // first case.
         if self.state.fetch_sub(1, Acquire) == NOTIFIED {
@@ -65,7 +65,7 @@ impl Parker {
     // Assumes this is only called by the thread that owns the Parker,
     // which means that `self.state != PARKED`. This implementation doesn't
     // require `Pin`, but other implementations do.
-    pub unsafe fn park_timeout(self: Pin<&Self>, timeout: Duration) {
+    pub(crate) unsafe fn park_timeout(self: Pin<&Self>, timeout: Duration) {
         // Change NOTIFIED=>EMPTY or EMPTY=>PARKED, and directly return in the
         // first case.
         if self.state.fetch_sub(1, Acquire) == NOTIFIED {
@@ -86,7 +86,7 @@ impl Parker {
 
     // This implementation doesn't require `Pin`, but other implementations do.
     #[inline]
-    pub fn unpark(self: Pin<&Self>) {
+    pub(crate) fn unpark(self: Pin<&Self>) {
         // Change PARKED=>NOTIFIED, EMPTY=>NOTIFIED, or NOTIFIED=>NOTIFIED, and
         // wake the thread in the first case.
         //

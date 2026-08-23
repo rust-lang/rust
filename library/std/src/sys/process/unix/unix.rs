@@ -52,7 +52,7 @@ cfg_select! {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Command {
-    pub fn spawn(
+    pub(crate) fn spawn(
         &mut self,
         default: Stdio,
         needs_stdin: bool,
@@ -226,7 +226,7 @@ impl Command {
         }
     }
 
-    pub fn exec(&mut self, default: Stdio) -> io::Error {
+    pub(crate) fn exec(&mut self, default: Stdio) -> io::Error {
         let envp = self.capture_env();
 
         if self.saw_nul() {
@@ -962,7 +962,7 @@ impl Command {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// The unique ID of the process (this should never be negative).
-pub struct Process {
+pub(crate) struct Process {
     pid: pid_t,
     status: Option<ExitStatus>,
     // On Linux, stores the pidfd created for this child.
@@ -994,11 +994,11 @@ impl Process {
         Process { pid, status: None }
     }
 
-    pub fn id(&self) -> u32 {
+    pub(crate) fn id(&self) -> u32 {
         self.pid as u32
     }
 
-    pub fn kill(&self) -> io::Result<()> {
+    pub(crate) fn kill(&self) -> io::Result<()> {
         self.send_signal(libc::SIGKILL)
     }
 
@@ -1030,7 +1030,7 @@ impl Process {
         cvt(unsafe { libc::killpg(self.pid, signal) }).map(drop)
     }
 
-    pub fn wait(&mut self) -> io::Result<ExitStatus> {
+    pub(crate) fn wait(&mut self) -> io::Result<ExitStatus> {
         use crate::sys::cvt_r;
         if let Some(status) = self.status {
             return Ok(status);
@@ -1047,7 +1047,7 @@ impl Process {
         Ok(ExitStatus::new(status))
     }
 
-    pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+    pub(crate) fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         if let Some(status) = self.status {
             return Ok(Some(status));
         }
@@ -1075,7 +1075,7 @@ impl Process {
 // This is not actually an "exit status" in Unix terminology.  Rather, it is a "wait status".
 // See the discussion in comments and doc comments for `std::process::ExitStatus`.
 #[derive(PartialEq, Eq, Clone, Copy, Default)]
-pub struct ExitStatus(c_int);
+pub(crate) struct ExitStatus(c_int);
 
 impl fmt::Debug for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1084,12 +1084,12 @@ impl fmt::Debug for ExitStatus {
 }
 
 impl ExitStatus {
-    pub fn new(status: c_int) -> ExitStatus {
+    pub(crate) fn new(status: c_int) -> ExitStatus {
         ExitStatus(status)
     }
 
     #[cfg(target_os = "linux")]
-    pub fn from_waitid_siginfo(siginfo: libc::siginfo_t) -> ExitStatus {
+    pub(crate) fn from_waitid_siginfo(siginfo: libc::siginfo_t) -> ExitStatus {
         let status = unsafe { siginfo.si_status() };
 
         match siginfo.si_code {
@@ -1106,7 +1106,7 @@ impl ExitStatus {
         libc::WIFEXITED(self.0)
     }
 
-    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+    pub(crate) fn exit_ok(&self) -> Result<(), ExitStatusError> {
         // This assumes that WIFEXITED(status) && WEXITSTATUS==0 corresponds to status==0. This is
         // true on all actual versions of Unix, is widely assumed, and is specified in SuS
         // https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html. If it is not
@@ -1118,27 +1118,27 @@ impl ExitStatus {
         }
     }
 
-    pub fn code(&self) -> Option<i32> {
+    pub(crate) fn code(&self) -> Option<i32> {
         self.exited().then(|| libc::WEXITSTATUS(self.0))
     }
 
-    pub fn signal(&self) -> Option<i32> {
+    pub(crate) fn signal(&self) -> Option<i32> {
         libc::WIFSIGNALED(self.0).then(|| libc::WTERMSIG(self.0))
     }
 
-    pub fn core_dumped(&self) -> bool {
+    pub(crate) fn core_dumped(&self) -> bool {
         libc::WIFSIGNALED(self.0) && libc::WCOREDUMP(self.0)
     }
 
-    pub fn stopped_signal(&self) -> Option<i32> {
+    pub(crate) fn stopped_signal(&self) -> Option<i32> {
         libc::WIFSTOPPED(self.0).then(|| libc::WSTOPSIG(self.0))
     }
 
-    pub fn continued(&self) -> bool {
+    pub(crate) fn continued(&self) -> bool {
         libc::WIFCONTINUED(self.0)
     }
 
-    pub fn into_raw(&self) -> c_int {
+    pub(crate) fn into_raw(&self) -> c_int {
         self.0
     }
 }
@@ -1276,7 +1276,7 @@ impl fmt::Display for ExitStatus {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub struct ExitStatusError(NonZero<c_int>);
+pub(crate) struct ExitStatusError(NonZero<c_int>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
@@ -1291,7 +1291,7 @@ impl fmt::Debug for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZero<i32>> {
+    pub(crate) fn code(self) -> Option<NonZero<i32>> {
         ExitStatus(self.0.into()).code().map(|st| st.try_into().unwrap())
     }
 }

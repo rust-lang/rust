@@ -22,7 +22,7 @@ mod runtime_symbols {
 }
 
 #[inline]
-pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+pub(crate) unsafe fn alloc(layout: Layout) -> *mut u8 {
     // jemalloc provides alignment less than MIN_ALIGN for small allocations.
     // So only rely on MIN_ALIGN if size >= align.
     // Also see <https://github.com/rust-lang/rust/issues/45955> and
@@ -47,7 +47,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 }
 
 #[inline]
-pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+pub(crate) unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     // See the comment above in `alloc` for why this check looks the way it does.
     if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
         unsafe { libc::calloc(layout.size(), 1) as *mut u8 }
@@ -61,12 +61,12 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 }
 
 #[inline]
-pub unsafe fn dealloc(ptr: *mut u8, _layout: Layout) {
+pub(crate) unsafe fn dealloc(ptr: *mut u8, _layout: Layout) {
     unsafe { libc::free(ptr as *mut libc::c_void) }
 }
 
 #[inline]
-pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+pub(crate) unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
     if layout.align() <= MIN_ALIGN && layout.align() <= new_size {
         unsafe { libc::realloc(ptr as *mut libc::c_void, new_size) as *mut u8 }
     } else {

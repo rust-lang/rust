@@ -22,7 +22,7 @@ cfg_select! {
         all(target_os = "wasi", target_env = "p3"),
     ) => {
         mod futex;
-        pub use futex::{Once, OnceState};
+        pub(crate) use futex::{Once, OnceState};
     }
     any(
         windows,
@@ -32,7 +32,7 @@ cfg_select! {
         target_os = "xous",
     ) => {
         mod queue;
-        pub use queue::{Once, OnceState};
+        pub(crate) use queue::{Once, OnceState};
     }
     _ => {
         mod no_threads;

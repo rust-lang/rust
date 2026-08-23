@@ -17,11 +17,11 @@ mod common;
 cfg_select! {
     target_family = "unix" => {
         mod unix;
-        pub use unix::*;
+        pub(crate) use unix::*;
     }
     target_family = "windows" => {
         mod windows;
-        pub use windows::*;
+        pub(crate) use windows::*;
     }
     target_os = "hermit" => {
         mod hermit;

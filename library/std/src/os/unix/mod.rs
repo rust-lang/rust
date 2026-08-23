@@ -45,7 +45,7 @@ mod platform {
     #[cfg(target_os = "cygwin")]
     pub use crate::os::cygwin::*;
     #[cfg(target_vendor = "apple")]
-    pub use crate::os::darwin::*;
+    pub(super) use crate::os::darwin::*;
     #[cfg(target_os = "dragonfly")]
     pub use crate::os::dragonfly::*;
     #[cfg(target_os = "emscripten")]
@@ -67,7 +67,7 @@ mod platform {
     #[cfg(target_os = "l4re")]
     pub use crate::os::l4re::*;
     #[cfg(target_os = "linux")]
-    pub use crate::os::linux::*;
+    pub(crate) use crate::os::linux::*;
     #[cfg(target_os = "netbsd")]
     pub use crate::os::netbsd::*;
     #[cfg(any(target_os = "nto", target_os = "qnx"))]

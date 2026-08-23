@@ -62,7 +62,7 @@ cfg_select! {
     }
 }
 
-pub use imp::{
+pub(crate) use imp::{
     JoinPathsError, SplitPaths, chdir, current_exe, getcwd, home_dir, join_paths, split_paths,
     temp_dir,
 };
