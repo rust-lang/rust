@@ -285,7 +285,7 @@ fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Optio
 
     Some(DownloadedLlvm {
         output: LlvmOutput {
-            host_llvm_config: ci_llvm.join("bin").join("llvm-config"),
+            host_llvm_config: ci_llvm.join("bin").join(exe("llvm-config", builder.host_target)),
             link_shared,
             llvm_root_dir: ci_llvm,
             kind: LlvmKind::DownloadedFromCi,
