@@ -751,7 +751,8 @@ pub(crate) struct KeyAndValue<K, V> {
     pub key: K,
     pub value: V,
 }
-impl<K: PartialEq, V> PartialEq for KeyAndValue<K, V> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl<K: [const] PartialEq, V> PartialEq for KeyAndValue<K, V> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key
@@ -761,8 +762,10 @@ impl<K: PartialEq, V> PartialEq for KeyAndValue<K, V> {
         self.key != other.key
     }
 }
-impl<K: Eq, V> Eq for KeyAndValue<K, V> {}
-impl<K: PartialOrd, V> PartialOrd for KeyAndValue<K, V> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl<K: [const] Eq, V> Eq for KeyAndValue<K, V> {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl<K: [const] PartialOrd, V> PartialOrd for KeyAndValue<K, V> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         PartialOrd::partial_cmp(&self.key, &other.key)
@@ -784,7 +787,8 @@ impl<K: PartialOrd, V> PartialOrd for KeyAndValue<K, V> {
         self.key >= other.key
     }
 }
-impl<K: Ord, V> Ord for KeyAndValue<K, V> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl<K: [const] Ord, V> Ord for KeyAndValue<K, V> {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(&self.key, &other.key)
