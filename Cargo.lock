@@ -659,7 +659,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "clippy"
-version = "0.1.99"
+version = "0.1.100"
 dependencies = [
  "anstream 0.6.21",
  "askama",
@@ -684,7 +684,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.99"
+version = "0.1.100"
 dependencies = [
  "arrayvec",
  "clippy_utils",
@@ -708,7 +708,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.99"
+version = "0.1.100"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.23.1",
@@ -739,7 +739,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.99"
+version = "0.1.100"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -1153,7 +1153,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.99"
+version = "0.1.100"
 
 [[package]]
 name = "derive-where"

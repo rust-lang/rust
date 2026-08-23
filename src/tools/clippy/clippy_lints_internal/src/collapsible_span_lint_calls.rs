@@ -3,8 +3,7 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::{SpanlessEq, is_lint_allowed, peel_blocks_with_stmt, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass, declare_tool_lint};
 use rustc_span::{Span, SyntaxContext};
 
 use std::borrow::{Borrow as _, Cow};

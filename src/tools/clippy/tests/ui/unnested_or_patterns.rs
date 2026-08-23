@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![warn(clippy::unnested_or_patterns)]
 #![allow(clippy::manual_range_patterns)]
 #![expect(irrefutable_let_patterns)]
@@ -12,9 +12,9 @@ fn main() {
     // Should be ignored by this lint, as nesting requires more characters.
     if let &0 | &2 = &0 {}
 
-    if let box 0 | box 2 = Box::new(0) {}
+    if let deref!(0) | deref!(2) = Box::new(0) {}
     //~^ unnested_or_patterns
-    if let box ((0 | 1)) | box (2 | 3) | box 4 = Box::new(0) {}
+    if let deref!(0 | 1) | deref!(2 | 3) | deref!(4) = Box::new(0) {}
     //~^ unnested_or_patterns
     const C0: Option<u8> = Some(1);
     if let Some(1) | C0 | Some(2) = None {}
