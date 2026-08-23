@@ -1,5 +1,5 @@
 error: the elements of a tuple pattern cannot be given types individually
-  --> $DIR/tuple-pattern-type-ascription.rs:9:11
+  --> $DIR/tuple-pattern-type-ascription.rs:13:11
    |
 LL |     let (a: bool,) = (true,);
    |           ^^^^^^
@@ -11,7 +11,7 @@ LL +     let (a,): (bool,) = (true,);
    |
 
 error: the elements of a tuple pattern cannot be given types individually
-  --> $DIR/tuple-pattern-type-ascription.rs:12:11
+  --> $DIR/tuple-pattern-type-ascription.rs:16:11
    |
 LL |     let (b: bool, c: u8) = (true, 1);
    |           ^^^^^^   ^^^^
@@ -23,7 +23,7 @@ LL +     let (b, c): (bool, u8) = (true, 1);
    |
 
 error: the elements of a tuple pattern cannot be given types individually
-  --> $DIR/tuple-pattern-type-ascription.rs:15:11
+  --> $DIR/tuple-pattern-type-ascription.rs:19:11
    |
 LL |     let (d: bool, e) = (true, 1);
    |           ^^^^^^
@@ -35,7 +35,7 @@ LL +     let (d, e): (bool, _) = (true, 1);
    |
 
 error: the elements of a tuple pattern cannot be given types individually
-  --> $DIR/tuple-pattern-type-ascription.rs:18:11
+  --> $DIR/tuple-pattern-type-ascription.rs:22:11
    |
 LL |     let (f: Option<u8>,) = (Some(1),);
    |           ^^^^^^^^^^^^
@@ -46,8 +46,68 @@ LL -     let (f: Option<u8>,) = (Some(1),);
 LL +     let (f,): (Option<u8>,) = (Some(1),);
    |
 
+error: a parenthesized pattern cannot be given a type
+  --> $DIR/tuple-pattern-type-ascription.rs:29:11
+   |
+LL |     let (g: bool) = true;
+   |           ^^^^^^
+   |
+help: write the type after the pattern
+   |
+LL -     let (g: bool) = true;
+LL +     let (g): bool = true;
+   |
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:34:11
+   |
+LL |     let (h: bool, i): (bool, u8) = (true, 1);
+   |           ^^^^^^
+   |
+help: remove the inline type annotations
+   |
+LL -     let (h: bool, i): (bool, u8) = (true, 1);
+LL +     let (h, i): (bool, u8) = (true, 1);
+   |
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:39:15
+   |
+LL |     let (.., j: u8) = (true, 1);
+   |               ^^^^
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:45:11
+   |
+LL |         (k: bool, l: u8) => {}
+   |           ^^^^^^   ^^^^
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:49:11
+   |
+LL |     for (n: bool, o: u8) in [(true, 1)] {}
+   |           ^^^^^^   ^^^^
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:52:14
+   |
+LL |     if let (p: bool, q: u8) = (true, 1) {}
+   |              ^^^^^^   ^^^^
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:55:12
+   |
+LL |     let [(r: bool,)] = [(true,)];
+   |            ^^^^^^
+
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:58:18
+   |
+LL |     let S { f: (s: bool, t: u8) } = S { f: (true, 1) };
+   |                  ^^^^^^   ^^^^
+
 error: expected one of `)`, `,`, `@`, `if`, or `|`, found `:`
-  --> $DIR/tuple-pattern-type-ascription.rs:26:11
+  --> $DIR/tuple-pattern-type-ascription.rs:64:11
    |
 LL |     let (m:C,) = (0,);
    |           ^ expected one of `)`, `,`, `@`, `if`, or `|`
@@ -57,5 +117,11 @@ help: maybe write a path separator here
 LL |     let (m::C,) = (0,);
    |            +
 
-error: aborting due to 5 previous errors
+error: the elements of a tuple pattern cannot be given types individually
+  --> $DIR/tuple-pattern-type-ascription.rs:68:12
+   |
+LL | fn param((u: bool, v: u8): (bool, u8)) {}
+   |            ^^^^^^   ^^^^
+
+error: aborting due to 14 previous errors
 
