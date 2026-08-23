@@ -9,6 +9,6 @@ extern "C" {
 fn main() {
     let mut fds = [-1, -1];
     let res = unsafe { pipe(fds.as_mut_ptr()) };
-    //~^ ERROR: ABI mismatch: calling a non-variadic function with a variadic caller-side signature
+    //~^ ERROR: is a non-variadic function, but the caller is using a variadic signature
     assert_eq!(res, 0);
 }
