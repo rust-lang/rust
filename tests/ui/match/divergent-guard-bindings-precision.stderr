@@ -1,0 +1,93 @@
+error[E0510]: cannot assign `x.0` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:13:21
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         (_, c) if { x.0 = None; false } || return => {}
+   |                     ^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x.0` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:15:31
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         (_, c) if false && ({ x.0 = None; false } || return) => {}
+   |                               ^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x.0` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:20:31
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         (Some(ref b), _) if { x.0 = None; false } || return => {}
+   |                               ^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x.0` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:22:41
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         (Some(ref b), _) if false && ({ x.0 = None; false } || return) => {}
+   |                                         ^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x.0` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:27:32
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         (Some(&ref b), c) if { x.0 = None; false } || return => { **b; }
+   |                                ^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x.0` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:29:42
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         (Some(&ref b), c) if false && ({ x.0 = None; false } || return) => { **b; }
+   |                                          ^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `s` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:39:16
+   |
+LL |     match s[0] {
+   |           ---- value is immutable in match guard
+...
+LL |         _ if { s = &[]; false } || return => {}
+   |                ^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `s` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:41:26
+   |
+LL |     match s[0] {
+   |           ---- value is immutable in match guard
+...
+LL |         _ if false || ({ s = &[]; false } || return) => {}
+   |                          ^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `s` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:46:20
+   |
+LL |     match s[0] {
+   |           ---- value is immutable in match guard
+...
+LL |         ref b if { s = &[]; false } || return => { *b; }
+   |                    ^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `s` in match guard
+  --> $DIR/divergent-guard-bindings-precision.rs:48:30
+   |
+LL |     match s[0] {
+   |           ---- value is immutable in match guard
+...
+LL |         ref b if false || ({ s = &[]; false } || return) => { *b; }
+   |                              ^^^^^^^ cannot assign
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0510`.
