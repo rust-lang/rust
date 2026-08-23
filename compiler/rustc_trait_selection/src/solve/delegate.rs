@@ -175,7 +175,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     goal_stalled_on_args_or_nonempty_opaques(thin_vec![TyOrConstInferVar::Ty(vid)])
                 } else if trait_pred.polarity() == ty::ClausePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
-                        Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
+                        Some(LangItem::Sized)
+                        | Some(LangItem::MetaSized)
+                        | Some(LangItem::Move) => {
                             let predicate = self.resolve_vars_if_possible(goal.predicate);
                             if implicit_fast_path(self.tcx, predicate, goal.param_env) {
                                 Outcome::TriviallyHolds
