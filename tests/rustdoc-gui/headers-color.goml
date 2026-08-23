@@ -24,15 +24,14 @@ define-function: (
         move-cursor-to: "#impl-Foo"
         // Then we click on it.
         click: "a.anchor[href='#impl-Foo']"
-        assert-css: (
+        wait-for-css: (
             "#impl-Foo",
             {"color": |color|, "background-color": |focus_background_color|},
         )
         click: "a.fn[href='#method.must_use']"
-        assert-css: (
+        wait-for-css: (
             "#method\.must_use",
             {"color": |color|, "background-color": |focus_background_color|},
-            ALL,
         )
         go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
         assert-css: (".section-header a", {"color": |color|}, ALL)
