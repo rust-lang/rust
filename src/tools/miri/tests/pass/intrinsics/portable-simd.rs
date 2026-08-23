@@ -17,6 +17,7 @@
 
 use std::fmt::{self, Debug, Formatter};
 use std::intrinsics::simd as intrinsics;
+use std::intrinsics::simd::{simd_reduce_max, simd_reduce_min, simd_relaxed_fma};
 use std::ptr;
 use std::simd::StdFloat;
 use std::simd::prelude::*;
@@ -31,7 +32,7 @@ macro_rules! assert_eq {
     }}
 }
 
-// The `portable_simd` crate currently does not support f16 or f128 vectors, so we define our own.
+// The `portable_simd` crate currently does not support f128 vectors, so we define our own.
 #[repr(simd, packed)]
 #[derive(Copy)]
 struct PackedSimd<T, const N: usize>([T; N]);
@@ -53,10 +54,6 @@ impl<T: Debug + Copy, const N: usize> Debug for PackedSimd<T, N> {
         Debug::fmt(&self.into_array(), f)
     }
 }
-
-type f16x2 = PackedSimd<f16, 2>;
-type f16x4 = PackedSimd<f16, 4>;
-type f16x8 = PackedSimd<f16, 8>;
 
 type f128x2 = PackedSimd<f128, 2>;
 type f128x4 = PackedSimd<f128, 4>;
@@ -80,90 +77,76 @@ pub const unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(
 
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn simd_ops_f16() {
-    use intrinsics::*;
-
     let a = f16x4::splat(10.0);
     let b = f16x4::from_array([1.0, 2.0, 3.0, -4.0]);
+    assert_eq!(-b, f16x4::from_array([-1.0, -2.0, -3.0, 4.0]));
+    assert_eq!(a + b, f16x4::from_array([11.0, 12.0, 13.0, 6.0]));
+    assert_eq!(a - b, f16x4::from_array([9.0, 8.0, 7.0, 14.0]));
+    assert_eq!(a * b, f16x4::from_array([10.0, 20.0, 30.0, -40.0]));
+    assert_eq!(b / a, f16x4::from_array([0.1, 0.2, 0.3, -0.4]));
+    assert_eq!(a / f16x4::splat(2.0), f16x4::splat(5.0));
+    assert_eq!(a % b, f16x4::from_array([0.0, 0.0, 1.0, 2.0]));
+    assert_eq!(b.abs(), f16x4::from_array([1.0, 2.0, 3.0, 4.0]));
+    assert_eq!(a.simd_max(b * f16x4::splat(4.0)), f16x4::from_array([10.0, 10.0, 12.0, 10.0]));
+    assert_eq!(a.simd_min(b * f16x4::splat(4.0)), f16x4::from_array([4.0, 8.0, 10.0, -16.0]));
 
+    assert_eq!(a.mul_add(b, a), (a * b) + a);
+    assert_eq!(b.mul_add(b, a), (b * b) + a);
+    assert_eq!(a.mul_add(b, b), (a * b) + b);
+    assert_eq!(
+        f16x4::splat(-3.2).mul_add(b, f16x4::splat(f16::NEG_INFINITY)),
+        f16x4::splat(f16::NEG_INFINITY)
+    );
+
+    // All intermediate values can be precisely represented so even relaxed FMA are deterministic.
     unsafe {
-        assert_eq!(simd_neg(b), f16x4::from_array([-1.0, -2.0, -3.0, 4.0]));
-        assert_eq!(simd_add(a, b), f16x4::from_array([11.0, 12.0, 13.0, 6.0]));
-        assert_eq!(simd_sub(a, b), f16x4::from_array([9.0, 8.0, 7.0, 14.0]));
-        assert_eq!(simd_mul(a, b), f16x4::from_array([10.0, 20.0, 30.0, -40.0]));
-        assert_eq!(simd_div(b, a), f16x4::from_array([0.1, 0.2, 0.3, -0.4]));
-        assert_eq!(simd_div(a, f16x4::splat(2.0)), f16x4::splat(5.0));
-        assert_eq!(simd_rem(a, b), f16x4::from_array([0.0, 0.0, 1.0, 2.0]));
-        assert_eq!(simd_fabs(b), f16x4::from_array([1.0, 2.0, 3.0, 4.0]));
-        assert_eq!(
-            simd_maximum_number_nsz(a, simd_mul(b, f16x4::splat(4.0))),
-            f16x4::from_array([10.0, 10.0, 12.0, 10.0])
-        );
-        assert_eq!(
-            simd_minimum_number_nsz(a, simd_mul(b, f16x4::splat(4.0))),
-            f16x4::from_array([4.0, 8.0, 10.0, -16.0])
-        );
-
-        assert_eq!(simd_fma(a, b, a), simd_add(simd_mul(a, b), a));
-        assert_eq!(simd_fma(b, b, a), simd_add(simd_mul(b, b), a));
-        assert_eq!(simd_fma(a, b, b), simd_add(simd_mul(a, b), b));
-        assert_eq!(
-            simd_fma(f16x4::splat(-3.2), b, f16x4::splat(f16::NEG_INFINITY)),
-            f16x4::splat(f16::NEG_INFINITY)
-        );
-
-        assert_eq!(simd_relaxed_fma(a, b, a), simd_add(simd_mul(a, b), a));
-        assert_eq!(simd_relaxed_fma(b, b, a), simd_add(simd_mul(b, b), a));
-        assert_eq!(simd_relaxed_fma(a, b, b), simd_add(simd_mul(a, b), b));
+        assert_eq!(simd_relaxed_fma(a, b, a), (a * b) + a);
+        assert_eq!(simd_relaxed_fma(b, b, a), (b * b) + a);
+        assert_eq!(simd_relaxed_fma(a, b, b), (a * b) + b);
         assert_eq!(
             simd_relaxed_fma(f16x4::splat(-3.2), b, f16x4::splat(f16::NEG_INFINITY)),
             f16x4::splat(f16::NEG_INFINITY)
         );
+    }
 
-        assert_eq!(simd_fsqrt(simd_mul(a, a)), a);
-        assert_eq!(simd_fsqrt(simd_mul(b, b)), simd_fabs(b));
+    assert_eq!((a * a).sqrt(), a);
+    assert_eq!((b * b).sqrt(), b.abs());
 
-        assert_eq!(simd_eq(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([0, !0, 0, 0]));
-        assert_eq!(simd_ne(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([!0, 0, !0, !0]));
-        assert_eq!(simd_le(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([0, !0, !0, 0]));
-        assert_eq!(simd_lt(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([0, 0, !0, 0]));
-        assert_eq!(simd_ge(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([!0, !0, 0, !0]));
-        assert_eq!(simd_gt(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([!0, 0, 0, !0]));
+    assert_eq!(a.simd_eq(f16x4::splat(5.0) * b), Mask::from_array([false, true, false, false]));
+    assert_eq!(a.simd_ne(f16x4::splat(5.0) * b), Mask::from_array([true, false, true, true]));
+    assert_eq!(a.simd_le(f16x4::splat(5.0) * b), Mask::from_array([false, true, true, false]));
+    assert_eq!(a.simd_lt(f16x4::splat(5.0) * b), Mask::from_array([false, false, true, false]));
+    assert_eq!(a.simd_ge(f16x4::splat(5.0) * b), Mask::from_array([true, true, false, true]));
+    assert_eq!(a.simd_gt(f16x4::splat(5.0) * b), Mask::from_array([true, false, false, true]));
 
-        assert_eq!(simd_reduce_add_ordered(a, 0.0), 40.0f16);
-        assert_eq!(simd_reduce_add_ordered(b, 0.0), 2.0f16);
-        assert_eq!(simd_reduce_mul_ordered(a, 1.0), 10000.0f16);
-        assert_eq!(simd_reduce_mul_ordered(b, 1.0), -24.0f16);
+    assert_eq!(a.reduce_sum(), 40.0);
+    assert_eq!(b.reduce_sum(), 2.0);
+    assert_eq!(a.reduce_product(), 100.0 * 100.0);
+    assert_eq!(b.reduce_product(), -24.0);
 
-        assert_eq!(
-            simd_maximum_number_nsz(
-                f16x2::from_array([0.0, f16::NAN]),
-                f16x2::from_array([f16::NAN, 0.0])
-            ),
-            f16x2::from_array([0.0, 0.0])
-        );
-        assert_eq!(
-            simd_minimum_number_nsz(
-                f16x2::from_array([0.0, f16::NAN]),
-                f16x2::from_array([f16::NAN, 0.0])
-            ),
-            f16x2::from_array([0.0, 0.0])
-        );
+    assert_eq!(
+        f16x2::from_array([0.0, f16::NAN]).simd_max(f16x2::from_array([f16::NAN, 0.0])),
+        f16x2::from_array([0.0, 0.0])
+    );
+    assert_eq!(
+        f16x2::from_array([0.0, f16::NAN]).simd_min(f16x2::from_array([f16::NAN, 0.0])),
+        f16x2::from_array([0.0, 0.0])
+    );
 
-        // FIXME(llvm): The LLVM backend rejects float `simd_reduce_{min,max}`,
-        // see https://github.com/llvm/llvm-project/issues/185827.
-        #[cfg(miri)]
-        {
-            assert_eq!(simd_reduce_max(a), 10.0f16);
-            assert_eq!(simd_reduce_max(b), 3.0f16);
-            assert_eq!(simd_reduce_min(a), 10.0f16);
-            assert_eq!(simd_reduce_min(b), -4.0f16);
+    // FIXME(llvm): The LLVM backend rejects float `simd_reduce_{min,max}`,
+    // see https://github.com/llvm/llvm-project/issues/185827.
+    #[cfg(miri)]
+    unsafe {
+        assert_eq!(simd_reduce_max(a), 10.0f16);
+        assert_eq!(simd_reduce_max(b), 3.0f16);
+        assert_eq!(simd_reduce_min(a), 10.0f16);
+        assert_eq!(simd_reduce_min(b), -4.0f16);
 
-            assert_eq!(simd_reduce_max(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
-            assert_eq!(simd_reduce_max(f16x2::from_array([f16::NAN, 0.0])), 0.0f16);
+        assert_eq!(simd_reduce_max(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
+        assert_eq!(simd_reduce_max(f16x2::from_array([f16::NAN, 0.0])), 0.0f16);
 
-            assert_eq!(simd_reduce_min(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
-            assert_eq!(simd_reduce_min(f16x2::from_array([f16::NAN, 0.0])), 0.0f16);
-        }
+        assert_eq!(simd_reduce_min(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
+        assert_eq!(simd_reduce_min(f16x2::from_array([f16::NAN, 0.0])), 0.0f16);
     }
 }
 
@@ -190,11 +173,11 @@ fn simd_ops_f32() {
     );
 
     unsafe {
-        assert_eq!(intrinsics::simd_relaxed_fma(a, b, a), (a * b) + a);
-        assert_eq!(intrinsics::simd_relaxed_fma(b, b, a), (b * b) + a);
-        assert_eq!(intrinsics::simd_relaxed_fma(a, b, b), (a * b) + b);
+        assert_eq!(simd_relaxed_fma(a, b, a), (a * b) + a);
+        assert_eq!(simd_relaxed_fma(b, b, a), (b * b) + a);
+        assert_eq!(simd_relaxed_fma(a, b, b), (a * b) + b);
         assert_eq!(
-            intrinsics::simd_relaxed_fma(f32x4::splat(-3.2), b, f32x4::splat(f32::NEG_INFINITY)),
+            simd_relaxed_fma(f32x4::splat(-3.2), b, f32x4::splat(f32::NEG_INFINITY)),
             f32x4::splat(f32::NEG_INFINITY)
         );
     }
@@ -227,8 +210,6 @@ fn simd_ops_f32() {
     // see https://github.com/llvm/llvm-project/issues/185827.
     #[cfg(miri)]
     unsafe {
-        use intrinsics::{simd_reduce_max, simd_reduce_min};
-
         assert_eq!(simd_reduce_max(a), 10.0f32);
         assert_eq!(simd_reduce_max(b), 3.0f32);
         assert_eq!(simd_reduce_min(a), 10.0f32);
@@ -265,11 +246,11 @@ fn simd_ops_f64() {
     );
 
     unsafe {
-        assert_eq!(intrinsics::simd_relaxed_fma(a, b, a), (a * b) + a);
-        assert_eq!(intrinsics::simd_relaxed_fma(b, b, a), (b * b) + a);
-        assert_eq!(intrinsics::simd_relaxed_fma(a, b, b), (a * b) + b);
+        assert_eq!(simd_relaxed_fma(a, b, a), (a * b) + a);
+        assert_eq!(simd_relaxed_fma(b, b, a), (b * b) + a);
+        assert_eq!(simd_relaxed_fma(a, b, b), (a * b) + b);
         assert_eq!(
-            intrinsics::simd_relaxed_fma(f64x4::splat(-3.2), b, f64x4::splat(f64::NEG_INFINITY)),
+            simd_relaxed_fma(f64x4::splat(-3.2), b, f64x4::splat(f64::NEG_INFINITY)),
             f64x4::splat(f64::NEG_INFINITY)
         );
     }
@@ -302,8 +283,6 @@ fn simd_ops_f64() {
     // see https://github.com/llvm/llvm-project/issues/185827.
     #[cfg(miri)]
     unsafe {
-        use intrinsics::{simd_reduce_max, simd_reduce_min};
-
         assert_eq!(simd_reduce_max(a), 10.0f64);
         assert_eq!(simd_reduce_max(b), 3.0f64);
         assert_eq!(simd_reduce_min(a), 10.0f64);
@@ -862,27 +841,25 @@ fn simd_gather_scatter() {
 
 fn simd_round() {
     #[cfg(any(miri, target_has_reliable_f16_math))]
-    unsafe {
-        use intrinsics::*;
-
+    {
         assert_eq!(
-            simd_ceil(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f16x4::from_array([0.9, 1.001, 2.0, -4.5]).ceil(),
             f16x4::from_array([1.0, 2.0, 2.0, -4.0])
         );
         assert_eq!(
-            simd_floor(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f16x4::from_array([0.9, 1.001, 2.0, -4.5]).floor(),
             f16x4::from_array([0.0, 1.0, 2.0, -5.0])
         );
         assert_eq!(
-            simd_round(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f16x4::from_array([0.9, 1.001, 2.0, -4.5]).round(),
             f16x4::from_array([1.0, 1.0, 2.0, -5.0])
         );
         assert_eq!(
-            simd_round_ties_even(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            unsafe { intrinsics::simd_round_ties_even(f16x4::from_array([0.9, 1.001, 2.0, -4.5])) },
             f16x4::from_array([1.0, 1.0, 2.0, -4.0])
         );
         assert_eq!(
-            simd_trunc(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f16x4::from_array([0.9, 1.001, 2.0, -4.5]).trunc(),
             f16x4::from_array([0.0, 1.0, 2.0, -4.0])
         );
     }
