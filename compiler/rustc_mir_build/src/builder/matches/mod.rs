@@ -2462,8 +2462,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             debug!("Exiting guard building context with locals: {:?}", guard_frame);
 
             for &(_, temp, _) in fake_borrows {
+                // We put fake reads of fake borrows on the guard's failure path to make sure
+                // they're reachable if we continue matching (#161578) and we put them on the
+                // success path to make sure we can create by-value bindings. This won't keep fake
+                // borrows live on paths where the guard diverges unconditionally, but that should
+                // be sound since we can't continue matching or make bindings after diverging.
                 let cause = FakeReadCause::ForMatchGuard;
                 self.cfg.push_fake_read(guard_true_block, guard_end, cause, Place::from(temp));
+                self.cfg.push_fake_read(guard_false_block, guard_end, cause, Place::from(temp));
             }
 
             self.cfg.goto(guard_false_block, source_info, sub_branch.otherwise_block);
