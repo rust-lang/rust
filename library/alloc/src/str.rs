@@ -10,6 +10,7 @@
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
 use core::mem::MaybeUninit;
+use core::pattern::{Pattern, Utf8Pattern};
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
@@ -20,7 +21,6 @@ pub use core::str::SplitInclusive;
 pub use core::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
-use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher, Utf8Pattern};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Bytes, CharIndices, Chars, from_utf8, from_utf8_mut};
 #[stable(feature = "str_escape", since = "1.34.0")]
@@ -305,7 +305,10 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn replace<P: Pattern>(&self, from: P, to: &str) -> String {
+    pub fn replace<'a, P>(&'a self, from: P, to: &str) -> String
+    where
+        P: Pattern<&'a str>,
+    {
         // Fast path for replacing a single ASCII character with another.
         if let Some(from_byte) = match from.as_utf8_pattern() {
             Some(Utf8Pattern::StringPattern(s)) => match s.as_bytes() {
@@ -363,7 +366,10 @@ impl str {
     #[must_use = "this returns the replaced string as a new allocation, \
                   without modifying the original"]
     #[stable(feature = "str_replacen", since = "1.16.0")]
-    pub fn replacen<P: Pattern>(&self, pat: P, to: &str, count: usize) -> String {
+    pub fn replacen<'a, P>(&'a self, pat: P, to: &str, count: usize) -> String
+    where
+        P: Pattern<&'a str>,
+    {
         // Hope to reduce the times of re-allocation
         let mut result = String::with_capacity(32);
         let mut last_end = 0;

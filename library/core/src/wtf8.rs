@@ -503,6 +503,14 @@ pub enum Utf8BoundaryError {
 }
 
 /// Copied from core::str::raw::slice_unchecked
+impl Wtf8 {
+    #[inline]
+    pub unsafe fn get_unchecked(&self, range: core::ops::Range<usize>) -> &Self {
+        // SAFETY: Caller promises `range` is valid.
+        unsafe { slice_unchecked(self, range.start, range.end) }
+    }
+}
+
 #[inline]
 unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
     // SAFETY: memory layout of a &[u8] and &Wtf8 are the same
@@ -660,5 +668,22 @@ unsafe impl CloneToUninit for Wtf8 {
     unsafe fn clone_to_uninit(&self, dst: *mut u8) {
         // SAFETY: we're just a transparent wrapper around [u8]
         unsafe { self.bytes.clone_to_uninit(dst) }
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'a> From<&'a Wtf8> for core::str_bytes::Bytes<'a, core::str_bytes::Wtf8> {
+    fn from(wtf8: &'a Wtf8) -> Self {
+        // SAFETY: As name implies, `Wtf8`’s bytes are guaranteed to be WTF-8
+        // so `Wtf8` flavour is correct.
+        unsafe { core::str_bytes::Bytes::new(&wtf8.bytes) }
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'a> From<core::str_bytes::Bytes<'a, core::str_bytes::Wtf8>> for &'a Wtf8 {
+    fn from(bytes: core::str_bytes::Bytes<'a, core::str_bytes::Wtf8>) -> Self {
+        // SAFETY: Bytes<'_, Wtf8> are guaranteed to be well-formed WTF-8.
+        unsafe { Wtf8::from_bytes_unchecked(bytes.as_bytes()) }
     }
 }

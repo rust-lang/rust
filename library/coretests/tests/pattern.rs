@@ -1,12 +1,12 @@
-use std::str::pattern::*;
+use std::pattern::*;
 
 // This macro makes it easier to write
 // tests that do a series of iterations
 macro_rules! search_asserts {
-    ($haystack:expr, $needle:expr, $testname:expr, [$($func:ident),*], $result:expr) => {
+    ($haystack:expr, $needle:expr, $testname:literal, $($func:ident => $result:expr),*) => {
         let mut searcher = $needle.into_searcher($haystack);
-        let arr = [$( Step::from(searcher.$func()) ),*];
-        assert_eq!(&arr[..], &$result, $testname);
+        let arr = [$( searcher.$func().into_step(stringify!($func)) ),*];
+        assert_eq!(&arr[..], &[$($result),*], $testname);
     }
 }
 
@@ -17,26 +17,31 @@ enum Step {
     // be the same length for easy alignment
     Matches(usize, usize),
     Rejects(usize, usize),
-    InRange(usize, usize),
     Done,
 }
 
-use self::Step::*;
+use Step::*;
 
-impl From<SearchStep> for Step {
-    fn from(x: SearchStep) -> Self {
-        match x {
-            SearchStep::Match(a, b) => Matches(a, b),
-            SearchStep::Reject(a, b) => Rejects(a, b),
+trait IntoStep {
+    fn into_step(self, method_name: &str) -> Step;
+}
+
+impl IntoStep for SearchStep {
+    fn into_step(self, _name: &str) -> Step {
+        match self {
+            SearchStep::Match(s, e) => Matches(s, e),
+            SearchStep::Reject(s, e) => Rejects(s, e),
             SearchStep::Done => Done,
         }
     }
 }
 
-impl From<Option<(usize, usize)>> for Step {
-    fn from(x: Option<(usize, usize)>) -> Self {
-        match x {
-            Some((a, b)) => InRange(a, b),
+impl IntoStep for Option<(usize, usize)> {
+    fn into_step(self, method_name: &str) -> Step {
+        let is_reject = method_name.starts_with("next_reject");
+        match self {
+            Some((s, e)) if is_reject => Rejects(s, e),
+            Some((s, e)) => Matches(s, e),
             None => Done,
         }
     }
@@ -54,93 +59,53 @@ fn test_simple_iteration() {
         "abcdeabcd",
         'a',
         "forward iteration for ASCII string",
-        // a            b              c              d              e              a              b              c              d              EOF
-        [next, next, next, next, next, next, next, next, next, next],
-        [
-            Matches(0, 1),
-            Rejects(1, 2),
-            Rejects(2, 3),
-            Rejects(3, 4),
-            Rejects(4, 5),
-            Matches(5, 6),
-            Rejects(6, 7),
-            Rejects(7, 8),
-            Rejects(8, 9),
-            Done
-        ]
+        next => Matches(0, 1),
+        next => Rejects(1, 5),
+        next => Matches(5, 6),
+        next => Rejects(6, 9),
+        next => Done
     );
 
     search_asserts!(
         "abcdeabcd",
         'a',
         "reverse iteration for ASCII string",
-        // d            c              b              a            e                d              c              b              a             EOF
-        [
-            next_back, next_back, next_back, next_back, next_back, next_back, next_back, next_back,
-            next_back, next_back
-        ],
-        [
-            Rejects(8, 9),
-            Rejects(7, 8),
-            Rejects(6, 7),
-            Matches(5, 6),
-            Rejects(4, 5),
-            Rejects(3, 4),
-            Rejects(2, 3),
-            Rejects(1, 2),
-            Matches(0, 1),
-            Done
-        ]
+        next_back => Rejects(6, 9),
+        next_back => Matches(5, 6),
+        next_back => Rejects(1, 5),
+        next_back => Matches(0, 1),
+        next_back => Done
     );
 
     search_asserts!(
         "我爱我的猫",
         '我',
         "forward iteration for Chinese string",
-        // 我           愛             我             的              貓               EOF
-        [next, next, next, next, next, next],
-        [Matches(0, 3), Rejects(3, 6), Matches(6, 9), Rejects(9, 12), Rejects(12, 15), Done]
+        next => Matches(0, 3),
+        next => Rejects(3, 6),
+        next => Matches(6, 9),
+        next => Rejects(9, 15),
+        next => Done
     );
 
     search_asserts!(
         "我的猫说meow",
         'm',
         "forward iteration for mixed string",
-        // 我           的             猫             说              m                e                o                w                EOF
-        [next, next, next, next, next, next, next, next, next],
-        [
-            Rejects(0, 3),
-            Rejects(3, 6),
-            Rejects(6, 9),
-            Rejects(9, 12),
-            Matches(12, 13),
-            Rejects(13, 14),
-            Rejects(14, 15),
-            Rejects(15, 16),
-            Done
-        ]
+        next => Rejects(0, 12),
+        next => Matches(12, 13),
+        next => Rejects(13, 16),
+        next => Done
     );
 
     search_asserts!(
         "我的猫说meow",
         '猫',
         "reverse iteration for mixed string",
-        // w             o                 e                m                说              猫             的             我             EOF
-        [
-            next_back, next_back, next_back, next_back, next_back, next_back, next_back, next_back,
-            next_back
-        ],
-        [
-            Rejects(15, 16),
-            Rejects(14, 15),
-            Rejects(13, 14),
-            Rejects(12, 13),
-            Rejects(9, 12),
-            Matches(6, 9),
-            Rejects(3, 6),
-            Rejects(0, 3),
-            Done
-        ]
+        next_back => Rejects(9, 16),
+        next_back => Matches(6, 9),
+        next_back => Rejects(0, 6),
+        next_back => Done
     );
 }
 
@@ -150,46 +115,43 @@ fn test_simple_search() {
         "abcdeabcdeabcde",
         'a',
         "next_match for ASCII string",
-        [next_match, next_match, next_match, next_match],
-        [InRange(0, 1), InRange(5, 6), InRange(10, 11), Done]
+        next_match => Matches(0, 1),
+        next_match => Matches(5, 6),
+        next_match => Matches(10, 11),
+        next_match => Done
     );
 
     search_asserts!(
         "abcdeabcdeabcde",
         'a',
         "next_match_back for ASCII string",
-        [next_match_back, next_match_back, next_match_back, next_match_back],
-        [InRange(10, 11), InRange(5, 6), InRange(0, 1), Done]
+        next_match_back => Matches(10, 11),
+        next_match_back => Matches(5, 6),
+        next_match_back => Matches(0, 1),
+        next_match_back => Done
     );
 
     search_asserts!(
         "abcdeab",
         'a',
         "next_reject for ASCII string",
-        [next_reject, next_reject, next_match, next_reject, next_reject],
-        [InRange(1, 2), InRange(2, 3), InRange(5, 6), InRange(6, 7), Done]
+        next_reject => Rejects(1, 2),
+        next_reject => Rejects(2, 3),
+        next_match => Matches(5, 6),
+        next_reject => Rejects(6, 7),
+        next_reject => Done
     );
 
     search_asserts!(
         "abcdeabcdeabcde",
         'a',
         "next_reject_back for ASCII string",
-        [
-            next_reject_back,
-            next_reject_back,
-            next_match_back,
-            next_reject_back,
-            next_reject_back,
-            next_reject_back
-        ],
-        [
-            InRange(14, 15),
-            InRange(13, 14),
-            InRange(10, 11),
-            InRange(9, 10),
-            InRange(8, 9),
-            InRange(7, 8)
-        ]
+        next_reject_back => Rejects(14, 15),
+        next_reject_back => Rejects(13, 14),
+        next_match_back  => Matches(10, 11),
+        next_reject_back => Rejects(9, 10),
+        next_reject_back => Rejects(8, 9),
+        next_reject_back => Rejects(7, 8)
     );
 }
 
@@ -207,38 +169,40 @@ const STRESS: &str = "Áa🁀bÁꁁfg😁각กᘀ각aÁ각ꁁก😁a";
 #[test]
 fn test_stress_indices() {
     // this isn't really a test, more of documentation on the indices of each character in the stresstest string
+    search_asserts!(
+        STRESS,
+        |_| true,
+        "Indices of characters in stress test",
+        next => Matches(0, 2),   // Á
+        next => Matches(2, 3),   // a
+        next => Matches(3, 7),   // 🁀
+        next => Matches(7, 8),   // b
+        next => Matches(8, 10),  // Á
+        next => Matches(10, 13), // ꁁ
+        next => Matches(13, 14), // f
+        next => Matches(14, 15), // g
+        next => Matches(15, 19), // 😀
+        next => Matches(19, 22), // 각
+        next => Matches(22, 25), // ก
+        next => Matches(25, 28), // ᘀ
+        next => Matches(28, 31), // 각
+        next => Matches(31, 32), // a
+        next => Matches(32, 34), // Á
+        next => Matches(34, 37), // 각
+        next => Matches(37, 40), // ꁁ
+        next => Matches(40, 43), // ก
+        next => Matches(43, 47), // 😀
+        next => Matches(47, 48), // a
+        next => Done
+    );
 
+    // this test should generate something that will run memchr
     search_asserts!(
         STRESS,
         'x',
         "Indices of characters in stress test",
-        [
-            next, next, next, next, next, next, next, next, next, next, next, next, next, next,
-            next, next, next, next, next, next, next
-        ],
-        [
-            Rejects(0, 2),   // Á
-            Rejects(2, 3),   // a
-            Rejects(3, 7),   // 🁀
-            Rejects(7, 8),   // b
-            Rejects(8, 10),  // Á
-            Rejects(10, 13), // ꁁ
-            Rejects(13, 14), // f
-            Rejects(14, 15), // g
-            Rejects(15, 19), // 😀
-            Rejects(19, 22), // 각
-            Rejects(22, 25), // ก
-            Rejects(25, 28), // ᘀ
-            Rejects(28, 31), // 각
-            Rejects(31, 32), // a
-            Rejects(32, 34), // Á
-            Rejects(34, 37), // 각
-            Rejects(37, 40), // ꁁ
-            Rejects(40, 43), // ก
-            Rejects(43, 47), // 😀
-            Rejects(47, 48), // a
-            Done
-        ]
+        next => Rejects(0, 48), // no character matches
+        next => Done
     );
 }
 
@@ -248,96 +212,113 @@ fn test_forward_search_shared_bytes() {
         STRESS,
         'Á',
         "Forward search for two-byte Latin character",
-        [next_match, next_match, next_match, next_match],
-        [InRange(0, 2), InRange(8, 10), InRange(32, 34), Done]
+        next_match => Matches(0, 2),
+        next_match => Matches(8, 10),
+        next_match => Matches(32, 34),
+        next_match => Done
     );
 
     search_asserts!(
         STRESS,
         'Á',
         "Forward search for two-byte Latin character; check if next() still works",
-        [next_match, next, next_match, next, next_match, next, next_match],
-        [
-            InRange(0, 2),
-            Rejects(2, 3),
-            InRange(8, 10),
-            Rejects(10, 13),
-            InRange(32, 34),
-            Rejects(34, 37),
-            Done
-        ]
+        next_match => Matches(0, 2),
+        next       => Rejects(2, 8),
+        next_match => Matches(8, 10),
+        next       => Rejects(10, 32),
+        next_match => Matches(32, 34),
+        next       => Rejects(34, 48),
+        next_match => Done
     );
 
     search_asserts!(
         STRESS,
         '각',
         "Forward search for three-byte Hangul character",
-        [next_match, next, next_match, next_match, next_match],
-        [InRange(19, 22), Rejects(22, 25), InRange(28, 31), InRange(34, 37), Done]
+        next_match => Matches(19, 22),
+        next       => Rejects(22, 28),
+        next_match => Matches(28, 31),
+        next_match => Matches(34, 37),
+        next_match => Done
     );
 
     search_asserts!(
         STRESS,
         '각',
         "Forward search for three-byte Hangul character; check if next() still works",
-        [next_match, next, next_match, next, next_match, next, next_match],
-        [
-            InRange(19, 22),
-            Rejects(22, 25),
-            InRange(28, 31),
-            Rejects(31, 32),
-            InRange(34, 37),
-            Rejects(37, 40),
-            Done
-        ]
+        next_match => Matches(19, 22),
+        next       => Rejects(22, 28),
+        next_match => Matches(28, 31),
+        next       => Rejects(31, 34),
+        next_match => Matches(34, 37),
+        next       => Rejects(37, 48),
+        next_match => Done
     );
 
     search_asserts!(
         STRESS,
         'ก',
         "Forward search for three-byte Thai character",
-        [next_match, next, next_match, next, next_match],
-        [InRange(22, 25), Rejects(25, 28), InRange(40, 43), Rejects(43, 47), Done]
+        next_match => Matches(22, 25),
+        next       => Rejects(25, 40),
+        next_match => Matches(40, 43),
+        next       => Rejects(43, 48),
+        next_match => Done
     );
 
     search_asserts!(
         STRESS,
         'ก',
         "Forward search for three-byte Thai character; check if next() still works",
-        [next_match, next, next_match, next, next_match],
-        [InRange(22, 25), Rejects(25, 28), InRange(40, 43), Rejects(43, 47), Done]
+        next_match => Matches(22, 25),
+        next       => Rejects(25, 40),
+        next_match => Matches(40, 43),
+        next       => Rejects(43, 48),
+        next_match => Done
     );
 
     search_asserts!(
         STRESS,
         '😁',
         "Forward search for four-byte emoji",
-        [next_match, next, next_match, next, next_match],
-        [InRange(15, 19), Rejects(19, 22), InRange(43, 47), Rejects(47, 48), Done]
+        next_match => Matches(15, 19),
+        next       => Rejects(19, 43),
+        next_match => Matches(43, 47),
+        next       => Rejects(47, 48),
+        next_match => Done
     );
 
     search_asserts!(
         STRESS,
         '😁',
         "Forward search for four-byte emoji; check if next() still works",
-        [next_match, next, next_match, next, next_match],
-        [InRange(15, 19), Rejects(19, 22), InRange(43, 47), Rejects(47, 48), Done]
+        next_match => Matches(15, 19),
+        next       => Rejects(19, 43),
+        next_match => Matches(43, 47),
+        next       => Rejects(47, 48),
+        next_match => Done
     );
 
     search_asserts!(
         STRESS,
         'ꁁ',
         "Forward search for three-byte Yi character with repeated bytes",
-        [next_match, next, next_match, next, next_match],
-        [InRange(10, 13), Rejects(13, 14), InRange(37, 40), Rejects(40, 43), Done]
+        next_match => Matches(10, 13),
+        next       => Rejects(13, 37),
+        next_match => Matches(37, 40),
+        next       => Rejects(40, 48),
+        next_match => Done
     );
 
     search_asserts!(
         STRESS,
         'ꁁ',
         "Forward search for three-byte Yi character with repeated bytes; check if next() still works",
-        [next_match, next, next_match, next, next_match],
-        [InRange(10, 13), Rejects(13, 14), InRange(37, 40), Rejects(40, 43), Done]
+        next_match => Matches(10, 13),
+        next       => Rejects(13, 37),
+        next_match => Matches(37, 40),
+        next       => Rejects(40, 48),
+        next_match => Done
     );
 }
 
@@ -347,96 +328,112 @@ fn test_reverse_search_shared_bytes() {
         STRESS,
         'Á',
         "Reverse search for two-byte Latin character",
-        [next_match_back, next_match_back, next_match_back, next_match_back],
-        [InRange(32, 34), InRange(8, 10), InRange(0, 2), Done]
+        next_match_back => Matches(32, 34),
+        next_match_back => Matches(8, 10),
+        next_match_back => Matches(0, 2),
+        next_match_back => Done
     );
 
     search_asserts!(
         STRESS,
         'Á',
         "Reverse search for two-byte Latin character; check if next_back() still works",
-        [next_match_back, next_back, next_match_back, next_back, next_match_back, next_back],
-        [InRange(32, 34), Rejects(31, 32), InRange(8, 10), Rejects(7, 8), InRange(0, 2), Done]
+        next_match_back => Matches(32, 34),
+        next_back       => Rejects(10, 32),
+        next_match_back => Matches(8, 10),
+        next_back       => Rejects(2, 8),
+        next_match_back => Matches(0, 2),
+        next_back       => Done
     );
 
     search_asserts!(
         STRESS,
         '각',
         "Reverse search for three-byte Hangul character",
-        [next_match_back, next_back, next_match_back, next_match_back, next_match_back],
-        [InRange(34, 37), Rejects(32, 34), InRange(28, 31), InRange(19, 22), Done]
+        next_match_back => Matches(34, 37),
+        next_back       => Rejects(31, 34),
+        next_match_back => Matches(28, 31),
+        next_match_back => Matches(19, 22),
+        next_match_back => Done
     );
 
     search_asserts!(
         STRESS,
         '각',
         "Reverse search for three-byte Hangul character; check if next_back() still works",
-        [
-            next_match_back,
-            next_back,
-            next_match_back,
-            next_back,
-            next_match_back,
-            next_back,
-            next_match_back
-        ],
-        [
-            InRange(34, 37),
-            Rejects(32, 34),
-            InRange(28, 31),
-            Rejects(25, 28),
-            InRange(19, 22),
-            Rejects(15, 19),
-            Done
-        ]
+        next_match_back => Matches(34, 37),
+        next_back       => Rejects(31, 34),
+        next_match_back => Matches(28, 31),
+        next_back       => Rejects(22, 28),
+        next_match_back => Matches(19, 22),
+        next_back       => Rejects(0, 19),
+        next_match_back => Done
     );
 
     search_asserts!(
         STRESS,
         'ก',
         "Reverse search for three-byte Thai character",
-        [next_match_back, next_back, next_match_back, next_back, next_match_back],
-        [InRange(40, 43), Rejects(37, 40), InRange(22, 25), Rejects(19, 22), Done]
+        next_match_back => Matches(40, 43),
+        next_back       => Rejects(25, 40),
+        next_match_back => Matches(22, 25),
+        next_back       => Rejects(0, 22),
+        next_match_back => Done
     );
 
     search_asserts!(
         STRESS,
         'ก',
         "Reverse search for three-byte Thai character; check if next_back() still works",
-        [next_match_back, next_back, next_match_back, next_back, next_match_back],
-        [InRange(40, 43), Rejects(37, 40), InRange(22, 25), Rejects(19, 22), Done]
+        next_match_back => Matches(40, 43),
+        next_back       => Rejects(25, 40),
+        next_match_back => Matches(22, 25),
+        next_back       => Rejects(0, 22),
+        next_match_back => Done
     );
 
     search_asserts!(
         STRESS,
         '😁',
         "Reverse search for four-byte emoji",
-        [next_match_back, next_back, next_match_back, next_back, next_match_back],
-        [InRange(43, 47), Rejects(40, 43), InRange(15, 19), Rejects(14, 15), Done]
+        next_match_back => Matches(43, 47),
+        next_back       => Rejects(19, 43),
+        next_match_back => Matches(15, 19),
+        next_back       => Rejects(0, 15),
+        next_match_back => Done
     );
 
     search_asserts!(
         STRESS,
         '😁',
         "Reverse search for four-byte emoji; check if next_back() still works",
-        [next_match_back, next_back, next_match_back, next_back, next_match_back],
-        [InRange(43, 47), Rejects(40, 43), InRange(15, 19), Rejects(14, 15), Done]
+        next_match_back => Matches(43, 47),
+        next_back       => Rejects(19, 43),
+        next_match_back => Matches(15, 19),
+        next_back       => Rejects(0, 15),
+        next_match_back => Done
     );
 
     search_asserts!(
         STRESS,
         'ꁁ',
         "Reverse search for three-byte Yi character with repeated bytes",
-        [next_match_back, next_back, next_match_back, next_back, next_match_back],
-        [InRange(37, 40), Rejects(34, 37), InRange(10, 13), Rejects(8, 10), Done]
+        next_match_back => Matches(37, 40),
+        next_back       => Rejects(13, 37),
+        next_match_back => Matches(10, 13),
+        next_back       => Rejects(0, 10),
+        next_match_back => Done
     );
 
     search_asserts!(
         STRESS,
         'ꁁ',
         "Reverse search for three-byte Yi character with repeated bytes; check if next_back() still works",
-        [next_match_back, next_back, next_match_back, next_back, next_match_back],
-        [InRange(37, 40), Rejects(34, 37), InRange(10, 13), Rejects(8, 10), Done]
+        next_match_back => Matches(37, 40),
+        next_back       => Rejects(13, 37),
+        next_match_back => Matches(10, 13),
+        next_back       => Rejects(0, 10),
+        next_match_back => Done
     );
 }
 
@@ -448,56 +445,265 @@ fn double_ended_regression_test() {
         "abcdeabcdeabcde",
         'a',
         "alternating double ended search",
-        [next_match, next_match_back, next_match, next_match_back],
-        [InRange(0, 1), InRange(10, 11), InRange(5, 6), Done]
+        next_match      => Matches(0, 1),
+        next_match_back => Matches(10, 11),
+        next_match      => Matches(5, 6),
+        next_match_back => Done
     );
     search_asserts!(
         "abcdeabcdeabcde",
         'a',
         "triple double ended search for a",
-        [next_match, next_match_back, next_match_back, next_match_back],
-        [InRange(0, 1), InRange(10, 11), InRange(5, 6), Done]
+        next_match      => Matches(0, 1),
+        next_match_back => Matches(10, 11),
+        next_match_back => Matches(5, 6),
+        next_match_back => Done
     );
     search_asserts!(
         "abcdeabcdeabcde",
         'd',
         "triple double ended search for d",
-        [next_match, next_match_back, next_match_back, next_match_back],
-        [InRange(3, 4), InRange(13, 14), InRange(8, 9), Done]
+        next_match      => Matches(3, 4),
+        next_match_back => Matches(13, 14),
+        next_match_back => Matches(8, 9),
+        next_match_back => Done
     );
     search_asserts!(
         STRESS,
         'Á',
         "Double ended search for two-byte Latin character",
-        [next_match, next_match_back, next_match, next_match_back],
-        [InRange(0, 2), InRange(32, 34), InRange(8, 10), Done]
+        next_match      => Matches(0, 2),
+        next_match_back => Matches(32, 34),
+        next_match      => Matches(8, 10),
+        next_match_back => Done
     );
     search_asserts!(
         STRESS,
         '각',
         "Reverse double ended search for three-byte Hangul character",
-        [next_match_back, next_back, next_match, next, next_match_back, next_match],
-        [InRange(34, 37), Rejects(32, 34), InRange(19, 22), Rejects(22, 25), InRange(28, 31), Done]
+        next_match_back => Matches(34, 37),
+        next_back       => Rejects(31, 34),
+        next_match      => Matches(19, 22),
+        next            => Rejects(22, 28),
+        next_match_back => Matches(28, 31),
+        next_match      => Done
     );
     search_asserts!(
         STRESS,
         'ก',
         "Double ended search for three-byte Thai character",
-        [next_match, next_back, next, next_match_back, next_match],
-        [InRange(22, 25), Rejects(47, 48), Rejects(25, 28), InRange(40, 43), Done]
+        next_match      => Matches(22, 25),
+        next_back       => Rejects(43, 48),
+        next            => Rejects(25, 40),
+        next_match_back => Matches(40, 43),
+        next_match      => Done
     );
     search_asserts!(
         STRESS,
         '😁',
         "Double ended search for four-byte emoji",
-        [next_match_back, next, next_match, next_back, next_match],
-        [InRange(43, 47), Rejects(0, 2), InRange(15, 19), Rejects(40, 43), Done]
+        next_match_back => Matches(43, 47),
+        next            => Rejects(0, 15),
+        next_match      => Matches(15, 19),
+        next_back       => Rejects(19, 43),
+        next_match      => Done
     );
     search_asserts!(
         STRESS,
         'ꁁ',
         "Double ended search for three-byte Yi character with repeated bytes",
-        [next_match, next, next_match_back, next_back, next_match],
-        [InRange(10, 13), Rejects(13, 14), InRange(37, 40), Rejects(34, 37), Done]
+        next_match      => Matches(10, 13),
+        next            => Rejects(13, 37),
+        next_match_back => Matches(37, 40),
+        next_back       => Done
     );
+}
+
+#[test]
+fn test_try_next_code_point_fwd_and_rev() {
+    use core::str::{try_next_code_point, try_next_code_point_reverse};
+
+    #[track_caller]
+    fn check_fwbw(input: &[u8], expected: Option<(char, usize)>) {
+        let mut store = Vec::with_capacity(input.len() + 1);
+
+        assert_eq!(try_next_code_point(input), expected, "fw single");
+        assert_eq!(try_next_code_point_reverse(input), expected, "bw single");
+
+        if input.is_empty() {
+            return;
+        }
+
+        store.extend_from_slice(input);
+        store.push(b'a');
+        assert_eq!(try_next_code_point(&store), expected, "fw ext");
+
+        store.clear();
+        store.push(b'a');
+        store.extend_from_slice(input);
+        assert_eq!(try_next_code_point_reverse(&store), expected, "bw, ext");
+    }
+
+    // edge case
+    check_fwbw(&[], None); // edge case
+
+    // valid cases
+    check_fwbw(&[0x41], Some(('A', 1))); // 1 byte
+    check_fwbw(&[0xc3, 0xa9], Some(('\u{00e9}', 2))); // 2 byte
+    check_fwbw(&[0xe2, 0x82, 0xac], Some(('\u{20ac}', 3))); // 3 byte
+    check_fwbw(&[0xf0, 0x9f, 0x98, 0x8a], Some(('\u{1f60a}', 4))); // 4 byte
+
+    // overlong encoding
+    check_fwbw(&[0xc0, 0xaf], None); // '\u{002f}' AKA '/'
+    check_fwbw(&[0xc1, 0x81], None); // '\u{0041}' AKA 'A'
+    check_fwbw(&[0xe0, 0x81, 0x81], None); // '\u{0041}' AKA 'A'
+    check_fwbw(&[0xe0, 0x83, 0xa9], None); // '\u{00e9}' AKA 'é', should be 2 bytes
+
+    // surrogates
+    check_fwbw(&[0xed, 0xa0, 0x80], None);
+    check_fwbw(&[0xed, 0xb0, 0x80], None);
+    check_fwbw(&[0xed, 0xa0, 0xbd, 0xed, 0xb8, 0x8a], None);
+
+    // unattached continuation
+    check_fwbw(&[0x80], None);
+
+    // truncated
+    check_fwbw(&[0xe2, 0x82], None);
+
+    // out of range
+    check_fwbw(&[0xf5, 0x80, 0x80, 0x80], None);
+}
+
+#[test]
+fn two_way_next_reject_skips_matches() {
+    // `next_reject` must not report the matched regions as rejects
+
+    // plen - pattern len
+    // ulen - unmatch len
+    // haystack is always a concatenation of [Match, Reject, Match]
+    #[track_caller]
+    fn check_fw_bw<H, T>(haystack: H, pat: T, plen: usize, ulen: usize)
+    where
+        H: Haystack,
+        T: Pattern<H> + Copy,
+        T::Searcher: ReverseSearcher<H>,
+    {
+        // fragments
+        let f1 = (0, plen);
+        let f2 = (f1.1, f1.1 + ulen);
+        let f3 = (f2.1, f2.1 + plen);
+
+        let mut searcher = pat.into_searcher(haystack);
+        let (start, end) = searcher.next_reject().expect("fw reject");
+        assert_eq!(start, f2.0, "fw reject start");
+        assert!(start < end && end <= f2.1, "fw reject must be a non-empty part of f2");
+        assert_eq!(searcher.next_match(), Some(f3), "fw match");
+        assert_eq!(searcher.next_match(), None, "fw end");
+
+        let mut searcher = pat.into_searcher(haystack);
+        let (start, end) = searcher.next_reject_back().expect("bw reject");
+        assert_eq!(end, f2.1, "bw reject end");
+        assert!(f2.0 <= start && start < end, "bw reject must be a non-empty part of f2");
+        assert_eq!(searcher.next_match_back(), Some(f1), "bw match");
+        assert_eq!(searcher.next_match_back(), None, "bw end");
+    }
+    check_fw_bw("XYZabcXYZ", "XYZ", 3, 3);
+
+    // single char 1..4 byte str
+    check_fw_bw("XabcX", "X", 1, 3);
+    check_fw_bw("\u{00e9}abc\u{00e9}", "\u{00e9}", 2, 3);
+    check_fw_bw("\u{20ac}abc\u{20ac}", "\u{20ac}", 3, 3);
+    check_fw_bw("\u{1f60a}abc\u{1f60a}", "\u{1f60a}", 4, 3);
+
+    // single char 2..4 byte
+    check_fw_bw("\u{00e9}abc\u{00e9}", '\u{00e9}', 2, 3);
+    check_fw_bw("\u{20ac}abc\u{20ac}", '\u{20ac}', 3, 3);
+    check_fw_bw("\u{1f60a}abc\u{1f60a}", '\u{1f60a}', 4, 3);
+
+    check_fw_bw("\u{00e9}abc\u{00e9}", ['\u{00e9}'], 2, 3);
+    check_fw_bw("\u{20ac}abc\u{20ac}", ['\u{20ac}'], 3, 3);
+    check_fw_bw("\u{1f60a}abc\u{1f60a}", ['\u{1f60a}'], 4, 3);
+
+    check_fw_bw("\u{00e9}abc\u{00e9}", |c| c == '\u{00e9}', 2, 3);
+    check_fw_bw("\u{20ac}abc\u{20ac}", |c| c == '\u{20ac}', 3, 3);
+    check_fw_bw("\u{1f60a}abc\u{1f60a}", |c| c == '\u{1f60a}', 4, 3);
+}
+
+#[test]
+fn two_way_next_reject_never_reports_empty_reject() {
+    // A reject must never be an empty range
+
+    // Haystack fully covered by the pattern: there are no rejects at all.
+    let mut searcher = "XYZ".into_searcher("XYZ");
+    assert_eq!(searcher.next_reject(), None);
+    assert_eq!(searcher.next_reject(), None);
+
+    let mut searcher = "XYZ".into_searcher("XYZ");
+    assert_eq!(searcher.next_reject_back(), None);
+    assert_eq!(searcher.next_reject_back(), None);
+
+    // Haystack ending with a match: the last reject is followed by `None`,
+    // not by an empty reject after the final match.
+    let mut searcher = "XYZ".into_searcher("XYZabcXYZ");
+    assert_eq!(searcher.next_reject(), Some((3, 6)));
+    assert_eq!(searcher.next_reject(), None);
+
+    let mut searcher = "XYZ".into_searcher("XYZabcXYZ");
+    assert_eq!(searcher.next_reject_back(), Some((3, 6)));
+    assert_eq!(searcher.next_reject_back(), None);
+}
+
+#[test]
+fn str_searcher_reject_back_preserves_start_on_bad_input() {
+    let haystack = core::str_bytes::Bytes::from_bytes(&[0x80, b'x', b'y', b'z'][..]);
+    let mut searcher = "xyz".into_searcher(haystack);
+    assert_eq!(searcher.next_reject_back(), Some((0, 1)));
+    assert_eq!(searcher.next_reject_back(), None);
+}
+
+#[test]
+fn backward_search_predicate() {
+    assert_eq!("abc".rfind(|c| c == 'a'), Some(0));
+    assert_eq!("abcabc".rfind(|c| c == 'c'), Some(5));
+    assert_eq!("éabc".rfind(['é']), Some(0));
+    assert_eq!("éabc".rfind(|c| c == 'é'), Some(0));
+    assert_eq!("éabcé".rfind(|c| c == 'é'), Some(5));
+    assert_eq!("€abc".rfind(|c| c == '€'), Some(0));
+    assert_eq!("😀abc".rfind(|c| c == '😀'), Some(0));
+
+    assert_eq!("abc".strip_suffix(|c| c == 'c'), Some("ab"));
+    assert_eq!("éabc".strip_suffix(|c| c == 'é'), None);
+}
+
+#[test]
+fn backward_search_predicate_pat() {
+    use core::pattern::{Pattern, ReverseSearcher};
+    use core::str_bytes::Bytes;
+
+    let haystack = Bytes::from_str("abc");
+    let mut searcher = (|c: char| c == 'a').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((0, 1)));
+    assert_eq!(searcher.next_match_back(), None);
+
+    let haystack = Bytes::from_str("abcabc");
+    let mut searcher = (|c: char| c == 'c').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((5, 6)));
+    assert_eq!(searcher.next_match_back(), Some((2, 3)));
+    assert_eq!(searcher.next_match_back(), None);
+
+    let haystack = Bytes::from_str("éabc");
+    let mut searcher = (|c: char| c == 'é').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((0, 2)));
+    assert_eq!(searcher.next_match_back(), None);
+
+    let haystack = Bytes::from_str("éabcé");
+    let mut searcher = (|c: char| c == 'é').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((5, 7)));
+    assert_eq!(searcher.next_match_back(), Some((0, 2)));
+    assert_eq!(searcher.next_match_back(), None);
+
+    let haystack = Bytes::from_str("éabc");
+    let mut searcher = (|c: char| c == 'c').into_searcher(haystack);
+    assert_eq!(searcher.next_match_back(), Some((4, 5)));
+    assert_eq!(searcher.next_match_back(), None);
 }
