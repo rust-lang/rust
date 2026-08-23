@@ -7,6 +7,13 @@
 #[cfg_attr(all(feature = "arch", target_arch = "x86_64"), path = "x86_64.rs")]
 mod impls;
 
+#[cfg(any(windows, target_os = "uefi"))]
+#[expect(non_camel_case_types)]
+pub type wchar_t = u16;
+#[cfg(not(any(windows, target_os = "uefi")))]
+#[expect(non_camel_case_types)]
+pub type wchar_t = i32;
+
 intrinsics! {
     #[mem_builtin]
     pub unsafe extern "C" fn memcpy(
@@ -66,5 +73,16 @@ intrinsics! {
     #[mem_builtin]
     pub unsafe extern "C" fn strlen(s: *const core::ffi::c_char) -> usize {
         impls::c_string_length(s)
+    }
+
+    #[mem_builtin]
+    pub unsafe extern "C" fn wcslen(s: *const crate::mem::wchar_t) -> usize {
+        let mut s = s;
+        let mut n = 0;
+        while *s != 0 {
+            n += 1;
+            s = s.add(1);
+        }
+        n
     }
 }
