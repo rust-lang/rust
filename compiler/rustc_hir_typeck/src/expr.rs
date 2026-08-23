@@ -555,7 +555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 LangItem::IntoIterIntoIter | LangItem::IteratorNext
                     if expr.span.is_desugaring(DesugaringKind::ForLoop) =>
                 {
-                    Some(ObligationCauseCode::ForLoopIterator)
+                    Some(ObligationCauseCode::ForLoopIterator(arg.hir_id))
                 }
                 LangItem::TryTraitFromOutput
                     if expr.span.is_desugaring(DesugaringKind::TryBlock) =>
