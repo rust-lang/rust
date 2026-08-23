@@ -1,0 +1,25 @@
+error[E0282]: type annotations needed
+  --> $DIR/derive-attribute-annotation-needed.rs:11:30
+   |
+LL |     #[serde(serialize_with = "f")]
+   |                              ^^^ cannot infer type of the type parameter `T` declared on the function `f`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     #[serde(serialize_with = "f"::</* Type */>)]
+   |                                 ++++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/derive-attribute-annotation-needed.rs:18:5
+   |
+LL |     f();
+   |     ^ cannot infer type of the type parameter `T` declared on the function `f`
+   |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     f::</* Type */>();
+   |      ++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
