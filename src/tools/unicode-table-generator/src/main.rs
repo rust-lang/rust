@@ -414,9 +414,9 @@ fn version() -> String {
         std::fs::read_to_string(std::path::Path::new(UNICODE_DIRECTORY).join("ReadMe.txt"))
             .unwrap();
 
-    let prefix = "for Version ";
+    let prefix = "for version ";
     let start = readme.find(prefix).unwrap() + prefix.len();
-    let end = readme.find(" of the Unicode Standard.").unwrap();
+    let end = readme.find(" of the\nUnicode Character Database.").unwrap();
     let version =
         readme[start..end].split('.').map(|v| v.parse::<u32>().expect(v)).collect::<Vec<_>>();
     let [major, minor, micro] = [version[0], version[1], version[2]];

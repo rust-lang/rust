@@ -224,10 +224,16 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, Strin
             _ => {
                 let output_lows = output.map(|output| {
                     let (output_high, output_low) = deconstruct(output);
-                    assert_eq!(
-                        output_high, input_high,
-                        "Case-mapping a character should not change its plane"
-                    );
+
+                    // Title and upper case of LATIN SMALL LIGATURE LONG S WITH DESCENDER S (U+1DF95) (plane 1)
+                    // is mapped to U+0053 in plane 0
+                    if input != 0x1DF95 {
+                        assert_eq!(
+                            output_high, input_high,
+                            "Case-mapping a character should not change its plane"
+                        );
+                    }
+
                     Hex(output_low)
                 });
                 l2_lut.multis.push((Hex(input_low), output_lows));

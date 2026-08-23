@@ -3,7 +3,8 @@ use std::process::{Command, Output};
 
 use crate::UNICODE_DIRECTORY;
 
-static URL_PREFIX: &str = "https://www.unicode.org/Public/UCD/latest/ucd/";
+// Revert to http://www.unicode.org/Public/18.0.0/ucd when 18 finally comes out
+static URL_PREFIX: &str = "http://www.unicode.org/Public/draft/ucd/";
 
 static README: &str = "ReadMe.txt";
 
