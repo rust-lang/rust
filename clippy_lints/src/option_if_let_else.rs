@@ -16,9 +16,8 @@ use rustc_hir::intravisit::{Visitor, walk_expr, walk_path};
 use rustc_hir::{
     Arm, BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, UnOp,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::hir::nested_filter;
-use rustc_session::declare_lint_pass;
 use rustc_span::SyntaxContext;
 
 declare_clippy_lint! {

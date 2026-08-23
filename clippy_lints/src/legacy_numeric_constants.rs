@@ -7,8 +7,7 @@ use hir::def_id::DefId;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{ExprKind, Item, ItemKind, QPath, UseKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::Symbol;
 use rustc_span::symbol::kw;
 

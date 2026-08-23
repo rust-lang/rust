@@ -235,6 +235,9 @@ impl TestContext {
                 "-Ainternal_features",
                 "-Zui-testing",
                 "-Zdeduplicate-diagnostics=no",
+                // FIXME(#160895): While the new solver is enabled by default on nightly,
+                // we don't want to use it in our tests for now.
+                "-Znext-solver=coherence",
                 "-Dwarnings",
             ]
             .map(OsString::from),
@@ -341,7 +344,9 @@ fn run_ui_cargo(cx: &TestContext) {
     config.program.out_dir_flag = CommandBuilder::cargo().out_dir_flag;
     config.program.args = vec!["clippy".into(), "--color".into(), "never".into(), "--quiet".into()];
     config.program.envs.extend([
-        ("RUSTFLAGS".into(), Some("-Dwarnings".into())),
+        // FIXME(#160895): While the new solver is enabled by default on nightly,
+        // we don't want to use it in our tests for now.
+        ("RUSTFLAGS".into(), Some("-Dwarnings -Znext-solver=coherence".into())),
         ("CARGO_INCREMENTAL".into(), Some("0".into())),
     ]);
     // We need to do this while we still have a rustc in the `program` field.

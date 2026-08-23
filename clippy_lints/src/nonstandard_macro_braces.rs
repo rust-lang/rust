@@ -6,8 +6,7 @@ use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, impl_lint_pass};
 use rustc_span::Span;
 
 use crate::rustc_lint::LintContext as _;

@@ -6,8 +6,7 @@ use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::sym::PhantomPinned;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{FieldDef, Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does

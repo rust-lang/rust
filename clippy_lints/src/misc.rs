@@ -5,9 +5,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, Node, QPath, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
