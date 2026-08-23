@@ -292,13 +292,38 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<(), PrintError> {
         let mut first = true;
+
+        let mut has_move_bound = false;
+
         for p in predicates {
+            if let ty::ExistentialPredicate::AutoTrait(def_id) = p.skip_binder()
+                && self.tcx().is_move_trait(def_id)
+            {
+                has_move_bound = true;
+                continue;
+            }
+
             if !first {
                 write!(self, "+")?;
             }
             first = false;
             p.print(self)?;
         }
+
+        if !has_move_bound {
+            let move_trait = self
+                .tcx()
+                .lang_items()
+                .move_trait()
+                .expect("The Move trait is always defined in presence of ?Move bounds");
+
+            if !first {
+                write!(self, "+")?;
+            }
+            write!(self, "?")?;
+            self.print_def_path(move_trait, &[])?;
+        }
+
         Ok(())
     }
 
