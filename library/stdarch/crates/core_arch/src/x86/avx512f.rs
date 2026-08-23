@@ -13097,7 +13097,10 @@ pub const fn _mm512_maskz_cvtepu32_ps(k: __mmask16, a: __m512i) -> __m512 {
 /// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions", issue = "161585")]
+#[unstable(
+    feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions",
+    issue = "161585"
+)]
 #[cfg_attr(test, assert_instr(vcvtudq2ps))]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_cvtepu32_ps(a: __m256i) -> __m256 {
@@ -13113,7 +13116,10 @@ pub const fn _mm256_cvtepu32_ps(a: __m256i) -> __m256 {
 /// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions", issue = "161585")]
+#[unstable(
+    feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions",
+    issue = "161585"
+)]
 #[cfg_attr(test, assert_instr(vcvtudq2ps))]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_mask_cvtepu32_ps(src: __m256, k: __mmask8, a: __m256i) -> __m256 {
@@ -13129,7 +13135,10 @@ pub const fn _mm256_mask_cvtepu32_ps(src: __m256, k: __mmask8, a: __m256i) -> __
 /// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions", issue = "161585")]
+#[unstable(
+    feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions",
+    issue = "161585"
+)]
 #[cfg_attr(test, assert_instr(vcvtudq2ps))]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_maskz_cvtepu32_ps(k: __mmask8, a: __m256i) -> __m256 {
@@ -13145,7 +13154,10 @@ pub const fn _mm256_maskz_cvtepu32_ps(k: __mmask8, a: __m256i) -> __m256 {
 /// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions", issue = "161585")]
+#[unstable(
+    feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions",
+    issue = "161585"
+)]
 #[cfg_attr(test, assert_instr(vcvtudq2ps))]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_cvtepu32_ps(a: __m128i) -> __m128 {
@@ -13162,7 +13174,10 @@ pub const fn _mm_cvtepu32_ps(a: __m128i) -> __m128 {
 /// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions", issue = "161585")]
+#[unstable(
+    feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions",
+    issue = "161585"
+)]
 #[cfg_attr(test, assert_instr(vcvtudq2ps))]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_mask_cvtepu32_ps(src: __m128, k: __mmask8, a: __m128i) -> __m128 {
@@ -13179,7 +13194,10 @@ pub const fn _mm_mask_cvtepu32_ps(src: __m128, k: __mmask8, a: __m128i) -> __m12
 /// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[unstable(feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions", issue = "161585")]
+#[unstable(
+    feature = "stdarch_x86_avx512_vl_u32_to_f32_conversions",
+    issue = "161585"
+)]
 #[cfg_attr(test, assert_instr(vcvtudq2ps))]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_maskz_cvtepu32_ps(k: __mmask8, a: __m128i) -> __m128 {
