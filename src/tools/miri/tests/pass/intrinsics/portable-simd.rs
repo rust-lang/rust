@@ -8,6 +8,7 @@
     intrinsics,
     core_intrinsics,
     repr_simd,
+    cfg_target_has_reliable_f16_f128,
     f16,
     f128
 )]
@@ -77,7 +78,7 @@ impl<T: Copy, const N: usize> PackedSimd<T, N> {
 #[rustc_nounwind]
 pub const unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
-#[cfg(miri)] // FIXME(f16_f128) doesn't always work natively
+#[cfg(any(miri, target_has_reliable_f16_math))]
 fn simd_ops_f16() {
     use intrinsics::*;
 
@@ -316,7 +317,7 @@ fn simd_ops_f64() {
     }
 }
 
-#[cfg(miri)] // FIXME(f16_f128) doesn't always work natively
+#[cfg(any(miri, target_has_reliable_f128_math))]
 fn simd_ops_f128() {
     use intrinsics::*;
 
@@ -860,7 +861,7 @@ fn simd_gather_scatter() {
 }
 
 fn simd_round() {
-    #[cfg(miri)] // FIXME(f16_f128) doesn't always work natively
+    #[cfg(any(miri, target_has_reliable_f16_math))]
     unsafe {
         use intrinsics::*;
 
@@ -928,7 +929,7 @@ fn simd_round() {
         f64x4::from_array([0.0, 1.0, 2.0, -4.0])
     );
 
-    #[cfg(miri)] // FIXME(f16_f128) doesn't always work natively
+    #[cfg(any(miri, target_has_reliable_f128_math))]
     unsafe {
         use intrinsics::*;
 
@@ -1169,11 +1170,11 @@ fn simd_ops_non_pow2() {
 
 fn main() {
     simd_mask();
-    #[cfg(miri)]
+    #[cfg(any(miri, target_has_reliable_f16_math))]
     simd_ops_f16();
     simd_ops_f32();
     simd_ops_f64();
-    #[cfg(miri)]
+    #[cfg(any(miri, target_has_reliable_f128_math))]
     simd_ops_f128();
     simd_ops_i32();
     simd_ops_non_pow2();
