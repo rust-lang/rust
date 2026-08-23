@@ -66,8 +66,11 @@ pub(super) fn detect(cx: &LateContext<'_>, receiver: &Expr<'_>, app: &mut Applic
     }
 
     // Check if expression is of the form x.mul_add(x, y * y)
+    // Note: the enclosing `.sqrt()` is already stripped off, the dispatch happens in
+    // `floating_point_arithmetic/mod.rs`
     if let ExprKind::MethodCall(PathSegment { ident: method, .. }, self_arg, [arg1, arg2], _) = receiver.kind
         && method.name == sym::mul_add
+        && cx.typeck_results().expr_ty(self_arg).is_floating_point()
         && eq_expr_value(cx, ctxt, self_arg, arg1)
         && let ExprKind::Binary(
             Spanned {
