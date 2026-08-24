@@ -1132,7 +1132,7 @@ fn rewrite_fn_ptr(
         fn_ptr.decl.inputs.iter(),
         &fn_ptr.decl.output,
         fn_ptr.decl.c_variadic(),
-        span,
+        fn_ptr.decl_span,
         context,
         func_ty_shape,
     )?;
