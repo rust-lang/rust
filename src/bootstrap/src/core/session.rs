@@ -855,17 +855,7 @@ impl Session {
 
     /// Returns the sysroot of the snapshot compiler.
     pub(crate) fn rustc_snapshot_sysroot(&self) -> &Path {
-        static SYSROOT_CACHE: OnceLock<PathBuf> = OnceLock::new();
-        SYSROOT_CACHE.get_or_init(|| {
-            command(&self.initial_rustc)
-                .run_in_dry_run()
-                .args(["--print", "sysroot"])
-                .run_capture_stdout(self)
-                .stdout()
-                .trim()
-                .to_owned()
-                .into()
-        })
+        &self.initial_sysroot
     }
 
     pub(crate) fn info(&self, msg: &str) {
