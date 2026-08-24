@@ -1,0 +1,10 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/118843.
+//! A shared reference to an `FnMut` closure should suggest a mutable reference.
+
+fn main() {
+    let mut value = 0;
+    let mut func = |increment: usize| value += increment;
+    //~^ ERROR expected a closure that implements the `Fn` trait
+
+    (0..100).for_each(&func);
+}

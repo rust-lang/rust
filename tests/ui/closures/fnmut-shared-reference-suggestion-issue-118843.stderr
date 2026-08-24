@@ -1,0 +1,20 @@
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
+  --> $DIR/fnmut-shared-reference-suggestion-issue-118843.rs:6:20
+   |
+LL |     let mut func = |increment: usize| value += increment;
+   |                    ^^^^^^^^^^^^^^^^^^ ----- closure is `FnMut` because it mutates the variable `value` here
+   |                    |
+   |                    this closure implements `FnMut`, not `Fn`
+...
+LL |     (0..100).for_each(&func);
+   |              --------  ---- the requirement to implement `Fn` derives from here
+   |              |
+   |              required by a bound introduced by this call
+   |
+   = note: required for `&{closure@$DIR/fnmut-shared-reference-suggestion-issue-118843.rs:6:20: 6:38}` to implement `FnMut(usize)`
+note: required by a bound in `for_each`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0525`.
