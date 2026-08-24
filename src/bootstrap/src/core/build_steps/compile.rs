@@ -777,7 +777,7 @@ impl Step for StdLink {
         };
 
         let is_downloaded_beta_stage0 = builder
-            .build
+            .sess
             .config
             .initial_rustc
             .starts_with(builder.out.join(compiler.host).join("stage0/bin"));
@@ -1147,7 +1147,7 @@ impl CommandLineStep for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        if builder.build.config.enable_bolt_settings && build_compiler.stage == 1 {
+        if builder.sess.config.enable_bolt_settings && build_compiler.stage == 1 {
             // Relocations are required for BOLT to work.
             cargo.env("RUSTC_BOLT_LINK_FLAGS", "1");
         }
@@ -1256,7 +1256,7 @@ pub fn rustc_cargo(
     // us a faster startup time. However GNU ld < 2.40 will error if we try to link a shared object
     // with direct references to protected symbols, so for now we only use protected symbols if
     // linking with LLD is enabled.
-    if builder.build.config.bootstrap_override_lld.is_used() {
+    if builder.sess.config.bootstrap_override_lld.is_used() {
         cargo.rustflag("-Zdefault-visibility=protected");
     }
 

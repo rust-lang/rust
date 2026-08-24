@@ -1322,7 +1322,7 @@ impl CommandLineStep for OmpOffload {
 
         let offload_clang_dir = if !builder.config.llvm_clang {
             // We must have an external clang to use.
-            builder.build.config.offload_clang_dir.clone()
+            builder.sess.config.offload_clang_dir.clone()
         } else {
             // No need to specify it, since we use the in-tree clang
             None

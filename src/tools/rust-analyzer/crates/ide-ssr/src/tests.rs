@@ -72,18 +72,13 @@ pub(crate) fn single_file(code: &str) -> (ide_db::RootDatabase, FilePosition, Ve
         let (db, file_id) = ide_db::RootDatabase::with_single_file(code);
         (db, file_id, RangeOrOffset::Offset(0.into()))
     };
-    let selections;
-    let position;
-    match range_or_offset {
+
+    let (position, selections) = match range_or_offset {
         RangeOrOffset::Range(range) => {
-            position = FilePosition { file_id, offset: range.start() };
-            selections = vec![FileRange { file_id, range }];
+            (FilePosition { file_id, offset: range.start() }, vec![FileRange { file_id, range }])
         }
-        RangeOrOffset::Offset(offset) => {
-            position = FilePosition { file_id, offset };
-            selections = vec![];
-        }
-    }
+        RangeOrOffset::Offset(offset) => (FilePosition { file_id, offset }, vec![]),
+    };
     let mut local_roots = FxHashSet::default();
     local_roots.insert(WORKSPACE);
     LocalRoots::get(&db).set_roots(&mut db).to(local_roots);

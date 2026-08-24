@@ -23,8 +23,8 @@ fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
 }
 
 fn run_build(paths: &[PathBuf], config: Config) -> Cache {
-    let build = Build::new(config);
-    let builder = Builder::new(&build);
+    let sess = Session::new(config);
+    let builder = Builder::new(&sess);
     builder.run_step_descriptions(&Builder::get_step_descriptions(builder.kind), paths);
     builder.cache
 }
@@ -114,13 +114,13 @@ fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -
 
 mod sysroot_target_dirs {
     use super::{
-        Build, Builder, Compiler, TEST_TRIPLE_1, TEST_TRIPLE_2, TargetSelection, configure,
+        Builder, Compiler, Session, TEST_TRIPLE_1, TEST_TRIPLE_2, TargetSelection, configure,
     };
 
     #[test]
     fn test_sysroot_target_libdir() {
-        let build = Build::new(configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-        let builder = Builder::new(&build);
+        let sess = Session::new(configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
+        let builder = Builder::new(&sess);
         let target_triple_1 = TargetSelection::from_user(TEST_TRIPLE_1);
         let compiler = Compiler::new(1, target_triple_1);
         let target_triple_2 = TargetSelection::from_user(TEST_TRIPLE_2);
@@ -139,8 +139,8 @@ mod sysroot_target_dirs {
 
     #[test]
     fn test_sysroot_target_bindir() {
-        let build = Build::new(configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-        let builder = Builder::new(&build);
+        let sess = Session::new(configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
+        let builder = Builder::new(&sess);
         let target_triple_1 = TargetSelection::from_user(TEST_TRIPLE_1);
         let compiler = Compiler::new(1, target_triple_1);
         let target_triple_2 = TargetSelection::from_user(TEST_TRIPLE_2);
@@ -242,8 +242,8 @@ fn test_prebuilt_llvm_config_path_resolution() {
         "#,
     );
 
-    let build = Build::new(config);
-    let builder = Builder::new(&build);
+    let sess = Session::new(config);
+    let builder = Builder::new(&sess);
 
     let host_llvm_config = PathBuf::from("/some/path/to/llvm-config");
 
@@ -272,8 +272,8 @@ fn test_prebuilt_llvm_config_path_resolution() {
         "#,
     );
 
-    let build = Build::new(config.clone());
-    let builder = Builder::new(&build);
+    let sess = Session::new(config.clone());
+    let builder = Builder::new(&sess);
 
     let actual = get_llvm_build_status(&builder, builder.config.host_target)
         .llvm_output()
@@ -295,8 +295,8 @@ fn test_prebuilt_llvm_config_path_resolution() {
 
     // CI-LLVM isn't always available; check if it's enabled before testing.
     if config.llvm_ci_mode.download_from_ci() {
-        let build = Build::new(config.clone());
-        let builder = Builder::new(&build);
+        let sess = Session::new(config.clone());
+        let builder = Builder::new(&sess);
 
         let actual = get_llvm_build_status(&builder, builder.config.host_target)
             .llvm_output()
@@ -319,8 +319,8 @@ fn test_is_builder_target() {
     for (target1, target2) in [(target1, target2), (target2, target1)] {
         let mut config = configure("build", &[], &[]);
         config.host_target = target1;
-        let build = Build::new(config);
-        let builder = Builder::new(&build);
+        let sess = Session::new(config);
+        let builder = Builder::new(&sess);
 
         assert!(builder.config.is_host_target(target1));
         assert!(!builder.config.is_host_target(target2));
@@ -3128,8 +3128,8 @@ impl ConfigBuilder {
     fn run(self) -> Cache {
         let config = self.create_config();
 
-        let build = Build::new(config);
-        let builder = Builder::new(&build);
+        let sess = Session::new(config);
+        let builder = Builder::new(&sess);
         builder
             .run_step_descriptions(&Builder::get_step_descriptions(builder.kind), &builder.paths);
         builder.cache

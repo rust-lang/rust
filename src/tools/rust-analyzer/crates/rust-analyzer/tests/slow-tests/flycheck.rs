@@ -43,6 +43,40 @@ fn main() {
 }
 
 #[test]
+fn test_flycheck_output_uses_build_directory() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /.cargo/config.toml
+[build]
+build-dir = "build"
+
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/main.rs
+fn main() {
+    let x = 1;
+}
+"#,
+    )
+    .with_config(serde_json::json!({
+        "checkOnSave": true,
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    _ = server.wait_for_diagnostics();
+    assert!(server.path().join("build/flycheck0/stdout").exists());
+    assert!(server.path().join("build/flycheck0/stderr").exists());
+}
+
+#[test]
 fn test_flycheck_diagnostic_cleared_after_fix() {
     if skip_slow_tests() {
         return;

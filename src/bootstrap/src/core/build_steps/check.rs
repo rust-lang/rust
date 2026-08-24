@@ -647,7 +647,7 @@ impl CommandLineStep for GccCodegenBackend {
 
     fn run(self, builder: &Builder<'_>) {
         // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
-        if builder.build.config.vendor {
+        if builder.sess.config.vendor {
             println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
             return;
         }
