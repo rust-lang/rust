@@ -360,7 +360,7 @@ pub fn set_alloc_error_hook(hook: fn(Layout)) {
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn take_alloc_error_hook() -> fn(Layout) {
     let hook = HOOK.swap(ptr::null_mut(), Ordering::Acquire);
-    if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } }
+    if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute::<*mut (), fn(core::alloc::Layout)>(hook) } }
 }
 
 #[optimize(size)]
@@ -436,7 +436,7 @@ pub fn rust_oom(layout: Layout) -> ! {
     crate::sys::backtrace::__rust_end_short_backtrace(|| {
         let hook = HOOK.load(Ordering::Acquire);
         let hook: fn(Layout) =
-            if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } };
+            if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute::<*mut (), fn(core::alloc::Layout)>(hook) } };
         hook(layout);
         crate::process::abort()
     })
