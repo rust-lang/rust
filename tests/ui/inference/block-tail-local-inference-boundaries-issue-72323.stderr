@@ -1,0 +1,59 @@
+error[E0282]: type annotations needed
+  --> $DIR/block-tail-local-inference-boundaries-issue-72323.rs:15:13
+   |
+LL |         let value = Default::default();
+   |             ^^^^^
+LL |
+LL |         let _ = value.field;
+   |                 ----- type must be known at this point
+   |
+help: consider giving `value` an explicit type
+   |
+LL |         let value: /* Type */ = Default::default();
+   |                  ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/block-tail-local-inference-boundaries-issue-72323.rs:28:13
+   |
+LL |         let receiver = Default::default();
+   |             ^^^^^^^^
+LL |
+LL |         receiver.missing();
+   |         -------- type must be known at this point
+   |
+help: consider giving `receiver` an explicit type
+   |
+LL |         let receiver: /* Type */ = Default::default();
+   |                     ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/block-tail-local-inference-boundaries-issue-72323.rs:37:13
+   |
+LL |         let receiver = Default::default();
+   |             ^^^^^^^^
+LL |
+LL |         receiver.missing();
+   |         -------- type must be known at this point
+   |
+help: consider giving `receiver` an explicit type
+   |
+LL |         let receiver: /* Type */ = Default::default();
+   |                     ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/block-tail-local-inference-boundaries-issue-72323.rs:47:13
+   |
+LL |         let value = Default::default();
+   |             ^^^^^
+LL |
+LL |         value.abs();
+   |         ----- type must be known at this point
+   |
+help: consider giving `value` an explicit type
+   |
+LL |         let value: /* Type */ = Default::default();
+   |                  ++++++++++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
