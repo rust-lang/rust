@@ -1,6 +1,6 @@
 use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, Safety, VariantData};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -13,7 +13,7 @@ pub(crate) fn expand_deriving_clone(
     span: Span,
     mitem: &MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     // The simple form is `fn clone(&self) -> Self { *self }`, possibly with

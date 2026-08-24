@@ -1,5 +1,5 @@
 use rustc_ast::{MetaItem, Mutability, Safety};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
 
@@ -12,7 +12,7 @@ pub(crate) fn expand_deriving_hash(
     span: Span,
     mitem: &MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let path = path_std!(hash::Hash);

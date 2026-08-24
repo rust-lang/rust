@@ -2,7 +2,7 @@ use rustc_ast::{
     self as ast, AttrArgs, GenericArg, GenericParamKind, Generics, ItemKind, MetaItem, token,
 };
 use rustc_errors::E0802;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_macros::Diagnostic;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
@@ -16,7 +16,7 @@ pub(crate) fn expand_deriving_reborrow(
     span: Span,
     _mitem: &MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
 ) {
     let Some((ident, generics)) = struct_def(cx, span, item, sym::Reborrow) else {
@@ -31,7 +31,7 @@ pub(crate) fn expand_deriving_coerce_shared(
     span: Span,
     _mitem: &MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
 ) {
     let Some((ident, generics)) = struct_def(cx, span, item, sym::CoerceShared) else {
@@ -119,7 +119,7 @@ fn push_marker_impl(
     generics: &Generics,
     trait_name: Symbol,
     trait_args: Vec<GenericArg>,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
 ) {
     let mut trait_parts = path!(span, core::marker);
     trait_parts.push(Ident::new(trait_name, span));
@@ -143,7 +143,7 @@ fn push_marker_impl(
         .collect();
     let self_ty = cx.ty_path(cx.path_all(span, false, vec![ident], self_params));
 
-    push(Annotatable::Item(cx.item(
+    push(cx.item(
         span,
         thin_vec::thin_vec![cx.attr_word(sym::automatically_derived, span)],
         ast::ItemKind::Impl(ast::Impl {
@@ -158,7 +158,7 @@ fn push_marker_impl(
             self_ty,
             items: ThinVec::new(),
         }),
-    )));
+    ));
 }
 
 fn impl_generics(cx: &ExtCtxt<'_>, generics: &Generics) -> Generics {

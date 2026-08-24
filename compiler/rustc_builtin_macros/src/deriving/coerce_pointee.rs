@@ -7,7 +7,7 @@ use rustc_ast::{
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::E0802;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_macros::Diagnostic;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -23,7 +23,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     span: Span,
     _mitem: &MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
 ) {
     DetectNonGenericPointeeAttr { cx }.visit_item(item);
@@ -102,7 +102,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
         let trait_path =
             cx.path_all(span, true, path!(span, core::marker::CoercePointeeValidated), vec![]);
         let trait_ref = cx.trait_ref(trait_path);
-        push(Annotatable::Item(
+        push(
             cx.item(
                 span,
                 attrs.clone(),
@@ -142,7 +142,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                     items: ThinVec::new(),
                 }),
             ),
-        ));
+        );
     }
     let mut add_impl_block = |generics, trait_symbol, trait_args| {
         let mut parts = path!(span, core::ops);
@@ -165,7 +165,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 items: ThinVec::new(),
             }),
         );
-        push(Annotatable::Item(item));
+        push(item);
     };
 
     // Create unsized `self`, that is, one where the `#[pointee]` type arg is replaced with `__S`. For

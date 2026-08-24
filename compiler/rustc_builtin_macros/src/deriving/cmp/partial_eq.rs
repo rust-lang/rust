@@ -1,5 +1,5 @@
 use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability, Safety};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
 
@@ -14,7 +14,7 @@ pub(crate) fn expand_deriving_partial_eq(
     span: Span,
     mitem: &MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let structural_trait_def = TraitDef {

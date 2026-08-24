@@ -1,5 +1,5 @@
 use rustc_ast::{MetaItem, Safety};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::Span;
 
 use crate::deriving::generic::*;
@@ -10,7 +10,7 @@ pub(crate) fn expand_deriving_copy(
     span: Span,
     mitem: &MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let trait_def = TraitDef {
@@ -35,7 +35,7 @@ pub(crate) fn expand_deriving_const_param_ty(
     span: Span,
     mitem: &MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let trait_def = TraitDef {

@@ -35,7 +35,7 @@ pub(crate) mod partial_ord;
 pub(crate) mod generic;
 
 pub(crate) type BuiltinDeriveFn =
-    fn(&ExtCtxt<'_>, Span, &MetaItem, &ast::Item, &mut dyn FnMut(Annotatable), bool);
+    fn(&ExtCtxt<'_>, Span, &MetaItem, &ast::Item, &mut dyn FnMut(Box<ast::Item>), bool);
 
 pub(crate) struct BuiltinDerive(pub(crate) BuiltinDeriveFn);
 
@@ -65,7 +65,7 @@ impl MultiItemModifier for BuiltinDerive {
                             // to the function
                             items.push(Annotatable::Stmt(Box::new(ast::Stmt {
                                 id: ast::DUMMY_NODE_ID,
-                                kind: ast::StmtKind::Item(a.expect_item()),
+                                kind: ast::StmtKind::Item(a),
                                 span,
                             })));
                         },
@@ -75,9 +75,14 @@ impl MultiItemModifier for BuiltinDerive {
                     unreachable!("should have already errored on non-item statement")
                 }
             }
-            Annotatable::Item(item) => {
-                (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a), is_derive_const)
-            }
+            Annotatable::Item(item) => (self.0)(
+                ecx,
+                span,
+                meta_item,
+                &item,
+                &mut |a| items.push(Annotatable::Item(a)),
+                is_derive_const,
+            ),
             _ => unreachable!(),
         }
         ExpandResult::Ready(items)

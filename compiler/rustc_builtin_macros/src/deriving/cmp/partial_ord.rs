@@ -1,5 +1,5 @@
 use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety, ast};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
 
@@ -12,7 +12,7 @@ pub(crate) fn expand_deriving_partial_ord(
     span: Span,
     mitem: &MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let ordering_ty = Path(path_std!(cmp::Ordering));

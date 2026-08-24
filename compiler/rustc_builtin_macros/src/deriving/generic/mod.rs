@@ -188,7 +188,7 @@ use rustc_ast::{
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
@@ -475,7 +475,7 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
         item: &'a ast::Item,
-        push: &mut dyn FnMut(Annotatable),
+        push: &mut dyn FnMut(Box<ast::Item>),
     ) {
         self.expand_ext(cx, mitem, item, push, false);
     }
@@ -485,7 +485,7 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
         item: &'a ast::Item,
-        push: &mut dyn FnMut(Annotatable),
+        push: &mut dyn FnMut(Box<ast::Item>),
         from_scratch: bool,
     ) {
         let is_packed = matches!(
@@ -539,7 +539,7 @@ impl<'a> TraitDef<'a> {
                 })
                 .cloned(),
         );
-        push(Annotatable::Item(newitem))
+        push(newitem);
     }
 
     /// Given that we are deriving a trait `DerivedTrait` for a type like:

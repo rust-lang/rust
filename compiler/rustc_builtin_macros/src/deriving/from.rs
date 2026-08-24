@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::{ItemKind, Safety, VariantData};
 use rustc_errors::MultiSpan;
-use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
+use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
@@ -17,7 +17,7 @@ pub(crate) fn expand_deriving_from(
     span: Span,
     mitem: &ast::MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let err_span = || {

@@ -2,7 +2,7 @@ use core::ops::ControlFlow;
 
 use rustc_ast::visit::{Visitor, visit_opt};
 use rustc_ast::{self as ast, EnumDef, Safety, VariantData, attr};
-use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
+use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use smallvec::SmallVec;
 use thin_vec::{ThinVec, thin_vec};
@@ -16,7 +16,7 @@ pub(crate) fn expand_deriving_default(
     span: Span,
     mitem: &ast::MetaItem,
     item: &ast::Item,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     DetectNonVariantDefaultAttr { cx }.visit_item(item);
