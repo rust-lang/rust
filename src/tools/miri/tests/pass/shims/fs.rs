@@ -4,6 +4,7 @@
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
+#![allow(unused_features)] // feature use depends on target
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;

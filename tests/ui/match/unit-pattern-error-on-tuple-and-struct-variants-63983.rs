@@ -1,15 +1,15 @@
 // https://github.com/rust-lang/rust/issues/63983
 enum MyEnum {
-    Tuple(i32),
-    Struct{ s: i32 },
+    HasTupleField(i32),
+    HasStructField{ s: i32 },
 }
 
 fn foo(en: MyEnum) {
     match en {
-        MyEnum::Tuple => "",
-//~^ ERROR expected unit struct, unit variant or constant, found tuple variant `MyEnum::Tuple`
-        MyEnum::Struct => "",
-//~^ ERROR expected unit struct, unit variant or constant, found struct variant `MyEnum::Struct`
+        MyEnum::HasTupleField => "",
+//~^ ERROR expected unit struct, unit variant or constant, found tuple variant `MyEnum::HasTupleField`
+        MyEnum::HasStructField => "",
+//~^ ERROR expected unit struct, unit variant or constant, found struct variant `MyEnum::HasStructField`
     };
 }
 

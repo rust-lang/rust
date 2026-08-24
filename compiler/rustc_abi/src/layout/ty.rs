@@ -120,6 +120,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_complex_number_lang_item(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
     fn is_scalable_vector(this: TyAndLayout<'a, Self>) -> bool;
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
     fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'a, Self>) -> bool;
@@ -227,6 +228,15 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::is_transparent(self)
     }
 
+    /// Returns `true` if this type needs to match the ABI of the C `_Complex` type. See
+    /// [`TyAndLayout::complex_number_primitive`] for details.
+    pub fn is_complex_number<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        self.complex_number_primitive(cx).is_some()
+    }
+
     pub fn is_scalable_vector<C>(self) -> bool
     where
         Ty: TyAbiInterface<'a, C>,
@@ -289,6 +299,50 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             found = Some((FieldIdx::from_usize(field_idx), field));
         }
         found
+    }
+
+    /// If this type should match the ABI of the C `_Complex` type, returns the primitive that is
+    /// used for its parts. This only returns `Some(T)` for `core::num::Complex<T>` where `T` is
+    /// either a float or an integer. `repr(transparent)` wrapper types are automatically handled.
+    pub fn complex_number_primitive<C>(&self, cx: &C) -> Option<Primitive>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let complex = self.peel_transparent_wrappers(cx);
+        if !Ty::is_complex_number_lang_item(complex, cx) {
+            return None;
+        }
+
+        let part = complex.field(cx, 0).peel_transparent_wrappers(cx);
+
+        if let BackendRepr::Scalar(scalar) = part.backend_repr {
+            // Only Complex<{ float }> and Complex<{ integer }> have special layout.
+            let primitive = scalar.primitive();
+            match primitive {
+                // Explicitly spell out all the float types so that any new ones have to be added to
+                // one of the match branches.
+                Primitive::Int(..)
+                | Primitive::Float(Float::F16 | Float::F32 | Float::F64 | Float::F128) => {
+                    Some(primitive)
+                }
+                Primitive::Pointer(..) => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Returns `Some` if this type has the ABI of the C `_Complex` type with float parts. See
+    /// [`TyAndLayout::complex_number_primitive`] for details.
+    pub fn complex_float<C>(&self, cx: &C) -> Option<Float>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        if let Some(Primitive::Float(float)) = self.complex_number_primitive(cx) {
+            Some(float)
+        } else {
+            None
+        }
     }
 
     /// Whether this type/layout has any padding that is dependent on a variant, i.e. has bytes that

@@ -18,8 +18,8 @@ use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, Instance, ShimKind, SymbolName, Ty, TyCtxt,
 };
 use rustc_middle::util::Providers;
-use rustc_session::config::CrateType;
 use rustc_span::Span;
+use rustc_structures::CrateType;
 use rustc_symbol_mangling::{is_offload_kernel, mangle_internal_symbol};
 use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;

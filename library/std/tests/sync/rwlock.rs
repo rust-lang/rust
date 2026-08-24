@@ -905,42 +905,35 @@ fn test_rwlock_max_readers() {
     let mut read_lock_ctr: u32 = 0;
     let rwlock: RwLock<i32> = RwLock::new(0);
 
-    const MAX_READERS: u32 = cfg_select! {
-        miri => 100,
-        any(
-            all(target_os = "windows", not(target_vendor = "win7")),
-            target_os = "linux",
-            target_os = "android",
-            target_os = "freebsd",
-            target_os = "openbsd",
-            target_os = "dragonfly",
-            target_os = "fuchsia",
-            all(target_family = "wasm", target_feature = "atomics"),
-            target_os = "hermit",
-            target_os = "motor",
-        ) => {
-            (1 << 30) - 2
-        },
-        any(
-            target_family = "unix",
-            all(target_os = "windows", target_vendor = "win7", target_pointer_width = "64"),
-            all(target_vendor = "fortanix", target_env = "sgx"),
-            target_os = "xous",
-            target_os = "teeos",
-        ) => {
-            u32::MAX
-        },
-        // Otherwise a form of deadlock is observed.
-        all(target_os = "windows", target_vendor = "win7", target_pointer_width = "32") => {
-            (1 << 28) - 1
-        },
-        target_os = "solid_asp3" => {
-            (1 << 30)
-        },
-        _ => {
-            u32::MAX
-        }
-    };
+    const MAX_READERS: u32 =
+        cfg_select! {
+            miri => 100,
+            any(
+                all(target_os = "windows", not(target_vendor = "win7")),
+                target_os = "linux",
+                target_os = "android",
+                target_os = "freebsd",
+                target_os = "openbsd",
+                target_os = "dragonfly",
+                target_os = "fuchsia",
+                all(target_family = "wasm", target_feature = "atomics"),
+                target_os = "hermit",
+                target_os = "motor",
+            ) => (1 << 30) - 2,
+            any(
+                target_family = "unix",
+                all(target_os = "windows", target_vendor = "win7", target_pointer_width = "64"),
+                all(target_vendor = "fortanix", target_env = "sgx"),
+                target_os = "xous",
+                target_os = "teeos",
+            ) => u32::MAX,
+            // Otherwise a form of deadlock is observed.
+            all(target_os = "windows", target_vendor = "win7", target_pointer_width = "32") => {
+                (1 << 28) - 1
+            }
+            target_os = "solid_asp3" => (1 << 30),
+            _ => u32::MAX,
+        };
 
     while read_lock_ctr < MAX_READERS {
         let lock = rwlock.read();

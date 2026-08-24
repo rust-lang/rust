@@ -7,10 +7,9 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_in_test, last_path_segment, local_is_initialized, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Instance, Mutability};
-use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
@@ -189,7 +188,7 @@ fn clone_source_borrows_from_dest(cx: &LateContext<'_>, lhs: &Expr<'_>, call_spa
             .find(|stmt| {
                 !matches!(stmt.kind, mir::StatementKind::StorageDead(_) | mir::StatementKind::StorageLive(_))
             })
-        && let mir::StatementKind::Assign(box (borrowed, _)) = &assignment.kind
+        && let mir::StatementKind::Assign((borrowed, _)) = &assignment.kind
         && let Some(borrowers) = borrow_map.get(&borrowed.local)
     {
         borrowers.contains(source.local)

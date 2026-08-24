@@ -3,7 +3,6 @@ use std::collections::hash_map::Entry;
 
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
-use rustc_data_structures::Limit;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
@@ -17,6 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{mir, span_bug};
 use rustc_span::Span;
+use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
 
@@ -488,7 +488,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 interp_ok(Some((full_size, full_align)))
             }
             ty::Dynamic(expected_trait, _) => {
-                let vtable = metadata.unwrap_meta().to_pointer(self)?;
+                let vtable = metadata.unwrap_meta().to_pointer(self);
                 // Read size and align from vtable (already checks size).
                 interp_ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))
             }

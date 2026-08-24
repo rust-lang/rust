@@ -1,9 +1,8 @@
-use rustc_middle::mir;
 use rustc_span::Symbol;
 
 use super::{
-    ShiftOp, horizontal_bin_op, mpsadbw, packssdw, packsswb, packusdw, packuswb, permute, pmaddbw,
-    pmaddwd, pmulhrsw, psadbw, pshufb, psign, shift_simd_by_scalar,
+    ShiftOp, mpsadbw, packssdw, packsswb, packusdw, packuswb, permute, pmaddbw, pmaddwd, pmulhrsw,
+    psadbw, pshufb, psign, shift_simd_by_scalar,
 };
 use crate::*;
 
@@ -21,20 +20,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.avx2.").unwrap();
 
         match unprefixed_name {
-            // Used to implement the _mm256_h{adds,subs}_epi16 functions.
-            // Horizontally add / subtract with saturation adjacent 16-bit
-            // integer values in `left` and `right`.
-            "phadd.sw" | "phsub.sw" => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
-
-                let which = match unprefixed_name {
-                    "phadd.sw" => mir::BinOp::Add,
-                    "phsub.sw" => mir::BinOp::Sub,
-                    _ => unreachable!(),
-                };
-
-                horizontal_bin_op(this, which, /*saturating*/ true, left, right, dest)?;
-            }
             // Used to implement `_mm{,_mask}_{i32,i64}gather_{epi32,epi64,pd,ps}` functions
             // Gathers elements from `slice` using `offsets * scale` as indices.
             // When the highest bit of the corresponding element of `mask` is 0,

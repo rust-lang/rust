@@ -1,8 +1,7 @@
 // This test ensures that the elements in ".search-form" have the expected display.
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=test"
-wait-for: "#search-tabs" // Waiting for the search.js to load.
-wait-for-false: "#search-tabs .count.loading"
+call-function: ("wait-for-search-results", {})
 show-text: true
 
 define-function: (
@@ -120,11 +119,9 @@ call-function: (
 
 // Check that search input correctly decodes form encoding.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a+b"
-wait-for: "#search-tabs" // Waiting for the search.js to load.
-wait-for-false: "#search-tabs .count.loading"
+call-function: ("wait-for-search-results", {})
 assert-property: (".search-input", { "value": "a b" })
 // Check that literal + is not treated as space.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a%2Bb"
-wait-for: "#search-tabs" // Waiting for the search.js to load.
-wait-for-false: "#search-tabs .count.loading"
+call-function: ("wait-for-search-results", {})
 assert-property: (".search-input", { "value": "a+b" })

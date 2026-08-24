@@ -73,16 +73,8 @@ pub(crate) struct DocAliasNotAnAlias {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[doc({$attr_name} = \"...\")]` should be used on empty modules")]
-pub(crate) struct DocKeywordAttributeEmptyMod {
-    #[primary_span]
-    pub span: Span,
-    pub attr_name: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[doc({$attr_name} = \"...\")]` should be used on modules")]
-pub(crate) struct DocKeywordAttributeNotMod {
+#[diag("`#[doc({$attr_name} = \"...\")]` should be used on anonymous constants")]
+pub(crate) struct DocKeywordAttributeNotAnonConst {
     #[primary_span]
     pub span: Span,
     pub attr_name: &'static str,
@@ -289,17 +281,6 @@ pub(crate) struct NonExportedMacroInvalidAttrs {
 pub(crate) struct InvalidMayDangle {
     #[primary_span]
     pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("this `#[deprecated]` annotation has no effect")]
-pub(crate) struct DeprecatedAnnotationHasNoEffect {
-    #[suggestion(
-        "remove the unnecessary deprecation attribute",
-        applicability = "machine-applicable",
-        code = ""
-    )]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

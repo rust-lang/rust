@@ -58,7 +58,7 @@ fn has_structurally_impossible_sized_clause<'tcx>(
     };
     let trait_predicate = trait_predicate.skip_binder();
 
-    trait_predicate.polarity == ty::PredicatePolarity::Positive
+    trait_predicate.polarity == ty::ClausePolarity::Positive
         && trait_predicate.def_id() == sized_trait
         && is_structurally_unsized(tcx, trait_predicate.self_ty())
 }

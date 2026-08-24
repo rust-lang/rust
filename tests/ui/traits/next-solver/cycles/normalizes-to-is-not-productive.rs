@@ -42,13 +42,10 @@ fn generic<T>()
 //~^ ERROR the trait bound `Foo: Bound` is not satisfied
 where
     <Foo as Trait<T>>::Assoc: Bound,
-    //~^ ERROR overflow evaluating the requirement `<Foo as Trait<T>>::Assoc: Bound`
-    //~| ERROR overflow evaluating whether `<Foo as Trait<T>>::Assoc` is well-formed
 {
     // Requires proving `Foo: Bound` by normalizing
     // `<Foo as Trait<T>>::Assoc` to `Foo`.
     impls_bound::<Foo>();
-    //~^ ERROR  overflow evaluating the requirement `Foo: Bound`
 }
 fn main() {
     // Requires proving `<Foo as Trait<u32>>::Assoc: Bound`.

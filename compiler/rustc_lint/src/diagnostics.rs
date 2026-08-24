@@ -126,7 +126,7 @@ pub(crate) struct BuiltinEllipsisInclusiveRangePatterns {
 #[derive(Subdiagnostic)]
 #[note("requested on the command line with `{$level} {$lint_name}`")]
 pub(crate) struct RequestedLevel<'a> {
-    pub level: rustc_session::lint::Level,
+    pub level: rustc_lint_defs::Level,
     pub lint_name: &'a str,
 }
 
@@ -987,6 +987,38 @@ pub(crate) struct DropCopyDiag<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "calls to {$from_fn ->
+        [true] `std::ptr::drop_in_place`
+        *[false] `drop_in_place`
+    } with a pointer to a reference instead of a pointer to an owned value does nothing"
+)]
+pub(crate) struct DropInPlaceRefDiag<'a> {
+    pub from_fn: bool,
+    pub arg_ty: Ty<'a>,
+    #[label("argument has type `{$arg_ty}`")]
+    pub label: Span,
+    #[subdiagnostic]
+    pub sugg: UseLetUnderscoreIgnoreSuggestion,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "calls to {$from_fn ->
+        [true] `std::ptr::drop_in_place`
+        *[false] `drop_in_place`
+    } with a pointer to a value that implements `Copy` does nothing"
+)]
+pub(crate) struct DropInPlaceCopyDiag<'a> {
+    pub from_fn: bool,
+    pub arg_ty: Ty<'a>,
+    #[label("argument has type `{$arg_ty}`")]
+    pub label: Span,
+    #[subdiagnostic]
+    pub sugg: UseLetUnderscoreIgnoreSuggestion,
+}
+
+#[derive(Diagnostic)]
 #[diag("calls to `std::mem::forget` with a reference instead of an owned value does nothing")]
 pub(crate) struct ForgetRefDiag<'a> {
     pub arg_ty: Ty<'a>,
@@ -1025,6 +1057,30 @@ pub(crate) struct UndroppedManuallyDropsDiag<'a> {
 )]
 pub(crate) struct UndroppedManuallyDropsSuggestion {
     #[suggestion_part(code = "std::mem::ManuallyDrop::into_inner(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "calls to `drop_in_place` with a pointer to a `std::mem::ManuallyDrop` instead of the inner value does nothing"
+)]
+pub(crate) struct UndroppedManuallyDropsInPlaceDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label("argument has type `{$arg_ty}`")]
+    pub label: Span,
+    #[subdiagnostic]
+    pub suggestion: UndroppedManuallyDropsInPlaceSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "use `std::mem::ManuallyDrop::drop` to drop the inner value",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UndroppedManuallyDropsInPlaceSuggestion {
+    #[suggestion_part(code = "std::mem::ManuallyDrop::drop(&mut *")]
     pub start_span: Span,
     #[suggestion_part(code = ")")]
     pub end_span: Span,

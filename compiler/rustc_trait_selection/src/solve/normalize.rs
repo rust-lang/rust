@@ -53,7 +53,7 @@ where
     let mut folder = NormalizationFolder::new(infcx, universes.clone(), |alias_term| {
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
         let infer_term = delegate.next_term_var_of_alias_kind(alias_term, at.cause.span);
-        let predicate = ty::ProjectionPredicate { projection_term: alias_term, term: infer_term };
+        let predicate = ty::ProjectionClause { projection_term: alias_term, term: infer_term };
         let goal = Goal::new(infcx.tcx, at.param_env, predicate);
         let result = match delegate.evaluate_root_goal(goal, at.cause.span, None) {
             Ok(result) => result,
@@ -98,7 +98,7 @@ impl<'me, 'tcx> ReplaceAliasWithInfer<'me, 'tcx> {
             infcx.tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::ProjectionPredicate { projection_term: alias_term, term: infer_term },
+            ty::ProjectionClause { projection_term: alias_term, term: infer_term },
         );
         self.obligations.push(obligation);
         infer_term

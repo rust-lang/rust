@@ -6,6 +6,7 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
 use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
+use rustc_lint_defs::builtin::{NON_CONTIGUOUS_RANGE_ENDPOINTS, OVERLAPPING_RANGE_ENDPOINTS};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
@@ -13,7 +14,6 @@ use rustc_middle::ty::{
     self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_span::def_id::LocalModId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
@@ -954,7 +954,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
             .collect();
         let pat_span = pat.data().span;
         self.tcx.emit_node_span_lint(
-            lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
+            OVERLAPPING_RANGE_ENDPOINTS,
             self.match_lint_level,
             pat_span,
             diagnostics::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
@@ -990,7 +990,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         if gapped_with.is_empty() {
             // If `gapped_with` is empty, `gap == T::MAX`.
             self.tcx.emit_node_span_lint(
-                lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
+                NON_CONTIGUOUS_RANGE_ENDPOINTS,
                 self.match_lint_level,
                 thir_pat.span,
                 diagnostics::ExclusiveRangeMissingMax {
@@ -1004,7 +1004,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
             );
         } else {
             self.tcx.emit_node_span_lint(
-                lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
+                NON_CONTIGUOUS_RANGE_ENDPOINTS,
                 self.match_lint_level,
                 thir_pat.span,
                 diagnostics::ExclusiveRangeMissingGap {

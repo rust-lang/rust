@@ -171,11 +171,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         predicate: ty::Predicate<'tcx>,
     ) -> Option<ty::FloatVid> {
         // The predicates we are looking for look like
-        // `TraitPredicate(<f32 as std::convert::From<{float}>>, polarity:Positive)`.
+        // `TraitClause(<f32 as std::convert::From<{float}>>, polarity:Positive)`.
         // They will have no bound variables.
         match predicate.kind().no_bound_vars() {
-            Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
-                polarity: ty::PredicatePolarity::Positive,
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitClause {
+                polarity: ty::ClausePolarity::Positive,
                 trait_ref,
             }))) if trait_ref.def_id == from_trait
                 && self.shallow_resolve(trait_ref.self_ty()).kind()

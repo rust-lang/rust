@@ -312,13 +312,6 @@ pub struct BadBytesAccess {
     pub bad: AllocRange,
 }
 
-/// Information about a size mismatch.
-#[derive(Debug)]
-pub struct ScalarSizeMismatch {
-    pub target_size: u64,
-    pub data_size: u64,
-}
-
 /// Information about a misaligned pointer.
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub struct Misalignment {
@@ -417,8 +410,6 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidUninitBytes(Option<(AllocId, BadBytesAccess)>),
     /// Working with a local that is not currently live.
     DeadLocal,
-    /// Data size is not equal to target size.
-    ScalarSizeMismatch(ScalarSizeMismatch),
     /// A discriminant of an uninhabited enum variant is written.
     UninhabitedEnumVariantWritten(VariantIdx),
     /// An uninhabited enum variant is projected.
@@ -625,12 +616,6 @@ impl<'tcx> fmt::Display for UndefinedBehaviorInfo<'tcx> {
                 uninit = info.bad,
             ),
             DeadLocal => write!(f, "accessing a dead local variable"),
-            ScalarSizeMismatch(mismatch) => write!(
-                f,
-                "scalar size mismatch: expected {target_size} bytes but got {data_size} bytes instead",
-                target_size = mismatch.target_size,
-                data_size = mismatch.data_size,
-            ),
             UninhabitedEnumVariantWritten(_) => {
                 write!(f, "writing discriminant of an uninhabited enum variant")
             }

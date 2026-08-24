@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::{AttrKind, SyntheticAttr};
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, declare_lint_pass};
 use rustc_span::sym;
 
 declare_clippy_lint! {

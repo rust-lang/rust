@@ -262,12 +262,10 @@ impl SocketAddr {
         } else if self.addr.sun_path[0] == 0 {
             AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
         } else {
-            // the value returned by getsockname(2) and similar on QNX7.1 and
-            // QNX8 does not count the NUL byte terminator of the path string,
-            // which matches the behavior of the SUN_LEN macro in libc, but
-            // other OSes do count the NUL byte so adjust accordingly
-            let end =
-                if cfg!(any(target_os = "qnx", target_env = "nto71")) { len } else { len - 1 };
+            // linux adds a trailing NUL and counts it in the length, freebsd, netbsd
+            // and qnx do not, and a caller may bind(2) without one either. unix(7)
+            // gives the portable rule: strnlen(sun_path, len - offsetof(sun_path))
+            let end = core::slice::memchr::memchr(0, &path[..len]).unwrap_or(len);
             AddressKind::Pathname(OsStr::from_bytes(&path[..end]).as_ref())
         }
     }

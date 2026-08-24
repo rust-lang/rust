@@ -3,9 +3,8 @@ use clippy_utils::is_lint_allowed;
 use rustc_ast::LitKind;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::Ty;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

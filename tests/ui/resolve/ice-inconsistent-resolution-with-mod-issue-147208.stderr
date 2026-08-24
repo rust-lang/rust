@@ -1,0 +1,19 @@
+error: cannot declare a file module inside a block unless it has a path attribute
+  --> $DIR/ice-inconsistent-resolution-with-mod-issue-147208.rs:10:5
+   |
+LL |     mod bar;
+   |     ^^^^^^^^
+   |
+   = note: file modules are usually placed outside of blocks, at the top level of the file
+
+error[E0432]: unresolved import `bar`
+  --> $DIR/ice-inconsistent-resolution-with-mod-issue-147208.rs:6:5
+   |
+LL | use bar::foo;
+   |     ^^^ use of unresolved module or unlinked crate `bar`
+   |
+   = help: you might be missing a crate named `bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

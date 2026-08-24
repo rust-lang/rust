@@ -10,7 +10,7 @@ LL | |     } {
    |
    = note: `-D clippy::blocks-in-conditions` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::blocks_in_conditions)]`
-help: try
+help: use a binding instead
    |
 LL ~     let res = {
 LL +
@@ -23,13 +23,13 @@ error: omit braces around single expression condition
   --> tests/ui/blocks_in_conditions.rs:36:8
    |
 LL |     if { true } { 6 } else { 10 }
-   |        ^^^^^^^^ help: try: `true`
+   |        ^^^^^^^^ help: remove the braces: `true`
 
 error: omit braces around single expression condition
   --> tests/ui/blocks_in_conditions.rs:136:15
    |
 LL |         match { Foo.foo() } {
-   |               ^^^^^^^^^^^^^ help: try: `Foo.foo()`
+   |               ^^^^^^^^^^^^^ help: remove the braces: `Foo.foo()`
 
 error: aborting due to 3 previous errors
 

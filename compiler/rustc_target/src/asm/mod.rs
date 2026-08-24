@@ -477,7 +477,7 @@ impl InlineAsmReg {
             Self::LoongArch(r) => r.overlapping_regs(|r| cb(Self::LoongArch(r))),
             Self::Mips(_) => cb(self),
             Self::S390x(r) => r.overlapping_regs(|r| cb(Self::S390x(r))),
-            Self::Sparc(_) => cb(self),
+            Self::Sparc(r) => r.overlapping_regs(|r| cb(Self::Sparc(r))),
             Self::Xtensa(_) => cb(self),
             Self::Bpf(r) => r.overlapping_regs(|r| cb(Self::Bpf(r))),
             Self::Avr(r) => r.overlapping_regs(|r| cb(Self::Avr(r))),

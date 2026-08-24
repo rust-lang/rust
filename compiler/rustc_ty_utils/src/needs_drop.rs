@@ -1,6 +1,5 @@
 //! Check whether a type has (potentially) non-trivial drop glue.
 
-use rustc_data_structures::Limit;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
@@ -8,6 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, Unnormalized};
+use rustc_structures::Limit;
 use tracing::{debug, instrument};
 
 use crate::diagnostics::NeedsDropOverflow;

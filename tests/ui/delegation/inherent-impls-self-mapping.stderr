@@ -1,0 +1,15 @@
+error[E0425]: cannot find function `foo` in `X`
+  --> $DIR/inherent-impls-self-mapping.rs:13:14
+   |
+LL |     reuse X::foo;
+   |              ^^^ not found in `X`
+
+error[E0425]: cannot find function `foo` in `X`
+  --> $DIR/inherent-impls-self-mapping.rs:17:10
+   |
+LL | reuse X::foo;
+   |          ^^^ not found in `X`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

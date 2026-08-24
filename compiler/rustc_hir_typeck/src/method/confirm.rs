@@ -14,7 +14,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
 };
-use rustc_lint::builtin::{
+use rustc_lint_defs::builtin::{
     AMBIGUOUS_GLOB_IMPORTED_TRAITS, RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
 };
 use rustc_middle::traits::ObligationCauseCode;
@@ -451,7 +451,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 &mut self,
                 preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
-                arg: &GenericArg<'tcx>,
+                arg: &GenericArg<'_>,
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => self

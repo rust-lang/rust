@@ -249,7 +249,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
                 bug!("unsized `ArgAbi` cannot be stored");
             }
-            PassMode::Cast { cast, pad_i32: _ } => {
+            PassMode::Cast { cast, pad_i32_count: _ } => {
                 // The ABI mandates that the value is passed as a different struct representation.
                 // Spill and reload it from the stack to convert from the ABI representation to
                 // the Rust representation.
@@ -366,7 +366,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         let llreturn_ty = match &self.ret.mode {
             PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
-            PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
+            PassMode::Cast { cast, pad_i32_count: _ } => cast.llvm_type(cx),
             PassMode::Indirect { .. } => {
                 llargument_tys.push(cx.type_ptr());
                 cx.type_void()
@@ -405,11 +405,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => cx.type_ptr(),
-                PassMode::Cast { cast, pad_i32 } => {
-                    // add padding
-                    if *pad_i32 {
-                        llargument_tys.push(Reg::i32().llvm_type(cx));
-                    }
+                PassMode::Cast { cast, pad_i32_count } => {
+                    // Add padding.
+                    llargument_tys.extend(std::iter::repeat_n(
+                        Reg::i32().llvm_type(cx),
+                        usize::from(*pad_i32_count),
+                    ));
+
                     // Compute the LLVM type we use for this function from the cast type.
                     // We assume here that ABI-compatible Rust types have the same cast type.
                     cast.llvm_type(cx)
@@ -511,7 +513,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     );
                 }
             }
-            PassMode::Cast { cast, pad_i32: _ } => {
+            PassMode::Cast { cast, pad_i32_count: _ } => {
                 cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
             }
             _ => {}
@@ -580,8 +582,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         apply_range_attr(llvm::AttributePlace::Argument(ii), scalar_b);
                     }
                 }
-                PassMode::Cast { cast, pad_i32 } => {
-                    if *pad_i32 {
+                PassMode::Cast { cast, pad_i32_count } => {
+                    for _ in 0..*pad_i32_count {
                         apply(&ArgAttributes::new());
                     }
                     apply(&cast.attrs);
@@ -630,7 +632,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 );
                 attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
             }
-            PassMode::Cast { cast, pad_i32: _ } => {
+            PassMode::Cast { cast, pad_i32_count: _ } => {
                 cast.attrs.apply_attrs_to_callsite(
                     llvm::AttributePlace::ReturnValue,
                     bx.cx,
@@ -666,8 +668,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(bx.cx, a);
                     apply(bx.cx, b);
                 }
-                PassMode::Cast { cast, pad_i32 } => {
-                    if *pad_i32 {
+                PassMode::Cast { cast, pad_i32_count } => {
+                    for _ in 0..*pad_i32_count {
                         apply(bx.cx, &ArgAttributes::new());
                     }
                     apply(bx.cx, &cast.attrs);

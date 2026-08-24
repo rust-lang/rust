@@ -5,7 +5,7 @@ LL | impl<T, U> Remote1<Pair<T, Local<U>>> for i32 { }
    | ^^^^^^^^^^^--------------------------^^^^^---
    |            |                              |
    |            |                              `i32` is not defined in the current crate
-   |            `Pair` is not defined in the current crate
+   |            this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules

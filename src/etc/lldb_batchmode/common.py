@@ -3,10 +3,10 @@ from/into these types, see `./from_lldb.py`"""
 
 import json
 import os
-from enum import Enum
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
-from typing import Any, Optional, Union, get_origin, Final
+from enum import Enum
 from pprint import pformat
+from typing import Any, Final, Optional, Union, _eval_type, get_origin
 
 char = str
 Primitive = Union[int, float, bool, char]
@@ -73,7 +73,7 @@ def get_target() -> Target:
 
     if t.endswith("windows-msvc"):
         return Target.WindowsMsvc
-    if t.endswith("windows-gnu") or t.endswith("windows-gnullvm"):
+    if t.endswith(("windows-gnu", "windows-gnullvm")):
         return Target.WindowsGnu
 
     return Target.NonWindows
@@ -89,28 +89,6 @@ TARGET: Final[Target] = get_target()
 set of test input we check."""
 
 
-def annot_to_ty(annot: str) -> type[Any]:
-    """Fallback to resolve a string type annotation to its actual type (e.g. `"Variable"` ->
-    `Variable`). For types with generics, the generic is ignored."""
-
-    return {
-        "int": int,
-        "float": float,
-        "bool": bool,
-        "None": type(None),
-        "list": list,
-        "dict": dict,
-        "str": str,
-        "ByteSize": int,
-        "TargetData": TargetData,
-        "Variable": Variable,
-        "Type": Type,
-        "Field": Field,
-        "Child": Child,
-        "BlessMetadata": BlessMetadata,
-    }.get(annot.split("[", 1)[0], type[Any])
-
-
 def from_dict(ty: type[Any], data: JsonType):
     """Translates a dictionary into an instance of the given dataclass type (with possibly nested
     dataclasses).
@@ -118,27 +96,45 @@ def from_dict(ty: type[Any], data: JsonType):
     Relies on accurate type hints for the dataclass's fields, and the default `dataclass.__init__`
     definition."""
 
+    ty = _eval_type(ty, globals(), locals())
+
+    origin = get_origin(ty) or ty
+
     # Optional isn't a constructor, so we have to "unwrap" it.
-    if get_origin(ty) is Optional:
+    if origin == Union and len(ty.__args__) == 2 and ty.__args__[1] == type(None):
         ty = ty.__args__[0]
+
+    # Special handling for array-like children space optimization
+    if (
+        ty == Union[list[Child], ArrayLikeChildren, type(None)]
+        or ty == Union[list["Child"], ArrayLikeChildren, type(None)]
+    ):
+        if isinstance(data, dict):
+            al_type = data["type"]
+            vals: Union[list[dict], list[Primitive]] = data["vals"]
+            # if we have a list of dict, we know we have array children
+            # otherwise, we have a list of primitives that can be used
+            # as-is
+            if len(vals) != 0 and isinstance(vals[0], dict):
+                vals = [from_dict(ArrayChild, v) for v in vals]
+
+            return ArrayLikeChildren(al_type, vals)
+        elif isinstance(data, list):
+            return [from_dict(Child, i) for i in data]
 
     # recurse into lists
     if isinstance(data, list):
         # pulls the generic type from the list (e.g. `list[int]` -> `int`)
         inner = ty.__args__[0]
-        if isinstance(inner, str):
-            inner = annot_to_ty(inner)
 
         return [from_dict(inner, i) for i in data]
 
-    if get_origin(ty) is dict and ty.__args__[0] is str:
+    if origin == dict and ty.__args__[0] == str:
         assert isinstance(data, dict)
         val_ty = ty.__args__[1]
-        if isinstance(val_ty, str):
-            val_ty = annot_to_ty(val_ty)
 
-        if val_ty in [Variable, Child, Type, Field]:
-            return {k: from_dict(val_ty, data[k]) for k in data.keys()}
+        if val_ty in [Variable, Child, Type, Field, ArrayChild]:
+            return {k: from_dict(val_ty, data[k]) for k in data}
 
     # map dict -> dataclass, recursing for each field
     if is_dataclass(ty):
@@ -151,10 +147,6 @@ def from_dict(ty: type[Any], data: JsonType):
 
             for f in data:
                 f_type = field_types[f]
-
-                # type annotations can be strings, so we need to resolve them to their actual type
-                if isinstance(f_type, str):
-                    f_type = annot_to_ty(f_type)
 
                 field_map[f] = from_dict(f_type, data[f])
 
@@ -188,15 +180,15 @@ class Type:
     size: ByteSize
     # When GDB support is added to the test framework, basic_type and type_class will probably be
     # converted to a wrapper IntEnum that converts GDB's equivalent information to
-    basic_type: int
-    """The `lldb.eBasicType` value associated with this type. Tested due to our use of it in type
-    recognizer functions."""
-
     type_class: int
     """The `lldb.eTypeClass` value associated with thjs type. Tested due to our use of it in type
     recognizer functions."""
 
-    fields: list[Field]
+    basic_type: Optional[int] = None
+    """The `lldb.eBasicType` value associated with this type. Tested due to our use of it in type
+    recognizer functions."""
+
+    fields: Optional[list[Field]] = field(default_factory=list)
     """Stored as a list due to our reliance on `SBType.GetFieldAtIndex()`
 
     Note: LLDB **does not** reorder the fields of a type based on their offset. For example,
@@ -205,7 +197,7 @@ class Type:
     their declaration order in the source code).
     """
 
-    generic_params: list[str]
+    generic_params: Optional[list[str]] = field(default_factory=list)
     """Stored as a list due to our reliance on `SBType.GetTemplateArgumentType()` and the sequential
     behavior of `lldb_providers.get_template_args`"""
     # FIXME the only way we can look up static fields is by name (as of lldb 22), so we need a way
@@ -314,7 +306,7 @@ with the `--bless` option",
             # been renamed.
             if types_match and offsets_match:
                 renames = "\n    ".join(
-                    map(lambda m: f"{m[1].name} -> {m[0].name}", mismatches)
+                    f"{m[1].name} -> {m[0].name}" for m in mismatches
                 )
                 print_error(
                     error_source,
@@ -326,13 +318,11 @@ with the `--bless` option",
             # has decided to order the fields differently, despite the source code not changing
             elif types_match and names_match:
                 reordered = "\n    ".join(
-                    map(
-                        lambda m: (
-                            f"{m[1].name} offset: +{m[1].offset} -> {m[0].name} offset: \n\
+                    (
+                        f"{m[1].name} offset: +{m[1].offset} -> {m[0].name} offset: \n\
 +{m[0].offset}"
-                        ),
-                        mismatches,
                     )
+                    for m in mismatches
                 )
 
                 print_error(
@@ -342,18 +332,42 @@ got):\n    {reordered}",
                 )
 
             else:
-                mm_string = "\n    ".join(
-                    map(
-                        lambda m: (f"{m[1]} -> {m[0]}"),
-                        mismatches,
-                    )
-                )
+                mm_string = "\n    ".join(f"{m[1]} -> {m[0]}" for m in mismatches)
 
                 print_error(
                     error_source,
                     f"The following field(s) do not match (expected -> got):\n\
     {mm_string}",
                 )
+
+
+@dataclass
+class ArrayChild:
+    """A child in `ArrayLikeChildren`"""
+
+    value: Optional[Primitive] = None
+    children: Optional[Union[list["Child"], "ArrayLikeChildren"]] = None
+
+
+@dataclass
+class ArrayLikeChildren:
+    """Visualizers commonly output children in the form `[0]=<value>, [1]=<value>, ...` where the
+    types of all elements are the same. This container allows for space-optimizing the output data
+    by only storing the type once, and not storing the names of the children. During comparison,
+    `ArrayLikeChildren` are converted to the equivalent `list[Child]` and compared as normal.
+
+    To detect if a set of children are array-like, use `is_arraylike(children)`. To convert an
+    array-like list into `ArrayLikeChildren`, use `make_arraylike(children)`
+    """
+
+    type: str
+    vals: Union[list[ArrayChild], list[Primitive]] = field(default_factory=list)
+
+    def __len__(self):
+        return len(self.vals)
+
+    def __getitem__(self, idx):
+        return self.vals[idx]
 
 
 @dataclass
@@ -373,11 +387,41 @@ class Child:
     """The fully qualified name of the child's type. Full type information should be looked up
     via `TargetData.types`"""
 
-    value: Optional[Primitive]
-    children: list["Child"]
+    value: Optional[Primitive] = None
+    children: Optional[Union[list["Child"], ArrayLikeChildren]] = field(
+        default_factory=list
+    )
     """Children are stored as a list because of our use of `GetChildAtIndex()`. Providers can also
     dictate the order that children populate, so it's important to ensure that stays consistent too.
     """
+
+
+def is_arraylike(children: list[Child]) -> bool:
+    """Returns true if every child is the same type, and if all of the child names are, in order,
+    `[0]`, `[1]`, `[2]`, ...
+    """
+    if len(children) <= 0:
+        return False
+
+    first_type = children[0].type
+
+    return all(
+        x.name.startswith("[")
+        and x.name.endswith("]")
+        and int(x.name[1:-1]) == i
+        and x.type == first_type
+        for i, x in enumerate(children)
+    )
+
+
+def make_arraylike(children: list[Child]) -> ArrayLikeChildren:
+    return ArrayLikeChildren(
+        children[0].type,
+        [
+            ArrayChild(c.value, c.children) if len(c.children) != 0 else c.value
+            for c in children
+        ],
+    )
 
 
 @dataclass
@@ -386,32 +430,41 @@ class Variable:
     """The fully qualified name of the variable's type. Full type information should be looked up
     via `TargetData.types`"""
 
-    pretty_type_name: Optional[str]
+    pretty_type_name: Optional[str] = None
     """Type names can be overridden by `SyntehticProvider.get_type_name()` in LLDB and by
     `type_printer` in GDB"""
 
-    pretty_print: Optional[str]
+    pretty_print: Optional[str] = None
     """The string-result of pretty printing the value (`SBValue.GetSummary` for LLDB,
     `pretty_printer.to_string` for GDB). `None` for aggregates with no summary provider."""
 
-    value: Optional[Primitive]
+    value: Optional[Primitive] = None
     """`None` if the object does not have a primitive representation."""
 
-    synthetic: Optional[str]
+    synthetic: Optional[str] = None
     """The class/function name of the synthetic provider (lldb) or pretty printer (gdb).
     `None` if the object does not have a synthetic provider"""
 
-    summary: Optional[str]
+    summary: Optional[str] = None
     """The function name of the summary provider. `None` if the object does not have a summary
     provider, or if the test data is for GDB"""
 
-    format: Optional[int]
+    format: Optional[int] = None
     """The `lldb.eFormat` enum variant associated with this type (if applicable)."""
 
     # Stored as a list instead of a dict because child order matters
-    children: list[Child]
+    children: Optional[Union[list[Child], ArrayLikeChildren]] = field(
+        default_factory=list
+    )
     """A list of children provided by the object. If the object has a synthetic provider, the
     children are the result of the provider's `get_child_at_index` function"""
+
+    def has_visualizer(self) -> bool:
+        return (
+            self.synthetic is not None
+            or self.summary is not None
+            or self.format is not None
+        )
 
 
 @dataclass
@@ -445,17 +498,17 @@ class TargetData:
     """Miscellaneous data included to make diagnosing issues easier. This data is not intended to be
     tested against."""
 
-    types: dict[str, Type] = field(default_factory=dict)
-    """
-    A map of type names to types. Contains all types present in the test's variables, including the
-    types of fields and child objects.
-    """
-
     # If we ever decide that it makes sense to check the same variable twice at the same breakpoint
     # this will need to be converted to a list
     breakpoints: list[dict[str, Variable]] = field(default_factory=list)
     """Each element corresponds to one stopping point in the test. The element itself is a
     dictionary mapping variable names to their respective test data."""
+
+    types: dict[str, Type] = field(default_factory=dict)
+    """
+    A map of type names to types. Contains all types present in the test's variables, including the
+    types of fields and child objects.
+    """
 
     @staticmethod
     def initialize() -> "TargetData":
@@ -507,7 +560,7 @@ generated for this test yet, consider using the `--bless` option."
         # While we could rely on git to help revert the test file, it's better to just not allow it
         # to save malformed json in the first place. Thus, we dump the JSON, re-read it to check
         # for `JSONDecodeError`, and write it to the target file if no error occurred.
-        x = json.dumps(asdict(self), indent=" ")
+        x = json.dumps(clean_nones(asdict(self)), indent=" ")
         _ = json.loads(x)
 
         # ensure the necessary directories exist first
@@ -518,6 +571,25 @@ generated for this test yet, consider using the `--bless` option."
         with open(path, "w") as f:
             f.write(x)
             f.write("\n")
+
+
+def clean_nones(value):
+    """
+    Recursively remove all None values from dictionaries and lists, and returns
+    the result as a new dictionary or list.
+    """
+    if isinstance(value, list):
+        x = [clean_nones(x) for x in value if x is not None]
+        return x if len(x) != 0 else None
+    elif isinstance(value, dict):
+        x = {
+            key: clean_nones(val)
+            for key, val in value.items()
+            if clean_nones(val) is not None
+        }
+        return x if len(x) != 0 else None
+    else:
+        return value
 
 
 INPUT_DATA: TargetData = TargetData.initialize()

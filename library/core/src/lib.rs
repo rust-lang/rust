@@ -145,7 +145,6 @@
 #![feature(multiple_supertrait_upcastable)]
 #![feature(must_not_suspend)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(no_core)]
 #![feature(optimize_attribute)]
 #![feature(pattern_types)]
@@ -155,6 +154,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(simd_ffi)]
+#![feature(splat)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
@@ -338,7 +338,6 @@ mod bool;
 mod escape;
 mod tuple;
 mod unit;
-#[cfg_attr(feature = "nightly", not(bootstrap))]
 #[unstable(feature = "view_type_macro", issue = "155938")]
 pub mod view;
 

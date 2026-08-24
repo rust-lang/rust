@@ -23,6 +23,7 @@ rustc_index = { path = "../rustc_index" }
 rustc_interface = { path = "../rustc_interface" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint = { path = "../rustc_lint" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_log = { path = "../rustc_log" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
@@ -33,6 +34,7 @@ rustc_public = { path = "../rustc_public", features = ["rustc_internal"] }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_structures = { path = "../rustc_structures" }
 rustc_target = { path = "../rustc_target" }
 serde_json = "1.0.59"
 shlex = "1.0"

@@ -67,15 +67,16 @@ pub mod support;
 #[cfg(not(feature = "unstable-public-internals"))]
 pub(crate) mod support;
 
-cfg_if! {
-    if #[cfg(feature = "unstable-public-internals")] {
+cfg_select_nofmt! {
+    feature = "unstable-public-internals" => {
         pub mod generic;
-    } else {
+    }
+    _ => {
         mod generic;
     }
 }
 
-pub mod approx;
+pub mod relaxed;
 
 // Private modules
 mod arch;
@@ -106,7 +107,9 @@ use self::rem_pio2::rem_pio2;
 use self::rem_pio2_large::rem_pio2_large;
 use self::rem_pio2f::rem_pio2f;
 #[allow(unused_imports)]
-use self::support::{CastFrom, CastInto, DFloat, DInt, Float, HFloat, HInt, Int, IntTy, MinInt};
+use self::support::{
+    CastFrom, CastInto, DInt, Float, HInt, Int, IntTy, MinInt, NarrowFloat, WideFloat,
+};
 
 // Public modules
 mod acos;
@@ -294,8 +297,8 @@ pub use self::tgamma::tgamma;
 pub use self::tgammaf::tgammaf;
 pub use self::trunc::{trunc, truncf};
 
-cfg_if! {
-    if #[cfg(f16_enabled)] {
+cfg_select_nofmt! {
+    f16_enabled => {
         mod fmaf16;
 
         // verify-sorted-start
@@ -320,10 +323,11 @@ cfg_if! {
         pub use self::trunc::truncf16;
         // verify-sorted-end
     }
+    _ => {}
 }
 
-cfg_if! {
-    if #[cfg(f128_enabled)] {
+cfg_select_nofmt! {
+    f128_enabled => {
         // verify-sorted-start
         pub use self::ceil::ceilf128;
         pub use self::copysign::copysignf128;
@@ -346,6 +350,7 @@ cfg_if! {
         pub use self::trunc::truncf128;
         // verify-sorted-end
     }
+    _ => {}
 }
 
 #[inline]

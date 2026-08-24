@@ -16,6 +16,7 @@ use crate::{
     db::HirDatabase,
     layout::{Layout, LayoutCx, LayoutError, field_ty},
     next_solver::StoredGenericArgs,
+    representability::{Representability, representability},
     traits::StoredParamEnvAndCrate,
 };
 
@@ -30,6 +31,9 @@ pub fn layout_of_adt_query(
     let Ok(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
+    if representability(db, def) == Representability::Infinite {
+        return Err(LayoutError::RecursiveTypeWithoutIndirection);
+    }
     let dl = target;
     let cx = LayoutCx::new(dl);
     let handle_variant = |def: VariantId, var: &VariantFields| {

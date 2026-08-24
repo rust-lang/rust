@@ -9,9 +9,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Block, Expr, ExprKind, Impl, Item, ItemKind, Node, QPath, TyKind, VariantData};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{Ty, TypeckResults};
-use rustc_session::declare_lint_pass;
 use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {

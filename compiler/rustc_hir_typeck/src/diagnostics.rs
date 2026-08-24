@@ -12,7 +12,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Spanned, Symbol};
 
@@ -260,17 +260,6 @@ pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
         #[subdiagnostic]
         sugg: SuggestAnnotations,
     },
-}
-
-#[derive(Diagnostic)]
-#[help("specify the types explicitly")]
-#[diag("this function depends on never type fallback being `()`")]
-pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
-    #[note("in edition 2024, the requirement `{$obligation}` will fail")]
-    pub obligation_span: Span,
-    pub obligation: ty::Predicate<'tcx>,
-    #[subdiagnostic]
-    pub sugg: SuggestAnnotations,
 }
 
 #[derive(Clone)]
@@ -819,10 +808,13 @@ pub(crate) struct OutsideLoop<'a> {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct OutsideLoopSuggestion {
-    #[suggestion_part(code = "'block: ")]
+    #[suggestion_part(code = "{block_prefix}")]
     pub block_span: Span,
     #[suggestion_part(code = " 'block")]
     pub break_spans: Vec<Span>,
+    #[suggestion_part(code = " }}")]
+    pub wrap_end: Option<Span>,
+    pub block_prefix: &'static str,
 }
 
 #[derive(Diagnostic)]

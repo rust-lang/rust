@@ -9,9 +9,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

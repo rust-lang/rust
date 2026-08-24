@@ -14,12 +14,20 @@ users will need to call other compilers like clang to finish the compilation pro
 
 ## High-level compilation design:
 
-We use a single-source, two-pass compilation approach.
+We use a single-source, three-pass compilation approach.
 
-First we compile all functions that should be offloaded for the device
-(e.g nvptx64, amdgcn-amd-amdhsa, intel in the future).
+First we compile the host code (e.g. x86-64) to find out which kernel
+instantiations the host code requires, including generic ones.
+This pass does not perform codegen; instead it writes a manifest that records every
+`#[offload_kernel]` instance (with its concrete generic arguments) needed by the host code.
+
+We then compile all functions that should be offloaded for the device
+(e.g nvptx64, amdgcn-amd-amdhsa, intel in the future), passing the manifest via
+`-Zoffload=Device=<manifest>`.
+The recorded kernel instances are added as monomorphization roots, so the required generic
+kernels are codegened.
 Currently we require cumbersome `#cfg(target_os="")` annotations, but we intend to recognize those in the future based on our offload intrinsic.
-This first compilation currently does not leverage rustc's internal Query system, so it will always recompile your kernels at the moment.
+This device compilation currently does not leverage rustc's internal Query system, so it will always recompile your kernels at the moment.
 This should be easy to fix, but we prioritize features and runtime performance improvements at the moment.
 Please reach out if you want to implement it, though!
 
@@ -31,9 +39,9 @@ from the device, or both (e.g. `&mut [f64]`).
 We then launch the kernel,
 after which we inform the runtime to end this environment and move data back (as far as needed).
 
-The second pass for the host will load the kernel artifacts from the previous compilation.
+The third pass for the host will load the kernel artifacts from the device compilation.
 rustc in general may not "guess" or hardcode the build directory layout,
-and as such it must be told the path to the kernel artifacts in the second invocation.
+and as such it must be told the paths to the kernel artifacts and the manifest in the respective invocations.
 The logic for this could be integrated into cargo,
 but it also only requires a trivial cargo wrapper,
 which we could trivially provide via crates.io till we see larger adoption.

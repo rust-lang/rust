@@ -8,10 +8,9 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Node, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

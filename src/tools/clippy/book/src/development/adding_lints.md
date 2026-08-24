@@ -801,4 +801,4 @@ don't hesitate to ask on [Zulip] or in the issue/PR.
 [nightly_docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 [ast]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/sty/index.html
-[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-clippy

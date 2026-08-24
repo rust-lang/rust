@@ -8,8 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, QPath, TyKind, VariantData, find_attr};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 

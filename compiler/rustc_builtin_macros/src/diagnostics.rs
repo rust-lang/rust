@@ -562,7 +562,7 @@ pub(crate) enum EnvNotDefined {
     CargoEnvVar {
         #[primary_span]
         span: Span,
-        var: Symbol,
+        var: String,
         var_expr: String,
     },
     #[diag("environment variable `{$var}` not defined at compile time")]
@@ -570,7 +570,7 @@ pub(crate) enum EnvNotDefined {
     CargoEnvVarTypo {
         #[primary_span]
         span: Span,
-        var: Symbol,
+        var: String,
         suggested_var: Symbol,
     },
     #[diag("environment variable `{$var}` not defined at compile time")]
@@ -578,7 +578,7 @@ pub(crate) enum EnvNotDefined {
     CustomEnvVar {
         #[primary_span]
         span: Span,
-        var: Symbol,
+        var: String,
         var_expr: String,
     },
 }
@@ -588,7 +588,7 @@ pub(crate) enum EnvNotDefined {
 pub(crate) struct EnvNotUnicode {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) var: Symbol,
+    pub(crate) var: String,
 }
 
 #[derive(Diagnostic)]

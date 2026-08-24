@@ -1,5 +1,5 @@
 error: `extract_msrv_attr!` macro missing from `EarlyLintPass` implementation
-  --> tests/ui-internal/invalid_msrv_attr_impl.rs:28:1
+  --> tests/ui-internal/invalid_msrv_attr_impl.rs:27:1
    |
 LL | impl EarlyLintPass for Pass {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

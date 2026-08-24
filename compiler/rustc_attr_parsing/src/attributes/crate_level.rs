@@ -1,9 +1,10 @@
-use rustc_attr_ir::{CrateType, WindowsSubsystemKind};
+use rustc_attr_ir::WindowsSubsystemKind;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_feature::AttributeStability;
-use rustc_session::lint::builtin::{DUPLICATE_TOOLS, UNKNOWN_CRATE_TYPES};
+use rustc_lint_defs::builtin::{DUPLICATE_TOOLS, UNKNOWN_CRATE_TYPES};
 use rustc_span::Symbol;
 use rustc_span::edit_distance::find_best_match_for_name_with_substrings;
+use rustc_structures::CrateType;
 
 use super::prelude::*;
 use crate::diagnostics::{

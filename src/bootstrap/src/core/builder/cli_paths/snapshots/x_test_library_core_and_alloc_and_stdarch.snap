@@ -4,8 +4,8 @@ expression: test library/core library/alloc library/stdarch
 ---
 [Test] test::Crate
     targets: [aarch64-unknown-linux-gnu]
-    - Set({library/alloc})
     - Set({library/core})
+    - Set({library/alloc})
 [Test] test::StdarchVerify
     targets: [x86_64-unknown-linux-gnu]
     - Set({library/stdarch/crates/stdarch-verify})

@@ -10,8 +10,8 @@ This is expressed by using `impl Trait` within type aliases, for example:
 type Foo = impl Bar;
 ```
 
-This declares an opaque type named `Foo`, of which the only information is that
-it implements `Bar`. Therefore, any of `Bar`'s interface can be used on a `Foo`,
+This declares an opaque type named `Foo`, of which the only information is that it implements `Bar`.
+Therefore, any of `Bar`'s interface can be used on a `Foo`,
 but nothing else (regardless of whether the concrete type implements any other traits).
 
 Since there needs to be a concrete background type,
@@ -53,12 +53,11 @@ fn foo() -> Foo {
 ## Defining use site(s)
 
 Currently only the return value of a function can be a defining use site
-of an opaque type (and only if the return type of that function contains
-the opaque type).
+of an opaque type (and only if the return type of that function contains the opaque type).
 
 The defining use of an opaque type can be any code *within* the parent
-of the opaque type definition. This includes any siblings of the
-opaque type and all children of the siblings.
+of the opaque type definition.
+This includes any siblings of the opaque type and all children of the siblings.
 
 The initiative for *"not causing fatal brain damage to developers due to
 accidentally running infinite loops in their brain while trying to
@@ -68,7 +67,8 @@ of opaque types to be defining use sites.
 ### Associated opaque types
 
 Associated opaque types can be defined by any other associated item
-on the same trait `impl` or a child of these associated items. For instance:
+on the same trait `impl` or a child of these associated items.
+For instance:
 
 ```rust,ignore
 trait Baz {

@@ -335,6 +335,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--allow-dirty[Pass \`--allow-dirty\` to \`cargo fix\`, allowing it to run even if the current git checkout has uncommitted changes]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -1456,7 +1457,7 @@ _x__miri_commands() {
 _x__perf_commands() {
     local commands; commands=(
 'eprintln:Run \`profile_local eprintln\`. This executes the compiler on the given benchmarks and stores its stderr output' \
-'samply:Run \`profile_local samply\` This executes the compiler on the given benchmarks and profiles it with \`samply\`. You need to install \`samply\`, e.g. using \`cargo install samply\`' \
+'samply:Run \`profile_local samply\` This executes the compiler on the given benchmarks and profiles it with \`samply\`. You need to install \`samply\`, e.g. using \`cargo install --locked samply\`' \
 'cachegrind:Run \`profile_local cachegrind\`. This executes the compiler on the given benchmarks under \`Cachegrind\`' \
 'benchmark:Run compile benchmarks with a locally built compiler' \
 'compare:Compare the results of two previously executed benchmark runs' \

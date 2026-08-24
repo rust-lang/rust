@@ -2,15 +2,17 @@ use std::fmt;
 use std::ops::Deref;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
-use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
+use crate::dep_graph::{
+    DepKind, DepKindVTable, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex,
+};
 use crate::ich::StableHashState;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
@@ -144,6 +146,7 @@ impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
 
 pub struct QuerySystem<'tcx> {
     pub arenas: WorkerLocal<QueryArenas<'tcx>>,
+    pub dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
     pub query_vtables: QueryVTables<'tcx>,
 
     /// Side-effect associated with each [`DepKind::SideEffect`] node in the
@@ -152,6 +155,11 @@ pub struct QuerySystem<'tcx> {
     ///
     /// Always empty if incremental compilation is off.
     pub side_effects: Lock<FxIndexMap<DepNodeIndex, QuerySideEffect>>,
+
+    /// Enabled features that are used in the current compilation.
+    ///
+    /// The value is the `DepNodeIndex` of the node that encodes the used feature.
+    pub used_features: Lock<FxHashMap<Symbol, DepNodeIndex>>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by

@@ -37,7 +37,7 @@ static DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "OCaml",
     "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry",
     "OpenType",
-    "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport",
+    "WebAuthn", "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport",
     "WebP", "OpenExr", "YCbCr", "sRGB",
     "TensorFlow",
     "TrueType",

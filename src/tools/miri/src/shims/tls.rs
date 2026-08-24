@@ -353,7 +353,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx>, span: Span) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let dtor = dtor.to_scalar().to_pointer(this)?;
+        let dtor = dtor.to_scalar().to_pointer(this);
         let thread_callback = this.get_ptr_fn(dtor)?.as_instance()?;
 
         // FIXME: Technically, the reason should be `DLL_PROCESS_DETACH` when the main thread exits

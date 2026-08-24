@@ -21,6 +21,7 @@ use derive_where::derive_where;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 use thin_vec::ThinVec;
 
+use crate::search_graph::RequiredDepth;
 use crate::solve::{CandidateSource, Certainty, Goal, GoalSource, QueryResult};
 use crate::{Canonical, CanonicalVarValues, Interner};
 
@@ -52,6 +53,7 @@ pub struct GoalEvaluation<I: Interner> {
     pub orig_values: ThinVec<I::GenericArg>,
     pub final_revision: I::Probe,
     pub result: QueryResult<I>,
+    pub required_depth: RequiredDepth,
 }
 
 /// A self-contained computation during trait solving. This either

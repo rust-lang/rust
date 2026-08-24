@@ -13,8 +13,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::{Block, Body, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::{Span, Spanned, Symbol, sym};
 
 declare_clippy_lint! {

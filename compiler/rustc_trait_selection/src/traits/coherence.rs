@@ -698,12 +698,7 @@ fn try_prove_negated_where_clause<'tcx>(
     // FIXME: We could use the assumed_wf_types from both impls, I think,
     // if that wasn't implemented just for LocalDefId, and we'd need to do
     // the normalization ourselves since this is totally fallible...
-    let errors = ocx.resolve_regions(CRATE_DEF_ID, param_env, []);
-    if !errors.is_empty() {
-        return false;
-    }
-
-    true
+    ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty()
 }
 
 /// Compute the `intercrate_ambiguity_causes` for the new solver using

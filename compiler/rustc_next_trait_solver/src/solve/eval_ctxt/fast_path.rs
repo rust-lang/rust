@@ -26,8 +26,21 @@ pub(super) enum RerunStalled {
 /// args have changed. This is a cheap way to determine that if we were to rerun this goal now,
 /// it will remain stalled since it'll canonicalize the same way and evaluation is pure.
 /// Therefore, we can skip this rerun
-#[inline]
+#[inline(never)]
 pub(super) fn rerunning_stalled_goal_may_make_progress<D, I>(
+    delegate: &D,
+    stalled_on: Option<&GoalStalledOn<I>>,
+) -> RerunStalled
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    inlined_rerunning_stalled_goal_may_make_progress(delegate, stalled_on)
+}
+
+// Always-inlined variant for the one hot call site.
+#[inline(always)]
+pub(super) fn inlined_rerunning_stalled_goal_may_make_progress<D, I>(
     delegate: &D,
     stalled_on: Option<&GoalStalledOn<I>>,
 ) -> RerunStalled

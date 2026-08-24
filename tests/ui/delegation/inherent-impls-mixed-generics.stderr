@@ -1,0 +1,9 @@
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-mixed-generics.rs:12:14
+   |
+LL |     reuse S::foo_self;
+   |              ^^^^^^^^ not found in `S`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

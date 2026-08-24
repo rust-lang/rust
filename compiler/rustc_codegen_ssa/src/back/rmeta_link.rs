@@ -8,11 +8,11 @@ use std::path::{Path, PathBuf};
 use object::read::archive::ArchiveFile;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
-use rustc_hir::attrs::NativeLibKind;
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{MAGIC_END_BYTES, MemDecoder};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Symbol;
+use rustc_structures::NativeLibKind;
 use rustc_target::spec::Target;
 use tracing::debug;
 

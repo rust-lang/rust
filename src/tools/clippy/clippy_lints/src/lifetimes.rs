@@ -19,10 +19,9 @@ use rustc_hir::{
     PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, WhereBoundPredicate,
     WherePredicate, WherePredicateKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, kw};

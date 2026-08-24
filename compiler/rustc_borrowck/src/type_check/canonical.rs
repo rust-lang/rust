@@ -131,9 +131,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory<'tcx>,
     ) {
         self.prove_clause(
-            ty::ClauseKind::Trait(ty::TraitPredicate {
+            ty::ClauseKind::Trait(ty::TraitClause {
                 trait_ref,
-                polarity: ty::PredicatePolarity::Positive,
+                polarity: ty::ClausePolarity::Positive,
             }),
             locations,
             category,

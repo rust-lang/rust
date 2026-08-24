@@ -11,8 +11,7 @@ use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind, Pinnedness
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, impl_lint_pass};
 use rustc_span::DUMMY_SP;
 // import needed to shadow `PatKind::Box` glob-imported above
 use std::boxed::Box;
@@ -248,7 +247,13 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Pat>, focus_idx: usize
         // FIXME(pin_ergonomics): handle pinned patterns
         | Ref(_, _, Mutability::Not)
         // Dealt with elsewhere.
-        | Or(_) | Paren(_) | Deref(_) | Guard(..) => false,
+        | Or(_) | Paren(_) | Guard(..) => false,
+        // Transform `deref!(x) | ... | deref!(y)` into `deref!(x | y)`.
+        Deref(target) => extend_with_matching(
+            target, start, alternatives,
+            |k| matches!(k, Deref(_)),
+            |k| always_pat!(k, Deref(p) => *p),
+        ),
         // Transform `box x | ... | box y` into `box (x | y)`.
         //
         // The cases below until `Slice(...)` deal with *singleton* products.

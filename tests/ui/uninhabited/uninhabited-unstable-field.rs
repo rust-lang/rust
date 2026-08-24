@@ -4,7 +4,6 @@
 //! been reverted, and this file ensures that we don't special-case unstable fields wrt
 //! inhabitedness anymore.
 #![feature(exhaustive_patterns)]
-#![feature(never_type)]
 #![feature(my_coro_state)] // Custom feature from `staged-api.rs`
 #![deny(unreachable_patterns)]
 

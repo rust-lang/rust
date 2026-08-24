@@ -32,8 +32,7 @@ pub(crate) mod arithmetic_side_effects;
 use clippy_config::Conf;
 use clippy_utils::msrvs::Msrv;
 use rustc_hir::{Body, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -1096,6 +1095,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 self.arithmetic_context.check_binary(cx, e, bin_op, lhs, rhs);
                 misrefactored_assign_op::check(cx, e, bin_op, lhs, rhs);
                 modulo_arithmetic::check(cx, e, bin_op, lhs, rhs, false);
+                integer_division_remainder_used::check(cx, bin_op, lhs, rhs, e.span);
             },
             ExprKind::Assign(lhs, rhs, _) => {
                 assign_op_pattern::check(cx, e, lhs, rhs, self.msrv);

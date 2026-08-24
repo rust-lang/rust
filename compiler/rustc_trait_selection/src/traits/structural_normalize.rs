@@ -60,7 +60,7 @@ impl<'tcx> At<'_, 'tcx> {
                 self.infcx.tcx,
                 self.cause.clone(),
                 self.param_env,
-                ty::ProjectionPredicate { projection_term: alias, term: new_infer },
+                ty::ProjectionClause { projection_term: alias, term: new_infer },
             );
 
             fulfill_cx.register_predicate_obligation(self.infcx, obligation);

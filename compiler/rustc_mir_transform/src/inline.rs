@@ -343,11 +343,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
         // which can create a cycle, even when no attempt is made to inline the function in the other
         // direction.
-        if body.coroutine.is_some() {
-            return false;
-        }
-
-        true
+        body.coroutine.is_none()
     }
 
     #[instrument(level = "debug", skip(self, callee_body))]
@@ -765,7 +761,8 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         | InstanceKind::Shim(ShimKind::DropGlue(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::ThreadLocal(..))
-        | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Ok(()),
+        | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+        | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Ok(()),
     }
 
     if inliner.tcx().is_constructor(callee_def_id) {

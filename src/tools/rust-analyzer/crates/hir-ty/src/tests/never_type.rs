@@ -928,3 +928,14 @@ pub async fn test1() -> ! {
     "#,
     );
 }
+
+#[test]
+fn break_diverge() {
+    check_no_mismatches(
+        r#"
+fn test() -> i32 {
+    let loop_value = loop { break (return 5); };
+}
+    "#,
+    );
+}

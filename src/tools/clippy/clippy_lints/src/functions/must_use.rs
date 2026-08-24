@@ -139,7 +139,7 @@ fn check_needless_must_use(
     attrs: &[Attribute],
     sig: &FnSig<'_>,
 ) {
-    if item_span.in_external_macro(cx.sess().source_map()) {
+    if item_span.in_external_macro(cx.sess().source_map()) || attr_span.from_expansion() {
         return;
     }
     if returns_unit(decl) {

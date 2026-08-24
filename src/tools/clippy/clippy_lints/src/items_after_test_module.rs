@@ -3,8 +3,7 @@ use clippy_utils::source::SpanExt as _;
 use clippy_utils::{fulfill_or_allowed, is_cfg_test, is_from_proc_macro};
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::{HirId, Item, ItemKind, Mod};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::hygiene::AstPass;
 use rustc_span::{ExpnKind, sym};
 

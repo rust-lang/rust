@@ -62,16 +62,28 @@ LL |     let _ = values.iter().any(|&v| v == 4 + 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&(4 + 1))`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:91:5
+  --> tests/ui/manual_contains.rs:58:13
+   |
+LL |     let _ = values.iter().any(|&v| v == mask & other);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&(mask & other))`
+
+error: using `contains()` instead of `iter().any()` is more efficient
+  --> tests/ui/manual_contains.rs:60:13
+   |
+LL |     let _ = values.iter().any(|&v| mask | other == v);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&(mask | other))`
+
+error: using `contains()` instead of `iter().any()` is more efficient
+  --> tests/ui/manual_contains.rs:108:5
    |
 LL |     values.iter().any(|&v| v == 10)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&10)`
 
 error: using `contains()` instead of `iter().any()` is more efficient
-  --> tests/ui/manual_contains.rs:96:5
+  --> tests/ui/manual_contains.rs:113:5
    |
 LL |     values.iter().any(|&v| v == 10)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&10)`
 
-error: aborting due to 12 previous errors
+error: aborting due to 14 previous errors
 

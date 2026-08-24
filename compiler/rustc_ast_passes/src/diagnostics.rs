@@ -39,6 +39,17 @@ pub(crate) struct ImplFnConst {
 }
 
 #[derive(Diagnostic)]
+#[diag("`feature(generic_const_exprs)` is not supported with the next-generation trait solver")]
+#[note("`-Znext-solver=globally` is currently enabled by default for testing")]
+#[note("reverted the setting to `-Znext-solver=coherence` for this crate")]
+#[note("the currently stable trait solver will be used for this crate")]
+#[note("see issues #160895 <https://github.com/rust-lang/rust/issues/160895> for more information")]
+pub(crate) struct NextSolverDisabledForGenericConstExprs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("functions in {$in_impl ->
         [true] trait impls
         *[false] traits
@@ -1263,4 +1274,38 @@ pub(crate) struct VarargsWithoutPattern {
     )]
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "an `extern \"custom\"` function can only be declared externally or defined via naked functions"
+)]
+pub(crate) struct AbiCustomMustBeNaked {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        "convert this to an `#[unsafe(naked)]` function",
+        applicability = "maybe-incorrect",
+        code = "#[unsafe(naked)]\n",
+        style = "short"
+    )]
+    pub naked_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("an `extern \"custom\"` function cannot be marked `#[cold]`")]
+pub(crate) struct AbiCustomCannotBeCold {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        "remove the `#[cold]` attribute",
+        applicability = "maybe-incorrect",
+        code = "",
+        style = "short"
+    )]
+    pub cold_span: Span,
+
+    #[label("`extern \"custom\"` because of this")]
+    pub abi_span: Span,
 }

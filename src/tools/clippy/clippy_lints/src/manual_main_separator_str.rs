@@ -6,9 +6,8 @@ use clippy_utils::{peel_hir_expr_refs, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Mutability, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

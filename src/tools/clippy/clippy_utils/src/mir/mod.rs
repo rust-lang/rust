@@ -183,7 +183,7 @@ pub fn local_assignments(mir: &Body<'_>, local: Local) -> Vec<Location> {
 fn is_local_assignment(mir: &Body<'_>, local: Local, location: Location) -> bool {
     match mir.stmt_at(location) {
         Either::Left(statement) => {
-            if let StatementKind::Assign(box (place, _)) = statement.kind {
+            if let StatementKind::Assign((place, _)) = statement.kind {
                 place.as_local() == Some(local)
             } else {
                 false

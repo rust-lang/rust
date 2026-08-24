@@ -27,13 +27,14 @@ use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::config::{CrateType, OptLevel, TargetModifier};
+use rustc_session::config::{OptLevel, TargetModifier};
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
     Symbol, SyntaxContext, sym,
 };
+use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
 
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
@@ -1428,7 +1429,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // anywhere so we don't need to encode it for other crates.
             // FIXME(mgca): This probably isn't true, they probably are accessed, but, test case?
             if def_kind == DefKind::AnonConst
-                && matches!(tcx.hir_node_by_def_id(local_id), hir::Node::ConstArg(_))
+                && matches!(
+                    tcx.hir_node_by_def_id(local_id),
+                    hir::Node::ConstArg(_)
+                        | hir::Node::Infer(hir::InferArg { kind: hir::InferArgKind::Const, .. })
+                )
             {
                 continue;
             }

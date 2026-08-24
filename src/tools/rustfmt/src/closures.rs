@@ -14,7 +14,7 @@ use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, Rew
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::types::rewrite_bound_params;
-use crate::utils::{NodeIdExt, last_line_width, left_most_sub_expr, stmt_expr};
+use crate::utils::{NodeIdExt, format_coro, last_line_width, left_most_sub_expr, stmt_expr};
 
 // This module is pretty messy because of the rules around closures and blocks:
 // FIXME - the below is probably no longer true in full.
@@ -30,7 +30,7 @@ pub(crate) fn rewrite_closure(
     binder: &ast::ClosureBinder,
     constness: ast::Const,
     capture: ast::CaptureBy,
-    coroutine_kind: &Option<ast::CoroutineKind>,
+    coroutine_marker: &Option<ast::CoroutineMarker>,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -44,7 +44,7 @@ pub(crate) fn rewrite_closure(
         binder,
         constness,
         capture,
-        coroutine_kind,
+        coroutine_marker,
         movability,
         fn_decl,
         body,
@@ -256,7 +256,7 @@ fn rewrite_closure_fn_decl(
     binder: &ast::ClosureBinder,
     constness: ast::Const,
     capture: ast::CaptureBy,
-    coroutine_kind: &Option<ast::CoroutineKind>,
+    coroutine_marker: &Option<ast::CoroutineMarker>,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -287,12 +287,7 @@ fn rewrite_closure_fn_decl(
     } else {
         ""
     };
-    let coro = match coroutine_kind {
-        Some(ast::CoroutineKind::Async { .. }) => "async ",
-        Some(ast::CoroutineKind::Gen { .. }) => "gen ",
-        Some(ast::CoroutineKind::AsyncGen { .. }) => "async gen ",
-        None => "",
-    };
+    let coro = coroutine_marker.map_or_default(format_coro);
     let capture_str = match capture {
         ast::CaptureBy::Value { .. } => "move ",
         ast::CaptureBy::Use { .. } => "use ",
@@ -369,7 +364,7 @@ pub(crate) fn rewrite_last_closure(
             ref binder,
             constness,
             capture_clause,
-            ref coroutine_kind,
+            ref coroutine_marker,
             movability,
             ref fn_decl,
             ref body,
@@ -391,7 +386,7 @@ pub(crate) fn rewrite_last_closure(
             binder,
             constness,
             capture_clause,
-            coroutine_kind,
+            coroutine_marker,
             movability,
             fn_decl,
             body,

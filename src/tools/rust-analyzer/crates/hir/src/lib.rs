@@ -2848,8 +2848,9 @@ impl<'db> EvaluatedConst<'db> {
         let ty = self.allocation.ty.kind();
         if let TyKind::Int(_) | TyKind::Uint(_) = ty {
             let b = &self.allocation.memory;
-            let value = u128::from_le_bytes(mir::pad16(b, false));
-            let value_signed = i128::from_le_bytes(mir::pad16(b, matches!(ty, TyKind::Int(_))));
+            let value = u128::from_le_bytes(mir::pad16(b, mir::IsSigned::No));
+            let is_signed = matches!(ty, TyKind::Int(_)).into();
+            let value_signed = i128::from_le_bytes(mir::pad16(b, is_signed));
             let mut result =
                 if let TyKind::Int(_) = ty { value_signed.to_string() } else { value.to_string() };
             if value >= 10 {

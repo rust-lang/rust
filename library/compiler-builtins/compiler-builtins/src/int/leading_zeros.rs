@@ -4,9 +4,9 @@
 // Compilers will insert the check for zero in cases where it is needed.
 
 #[cfg(feature = "unstable-public-internals")]
-pub use implementation::{leading_zeros_default, leading_zeros_riscv};
+pub use implementation::{leading_zeros_condset, leading_zeros_default};
 #[cfg(not(feature = "unstable-public-internals"))]
-pub(crate) use implementation::{leading_zeros_default, leading_zeros_riscv};
+pub(crate) use implementation::{leading_zeros_condset, leading_zeros_default};
 
 mod implementation {
     use crate::support::{CastFrom, Int};
@@ -82,14 +82,15 @@ mod implementation {
         // execution effects. Changing to using a LUT and branching is risky for smaller cores.
     }
 
-    // The above method does not compile well on RISC-V (because of the lack of predicated
-    // instructions), producing code with many branches or using an excessively long
-    // branchless solution. This method takes advantage of the set-if-less-than instruction on
-    // RISC-V that allows `(x >= power-of-two) as usize` to be branchless.
+    // The above method does not compile well on RISC-V and LoongArch (because of the lack
+    // of predicated instructions), producing code with many branches or using an
+    // excessively long branchless solution. This method takes advantage of the
+    // set-if-less-than instruction on RISC-V and LoongArch that allows
+    // `(x >= power-of-two) as usize` to be branchless.
 
     /// Returns the number of leading binary zeros in `x`.
     #[allow(dead_code)]
-    pub fn leading_zeros_riscv<I: Int>(x: I) -> usize
+    pub fn leading_zeros_condset<I: Int>(x: I) -> usize
     where
         usize: CastFrom<I>,
     {
@@ -99,7 +100,7 @@ mod implementation {
         // a temporary
         let mut t: u32;
 
-        // RISC-V does not have a set-if-greater-than-or-equal instruction and
+        // RISC-V and LoongArch do not have a set-if-greater-than-or-equal instruction and
         // `(x >= power-of-two) as usize` will get compiled into two instructions, but this is
         // still the most optimal method. A conditional set can only be turned into a single
         // immediate instruction if `x` is compared with an immediate `imm` (that can fit into
@@ -146,8 +147,9 @@ mod implementation {
 intrinsics! {
     /// Returns the number of leading binary zeros in `x`
     pub extern "C" fn __clzsi2(x: u32) -> usize {
-        if cfg!(any(target_arch = "riscv32", target_arch = "riscv64")) {
-            leading_zeros_riscv(x)
+        if cfg!(any(target_arch = "loongarch32", target_arch = "loongarch64",
+                    target_arch = "riscv32", target_arch = "riscv64")) {
+            leading_zeros_condset(x)
         } else {
             leading_zeros_default(x)
         }
@@ -155,8 +157,9 @@ intrinsics! {
 
     /// Returns the number of leading binary zeros in `x`
     pub extern "C" fn __clzdi2(x: u64) -> usize {
-        if cfg!(any(target_arch = "riscv32", target_arch = "riscv64")) {
-            leading_zeros_riscv(x)
+        if cfg!(any(target_arch = "loongarch32", target_arch = "loongarch64",
+                    target_arch = "riscv32", target_arch = "riscv64")) {
+            leading_zeros_condset(x)
         } else {
             leading_zeros_default(x)
         }

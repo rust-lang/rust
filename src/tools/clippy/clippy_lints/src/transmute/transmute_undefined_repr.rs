@@ -323,12 +323,16 @@ fn is_size_pair(ty: Ty<'_>) -> bool {
 }
 
 fn same_except_params<'tcx>(subs1: GenericArgsRef<'tcx>, subs2: GenericArgsRef<'tcx>) -> bool {
-    // TODO: check const parameters as well. Currently this will consider `Array<5>` the same as
-    // `Array<6>`
-    for (ty1, ty2) in subs1.types().zip(subs2.types()).filter(|(ty1, ty2)| ty1 != ty2) {
-        match (ty1.kind(), ty2.kind()) {
-            (ty::Param(_), _) | (_, ty::Param(_)) => (),
-            (ty::Adt(adt1, subs1), ty::Adt(adt2, subs2)) if adt1 == adt2 && same_except_params(subs1, subs2) => (),
+    for (t1, t2) in subs1.terms().zip(subs2.terms()).filter(|(t1, t2)| t1 != t2) {
+        match (t1.kind(), t2.kind()) {
+            (ty::TermKind::Ty(ty1), ty::TermKind::Ty(ty2)) => match (ty1.kind(), ty2.kind()) {
+                (ty::Param(_), _) | (_, ty::Param(_)) => (),
+                (ty::Adt(adt1, subs1), ty::Adt(adt2, subs2)) if adt1 == adt2 && same_except_params(subs1, subs2) => (),
+                _ => return false,
+            },
+            // FIXME: check const parameters better as well. Currently this will consider `Array<5>` the same as
+            // `Array<6>`
+            (ty::TermKind::Const(_), ty::TermKind::Const(_)) => {},
             _ => return false,
         }
     }

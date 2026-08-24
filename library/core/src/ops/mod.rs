@@ -176,6 +176,8 @@ pub use self::deref::Receiver;
 pub use self::deref::{Deref, DerefMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::drop::Drop;
+#[unstable(feature = "fn_static", issue = "148768")]
+pub use self::function::{Code, FnPtr};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]

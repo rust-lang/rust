@@ -26,14 +26,15 @@ use super::{
     SelectionError, specialization_graph, translate_args, util,
 };
 use crate::diagnostics::InherentProjectionNormalizationOverflow;
+use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::infer::{BoundRegionConversionTime, InferOk};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
 
-pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
+pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionClause<'tcx>>;
 
-pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionPredicate<'tcx>>;
+pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionClause<'tcx>>;
 
 pub type ProjectionTermObligation<'tcx> = Obligation<'tcx, ty::AliasTerm<'tcx>>;
 
@@ -52,14 +53,14 @@ pub enum ProjectionError<'tcx> {
 #[derive(PartialEq, Eq, Debug)]
 enum ProjectionCandidate<'tcx> {
     /// From a where-clause in the env or object type
-    ParamEnv(ty::PolyProjectionPredicate<'tcx>),
+    ParamEnv(ty::PolyProjectionClause<'tcx>),
 
     /// From the definition of `Trait` when you have something like
     /// `<<A as Trait>::B as Trait2>::C`.
-    TraitDef(ty::PolyProjectionPredicate<'tcx>),
+    TraitDef(ty::PolyProjectionClause<'tcx>),
 
     /// Bounds specified on an object type
-    Object(ty::PolyProjectionPredicate<'tcx>),
+    Object(ty::PolyProjectionClause<'tcx>),
 
     /// From an "impl" (or a "pseudo-impl" returned by select)
     Select(Selection<'tcx>),
@@ -701,6 +702,44 @@ fn project<'cx, 'tcx>(
         )));
     }
 
+    // `<dyn Trait>::Name` is only valid when `Trait` is dyn-compatible.
+    // If it isn't, create an error at the projection site and return a tainted error term.
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    if let ty::Dynamic(data, ..) = self_ty.kind() {
+        if let Some(def_id) = data.principal_def_id() {
+            let tcx = selcx.tcx();
+            // Delaying a bug is fine here:
+            // - In case of a dymmy span, we are in a canonical query.
+            // - `CheckAssociatedTypeBounds` means that the trait object is part of the trait's item bounds
+            //   or the impl's associated type; both are checked at their own definition
+            //   where the error is already reported with a better span.
+            if !tcx.is_dyn_compatible(def_id) {
+                let span = obligation.cause.span;
+                let guar = if span.is_dummy()
+                    || matches!(
+                        obligation.cause.code(),
+                        ObligationCauseCode::CheckAssociatedTypeBounds { .. }
+                    ) {
+                    tcx.dcx().span_delayed_bug(
+                        span,
+                        format!(
+                            "projection from non-dyn-compatible trait `{}`",
+                            tcx.def_path_str(def_id)
+                        ),
+                    )
+                } else {
+                    let violations = tcx.dyn_compatibility_violations(def_id);
+                    report_dyn_incompatibility(tcx, span, None, def_id, &violations).emit()
+                };
+                return Ok(Projected::Progress(Progress::error_for_term(
+                    tcx,
+                    obligation.predicate,
+                    guar,
+                )));
+            }
+        }
+    }
+
     let mut candidates = ProjectionCandidateSet::None;
 
     // Make sure that the following procedures are kept in order. ParamEnv
@@ -845,7 +884,13 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         }
         _ => return,
     };
-    let env_clauses = data
+
+    // Projecting `dyn Trait` is only valid when `Trait` is dyn-compatible.
+    if data.principal_def_id().is_some_and(|def_id| !tcx.is_dyn_compatible(def_id)) {
+        return;
+    }
+
+    let env_predicates = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.expect_projection_def_id())
         .map(|p| p.with_self_ty(tcx, object_ty).upcast(tcx));
@@ -855,7 +900,7 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         obligation,
         candidate_set,
         ProjectionCandidate::Object,
-        env_clauses,
+        env_predicates,
         false,
     );
 }
@@ -868,7 +913,7 @@ fn assemble_candidates_from_clauses<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
-    ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionCandidate<'tcx>,
+    ctor: fn(ty::PolyProjectionClause<'tcx>) -> ProjectionCandidate<'tcx>,
     env_clauses: impl Iterator<Item = ty::Clause<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
@@ -1371,7 +1416,7 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
         );
     };
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: ty.into(),
     };
@@ -1418,7 +1463,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
         sym::Output
     );
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: return_ty.into(),
     };
@@ -1463,7 +1508,7 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
         sym::Item
     );
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: yield_ty.into(),
     };
@@ -1516,7 +1561,7 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
     };
     let item_ty = args.type_at(0);
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: item_ty.into(),
     };
@@ -1595,7 +1640,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: ty::AliasTerm::new_from_args(
             tcx,
             ty::AliasTermKind::ProjectionTy { def_id: item_def_id },
@@ -1699,7 +1744,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         fn_sig,
         flag,
     )
-    .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
+    .map_bound(|(trait_ref, ret_type)| ty::ProjectionClause {
         projection_term: ty::AliasTerm::new_from_args(
             tcx,
             ty::AliasTermKind::ProjectionTy { def_id: fn_once_output_def_id },
@@ -1754,7 +1799,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
             };
 
             args.coroutine_closure_sig()
-                .rebind(ty::ProjectionPredicate { projection_term, term: term.into() })
+                .rebind(ty::ProjectionClause { projection_term, term: term.into() })
         }
         ty::FnDef(..) | ty::FnPtr(..) => {
             let bound_sig = self_ty.fn_sig(tcx);
@@ -1787,7 +1832,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 name => bug!("no such associated type: {name}"),
             };
 
-            bound_sig.rebind(ty::ProjectionPredicate { projection_term, term: term.into() })
+            bound_sig.rebind(ty::ProjectionClause { projection_term, term: term.into() })
         }
         ty::Closure(_, args) => {
             let args = args.as_closure();
@@ -1815,7 +1860,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 name => bug!("no such associated type: {name}"),
             };
 
-            bound_sig.rebind(ty::ProjectionPredicate { projection_term, term: term.into() })
+            bound_sig.rebind(ty::ProjectionClause { projection_term, term: term.into() })
         }
         _ => bug!("expected callable type for AsyncFn candidate"),
     };
@@ -1908,7 +1953,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
         bug!();
     };
 
-    let predicate = ty::ProjectionPredicate {
+    let predicate = ty::ProjectionClause {
         projection_term: obligation.predicate.with_args(selcx.tcx(), obligation.predicate.args),
         term: ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
             selcx.tcx(),
@@ -1929,7 +1974,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
 fn confirm_param_env_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
-    poly_cache_entry: ty::PolyProjectionPredicate<'tcx>,
+    poly_cache_entry: ty::PolyProjectionClause<'tcx>,
     potentially_unnormalized_candidate: bool,
 ) -> Progress<'tcx> {
     let infcx = selcx.infcx;

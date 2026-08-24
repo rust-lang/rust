@@ -35,8 +35,8 @@
 //@ [stack-protector-future-deny-allow-reset-by-mitigation] compile-flags: -Z unstable-options -Z deny-partial-mitigations=stack-protector -Z allow-partial-mitigations=stack-protector -Z stack-protector=all
 
 fn main() {}
-//~^ ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with

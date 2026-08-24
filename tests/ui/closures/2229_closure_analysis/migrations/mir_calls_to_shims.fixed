@@ -5,7 +5,6 @@
 #![deny(rust_2021_incompatible_closure_captures)]
 //~^ NOTE: the lint level is defined here
 #![feature(fn_traits)]
-#![feature(never_type)]
 
 use std::panic;
 

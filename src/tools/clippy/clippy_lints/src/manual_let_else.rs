@@ -122,11 +122,7 @@ fn is_arms_disjointed(cx: &LateContext<'_>, arm1: &Arm<'_>, arm2: &Arm<'_>) -> b
         return false;
     }
 
-    if !is_enum_variant(cx, arm1.pat) || !is_enum_variant(cx, arm2.pat) {
-        return false;
-    }
-
-    true
+    is_enum_variant(cx, arm1.pat) && is_enum_variant(cx, arm2.pat)
 }
 
 /// Returns `true` if the given pattern is a variant of an enum.

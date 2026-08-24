@@ -3,11 +3,9 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Deserializer};
-
 use crate::core::config::StringOrBool;
-use crate::core::config::toml::{Merge, ReplaceOpt, TomlConfig};
-use crate::define_config;
+use crate::core::config::macros::define_config;
+use crate::core::config::toml::TomlConfig;
 
 define_config! {
     /// TOML representation of how the LLVM build is configured.

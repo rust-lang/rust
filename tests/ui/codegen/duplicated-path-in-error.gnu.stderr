@@ -1,2 +1,2 @@
-error: couldn't load codegen backend /non-existing-one.so: cannot open shared object file: No such file or directory
+error: couldn't load codegen backend /non-existing-one.so: dlopen failed: /non-existing-one.so: cannot open shared object file: No such file or directory
 

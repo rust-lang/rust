@@ -66,25 +66,24 @@ fn main() {
     assert_eq!((*fn_pp)(1u32, 2i8), (2i8, 1u32));
 
     // Now with *mut and non-terminal splat
+    let mut fn_p = splat_non_terminal_arg as fn(#[rustc_splat] (u32, i8), f64) -> (i8, f64, u32);
     let fn_pp: *mut fn(#[rustc_splat] (u32, i8), f64) -> (i8, f64, u32)
-        = ptr::from_mut(
-            &mut (splat_non_terminal_arg as fn(#[rustc_splat] (u32, i8), f64) -> (i8, f64, u32))
-        );
+        = ptr::from_mut(&mut fn_p);
     unsafe {
         assert_eq!((*fn_pp)(1, 2, 3.5), (2, 3.5, 1));
         assert_eq!((*fn_pp)(1u32, 2i8, 3.5f64), (2i8, 3.5f64, 1u32));
     }
 
+    let mut fn_p = splat_non_terminal_arg as _;
     let fn_pp: *mut fn(#[rustc_splat] (u32, i8), f64) -> (i8, f64, u32)
-        = ptr::from_mut(&mut (splat_non_terminal_arg as _));
+        = ptr::from_mut(&mut fn_p);
     unsafe {
         assert_eq!((*fn_pp)(1, 2, 3.5), (2, 3.5, 1));
         assert_eq!((*fn_pp)(1u32, 2i8, 3.5f64), (2i8, 3.5f64, 1u32));
     }
 
-    let fn_pp = ptr::from_mut(
-            &mut (splat_non_terminal_arg as fn(#[rustc_splat] (u32, i8), f64) -> (i8, f64, u32))
-        );
+    let mut fn_p = splat_non_terminal_arg as fn(#[rustc_splat] (u32, i8), f64) -> (i8, f64, u32);
+    let fn_pp = ptr::from_mut(&mut fn_p);
     unsafe {
         assert_eq!((*fn_pp)(1, 2, 3.5), (2, 3.5, 1));
         assert_eq!((*fn_pp)(1u32, 2i8, 3.5f64), (2i8, 3.5f64, 1u32));

@@ -10,8 +10,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::{self as hir, BodyId, Expr, ExprKind, HirId, Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {

@@ -37,6 +37,17 @@ help: the trait `Iterator` is implemented for `&mut I`
 note: required by a bound in `Flatten`
   --> $SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL
 
-error: aborting due to 3 previous errors
+error[E0277]: `&T` is not an iterator
+  --> $DIR/hir-wf-check-erase-regions.rs:16:27
+   |
+LL |     fn into_iter(self) -> Self::IntoIter {
+   |                           ^^^^^^^^^^^^^^ `&T` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `&T`
+help: the trait `Iterator` is implemented for `&mut I`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   = note: required for `&T` to implement `IntoIterator`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

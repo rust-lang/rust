@@ -1675,7 +1675,7 @@ pub struct Closure {
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
     pub constness: Const,
-    pub coroutine_kind: Option<CoroutineKind>,
+    pub coroutine_marker: Option<CoroutineMarker>,
     pub movability: Movability,
     pub fn_decl: Box<FnDecl>,
     pub body: Box<Expr>,
@@ -1811,7 +1811,7 @@ pub enum ExprKind {
     ///
     /// The span is the "decl", which is the header before the body `{ }`
     /// including the `async`/`gen` keywords and possibly `move`.
-    Gen(CaptureBy, Box<Block>, GenBlockKind, Span),
+    Gen(CaptureBy, Box<Block>, CoroutineKind, Span),
     /// An await expression (`my_future.await`). Span is of await keyword.
     Await(Box<Expr>, Span),
     /// A use expression (`x.use`). Span is of use keyword.
@@ -1934,26 +1934,33 @@ pub enum ForLoopKind {
     ForAwait,
 }
 
-/// Used to differentiate between `async {}` blocks and `gen {}` blocks.
 #[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq, Walkable)]
-pub enum GenBlockKind {
+pub enum CoroutineKind {
     Async,
     Gen,
     AsyncGen,
 }
 
-impl fmt::Display for GenBlockKind {
+impl fmt::Display for CoroutineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.modifier().fmt(f)
+        self.as_str().fmt(f)
     }
 }
 
-impl GenBlockKind {
-    pub fn modifier(&self) -> &'static str {
+impl CoroutineKind {
+    /// Matches `Gen` and `AsyncGen`.
+    pub fn is_gen(&self) -> bool {
         match self {
-            GenBlockKind::Async => "async",
-            GenBlockKind::Gen => "gen",
-            GenBlockKind::AsyncGen => "async gen",
+            CoroutineKind::Async => false,
+            CoroutineKind::Gen | CoroutineKind::AsyncGen => true,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CoroutineKind::Async => "async",
+            CoroutineKind::Gen => "gen",
+            CoroutineKind::AsyncGen => "async gen",
         }
     }
 }
@@ -2354,7 +2361,7 @@ impl FnSig {
         match self.header.safety {
             Safety::Unsafe(span) | Safety::Safe(span) => span,
             Safety::Default => {
-                // Insert after the `coroutine_kind` if available.
+                // Insert after the `coroutine_marker` if available.
                 if let Some(extern_span) = self.header.ext.span() {
                     return extern_span.shrink_to_lo();
                 }
@@ -2489,7 +2496,12 @@ pub struct FnPtrTy {
 
 impl FnPtrTy {
     pub fn header(&self) -> FnHeader {
-        FnHeader { constness: Const::No, coroutine_kind: None, safety: self.safety, ext: self.ext }
+        FnHeader {
+            constness: Const::No,
+            coroutine_marker: None,
+            safety: self.safety,
+            ext: self.ext,
+        }
     }
 
     pub fn as_borrowed_fn_sig<'a>(&'a self) -> BorrowedFnSig<'a> {
@@ -3098,56 +3110,23 @@ pub enum Safety {
     Default,
 }
 
-/// Describes what kind of coroutine markers, if any, a function has.
+/// Describes the coroutine markers a function/closure has.
 ///
 /// Coroutine markers are things that cause the function to generate a coroutine, such as `async`,
 /// which makes the function return `impl Future`, or `gen`, which makes the function return `impl
 /// Iterator`.
 #[derive(Copy, Clone, Encodable, Decodable, Debug, Walkable)]
-pub enum CoroutineKind {
-    /// `async`, which returns an `impl Future`.
-    Async { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
-    /// `gen`, which returns an `impl Iterator`.
-    Gen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
-    /// `async gen`, which returns an `impl AsyncIterator`.
-    AsyncGen { span: Span, closure_id: NodeId, return_impl_trait_id: NodeId },
+pub struct CoroutineMarker {
+    pub kind: CoroutineKind,
+    pub span: Span,
+    pub closure_id: NodeId,
+    /// The `NodeId` for the generated `impl Trait` item.
+    pub return_impl_trait_id: NodeId,
 }
 
-impl CoroutineKind {
-    pub fn span(self) -> Span {
-        match self {
-            CoroutineKind::Async { span, .. } => span,
-            CoroutineKind::Gen { span, .. } => span,
-            CoroutineKind::AsyncGen { span, .. } => span,
-        }
-    }
-
-    pub fn as_str(self) -> &'static str {
-        match self {
-            CoroutineKind::Async { .. } => "async",
-            CoroutineKind::Gen { .. } => "gen",
-            CoroutineKind::AsyncGen { .. } => "async gen",
-        }
-    }
-
-    pub fn closure_id(self) -> NodeId {
-        match self {
-            CoroutineKind::Async { closure_id, .. }
-            | CoroutineKind::Gen { closure_id, .. }
-            | CoroutineKind::AsyncGen { closure_id, .. } => closure_id,
-        }
-    }
-
-    /// In this case this is an `async` or `gen` return, the `NodeId` for the generated `impl Trait`
-    /// item.
-    pub fn return_id(self) -> (NodeId, Span) {
-        match self {
-            CoroutineKind::Async { return_impl_trait_id, span, .. }
-            | CoroutineKind::Gen { return_impl_trait_id, span, .. }
-            | CoroutineKind::AsyncGen { return_impl_trait_id, span, .. } => {
-                (return_impl_trait_id, span)
-            }
-        }
+impl CoroutineMarker {
+    pub fn new(kind: CoroutineKind, span: Span) -> Self {
+        Self { kind, span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
     }
 }
 
@@ -3840,8 +3819,8 @@ impl Extern {
 pub struct FnHeader {
     /// The `const` keyword, if any
     pub constness: Const,
-    /// Whether this is `async`, `gen`, or nothing.
-    pub coroutine_kind: Option<CoroutineKind>,
+    /// The `async`/`gen`/`gen asyn` marker, if there is one.
+    pub coroutine_marker: Option<CoroutineMarker>,
     /// Whether this is `unsafe`, or has a default safety.
     pub safety: Safety,
     /// The `extern` keyword and corresponding ABI string, if any.
@@ -3851,9 +3830,9 @@ pub struct FnHeader {
 impl FnHeader {
     /// Does this function header have any qualifiers or is it empty?
     pub fn has_qualifiers(&self) -> bool {
-        let Self { safety, coroutine_kind, constness, ext } = self;
+        let Self { safety, coroutine_marker, constness, ext } = self;
         matches!(safety, Safety::Unsafe(_))
-            || coroutine_kind.is_some()
+            || coroutine_marker.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
     }
@@ -3871,8 +3850,8 @@ impl FnHeader {
             Safety::Default => {}
         };
 
-        if let Some(coroutine_kind) = self.coroutine_kind {
-            spans.push(coroutine_kind.span());
+        if let Some(coroutine_marker) = self.coroutine_marker {
+            spans.push(coroutine_marker.span);
         }
 
         if let Const::Yes(span) = self.constness {
@@ -3887,7 +3866,7 @@ impl Default for FnHeader {
     fn default() -> FnHeader {
         FnHeader {
             safety: Safety::Default,
-            coroutine_kind: None,
+            coroutine_marker: None,
             constness: Const::No,
             ext: Extern::None,
         }

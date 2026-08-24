@@ -1,0 +1,39 @@
+error[E0425]: cannot find function `foo` in `inherent_impl::S`
+  --> $DIR/inherent-impls-non-local-crate.rs:5:25
+   |
+LL | reuse inherent_impl::S::foo;
+   |                         ^^^ not found in `inherent_impl::S`
+
+error[E0425]: cannot find function `not_existing` in `inherent_impl::S`
+  --> $DIR/inherent-impls-non-local-crate.rs:8:25
+   |
+LL | reuse inherent_impl::S::not_existing;
+   |                         ^^^^^^^^^^^^ not found in `inherent_impl::S`
+
+error[E0425]: cannot find function `TYPE` in `inherent_impl::S`
+  --> $DIR/inherent-impls-non-local-crate.rs:11:25
+   |
+LL | reuse inherent_impl::S::TYPE;
+   |                         ^^^^ not found in `inherent_impl::S`
+
+error[E0425]: cannot find function `CONST` in `inherent_impl::S`
+  --> $DIR/inherent-impls-non-local-crate.rs:14:25
+   |
+LL | reuse inherent_impl::S::CONST;
+   |                         ^^^^^ not found in `inherent_impl::S`
+
+error[E0425]: cannot find function `bar` in `inherent_impl::S`
+  --> $DIR/inherent-impls-non-local-crate.rs:17:25
+   |
+LL | reuse inherent_impl::S::bar;
+   |                         ^^^ not found in `inherent_impl::S`
+
+error[E0425]: cannot find function `foo` in `inherent_impl::X`
+  --> $DIR/inherent-impls-non-local-crate.rs:22:25
+   |
+LL | reuse inherent_impl::X::foo as x_foo;
+   |                         ^^^ not found in `inherent_impl::X`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
