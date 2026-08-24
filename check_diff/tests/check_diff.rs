@@ -1,6 +1,6 @@
 use check_diff::{
-    CheckDiffError, DiffChecker, CodeFormatter, FormatCodeError, Repository,
-    RustFmtFileFinder, check_diff,
+    CheckDiffError, CodeFormatter, DiffChecker, FormatCodeError, Repository, RustFmtFileFinder,
+    check_diff,
 };
 use std::fs::File;
 use tempfile::Builder;

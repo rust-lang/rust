@@ -504,6 +504,9 @@ fn self_tests() {
         for file in search_files {
             files.push(file);
         }
+
+        let mut tests_files = get_test_files(&PathBuf::from(external_crate).join("tests"), false);
+        files.append(&mut tests_files);
     }
     files.push(PathBuf::from("src/lib.rs"));
 
