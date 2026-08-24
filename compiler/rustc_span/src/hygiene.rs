@@ -25,7 +25,6 @@
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
 use std::hash::Hash;
-use std::ops::DerefMut;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
 
@@ -1331,15 +1330,7 @@ pub struct HygieneEncodeContext {
     /// however, the order of encoding is deterministic, so we can remap allocated
     /// syntax context ids into encoding indices and use them, thus outputting
     /// same metadata.
-    ///
-    /// We can use index vec as when allocating syntax context ids we use
-    /// `SyntaxContext::from_usize(self.syntax_context_data.len())` in
-    /// `alloc_ctxt`, so the indices are from continuous range from
-    /// `0` to `self.syntax_context_data.len()`.
-    encoding_indices: Lock<(
-        u32,                /* next encoding idnex */
-        IndexVec<u32, u32>, /* synt. ctxt -> enc. index, `0` at value == unfilled */
-    )>,
+    encoding_indices: Lock<FxHashMap<SyntaxContext, u32>>,
 }
 
 impl HygieneEncodeContext {
@@ -1348,22 +1339,10 @@ impl HygieneEncodeContext {
             return 0;
         }
 
-        let mut state = self.encoding_indices.lock();
-        let (next_index, map) = state.deref_mut();
-
-        if let Some(idx) = map.get(ctxt.0).copied()
-            && idx != 0
-        {
-            idx
-        } else {
-            // Zero is taken by root syntax context.
-            *next_index += 1;
-            let encoding_index = *next_index;
-
-            *map.ensure_contains_elem(ctxt.0, || 0) = encoding_index;
-
-            encoding_index
-        }
+        let mut map = self.encoding_indices.lock();
+        // Zero is taken by root syntax context.
+        let encoding_index = map.len() + 1;
+        *map.entry(ctxt).or_insert(encoding_index as u32)
     }
 
     /// Record the fact that we need to serialize the corresponding `ExpnData`.
