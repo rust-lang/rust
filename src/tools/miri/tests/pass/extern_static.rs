@@ -20,6 +20,9 @@ static FOO_U32: u32 = 42;
 #[no_mangle]
 static INTERIOR_MUT: SyncUnsafeCell<i32> = SyncUnsafeCell::new(42);
 
+#[no_mangle]
+static ARRAY: [u32; 5] = [1, 2, 3, 4, 5];
+
 fn increase_mutable_static_by_original_def(add_val: i32) {
     unsafe {
         let new_val = (&raw mut MUTABLE_STATIC).read() + add_val;
@@ -59,6 +62,30 @@ fn main() {
         unsafe {
             (&raw mut INTERIOR_MUT_AS_MUTABLE_STATIC).write(7);
             MUTABLE_STATIC_AS_INTERIOR_MUT.get().write(3);
+        }
+
+        // It's okay for the actual static to be bigger or more aligned than the extern declaration.
+        extern "C" {
+            // Actual size is bigger (20 bytes).
+            #[link_name = "ARRAY"]
+            static ARRAY_UNKNOWN_SIZE: [u32; 0];
+
+            // Actual size and alignment is that of u32, not u16.
+            #[link_name = "FOO_U32"]
+            static U16_TO_FOO_U32: u16;
+        }
+
+        unsafe {
+            let ptr = (&raw const ARRAY_UNKNOWN_SIZE).cast::<i32>();
+            assert_eq!(ptr.read(), 1);
+            assert_eq!(ptr.offset(2).read(), 3);
+
+            // We see one half of FOO_U32, depending on endianess.
+            if cfg!(target_endian = "little") {
+                assert_eq!(U16_TO_FOO_U32, 42);
+            } else {
+                assert_eq!(U16_TO_FOO_U32, 0);
+            }
         }
     }
 
