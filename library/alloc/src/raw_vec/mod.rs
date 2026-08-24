@@ -799,7 +799,7 @@ impl<A: Allocator> RawVecInner<A> {
         let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
 
         debug_assert!(cap > self.cap.as_inner());
-        
+
         //SAFETY: 'grow_amortized' requires 'len + additional' to be
         // greater than the current capacity, and requires cap is 'len + additional'
         unsafe {
