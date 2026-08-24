@@ -1,0 +1,159 @@
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:13:28
+   |
+LL | reuse S::<'static, (), 1>::foo_static::<'static, (), true> as foo_static_1;
+   |                            ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:15:28
+   |
+LL | reuse S::<'static, (), 1>::foo_static as foo_static_3;
+   |                            ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:17:28
+   |
+LL | reuse S::<'static, (), 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                            ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:20:28
+   |
+LL | reuse S::<'static, (), 1>::foo_self::<'static, (), true> as foo_self_1;
+   |                            ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:22:28
+   |
+LL | reuse S::<'static, (), 1>::foo_self as foo_self_3;
+   |                            ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:24:28
+   |
+LL | reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                            ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:31:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static::<'static, (), true> as foo_static_1;
+   |                                ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:33:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static as foo_static_3;
+   |                                ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:35:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                                ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:42:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
+   |                                ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:44:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self as foo_self_3 { self.get_s() }
+   |                                ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:46:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                                ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:53:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static::<'static, (), true> as foo_static_1;
+   |                                ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:55:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static as foo_static_3;
+   |                                ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:57:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                                ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:60:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
+   |                                ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:63:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self as foo_self_3 { self.get_s() }
+   |                                ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:66:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                                ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:71:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static::<'static, (), true> as foo_static_1;
+   |                                ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:73:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static as foo_static_3;
+   |                                ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:75:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                                ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:82:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
+   |                                ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:84:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self as foo_self_3 { self.get_s() }
+   |                                ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in enum `S`
+  --> $DIR/inherent-impls-enums.rs:86:32
+   |
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                                ^^^^^^^^ not found in `S`
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/inherent-impls-enums.rs:60:76
+   |
+LL |     reuse S::<'static, (), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
+   |                                                                            ^^^^^^^^^^^^^^^^
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/inherent-impls-enums.rs:63:55
+   |
+LL |     reuse S::<'static, (), 1>::foo_self as foo_self_3 { self.get_s() }
+   |                                                       ^^^^^^^^^^^^^^^^
+
+error: aborting due to 26 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
