@@ -331,7 +331,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             // should not be called on them.
                             bug!(
                                 "va_arg got i{} but needs at least c_int (an i{})",
-                                int_width,
+                             int_width,
                                 target_c_int_width
                             );
                         }

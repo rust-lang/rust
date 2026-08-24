@@ -518,6 +518,11 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
         // Nothing we can really do about these checks, sadly.
         let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
 
+        //SAFETY: 'grow_amortized' requires 'len + additional' to be
+        // greater than the current capacity, and requires cap is 'len + additional'
+        unsafe {
+            hint::assert_unchecked(required_cap > self.cap.as_inner());
+        }
         // This guarantees exponential growth. The doubling cannot overflow
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
         let cap = cmp::max(self.cap.as_inner() * 2, required_cap);
@@ -793,6 +798,13 @@ impl<A: Allocator> RawVecInner<A> {
 
         let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
 
+        debug_assert!(cap > self.cap.as_inner());
+        
+        //SAFETY: 'grow_amortized' requires 'len + additional' to be
+        // greater than the current capacity, and requires cap is 'len + additional'
+        unsafe {
+            hint::assert_unchecked(required_cap > self.cap.as_inner());
+        }
         // SAFETY: preconditions passed to caller
         let ptr = unsafe { self.finish_grow(cap, elem_layout)? };
 
