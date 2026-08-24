@@ -324,7 +324,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Or,
                 Never,
                 Tuple,
-                Box,
                 Deref,
                 Ref,
                 Expr,
