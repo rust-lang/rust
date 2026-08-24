@@ -11,7 +11,7 @@ pub(crate) fn expand_deriving_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
-    item: &Annotatable,
+    item: &ast::Item,
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {

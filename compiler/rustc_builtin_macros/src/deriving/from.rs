@@ -16,14 +16,10 @@ pub(crate) fn expand_deriving_from(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &ast::MetaItem,
-    annotatable: &Annotatable,
+    item: &ast::Item,
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {
-    let Annotatable::Item(item) = &annotatable else {
-        cx.dcx().bug("derive(From) used on something else than an item");
-    };
-
     let err_span = || {
         let item_span = item.kind.ident().map(|ident| ident.span).unwrap_or(item.span);
         MultiSpan::from_spans(vec![span, item_span])
@@ -127,5 +123,5 @@ pub(crate) fn expand_deriving_from(
         document: true,
     };
 
-    from_trait_def.expand(cx, mitem, annotatable, push);
+    from_trait_def.expand(cx, mitem, item, push);
 }

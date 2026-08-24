@@ -11,7 +11,7 @@ pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
-    item: &Annotatable,
+    item: &ast::Item,
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {
@@ -20,9 +20,7 @@ pub(crate) fn expand_deriving_partial_ord(
         Path(Path::new_(pathvec!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
     // Order in which to perform matching
-    let discr_then_data = if let Annotatable::Item(item) = item
-        && let ItemKind::Enum(_, _, def) = &item.kind
-    {
+    let discr_then_data = if let ItemKind::Enum(_, _, def) = &item.kind {
         let dataful: Vec<bool> = def.variants.iter().map(|v| !v.data.fields().is_empty()).collect();
         match dataful.iter().filter(|&&b| b).count() {
             // No data, placing the discriminant check first makes codegen simpler
@@ -49,29 +47,26 @@ pub(crate) fn expand_deriving_partial_ord(
     let simple_substructure = combine_substructure(|cx, span, _| {
         cs_partial_cmp_simple(cx, span, cx.expr_ident(span, Ident::new(sym::other, span)))
     });
-    let is_simple = match item {
-        Annotatable::Item(annitem) => match &annitem.kind {
-            // For unit structs/zero-variant enums, the default generated code is better.
-            ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
-            // Also for single fieldless variant enum
-            ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => false,
-            ItemKind::Enum(.., enum_def)
-                if enum_def.variants.len() == 1
-                    && matches!(enum_def.variants[0].data, ast::VariantData::Unit(..)) =>
-            {
-                false
-            }
-            ItemKind::Struct(_, ast::Generics { params, .. }, _)
-            | ItemKind::Enum(_, ast::Generics { params, .. }, _)
-                if has_derive_ord
-                    && !params
-                        .iter()
-                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })) =>
-            {
-                true
-            }
-            _ => false,
-        },
+    let is_simple = match &item.kind {
+        // For unit structs/zero-variant enums, the default generated code is better.
+        ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
+        // Also for single fieldless variant enum
+        ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => false,
+        ItemKind::Enum(.., enum_def)
+            if enum_def.variants.len() == 1
+                && matches!(enum_def.variants[0].data, ast::VariantData::Unit(..)) =>
+        {
+            false
+        }
+        ItemKind::Struct(_, ast::Generics { params, .. }, _)
+        | ItemKind::Enum(_, ast::Generics { params, .. }, _)
+            if has_derive_ord
+                && !params
+                    .iter()
+                    .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })) =>
+        {
+            true
+        }
         _ => false,
     };
 

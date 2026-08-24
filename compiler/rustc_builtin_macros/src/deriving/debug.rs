@@ -12,7 +12,7 @@ pub(crate) fn expand_deriving_debug(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
-    item: &Annotatable,
+    item: &ast::Item,
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {

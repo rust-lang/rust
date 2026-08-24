@@ -1,6 +1,6 @@
 use ast::HasAttrs;
 use rustc_ast::mut_visit::MutVisitor;
-use rustc_ast::visit::BoundKind;
+use rustc_ast::visit::{BoundKind, Visitor};
 use rustc_ast::{
     self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind, MetaItem,
     TraitBoundModifiers, VariantData, WherePredicate,
@@ -22,15 +22,13 @@ pub(crate) fn expand_deriving_coerce_pointee(
     cx: &ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,
-    item: &Annotatable,
+    item: &ast::Item,
     push: &mut dyn FnMut(Annotatable),
     _is_const: bool,
 ) {
-    item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
+    DetectNonGenericPointeeAttr { cx }.visit_item(item);
 
-    let (name_ident, generics) = if let Annotatable::Item(aitem) = item
-        && let ItemKind::Struct(ident, g, struct_data) = &aitem.kind
-    {
+    let (name_ident, generics) = if let ItemKind::Struct(ident, g, struct_data) = &item.kind {
         if !matches!(
             struct_data,
             VariantData::Struct { fields, recovered: _ } | VariantData::Tuple(fields, _)

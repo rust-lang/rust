@@ -15,7 +15,7 @@ pub(crate) fn expand_deriving_reborrow(
     cx: &ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,
-    item: &Annotatable,
+    item: &ast::Item,
     push: &mut dyn FnMut(Annotatable),
     _is_const: bool,
 ) {
@@ -30,7 +30,7 @@ pub(crate) fn expand_deriving_coerce_shared(
     cx: &ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,
-    item: &Annotatable,
+    item: &ast::Item,
     push: &mut dyn FnMut(Annotatable),
     _is_const: bool,
 ) {
@@ -55,25 +55,19 @@ pub(crate) fn expand_deriving_coerce_shared(
 fn struct_def<'a>(
     cx: &ExtCtxt<'_>,
     span: Span,
-    item: &'a Annotatable,
+    item: &'a ast::Item,
     trait_name: Symbol,
 ) -> Option<(Ident, &'a Generics)> {
-    match item {
-        Annotatable::Item(item) => match &item.kind {
-            ItemKind::Struct(ident, generics, _) => Some((*ident, generics)),
-            ItemKind::Enum(..) => {
-                cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "enum" });
-                None
-            }
-            ItemKind::Union(..) => {
-                cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "union" });
-                None
-            }
-            _ => {
-                cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "item" });
-                None
-            }
-        },
+    match &item.kind {
+        ItemKind::Struct(ident, generics, _) => Some((*ident, generics)),
+        ItemKind::Enum(..) => {
+            cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "enum" });
+            None
+        }
+        ItemKind::Union(..) => {
+            cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "union" });
+            None
+        }
         _ => {
             cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "item" });
             None
@@ -81,12 +75,7 @@ fn struct_def<'a>(
     }
 }
 
-fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &Annotatable) -> Option<Box<ast::Ty>> {
-    let Annotatable::Item(item) = item else {
-        cx.dcx().emit_err(MissingTarget { span });
-        return None;
-    };
-
+fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &ast::Item) -> Option<Box<ast::Ty>> {
     let mut attrs = item.attrs.iter().filter(|attr| attr.has_name(sym::coerce_shared));
     let Some(attr) = attrs.next() else {
         cx.dcx().emit_err(MissingTarget { span });

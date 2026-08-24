@@ -179,10 +179,11 @@ use std::{iter, vec};
 
 pub(crate) use StaticFields::*;
 pub(crate) use SubstructureFields::*;
+pub(crate) use rustc_ast as ast;
 use rustc_ast::token::{IdentIsRaw, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
-    self as ast, AnonConst, AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg,
+    AnonConst, AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg,
     GenericParamKind, Generics, Mutability, PatKind, Safety, SelfKind, VariantData,
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
@@ -473,7 +474,7 @@ impl<'a> TraitDef<'a> {
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
-        item: &'a Annotatable,
+        item: &'a ast::Item,
         push: &mut dyn FnMut(Annotatable),
     ) {
         self.expand_ext(cx, mitem, item, push, false);
@@ -483,72 +484,62 @@ impl<'a> TraitDef<'a> {
         self,
         cx: &ExtCtxt<'_>,
         mitem: &ast::MetaItem,
-        item: &'a Annotatable,
+        item: &'a ast::Item,
         push: &mut dyn FnMut(Annotatable),
         from_scratch: bool,
     ) {
-        match item {
-            Annotatable::Item(item) => {
-                let is_packed = matches!(
-                    AttributeParser::parse_limited_sym(cx.sess, &item.attrs, &[sym::repr]),
-                    Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
-                );
+        let is_packed = matches!(
+            AttributeParser::parse_limited_sym(cx.sess, &item.attrs, &[sym::repr]),
+            Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
+        );
 
-                let mut newitem = match &item.kind {
-                    ast::ItemKind::Struct(ident, generics, struct_def) => self.expand_struct_def(
+        let mut newitem = match &item.kind {
+            ast::ItemKind::Struct(ident, generics, struct_def) => {
+                self.expand_struct_def(cx, struct_def, *ident, generics, from_scratch, is_packed)
+            }
+            ast::ItemKind::Enum(ident, generics, enum_def) => {
+                // We ignore `is_packed` here, because `repr(packed)`
+                // enums cause an error later on.
+                //
+                // This can only cause further compilation errors
+                // downstream in blatantly illegal code, so it is fine.
+                self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
+            }
+            ast::ItemKind::Union(ident, generics, struct_def) => {
+                if self.supports_unions {
+                    self.expand_struct_def(
                         cx,
                         struct_def,
                         *ident,
                         generics,
                         from_scratch,
                         is_packed,
-                    ),
-                    ast::ItemKind::Enum(ident, generics, enum_def) => {
-                        // We ignore `is_packed` here, because `repr(packed)`
-                        // enums cause an error later on.
-                        //
-                        // This can only cause further compilation errors
-                        // downstream in blatantly illegal code, so it is fine.
-                        self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
-                    }
-                    ast::ItemKind::Union(ident, generics, struct_def) => {
-                        if self.supports_unions {
-                            self.expand_struct_def(
-                                cx,
-                                struct_def,
-                                *ident,
-                                generics,
-                                from_scratch,
-                                is_packed,
-                            )
-                        } else {
-                            cx.dcx().emit_err(diagnostics::DeriveUnion { span: mitem.span });
-                            return;
-                        }
-                    }
-                    _ => unreachable!(),
-                };
-                // Keep the lint attributes of the previous item to control how the
-                // generated implementations are linted
-                newitem.attrs.extend(
-                    item.attrs
-                        .iter()
-                        .filter(|a| {
-                            a.has_any_name(&[
-                                sym::allow,
-                                sym::warn,
-                                sym::deny,
-                                sym::forbid,
-                                sym::stable,
-                                sym::unstable,
-                            ])
-                        })
-                        .cloned(),
-                );
-                push(Annotatable::Item(newitem))
+                    )
+                } else {
+                    cx.dcx().emit_err(diagnostics::DeriveUnion { span: mitem.span });
+                    return;
+                }
             }
             _ => unreachable!(),
-        }
+        };
+        // Keep the lint attributes of the previous item to control how the
+        // generated implementations are linted
+        newitem.attrs.extend(
+            item.attrs
+                .iter()
+                .filter(|a| {
+                    a.has_any_name(&[
+                        sym::allow,
+                        sym::warn,
+                        sym::deny,
+                        sym::forbid,
+                        sym::stable,
+                        sym::unstable,
+                    ])
+                })
+                .cloned(),
+        );
+        push(Annotatable::Item(newitem))
     }
 
     /// Given that we are deriving a trait `DerivedTrait` for a type like:

@@ -1,6 +1,6 @@
 use core::ops::ControlFlow;
 
-use rustc_ast::visit::visit_opt;
+use rustc_ast::visit::{Visitor, visit_opt};
 use rustc_ast::{self as ast, EnumDef, Safety, VariantData, attr};
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
@@ -15,11 +15,11 @@ pub(crate) fn expand_deriving_default(
     cx: &ExtCtxt<'_>,
     span: Span,
     mitem: &ast::MetaItem,
-    item: &Annotatable,
+    item: &ast::Item,
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {
-    item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
+    DetectNonVariantDefaultAttr { cx }.visit_item(item);
 
     let trait_def = TraitDef {
         span,
@@ -42,7 +42,7 @@ pub(crate) fn expand_deriving_default(
                         default_struct_substructure(cx, trait_span, substr, fields)
                     }
                     StaticEnum(enum_def) => {
-                        default_enum_substructure(cx, trait_span, enum_def, item.span())
+                        default_enum_substructure(cx, trait_span, enum_def, item.span)
                     }
                     _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
                 }
@@ -308,7 +308,7 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
     }
 }
 
-fn has_a_default_variant(item: &Annotatable) -> bool {
+fn has_a_default_variant(item: &ast::Item) -> bool {
     struct HasDefaultAttrOnVariant;
 
     impl<'ast> rustc_ast::visit::Visitor<'ast> for HasDefaultAttrOnVariant {
@@ -323,5 +323,5 @@ fn has_a_default_variant(item: &Annotatable) -> bool {
         }
     }
 
-    item.visit_with(&mut HasDefaultAttrOnVariant).is_break()
+    HasDefaultAttrOnVariant.visit_item(item).is_break()
 }
