@@ -780,6 +780,7 @@ impl<'a> Builder<'a> {
                 llvm::Lld,
                 llvm::Enzyme,
                 llvm::RustOffload,
+                llvm::GpuLibc,
                 llvm::CrtBeginEnd,
                 tool::RustdocGUITest,
                 tool::OptimizedDist,
@@ -1522,6 +1523,14 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// Return the `llvm-config` for the host target, so that it is executable.
     pub fn host_llvm_config(&self) -> PathBuf {
         self.ensure(llvm::Llvm { target: self.host_target }).llvm_config().to_owned()
+    }
+
+    /// Root output directory of the OpenMP/Offload runtimes for `target`
+    ///
+    /// Deliberately not under `llvm_output_dir`, since running cmake twice in the same folder is
+    /// known to cause issues, like deleting existing binaries.
+    pub fn offload_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(target).join("offload")
     }
 
     /// Updates all submodules, and exits with an error if submodule

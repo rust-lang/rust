@@ -2887,6 +2887,10 @@ impl CommandLineStep for Offload {
 
         let omp_offload = builder.ensure(llvm::OmpOffload { target });
         let rust_offload = builder.ensure(llvm::RustOffload { target });
+        let gpu_libcs: Vec<_> = llvm::GPU_TARGETS
+            .iter()
+            .map(|&gpu_target| (gpu_target, builder.ensure(llvm::GpuLibc { target, gpu_target })))
+            .collect();
 
         if builder.config.dry_run() {
             return None;
@@ -2898,13 +2902,20 @@ impl CommandLineStep for Offload {
         tarball.set_overlay(OverlayKind::Offload);
         tarball.is_preview(true);
 
-        let omp_offload_libdir = builder.out.join(target).join("offload").join("lib");
+        let omp_offload_libdir = builder.offload_out(target).join("lib");
 
         for path in omp_offload.artifact_paths_with_symlink_targets() {
             let relative = t!(path.strip_prefix(&omp_offload_libdir));
             let destdir = target_libdir.join(relative.parent().unwrap());
 
             tarball.add_file(path, destdir, FileType::NativeLibrary);
+        }
+
+        for (gpu_target, gpu_libc) in &gpu_libcs {
+            let destdir = target_libdir.join(gpu_target);
+            for path in gpu_libc.paths() {
+                tarball.add_file(path, &destdir, FileType::NativeLibrary);
+            }
         }
 
         tarball.add_file(rust_offload.rust_offload_path(), target_libdir, FileType::NativeLibrary);

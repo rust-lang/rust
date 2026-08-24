@@ -76,6 +76,10 @@ RUN ./build-zstd.sh
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+RUN yum install -y python3-pip && \
+    pip3 install --no-cache-dir pyyaml==6.0.1 && \
+    yum clean all
+
 ENV PGO_HOST=x86_64-unknown-linux-gnu
 
 ENV HOSTS=x86_64-unknown-linux-gnu

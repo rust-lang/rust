@@ -2305,6 +2305,17 @@ impl CommandLineStep for Assemble {
                     let dst_lib = target_libdir.join(libname);
                     builder.resolve_symlink_and_copy(&p, &dst_lib);
                 }
+
+                for &gpu_target in llvm::GPU_TARGETS {
+                    let gpu_libc =
+                        builder.ensure(llvm::GpuLibc { target: build_compiler.host, gpu_target });
+                    let dst_dir = target_libdir.join(gpu_target);
+                    t!(fs::create_dir_all(&dst_dir));
+                    for p in gpu_libc.paths() {
+                        let dst_lib = dst_dir.join(p.file_name().unwrap());
+                        builder.copy_link(p, &dst_lib, FileType::NativeLibrary);
+                    }
+                }
             }
         }
 
