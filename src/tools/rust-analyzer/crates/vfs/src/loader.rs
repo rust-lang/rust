@@ -60,7 +60,7 @@ pub enum Message {
         n_total: usize,
         /// The files that have been loaded successfully.
         n_done: LoadingProgress,
-        /// The dir being loaded, `None` if its for a file.
+        /// The dir being loaded, `None` if it's for a file.
         dir: Option<AbsPathBuf>,
         /// The [`Config`] version.
         config_version: u32,

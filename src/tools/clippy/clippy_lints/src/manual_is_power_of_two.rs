@@ -43,7 +43,7 @@ pub struct ManualIsPowerOfTwo {
 
 impl ManualIsPowerOfTwo {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 
     fn build_sugg(&self, cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {

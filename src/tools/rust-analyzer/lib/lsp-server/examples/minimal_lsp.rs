@@ -82,9 +82,7 @@ use toolchain::command; // clippy-approved wrapper
 
 #[allow(clippy::print_stderr, clippy::disallowed_types, clippy::disallowed_methods)]
 use anyhow::{Context, Result, anyhow, bail};
-use lsp_server::{
-    Connection, Message, Request as ServerRequest, RequestId, Response, ResponseKind,
-};
+use lsp_server::{Connection, Message, Request as ServerRequest, RequestId, Response};
 
 // =====================================================================
 // main
@@ -306,8 +304,7 @@ fn full_range(text: &str) -> Range {
 }
 
 fn send_ok<T: serde::Serialize>(conn: &Connection, id: RequestId, result: &T) -> Result<()> {
-    let resp =
-        Response { id, response_kind: ResponseKind::Ok { result: serde_json::to_value(result)? } };
+    let resp = Response { id, response_result: Ok(serde_json::to_value(result)?) };
     conn.sender.send(Message::Response(resp))?;
     Ok(())
 }
@@ -320,9 +317,11 @@ fn send_err(
 ) -> Result<()> {
     let resp = Response {
         id,
-        response_kind: ResponseKind::Err {
-            error: lsp_server::ResponseError { code: code as i32, message: msg.into(), data: None },
-        },
+        response_result: Err(lsp_server::ResponseError {
+            code: code as i32,
+            message: msg.into(),
+            data: None,
+        }),
     };
     conn.sender.send(Message::Response(resp))?;
     Ok(())

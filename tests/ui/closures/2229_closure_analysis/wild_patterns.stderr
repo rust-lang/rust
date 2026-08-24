@@ -1,35 +1,5 @@
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/wild_patterns.rs:22:13
-   |
-LL |     let c = #[rustc_capture_analysis]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/wild_patterns.rs:41:13
-   |
-LL |     let c = #[rustc_capture_analysis]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/wild_patterns.rs:60:13
-   |
-LL |     let c = #[rustc_capture_analysis]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error: First Pass analysis includes:
-  --> $DIR/wild_patterns.rs:26:5
+  --> $DIR/wild_patterns.rs:23:5
    |
 LL | /     || {
 ...  |
@@ -37,13 +7,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing p[(0, 0)] -> Immutable
-  --> $DIR/wild_patterns.rs:30:37
+  --> $DIR/wild_patterns.rs:27:37
    |
 LL |         let Point { x: _x, y: _ } = p;
    |                                     ^
 
 error: Min Capture analysis includes:
-  --> $DIR/wild_patterns.rs:26:5
+  --> $DIR/wild_patterns.rs:23:5
    |
 LL | /     || {
 ...  |
@@ -51,13 +21,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture p[(0, 0)] -> Immutable
-  --> $DIR/wild_patterns.rs:30:37
+  --> $DIR/wild_patterns.rs:27:37
    |
 LL |         let Point { x: _x, y: _ } = p;
    |                                     ^
 
 error: First Pass analysis includes:
-  --> $DIR/wild_patterns.rs:45:5
+  --> $DIR/wild_patterns.rs:39:5
    |
 LL | /     || {
 ...  |
@@ -65,13 +35,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing t[(0, 0)] -> ByValue
-  --> $DIR/wild_patterns.rs:49:23
+  --> $DIR/wild_patterns.rs:43:23
    |
 LL |         let (_x, _) = t;
    |                       ^
 
 error: Min Capture analysis includes:
-  --> $DIR/wild_patterns.rs:45:5
+  --> $DIR/wild_patterns.rs:39:5
    |
 LL | /     || {
 ...  |
@@ -79,13 +49,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture t[(0, 0)] -> ByValue
-  --> $DIR/wild_patterns.rs:49:23
+  --> $DIR/wild_patterns.rs:43:23
    |
 LL |         let (_x, _) = t;
    |                       ^
 
 error: First Pass analysis includes:
-  --> $DIR/wild_patterns.rs:64:5
+  --> $DIR/wild_patterns.rs:55:5
    |
 LL | /     || {
 ...  |
@@ -93,13 +63,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing arr[Index] -> ByValue
-  --> $DIR/wild_patterns.rs:68:23
+  --> $DIR/wild_patterns.rs:59:23
    |
 LL |         let [_x, _] = arr;
    |                       ^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/wild_patterns.rs:64:5
+  --> $DIR/wild_patterns.rs:55:5
    |
 LL | /     || {
 ...  |
@@ -107,11 +77,10 @@ LL | |     };
    | |_____^
    |
 note: Min Capture arr[] -> ByValue
-  --> $DIR/wild_patterns.rs:68:23
+  --> $DIR/wild_patterns.rs:59:23
    |
 LL |         let [_x, _] = arr;
    |                       ^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

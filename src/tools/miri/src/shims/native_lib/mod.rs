@@ -354,7 +354,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Run the validation that would usually be part of `return`, also to reset
         // any provenance and padding that would not survive the return.
         if MiriMachine::enforce_validity(this, dest.layout) {
-            this.validate_operand(
+            this.validate_place(
                 &dest.clone().into(),
                 MiriMachine::enforce_validity_recursively(this, dest.layout),
                 /*reset_provenance_and_padding*/ true,

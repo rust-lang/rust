@@ -16,6 +16,7 @@ rustc_builtin_macros = { path = "../rustc_builtin_macros" }
 rustc_codegen_llvm = { path = "../rustc_codegen_llvm", optional = true }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_const_eval = { path = "../rustc_const_eval" }
+rustc_crate_store = { path = "../rustc_crate_store" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }
@@ -57,6 +58,5 @@ rustc_abi = { path = "../rustc_abi" }
 # tidy-alphabetical-start
 check_only = ['rustc_codegen_llvm?/check_only']
 llvm = ['dep:rustc_codegen_llvm']
-llvm_enzyme = ['rustc_builtin_macros/llvm_enzyme', 'rustc_codegen_llvm/llvm_enzyme']
 llvm_offload = ['rustc_codegen_llvm/llvm_offload']
 # tidy-alphabetical-end

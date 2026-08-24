@@ -1,6 +1,5 @@
 //@ run-pass
 //@ ignore-backends: gcc
-#![feature(c_variadic)]
 
 #[repr(transparent)]
 struct Struct(i32);

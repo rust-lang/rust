@@ -433,7 +433,7 @@ fn f<'a>() {
     let y = S::<'_>(loop {});
       //^ S<'_>
     let z = S::<'a>(loop {});
-      //^ S<'a>
+      //^ S<'_>
 
 }
 "#,
@@ -1446,22 +1446,7 @@ fn f<'a>() {
                                 ),
                                 tooltip: "",
                             },
-                            "<",
-                            InlayHintLabelPart {
-                                text: "'a",
-                                linked_location: Some(
-                                    Computed(
-                                        FileRangeWrapper {
-                                            file_id: FileId(
-                                                0,
-                                            ),
-                                            range: 35..37,
-                                        },
-                                    ),
-                                ),
-                                tooltip: "",
-                            },
-                            ">",
+                            "<'_>",
                         ],
                     ),
                 ]

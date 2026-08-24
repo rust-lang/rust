@@ -1,8 +1,11 @@
-// Test scope annotations from `parent_label` parameter
+// Test scope annotations from `parent_label`, including when it is in a later attribute.
 
 #![feature(rustc_attrs)]
 
+#[rustc_on_unimplemented(label = "unsatisfied trait bound")]
 #[rustc_on_unimplemented(parent_label = "in this scope")]
+#[rustc_on_unimplemented(parent_label = "ignored parent label")]
+//~^ WARN `parent_label` is ignored due to previous definition of `parent_label`
 trait Trait {}
 
 struct Foo;

@@ -591,6 +591,7 @@ pub const trait From<T>: Sized {
     #[rustc_diagnostic_item = "from_fn"]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[lang = "from"]
     fn from(value: T) -> Self;
 }
 

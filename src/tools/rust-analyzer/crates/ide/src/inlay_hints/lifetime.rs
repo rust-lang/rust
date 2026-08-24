@@ -204,7 +204,7 @@ fn hints_(
     mut is_trivial: bool,
 ) -> Option<()> {
     let is_elided = |lt: &Option<ast::Lifetime>| match lt {
-        Some(lt) => matches!(lt.text().as_str(), "'_"),
+        Some(lt) => matches!(lt.text(), "'_"),
         None => true,
     };
     let self_param = self_param.and_then(|it| {
@@ -298,12 +298,12 @@ fn hints_(
         potential_lt_refs.for_each(|(name, ..)| {
             let name = match name {
                 Some(it) if config.param_names_for_lifetime_elision_hints => {
-                    if let Some(c) = used_names.get_mut(it.text().as_str()) {
+                    if let Some(c) = used_names.get_mut(it.text()) {
                         *c += 1;
-                        format_smolstr!("'{}{c}", it.text().as_str())
+                        format_smolstr!("'{}{c}", it.text())
                     } else {
-                        used_names.insert(it.text().as_str().into(), 0);
-                        format_smolstr!("'{}", it.text().as_str())
+                        used_names.insert(it.text().into(), 0);
+                        format_smolstr!("'{}", it.text())
                     }
                 }
                 _ => gen_idx_name(),
@@ -316,7 +316,7 @@ fn hints_(
     let output = match potential_lt_refs.as_slice() {
         [(_, _, lifetime, _), ..] if self_param.is_some() || potential_lt_refs.len() == 1 => {
             match lifetime {
-                Some(lt) => match lt.text().as_str() {
+                Some(lt) => match lt.text() {
                     "'_" => allocated_lifetimes.first().cloned(),
                     "'static" => None,
                     name => Some(name.into()),

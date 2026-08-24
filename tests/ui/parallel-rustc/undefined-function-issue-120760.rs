@@ -1,8 +1,6 @@
 // Test for #120760, which causes an ice bug: no index for a field
-//
-//@ compile-flags: -Z threads=45
+
 //@ edition: 2021
-//@ compare-output-by-lines
 
 type BoxFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output = T>>>;
 

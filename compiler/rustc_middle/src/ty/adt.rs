@@ -11,9 +11,10 @@ use rustc_data_structures::stable_hash::{
     StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{self as hir, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::DataTypeKind;
@@ -23,7 +24,7 @@ use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
 
 use super::{
-    AsyncDestructor, Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr,
+    AsyncDestructor, Destructor, FieldDef, GenericClauses, Ty, TyCtxt, VariantDef, VariantDiscr,
 };
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::util::{Discr, IntTypeExt};
@@ -562,8 +563,8 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     #[inline]
-    pub fn predicates(self, tcx: TyCtxt<'tcx>) -> GenericPredicates<'tcx> {
-        tcx.predicates_of(self.did())
+    pub fn clauses(self, tcx: TyCtxt<'tcx>) -> GenericClauses<'tcx> {
+        tcx.clauses_of(self.did())
     }
 
     /// Returns an iterator over all fields contained
@@ -658,7 +659,7 @@ impl<'tcx> AdtDef<'tcx> {
                     Ok(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    let guar = tcx.dcx().emit_err(crate::error::ConstEvalNonIntError {
+                    let guar = tcx.dcx().emit_err(crate::diagnostics::ConstEvalNonIntError {
                         span: tcx.def_span(expr_did),
                     });
                     Err(guar)

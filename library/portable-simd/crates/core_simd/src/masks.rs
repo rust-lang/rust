@@ -29,7 +29,7 @@ macro_rules! impl_fix_endianness {
 
 impl_fix_endianness! { u8, u16, u32, u64 }
 
-mod sealed {
+mod private_methods {
     use super::*;
 
     /// Not only does this seal the `MaskElement` trait, but these functions prevent other traits
@@ -38,7 +38,7 @@ mod sealed {
     /// For example, `eq` could be provided by requiring `MaskElement: PartialEq`, but that would
     /// prevent us from ever removing that bound, or from implementing `MaskElement` on
     /// non-`PartialEq` types in the future.
-    pub trait Sealed {
+    pub impl(super) trait PrivateMethods {
         fn valid<const N: usize>(values: Simd<Self, N>) -> bool
         where
             Self: SimdElement;
@@ -55,17 +55,20 @@ mod sealed {
         const FALSE: Self;
     }
 }
-use sealed::Sealed;
+use private_methods::PrivateMethods;
 
 /// Marker trait for types that may be used as SIMD mask elements.
 ///
 /// # Safety
 /// Type must be a signed integer.
-pub unsafe trait MaskElement: SimdElement<Mask = Self> + SimdCast + Sealed {}
+pub impl(self) unsafe trait MaskElement:
+    SimdElement<Mask = Self> + SimdCast + PrivateMethods
+{
+}
 
 macro_rules! impl_element {
     { $ty:ty, $unsigned:ty } => {
-        impl Sealed for $ty {
+        impl PrivateMethods for $ty {
             #[inline]
             fn valid<const N: usize>(value: Simd<Self, N>) -> bool
             {
@@ -196,7 +199,7 @@ where
     pub unsafe fn from_simd_unchecked(value: Simd<T, N>) -> Self {
         // Safety: the caller must confirm this invariant
         unsafe {
-            core::intrinsics::assume(<T as Sealed>::valid(value));
+            core::intrinsics::assume(<T as PrivateMethods>::valid(value));
         }
         Self(value)
     }
@@ -361,8 +364,7 @@ where
     pub fn first_set(self) -> Option<usize> {
         // If bitmasks are efficient, using them is better
         if cfg!(target_feature = "sse") && N <= 64 {
-            let tz = self.to_bitmask().trailing_zeros();
-            return if tz == 64 { None } else { Some(tz as usize) };
+            return self.to_bitmask().lowest_one().map(|i| i as usize);
         }
 
         // To find the first set index:
@@ -409,6 +411,66 @@ where
             }
 
             Some(min_index)
+        }
+    }
+
+    /// Finds the index of the last set element.
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::mask32x8;
+    /// assert_eq!(mask32x8::splat(false).last_set(), None);
+    /// assert_eq!(mask32x8::splat(true).last_set(), Some(7));
+    ///
+    /// let mask = mask32x8::from_array([false, true, false, false, true, false, true, false]);
+    /// assert_eq!(mask.last_set(), Some(6));
+    /// ```
+    #[inline]
+    #[must_use = "method returns the index and does not mutate the original value"]
+    pub fn last_set(self) -> Option<usize> {
+        // If bitmasks are efficient, using them is better
+        if cfg!(target_feature = "sse") && N <= 64 {
+            return self.to_bitmask().highest_one().map(|i| i as usize);
+        }
+
+        // To find the first set index:
+        // * create a vector 0..N
+        // * replace unset mask elements in that vector with -1
+        // * perform _signed_ reduce-max
+        // * check if the result is -1 or an index
+
+        let index: Simd<T, N> = const {
+            let mut index = [0; N];
+            let mut i = 0;
+            while i < N {
+                index[i] = i;
+                i += 1;
+            }
+            // Safety: the input and output are integer vectors
+            unsafe { core::intrinsics::simd::simd_cast(Simd::from_array(index)) }
+        };
+
+        // Safety: the input and output are integer vectors
+        let masked_index: Simd<T, N> =
+            unsafe { core::intrinsics::simd::simd_or((!self).to_simd(), index) };
+
+        // Safety: the input is an integer vector
+        let max_index: T = unsafe { core::intrinsics::simd::simd_reduce_max(masked_index) };
+
+        if max_index.eq(T::TRUE) {
+            None
+        } else {
+            let max_index = max_index.to_usize();
+
+            // Allow eliminating bounds checks when using the index
+            // Safety: the index can't exceed the number of elements in the vector
+            unsafe {
+                core::hint::assert_unchecked(max_index < N);
+            }
+
+            Some(max_index)
         }
     }
 }

@@ -3,6 +3,7 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 
 pub(super) struct Derefer;
@@ -101,7 +102,8 @@ impl<'tcx> crate::MirPass<'tcx> for Derefer {
         deref_finder(tcx, body, true);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Later MIR stages expect derefs to only appear as the first place projection.
+        PassPolicy::Required
     }
 }

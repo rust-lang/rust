@@ -290,8 +290,8 @@ impl ExternAbi {
     }
 
     /// Returns whether the ABI supports C variadics. This only controls whether we allow *imports*
-    /// of such functions via `extern` blocks; there's a separate check during AST construction
-    /// guarding *definitions* of variadic functions.
+    /// of such functions via `extern` blocks and definition via naked functions; there's a
+    /// separate check during AST construction guarding *definitions* of variadic functions.
     #[cfg(feature = "nightly")]
     pub fn supports_c_variadic(self) -> CVariadicStatus {
         // * C and Cdecl obviously support varargs.

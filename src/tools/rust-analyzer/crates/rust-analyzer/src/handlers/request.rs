@@ -287,6 +287,7 @@ pub(crate) fn handle_run_test(
                     Some(cargo.target_directory().as_ref()),
                     target,
                     state.test_run_sender.clone(),
+                    ws.toolchain.as_ref(),
                 )?;
                 handles.push(handle);
             }
@@ -780,10 +781,7 @@ pub(crate) fn handle_will_rename_files(
     let source_changes: Vec<SourceChange> = params
         .files
         .into_iter()
-        .filter_map(|file_rename| {
-            let from = Uri::parse(&file_rename.old_uri).ok()?;
-            let to = Uri::parse(&file_rename.new_uri).ok()?;
-
+        .filter_map(|lsp_types::FileRename { new_uri: to, old_uri: from }| {
             let from_path = from.to_file_path().ok()?;
             let to_path = to.to_file_path().ok()?;
 
@@ -2726,6 +2724,7 @@ fn resource_ops_supported(config: &Config, kind: &DocumentChange) -> anyhow::Res
                     ResourceOperationKind::Create => "create",
                     ResourceOperationKind::Rename => "rename",
                     ResourceOperationKind::Delete => "delete",
+                    ResourceOperationKind::Custom(_) => unreachable!(),
                 }
             ),
         )

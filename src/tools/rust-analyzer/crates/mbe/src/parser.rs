@@ -92,39 +92,14 @@ impl MetaTemplate {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Op {
-    Var {
-        name: Symbol,
-        kind: Option<MetaVarKind>,
-        id: Span,
-    },
-    Ignore {
-        name: Symbol,
-        id: Span,
-    },
-    Index {
-        depth: usize,
-    },
-    Len {
-        depth: usize,
-    },
-    Count {
-        name: Symbol,
-        // FIXME: `usize` once we drop support for 1.76
-        depth: Option<usize>,
-    },
-    Concat {
-        elements: Box<[ConcatMetaVarExprElem]>,
-        span: Span,
-    },
-    Repeat {
-        tokens: MetaTemplate,
-        kind: RepeatKind,
-        separator: Option<Arc<Separator>>,
-    },
-    Subtree {
-        tokens: MetaTemplate,
-        delimiter: tt::Delimiter,
-    },
+    Var { name: Symbol, kind: Option<MetaVarKind>, id: Span },
+    Ignore { name: Symbol, id: Span },
+    Index { depth: usize },
+    Len { depth: usize },
+    Count { name: Symbol, depth: usize },
+    Concat { elements: Box<[ConcatMetaVarExprElem]>, span: Span },
+    Repeat { tokens: MetaTemplate, kind: RepeatKind, separator: Option<Arc<Separator>> },
+    Subtree { tokens: MetaTemplate, delimiter: tt::Delimiter },
     Literal(tt::Literal),
     Punct(Box<ArrayVec<tt::Punct, MAX_GLUED_PUNCT_LEN>>),
     Ident(tt::Ident),
@@ -432,11 +407,8 @@ fn parse_metavar_expr(src: &mut TtIter<'_>) -> Result<Op, ()> {
         s if sym::count == *s => {
             args_iter.expect_dollar()?;
             let ident = args_iter.expect_ident()?;
-            let depth = if try_eat_comma(&mut args_iter) {
-                Some(parse_depth(&mut args_iter)?)
-            } else {
-                None
-            };
+            let depth =
+                if try_eat_comma(&mut args_iter) { parse_depth(&mut args_iter)? } else { 0 };
             Op::Count { name: ident.sym.clone(), depth }
         }
         s if sym::concat == *s => {

@@ -47,10 +47,10 @@ where
         // to be very careful when changing the impl where-clauses to be productive.
         self.add_goals(
             GoalSource::Misc,
-            cx.predicates_of(def_id.into())
+            cx.clauses_of(def_id.into())
                 .iter_instantiated(cx, inherent_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|pred| goal.with(cx, pred)),
+                .map(|clause| goal.with(cx, clause)),
         )?;
 
         let normalized: I::Term = match inherent.kind {

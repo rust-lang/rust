@@ -1,6 +1,6 @@
 use rustc_abi::Size;
 use rustc_ast::{self as ast, UintTy};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, LitToConstInput, ScalarInt, Ty, TyCtxt, TypeVisitableExt as _};
 use tracing::trace;

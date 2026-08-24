@@ -8,7 +8,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::sym;
 
-use crate::lints::{IntegerToPtrTransmutes, IntegerToPtrTransmutesSuggestion};
+use crate::diagnostics::{IntegerToPtrTransmutes, IntegerToPtrTransmutesSuggestion};
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {

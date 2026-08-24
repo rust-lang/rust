@@ -8,6 +8,7 @@ members = [
   "src/rustc-std-workspace/rustc-std-workspace-core",
   "src/rustc-std-workspace/rustc-std-workspace-std",
   "src/rustdoc-json-types",
+  "src/shim_utils",
   "src/tools/build-manifest",
   "src/tools/bump-stage0",
   "src/tools/cargotest",

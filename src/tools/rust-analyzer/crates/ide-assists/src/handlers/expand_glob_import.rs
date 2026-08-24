@@ -238,24 +238,24 @@ fn find_parent_and_path(
     }
 }
 
-fn def_is_referenced_in(def: Definition, ctx: &AssistContext<'_, '_>) -> bool {
+fn def_is_referenced_in<'db>(def: Definition<'db>, ctx: &AssistContext<'_, 'db>) -> bool {
     let search_scope = SearchScope::single_file(ctx.file_id());
     def.usages(&ctx.sema).in_scope(&search_scope).at_least_one()
 }
 
 #[derive(Debug, Clone)]
-struct Ref {
+struct Ref<'db> {
     // could be alias
     visible_name: Name,
-    def: Definition,
+    def: Definition<'db>,
     is_pub: bool,
 }
 
-impl Ref {
+impl<'db> Ref<'db> {
     fn from_scope_def(
-        ctx: &AssistContext<'_, '_>,
+        ctx: &AssistContext<'_, 'db>,
         name: Name,
-        scope_def: ScopeDef,
+        scope_def: ScopeDef<'db>,
     ) -> Option<Self> {
         match scope_def {
             ScopeDef::ModuleDef(def) => Some(Ref {
@@ -269,10 +269,10 @@ impl Ref {
 }
 
 #[derive(Debug, Clone)]
-struct Refs(Vec<Ref>);
+struct Refs<'db>(Vec<Ref<'db>>);
 
-impl Refs {
-    fn used_refs(&self, ctx: &AssistContext<'_, '_>) -> Refs {
+impl<'db> Refs<'db> {
+    fn used_refs(&self, ctx: &AssistContext<'_, 'db>) -> Refs<'db> {
         Refs(
             self.0
                 .clone()
@@ -296,18 +296,18 @@ impl Refs {
         )
     }
 
-    fn filter_out_by_defs(&self, defs: Vec<Definition>) -> Refs {
+    fn filter_out_by_defs(&self, defs: Vec<Definition<'db>>) -> Refs<'db> {
         Refs(self.0.clone().into_iter().filter(|r| !defs.contains(&r.def)).collect())
     }
 }
 
-fn find_refs_in_mod(
-    ctx: &AssistContext<'_, '_>,
+fn find_refs_in_mod<'db>(
+    ctx: &AssistContext<'_, 'db>,
     expandable: Expandable,
     current_module: Module,
     visible_from: Module,
     must_be_pub: bool,
-) -> Refs {
+) -> Refs<'db> {
     match expandable {
         Expandable::Module(module) => {
             let module_scope = module.scope(ctx.db(), Some(visible_from));
@@ -376,7 +376,7 @@ fn is_visible_from(ctx: &AssistContext<'_, '_>, expandable: &Expandable, from: M
 // use foo::*$0;
 // use baz::Baz;
 // ↑ ---------------
-fn find_imported_defs(ctx: &AssistContext<'_, '_>, use_item: Use) -> Vec<Definition> {
+fn find_imported_defs<'db>(ctx: &AssistContext<'_, 'db>, use_item: Use) -> Vec<Definition<'db>> {
     [Direction::Prev, Direction::Next]
         .into_iter()
         .flat_map(|dir| {
@@ -401,7 +401,10 @@ fn find_imported_defs(ctx: &AssistContext<'_, '_>, use_item: Use) -> Vec<Definit
         .collect()
 }
 
-fn find_names_to_import(refs_in_target: Refs, imported_defs: Vec<Definition>) -> Vec<Name> {
+fn find_names_to_import<'db>(
+    refs_in_target: Refs<'db>,
+    imported_defs: Vec<Definition<'db>>,
+) -> Vec<Name> {
     let final_refs = refs_in_target.filter_out_by_defs(imported_defs);
     final_refs.0.iter().map(|r| r.visible_name.clone()).collect()
 }

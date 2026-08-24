@@ -13,5 +13,5 @@ static S3: () = ();
 #[repr(align(16))] //~ ERROR attribute cannot be used on
 static S4: () = ();
 
-#[rustc_align_static(16)] //~ ERROR `#[rustc_align_static]` attribute cannot be used on structs
+#[rustc_align_static(16)] //~ ERROR `rustc_align_static` attribute cannot be used on structs
 struct Struct1;

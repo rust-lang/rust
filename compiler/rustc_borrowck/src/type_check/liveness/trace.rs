@@ -2,6 +2,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::traits::TraitErrors;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, HasLocalDecls, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::relate::Relate;
@@ -44,6 +45,8 @@ pub(super) fn trace<'tcx>(
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
 ) {
+    let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness_trace");
+
     let local_use_map = &LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
     let cx = LivenessContext {
         typeck,
@@ -484,6 +487,7 @@ impl<'a, 'typeck, 'tcx> LivenessContext<'a, 'typeck, 'tcx> {
             // a much, much smaller domain: in our benchmarks, when it's not zero (the most likely
             // case), there are a few dozens compared to e.g. thousands or tens of thousands of
             // locals and move paths.
+            let _timer = tcx.prof.generic_activity("borrowck_dataflow_maybe_inits");
             let flow_inits = MaybeInitializedPlaces::new(tcx, body, self.move_data)
                 .iterate_to_fixpoint(tcx, body, Some("borrowck"))
                 .into_results_cursor(body);
@@ -660,12 +664,12 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
                         span,
                     ) {
                         Ok(_) => ocx.evaluate_obligations_error_on_ambiguity(),
-                        Err(e) => e,
+                        Err(e) => TraitErrors::HasErrors(e),
                     };
 
                     // Could have no errors if a type lowering error, say, caused the query
                     // to fail.
-                    if !errors.is_empty() {
+                    if let TraitErrors::HasErrors(errors) = errors {
                         typeck.infcx.err_ctxt().report_fulfillment_errors(errors);
                     }
                 });

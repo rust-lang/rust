@@ -1,8 +1,9 @@
 use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use rustc_ast::LitKind;
-use rustc_hir::{ExprKind, LangItem};
+use rustc_hir::ExprKind;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::LateContext;
 
 use super::NO_EFFECT_REPLACE;

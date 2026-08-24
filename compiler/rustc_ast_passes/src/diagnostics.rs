@@ -125,46 +125,48 @@ pub(crate) struct FnParamCVarArgsNotLast {
 
 #[derive(Diagnostic)]
 #[diag(
-    "`#[splat]` is only supported on argument index {$max_valid_splatted_arg_index} or less, this `#[splat]` is on index {$first_invalid_splatted_arg_index}"
+    "`#[rustc_splat]` is only supported on argument index {$max_valid_splatted_arg_index} or less, this `#[rustc_splat]` is on index {$first_invalid_splatted_arg_index}"
 )]
-#[help("remove `#[splat]`, or use it on an argument closer to the start of the argument list")]
+#[help(
+    "remove `#[rustc_splat]`, or use it on an argument closer to the start of the argument list"
+)]
 pub(crate) struct InvalidSplattedArgs {
     pub max_valid_splatted_arg_index: u16,
 
     pub first_invalid_splatted_arg_index: u16,
 
     #[primary_span]
-    #[label("`#[splat]` is not supported here")]
+    #[label("`#[rustc_splat]` is not supported here")]
     pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("multiple `#[splat]`s are not allowed in the same function argument list")]
-#[help("remove `#[splat]` from all but one argument")]
+#[diag("multiple `#[rustc_splat]`s are not allowed in the same function argument list")]
+#[help("remove `#[rustc_splat]` from all but one argument")]
 pub(crate) struct DuplicateSplattedArgs {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("`...` and `#[splat]` are not allowed in the same function argument list")]
-#[help("remove `#[splat]` or remove `...`")]
+#[diag("`...` and `#[rustc_splat]` are not allowed in the same function argument list")]
+#[help("remove `#[rustc_splat]` or remove `...`")]
 pub(crate) struct CVarArgsAndSplat {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[splat]` is not allowed on closure arguments")]
-#[help("remove `#[splat]` or turn the closure into a function")]
+#[diag("`#[rustc_splat]` is not allowed on closure arguments")]
+#[help("remove `#[rustc_splat]` or turn the closure into a function")]
 pub(crate) struct SplatNotAllowedOnClosures {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[splat]` is not allowed in the arguments of functions with the `{$abi}` ABI")]
-#[help("remove `#[splat]` or change the ABI")]
+#[diag("`#[rustc_splat]` is not allowed in the arguments of functions with the `{$abi}` ABI")]
+#[help("remove `#[rustc_splat]` or change the ABI")]
 pub(crate) struct SplatNotAllowedOnAbiCall {
     #[primary_span]
     pub spans: Vec<Span>,
@@ -187,6 +189,17 @@ pub(crate) struct FnParamDocComment {
 pub(crate) struct FnParamForbiddenAttr {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
+pub(crate) struct EiiImplAttributeNotSupported<'a> {
+    #[primary_span]
+    pub attr_span: Span,
+    pub attr_name: &'a str,
+    pub eii_name: String,
+    #[label("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
+    pub eii_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -371,6 +384,13 @@ pub(crate) struct InvalidSafetyOnItem {
 pub(crate) struct InvalidSafetyOnFnPtr {
     #[primary_span]
     pub span: Span,
+    #[suggestion(
+        "remove the `safe` qualifier",
+        code = "",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    pub safe_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -717,6 +737,13 @@ pub(crate) struct UnsafeItem {
 pub(crate) struct MissingUnsafeOnExtern {
     #[primary_span]
     pub span: Span,
+
+    #[suggestion(
+        "needs `unsafe` before the extern keyword",
+        code = "unsafe ",
+        applicability = "machine-applicable"
+    )]
+    pub unsafe_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -743,7 +770,7 @@ pub(crate) struct FieldlessUnion {
 pub(crate) struct WhereClauseAfterTypeAlias {
     #[primary_span]
     pub span: Span,
-    #[help("add `#![feature(lazy_type_alias)]` to the crate attributes to enable")]
+    #[help("add `#![feature(checked_type_aliases)]` to the crate attributes to enable")]
     pub help: bool,
 }
 
@@ -1104,11 +1131,11 @@ pub(crate) struct AbiMustNotHaveParametersOrReturnType {
     #[suggestion(
         "remove the parameters and return type",
         applicability = "maybe-incorrect",
-        code = "{padding}fn {symbol}()",
+        code = "{padding}fn{symbol}()",
         style = "verbose"
     )]
     pub suggestion_span: Span,
-    pub symbol: Symbol,
+    pub symbol: String,
     pub padding: &'static str,
 }
 
@@ -1224,4 +1251,16 @@ pub(crate) enum DeprecatedWhereClauseLocationSugg {
         #[primary_span]
         span: Span,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag("missing pattern for `...` argument")]
+pub(crate) struct VarargsWithoutPattern {
+    #[suggestion(
+        "add a pattern for this argument",
+        applicability = "machine-applicable",
+        code = "_: ..."
+    )]
+    #[primary_span]
+    pub span: Span,
 }

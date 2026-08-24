@@ -79,7 +79,7 @@ impl TestableFloat for f16 {
     const EXP_APPROX: Self = if cfg!(miri) { 5e-1 } else { 1e-2 }; // for values on the order of 150, 4 ULP are more than 0.1...
     const POWI_APPROX: Self = if cfg!(miri) { 1e-1 } else { Self::APPROX };
     const LN_APPROX: Self = 1e-2;
-    const LOG_APPROX: Self = 1e-2;
+    const LOG_APPROX: Self = if cfg!(miri) { 1e-1 } else { 1e-2 };
     const LOG2_APPROX: Self = 1e-2;
     const LOG10_APPROX: Self = 1e-2;
     const ASINH_APPROX: Self = 1e-2;

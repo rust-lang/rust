@@ -7,9 +7,9 @@
 
 use std::arch::global_asm;
 
-// CHECK-LABEL: foo
 // CHECK: module asm
-// CHECK: module asm "{{[[:space:]]+}}jmp baz"
+// CHECK-LABEL: foo
+// CHECK: "{{[[:space:]]+}}jmp baz"
 global_asm!(include_str!("foo.s"));
 
 extern "C" {

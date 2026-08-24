@@ -4,4 +4,4 @@ expression: check rustc
 ---
 [Check] check::Rustc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({check::compiler/rustc})
+    - Set({compiler/rustc})

@@ -5,8 +5,8 @@
 //@aux-build:wildcard_imports_helper.rs
 
 #![warn(clippy::wildcard_imports)]
-#![allow(unused, clippy::unnecessary_wraps, clippy::let_unit_value)]
-#![warn(unused_imports)]
+#![deny(unused_imports)]
+#![expect(clippy::let_unit_value)]
 
 extern crate wildcard_imports_helper;
 

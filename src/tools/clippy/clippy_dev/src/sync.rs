@@ -1,6 +1,6 @@
 use crate::utils::{FileUpdater, update_text_region_fn};
 use chrono::offset::Utc;
-use std::fmt::Write;
+use std::fmt::Write as _;
 
 pub fn update_nightly() {
     let date = Utc::now().format("%Y-%m-%d").to_string();

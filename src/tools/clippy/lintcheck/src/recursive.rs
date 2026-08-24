@@ -7,7 +7,7 @@ use crate::ClippyWarning;
 use crate::input::RecursiveOptions;
 
 use std::collections::HashSet;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Read as _, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;

@@ -166,8 +166,8 @@ fn lang_start_internal(
     // prevent std from accidentally introducing a panic to these functions. Another is from
     // user code from `main` or, more nefariously, as described in e.g. issue #86030.
     //
-    // We use `catch_unwind` with `handle_rt_panic` instead of `abort_unwind` to make the error in
-    // case of a panic a bit nicer.
+    // We use `catch_unwind` with `handle_rt_panic` instead of `abort_on_unwind` to make the error
+    // in case of a panic a bit nicer.
     panic::catch_unwind(move || {
         // SAFETY: Only called once during runtime initialization.
         unsafe { init(argc, argv, sigpipe) };

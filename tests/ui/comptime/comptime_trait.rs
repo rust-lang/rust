@@ -1,7 +1,7 @@
 #![feature(rustc_attrs, const_trait_impl, trait_alias)]
 
 #[rustc_comptime]
-//~^ ERROR: `#[rustc_comptime]` attribute cannot be used on traits
+//~^ ERROR: the `rustc_comptime` attribute cannot be used on traits
 trait Trait {
     fn method(&self) {}
 }
@@ -9,7 +9,7 @@ trait Trait {
 const impl Trait for () {}
 
 #[rustc_comptime]
-//~^ ERROR: `#[rustc_comptime]` attribute cannot be used on trait impl
+//~^ ERROR: the `rustc_comptime` attribute cannot be used on trait impl
 impl Trait for u32 {
     fn method(&self) {
         comptime_fn();
@@ -20,7 +20,7 @@ impl Trait for u32 {
 fn comptime_fn() {}
 
 #[rustc_comptime]
-//~^ ERROR: `#[rustc_comptime]` attribute cannot be used on trait aliases
+//~^ ERROR: the `rustc_comptime` attribute cannot be used on trait aliases
 trait TraitAlias = const Trait;
 
 #[rustc_comptime]

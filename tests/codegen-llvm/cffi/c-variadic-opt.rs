@@ -2,7 +2,6 @@
 //@ ignore-bpf: BPF does not support C variadics
 
 #![crate_type = "lib"]
-#![feature(c_variadic)]
 #![no_std]
 use core::ffi::VaList;
 

@@ -1,5 +1,5 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/153198
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![allow(incomplete_features)]
 macro_rules! y {
     ( $($matcher:tt)*) => {

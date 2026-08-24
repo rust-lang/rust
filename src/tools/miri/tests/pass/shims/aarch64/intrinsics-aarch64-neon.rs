@@ -12,7 +12,7 @@ fn main() {
 
     unsafe {
         test_vpmaxq_u8();
-        test_tbl1_basic();
+        test_tbl();
         test_vpadd();
         test_vpaddl();
         test_vqdmulh();
@@ -46,47 +46,143 @@ unsafe fn test_vpmaxq_u8() {
 }
 
 #[target_feature(enable = "neon")]
-fn test_tbl1_basic() {
+fn test_tbl() {
     unsafe {
-        // table = 0..7
-        let table: uint8x8_t = transmute::<[u8; 8], _>([0, 1, 2, 3, 4, 5, 6, 7]);
+        let table_arr = [0, 1, 2, 3, 4, 5, 6, 7];
+        let table = vld1_u8(table_arr.as_ptr());
 
-        // indices
-        let idx: uint8x8_t = transmute::<[u8; 8], _>([0, 1, 2, 3, 4, 5, 6, 7]);
-        let got = vtbl1_u8(table, idx);
-        let got_arr: [u8; 8] = transmute(got);
-        assert_eq!(got_arr, [0, 1, 2, 3, 4, 5, 6, 7]);
+        let idx_arr = [0, 1, 2, 3, 4, 5, 6, 7];
+        let idx = vld1_u8(idx_arr.as_ptr());
 
-        // Also try different order and out-of-range indices (8, 255).
-        let idx2: uint8x8_t = transmute::<[u8; 8], _>([7, 8, 255, 0, 1, 2, 3, 4]);
-        let got2 = vtbl1_u8(table, idx2);
-        let got2_arr: [u8; 8] = transmute(got2);
-        assert_eq!(got2_arr[0], 7);
-        assert_eq!(got2_arr[1], 0); // out-of-range
-        assert_eq!(got2_arr[2], 0); // out-of-range
-        assert_eq!(&got2_arr[3..8], &[0, 1, 2, 3, 4][..]);
+        let got: [u8; 8] = transmute(vtbl1_u8(table, idx));
+        assert_eq!(got, [0, 1, 2, 3, 4, 5, 6, 7]);
+
+        // Also try a different order and out-of-range indices.
+        let idx_arr = [7, 8, 255, 0, 1, 2, 3, 4];
+        let idx = vld1_u8(idx_arr.as_ptr());
+
+        let got: [u8; 8] = transmute(vtbl1_u8(table, idx));
+        assert_eq!(got, [7, 0, 0, 0, 1, 2, 3, 4]);
     }
 
     unsafe {
         // table = 0..15
-        let table: uint8x16_t =
-            transmute::<[u8; 16], _>([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        // indices
-        let idx: uint8x16_t =
-            transmute::<[u8; 16], _>([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        let got = vqtbl1q_u8(table, idx);
-        let got_arr: [u8; 16] = transmute(got);
-        assert_eq!(got_arr, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+        let table0_arr = [0, 1, 2, 3, 4, 5, 6, 7];
+        let table1_arr = [8, 9, 10, 11, 12, 13, 14, 15];
+        let table0 = vld1_u8(table0_arr.as_ptr());
+        let table1 = vld1_u8(table1_arr.as_ptr());
+        let table = uint8x8x2_t(table0, table1);
 
-        // Also try different order and out-of-range indices (16, 255).
-        let idx2: uint8x16_t =
-            transmute::<[u8; 16], _>([15, 16, 255, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        let got2 = vqtbl1q_u8(table, idx2);
-        let got2_arr: [u8; 16] = transmute(got2);
-        assert_eq!(got2_arr[0], 15);
-        assert_eq!(got2_arr[1], 0); // out-of-range
-        assert_eq!(got2_arr[2], 0); // out-of-range
-        assert_eq!(&got2_arr[3..16], &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12][..]);
+        let idx_arr = [0, 7, 8, 15, 16, 255, 4, 12];
+        let idx = vld1_u8(idx_arr.as_ptr());
+
+        let got: [u8; 8] = transmute(vtbl2_u8(table, idx));
+        assert_eq!(got, [0, 7, 8, 15, 0, 0, 4, 12]);
+    }
+
+    unsafe {
+        // table = 0..23
+        let table0_arr = [0, 1, 2, 3, 4, 5, 6, 7];
+        let table1_arr = [8, 9, 10, 11, 12, 13, 14, 15];
+        let table2_arr = [16, 17, 18, 19, 20, 21, 22, 23];
+        let table0 = vld1_u8(table0_arr.as_ptr());
+        let table1 = vld1_u8(table1_arr.as_ptr());
+        let table2 = vld1_u8(table2_arr.as_ptr());
+        let table = uint8x8x3_t(table0, table1, table2);
+
+        let idx_arr = [0, 7, 8, 15, 16, 23, 24, 255];
+        let idx = vld1_u8(idx_arr.as_ptr());
+
+        let got: [u8; 8] = transmute(vtbl3_u8(table, idx));
+        assert_eq!(got, [0, 7, 8, 15, 16, 23, 0, 0]);
+    }
+
+    unsafe {
+        // table = 0..31
+        let table0_arr = [0, 1, 2, 3, 4, 5, 6, 7];
+        let table1_arr = [8, 9, 10, 11, 12, 13, 14, 15];
+        let table2_arr = [16, 17, 18, 19, 20, 21, 22, 23];
+        let table3_arr = [24, 25, 26, 27, 28, 29, 30, 31];
+        let table0 = vld1_u8(table0_arr.as_ptr());
+        let table1 = vld1_u8(table1_arr.as_ptr());
+        let table2 = vld1_u8(table2_arr.as_ptr());
+        let table3 = vld1_u8(table3_arr.as_ptr());
+        let table = uint8x8x4_t(table0, table1, table2, table3);
+
+        let idx_arr = [0, 8, 15, 16, 23, 24, 31, 32];
+        let idx = vld1_u8(idx_arr.as_ptr());
+
+        let got: [u8; 8] = transmute(vtbl4_u8(table, idx));
+        assert_eq!(got, [0, 8, 15, 16, 23, 24, 31, 0]);
+    }
+
+    unsafe {
+        let table_arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        let table = vld1q_u8(table_arr.as_ptr());
+
+        let idx_arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        let idx = vld1q_u8(idx_arr.as_ptr());
+
+        let got: [u8; 16] = transmute(vqtbl1q_u8(table, idx));
+        assert_eq!(got, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+
+        // Also try a different order and out-of-range indices.
+        let idx_arr = [15, 16, 255, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        let idx = vld1q_u8(idx_arr.as_ptr());
+
+        let got: [u8; 16] = transmute(vqtbl1q_u8(table, idx));
+        assert_eq!(got, [15, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    }
+
+    unsafe {
+        // table = 0..31
+        let table0_arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        let table1_arr = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        let table0 = vld1q_u8(table0_arr.as_ptr());
+        let table1 = vld1q_u8(table1_arr.as_ptr());
+        let table = uint8x16x2_t(table0, table1);
+
+        let idx_arr = [0, 15, 16, 31, 32, 255, 7, 8, 23, 24, 1, 14, 17, 30, 4, 27];
+        let idx = vld1q_u8(idx_arr.as_ptr());
+
+        let got: [u8; 16] = transmute(vqtbl2q_u8(table, idx));
+        assert_eq!(got, [0, 15, 16, 31, 0, 0, 7, 8, 23, 24, 1, 14, 17, 30, 4, 27]);
+    }
+
+    unsafe {
+        // table = 0..47
+        let table0_arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        let table1_arr = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        let table2_arr = [32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47];
+        let table0 = vld1q_u8(table0_arr.as_ptr());
+        let table1 = vld1q_u8(table1_arr.as_ptr());
+        let table2 = vld1q_u8(table2_arr.as_ptr());
+        let table = uint8x16x3_t(table0, table1, table2);
+
+        let idx_arr = [0, 15, 16, 31, 32, 47, 48, 255, 7, 23, 39, 1, 17, 33, 30, 46];
+        let idx = vld1q_u8(idx_arr.as_ptr());
+
+        let got: [u8; 16] = transmute(vqtbl3q_u8(table, idx));
+        assert_eq!(got, [0, 15, 16, 31, 32, 47, 0, 0, 7, 23, 39, 1, 17, 33, 30, 46]);
+    }
+
+    unsafe {
+        // table = 0..63
+        let table0_arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        let table1_arr = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        let table2_arr = [32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47];
+        let table3_arr = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63];
+        let table0 = vld1q_u8(table0_arr.as_ptr());
+        let table1 = vld1q_u8(table1_arr.as_ptr());
+        let table2 = vld1q_u8(table2_arr.as_ptr());
+        let table3 = vld1q_u8(table3_arr.as_ptr());
+        let table = uint8x16x4_t(table0, table1, table2, table3);
+
+        let idx_arr = [0, 15, 16, 31, 32, 47, 48, 63, 64, 255, 7, 23, 39, 55, 1, 62];
+        let idx = vld1q_u8(idx_arr.as_ptr());
+
+        let got: [u8; 16] = transmute(vqtbl4q_u8(table, idx));
+        assert_eq!(got, [0, 15, 16, 31, 32, 47, 48, 63, 0, 0, 7, 23, 39, 55, 1, 62]);
     }
 }
 

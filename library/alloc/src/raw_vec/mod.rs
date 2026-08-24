@@ -560,11 +560,7 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
             self.alloc.allocate(new_layout)
         };
 
-        // FIXME(const-hack): switch back to `map_err`
-        match memory {
-            Ok(memory) => Ok(memory),
-            Err(_) => Err(AllocError { layout: new_layout, non_exhaustive: () }.into()),
-        }
+        memory.map_err(const |_| AllocError { layout: new_layout, non_exhaustive: () }.into())
     }
 }
 

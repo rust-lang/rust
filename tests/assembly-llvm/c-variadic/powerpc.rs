@@ -10,7 +10,7 @@
 //@ [POWERPC64LE] needs-llvm-components: powerpc
 //@ [AIX] compile-flags: -Copt-level=3 --target powerpc64-ibm-aix
 //@ [AIX] needs-llvm-components: powerpc
-#![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 

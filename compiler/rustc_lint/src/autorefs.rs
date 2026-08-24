@@ -5,7 +5,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_session::{declare_lint, declare_lint_pass};
 
-use crate::lints::{
+use crate::diagnostics::{
     ImplicitUnsafeAutorefsDiag, ImplicitUnsafeAutorefsMethodNote, ImplicitUnsafeAutorefsOrigin,
     ImplicitUnsafeAutorefsSuggestion,
 };

@@ -68,14 +68,16 @@ pub(crate) fn generics_of<'db>(
         | BuiltinDeriveImplTrait::Ord
         | BuiltinDeriveImplTrait::PartialOrd
         | BuiltinDeriveImplTrait::Eq
-        | BuiltinDeriveImplTrait::PartialEq => Generics::from_generic_def(db, loc.adt.into()),
+        | BuiltinDeriveImplTrait::PartialEq => {
+            Generics::from_generic_def(db, loc.adt.into(), false)
+        }
         BuiltinDeriveImplTrait::CoerceUnsized | BuiltinDeriveImplTrait::DispatchFromDyn => {
             let trait_id = loc
                 .trait_
                 .get_id(interner.lang_items())
                 .expect("we don't pass the impl to the solver if we can't resolve the trait");
-            let additional_param = coerce_pointee_new_type_param(trait_id).into();
-            Generics::from_generic_def_plus_one(db, loc.adt.into(), additional_param)
+            let additional_param = coerce_pointee_new_type_param(trait_id);
+            Generics::from_generic_def_plus_one(db, loc.adt.into(), additional_param, false)
         }
     }
 }

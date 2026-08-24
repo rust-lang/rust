@@ -1,8 +1,8 @@
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/cfg-path-error.rs:6:1
+  --> $DIR/cfg-path-error.rs:6:3
    |
 LL | #[cfg(any(foo, foo::bar))]
-   | ^^^^^^^^^^^^^^^--------^^^
+   |   ^^^^^^^^^^^^^--------^^
    |                |
    |                expected a valid identifier here
    |
@@ -14,10 +14,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/cfg-path-error.rs:12:1
+  --> $DIR/cfg-path-error.rs:12:3
    |
 LL | #[cfg(any(foo::bar, foo))]
-   | ^^^^^^^^^^--------^^^^^^^^
+   |   ^^^^^^^^--------^^^^^^^
    |           |
    |           expected a valid identifier here
    |
@@ -29,10 +29,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/cfg-path-error.rs:18:1
+  --> $DIR/cfg-path-error.rs:18:3
    |
 LL | #[cfg(all(foo, foo::bar))]
-   | ^^^^^^^^^^^^^^^--------^^^
+   |   ^^^^^^^^^^^^^--------^^
    |                |
    |                expected a valid identifier here
    |
@@ -44,10 +44,10 @@ LL + #[cfg(predicate)]
    |
 
 error[E0565]: malformed `cfg` attribute input
-  --> $DIR/cfg-path-error.rs:24:1
+  --> $DIR/cfg-path-error.rs:24:3
    |
 LL | #[cfg(all(foo::bar, foo))]
-   | ^^^^^^^^^^--------^^^^^^^^
+   |   ^^^^^^^^--------^^^^^^^
    |           |
    |           expected a valid identifier here
    |

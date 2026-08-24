@@ -57,6 +57,19 @@ where
     }
 
     #[inline]
+    fn count(mut self) -> usize {
+        if self.n == 0 {
+            return 0;
+        }
+        // Advancing consumes the same elements `next` would have yielded,
+        // while benefiting from the inner iterator's `advance_by` fast path.
+        match self.iter.advance_by(self.n) {
+            Ok(()) => self.n,
+            Err(remaining) => self.n - remaining.get(),
+        }
+    }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         if self.n == 0 {
             return (0, Some(0));

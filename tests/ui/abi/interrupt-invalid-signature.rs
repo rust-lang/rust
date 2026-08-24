@@ -45,14 +45,13 @@ extern "msp430-interrupt" fn msp430_arg(_byte: u8) {}
 extern "avr-interrupt" fn avr_arg(_byte: u8) {}
 //[avr]~^ ERROR invalid signature
 
-#[cfg(any(riscv32,riscv64))]
+#[cfg(any(riscv32, riscv64))]
 extern "riscv-interrupt-m" fn riscv_m_arg(_byte: u8) {}
 //[riscv32,riscv64]~^ ERROR invalid signature
 
-#[cfg(any(riscv32,riscv64))]
+#[cfg(any(riscv32, riscv64))]
 extern "riscv-interrupt-s" fn riscv_s_arg(_byte: u8) {}
 //[riscv32,riscv64]~^ ERROR invalid signature
-
 
 /* all extern "interrupt" definitions should not return non-1ZST values */
 
@@ -68,60 +67,80 @@ extern "msp430-interrupt" fn msp430_ret() -> u8 {
     1
 }
 
-#[cfg(any(riscv32,riscv64))]
+#[cfg(any(riscv32, riscv64))]
 extern "riscv-interrupt-m" fn riscv_m_ret() -> u8 {
     //[riscv32,riscv64]~^ ERROR invalid signature
     1
 }
 
-#[cfg(any(riscv32,riscv64))]
+#[cfg(any(riscv32, riscv64))]
 extern "riscv-interrupt-s" fn riscv_s_ret() -> u8 {
     //[riscv32,riscv64]~^ ERROR invalid signature
     1
 }
 
-#[cfg(any(x64,i686))]
+#[cfg(any(x64, i686))]
 extern "x86-interrupt" fn x86_ret(_p: *const u8) -> u8 {
     //[x64,i686]~^ ERROR invalid signature
     1
 }
 
-#[cfg(any(x64,i686))]
+#[cfg(any(x64, i686))]
 extern "x86-interrupt" fn x86_0() {
     //[x64,i686]~^ ERROR invalid signature
 }
 
-#[cfg(any(x64,i686))]
-extern "x86-interrupt" fn x86_1(_p1: *const u8) { }
+#[cfg(any(x64, i686))]
+extern "x86-interrupt" fn x86_1(_p1: *const u8) {}
 
-#[cfg(any(x64,i686))]
-extern "x86-interrupt" fn x86_2(_p1: *const u8, _p2: *const u8) { }
+#[cfg(any(x64, i686))]
+extern "x86-interrupt" fn x86_2(_p1: *const u8, _p2: *const u8) {}
 
-#[cfg(any(x64,i686))]
+#[cfg(any(x64, i686))]
 extern "x86-interrupt" fn x86_3(_p1: *const u8, _p2: *const u8, _p3: *const u8) {
     //[x64,i686]~^ ERROR invalid signature
 }
-
-
 
 /* extern "interrupt" fnptrs with invalid signatures */
 
 #[cfg(avr)]
 fn avr_ptr(_f: extern "avr-interrupt" fn(u8) -> u8) {
+    //[avr]~^ ERROR invalid signature
 }
 
 #[cfg(msp430)]
 fn msp430_ptr(_f: extern "msp430-interrupt" fn(u8) -> u8) {
+    //[msp430]~^ ERROR invalid signature
 }
 
-#[cfg(any(riscv32,riscv64))]
+#[cfg(any(riscv32, riscv64))]
 fn riscv_m_ptr(_f: extern "riscv-interrupt-m" fn(u8) -> u8) {
+    //[riscv32,riscv64]~^ ERROR invalid signature
 }
 
-#[cfg(any(riscv32,riscv64))]
+#[cfg(any(riscv32, riscv64))]
 fn riscv_s_ptr(_f: extern "riscv-interrupt-s" fn(u8) -> u8) {
+    //[riscv32,riscv64]~^ ERROR invalid signature
 }
 
-#[cfg(any(x64,i686))]
-fn x86_ptr(_f: extern "x86-interrupt" fn() -> u8) {
+// One error for the argument list, another for the return type.
+#[cfg(any(x64, i686))]
+fn x86_ptr_too_few(_f: extern "x86-interrupt" fn() -> u8) {
+    //[x64,i686]~^ ERROR invalid signature
+    //[x64,i686]~| ERROR invalid signature
 }
+
+// One error for the argument list, another for the return type.
+#[cfg(any(x64, i686))]
+fn x86_ptr_too_many(_f: extern "x86-interrupt" fn(*const u8, *const u8, *const u8) -> u8) {
+    //[x64,i686]~^ ERROR invalid signature
+    //[x64,i686]~| ERROR invalid signature
+}
+
+#[cfg(avr)]
+type Safe = safe extern "avr-interrupt" fn();
+//[avr]~^ ERROR function pointers cannot be declared with `safe` safety qualifier
+
+#[cfg(any(x64, i686))]
+type Safe = safe extern "x86-interrupt" fn(*const u8);
+//[x64,i686]~^ ERROR function pointers cannot be declared with `safe` safety qualifier

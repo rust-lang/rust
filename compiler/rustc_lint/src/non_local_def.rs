@@ -7,7 +7,7 @@ use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::{ExpnKind, Span, kw};
 
-use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
+use crate::diagnostics::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

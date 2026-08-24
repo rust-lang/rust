@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when checking if `FOO` is a trivial const
-  --> $DIR/cycle_crash-issue-135870.rs:6:1
+  --> $DIR/cycle_crash-issue-135870.rs:3:1
    |
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^

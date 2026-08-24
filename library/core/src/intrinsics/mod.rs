@@ -95,7 +95,7 @@ pub enum AtomicOrdering {
 /// For example, [`AtomicBool::compare_exchange`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_cxchg<
+pub const unsafe fn atomic_cxchg<
     T: Copy,
     const ORD_SUCC: AtomicOrdering,
     const ORD_FAIL: AtomicOrdering,
@@ -113,7 +113,7 @@ pub unsafe fn atomic_cxchg<
 /// For example, [`AtomicBool::compare_exchange_weak`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak<
+pub const unsafe fn atomic_cxchgweak<
     T: Copy,
     const ORD_SUCC: AtomicOrdering,
     const ORD_FAIL: AtomicOrdering,
@@ -130,7 +130,7 @@ pub unsafe fn atomic_cxchgweak<
 /// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
+pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
 
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
@@ -139,7 +139,7 @@ pub unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> 
 /// [`atomic`] types via the `store` method. For example, [`AtomicBool::store`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, val: T);
+pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, val: T);
 
 /// Stores the value at the specified memory location, returning the old value.
 /// `T` must be an integer or pointer type.
@@ -148,7 +148,7 @@ pub unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, val:
 /// [`atomic`] types via the `swap` method. For example, [`AtomicBool::swap`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xchg<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub const unsafe fn atomic_xchg<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// Adds to the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
@@ -158,7 +158,10 @@ pub unsafe fn atomic_xchg<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: 
 /// [`atomic`] types via the `fetch_add` method. For example, [`AtomicIsize::fetch_add`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xadd<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
+pub const unsafe fn atomic_xadd<T: Copy, U: Copy, const ORD: AtomicOrdering>(
+    dst: *mut T,
+    src: U,
+) -> T;
 
 /// Subtract from the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
@@ -168,7 +171,10 @@ pub unsafe fn atomic_xadd<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut
 /// [`atomic`] types via the `fetch_sub` method. For example, [`AtomicIsize::fetch_sub`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xsub<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
+pub const unsafe fn atomic_xsub<T: Copy, U: Copy, const ORD: AtomicOrdering>(
+    dst: *mut T,
+    src: U,
+) -> T;
 
 /// Bitwise and with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
@@ -178,7 +184,10 @@ pub unsafe fn atomic_xsub<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut
 /// [`atomic`] types via the `fetch_and` method. For example, [`AtomicBool::fetch_and`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_and<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
+pub const unsafe fn atomic_and<T: Copy, U: Copy, const ORD: AtomicOrdering>(
+    dst: *mut T,
+    src: U,
+) -> T;
 
 /// Bitwise nand with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
@@ -188,7 +197,10 @@ pub unsafe fn atomic_and<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut 
 /// [`AtomicBool`] type via the `fetch_nand` method. For example, [`AtomicBool::fetch_nand`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_nand<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
+pub const unsafe fn atomic_nand<T: Copy, U: Copy, const ORD: AtomicOrdering>(
+    dst: *mut T,
+    src: U,
+) -> T;
 
 /// Bitwise or with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
@@ -198,7 +210,10 @@ pub unsafe fn atomic_nand<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut
 /// [`atomic`] types via the `fetch_or` method. For example, [`AtomicBool::fetch_or`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_or<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
+pub const unsafe fn atomic_or<T: Copy, U: Copy, const ORD: AtomicOrdering>(
+    dst: *mut T,
+    src: U,
+) -> T;
 
 /// Bitwise xor with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
@@ -208,7 +223,10 @@ pub unsafe fn atomic_or<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T
 /// [`atomic`] types via the `fetch_xor` method. For example, [`AtomicBool::fetch_xor`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xor<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
+pub const unsafe fn atomic_xor<T: Copy, U: Copy, const ORD: AtomicOrdering>(
+    dst: *mut T,
+    src: U,
+) -> T;
 
 /// Maximum with the current value using a signed comparison.
 /// `T` must be a signed integer type.
@@ -217,7 +235,7 @@ pub unsafe fn atomic_xor<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut 
 /// [`atomic`] signed integer types via the `fetch_max` method. For example, [`AtomicI32::fetch_max`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_max<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub const unsafe fn atomic_max<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// Minimum with the current value using a signed comparison.
 /// `T` must be a signed integer type.
@@ -226,7 +244,7 @@ pub unsafe fn atomic_max<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T
 /// [`atomic`] signed integer types via the `fetch_min` method. For example, [`AtomicI32::fetch_min`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_min<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub const unsafe fn atomic_min<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// Minimum with the current value using an unsigned comparison.
 /// `T` must be an unsigned integer type.
@@ -235,7 +253,7 @@ pub unsafe fn atomic_min<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T
 /// [`atomic`] unsigned integer types via the `fetch_min` method. For example, [`AtomicU32::fetch_min`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_umin<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub const unsafe fn atomic_umin<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// Maximum with the current value using an unsigned comparison.
 /// `T` must be an unsigned integer type.
@@ -244,7 +262,7 @@ pub unsafe fn atomic_umin<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: 
 /// [`atomic`] unsigned integer types via the `fetch_max` method. For example, [`AtomicU32::fetch_max`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_umax<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
+pub const unsafe fn atomic_umax<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// An atomic fence.
 ///
@@ -252,7 +270,7 @@ pub unsafe fn atomic_umax<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: 
 /// [`atomic::fence`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_fence<const ORD: AtomicOrdering>();
+pub const unsafe fn atomic_fence<const ORD: AtomicOrdering>();
 
 /// An atomic fence for synchronization within a single thread.
 ///
@@ -260,7 +278,7 @@ pub unsafe fn atomic_fence<const ORD: AtomicOrdering>();
 /// [`atomic::compiler_fence`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_singlethreadfence<const ORD: AtomicOrdering>();
+pub const unsafe fn atomic_singlethreadfence<const ORD: AtomicOrdering>();
 
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
 /// for the given address if supported; otherwise, it is a no-op.
@@ -873,7 +891,8 @@ pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn needs_drop<T: ?Sized>() -> bool;
+#[rustc_comptime]
+pub fn needs_drop<T: ?Sized>() -> bool;
 
 /// Calculates the offset from a pointer.
 ///
@@ -1026,9 +1045,12 @@ pub unsafe fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::sqrt`](../../std/primitive.f16.html#method.sqrt)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sqrtf16(x: f16) -> f16;
+pub fn sqrtf16(x: f16) -> f16 {
+    sqrtf32(x as f32) as f16
+}
 /// Returns the square root of an `f32`
 ///
 /// The stabilized version of this intrinsic is
@@ -1055,9 +1077,12 @@ pub fn sqrtf128(x: f128) -> f128;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::powi`](../../std/primitive.f16.html#method.powi)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn powif16(a: f16, x: i32) -> f16;
+pub fn powif16(a: f16, x: i32) -> f16 {
+    powif32(a as f32, x) as f16
+}
 /// Raises an `f32` to an integer power.
 ///
 /// The stabilized version of this intrinsic is
@@ -1432,15 +1457,20 @@ pub fn log2f128(x: f128) -> f128 {
     libm::maybe_available::log2f128(x)
 }
 
-/// Returns `a * b + c` for `f16` values.
+/// Returns `a * b + c` without rounding the intermediate result for `f16` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::mul_add`](../../std/primitive.f16.html#method.mul_add)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmaf16(a: f16, b: f16, c: f16) -> f16;
-/// Returns `a * b + c` for `f32` values.
+pub const fn fmaf16(a: f16, b: f16, c: f16) -> f16 {
+    // NOTE: f32 does not have sufficient precision, so use f64 instead.
+    // see also https://github.com/llvm/llvm-project/issues/128450#issuecomment-2727540179.
+    fmaf64(a as f64, b as f64, c as f64) as f16
+}
+/// Returns `a * b + c` without rounding the intermediate result for `f32` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
@@ -1448,7 +1478,7 @@ pub const fn fmaf16(a: f16, b: f16, c: f16) -> f16;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-/// Returns `a * b + c` for `f64` values.
+/// Returns `a * b + c` without rounding the intermediate result for `f64` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
@@ -1456,7 +1486,7 @@ pub const fn fmaf32(a: f32, b: f32, c: f32) -> f32;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-/// Returns `a * b + c` for `f128` values.
+/// Returns `a * b + c` without rounding the intermediate result for `f128` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::mul_add`](../../std/primitive.f128.html#method.mul_add)
@@ -1475,9 +1505,12 @@ pub const fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
+pub const fn fmuladdf16(a: f16, b: f16, c: f16) -> f16 {
+    a * b + c
+}
 /// Returns `a * b + c` for `f32` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
 /// intermediate result.
@@ -1488,9 +1521,12 @@ pub const fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
+pub const fn fmuladdf32(a: f32, b: f32, c: f32) -> f32 {
+    a * b + c
+}
 /// Returns `a * b + c` for `f64` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
 /// intermediate result.
@@ -1501,9 +1537,12 @@ pub const fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
+pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64 {
+    a * b + c
+}
 /// Returns `a * b + c` for `f128` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
 /// intermediate result.
@@ -1514,18 +1553,24 @@ pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
+pub const fn fmuladdf128(a: f128, b: f128, c: f128) -> f128 {
+    a * b + c
+}
 
 /// Returns the largest integer less than or equal to an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::floor`](../../std/primitive.f16.html#method.floor)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn floorf16(x: f16) -> f16;
+pub const fn floorf16(x: f16) -> f16 {
+    floorf32(x as f32) as f16
+}
 /// Returns the largest integer less than or equal to an `f32`.
 ///
 /// The stabilized version of this intrinsic is
@@ -1556,9 +1601,12 @@ pub const fn floorf128(x: f128) -> f128;
 /// The stabilized version of this intrinsic is
 /// [`f16::ceil`](../../std/primitive.f16.html#method.ceil)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn ceilf16(x: f16) -> f16;
+pub const fn ceilf16(x: f16) -> f16 {
+    ceilf32(x as f32) as f16
+}
 /// Returns the smallest integer greater than or equal to an `f32`.
 ///
 /// The stabilized version of this intrinsic is
@@ -1589,9 +1637,12 @@ pub const fn ceilf128(x: f128) -> f128;
 /// The stabilized version of this intrinsic is
 /// [`f16::trunc`](../../std/primitive.f16.html#method.trunc)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn truncf16(x: f16) -> f16;
+pub const fn truncf16(x: f16) -> f16 {
+    truncf32(x as f32) as f16
+}
 /// Returns the integer part of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
@@ -1623,9 +1674,12 @@ pub const fn truncf128(x: f128) -> f128;
 /// The stabilized version of this intrinsic is
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn round_ties_even_f16(x: f16) -> f16;
+pub const fn round_ties_even_f16(x: f16) -> f16 {
+    round_ties_even_f32(x as f32) as f16
+}
 
 /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
 /// least significant digit.
@@ -1662,9 +1716,12 @@ pub const fn round_ties_even_f128(x: f128) -> f128;
 /// The stabilized version of this intrinsic is
 /// [`f16::round`](../../std/primitive.f16.html#method.round)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn roundf16(x: f16) -> f16;
+pub const fn roundf16(x: f16) -> f16 {
+    roundf32(x as f32) as f16
+}
 /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
 ///
 /// The stabilized version of this intrinsic is
@@ -2907,7 +2964,8 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn size_of<T>() -> usize;
+#[rustc_comptime]
+pub fn size_of<T>() -> usize;
 
 /// The minimum alignment of a type.
 ///
@@ -2926,7 +2984,8 @@ pub const fn size_of<T>() -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn align_of<T>() -> usize;
+#[rustc_comptime]
+pub fn align_of<T>() -> usize;
 
 /// The offset of a field inside a type.
 ///
@@ -2946,7 +3005,8 @@ pub const fn align_of<T>() -> usize;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[lang = "offset_of"]
-pub const fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
+#[rustc_comptime]
+pub fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
 
 /// The offset of a field queried by its field representing type.
 ///
@@ -2960,7 +3020,8 @@ pub const fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
 #[rustc_intrinsic]
 #[unstable(feature = "field_projections", issue = "145383")]
 #[rustc_const_unstable(feature = "field_projections", issue = "145383")]
-pub const fn field_offset<F: crate::field::Field>() -> usize;
+#[rustc_comptime]
+pub fn field_offset<F: crate::field::Field>() -> usize;
 
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
@@ -2974,7 +3035,8 @@ pub const fn field_offset<F: crate::field::Field>() -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn variant_count<T>() -> usize;
+#[rustc_comptime]
+pub fn variant_count<T>() -> usize;
 
 /// The size of the referenced value in bytes.
 ///
@@ -3011,20 +3073,15 @@ pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 pub fn type_id_vtable(
     _id: crate::any::TypeId,
     _trait: crate::any::TypeId,
-) -> Option<ptr::DynMetadata<*const ()>> {
-    panic!(
-        "`TypeId::trait_info_of` and `trait_info_of_trait_type_id` can only be called at compile-time"
-    )
-}
+) -> Option<ptr::DynMetadata<*const ()>>;
 
 /// Compute the type information of a concrete type.
 /// It can only be called at compile time, the backends do
 /// not implement it.
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-pub const fn type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type {
-    panic!("`TypeId::info` can only be called at compile-time")
-}
+#[rustc_comptime]
+pub fn type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type;
 
 /// Gets a static string slice containing the name of a type.
 ///
@@ -3037,7 +3094,8 @@ pub const fn type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type {
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_name<T: ?Sized>() -> &'static str;
+#[rustc_comptime]
+pub fn type_name<T: ?Sized>() -> &'static str;
 
 /// Gets an identifier which is globally unique to the specified type. This
 /// function will return the same value for a type regardless of whichever
@@ -3070,15 +3128,21 @@ pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
     unsafe { crate::mem::transmute::<_, u128>(a) == crate::mem::transmute::<_, u128>(b) }
 }
 
+/// Returns whether the type represented by this `TypeId` is a signed integer.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::is_signed`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_is_signed(_id: crate::any::TypeId) -> bool;
+
 /// Gets the size of the type represented by this `TypeId`.
 ///
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::size`].
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize> {
-    panic!("`TypeId::size` can only be called at compile-time")
-}
+pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize>;
 
 /// Gets the number of variants of the type represented by this `TypeId`.
 ///
@@ -3086,9 +3150,7 @@ pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize> {
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn type_id_variants(_id: crate::any::TypeId) -> usize {
-    panic!("`TypeId::variants` can only be called at compile-time")
-}
+pub fn type_id_variants(_id: crate::any::TypeId) -> usize;
 
 /// Gets the number of fields at the given `variant_index` represented by this `TypeId`.
 ///
@@ -3096,9 +3158,7 @@ pub fn type_id_variants(_id: crate::any::TypeId) -> usize {
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn type_id_fields(_id: crate::any::TypeId, _variant_index: usize) -> usize {
-    panic!("`TypeId::fields` can only be called at compile-time")
-}
+pub fn type_id_fields(_id: crate::any::TypeId, _variant_index: usize) -> usize;
 
 /// Gets the [`FieldRepresentingType`]'s `TypeId` at the given index of the type represented by this `TypeId`.
 ///
@@ -3112,9 +3172,7 @@ pub fn type_id_field_representing_type(
     _id: crate::any::TypeId,
     _variant_index: usize,
     _field_index: usize,
-) -> crate::any::TypeId {
-    panic!("`TypeId::field` can only be called at compile-time")
-}
+) -> crate::any::TypeId;
 
 /// Gets the actual field `TypeId` of the [`FieldRepresentingType`]'s `TypeId`.
 ///
@@ -3126,9 +3184,40 @@ pub fn type_id_field_representing_type(
 #[rustc_comptime]
 pub fn field_representing_type_actual_type_id(
     _frt_type_id: crate::any::TypeId,
-) -> crate::any::TypeId {
-    panic!("`FieldId::type_id` can only be called at compile-time")
-}
+) -> crate::any::TypeId;
+
+/// Gets the name of the field represented by the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::name`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'static str;
+
+/// Gets the name of the field represented by the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::name`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize;
+
+/// Checks whether this type is non-exhaustive.
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn non_exhaustive(_id: crate::any::TypeId) -> bool;
+
+/// Returns the list of generic args on this type.
+/// Only meaningful for Adts, closures, ... Everything else returns an empty slice.
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_generics(_id: crate::any::TypeId) -> &'static [crate::mem::type_info::Generic];
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
@@ -3590,42 +3679,58 @@ pub const fn maximumf128(x: f128, y: f128) -> f128 {
 /// The stabilized versions of this intrinsic are available on the float
 /// primitives via the `abs` method. For example, [`f32::abs`].
 #[rustc_nounwind]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn fabs<T: bounds::FloatPrimitive>(x: T) -> T;
+#[miri::intrinsic_fallback_is_spec]
+pub const fn fabs<T: const bounds::FloatPrimitive>(x: T) -> T {
+    T::from_bits(x.to_bits() & !T::SIGN_MASK)
+}
 
 /// Copies the sign from `y` to `x` for `f16` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
+#[inline]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn copysignf16(x: f16, y: f16) -> f16;
+pub const fn copysignf16(x: f16, y: f16) -> f16 {
+    f16::from_bits((x.to_bits() & !f16::SIGN_MASK) | (y.to_bits() & f16::SIGN_MASK))
+}
 
 /// Copies the sign from `y` to `x` for `f32` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
+#[inline]
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn copysignf32(x: f32, y: f32) -> f32;
+pub const fn copysignf32(x: f32, y: f32) -> f32 {
+    f32::from_bits((x.to_bits() & !f32::SIGN_MASK) | (y.to_bits() & f32::SIGN_MASK))
+}
 /// Copies the sign from `y` to `x` for `f64` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
+#[inline]
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn copysignf64(x: f64, y: f64) -> f64;
+pub const fn copysignf64(x: f64, y: f64) -> f64 {
+    f64::from_bits((x.to_bits() & !f64::SIGN_MASK) | (y.to_bits() & f64::SIGN_MASK))
+}
 
 /// Copies the sign from `y` to `x` for `f128` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
+#[inline]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn copysignf128(x: f128, y: f128) -> f128;
+pub const fn copysignf128(x: f128, y: f128) -> f128 {
+    f128::from_bits((x.to_bits() & !f128::SIGN_MASK) | (y.to_bits() & f128::SIGN_MASK))
+}
 
 /// Generates the LLVM body for the automatic differentiation of `f` using Enzyme,
 /// with `df` as the derivative function and `args` as its arguments.

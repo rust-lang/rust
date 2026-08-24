@@ -8,7 +8,6 @@ strip-aliased-non-local - strips all non-local private aliased items from the ou
  propagate-stability - propagates stability to child items
 collect-intra-doc-links - resolves intra-doc links
  collect-trait-impls - retrieves trait impls for items in the crate
-calculate-doc-coverage - counts the number of items with and without documentation
            run-lints - runs some of rustdoc's lints
 
 Default passes for rustdoc:
@@ -26,4 +25,3 @@ collect-intra-doc-links
 Passes run with `--show-coverage`:
         strip-hidden  (when not --document-hidden-items)
        strip-private  (when not --document-private-items)
-calculate-doc-coverage

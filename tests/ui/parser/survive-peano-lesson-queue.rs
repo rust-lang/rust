@@ -1,4 +1,5 @@
 //@ build-pass
+//@ rustc-env:RUST_MIN_STACK=33554432
 // ignore-tidy-file-filelength
 // ignore-tidy-file-linelength
 // some very lightly modified generated code from issue rust-lang/rust#122715

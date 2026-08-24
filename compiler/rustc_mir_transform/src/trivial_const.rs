@@ -58,11 +58,11 @@ where
         _ => return None,
     }
 
-    // If there are impossible predicates then MIR passes will replace the body with
+    // If there are impossible clauses then MIR passes will replace the body with
     // `unreachable` causing const eval errors when trying to evaluate the body. For
     // now we avoid using trivial consts for such bodies so that the behaviour doesn't
     // change.
-    if crate::impossible_predicates::has_impossible_predicates(tcx, def.into()) {
+    if crate::impossible_clauses::has_impossible_clauses(tcx, def.into()) {
         return None;
     }
 

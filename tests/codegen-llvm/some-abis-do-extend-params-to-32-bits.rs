@@ -33,6 +33,16 @@ use minicore::*;
 //
 //                  ZERO/SIGN-EXTENDING TO 32 BITS            NON-EXTENDING
 //                  ==============================  =======================
+// x86_64:          void @c_arg_bool(i1 zeroext %_a)
+// i686:            void @c_arg_bool(i1 zeroext %_a)
+// aarch64-apple:   void @c_arg_bool(i1 zeroext %_a)
+// aarch64-windows:                                  void @c_arg_bool(i1 %_a)
+// aarch64-linux:                                    void @c_arg_bool(i1 %_a)
+// arm:             void @c_arg_bool(i1 zeroext %_a)
+// riscv:           void @c_arg_bool(i1 zeroext %_a)
+#[no_mangle]
+pub extern "C" fn c_arg_bool(_a: bool) {}
+
 // x86_64:          void @c_arg_u8(i8 zeroext %_a)
 // i686:            void @c_arg_u8(i8 zeroext %_a)
 // aarch64-apple:   void @c_arg_u8(i8 zeroext %_a)
@@ -112,6 +122,18 @@ pub extern "C" fn c_arg_i32(_a: i32) {}
 // riscv:           void @c_arg_i64(i64 %_a)
 #[no_mangle]
 pub extern "C" fn c_arg_i64(_a: i64) {}
+
+// x86_64:          zeroext i1 @c_ret_bool()
+// i686:            zeroext i1 @c_ret_bool()
+// aarch64-apple:   zeroext i1 @c_ret_bool()
+// aarch64-windows:                                 i1 @c_ret_bool()
+// aarch64-linux:                                   i1 @c_ret_bool()
+// arm:             zeroext i1 @c_ret_bool()
+// riscv:           zeroext i1 @c_ret_bool()
+#[no_mangle]
+pub extern "C" fn c_ret_bool() -> bool {
+    false
+}
 
 // x86_64:          zeroext i8 @c_ret_u8()
 // i686:            zeroext i8 @c_ret_u8()
@@ -210,9 +232,12 @@ pub extern "C" fn c_ret_i64() -> i64 {
 }
 
 const C_SOURCE_FILE: &'static str = r##"
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+
+void c_arg_bool(bool _a) { }
 
 void c_arg_u8(uint8_t _a) { }
 void c_arg_u16(uint16_t _a) { }
@@ -223,6 +248,8 @@ void c_arg_i8(int8_t _a) { }
 void c_arg_i16(int16_t _a) { }
 void c_arg_i32(int32_t _a) { }
 void c_arg_i64(int64_t _a) { }
+
+bool     c_ret_bool()  { return false; }
 
 uint8_t  c_ret_u8()  { return 0; }
 uint16_t c_ret_u16() { return 0; }

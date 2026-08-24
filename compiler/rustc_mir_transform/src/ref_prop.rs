@@ -11,6 +11,7 @@ use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{MaybeStorageDead, always_storage_live_locals};
 use tracing::{debug, instrument};
 
+use crate::PassPolicy;
 use crate::ssa::{SsaLocals, StorageLiveLocals};
 
 /// Propagate references using SSA analysis.
@@ -72,8 +73,8 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 pub(super) struct ReferencePropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 2)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -81,10 +82,6 @@ impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
         debug!(def_id = ?body.source.def_id());
         move_to_copy_pointers(tcx, body);
         while propagate_ssa(tcx, body) {}
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

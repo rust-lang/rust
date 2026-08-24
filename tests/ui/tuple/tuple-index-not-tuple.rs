@@ -1,3 +1,4 @@
+//@ reference: expr.tuple-index.required-type
 struct Point { x: isize, y: isize }
 struct Empty;
 

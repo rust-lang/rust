@@ -2,7 +2,8 @@
 //!
 //! # Examples
 //!
-//! ```
+#![cfg_attr(target_family = "unix", doc = "```")]
+#![cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 //! use std::ffi::OsString;
 //! use std::os::unix::ffi::OsStringExt;
 //!
@@ -17,7 +18,8 @@
 //! assert_eq!(bytes, b"foo");
 //! ```
 //!
-//! ```
+#![cfg_attr(target_family = "unix", doc = "```")]
+#![cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 //! use std::ffi::OsStr;
 //! use std::os::unix::ffi::OsStrExt;
 //!

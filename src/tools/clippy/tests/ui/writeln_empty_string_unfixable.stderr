@@ -1,11 +1,11 @@
 error: empty string literal in `writeln!`
-  --> tests/ui/writeln_empty_string_unfixable.rs:11:5
+  --> tests/ui/writeln_empty_string_unfixable.rs:10:5
    |
 LL |     writeln!(v, /* comment */ "");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: remove the empty string
-  --> tests/ui/writeln_empty_string_unfixable.rs:11:31
+  --> tests/ui/writeln_empty_string_unfixable.rs:10:31
    |
 LL |     writeln!(v, /* comment */ "");
    |                               ^^
@@ -13,19 +13,19 @@ LL |     writeln!(v, /* comment */ "");
    = help: to override `-D warnings` add `#[allow(clippy::writeln_empty_string)]`
 
 error: empty string literal in `writeln!`
-  --> tests/ui/writeln_empty_string_unfixable.rs:14:5
+  --> tests/ui/writeln_empty_string_unfixable.rs:13:5
    |
 LL |     writeln!(v, "" /* comment */);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: remove the empty string
-  --> tests/ui/writeln_empty_string_unfixable.rs:14:17
+  --> tests/ui/writeln_empty_string_unfixable.rs:13:17
    |
 LL |     writeln!(v, "" /* comment */);
    |                 ^^
 
 error: empty string literal in `writeln!`
-  --> tests/ui/writeln_empty_string_unfixable.rs:18:5
+  --> tests/ui/writeln_empty_string_unfixable.rs:17:5
    |
 LL | /     writeln!(v,
 LL | |         "\
@@ -36,7 +36,7 @@ LL | |     );
    | |_____^
    |
 note: remove the empty string
-  --> tests/ui/writeln_empty_string_unfixable.rs:19:9
+  --> tests/ui/writeln_empty_string_unfixable.rs:18:9
    |
 LL | /         "\
 LL | |             \

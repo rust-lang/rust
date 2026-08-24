@@ -1,4 +1,4 @@
-use rustc_hir::intravisit::nested_filter::NestedFilter;
+use rustc_hir::intravisit::NestedFilter;
 
 use crate::ty::TyCtxt;
 

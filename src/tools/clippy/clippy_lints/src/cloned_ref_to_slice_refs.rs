@@ -3,13 +3,14 @@ use std::ops::ControlFlow;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{is_in_const_context, is_mutable, sym};
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, HirId, LangItem};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind, OverloadedDeref};
@@ -51,18 +52,18 @@ declare_clippy_lint! {
     "cloning a reference for slice references"
 }
 
-impl_lint_pass!(ClonedRefToSliceRefs<'_> => [CLONED_REF_TO_SLICE_REFS]);
+impl_lint_pass!(ClonedRefToSliceRefs => [CLONED_REF_TO_SLICE_REFS]);
 
-pub struct ClonedRefToSliceRefs<'a> {
-    msrv: &'a Msrv,
+pub struct ClonedRefToSliceRefs {
+    msrv: Msrv,
 }
-impl<'a> ClonedRefToSliceRefs<'a> {
-    pub fn new(conf: &'a Conf) -> Self {
-        Self { msrv: &conf.msrv }
+impl ClonedRefToSliceRefs {
+    pub fn new(conf: &Conf) -> Self {
+        Self { msrv: conf.msrv.into() }
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for ClonedRefToSliceRefs<'_> {
+impl<'tcx> LateLintPass<'tcx> for ClonedRefToSliceRefs {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         // `&[foo.clone()]` expressions
         if let ExprKind::AddrOf(_, mutability, arr) = &expr.kind

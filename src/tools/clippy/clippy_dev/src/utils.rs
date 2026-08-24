@@ -7,7 +7,7 @@ use core::range::Range;
 use core::str::FromStr;
 use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
-use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
+use std::io::{self, Read as _, Seek as _, SeekFrom, Write as _};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::{env, thread};

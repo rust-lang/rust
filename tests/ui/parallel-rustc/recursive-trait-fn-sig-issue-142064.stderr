@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:7:23
+  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:4:23
    |
 LL | trait A { fn foo() -> A; }
    |                       ^
@@ -13,7 +13,7 @@ LL | trait A { fn foo() -> dyn A; }
    |                       +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:7:23
+  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:4:23
    |
 LL | trait A { fn foo() -> A; }
    |                       ^
@@ -26,42 +26,15 @@ help: if this is a dyn-compatible trait, use `dyn`
 LL | trait A { fn foo() -> dyn A; }
    |                       +++
 
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:13:23
-   |
-LL | trait B { fn foo() -> A; }
-   |                       ^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-help: if this is a dyn-compatible trait, use `dyn`
-   |
-LL | trait B { fn foo() -> dyn A; }
-   |                       +++
-
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:13:23
-   |
-LL | trait B { fn foo() -> A; }
-   |                       ^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: if this is a dyn-compatible trait, use `dyn`
-   |
-LL | trait B { fn foo() -> dyn A; }
-   |                       +++
-
 error[E0038]: the trait `A` is not dyn compatible
-  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:7:23
+  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:4:23
    |
 LL | trait A { fn foo() -> A; }
    |                       ^ `A` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:7:14
+  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:4:14
    |
 LL | trait A { fn foo() -> A; }
    |       -      ^^^ ...because associated function `foo` has no `self` parameter
@@ -81,15 +54,42 @@ LL - trait A { fn foo() -> A; }
 LL + trait A { fn foo() -> Self; }
    |
 
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:10:23
+   |
+LL | trait B { fn foo() -> A; }
+   |                       ^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | trait B { fn foo() -> dyn A; }
+   |                       +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:10:23
+   |
+LL | trait B { fn foo() -> A; }
+   |                       ^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | trait B { fn foo() -> dyn A; }
+   |                       +++
+
 error[E0038]: the trait `A` is not dyn compatible
-  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:13:23
+  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:10:23
    |
 LL | trait B { fn foo() -> A; }
    |                       ^ `A` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:7:14
+  --> $DIR/recursive-trait-fn-sig-issue-142064.rs:4:14
    |
 LL | trait A { fn foo() -> A; }
    |       -      ^^^ ...because associated function `foo` has no `self` parameter

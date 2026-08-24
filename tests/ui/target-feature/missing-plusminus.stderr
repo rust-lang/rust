@@ -1,4 +1,4 @@
-warning: unknown feature specified for `-Ctarget-feature`: `banana`
+warning: ignoring feature with missing prefix in `-Ctarget-feature`: `banana`
    |
    = note: features must begin with a `+` to enable or `-` to disable it
 

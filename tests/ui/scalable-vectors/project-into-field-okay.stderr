@@ -1,0 +1,49 @@
+warning: direct cast of function item into an integer
+  --> $DIR/project-into-field-okay.rs:44:59
+   |
+LL |     std::hint::black_box(stdarch_test_shim_svlen_f32_cntw as usize);
+   |                                                           ^^^^^^^^
+   |
+   = note: `#[warn(function_casts_as_integer)]` on by default
+help: first cast to a pointer `as *const ()`
+   |
+LL |     std::hint::black_box(stdarch_test_shim_svlen_f32_cntw as *const () as usize);
+   |                                                           ++++++++++++
+
+warning: direct cast of function item into an integer
+  --> $DIR/project-into-field-okay.rs:63:56
+   |
+LL |     std::hint::black_box(stdarch_test_shim_svcntw_cntw as usize);
+   |                                                        ^^^^^^^^
+   |
+help: first cast to a pointer `as *const ()`
+   |
+LL |     std::hint::black_box(stdarch_test_shim_svcntw_cntw as *const () as usize);
+   |                                                        ++++++++++++
+
+warning: unnecessary transmute
+  --> $DIR/project-into-field-okay.rs:74:14
+   |
+LL |     unsafe { transmute(_svcntw_pat(PATTERN)) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unnecessary_transmutes)]` on by default
+help: replace this with
+   |
+LL -     unsafe { transmute(_svcntw_pat(PATTERN)) }
+LL +     unsafe { i64::cast_unsigned(_svcntw_pat(PATTERN)) }
+   |
+
+warning: direct cast of function item into an integer
+  --> $DIR/project-into-field-okay.rs:87:60
+   |
+LL |     std::hint::black_box(stdarch_test_shim_svcntw_pat_cntw as usize);
+   |                                                            ^^^^^^^^
+   |
+help: first cast to a pointer `as *const ()`
+   |
+LL |     std::hint::black_box(stdarch_test_shim_svcntw_pat_cntw as *const () as usize);
+   |                                                            ++++++++++++
+
+warning: 4 warnings emitted
+

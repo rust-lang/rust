@@ -5,14 +5,15 @@ use std::str;
 
 use rustc_abi::Align;
 use rustc_ast::attr::version::RustcVersion;
+use rustc_attr_ir::CollapseMacroDebuginfo;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::{ColorConfig, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
-use rustc_hir::attrs::CollapseMacroDebuginfo;
 use rustc_macros::{BlobDecodable, Encodable};
+use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm};
 use rustc_target::spec::{
@@ -130,6 +131,28 @@ mod target_modifier_consistency_check {
         }
         true
     }
+    pub(super) fn target_cpu(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        if !sess.target.requires_consistent_cpu {
+            return true;
+        }
+        let l_tech_value = l.extend().tech_value;
+        let r_tech_value = match r {
+            Some(r) => r.extend().tech_value,
+            // If only one of the two compared crates specifies the CPU
+            // explicitly we compare against the target's default CPU.
+            None => {
+                // We reuse the same parsing logic.
+                CodegenOptionsTargetModifiers::TargetCpu
+                    .reparse(sess.target.cpu.as_ref())
+                    .tech_value
+            }
+        };
+        l_tech_value == r_tech_value
+    }
 }
 
 impl TargetModifier {
@@ -152,7 +175,11 @@ impl TargetModifier {
                 }
                 _ => {}
             },
-            _ => {}
+            OptionsTargetModifiers::CodegenOptions(codegen) => match codegen {
+                CodegenOptionsTargetModifiers::TargetCpu => {
+                    return target_modifier_consistency_check::target_cpu(sess, self, other);
+                }
+            },
         };
         match other {
             Some(other) => self.extend().tech_value == other.extend().tech_value,
@@ -406,10 +433,9 @@ top_level_options!(
         /// The (potentially remapped) working directory
         #[rustc_lint_opt_deny_field_access("use `SourceMap::working_dir` instead of this field")]
         working_dir: RealFileName [TRACKED],
-
         color: ColorConfig [UNTRACKED],
-
         verbose: bool [TRACKED_NO_CRATE_HASH],
+        jobs: Jobs [UNTRACKED],
     }
 );
 
@@ -751,7 +777,27 @@ fn build_options<O: Default>(
                     collected_options.mitigations.reset_mitigation(*mitigation, index);
                 }
             }
-            None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
+            None => {
+                let mut error =
+                    early_dcx.early_struct_fatal(format!("unknown {outputname} option: `{key}`"));
+                let max_dist = option_to_lookup.chars().count().max(3) / 3;
+                if let Some(option) = descrs
+                    .iter()
+                    .filter(|option| option.removed.is_none())
+                    .filter_map(|option| {
+                        edit_distance(&option_to_lookup, option.name, max_dist)
+                            .map(|dist| (dist, option))
+                    })
+                    .min_by_key(|(dist, _)| *dist)
+                    .map(|(_, option)| option)
+                {
+                    let name = option.name.replace('_', "-");
+                    let value =
+                        if option.type_desc == desc::parse_no_value { "" } else { "=<value>" };
+                    error.help(format!("you might have meant to use `-{prefix} {name}{value}`"));
+                }
+                error.emit()
+            }
         }
     }
     op
@@ -773,14 +819,12 @@ mod desc {
         "a comma-separated list of strings, with elements beginning with + or -";
     pub(crate) const parse_pointer_authentication_list_with_polarity: &str = "a comma-separated list of options, each of the form `+<name>` or `-<name>`, where `<name>` is one of: `aarch64-jump-table-hardening`, `auth-traps`, `calls`, `elf-got`, `function-pointer-type-discrimination`, `indirect-gotos`, `init-fini`, `init-fini-address-discrimination`, `intrinsics`, `return-addresses`, `typeinfo-vt-ptr-discrimination`, `vt-ptr-addr-discrimination` or `vt-ptr-type-discrimination`";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`, `NoTT`";
-    pub(crate) const parse_offload: &str =
-        "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`";
+    pub(crate) const parse_offload: &str = "a comma separated list of settings: `Host=<Absolute-Path>`, `HostMetadata=<Absolute-Path>`, `Device` (empty manifest) or `Device=<Absolute-Path>`, `Test`";
     pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
     pub(crate) const parse_opt_number: &str = parse_number;
     pub(crate) const parse_frame_pointer: &str = "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf` or `always`";
-    pub(crate) const parse_threads: &str = "a number or `sync`";
     pub(crate) const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
@@ -805,8 +849,7 @@ mod desc {
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
     pub(crate) const parse_codegen_retag_options: &str =
         "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
-    pub(crate) const parse_instrument_mcount: &str =
-        "either a boolean (`yes`, `no`, `on`, `off`, etc), or `fentry` on supported targets.";
+    pub(crate) const parse_instrument_mcount: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or `fentry`, `fentry-record`, `fentry-nop-record` on supported targets";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -847,7 +890,8 @@ mod desc {
         components: `crto`, `libc`, `unwind`, `linker`, `sanitizers`, `mingw`";
     pub(crate) const parse_linker_features: &str =
         "a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld`";
-    pub(crate) const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
+    pub(crate) const parse_polonius: &str =
+        "either no value or one of `legacy` (the default), `off`, or `next`";
     pub(crate) const parse_annotate_moves: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc.), or a size limit in bytes";
     pub(crate) const parse_stack_protector: &str =
@@ -875,7 +919,6 @@ pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
-    pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// Ignore the value. Used for removed options where we don't actually want to store
     /// anything in the session.
@@ -940,6 +983,10 @@ pub mod parse {
             }
             Some("next") => {
                 *slot = Polonius::Next;
+                true
+            }
+            Some("off") | Some("no") => {
+                *slot = Polonius::Off;
                 true
             }
             _ => false,
@@ -1122,25 +1169,6 @@ pub mod parse {
             }
             None => false,
         }
-    }
-
-    pub(crate) fn parse_threads(slot: &mut Option<usize>, v: Option<&str>) -> bool {
-        let Some(s) = v else { return false };
-        if s == "sync" {
-            // Enable synchronization despite only using one thread.
-            *slot = Some(1);
-            return true;
-        }
-        let n = match s.parse().ok() {
-            Some(0) => std::thread::available_parallelism().map_or(1, NonZero::<usize>::get),
-            Some(i) => i,
-            None => return false,
-        };
-        // We want to cap the number of threads here to avoid large numbers like 999999 and compiler panics.
-        // This solution was suggested here https://github.com/rust-lang/rust/issues/117638#issuecomment-1800925067
-        let n = n.min(MAX_THREADS_CAP);
-        *slot = (n > 1).then_some(n); // Enable synchronization if we're using more than one thread.
-        true
     }
 
     /// Use this for any numeric option that has a static default.
@@ -1485,12 +1513,17 @@ pub mod parse {
                         return false;
                     }
                 }
-                "Device" => {
-                    if let Some(_) = arg {
-                        // Device does not accept a value
+                "HostMetadata" => {
+                    if let Some(p) = arg {
+                        Offload::HostMetadata(p.to_string())
+                    } else {
                         return false;
                     }
-                    Offload::Device
+                }
+                "Device" => {
+                    // Without an argument, `Device` uses an empty manifest and all kernel
+                    // instantiations are discovered via monomorphization.
+                    Offload::Device(arg.unwrap_or_default().to_string())
                 }
                 "Test" => {
                     if let Some(_) = arg {
@@ -1623,15 +1656,33 @@ pub mod parse {
 
     pub(crate) fn parse_instrument_mcount(slot: &mut InstrumentMcount, v: Option<&str>) -> bool {
         let mut use_mcount = false;
+        let mut opts = InstrumentMcountOpts::default();
         if parse_bool(&mut use_mcount, v) {
-            *slot = if use_mcount { InstrumentMcount::Mcount } else { InstrumentMcount::Disabled };
-            true
-        } else if let Some("fentry") = v {
-            *slot = InstrumentMcount::Fentry;
-            true
-        } else {
-            false
+            *slot = if use_mcount {
+                InstrumentMcount::Mcount(opts)
+            } else {
+                InstrumentMcount::Disabled
+            };
+            return true;
         }
+        match v {
+            Some("fentry") => {
+                *slot = InstrumentMcount::Fentry(opts);
+            }
+            Some("fentry-record") => {
+                opts.record = true;
+                *slot = InstrumentMcount::Fentry(opts);
+            }
+            Some("fentry-nop-record") => {
+                opts.record = true;
+                opts.no_call = true;
+                *slot = InstrumentMcount::Fentry(opts);
+            }
+            _ => {
+                return false;
+            }
+        }
+        true
     }
 
     pub(crate) fn parse_instrument_xray(
@@ -1969,6 +2020,10 @@ pub mod parse {
                     match opt {
                         "bti" => slot.bti = true,
                         "pac-ret" if slot.pac_ret.is_none() => {
+                            // Note: some targets only support certain keys (Windows on Arm only
+                            // supports Key B) and this possible discrepancy is handled by the
+                            // session's `branch_protection` accessor, when we have both the target
+                            // tuple and branch protection information available.
                             slot.pac_ret = Some(PacRet { leaf: false, pc: false, key: PAuthKey::A })
                         }
                         "leaf" => match slot.pac_ret.as_mut() {
@@ -2273,7 +2328,7 @@ options! {
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names ('legacy', 'v0' (default), or 'hashed')"),
-    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
+    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED] { TARGET_MODIFIER: TargetCpu },
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
         "target specific attributes. (`rustc --print target-features` for details). \
@@ -2312,7 +2367,8 @@ options! {
     assume_incomplete_release: bool = (false, parse_bool, [TRACKED],
         "make cfg(version) treat the current version as incomplete (default: no)"),
     assumptions_on_binders: bool = (false, parse_bool, [TRACKED],
-        "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`)"),
+        "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`); \
+         implies `-Znext-solver=globally`"),
     autodiff: Vec<crate::config::AutoDiff> = (Vec::new(), parse_autodiff, [TRACKED],
         "a list of autodiff flags to enable
         Mandatory setting:
@@ -2338,6 +2394,7 @@ options! {
         (default: no)"),
     box_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for box (default: yes)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::branch_protection` instead of this field")]
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED] { TARGET_MODIFIER: BranchProtection },
         "set options for branch target identification and pointer authentication on AArch64"),
     build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
@@ -2484,6 +2541,8 @@ options! {
         "display unnamed regions as `'<id>`, using a non-ident unique id (default: no)"),
     ignore_directory_in_diagnostics_source_blocks: Vec<String> = (Vec::new(), parse_string_push, [UNTRACKED],
         "do not display the source code block in diagnostics for files in the directory"),
+    implicit_sysroot_deps: bool = (true, parse_bool, [TRACKED],
+        "allows rust to search sysroot for a crate's dependencies (default: yes)"),
     incremental_ignore_spans: bool = (false, parse_bool, [TRACKED],
         "ignore spans during ICH computation -- used for testing (default: no)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
@@ -2550,6 +2609,10 @@ options! {
         "a list of module flags to pass to LLVM (space separated)"),
     llvm_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list LLVM plugins to enable (space separated)"),
+    llvm_target_feature: String = (String::new(), parse_target_feature, [TRACKED] { TARGET_MODIFIER: LlvmTargetFeature },
+        "enable/disable LLVM-level target features. \
+        This feature is unsafe and can cause ABI issues and compiler crashes, \
+        because LLVM does not support all target feature combinations."),
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
         "generate JSON tracing data file from LLVM data (default: no)"),
     llvm_writable: bool = (false, parse_bool, [TRACKED],
@@ -2621,7 +2684,7 @@ options! {
     no_link: bool = (false, parse_no_value, [TRACKED],
         "compile without linking"),
     no_parallel_backend: bool = (false, parse_no_value, [UNTRACKED],
-        "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
+        "use `--jobs-backend=1` instead"),
     no_profiler_runtime: bool = (false, parse_no_value, [TRACKED],
         "prevent automatic injection of the profiler_builtins crate"),
     no_steal_thir: bool = (false, parse_bool, [UNTRACKED],
@@ -2746,6 +2809,10 @@ written to standard error output)"),
         "enable generalizing pointer types (default: no)"),
     sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: SanitizerCfiNormalizeIntegers },
         "enable normalizing integer types (default: no)"),
+    sanitizer_cfi_diag: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "enable CFI diagnostics (default: no)"),
+    sanitizer_cfi_recover: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "enable CFI recovery (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),
     sanitizer_kcfi_arity: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2826,13 +2893,8 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
-    /// We default to None here since we want to behave like
-    /// a sequential compiler for now. This'll likely be adjusted
-    /// in the future. Note that -Zthreads=0 is the way to get
-    /// the num_cpus behavior.
-    #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
-    threads: Option<usize> = (None, parse_threads, [UNTRACKED],
-        "use a thread pool with N threads"),
+    threads: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "use `--jobs-frontend` instead"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
@@ -2921,6 +2983,8 @@ written to standard error output)"),
     // FIXME remove this after a couple releases
     wasm_c_abi: () = ((), parse_wasm_c_abi, [TRACKED],
         "use spec-compliant C ABI for `wasm32-unknown-unknown` (deprecated, always enabled)"),
+    wasm_proc_macros: bool = (false, parse_bool, [TRACKED],
+        "enable support for compiling and loading wasm proc macros"),
     write_long_types_to_disk: bool = (true, parse_bool, [UNTRACKED],
         "whether long type names should be written to files instead of being printed in errors"),
     // tidy-alphabetical-end

@@ -29,11 +29,13 @@ help: consider importing this function
 LL + use std::env::args;
    |
 
-error[E0532]: expected unit struct, unit variant or constant, found module `crate::config`
-  --> $DIR/suggest-import-ice-issue-127302.rs:7:9
+error[E0532]: cannot find unit struct, unit variant or constant `config` in the crate root
+  --> $DIR/suggest-import-ice-issue-127302.rs:7:16
    |
 LL |         crate::config => {}
-   |         ^^^^^^^^^^^^^ not a unit struct, unit variant or constant
+   |                ^^^^^^ not found in the crate root
+   |
+   = note: a module named `crate::config` exists in another namespace
 
 error: aborting due to 4 previous errors
 

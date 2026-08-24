@@ -122,13 +122,14 @@ use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
+use crate::PassPolicy;
 use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
 
 pub(super) struct GVN;
 
 impl<'tcx> crate::MirPass<'tcx> for GVN {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 2)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -184,10 +185,6 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 
         StorageRemover { tcx, reused_locals: &state.reused_locals, storage_to_remove }
             .visit_body_preserves_cfg(body);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

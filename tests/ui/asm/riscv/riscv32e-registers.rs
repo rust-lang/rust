@@ -2,15 +2,29 @@
 //
 //@ add-minicore
 //@ build-fail
-//@ revisions: riscv32e riscv32em riscv32emc
-//
+//@ revisions: riscv32e_llvm23 riscv32em_llvm23 riscv32emc_llvm23
+//@ revisions: riscv32e_llvm24 riscv32em_llvm24 riscv32emc_llvm24
 //@ compile-flags: --crate-type=rlib
-//@ [riscv32e] needs-llvm-components: riscv
-//@ [riscv32e] compile-flags: --target=riscv32e-unknown-none-elf
-//@ [riscv32em] needs-llvm-components: riscv
-//@ [riscv32em] compile-flags: --target=riscv32em-unknown-none-elf
-//@ [riscv32emc] needs-llvm-components: riscv
-//@ [riscv32emc] compile-flags: --target=riscv32emc-unknown-none-elf
+//@ [riscv32e_llvm23] needs-llvm-components: riscv
+//@ [riscv32e_llvm23] compile-flags: --target=riscv32e-unknown-none-elf
+//@ [riscv32e_llvm23] max-llvm-major-version: 23
+//@ [riscv32e_llvm24] needs-llvm-components: riscv
+//@ [riscv32e_llvm24] compile-flags: --target=riscv32e-unknown-none-elf
+//@ [riscv32e_llvm24] min-llvm-version: 24
+
+//@ [riscv32em_llvm23] needs-llvm-components: riscv
+//@ [riscv32em_llvm23] compile-flags: --target=riscv32em-unknown-none-elf
+//@ [riscv32em_llvm23] max-llvm-major-version: 23
+//@ [riscv32em_llvm24] needs-llvm-components: riscv
+//@ [riscv32em_llvm24] compile-flags: --target=riscv32em-unknown-none-elf
+//@ [riscv32em_llvm24] min-llvm-version: 24
+
+//@ [riscv32emc_llvm23] needs-llvm-components: riscv
+//@ [riscv32emc_llvm23] compile-flags: --target=riscv32emc-unknown-none-elf
+//@ [riscv32emc_llvm23] max-llvm-major-version: 23
+//@ [riscv32emc_llvm24] needs-llvm-components: riscv
+//@ [riscv32emc_llvm24] compile-flags: --target=riscv32emc-unknown-none-elf
+//@ [riscv32emc_llvm24] min-llvm-version: 24
 //@ ignore-backends: gcc
 
 // Unlike bad-reg.rs, this tests if the assembler can reject invalid registers
@@ -41,51 +55,67 @@ pub unsafe fn registers() {
     asm!("li x14, 0");
     asm!("li x15, 0");
     asm!("li x16, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x17, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x18, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x19, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x20, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x21, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x22, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x23, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x24, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x25, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x26, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x27, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x28, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x29, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x30, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
     asm!("li x31, 0");
-    //~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm23,riscv32em_llvm23,riscv32emc_llvm23]~^ ERROR invalid operand for instruction
+    //[riscv32e_llvm24,riscv32em_llvm24,riscv32emc_llvm24]~^^ ERROR register must be a GPR
     //~| NOTE instantiated into assembly here
 }

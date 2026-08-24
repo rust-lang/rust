@@ -59,23 +59,23 @@ LL |     bar!(internal_unstable::unstable());
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: this error originates in the macro `foo` which comes from the expansion of the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: `#[allow_internal_unstable]` attribute cannot be used on struct fields
-  --> $DIR/internal-unstable.rs:10:5
+warning: the `allow_internal_unstable` attribute cannot be used on struct fields
+  --> $DIR/internal-unstable.rs:10:7
    |
 LL |     #[allow_internal_unstable]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
+   = help: the `allow_internal_unstable` attribute can be applied to functions and macro defs
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: requested on the command line with `-W unused-attributes`
 
-warning: `#[allow_internal_unstable]` attribute cannot be used on match arms
-  --> $DIR/internal-unstable.rs:61:9
+warning: the `allow_internal_unstable` attribute cannot be used on match arms
+  --> $DIR/internal-unstable.rs:61:11
    |
 LL |         #[allow_internal_unstable]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
+   = help: the `allow_internal_unstable` attribute can be applied to functions and macro defs
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 7 previous errors; 2 warnings emitted

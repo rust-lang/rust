@@ -5,7 +5,7 @@ use rustc_ast::Mutability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, ByRef, ExprKind, HirId, LetStmt, Node, Pat, PatKind, QPath};
 use rustc_hir_typeck::expr_use_visitor::PlaceBase;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty::UpvarCapture;
 use rustc_session::declare_lint_pass;
 use rustc_span::DesugaringKind;

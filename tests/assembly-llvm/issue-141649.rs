@@ -2,6 +2,7 @@
 //@ compile-flags: -Copt-level=3
 
 //@ revisions: aarch64
+//@ [aarch64] compile-flags: -Cforce-frame-pointers=yes
 //@ [aarch64] only-aarch64
 
 //@ revisions: linux-x86_64

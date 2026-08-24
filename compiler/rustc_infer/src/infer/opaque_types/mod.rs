@@ -285,7 +285,8 @@ impl<'tcx> InferCtxt<'tcx> {
             }
             mode @ (ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
-            | ty::TypingMode::Codegen) => {
+            | ty::TypingMode::Codegen
+            | ty::TypingMode::Reflection) => {
                 bug!("insert hidden type in {mode:?}")
             }
         }

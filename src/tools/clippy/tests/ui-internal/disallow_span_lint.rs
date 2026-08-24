@@ -7,7 +7,7 @@ extern crate rustc_lint;
 extern crate rustc_middle;
 
 use rustc_errors::{DiagDecorator, DiagMessage, MultiSpan};
-use rustc_hir::hir_id::HirId;
+use rustc_hir::HirId;
 use rustc_lint::{Lint, LintContext};
 use rustc_middle::ty::TyCtxt;
 

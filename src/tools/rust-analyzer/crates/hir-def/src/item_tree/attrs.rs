@@ -254,12 +254,7 @@ impl<'attr> AttrQuery<'attr> {
 
 impl AttrsOrCfg {
     #[inline]
-    pub(super) fn empty() -> Self {
-        AttrsOrCfg::Enabled { attrs: AttrsOwned(Box::new([])) }
-    }
-
-    #[inline]
     pub(super) fn is_empty(&self) -> bool {
-        matches!(self, AttrsOrCfg::Enabled { attrs } if attrs.as_ref().is_empty())
+        matches!(self, AttrsOrCfg::Enabled { attrs } if attrs.0.is_empty())
     }
 }

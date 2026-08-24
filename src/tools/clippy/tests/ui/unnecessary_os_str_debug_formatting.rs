@@ -1,5 +1,5 @@
 #![warn(clippy::unnecessary_debug_formatting)]
-#![allow(clippy::uninlined_format_args)]
+#![expect(clippy::uninlined_format_args)]
 
 use std::ffi::{OsStr, OsString};
 

@@ -1,7 +1,7 @@
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, IntTy, UintTy};
 use rustc_span::Span;
 

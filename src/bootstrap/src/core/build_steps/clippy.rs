@@ -14,15 +14,17 @@
 //! (as usual) a massive undertaking/refactoring.
 
 use super::tool::{SourceType, prepare_tool_cargo};
-use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::check::{CompilerForCheck, prepare_compiler_for_check};
 use crate::core::build_steps::compile::{
     ArtifactKeepMode, run_cargo, rustc_cargo, std_cargo, std_crates_for_make_run,
 };
 use crate::core::builder;
-use crate::core::builder::{Alias, Kind, RunConfig, Step, StepMetadata, crate_description};
+use crate::core::builder::{
+    Alias, Builder, CommandLineStep, Kind, RunConfig, ShouldRun, StepMetadata, crate_description,
+};
+use crate::core::config::{Subcommand, TargetSelection};
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Compiler, Mode, Subcommand, TargetSelection, exit};
+use crate::{Compiler, Mode, exit};
 
 /// Disable the most spammy clippy lints
 const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
@@ -167,7 +169,7 @@ impl Std {
     }
 }
 
-impl Step for Std {
+impl CommandLineStep for Std {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -251,7 +253,7 @@ impl Rustc {
     }
 }
 
-impl Step for Rustc {
+impl CommandLineStep for Rustc {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -336,7 +338,7 @@ impl CodegenGcc {
     }
 }
 
-impl Step for CodegenGcc {
+impl CommandLineStep for CodegenGcc {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -422,7 +424,7 @@ macro_rules! lint_any {
             config: LintConfig,
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ();
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -522,7 +524,7 @@ pub struct CI {
     config: LintConfig,
 }
 
-impl Step for CI {
+impl CommandLineStep for CI {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -578,6 +580,14 @@ impl Step for CI {
                 "clippy::single_char_add_str".into(),
                 "clippy::to_string_in_format_args".into(),
                 "clippy::unconditional_recursion".into(),
+                "clippy::int_plus_one".into(),
+                "clippy::legacy_numeric_constants".into(),
+                "clippy::zero_divided_by_zero".into(),
+                "clippy::len_zero".into(),
+                "clippy::needless_as_bytes".into(),
+                "clippy::ptr_offset_with_cast".into(),
+                "clippy::let_and_return".into(),
+                "clippy::needless_return".into(),
             ],
             forbid: vec![],
         };

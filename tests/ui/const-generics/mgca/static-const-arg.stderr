@@ -1,0 +1,14 @@
+error: static items cannot be used as const arguments
+  --> $DIR/static-const-arg.rs:12:16
+   |
+LL | const _: Foo<{ A }> = Foo;
+   |                ^
+
+error: static items cannot be used as const arguments
+  --> $DIR/static-const-arg.rs:15:14
+   |
+LL | const _: Foo<A> = Foo;
+   |              ^
+
+error: aborting due to 2 previous errors
+

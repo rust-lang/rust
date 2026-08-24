@@ -69,6 +69,16 @@ pub mod foo {
     pub fn bar() {}
 }
 
+/// Visit https://example.com/docs.
+//~^ ERROR this URL is not a hyperlink
+/// Two sentences. https://example.com. And more text.
+//~^ ERROR this URL is not a hyperlink
+/// Trailing ellipsis https://example.com/docs...
+//~^ ERROR this URL is not a hyperlink
+/// A period in the middle of https://example.com/a.b is part of the URL.
+//~^ ERROR this URL is not a hyperlink
+pub fn trailing_period() {}
+
 /// [https://bloob.blob]
 //~^ ERROR this URL is not a hyperlink
 /// [ https://bloob.blob ]

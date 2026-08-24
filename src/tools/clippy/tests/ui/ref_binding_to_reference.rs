@@ -1,7 +1,6 @@
-// FIXME: run-rustfix waiting on multi-span suggestions
-//@no-rustfix
 #![warn(clippy::ref_binding_to_reference)]
-#![expect(clippy::explicit_auto_deref, clippy::needless_borrowed_reference)]
+#![expect(clippy::explicit_auto_deref)]
+#![allow(clippy::needless_borrowed_reference)]
 
 fn f1(_: &str) {}
 macro_rules! m2 {
@@ -25,17 +24,22 @@ fn main() {
     };
 
     // Err, reference to a &String
+    #[expect(
+        clippy::ref_binding_to_reference,
+        reason = "The suggestion doesn't compile, see https://github.com/rust-lang/rust-clippy/issues/17370"
+    )]
     let _: &&String = match Some(&x) {
         Some(ref x) => x,
-        //~^ ref_binding_to_reference
         None => return,
     };
 
     // Err, reference to a &String
+    #[expect(
+        clippy::ref_binding_to_reference,
+        reason = "The suggestion doesn't compile, see https://github.com/rust-lang/rust-clippy/issues/17370"
+    )]
     let _: &&String = match Some(&x) {
         Some(ref x) => {
-            //~^ ref_binding_to_reference
-
             f1(x);
             f1(*x);
             x

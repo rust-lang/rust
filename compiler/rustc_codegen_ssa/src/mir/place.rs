@@ -477,7 +477,7 @@ pub(super) fn codegen_tag_value<'tcx, V>(
 ) -> Result<Option<(FieldIdx, V)>, UninhabitedVariantError> {
     // By checking uninhabited-ness first we don't need to worry about types
     // like `(u32, !)` which are single-variant but weird.
-    if layout.for_variant(cx, variant_index).is_uninhabited() {
+    if layout.is_variant_uninhabited(variant_index) {
         return Err(UninhabitedVariantError);
     }
 

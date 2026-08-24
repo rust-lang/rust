@@ -69,6 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for Exit {
             // in compilation contexts like --all-targets (which include --tests), you get false positives
             // because in a test context, main is not the entrypoint function
             && ident.name != sym::main
+            && !e.span.in_external_macro(cx.tcx.sess.source_map())
         {
             span_lint(cx, EXIT, e.span, "usage of `process::exit`");
         }

@@ -1,3 +1,4 @@
-//@error-in-other-file: error reading Clippy's configuration file: expected `.`, `=`
+//@error-in-other-file: key with no value
+//@error-in-other-file: invalid key-value pair
 
 fn main() {}

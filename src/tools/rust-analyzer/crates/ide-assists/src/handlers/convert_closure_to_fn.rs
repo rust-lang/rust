@@ -507,7 +507,7 @@ fn wrap_capture_in_deref_if_needed(
     capture_kind: CaptureKind,
     is_ref: bool,
 ) -> ast::Expr {
-    let capture_name = make.expr_path(make.path_from_text(&capture_name.text()));
+    let capture_name = make.expr_path(make.path_from_text(capture_name.text()));
     if capture_kind == CaptureKind::Move || is_ref {
         return capture_name;
     }
@@ -733,6 +733,25 @@ fn main() {
     let s = &mut true;
     fn closure(s: &mut bool) { *s = false; }
     closure(s);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn handles_closures_with_unannotated_rest_patterns() {
+        check_assist(
+            convert_closure_to_fn,
+            r#"
+fn main() {
+    let closure = |$0..| ();
+}
+"#,
+            r#"
+fn main() {
+    fn closure(..: _) {
+        ()
+    }
 }
 "#,
         );

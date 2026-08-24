@@ -50,7 +50,7 @@ impl HirFileId {
 
 /// This is an implementation detail of [`HirFileId::span_map`]. Outside this crate, use
 /// `HirFileId::from(file_id).span_map(db)` instead of `real_span_map(db, file_id)`.
-#[salsa_macros::tracked(returns(ref))]
+#[salsa::tracked(returns(ref))]
 pub(crate) fn real_span_map(
     db: &dyn SourceDatabase,
     editioned_file_id: base_db::EditionedFileId,

@@ -1,6 +1,6 @@
 use super::UNBUFFERED_BYTES;
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
 use rustc_hir as hir;

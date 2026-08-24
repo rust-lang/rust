@@ -1,5 +1,4 @@
 //@ compile-flags: -C opt-level=3
-#![feature(c_variadic)]
 
 // Test that the inline attributes are accepted on C-variadic functions.
 //

@@ -7,7 +7,7 @@ use rustc_span::Span;
 use tracing::{debug, instrument};
 
 use crate::infer::BoundRegionConversionTime::HigherRankedType;
-use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};
+use crate::infer::relate::PredicateEmittingRelation;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 
@@ -360,10 +360,6 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, 'tcx>
         self.param_env
     }
 
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        StructurallyRelateAliases::No
-    }
-
     fn register_predicates(
         &mut self,
         preds: impl IntoIterator<Item: ty::Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>>,
@@ -382,9 +378,5 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, 'tcx>
                 goal.predicate,
             )
         }))
-    }
-
-    fn ambient_variance(&self) -> ty::Variance {
-        self.ambient_variance
     }
 }

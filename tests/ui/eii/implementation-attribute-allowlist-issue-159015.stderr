@@ -1,0 +1,67 @@
+error: `#[foo]` is not allowed to have `#[no_mangle]`
+  --> $DIR/implementation-attribute-allowlist-issue-159015.rs:46:1
+   |
+LL | #[foo]
+   | ------ `#[foo]` is not allowed to have `#[no_mangle]`
+LL | #[unsafe(no_mangle)]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `#[baz]` is not allowed to have `#[export_name]`
+  --> $DIR/implementation-attribute-allowlist-issue-159015.rs:54:1
+   |
+LL | #[baz]
+   | ------ `#[baz]` is not allowed to have `#[export_name]`
+LL | #[unsafe(export_name = "qux")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[quux]` is not allowed to have `#[link_section]`
+  --> $DIR/implementation-attribute-allowlist-issue-159015.rs:62:1
+   |
+LL | #[quux]
+   | ------- `#[quux]` is not allowed to have `#[link_section]`
+LL | #[unsafe(link_section = "__TEXT,__text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[grault]` is not allowed to have `#[track_caller]`
+  --> $DIR/implementation-attribute-allowlist-issue-159015.rs:70:1
+   |
+LL | #[grault]
+   | --------- `#[grault]` is not allowed to have `#[track_caller]`
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+
+error: `#[naked_attr]` is not allowed to have `#[naked]`
+  --> $DIR/implementation-attribute-allowlist-issue-159015.rs:78:1
+   |
+LL | #[naked_attr]
+   | ------------- `#[naked_attr]` is not allowed to have `#[naked]`
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^
+
+error: `#[multiple_invalid_attrs]` is not allowed to have `#[no_mangle]`
+  --> $DIR/implementation-attribute-allowlist-issue-159015.rs:88:1
+   |
+LL | #[multiple_invalid_attrs]
+   | ------------------------- `#[multiple_invalid_attrs]` is not allowed to have `#[no_mangle]`
+LL | #[unsafe(no_mangle)]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: `#[multiple_invalid_attrs]` is not allowed to have `#[track_caller]`
+  --> $DIR/implementation-attribute-allowlist-issue-159015.rs:90:1
+   |
+LL | #[multiple_invalid_attrs]
+   | ------------------------- `#[multiple_invalid_attrs]` is not allowed to have `#[track_caller]`
+...
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+
+error: `#[static_eii]` is not allowed to have `#[used]`
+  --> $DIR/implementation-attribute-allowlist-issue-159015.rs:98:1
+   |
+LL | #[static_eii]
+   | ------------- `#[static_eii]` is not allowed to have `#[used]`
+LL | #[used]
+   | ^^^^^^^
+
+error: aborting due to 8 previous errors
+

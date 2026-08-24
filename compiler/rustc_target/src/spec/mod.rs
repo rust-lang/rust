@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! [Flexible target specification.](https://github.com/rust-lang/rfcs/pull/131)
 //!
 //! Rust targets a wide variety of usecases, and in the interest of flexibility,
@@ -1568,6 +1569,7 @@ supported_targets! {
 
     ("avr-none", avr_none),
 
+    ("aarch64-unknown-l4re-uclibc", aarch64_unknown_l4re_uclibc),
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
     ("aarch64-unknown-redox", aarch64_unknown_redox),
@@ -1666,7 +1668,7 @@ supported_targets! {
     ("thumbv7a-none-eabihf", thumbv7a_none_eabihf),
     ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
     ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
-    ("armv7a-vex-v5", armv7a_vex_v5),
+    ("thumbv7a-vex-v5", thumbv7a_vex_v5),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -2403,6 +2405,10 @@ pub struct TargetOptions {
     /// Whether a cpu needs to be explicitly set.
     /// Set to true if there is no default cpu. Defaults to false.
     pub need_explicit_cpu: bool,
+    /// Whether `-Ctarget-cpu` is treated as a target modifier. If this is set
+    /// all crates that are linked together must have been compiled with the
+    /// same target-cpu. Defaults to false.
+    pub requires_consistent_cpu: bool,
     /// A list of CPUs that are provided by LLVM but are considered unsupported by Rust.
     /// These CPUs are omitted from `--print target-cpus` output and will cause an error
     /// if used with `-Ctarget-cpu`.
@@ -2860,6 +2866,7 @@ impl Default for TargetOptions {
             asm_args: cvs![],
             cpu: "generic".into(),
             need_explicit_cpu: false,
+            requires_consistent_cpu: false,
             unsupported_cpus: cvs![],
             features: "".into(),
             direct_access_external_data: None,
@@ -3636,6 +3643,14 @@ impl Target {
             }
         }
 
+        // Check that the target cpu constraints make sense.
+        if self.need_explicit_cpu {
+            check!(
+                self.requires_consistent_cpu,
+                "if `need_explicit_cpu` is set, then `requires_consistent_cpu` must be set"
+            );
+        }
+
         // Check that the given target-features string makes some basic sense.
         if !self.features.is_empty() {
             let mut features_enabled = FxHashSet::default();
@@ -3821,7 +3836,7 @@ impl Target {
 
     pub fn object_architecture(
         &self,
-        unstable_target_features: &FxIndexSet<Symbol>,
+        internal_target_features: &FxIndexSet<Symbol>,
     ) -> Option<(object::Architecture, Option<object::SubArchitecture>)> {
         use object::Architecture;
         Some(match self.arch {
@@ -3864,7 +3879,7 @@ impl Target {
             Arch::RiscV32 => (Architecture::Riscv32, None),
             Arch::RiscV64 => (Architecture::Riscv64, None),
             Arch::Sparc => {
-                if unstable_target_features.contains(&sym::v8plus) {
+                if internal_target_features.contains(&sym::v8plus) {
                     // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
                     (Architecture::Sparc32Plus, None)
                 } else {

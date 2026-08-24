@@ -3,7 +3,7 @@ use clippy_utils::ty::is_c_void;
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, sym};
 use rustc_hir::{Expr, ExprKind, GenericArg};
 use rustc_lint::LateContext;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Ty};
 
 use super::CAST_PTR_ALIGNMENT;
@@ -36,6 +36,7 @@ fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_f
         // when casting from a ZST, we don't know enough to properly lint
         && !from_layout.is_zst()
         && !is_used_as_unaligned(cx, expr)
+        && !expr.span.in_external_macro(cx.tcx.sess.source_map())
     {
         span_lint(
             cx,

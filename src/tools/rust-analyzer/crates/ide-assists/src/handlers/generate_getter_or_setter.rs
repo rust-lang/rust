@@ -225,7 +225,7 @@ fn generate_getter_from_info(
         (
             make.ty_ref(record_field_info.field_ty.clone(), true),
             make.expr_ref(
-                make.expr_field(self_expr, &record_field_info.field_name.text()).into(),
+                make.expr_field(self_expr, record_field_info.field_name.text()).into(),
                 true,
             ),
         )
@@ -250,7 +250,7 @@ fn generate_getter_from_info(
                 make.expr_ref(
                     make.expr_field(
                         make.expr_path(make.ident_path("self")),
-                        &record_field_info.field_name.text(),
+                        record_field_info.field_name.text(),
                     )
                     .into(),
                     false,

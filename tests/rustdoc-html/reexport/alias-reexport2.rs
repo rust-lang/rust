@@ -1,8 +1,8 @@
-// gate-test-lazy_type_alias
+// gate-test-checked_type_aliases
 //@ aux-build:alias-reexport.rs
 
 #![crate_name = "foo"]
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 #![allow(incomplete_features)]
 
 extern crate alias_reexport;

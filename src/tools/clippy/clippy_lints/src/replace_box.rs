@@ -1,12 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_default_equivalent_call, local_is_initialized};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::smallvec::SmallVec;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, BodyId, Expr, ExprKind, HirId, LangItem, QPath};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{Body, BodyId, Expr, ExprKind, HirId, QPath};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::place::ProjectionKind;

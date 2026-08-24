@@ -11,7 +11,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use tracing::{debug, instrument};
 
 use super::ItemCtxt;
-use super::predicates_of::assert_only_contains_predicates_from;
+use super::clauses_of::assert_only_contains_clauses_from;
 use crate::hir_ty_lowering::{
     HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
 };
@@ -72,11 +72,11 @@ fn associated_type_bounds<'tcx>(
 
                 // Also collect `where Self::Assoc: Trait` from the parent trait's where clauses.
                 let trait_def_id = tcx.local_parent(assoc_item_def_id);
-                let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
+                let trait_clauses = tcx.trait_explicit_clauses_and_bounds(trait_def_id);
 
                 let item_trait_ref =
                     ty::TraitRef::identity(tcx, tcx.parent(assoc_item_def_id.to_def_id()));
-                bounds.extend(trait_predicates.predicates.iter().copied().filter_map(
+                bounds.extend(trait_clauses.clauses.iter().copied().filter_map(
                     |(clause, span)| {
                         remap_gat_vars_and_recurse_into_nested_projections(
                             tcx,
@@ -94,8 +94,8 @@ fn associated_type_bounds<'tcx>(
                 // FIXME(const_trait_impl): We *could* uplift the
                 // `where Self::Assoc: [const] Trait` bounds from the parent trait
                 // here too, but we'd need to split `const_conditions` into two
-                // queries (like we do for `trait_explicit_predicates_and_bounds`)
-                // since we need to also filter the predicates *out* of the const
+                // queries (like we do for `trait_explicit_clauses_and_bounds`)
+                // since we need to also filter the clauses *out* of the const
                 // conditions or they lead to cycles in the trait solver when
                 // utilizing these bounds. For now, let's do nothing.
             }
@@ -108,7 +108,7 @@ fn associated_type_bounds<'tcx>(
             bounds
         );
 
-        assert_only_contains_predicates_from(filter, bounds, item_ty);
+        assert_only_contains_clauses_from(filter, bounds, item_ty);
 
         bounds
     })
@@ -465,7 +465,7 @@ pub(super) fn explicit_item_bounds_with_filter(
                         .to_vec()
                         .fold_with(&mut AssocTyToOpaque { tcx, fn_def_id: parent.to_def_id() }),
                 );
-                assert_only_contains_predicates_from(filter, bounds, item_ty);
+                assert_only_contains_clauses_from(filter, bounds, item_ty);
                 bounds
             }
             rustc_hir::OpaqueTyOrigin::FnReturn {
@@ -480,7 +480,7 @@ pub(super) fn explicit_item_bounds_with_filter(
                 let args = GenericArgs::identity_for_item(tcx, def_id);
                 let item_ty = Ty::new_opaque(tcx, ty::IsRigid::No, def_id.to_def_id(), args);
                 let bounds = opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter);
-                assert_only_contains_predicates_from(filter, bounds, item_ty);
+                assert_only_contains_clauses_from(filter, bounds, item_ty);
                 bounds
             }
         },

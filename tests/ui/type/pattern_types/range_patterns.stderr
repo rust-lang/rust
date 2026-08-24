@@ -4,13 +4,7 @@ error: layout_of(NonZero<u32>) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 1..=4294967295,
-               },
+               u32 is 1..=4294967295,
            ),
            fields: Arbitrary {
                offsets: [
@@ -23,10 +17,7 @@ error: layout_of(NonZero<u32>) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       false,
-                   ),
+                   value: u32,
                    valid_range: 1..=4294967295,
                },
            ),
@@ -49,13 +40,7 @@ error: layout_of((u32) is 1..) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 1..=4294967295,
-               },
+               u32 is 1..=4294967295,
            ),
            fields: Arbitrary {
                offsets: [
@@ -68,10 +53,7 @@ error: layout_of((u32) is 1..) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       false,
-                   ),
+                   value: u32,
                    valid_range: 1..=4294967295,
                },
            ),
@@ -94,13 +76,7 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=4294967295,
-               },
+               u32 is ..,
            ),
            fields: Arbitrary {
                offsets: [
@@ -113,13 +89,7 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
            largest_niche: None,
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=4294967295,
-               },
+               tag: u32 is ..,
                tag_encoding: Niche {
                    untagged_variant: 1,
                    niche_variants: 0..=0,
@@ -140,13 +110,7 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                    VariantLayout {
                        size: Size(4 bytes),
                        backend_repr: Scalar(
-                           Initialized {
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 1..=4294967295,
-                           },
+                           u32 is 1..=4294967295,
                        ),
                        field_offsets: [
                            Size(0 bytes),
@@ -157,10 +121,7 @@ error: layout_of(Option<(u32) is 1..>) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
+                               value: u32,
                                valid_range: 1..=4294967295,
                            },
                        ),
@@ -183,13 +144,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=4294967295,
-               },
+               u32 is ..,
            ),
            fields: Arbitrary {
                offsets: [
@@ -202,13 +157,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
            largest_niche: None,
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=4294967295,
-               },
+               tag: u32 is ..,
                tag_encoding: Niche {
                    untagged_variant: 1,
                    niche_variants: 0..=0,
@@ -229,13 +178,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                    VariantLayout {
                        size: Size(4 bytes),
                        backend_repr: Scalar(
-                           Initialized {
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 1..=4294967295,
-                           },
+                           u32 is 1..=4294967295,
                        ),
                        field_offsets: [
                            Size(0 bytes),
@@ -246,10 +189,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
+                               value: u32,
                                valid_range: 1..=4294967295,
                            },
                        ),
@@ -272,13 +212,7 @@ error: layout_of(NonZeroU32New) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 1..=4294967295,
-               },
+               u32 is 1..=4294967295,
            ),
            fields: Arbitrary {
                offsets: [
@@ -291,10 +225,7 @@ error: layout_of(NonZeroU32New) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       false,
-                   ),
+                   value: u32,
                    valid_range: 1..=4294967295,
                },
            ),
@@ -345,13 +276,7 @@ error: layout_of((i8) is -10..=10) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I8,
-                       true,
-                   ),
-                   valid_range: (..=10) | (246..),
-               },
+               i8 is -10..=10,
            ),
            fields: Arbitrary {
                offsets: [
@@ -364,10 +289,7 @@ error: layout_of((i8) is -10..=10) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       true,
-                   ),
+                   value: i8,
                    valid_range: (..=10) | (246..),
                },
            ),
@@ -390,13 +312,7 @@ error: layout_of((i8) is i8::MIN..=0) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I8,
-                       true,
-                   ),
-                   valid_range: (..=0) | (128..),
-               },
+               i8 is -128..=0,
            ),
            fields: Arbitrary {
                offsets: [
@@ -409,10 +325,7 @@ error: layout_of((i8) is i8::MIN..=0) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       true,
-                   ),
+                   value: i8,
                    valid_range: (..=0) | (128..),
                },
            ),

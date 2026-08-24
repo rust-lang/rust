@@ -19,13 +19,14 @@ use rustc_middle::mir::{BasicBlock, Body, Location, Operand, Place, TerminatorKi
 use rustc_middle::ty::{TyCtxt, TypingEnv};
 use rustc_span::DUMMY_SP;
 
+use crate::PassPolicy;
 use crate::ssa::SsaLocals;
 
 pub(super) struct SsaRangePropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for SsaRangePropagation {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 1
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() > 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -41,10 +42,6 @@ impl<'tcx> crate::MirPass<'tcx> for SsaRangePropagation {
             let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
             range_set.visit_basic_block_data(bb, data);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

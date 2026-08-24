@@ -160,7 +160,7 @@ LL |     let _y = x.into_iter().next().unwrap();
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
-note: `into_iter` takes ownership of the receiver `self`, which moves `x`
+note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
@@ -177,7 +177,7 @@ LL |     let _y = [x.into_iter().next().unwrap(); 1];
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
-note: `into_iter` takes ownership of the receiver `self`, which moves `x`
+note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |

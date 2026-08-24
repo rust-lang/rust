@@ -668,7 +668,10 @@ fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange
     }
 }
 
-fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSet<Definition> {
+fn find_defs<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    token: SyntaxToken,
+) -> FxHashSet<Definition<'db>> {
     sema.descend_into_macros_exact(token)
         .into_iter()
         .filter_map(|token| IdentClass::classify_token(sema, &token))

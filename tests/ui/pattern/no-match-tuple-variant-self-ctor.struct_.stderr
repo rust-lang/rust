@@ -1,4 +1,4 @@
-error[E0423]: expected value, found struct `S`
+error[E0423]: cannot find value `S` in this scope
   --> $DIR/no-match-tuple-variant-self-ctor.rs:30:24
    |
 LL |     struct S {}
@@ -6,6 +6,8 @@ LL |     struct S {}
 ...
 LL |             let Self = S;
    |                        ^ help: use struct literal syntax instead: `S {}`
+   |
+   = note: a struct named `S` exists in another namespace
 
 error[E0533]: expected unit struct, found self constructor `Self`
   --> $DIR/no-match-tuple-variant-self-ctor.rs:30:17

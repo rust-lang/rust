@@ -21,24 +21,14 @@
 //@[avr_cpu] needs-llvm-components: avr
 //@[avr_cpu] compile-flags: -Ctarget-cpu=atmega328p
 //@[avr_cpu] build-pass
+
 //@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
-
-// FIXME(#140038): this can't use `minicore` yet because `minicore` doesn't currently propagate the
-// `-C target-cpu` for targets that *require* a `target-cpu` being specified.
-#![feature(no_core, lang_items)]
+// We don't want to link in any other crate as this would make it necessary to specify
+// a `-Ctarget-cpu` for them resulting in a *target-modifier* disagreement error instead of the
+// error mentioned below.
+#![feature(no_core)]
 #![no_core]
-
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang="sized"]
-trait Sized {}
-
-pub fn foo() {}
 
 //[amdgcn_nocpu,avr_nocpu]~? ERROR target requires explicitly specifying a cpu with `-C target-cpu`

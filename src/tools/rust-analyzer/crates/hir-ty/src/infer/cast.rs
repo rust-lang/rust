@@ -123,7 +123,7 @@ impl<'db> CastCheck<'db> {
 
     pub(super) fn check(
         &mut self,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
     ) -> Result<(), InferenceDiagnostic> {
         self.expr_ty =
             ctx.table.try_structurally_resolve_type(self.source_expr.into(), self.expr_ty);
@@ -159,7 +159,7 @@ impl<'db> CastCheck<'db> {
         self.do_check(ctx).map_err(|e| e.into_diagnostic(self.expr, self.expr_ty, self.cast_ty))
     }
 
-    fn do_check(&self, ctx: &mut InferenceContext<'_, 'db>) -> Result<(), CastError> {
+    fn do_check(&self, ctx: &mut InferenceContext<'db>) -> Result<(), CastError> {
         let (t_from, t_cast) =
             match (CastTy::from_ty(ctx.db, self.expr_ty), CastTy::from_ty(ctx.db, self.cast_ty)) {
                 (Some(t_from), Some(t_cast)) => (t_from, t_cast),
@@ -258,7 +258,7 @@ impl<'db> CastCheck<'db> {
 
     fn check_ref_cast(
         &self,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
         t_expr: Ty<'db>,
         m_expr: Mutability,
         t_cast: Ty<'db>,
@@ -304,7 +304,7 @@ impl<'db> CastCheck<'db> {
 
     fn check_ptr_ptr_cast(
         &self,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
         src: Ty<'db>,
         dst: Ty<'db>,
     ) -> Result<(), CastError> {
@@ -456,7 +456,7 @@ impl<'db> CastCheck<'db> {
 
     fn check_ptr_addr_cast(
         &self,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
         expr_ty: Ty<'db>,
     ) -> Result<(), CastError> {
         match pointer_kind(self.expr, expr_ty, ctx).map_err(|_| CastError::Unknown)? {
@@ -470,7 +470,7 @@ impl<'db> CastCheck<'db> {
 
     fn check_addr_ptr_cast(
         &self,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
         cast_ty: Ty<'db>,
     ) -> Result<(), CastError> {
         match pointer_kind(self.expr, cast_ty, ctx).map_err(|_| CastError::Unknown)? {
@@ -486,7 +486,7 @@ impl<'db> CastCheck<'db> {
 
     fn check_fptr_ptr_cast(
         &self,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
         cast_ty: Ty<'db>,
     ) -> Result<(), CastError> {
         match pointer_kind(self.expr, cast_ty, ctx).map_err(|_| CastError::Unknown)? {
@@ -520,7 +520,7 @@ enum PointerKind<'db> {
 fn pointer_kind<'db>(
     expr: ExprId,
     ty: Ty<'db>,
-    ctx: &mut InferenceContext<'_, 'db>,
+    ctx: &mut InferenceContext<'db>,
 ) -> Result<Option<PointerKind<'db>>, ()> {
     let ty = ctx.table.try_structurally_resolve_type(expr.into(), ty);
 

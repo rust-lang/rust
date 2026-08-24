@@ -93,7 +93,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Assign((place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
 
             SetDiscriminant { place, variant_index } => {
-                let dest = self.eval_place(**place)?;
+                let dest =
+                    self.eval_place(**place, /* skip_validity_for_simple_deref */ false)?;
                 self.write_discriminant(*variant_index, &dest)?;
             }
 
@@ -115,7 +116,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             // Evaluate the place expression, without reading from it.
             PlaceMention(place) => {
-                let _ = self.eval_place(**place)?;
+                let _ =
+                    self.eval_place(**place, /* skip_validity_for_simple_deref */ false)?;
             }
 
             // This exists purely to guide borrowck lifetime inference, and does not have
@@ -159,7 +161,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         rvalue: &mir::Rvalue<'tcx>,
         place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx> {
-        let dest = self.eval_place(place)?;
+        // We can skip validity because we'll write to the place which checks everything we care
+        // about for references, and the pointee must be sized so there's nothing to check for raw
+        // pointers.
+        let dest = self.eval_place(place, /* skip_validity_for_simple_deref */ true)?;
         // FIXME: ensure some kind of non-aliasing between LHS and RHS?
         // Also see https://github.com/rust-lang/rust/issues/68364.
 
@@ -206,7 +211,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             Ref(_, borrow_kind, place) => {
-                let src = self.eval_place(place)?;
+                // `x = &*ptr` does not need a validity check on `ptr` because we will already
+                // check `x` below.
+                let src = self.eval_place(place, /* skip_validity_for_simple_deref */ true)?;
                 let place = self.force_allocation(&src)?;
                 let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
                 // A fresh reference was created, make sure it gets retagged with the right mode.
@@ -251,7 +258,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     false
                 };
 
-                let src = self.eval_place(place)?;
+                let src =
+                    self.eval_place(place, /* skip_validity_for_simple_deref */ false)?;
                 let place = self.force_allocation(&src)?;
                 let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
                 if !place_base_raw && !kind.is_fake() {
@@ -342,7 +350,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Validate that the entire thing is valid, and reset padding that might be in between the
         // fields.
         if M::enforce_validity(self, dest.layout()) {
-            self.validate_operand(
+            self.validate_place(
                 dest,
                 M::enforce_validity_recursively(self, dest.layout()),
                 /*reset_provenance_and_padding*/ true,
@@ -403,7 +411,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 FnArg::Copy(op)
             }
             mir::Operand::Move(place) => {
-                let place = self.eval_place(*place)?;
+                // We will read from this place, which checks everything there is to check,
+                // so we can skip the extra validity check here.
+                let place =
+                    self.eval_place(*place, /* skip_validity_for_simple_deref */ true)?;
                 if move_definitely_disjoint {
                     // We still have to ensure that no *other* pointers are used to access this place,
                     // so *if* it is in memory then we have to treat it as `InPlace`.
@@ -553,7 +564,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let old_loc = self.frame().loc;
 
                 // Evaluation order consistent with assignment: destination first.
-                let dest_place = self.eval_place(destination)?;
+                let dest_place =
+                    self.eval_place(destination, /* skip_validity_for_simple_deref */ false)?;
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args, &destination)?;
 
@@ -602,7 +614,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     drop.is_none(),
                     "Async Drop must be expanded or reset to sync in runtime MIR"
                 );
-                let place = self.eval_place(place)?;
+                let place =
+                    self.eval_place(place, /* skip_validity_for_simple_deref */ false)?;
                 let instance = {
                     let _trace =
                         enter_trace_span!(M, resolve::resolve_drop_glue, ty = ?place.layout.ty);

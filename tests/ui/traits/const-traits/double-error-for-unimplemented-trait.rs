@@ -1,4 +1,4 @@
-// Make sure we don't issue *two* error messages for the trait predicate *and* host predicate.
+// Make sure we don't issue *two* error messages for the trait clause *and* host clause.
 
 #![feature(const_trait_impl)]
 

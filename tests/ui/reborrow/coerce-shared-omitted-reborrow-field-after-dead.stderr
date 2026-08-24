@@ -1,8 +1,14 @@
-error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-omitted-reborrow-field-after-dead.rs:31:13
+error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
+  --> $DIR/coerce-shared-omitted-reborrow-field-after-dead.rs:31:1
    |
 LL | impl<'a, T> CoerceShared<OmitRef<'a, T>> for OmitMut<'a, T> {}
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^--------------^^^^^^--------------^^^
+   | |                        |                   |
+   | |                        |                   source type has 2 non-ZST reborrow data fields
+   | |                        target type has 1 non-ZST reborrow data fields
+   | in this `CoerceShared` implementation
+   |
+   = note: this is a temporary restriction until `CoerceShared` lowering supports non-trivially memcpy-compatible field layouts
 
 error: aborting due to 1 previous error
 

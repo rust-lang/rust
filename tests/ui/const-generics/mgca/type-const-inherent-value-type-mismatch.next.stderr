@@ -4,7 +4,7 @@ error[E0284]: type annotations needed
 LL | fn f() -> [u8; const { Struct::N }] {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
    |
-   = note: cannot satisfy `f::{constant#0}::{constant#0} == _`
+   = note: cannot satisfy `f::{constant#0} == _`
 
 error: the constant `"this isn't a usize"` is not of type `usize`
   --> $DIR/type-const-inherent-value-type-mismatch.rs:13:5

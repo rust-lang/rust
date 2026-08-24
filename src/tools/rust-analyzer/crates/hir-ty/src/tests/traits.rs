@@ -2241,13 +2241,13 @@ fn tuple_struct_constructor_as_fn_trait() {
     check_types(
         r#"
 //- minicore: fn
-struct S(u32, u64);
+struct S<T, U>(T, U);
 
-fn takes_fn<F: Fn(u32, u64) -> S>(f: F) -> S { f(1, 2) }
+fn takes_fn<F: Fn(u32, u64) -> S<u32, u64>>(f: F) -> S<u32, u64> { f(1, 2) }
 
 fn test() {
     takes_fn(S);
-  //^^^^^^^^^^^ S
+  //^^^^^^^^^^^ S<u32, u64>
 }
 "#,
     );
@@ -2258,13 +2258,13 @@ fn enum_variant_constructor_as_fn_trait() {
     check_types(
         r#"
 //- minicore: fn
-enum E { A(u32) }
+enum E<T> { A(T) }
 
-fn takes_fn<F: Fn(u32) -> E>(f: F) -> E { f(1) }
+fn takes_fn<F: Fn(u32) -> E<u32>>(f: F) -> E<u32> { f(1) }
 
 fn test() {
     takes_fn(E::A);
-  //^^^^^^^^^^^^^^ E
+  //^^^^^^^^^^^^^^ E<u32>
 }
 "#,
     );
@@ -4317,9 +4317,9 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
     "#,
         expect![[r#"
             90..94 'self': &'? Self
-            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + 'static)
+            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'_ i32> + 'static)
             164..195 '{     ...f(); }': ()
-            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + 'static)
+            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'_ i32> + 'static)
             170..184 'v.get::<i32>()': <{unknown} as Trait>::Assoc<i32>
             170..192 'v.get:...eref()': {unknown}
         "#]],
@@ -4763,21 +4763,21 @@ fn f<T: Send, U>() {
     Struct::<T>::IS_SEND;
   //^^^^^^^^^^^^^^^^^^^^Yes
     Struct::<U>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^^Yes
+  //^^^^^^^^^^^^^^^^^^^^{unknown}
     Struct::<*const T>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^Yes
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
     Enum::<T>::IS_SEND;
   //^^^^^^^^^^^^^^^^^^Yes
     Enum::<U>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^Yes
+  //^^^^^^^^^^^^^^^^^^{unknown}
     Enum::<*const T>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^Yes
+  //^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
     Union::<T>::IS_SEND;
   //^^^^^^^^^^^^^^^^^^^Yes
     Union::<U>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^Yes
+  //^^^^^^^^^^^^^^^^^^^{unknown}
     Union::<*const T>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^Yes
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
     PhantomData::<T>::IS_SEND;
   //^^^^^^^^^^^^^^^^^^^^^^^^^Yes
     PhantomData::<U>::IS_SEND;
@@ -4881,6 +4881,23 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
             598..600 '{}': ()
         "#]],
     )
+}
+
+#[test]
+fn rpit_with_lifetimes() {
+    check_no_mismatches(
+        r#"
+struct Event<'a> {};
+struct Range<T> {}
+trait Iterator {
+    type Item;
+}
+
+struct Vec<T> {}
+
+fn foo<'e>(events: &'e mut dyn Iterator<Item = (Event<'e>, Range<usize>)>) -> impl Iterator<Item = Event<'e>> {}
+"#,
+    );
 }
 
 #[test]
@@ -5258,5 +5275,139 @@ fn foo() {
             736..743 'loop {}': !
             741..743 '{}': ()
         "#]],
+    );
+}
+
+#[test]
+fn rpit_with_type_and_only_late_bound_lifetime() {
+    check_no_mismatches(
+        r#"
+trait Trait<'a> {}
+struct Foo {}
+
+impl<'a> Trait for () {}
+
+fn foo<'a, T>(t: &'a mut T) -> impl Trait<'a> {}
+
+fn bar() {
+    let mut f = Foo {};
+    let p = foo(&mut f);
+}
+"#,
+    );
+}
+
+#[test]
+fn rpit_with_type_and_both_lifetimes() {
+    check_no_mismatches(
+        r#"
+trait Trait<'a> {}
+struct Foo {}
+
+impl<'a> Trait for () {}
+
+fn foo<'a, 'b, T: 'b>(t: &'a mut T) -> impl Trait<'a> {}
+
+fn bar() {
+    let mut f = Foo {};
+    let p = foo(&mut f);
+}
+"#,
+    );
+}
+
+#[test]
+fn async_impl_trait() {
+    check_no_mismatches(
+        r#"
+//- minicore: future
+trait Reader {}
+
+struct Path {}
+struct Result<T> { v: T }
+
+impl Reader for () {}
+
+async fn read<'a>(path: &'a Path) -> Result<impl Reader + 'a> {
+    Result { v: () }
+}
+
+fn foo() {
+    let p = Path {};
+    let v = read(&p);
+}
+"#,
+    );
+}
+
+#[test]
+fn hrtb_impl_trait() {
+    check_infer(
+        r#"
+trait Trait<'a> {}
+
+struct Foo;
+
+impl<'a> Trait<'a> for Bot {}
+
+fn impl_fn(val: impl for<'a> Trait<'a>) {}
+"#,
+        expect![[r#"
+            75..78 'val': impl Trait<'?0.0> + ?Sized
+            104..106 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn hrtb_dyn_trait() {
+    check_infer(
+        r#"
+trait Trait<'a, 'b> {}
+
+struct Foo;
+
+impl<'a, 'b> Trait<'a, 'b> for Foo {}
+
+fn run_dyn<'b>(val: &dyn for<'a> Trait<'a, 'b>) {}
+"#,
+        expect![[r#"
+            91..94 'val': &'? (dyn Trait<'_, '_> + 'static)
+            124..126 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn recursive_auto_trait() {
+    check_types(
+        r#"
+auto trait Send {}
+impl<T> !Send for *const T {}
+
+struct Vec<T>(*const T);
+impl<T: Send> Send for Vec<T> {}
+
+struct Node {
+    children: Vec<Node>,
+}
+
+struct Holder<T>(T);
+
+trait Lock<T> {
+    fn get(&self) -> &T;
+}
+
+impl<T: Send> Lock<T> for Holder<T> {
+    fn get(&self) -> &T {
+        &self.0
+    }
+}
+
+fn probe(h: &Holder<Node>) {
+    h.get();
+ // ^^^^^^^ &'? Node
+}
+    "#,
     );
 }

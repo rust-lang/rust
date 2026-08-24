@@ -8,7 +8,7 @@
 //! all component-model-level imports anyway. Over time the imports of the
 //! standard library will change to WASIp3.
 
-use crate::spec::{Env, Target};
+use crate::spec::{Cc, Env, LinkerFlavor, Target, add_link_args};
 
 pub(crate) fn target() -> Target {
     // As of now WASIp3 is a lightly edited wasip2 target, so start with that
@@ -22,5 +22,19 @@ pub(crate) fn target() -> Target {
         std: Some(true),
     };
     target.options.env = Env::P3;
+
+    // The `--cooperative-threading` flag to the linker dictates the ABI that's
+    // being used on this target which is to store the stack pointer in a
+    // component model intrinsic location, for example, rather than a wasm
+    // global.
+    //
+    // Note that this is only specified for `Cc::No`, because when `clang` is
+    // being used as a linker it'll already pass this.
+    add_link_args(
+        &mut target.pre_link_args,
+        LinkerFlavor::WasmLld(Cc::No),
+        &["--cooperative-threading"],
+    );
+
     target
 }

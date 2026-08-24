@@ -1,53 +1,41 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, OutlivesPredicate, TyCtxt};
+use rustc_middle::ty::{self, OutlivesClause, TyCtxt};
 
 use super::utils::*;
 
 #[derive(Debug)]
-pub(crate) struct ExplicitPredicatesMap<'tcx> {
-    map: FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>>>,
+pub(crate) struct ExplicitClausesMap<'tcx> {
+    map: FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredClauses<'tcx>>>,
 }
 
-impl<'tcx> ExplicitPredicatesMap<'tcx> {
-    pub(crate) fn new() -> ExplicitPredicatesMap<'tcx> {
-        ExplicitPredicatesMap { map: FxIndexMap::default() }
+impl<'tcx> ExplicitClausesMap<'tcx> {
+    pub(crate) fn new() -> ExplicitClausesMap<'tcx> {
+        ExplicitClausesMap { map: FxIndexMap::default() }
     }
 
-    pub(crate) fn explicit_predicates_of(
+    pub(crate) fn explicit_clauses_of(
         &mut self,
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-    ) -> &ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>> {
+    ) -> &ty::EarlyBinder<'tcx, RequiredClauses<'tcx>> {
         self.map.entry(def_id).or_insert_with(|| {
-            let predicates = if def_id.is_local() {
-                tcx.explicit_predicates_of(def_id)
+            let gen_clauses = if def_id.is_local() {
+                tcx.explicit_clauses_of(def_id)
             } else {
-                tcx.predicates_of(def_id)
+                tcx.clauses_of(def_id)
             };
-            let mut required_predicates = RequiredPredicates::default();
+            let mut required_clauses = RequiredClauses::default();
 
-            // process predicates and convert to `RequiredPredicates` entry, see below
-            for &(predicate, span) in predicates.predicates {
-                match predicate.kind().skip_binder() {
-                    ty::ClauseKind::TypeOutlives(OutlivesPredicate(ty, reg)) => {
-                        insert_outlives_predicate(
-                            tcx,
-                            ty.into(),
-                            reg,
-                            span,
-                            &mut required_predicates,
-                        )
+            // Process clauses and convert to `RequiredClauses` entry, see below.
+            for &(clause, span) in gen_clauses.clauses {
+                match clause.kind().skip_binder() {
+                    ty::ClauseKind::TypeOutlives(OutlivesClause(ty, reg)) => {
+                        insert_outlives_clause(tcx, ty.into(), reg, span, &mut required_clauses)
                     }
 
-                    ty::ClauseKind::RegionOutlives(OutlivesPredicate(reg1, reg2)) => {
-                        insert_outlives_predicate(
-                            tcx,
-                            reg1.into(),
-                            reg2,
-                            span,
-                            &mut required_predicates,
-                        )
+                    ty::ClauseKind::RegionOutlives(OutlivesClause(reg1, reg2)) => {
+                        insert_outlives_clause(tcx, reg1.into(), reg2, span, &mut required_clauses)
                     }
                     ty::ClauseKind::Trait(_)
                     | ty::ClauseKind::Projection(_)
@@ -59,7 +47,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                 }
             }
 
-            ty::EarlyBinder::bind_iter(required_predicates)
+            ty::EarlyBinder::bind_iter(required_clauses)
         })
     }
 }

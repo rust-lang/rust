@@ -452,6 +452,13 @@ pub(crate) fn run_global_ctxt(
         }
     }
 
+    if show_coverage
+        && let Err(error) = crate::calculate_doc_coverage::run(&krate, &mut ctxt, &render_options)
+    {
+        eprintln!("{error}");
+        std::process::exit(1);
+    }
+
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
     krate =

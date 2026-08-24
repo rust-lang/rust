@@ -11,8 +11,8 @@ LL | const fn foo<T>() where T: [const] Tr {}
    |                            ^^^^^^^^^^ required by this bound in `foo`
 help: make the `impl` of trait `Tr` `const`
    |
-LL | impl const Tr for () {}
-   |      +++++
+LL | const impl Tr for () {}
+   | +++++
 
 error: aborting due to 1 previous error
 

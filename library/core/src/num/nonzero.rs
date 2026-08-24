@@ -1262,7 +1262,7 @@ macro_rules! nonzero_integer {
             /// #
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_ascii(b\"+10\"), Ok(NonZero::new(10)?));")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_ascii_bytes(b\"+10\"), Ok(NonZero::new(10)?));")]
             /// # Some(())
             /// # }
             /// ```
@@ -1274,12 +1274,16 @@ macro_rules! nonzero_integer {
             ///
             /// # use std::num::NonZero;
             /// #
-            #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_ascii(b\"1 \").is_err());")]
+            #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_ascii_bytes(b\"1 \").is_err());")]
             /// ```
             #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             #[inline]
-            pub const fn from_ascii(src: &[u8]) -> Result<Self, ParseIntError> {
-                Self::from_ascii_radix(src, 10)
+            pub const fn from_ascii_bytes<T>(src: T) -> Result<Self, ParseIntError>
+            where
+                T: [const] AsRef<[u8]> + [const] crate::marker::Destruct
+            {
+                Self::from_ascii_bytes_radix_impl(src.as_ref(), 10)
             }
 
             /// Parses a non-zero integer from an ASCII-byte slice with digits in a given base.
@@ -1317,7 +1321,7 @@ macro_rules! nonzero_integer {
             /// #
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_ascii_radix(b\"A\", 16), Ok(NonZero::new(10)?));")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_ascii_bytes_radix(b\"A\", 16), Ok(NonZero::new(10)?));")]
             /// # Some(())
             /// # }
             /// ```
@@ -1329,12 +1333,21 @@ macro_rules! nonzero_integer {
             ///
             /// # use std::num::NonZero;
             /// #
-            #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_ascii_radix(b\"1 \", 10).is_err());")]
+            #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_ascii_bytes_radix(b\"1 \", 10).is_err());")]
             /// ```
             #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             #[inline]
-            pub const fn from_ascii_radix(src: &[u8], radix: u32) -> Result<Self, ParseIntError> {
-                let n = match <$Int>::from_ascii_radix(src, radix) {
+            pub const fn from_ascii_bytes_radix<T>(src: T, radix: u32) -> Result<Self, ParseIntError>
+            where
+                T: [const] AsRef<[u8]> + [const] crate::marker::Destruct
+            {
+                Self::from_ascii_bytes_radix_impl(src.as_ref(), radix)
+            }
+
+            #[inline]
+            const fn from_ascii_bytes_radix_impl(src: &[u8], radix: u32) -> Result<Self, ParseIntError> {
+                let n = match <$Int>::from_ascii_bytes_radix_impl(src, radix) {
                     Ok(n) => n,
                     Err(err) => return Err(err),
                 };
@@ -1394,7 +1407,7 @@ macro_rules! nonzero_integer {
             #[rustc_const_stable(feature = "nonzero_from_str_radix", since = "1.98.0")]
             #[inline]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
-                Self::from_ascii_radix(src.as_bytes(), radix)
+                Self::from_ascii_bytes_radix_impl(src.as_bytes(), radix)
             }
         }
 

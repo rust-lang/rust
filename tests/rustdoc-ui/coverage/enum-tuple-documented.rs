@@ -1,4 +1,4 @@
-//@ compile-flags:-Z unstable-options --show-coverage
+//@ compile-flags:-Z unstable-options --show-coverage -o -
 //@ check-pass
 
 // The point of this test is to ensure that the number of "documented" items

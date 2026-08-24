@@ -12,7 +12,7 @@
 //@ [AARCH64_MSVC] needs-llvm-components: aarch64
 //@ [ARM64EC_MSVC] compile-flags: -Copt-level=3 --target arm64ec-pc-windows-msvc
 //@ [ARM64EC_MSVC] needs-llvm-components: aarch64
-#![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 

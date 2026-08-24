@@ -30,7 +30,7 @@ mod tests;
 // Because `CfgEntry` includes `Span`, we must NEVER use `==`/`!=` operators on `Cfg` and instead
 // use `is_equivalent_to`.
 #[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct Cfg(CfgEntry);
+pub(crate) struct Cfg(pub(crate) CfgEntry);
 
 // Similar to `hir::DocCfgHideShow` but allows to handle both `show` and `hide` as with the `except`
 // field in `Any` variant.
@@ -744,7 +744,7 @@ pub(crate) struct CfgInfo {
     hidden_cfg: FxHashMap<Symbol, DocCfgHide>,
     /// Current computed `cfg`. Each time we enter a new item, this field is updated as well while
     /// taking into account the `hidden_cfg` information.
-    current_cfg: Cfg,
+    pub(crate) current_cfg: Cfg,
     /// Whether the `doc(auto_cfg())` feature is enabled or not at this point.
     auto_cfg_active: bool,
     /// If the parent item used `doc(cfg(...))`, then we don't want to overwrite `current_cfg`,

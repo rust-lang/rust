@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 
 use crate::core::build_steps::tool::SUBMODULES_FOR_RUSTBOOK;
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
 use crate::utils::exec::command;
 
 /// The name of the directory where vendored dependencies are stored.
@@ -58,7 +58,7 @@ pub(crate) struct Vendor {
     pub(crate) only_library_workspace: bool,
 }
 
-impl Step for Vendor {
+impl CommandLineStep for Vendor {
     type Output = VendorOutput;
     const IS_HOST: bool = true;
 

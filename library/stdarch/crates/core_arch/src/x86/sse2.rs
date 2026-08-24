@@ -1353,7 +1353,8 @@ pub const unsafe fn _mm_loadu_si128(mem_addr: *const __m128i) -> __m128i {
 /// corresponding element.
 ///
 /// `mem_addr` should correspond to a 128-bit memory location and does not need
-/// to be aligned on any particular boundary.
+/// to be aligned on any particular boundary. The memory range starting at `mem_addr`
+/// and going on for 16 bytes must be contained in a mutable allocation, even if `mask` is all-0.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskmoveu_si128)
 ///
@@ -1490,7 +1491,7 @@ pub const fn _mm_move_epi64(a: __m128i) -> __m128i {
     }
 }
 
-/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using signed saturation.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi16)
@@ -1498,29 +1499,11 @@ pub const fn _mm_move_epi64(a: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(packsswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let max = simd_splat(i8::MAX as i16);
-        let min = simd_splat(i8::MIN as i16);
-
-        let clamped_a = simd_imax(simd_imin(a.as_i16x8(), max), min)
-            .as_m128i()
-            .as_i8x16();
-        let clamped_b = simd_imax(simd_imin(b.as_i16x8(), max), min)
-            .as_m128i()
-            .as_i8x16();
-
-        // Shuffle the low i8 of each i16 from two concatenated vectors into
-        // the low bits of the result register.
-        const IDXS: [u32; 16] = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
-        let result: i8x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
-
-        result.as_m128i()
-    }
+pub fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(packsswb(a.as_i16x8(), b.as_i16x8())) }
 }
 
-/// Converts packed signed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using signed saturation.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi32)
@@ -1528,25 +1511,11 @@ pub const fn _mm_packs_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(packssdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let max = simd_splat(i16::MAX as i32);
-        let min = simd_splat(i16::MIN as i32);
-
-        let clamped_a = simd_imax(simd_imin(a.as_i32x4(), max), min);
-        let clamped_b = simd_imax(simd_imin(b.as_i32x4(), max), min);
-
-        let clamped_a: i16x4 = simd_cast(clamped_a);
-        let clamped_b: i16x4 = simd_cast(clamped_b);
-
-        let a: i64 = transmute(clamped_a);
-        let b: i64 = transmute(clamped_b);
-        i64x2::new(a, b).as_m128i()
-    }
+pub fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(packssdw(a.as_i32x4(), b.as_i32x4())) }
 }
 
-/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using unsigned saturation.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi16)
@@ -1554,28 +1523,8 @@ pub const fn _mm_packs_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(packuswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let max = simd_splat(u8::MAX as i16);
-        let min = simd_splat(u8::MIN as i16);
-
-        let clamped_a = simd_imax(simd_imin(a.as_i16x8(), max), min)
-            .as_m128i()
-            .as_i8x16();
-        let clamped_b = simd_imax(simd_imin(b.as_i16x8(), max), min)
-            .as_m128i()
-            .as_i8x16();
-
-        // Shuffle the low bytes of each i16 from two concatenated vectors into
-        // the low bits of the result register.
-        // Without `simd_shuffle`, this intrinsic will cause the AVX-512BW
-        // `_mm_mask_packus_epi16` and `_mm_maskz_packus_epi16` tests to fail.
-        const IDXS: [u32; 16] = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
-        let result: i8x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
-
-        result.as_m128i()
-    }
+pub fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
+    unsafe { transmute(packuswb(a.as_i16x8(), b.as_i16x8())) }
 }
 
 /// Returns the `imm8` element of `a`.
@@ -3275,6 +3224,12 @@ unsafe extern "unadjusted" {
     fn cvtps2dq(a: __m128) -> i32x4;
     #[link_name = "llvm.x86.sse2.maskmov.dqu"]
     fn maskmovdqu(a: i8x16, mask: i8x16, mem_addr: *mut i8);
+    #[link_name = "llvm.x86.sse2.packsswb.128"]
+    fn packsswb(a: i16x8, b: i16x8) -> i8x16;
+    #[link_name = "llvm.x86.sse2.packssdw.128"]
+    fn packssdw(a: i32x4, b: i32x4) -> i16x8;
+    #[link_name = "llvm.x86.sse2.packuswb.128"]
+    fn packuswb(a: i16x8, b: i16x8) -> u8x16;
     #[link_name = "llvm.x86.sse2.max.sd"]
     fn maxsd(a: __m128d, b: __m128d) -> __m128d;
     #[link_name = "llvm.x86.sse2.max.pd"]
@@ -3332,7 +3287,7 @@ mod tests {
         core_arch::{simd::*, x86::*},
         hint::black_box,
     };
-    use std::{boxed, f32, f64, mem, ptr};
+    use std::{boxed, mem, ptr};
     use stdarch_test::simd_test;
 
     const NAN: f64 = f64::NAN;
@@ -4338,7 +4293,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_packs_epi16() {
+    fn test_mm_packs_epi16() {
         let a = _mm_setr_epi16(0x80, -0x81, 0, 0, 0, 0, 0, 0);
         let b = _mm_setr_epi16(0, 0, 0, 0, 0, 0, -0x81, 0x80);
         let r = _mm_packs_epi16(a, b);
@@ -4352,7 +4307,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_packs_epi32() {
+    fn test_mm_packs_epi32() {
         let a = _mm_setr_epi32(0x8000, -0x8001, 0, 0);
         let b = _mm_setr_epi32(0, 0, -0x8001, 0x8000);
         let r = _mm_packs_epi32(a, b);
@@ -4363,7 +4318,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_packus_epi16() {
+    fn test_mm_packus_epi16() {
         let a = _mm_setr_epi16(0x100, -1, 0, 0, 0, 0, 0, 0);
         let b = _mm_setr_epi16(0, 0, 0, 0, 0, 0, -1, 0x100);
         let r = _mm_packus_epi16(a, b);

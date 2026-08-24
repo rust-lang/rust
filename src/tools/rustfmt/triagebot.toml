@@ -7,9 +7,17 @@
 
 [relabel]
 allow-unauthenticated = [
-    "needs-triage",
-    "S-*",
+    "A-*",
+    "B-*",
     "C-*",
+    "E-*",
+    "F-*",
+    "I-*",
+    "S-*",
+    "SO-*",
+    "UO-*",
+    "needs-triage",
+    "regression-*",
 ]
 
 # ------------------------------------------------------------------------------
@@ -26,6 +34,19 @@ exclude_labels = [
 # manually if we determine that a PR does not need relnotes.
 [autolabel."release-notes"]
 pr_merged = true
+
+# Prioritization of regression triaging.
+[autolabel."I-prioritize"]
+trigger_labels = [
+    "regression-from-stable-to-beta",
+    "regression-from-stable-to-nightly",
+    "regression-from-stable-to-stable",
+    "regression-untriaged",
+]
+exclude_labels = [
+    "P-*",
+    "requires-nightly",
+]
 
 [autolabel."A-CI"]
 trigger_files = [

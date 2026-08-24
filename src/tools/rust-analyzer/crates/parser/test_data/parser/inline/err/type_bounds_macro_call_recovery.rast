@@ -74,39 +74,39 @@ SOURCE_FILE
             GENERIC_ARG_LIST
               L_ANGLE "<"
               TYPE_ARG
-                DYN_TRAIT_TYPE
-                  TYPE_BOUND_LIST
-                    TYPE_BOUND
-                      MACRO_TYPE
-                        MACRO_CALL
-                          PATH
-                            PATH_SEGMENT
-                              NAME_REF
-                                IDENT "T"
-                          BANG "!"
-                    WHITESPACE " "
-                    PLUS "+"
-                    WHITESPACE " "
-                    TYPE_BOUND
-                      PATH_TYPE
-                        PATH
-                          PATH_SEGMENT
-                            NAME_REF
-                              IDENT "T"
-                      ERROR
-                        BANG "!"
-                        TOKEN_TREE
-                          L_CURLY "{"
-                          R_CURLY "}"
-              R_ANGLE ">"
-    WHITESPACE " "
-    BLOCK_EXPR
-      STMT_LIST
-        L_CURLY "{"
-        R_CURLY "}"
+                MACRO_TYPE
+                  MACRO_CALL
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "T"
+                    BANG "!"
+  WHITESPACE " "
+  ERROR
+    PLUS "+"
+  WHITESPACE " "
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "T"
+    BANG "!"
+    TOKEN_TREE
+      L_CURLY "{"
+      R_CURLY "}"
+  ERROR
+    R_ANGLE ">"
+  WHITESPACE " "
+  ERROR
+    L_CURLY "{"
+    R_CURLY "}"
   WHITESPACE "\n"
 error 12: unexpected `!` in type path, macro calls are not allowed here
 error 21: unexpected `!` in type path, macro calls are not allowed here
 error 28: unexpected `!` in type path, macro calls are not allowed here
 error 43: expected `{`, `[`, `(`
-error 48: unexpected `!` in type path, macro calls are not allowed here
+error 43: expected R_ANGLE
+error 43: expected a block
+error 44: expected an item
+error 50: expected an item
+error 52: expected an item

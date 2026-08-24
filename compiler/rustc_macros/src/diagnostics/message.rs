@@ -1,7 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use fluent_bundle::FluentResource;
 use fluent_syntax::ast::{Expression, InlineExpression, Pattern, PatternElement};
+use indexmap::IndexMap;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::ext::IdentExt;
@@ -17,9 +18,6 @@ pub(crate) struct Message {
 }
 
 impl Message {
-    // About `allow(rustc::potential_query_instability)`: The order of key/values of `fields` and
-    // `field_map` doesn't matters.
-    #[allow(rustc::potential_query_instability)]
     pub(crate) fn new(
         attr_span: Span,
         message_span: Span,
@@ -36,8 +34,8 @@ impl Message {
             panic!("Did not parse into a message")
         };
 
-        let mut fields: HashMap<String, (&syn::Ident, bool)> =
-            HashMap::with_capacity(field_map.len());
+        let mut fields: IndexMap<String, (&syn::Ident, bool)> =
+            IndexMap::with_capacity(field_map.len());
         for (_, (ident, _)) in field_map {
             fields.insert(ident.unraw().to_string(), (ident, false));
         }

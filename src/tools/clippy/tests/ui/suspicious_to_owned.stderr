@@ -1,5 +1,5 @@
 error: this `to_owned` call clones the `Cow<'_, str>` itself and does not cause its contents to become owned
-  --> tests/ui/suspicious_to_owned.rs:16:13
+  --> tests/ui/suspicious_to_owned.rs:15:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL +     let _ = cow.clone();
    |
 
 error: this `to_owned` call clones the `Cow<'_, [char; 3]>` itself and does not cause its contents to become owned
-  --> tests/ui/suspicious_to_owned.rs:28:13
+  --> tests/ui/suspicious_to_owned.rs:27:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL +     let _ = cow.clone();
    |
 
 error: this `to_owned` call clones the `Cow<'_, Vec<char>>` itself and does not cause its contents to become owned
-  --> tests/ui/suspicious_to_owned.rs:40:13
+  --> tests/ui/suspicious_to_owned.rs:39:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     let _ = cow.clone();
    |
 
 error: this `to_owned` call clones the `Cow<'_, str>` itself and does not cause its contents to become owned
-  --> tests/ui/suspicious_to_owned.rs:52:13
+  --> tests/ui/suspicious_to_owned.rs:51:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL +     let _ = cow.clone();
    |
 
 error: implicitly cloning a `String` by calling `to_owned` on its dereferenced type
-  --> tests/ui/suspicious_to_owned.rs:68:13
+  --> tests/ui/suspicious_to_owned.rs:67:13
    |
 LL |     let _ = String::from(moo).to_owned();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::from(moo).clone()`
@@ -74,7 +74,7 @@ LL |     let _ = String::from(moo).to_owned();
    = help: to override `-D warnings` add `#[allow(clippy::implicit_clone)]`
 
 error: implicitly cloning a `Vec` by calling `to_owned` on its dereferenced type
-  --> tests/ui/suspicious_to_owned.rs:71:13
+  --> tests/ui/suspicious_to_owned.rs:70:13
    |
 LL |     let _ = moos_vec.to_owned();
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `moos_vec.clone()`

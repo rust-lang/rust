@@ -13,6 +13,7 @@
 #![feature(macro_attr)]
 #![feature(macro_derive)]
 #![feature(negative_impls)]
+#![feature(doc_notable_trait)]
 
 /*!
 Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
@@ -812,4 +813,12 @@ pub mod tyalias {
     }
 
     pub type Y = X<u8>;
+}
+
+pub mod notable {
+    #[doc(notable_trait)]
+    pub trait Labeled {}
+
+    pub struct Wrapper;
+    impl Labeled for Wrapper {}
 }

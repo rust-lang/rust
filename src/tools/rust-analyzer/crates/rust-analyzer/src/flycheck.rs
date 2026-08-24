@@ -69,10 +69,9 @@ impl CargoOptions {
         cmd: &mut Command,
         ws_target_dir: Option<&Utf8Path>,
         package_repr: Option<&str>,
+        toolchain_version: Option<&semver::Version>,
     ) {
-        for target in &self.target_tuples {
-            cmd.args(["--target", target.as_str()]);
-        }
+        toolchain::cargo_use_targets(toolchain_version, cmd, &self.target_tuples);
         if self.all_targets {
             if self.set_test {
                 cmd.arg("--all-targets");
@@ -227,6 +226,7 @@ impl FlycheckHandle {
         workspace_root: AbsPathBuf,
         manifest_path: Option<AbsPathBuf>,
         ws_target_dir: Option<Utf8PathBuf>,
+        toolchain_version: Option<semver::Version>,
     ) -> FlycheckHandle {
         let actor = FlycheckActor::new(
             id,
@@ -238,6 +238,7 @@ impl FlycheckHandle {
             workspace_root,
             manifest_path,
             ws_target_dir,
+            toolchain_version,
         );
         let (sender, receiver) = unbounded::<StateChange>();
         let thread =
@@ -445,6 +446,7 @@ struct FlycheckActor {
     command_receiver: Option<Receiver<CheckMessage>>,
     diagnostics_cleared_for: FxHashSet<PackageSpecifier>,
     diagnostics_received: DiagnosticsReceived,
+    toolchain_version: Option<semver::Version>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -531,6 +533,7 @@ impl FlycheckActor {
         workspace_root: AbsPathBuf,
         manifest_path: Option<AbsPathBuf>,
         ws_target_dir: Option<Utf8PathBuf>,
+        toolchain_version: Option<semver::Version>,
     ) -> FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
         FlycheckActor {
@@ -548,6 +551,7 @@ impl FlycheckActor {
             command_receiver: None,
             diagnostics_cleared_for: Default::default(),
             diagnostics_received: DiagnosticsReceived::NotYet,
+            toolchain_version,
         }
     }
 
@@ -958,6 +962,7 @@ impl FlycheckActor {
                     &mut cmd,
                     self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path),
                     package_repr,
+                    self.toolchain_version.as_ref(),
                 );
                 cmd.args(&cargo_options.extra_args);
                 Some((cmd, FlycheckCommandOrigin::Cargo))
@@ -1011,8 +1016,8 @@ enum CheckMessage {
 
 struct CheckParser;
 
-impl JsonLinesParser<CheckMessage> for CheckParser {
-    fn from_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
+impl CheckParser {
+    fn parse_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();
         if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
@@ -1041,6 +1046,16 @@ impl JsonLinesParser<CheckMessage> for CheckParser {
         error.push_str(line);
         error.push('\n');
         None
+    }
+}
+
+impl JsonLinesParser<CheckMessage> for CheckParser {
+    fn from_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
+        self.parse_line(line, error)
+    }
+
+    fn from_stderr_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
+        self.parse_line(line, error)
     }
 
     fn from_eof(&self) -> Option<CheckMessage> {

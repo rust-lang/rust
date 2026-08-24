@@ -5,6 +5,8 @@ use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
+use crate::PassPolicy;
+
 struct EraseDerefTempsVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
@@ -37,7 +39,8 @@ impl<'tcx> crate::MirPass<'tcx> for EraseDerefTemps {
         EraseDerefTempsVisitor { tcx }.visit_body_preserves_cfg(body);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Later MIR stages assume that CopyForDeref is gone.
+        PassPolicy::Required
     }
 }

@@ -20,7 +20,7 @@ use rustc_target::spec::Os;
 use tracing::debug;
 
 use super::repr_nullable_ptr;
-use crate::lints::{ImproperCTypes, UsesPowerAlignment};
+use crate::diagnostics::{ImproperCTypes, UsesPowerAlignment};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

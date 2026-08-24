@@ -127,10 +127,10 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn derived_host_cause(
         mut self,
-        parent_host_pred: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        parent_host_clause: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
         variant: impl FnOnce(DerivedHostCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        self.code = variant(DerivedHostCause { parent_host_pred, parent_code: self.code }).into();
+        self.code = variant(DerivedHostCause { parent_host_clause, parent_code: self.code }).into();
         self
     }
 
@@ -204,12 +204,12 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Like `WhereClause`, but also identifies the expression
     /// which requires the `where` clause to be proven, and also
-    /// identifies the index of the predicate in the `predicates_of`
+    /// identifies the index of the clause in the `clauses_of`
     /// list of the item.
     WhereClauseInExpr(DefId, Span, HirId, usize),
 
     /// Like `WhereClauseinExpr`, but indexes into the `const_conditions`
-    /// rather than the `predicates_of`.
+    /// rather than the `clauses_of`.
     HostEffectInExpr(DefId, Span, HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
@@ -592,19 +592,19 @@ pub struct ImplDerivedCause<'tcx> {
     /// impl, then this will be the `DefId` of that trait alias. Care should therefore be taken to
     /// handle that exceptional case where appropriate.
     pub impl_or_alias_def_id: DefId,
-    /// The index of the derived predicate in the parent impl's predicates.
-    pub impl_def_predicate_index: Option<usize>,
+    /// The index of the derived clause in the parent impl's clauses.
+    pub impl_def_clause_index: Option<usize>,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct DerivedHostCause<'tcx> {
-    /// The trait predicate of the parent obligation that led to the
+    /// The trait clause of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
-    /// derived obligations, so we just store the trait predicate here
+    /// derived obligations, so we just store the trait clause here
     /// directly.
-    pub parent_host_pred: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+    pub parent_host_clause: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
 
     /// The parent trait had this cause.
     pub parent_code: ObligationCauseCodeHandle<'tcx>,
@@ -837,12 +837,12 @@ impl DynCompatibilityViolation {
             Self::AssocConst(name, AssocConstViolation::FeatureNotEnabled, _) => {
                 format!("it contains associated const `{name}`").into()
             }
-            Self::AssocConst(name, AssocConstViolation::Generic, _) => {
-                format!("it contains generic associated const `{name}`").into()
-            }
             Self::AssocConst(name, AssocConstViolation::NonType, _) => {
                 format!("it contains associated const `{name}` that's not defined as `type const`")
                     .into()
+            }
+            Self::AssocConst(name, AssocConstViolation::Generic, _) => {
+                format!("it contains generic associated const `{name}`").into()
             }
             Self::AssocConst(name, AssocConstViolation::TypeReferencesSelf, _) => format!(
                 "it contains associated const `{name}` whose type references the `Self` type"
@@ -992,11 +992,11 @@ pub enum AssocConstViolation {
     /// Unstable feature `min_generic_const_args` wasn't enabled.
     FeatureNotEnabled,
 
+    /// Not defined as a type-level associated const.
+    NonType,
+
     /// Has own generic parameters (GAC).
     Generic,
-
-    /// Isn't defined as `type const`.
-    NonType,
 
     /// Its type mentions the `Self` type parameter.
     TypeReferencesSelf,

@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::default::Default;
 use std::iter;
-use std::path::Component::Prefix;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -10,15 +9,14 @@ use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
+use rustc_attr_ir::{
+    self as attrs, CfgEntry, CollapseMacroDebuginfo, Deprecation, Stability, find_attr,
+};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::sync;
-use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
+use rustc_data_structures::{Limit, sync};
+use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_feature::Features;
-use rustc_hir as hir;
-use rustc_hir::attrs::{CfgEntry, CollapseMacroDebuginfo, Deprecation};
 use rustc_hir::def::MacroKinds;
-use rustc_hir::limit::Limit;
-use rustc_hir::{Stability, find_attr};
 use rustc_lint_defs::RegisteredTools;
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::Parser;
@@ -38,9 +36,11 @@ use crate::mbe::macro_rules::ParserAnyMacro;
 use crate::module::DirOwnership;
 use crate::stats::MacroStat;
 
-// When adding new variants, make sure to
-// adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`
-// to use `assign_id!`
+/// This type encapsulates every AST node that can have attributes, i.e. those
+/// nodes with a non-trivial implementation of `HasAttrs`.
+///
+/// When adding new variants, make sure to adjust the `visit_*` / `flat_map_*`
+/// calls in `InvocationCollector` to use `assign_id!`
 #[derive(Debug, Clone)]
 pub enum Annotatable {
     Item(Box<ast::Item>),
@@ -117,6 +117,7 @@ impl Annotatable {
         }
     }
 
+    /// Converts the `Annotatable` to a token stream, e.g. to hand to a proc macro.
     pub fn to_tokens(&self) -> TokenStream {
         match self {
             Annotatable::Item(node) => TokenStream::from_ast(node),
@@ -274,7 +275,10 @@ impl<'cx> MacroExpanderResult<'cx> {
         arm_span: Span,
         macro_ident: Ident,
     ) -> Self {
-        let parser = ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, macro_ident, &[], &[]);
+        // Emit SEMICOLON_IN_EXPRESSIONS_FROM_MACROS here, rather than the NON_LOCAL version.
+        let is_local = true;
+        let parser =
+            ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, is_local, macro_ident, &[], &[]);
         ExpandResult::Ready(Box::new(parser))
     }
 }
@@ -839,7 +843,7 @@ impl SyntaxExtension {
     /// | (unspecified) | no  | if-ext        | if-ext   | yes |
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
-    fn get_collapse_debuginfo(sess: &Session, attrs: &[hir::Attribute], ext: bool) -> bool {
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[attrs::Attribute], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
         let attr = if let Some(info) = find_attr!(attrs, CollapseDebugInfo(info) => info) {
             *info
@@ -868,7 +872,7 @@ impl SyntaxExtension {
         helper_attrs: Vec<Symbol>,
         edition: Edition,
         name: Symbol,
-        attrs: &[hir::Attribute],
+        attrs: &[attrs::Attribute],
         is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable = find_attr!(attrs, AllowInternalUnstable(i, _) => i)
@@ -1106,8 +1110,11 @@ pub trait ResolverExpand {
         cfg_span: Span,
     );
 
-    /// Tools registered with `#![register_tool]` and used by tool attributes and lints.
-    fn registered_tools(&self) -> &RegisteredTools;
+    /// Tools registered with `#![register_tool]` or `#![register_attribute_tool]`.
+    fn registered_attr_tools(&self) -> &RegisteredTools;
+
+    /// Tools registered with `#![register_tool]` or `#![register_lint_tool]`.
+    fn registered_lint_tools(&self) -> &RegisteredTools;
 
     /// Mark this invocation id as a glob delegation.
     fn register_glob_delegation(&mut self, invoc_id: LocalExpnId);
@@ -1134,7 +1141,7 @@ pub trait LintStoreExpand {
         &self,
         sess: &Session,
         features: &Features,
-        registered_tools: &RegisteredTools,
+        registered_lint_tools: &RegisteredTools,
         node_id: NodeId,
         attrs: &[Attribute],
         items: &[Box<Item>],
@@ -1331,37 +1338,5 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn check_unused_macros(&mut self) {
         self.resolver.check_unused_macros();
-    }
-}
-
-/// Resolves a `path` mentioned inside Rust code, returning an absolute path.
-///
-/// This unifies the logic used for resolving `include_X!`.
-pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PResult<'_, PathBuf> {
-    let path = path.into();
-
-    // Relative paths are resolved relative to the file in which they are found
-    // after macro expansion (that is, they are unhygienic).
-    if !path.is_absolute() {
-        let callsite = span.source_callsite();
-        let source_map = sess.source_map();
-        let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path() else {
-            return Err(sess.dcx().create_err(diagnostics::ResolveRelativePath {
-                span,
-                path: source_map
-                    .filename_for_diagnostics(&source_map.span_to_filename(callsite))
-                    .to_string(),
-            }));
-        };
-        base_path.pop();
-        base_path.push(path);
-        Ok(base_path)
-    } else {
-        // This ensures that Windows verbatim paths are fixed if mixed path separators are used,
-        // which can happen when `concat!` is used to join paths.
-        match path.components().next() {
-            Some(Prefix(prefix)) if prefix.kind().is_verbatim() => Ok(path.components().collect()),
-            _ => Ok(path),
-        }
     }
 }

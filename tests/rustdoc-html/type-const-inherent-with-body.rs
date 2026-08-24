@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
-#![feature(min_generic_const_args, inherent_associated_types)]
+#![feature(min_generic_const_args, macroless_generic_const_args, inherent_associated_types)]
 #![expect(incomplete_features)]
 
 pub struct Foo;

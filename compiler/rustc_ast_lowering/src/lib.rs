@@ -54,6 +54,7 @@ use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
@@ -104,7 +105,7 @@ pub fn provide(providers: &mut Providers) {
 pub(crate) mod re_lowering {
     use rustc_ast::NodeId;
     use rustc_ast::node_id::NodeMap;
-    use rustc_hir::{self as hir};
+    use rustc_hir as hir;
 
     use crate::LoweringContext;
 
@@ -291,7 +292,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             attribute_parser: AttributeParser::new(
                 tcx.sess,
                 tcx.features(),
-                tcx.registered_tools(()),
+                tcx.registered_attr_tools(()),
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             ),
             delayed_lints: Vec::new(),
@@ -350,17 +351,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
             RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
         )
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
-    }
-
-    /// Obtain the list of lifetimes parameters to add to an item.
-    ///
-    /// Extra lifetime parameters should only be added in places that can appear
-    /// as a `binder` in `LifetimeRes`.
-    ///
-    /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
-    /// should appear at the enclosing `PolyTraitRef`.
-    fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
-        self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
     }
 }
 
@@ -1023,7 +1013,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn make_lang_item_qpath(
         &mut self,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         span: Span,
         args: Option<&'hir hir::GenericArgs<'hir>>,
     ) -> hir::QPath<'hir> {
@@ -1032,7 +1022,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn make_lang_item_path(
         &mut self,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         span: Span,
         args: Option<&'hir hir::GenericArgs<'hir>>,
     ) -> &'hir hir::Path<'hir> {
@@ -1129,7 +1119,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> &'hir [hir::GenericParam<'hir>] {
         // Start by creating params for extra lifetimes params, as this creates the definitions
         // that may be referred to by the AST inside `generic_params`.
-        let extra_lifetimes = self.resolver.extra_lifetime_params(binder);
+        let extra_lifetimes = self.owner.extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
         let extra_lifetimes: Vec<_> = extra_lifetimes
             .iter()
@@ -1453,35 +1443,43 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // type and value namespaces. If we resolved the path in the value namespace, we
                     // transform it into a generic const argument.
                     //
+                    // Note that even under `#![feature(min_generic_const_args)]`, only plain paths
+                    // to constants are allowed - e.g. `A::<T::ASSOC_CONST>` and
+                    // `A::<CONST_WITH_PARAM::<2>>` are disallowed (they must be wrapped in `{ }`).
+                    //
                     // FIXME: Should we be handling `(PATH_TO_CONST)`?
-                    TyKind::Path(None, path) => {
-                        if let Some(res) = self
-                            .get_partial_res(ty.id)
-                            .and_then(|partial_res| partial_res.full_res())
-                        {
-                            if !res.matches_ns(Namespace::TypeNS)
-                                && path.is_potential_trivial_const_arg()
-                            {
-                                debug!(
-                                    "lower_generic_arg: Lowering type argument as const argument: {:?}",
-                                    ty,
-                                );
-
-                                let ct =
-                                    self.lower_const_path_to_const_arg(path, res, ty.id, ty.span);
-                                return GenericArg::Const(ct.try_as_ambig_ct().unwrap());
-                            }
-                        }
+                    TyKind::Path(None, path)
+                        if path.is_single_argless_ident()
+                            && let Some(res) = self
+                                .get_partial_res(ty.id)
+                                .and_then(|partial_res| partial_res.full_res())
+                            && !res.matches_ns(Namespace::TypeNS) =>
+                    {
+                        let ct =
+                            self.lower_const_path_to_const_arg(&None, path, res, ty.id, ty.span);
+                        let ct = self.arena.alloc(ct);
+                        return GenericArg::Const(ct.try_as_ambig_ct().unwrap());
                     }
                     TyKind::DirectConstArg(expr)
                         if self.tcx.features().min_generic_const_args() =>
                     {
-                        let ct = match self.can_lower_expr_to_const_arg_direct(expr) {
+                        let ct = match self.can_lower_expr_to_const_arg_direct(
+                            expr,
+                            DirectConstArgContext::MacrolessMinGenericConstArgs,
+                        ) {
                             Ok(()) => self.lower_expr_to_const_arg_direct(expr, None),
                             Err(e) => e.emit(self),
                         };
                         let ct = self.arena.alloc(ct);
-                        return GenericArg::Const(ct.try_as_ambig_ct().unwrap());
+                        // note: this allows direct_const_arg!(_) to be inferred to a type. a little
+                        // wonky.
+                        return match ct.try_as_ambig_ct() {
+                            Some(ct) => GenericArg::Const(ct),
+                            None => GenericArg::Infer(hir::InferArg {
+                                hir_id: ct.hir_id,
+                                span: ct.span,
+                            }),
+                        };
                     }
                     _ => {}
                 }
@@ -1584,7 +1582,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     parenthesized: hir::GenericArgsParentheses::No,
                     span_ext: span,
                 });
-                let path = self.make_lang_item_qpath(hir::LangItem::Pin, span, Some(args));
+                let path = self.make_lang_item_qpath(LangItem::Pin, span, Some(args));
                 hir::TyKind::Path(path)
             }
             TyKind::FnPtr(f) => {
@@ -2135,9 +2133,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // "<$assoc_ty_name = T>"
         let (assoc_ty_name, trait_lang_item) = match coro {
-            CoroutineKind::Async { .. } => (sym::Output, hir::LangItem::Future),
-            CoroutineKind::Gen { .. } => (sym::Item, hir::LangItem::Iterator),
-            CoroutineKind::AsyncGen { .. } => (sym::Item, hir::LangItem::AsyncIterator),
+            CoroutineKind::Async { .. } => (sym::Output, LangItem::Future),
+            CoroutineKind::Gen { .. } => (sym::Item, LangItem::Iterator),
+            CoroutineKind::AsyncGen { .. } => (sym::Item, LangItem::AsyncIterator),
         };
 
         let bound_args = self.arena.alloc(hir::GenericArgs {
@@ -2286,7 +2284,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             colon_span: param.colon_span.map(|s| self.lower_span(s)),
             source,
         };
-        self.lower_attrs(hir_id, param_attrs, param_span, Target::from_generic_param(&param));
+        self.lower_attrs(hir_id, param_attrs, param_span, Target::from(&param));
         param
     }
 
@@ -2459,7 +2457,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let extended = self.tcx.features().more_maybe_bounds();
                     let is_sized = trait_ref
                         .trait_def_id()
-                        .is_some_and(|def_id| self.tcx.is_lang_item(def_id, hir::LangItem::Sized));
+                        .is_some_and(|def_id| self.tcx.is_lang_item(def_id, LangItem::Sized));
 
                     if extended && !is_sized {
                         return;
@@ -2591,6 +2589,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_array_length_to_const_arg(&mut self, c: &AnonConst) -> &'hir hir::ConstArg<'hir> {
         // We cannot just match on `ExprKind::Underscore` as `(_)` is represented as
         // `ExprKind::Paren(ExprKind::Underscore)` and should also be lowered to `GenericArg::Infer`
+        //
+        // FIXME(macroless_generic_const_args): Handling of underscores should be moved into
+        // lower_expr_to_const_arg_direct. It is left here as retaining compatibility of what is
+        // currently allowed on stable gets hairy and annoying otherwise.
         match c.value.peel_parens().kind {
             ExprKind::Underscore => {
                 let ct_kind = hir::ConstArgKind::Infer(());
@@ -2610,27 +2612,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
     #[instrument(level = "debug", skip(self))]
     fn lower_const_path_to_const_arg(
         &mut self,
+        qself: &Option<Box<QSelf>>,
         path: &Path,
         res: Res<NodeId>,
-        ty_id: NodeId,
+        id: NodeId,
         span: Span,
-    ) -> &'hir hir::ConstArg<'hir> {
-        let tcx = self.tcx;
-
-        let is_trivial_path = path.is_potential_trivial_const_arg()
-            && matches!(res, Res::Def(DefKind::ConstParam, _));
-        let ct_kind = if is_trivial_path || tcx.features().min_generic_const_args() {
-            let qpath = self.lower_qpath(
-                ty_id,
-                &None,
-                path,
-                ParamMode::Explicit,
-                AllowReturnTypeNotation::No,
-                // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
-                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                None,
-            );
-            hir::ConstArgKind::Path(qpath)
+    ) -> hir::ConstArg<'hir> {
+        let context = self.ambient_direct_const_arg_context();
+        if self.can_lower_path_to_const_arg_direct(qself, path, span, Some(res), context).is_ok() {
+            let span = self.lower_span(span);
+            self.lower_path_to_const_arg_direct(id, None, qself, path, span)
         } else {
             // Construct an AnonConst where the expr is the "ty"'s path.
             let node_id = self.next_node_id();
@@ -2644,8 +2635,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let hir_id = self.lower_node_id(node_id);
 
             let path_expr = Expr {
-                id: ty_id,
-                kind: ExprKind::Path(None, path.clone()),
+                id,
+                kind: ExprKind::Path(qself.clone(), path.clone()),
                 span,
                 attrs: AttrVec::new(),
                 tokens: None,
@@ -2659,32 +2650,36 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     span,
                 })
             });
-            hir::ConstArgKind::Anon(ct)
-        };
-
-        self.arena.alloc(hir::ConstArg {
-            hir_id: self.next_id(),
-            kind: ct_kind,
-            span: self.lower_span(span),
-        })
+            hir::ConstArg {
+                hir_id: self.next_id(),
+                kind: hir::ConstArgKind::Anon(ct),
+                span: self.lower_span(span),
+            }
+        }
     }
 
     fn lower_const_item_rhs(
         &mut self,
-        rhs_kind: &ConstItemRhsKind,
+        body: &Option<Box<Expr>>,
+        kind: ConstItemKind,
         span: Span,
     ) -> hir::ConstItemRhs<'hir> {
-        match rhs_kind {
-            ConstItemRhsKind::Body { rhs: Some(body) } => {
-                hir::ConstItemRhs::Body(self.lower_const_body(span, Some(body)))
+        match (body, kind) {
+            (body, ConstItemKind::Body) => {
+                hir::ConstItemRhs::Body(self.lower_const_body(span, body.as_deref()))
             }
-            ConstItemRhsKind::Body { rhs: None } => {
-                hir::ConstItemRhs::Body(self.lower_const_body(span, None))
+            (Some(body), ConstItemKind::TypeConst) => {
+                hir::ConstItemRhs::TypeConst(self.arena.alloc(
+                    match self.can_lower_expr_to_const_arg_direct(
+                        &body,
+                        DirectConstArgContext::MacrolessMinGenericConstArgs,
+                    ) {
+                        Ok(()) => self.lower_expr_to_const_arg_direct(&body, None),
+                        Err(err) => err.emit(self),
+                    },
+                ))
             }
-            ConstItemRhsKind::TypeConst { rhs: Some(anon) } => {
-                hir::ConstItemRhs::TypeConst(self.lower_anon_const_to_const_arg_and_alloc(anon))
-            }
-            ConstItemRhsKind::TypeConst { rhs: None } => {
+            (None, ConstItemKind::TypeConst) => {
                 let const_arg = ConstArg {
                     hir_id: self.next_id(),
                     kind: hir::ConstArgKind::Error(
@@ -2697,73 +2692,126 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    fn ambient_direct_const_arg_context(&self) -> DirectConstArgContext {
+        if self.tcx.features().macroless_generic_const_args() {
+            DirectConstArgContext::MacrolessMinGenericConstArgs
+        } else if self.tcx.features().min_generic_const_args() {
+            DirectConstArgContext::MinGenericConstArgs
+        } else {
+            DirectConstArgContext::Stable
+        }
+    }
+
+    fn can_lower_path_to_const_arg_direct(
+        &self,
+        qself: &Option<Box<QSelf>>,
+        path: &Path,
+        span: Span,
+        res: Option<Res<NodeId>>,
+        context: DirectConstArgContext,
+    ) -> Result<(), UnrepresentableConstArgError> {
+        if let DirectConstArgContext::MacrolessMinGenericConstArgs = context {
+            Ok(())
+        } else if qself.is_none()
+            && path.is_single_argless_ident()
+            && matches!(res, Some(Res::Def(DefKind::ConstParam, _)))
+        {
+            Ok(())
+        } else {
+            Err(UnrepresentableConstArgError { span, will_create_def_ids: false })
+        }
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     fn can_lower_expr_to_const_arg_direct(
-        &mut self,
+        &self,
         expr: &Expr,
+        context: DirectConstArgContext,
     ) -> Result<(), UnrepresentableConstArgError> {
-        let is_mgca = self.tcx.features().min_generic_const_args();
-        // Note the only stable case is currently ExprKind::Path. All others have an is_mgca guard.
-        match &expr.kind {
-            ExprKind::Call(func, args)
-                if is_mgca && let ExprKind::Path(_qself, _path) = &func.kind =>
-            {
+        use DirectConstArgContext::*;
+        // Note the only stable case is currently ExprKind::Path
+        match (&expr.kind, context) {
+            (
+                ExprKind::Call(Expr { kind: ExprKind::Path(_, _), .. }, args),
+                MacrolessMinGenericConstArgs,
+            ) => {
                 for arg in args {
-                    self.can_lower_expr_to_const_arg_direct(arg)?;
+                    self.can_lower_expr_to_const_arg_direct(arg, context)?;
                 }
                 Ok(())
             }
-            ExprKind::Tup(exprs) if is_mgca => {
+            (ExprKind::Tup(exprs), MacrolessMinGenericConstArgs) => {
                 for expr in exprs {
-                    self.can_lower_expr_to_const_arg_direct(expr)?;
+                    self.can_lower_expr_to_const_arg_direct(expr, context)?;
                 }
                 Ok(())
             }
-            ExprKind::Path(qself, path)
-                if is_mgca
-                    || path.is_potential_trivial_const_arg()
-                        && matches!(
-                            self.get_partial_res(expr.id)
-                                .and_then(|partial_res| partial_res.full_res()),
-                            Some(Res::Def(DefKind::ConstParam, _))
-                        ) =>
-            {
-                Ok(())
+            (ExprKind::Path(qself, path), _) => {
+                let res =
+                    self.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
+                self.can_lower_path_to_const_arg_direct(qself, path, expr.span, res, context)
             }
-            ExprKind::Struct(se) if is_mgca => {
+            (ExprKind::Struct(se), MacrolessMinGenericConstArgs) => {
                 for f in &se.fields {
-                    self.can_lower_expr_to_const_arg_direct(&f.expr)?;
+                    self.can_lower_expr_to_const_arg_direct(&f.expr, context)?;
                 }
                 Ok(())
             }
-            ExprKind::Array(elements) if is_mgca => {
+            (ExprKind::Array(elements), MacrolessMinGenericConstArgs) => {
                 for element in elements {
-                    self.can_lower_expr_to_const_arg_direct(element)?;
+                    self.can_lower_expr_to_const_arg_direct(element, context)?;
                 }
                 Ok(())
             }
-            ExprKind::Underscore if is_mgca => Ok(()),
-            ExprKind::Block(block, _)
-                if is_mgca
-                    && let [stmt] = block.stmts.as_slice()
+            (ExprKind::Underscore, MacrolessMinGenericConstArgs) => Ok(()),
+            (ExprKind::Paren(expr), MacrolessMinGenericConstArgs) => {
+                self.can_lower_expr_to_const_arg_direct(expr, context)
+            }
+            (ExprKind::Block(block, _), MacrolessMinGenericConstArgs)
+                if let [stmt] = block.stmts.as_slice()
                     && let StmtKind::Expr(expr) = &stmt.kind =>
             {
-                self.can_lower_expr_to_const_arg_direct(expr)
+                self.can_lower_expr_to_const_arg_direct(expr, context)
             }
-            ExprKind::Lit(literal) if is_mgca => Ok(()),
-            ExprKind::Unary(UnOp::Neg, inner_expr)
-                if is_mgca && let ExprKind::Lit(_) = &inner_expr.kind =>
+            (ExprKind::Lit(_), MacrolessMinGenericConstArgs) => Ok(()),
+            (ExprKind::Unary(UnOp::Neg, inner_expr), MacrolessMinGenericConstArgs)
+                if let ExprKind::Lit(_) = &inner_expr.kind =>
             {
                 Ok(())
             }
-            ExprKind::ConstBlock(anon) if is_mgca => Ok(()),
-            ExprKind::DirectConstArg(expr) if is_mgca => {
+            (ExprKind::ConstBlock(_), MacrolessMinGenericConstArgs) => Ok(()),
+            (ExprKind::DirectConstArg(_), MacrolessMinGenericConstArgs | MinGenericConstArgs) => {
                 // Always report this as able to be represented directly. If it turns out not to be,
                 // `lower_expr_to_const_arg_direct` will report an error.
                 Ok(())
             }
             _ => Err(UnrepresentableConstArgError::new(expr)),
         }
+    }
+
+    /// It is not allowed to call this function without checking can_lower_path_to_const_arg_direct
+    /// first, as we assume all feature gates/etc. have been checked already.
+    fn lower_path_to_const_arg_direct(
+        &mut self,
+        id: NodeId,
+        id_override: Option<NodeId>,
+        qself: &Option<Box<QSelf>>,
+        path: &Path,
+        span: Span,
+    ) -> hir::ConstArg<'hir> {
+        let qpath = self.lower_qpath(
+            id,
+            qself,
+            path,
+            ParamMode::Explicit,
+            AllowReturnTypeNotation::No,
+            // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+            None,
+        );
+
+        let node_id = id_override.unwrap_or(id);
+        ConstArg { hir_id: self.lower_node_id(node_id), kind: hir::ConstArgKind::Path(qpath), span }
     }
 
     /// It is not allowed to call this function without checking can_lower_expr_to_const_arg_direct
@@ -2774,8 +2822,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         expr: &Expr,
         id_override: Option<NodeId>,
     ) -> hir::ConstArg<'hir> {
-        debug_assert!(self.can_lower_expr_to_const_arg_direct(expr).is_ok());
-
         let span = self.lower_span(expr.span);
         let node_id = id_override.unwrap_or(expr.id);
         match &expr.kind {
@@ -2814,22 +2860,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             ExprKind::Path(qself, path) => {
-                let qpath = self.lower_qpath(
-                    expr.id,
-                    qself,
-                    path,
-                    ParamMode::Explicit,
-                    AllowReturnTypeNotation::No,
-                    // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                    None,
-                );
-
-                ConstArg {
-                    hir_id: self.lower_node_id(node_id),
-                    kind: hir::ConstArgKind::Path(qpath),
-                    span,
-                }
+                self.lower_path_to_const_arg_direct(expr.id, id_override, qself, path, span)
             }
             ExprKind::Struct(se) => {
                 let path = self.lower_qpath(
@@ -2888,11 +2919,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 kind: hir::ConstArgKind::Infer(()),
                 span,
             },
+            ExprKind::Paren(expr) => self.lower_expr_to_const_arg_direct(expr, id_override),
             ExprKind::Block(block, _)
                 if let [stmt] = block.stmts.as_slice()
                     && let StmtKind::Expr(expr) = &stmt.kind =>
             {
-                return self.lower_expr_to_const_arg_direct(expr, id_override);
+                self.lower_expr_to_const_arg_direct(expr, id_override)
             }
             ExprKind::Lit(literal) => {
                 let span = self.lower_span(expr.span);
@@ -2936,7 +2968,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // ExprKind::DirectConstArg, which effectively forces the expression to be lowered
                 // as a direct arg. If it actually turns out to not be possible, emit an error
                 // instead.
-                match self.can_lower_expr_to_const_arg_direct(expr) {
+                // Always use MacrolessMinGenericConstArgs, even if we're under regular GCA, because
+                // that's what the macro means: to enter a context that is like macroless GCA.
+                match self.can_lower_expr_to_const_arg_direct(
+                    expr,
+                    DirectConstArgContext::MacrolessMinGenericConstArgs,
+                ) {
                     Ok(()) => self.lower_expr_to_const_arg_direct(expr, id_override),
                     Err(err) => err.emit(self),
                 }
@@ -2958,24 +2995,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         anon: &AnonConst,
     ) -> &'hir hir::ConstArg<'hir> {
-        self.arena.alloc(self.lower_anon_const_to_const_arg(anon, anon.value.span))
+        self.arena.alloc(self.lower_anon_const_to_const_arg(anon))
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn lower_anon_const_to_const_arg(
-        &mut self,
-        anon: &AnonConst,
-        span: Span,
-    ) -> hir::ConstArg<'hir> {
+    fn lower_anon_const_to_const_arg(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
         // Stable only allows one nesting of blocks for directly represented paths. mGCA allows
         // arbitrarily many, and are handled inside lower_expr_to_const_arg_direct for consistency.
-        let expr = if self.tcx.features().min_generic_const_args() {
+        let expr = if self.tcx.features().macroless_generic_const_args() {
             &anon.value
         } else {
             anon.value.maybe_unwrap_block()
         };
 
-        if self.can_lower_expr_to_const_arg_direct(expr).is_ok() {
+        let context = self.ambient_direct_const_arg_context();
+        if self.can_lower_expr_to_const_arg_direct(expr, context).is_ok() {
             return self.lower_expr_to_const_arg_direct(expr, Some(anon.id));
         }
 
@@ -3110,21 +3144,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn pat_cf_continue(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowContinue, field)
+        self.pat_lang_item_variant(span, LangItem::ControlFlowContinue, field)
     }
 
     fn pat_cf_break(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowBreak, field)
+        self.pat_lang_item_variant(span, LangItem::ControlFlowBreak, field)
     }
 
     fn pat_some(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::OptionSome, field)
+        self.pat_lang_item_variant(span, LangItem::OptionSome, field)
     }
 
     fn pat_none(&mut self, span: Span) -> &'hir hir::Pat<'hir> {
-        self.pat_lang_item_variant(span, hir::LangItem::OptionNone, &[])
+        self.pat_lang_item_variant(span, LangItem::OptionNone, &[])
     }
 
     fn single_pat_field(
@@ -3145,7 +3179,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn pat_lang_item_variant(
         &mut self,
         span: Span,
-        lang_item: hir::LangItem,
+        lang_item: LangItem,
         fields: &'hir [hir::PatField<'hir>],
     ) -> &'hir hir::Pat<'hir> {
         let path = self.make_lang_item_qpath(lang_item, self.lower_span(span), None);
@@ -3278,6 +3312,21 @@ impl<'hir> GenericArgsCtor<'hir> {
         };
         this.arena.alloc(ga)
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+enum DirectConstArgContext {
+    /// The only allowed direct const arg representation is simple paths that nameres to generic
+    /// const parameters.
+    Stable,
+    /// The allowed representations are what is allowed on stable, plus the `direct_const_arg!` macro.
+    MinGenericConstArgs,
+    /// Expressions attempt to be lowered directly, and if that fails, the expression falls back to
+    /// being represented as an anon const.
+    ///
+    /// This context is also used under MinGenericConstArgs inside a `direct_const_arg!` macro, for
+    /// simplicity, as they allow the same code.
+    MacrolessMinGenericConstArgs,
 }
 
 #[derive(Debug)]

@@ -1,6 +1,6 @@
 use crate::map_unit_fn::OPTION_MAP_UNIT_FN;
 use crate::matches::MATCH_AS_REF;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_unsafe_fn, peel_and_count_ty_refs};

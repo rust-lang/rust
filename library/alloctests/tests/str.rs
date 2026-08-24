@@ -1109,6 +1109,21 @@ fn test_split_at_boundscheck() {
 }
 
 #[test]
+fn test_copy_from_str() {
+    let src = "Saludos";
+    let mut dst = "Grüße, Jürgen".to_string();
+    dst[..7].copy_from_str(src);
+    assert_eq!(dst, "Saludos, Jürgen");
+}
+
+#[test]
+#[should_panic]
+fn test_copy_from_str_unequal_len() {
+    let mut dst = "hello".to_string();
+    dst.copy_from_str("hi");
+}
+
+#[test]
 fn test_escape_unicode() {
     assert_eq!("abc".escape_unicode().to_string(), "\\u{61}\\u{62}\\u{63}");
     assert_eq!("a c".escape_unicode().to_string(), "\\u{61}\\u{20}\\u{63}");
@@ -1786,6 +1801,21 @@ fn test_utf16_size_hint() {
 }
 
 #[test]
+fn test_utf16_count() {
+    assert_eq!("".encode_utf16().count(), 0);
+    assert_eq!("a".encode_utf16().count(), 1);
+    assert_eq!("é".encode_utf16().count(), 1);
+    assert_eq!("字".encode_utf16().count(), 1);
+    assert_eq!("\u{1F4A9}".encode_utf16().count(), 2);
+    let mut iter = "\u{1F4A9}字éa".encode_utf16();
+    assert_eq!(iter.clone().count(), 5);
+    iter.next();
+    assert_eq!(iter.clone().count(), 4); // counting half of the surrogate pair
+    iter.next();
+    assert_eq!(iter.count(), 3);
+}
+
+#[test]
 fn starts_with_in_unicode() {
     assert!(!"├── Cargo.toml".starts_with("# "));
 }
@@ -1887,6 +1917,56 @@ fn to_lowercase() {
 fn to_uppercase() {
     assert_eq!("".to_uppercase(), "");
     assert_eq!("aéǅßẞﬁᾀ".to_uppercase(), "AÉǄSSẞFIἈΙ");
+}
+
+#[test]
+fn word_to_titlecase() {
+    // ASCII fast path: first cased letter is upper-cased, the rest lower-cased.
+    assert_eq!("hello WORLD".word_to_titlecase(), "Hello world");
+    assert_eq!("HELLO".word_to_titlecase(), "Hello");
+
+    // Leading uncased characters pass through, then the first cased letter is title-cased.
+    assert_eq!("'twas".word_to_titlecase(), "'Twas");
+    assert_eq!("123 abc".word_to_titlecase(), "123 Abc");
+
+    // Empty and no-cased-character inputs are unchanged.
+    assert_eq!("".word_to_titlecase(), "");
+    assert_eq!("农历新年".word_to_titlecase(), "农历新年");
+    assert_eq!("123 456".word_to_titlecase(), "123 456");
+
+    // Final-sigma handling: Σ maps to ς at the end of a word, σ elsewhere.
+    assert_eq!("ὈΔΥΣΣΕΎΣ".word_to_titlecase(), "Ὀδυσσεύς");
+    assert_eq!("ΑΣ".word_to_titlecase(), "Ας");
+    assert_eq!("ΑΣΑ".word_to_titlecase(), "Ασα");
+
+    // Mixed ASCII prefix followed by a non-ASCII tail exercises the boundary index math,
+    // including around the chunk size used by the ASCII prefix optimization.
+    assert_eq!("HELLO ὈΔΥΣΣΕΎΣ".word_to_titlecase(), "Hello ὀδυσσεύς");
+    assert_eq!("ABCDEFGHIJKLMNOΣ".word_to_titlecase(), "Abcdefghijklmnoς");
+    assert_eq!("ABCDEFGHIJKLMNOPΣ".word_to_titlecase(), "Abcdefghijklmnopς");
+    assert_eq!("ABCDEFGHIJKLMNOPQΣ".word_to_titlecase(), "Abcdefghijklmnopqς");
+
+    // A long ASCII-only string exercises the auto-vectorized fast path.
+    assert_eq!(str::repeat("A", 511).word_to_titlecase(), {
+        let mut expected = String::from("A");
+        expected.push_str(&str::repeat("a", 510));
+        expected
+    });
+
+    // LJ ligatures and title-case characters.
+    // ǈ is already a title-case letter, so it stays as the first char.
+    assert_eq!("ǈj".word_to_titlecase(), "ǈj");
+    assert_eq!("ǈJ".word_to_titlecase(), "ǈj");
+    // l is the first cased char (uppercases to L), ǈ lowercases to ǉ.
+    assert_eq!("lǈﬁ".word_to_titlecase(), "Lǉﬁ");
+    assert_eq!("Lǈﬁ".word_to_titlecase(), "Lǉﬁ");
+
+    // LJ ligatures: lower=ǉ (U+01C9), upper=Ǉ (U+01C7), title=ǈ (U+01C8).
+    // ß decomposes to "Ss" in title case (first char) but stays ß elsewhere.
+    assert_eq!("ßǉǇǈ".word_to_titlecase(), "Ssǉǉǉ");
+    assert_eq!("ǉǇǈß".word_to_titlecase(), "ǈǉǉß");
+    assert_eq!("Ǉǈßǉ".word_to_titlecase(), "ǈǉßǉ");
+    assert_eq!("ǈßǉǇ".word_to_titlecase(), "ǈßǉǉ");
 }
 
 #[test]

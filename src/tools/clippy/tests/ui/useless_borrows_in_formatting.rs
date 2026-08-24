@@ -2,7 +2,6 @@
 //   TESTNAME=useless_borrows_in_formatting cargo uitest
 //   TESTNAME=useless_borrows_in_formatting cargo uibless
 #![warn(clippy::useless_borrows_in_formatting)]
-#![allow(unused, clippy::useless_format)]
 
 fn main() {
     let mut s: &str = "hello";

@@ -1,4 +1,4 @@
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::ty::{has_iter_method, implements_trait};
 use clippy_utils::{get_parent_expr, is_integer_literal, sugg};
 use rustc_ast::ast::{LitIntType, LitKind};

@@ -228,8 +228,6 @@ pub struct TermSearchCtx<'a, 'db, DB: HirDatabase> {
 /// Configuration options for the term search
 #[derive(Debug, Clone, Copy)]
 pub struct TermSearchConfig {
-    /// Enable borrow checking, this guarantees the outputs of the `term_search` to borrow-check
-    pub enable_borrowcheck: bool,
     /// Indicate when to squash multiple trees to `Many` as there are too many to keep track
     pub many_alternatives_threshold: usize,
     /// Fuel for term search in "units of work"
@@ -238,7 +236,7 @@ pub struct TermSearchConfig {
 
 impl Default for TermSearchConfig {
     fn default() -> Self {
-        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, fuel: 1200 }
+        Self { many_alternatives_threshold: 1, fuel: 1200 }
     }
 }
 

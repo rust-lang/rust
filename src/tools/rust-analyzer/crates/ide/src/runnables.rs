@@ -487,7 +487,7 @@ fn runnable_mod_outline_definition(
     })
 }
 
-fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Option<Runnable> {
+fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition<'_>) -> Option<Runnable> {
     let db = sema.db;
     let attrs = match def {
         Definition::Module(it) => it.attrs(db),

@@ -993,7 +993,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
 
     fn assemble_inherent_impl_candidates_for_type(
         &mut self,
-        self_ty: &SimplifiedType,
+        self_ty: &SimplifiedType<'db>,
         receiver_steps: usize,
     ) {
         let Some(module) = simplified_type_module(self.db(), self_ty) else {
@@ -2046,7 +2046,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             let args = GenericArgs::for_item(
                 self.interner(),
                 method.into(),
-                |param_index, param_id, _| {
+                |param_index, param_id, _, _| {
                     let i = param_index as usize;
                     if i < args.len() {
                         args[i]

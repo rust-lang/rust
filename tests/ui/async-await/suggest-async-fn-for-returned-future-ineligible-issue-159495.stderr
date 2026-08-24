@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-async-fn-for-returned-future-ineligible-issue-159495.rs:12:20
+   |
+LL |     let _: i32 = { number() };
+   |                    ^^^^^^^^ expected `i32`, found future
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-async-fn-for-returned-future-ineligible-issue-159495.rs:24:9
+   |
+LL |     fn trait_method() -> i32 {
+   |                          --- expected `i32` because of return type
+LL |         number()
+   |         ^^^^^^^^ expected `i32`, found future
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -38,6 +38,19 @@ fn test() {
     }
 
     #[test]
+    fn local_binding_shadows_function() {
+        check_diagnostics(
+            r#"
+//- minicore: add
+fn f() {
+    let mut f = 1;
+    f += 1;
+}
+        "#,
+        );
+    }
+
+    #[test]
     fn struct_literal() {
         check_diagnostics(
             r#"

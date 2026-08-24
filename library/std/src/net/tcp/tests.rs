@@ -956,3 +956,37 @@ fn connect_timeout_valid() {
     let addr = listener.local_addr().unwrap();
     TcpStream::connect_timeout(&addr, Duration::from_secs(2)).unwrap();
 }
+
+// #115325: writing a buffer larger than `c_int::MAX` bytes used to fail on
+// macOS with `EINVAL`; `write_all` should now transfer it via short sends.
+#[test]
+#[cfg(all(target_pointer_width = "64", unix))]
+fn write_buffer_larger_than_c_int_max() {
+    const LEN: usize = crate::ffi::c_int::MAX as usize + 1;
+
+    // Back the source buffer with a read-only anonymous mapping rather than a
+    // 2 GiB `Vec`, so the test doesn't actually consume ~2 GiB of physical
+    // memory while `write_all` reads through the buffer.
+    let data = crate::net::tests::ZeroedMmap::new(LEN);
+
+    let listener = t!(TcpListener::bind("127.0.0.1:0"));
+    let addr = t!(listener.local_addr());
+    let reader = thread::spawn(move || {
+        let (mut sock, _) = t!(listener.accept());
+        let mut received = 0usize;
+        let mut buf = vec![0u8; 1 << 20];
+        loop {
+            match sock.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => received += n,
+                Err(e) => panic!("read error: {e}"),
+            }
+        }
+        received
+    });
+
+    let mut stream = t!(TcpStream::connect(addr));
+    t!(stream.write_all(&data));
+    drop(stream); // signal EOF so the reader loop terminates
+    assert_eq!(reader.join().unwrap(), LEN);
+}

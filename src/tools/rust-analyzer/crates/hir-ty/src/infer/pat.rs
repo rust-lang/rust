@@ -10,8 +10,8 @@ use hir_def::{
     AdtId, LocalFieldId, VariantId,
     expr_store::path::Path,
     hir::{
-        BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId,
-        RecordFieldPat,
+        BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, ExprOrPatIdPacked, Literal, Pat,
+        PatId, RecordFieldPat,
     },
     resolver::ValueNs,
     signatures::VariantFields,
@@ -237,7 +237,7 @@ impl<'db> ResolvedPat<'db> {
     }
 }
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     /// Experimental pattern feature: after matching against a shared reference, do we limit the
     /// default binding mode in subpatterns to be `ref` when it would otherwise be `ref mut`?
     /// This corresponds to Rule 3 of RFC 3627.
@@ -853,7 +853,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // Subtyping doesn't matter here, as the value is some kind of scalar.
         let mut demand_eqtype = |x: &mut _| {
             if let Some((_, x_ty, x_expr)) = *x {
-                _ = self.demand_eqtype(ExprOrPatId::from(x_expr), expected, x_ty);
+                _ = self.demand_eqtype(ExprOrPatIdPacked::from(x_expr), expected, x_ty);
             }
         };
         demand_eqtype(&mut lhs);
@@ -868,7 +868,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // We require types to be resolved here so that we emit inference failure
         // rather than "_ is not a char or numeric".
         let ty = self.structurally_resolve_type(
-            lhs_expr.or(rhs_expr).map(ExprOrPatId::ExprId).unwrap_or(pat.into()),
+            lhs_expr.or(rhs_expr).map(ExprOrPatIdPacked::from).unwrap_or(pat.into()),
             expected,
         );
         if !(ty.is_numeric() || ty.is_char() || ty.references_error()) {
@@ -1248,7 +1248,11 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 self.push_diagnostic(InferenceDiagnostic::UnionPatHasRest { pat });
             }
         } else if !unmentioned_fields.is_empty() && !has_rest_pat {
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::RecordMissingFields {
+                record: ExprOrPatId::PatId(pat),
+                variant,
+                missed_fields: unmentioned_fields.into_iter().map(|f| f.0).collect(),
+            })
         }
     }
 

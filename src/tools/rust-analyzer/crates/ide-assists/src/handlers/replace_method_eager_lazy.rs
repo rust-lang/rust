@@ -39,7 +39,7 @@ pub(crate) fn replace_with_lazy_method(
     let (_, receiver_ty) = callable.receiver_param(ctx.sema.db)?;
     let n_params = callable.n_params() + 1;
 
-    let method_name_lazy = lazy_method_name(&method_name.text());
+    let method_name_lazy = lazy_method_name(method_name.text());
 
     receiver_ty.iterate_method_candidates_with_traits(
         ctx.sema.db,
@@ -156,7 +156,7 @@ pub(crate) fn replace_with_eager_method(
     }
 
     let method_name_text = method_name.text();
-    let method_name_eager = eager_method_name(&method_name_text)?;
+    let method_name_eager = eager_method_name(method_name_text)?;
 
     receiver_ty.iterate_method_candidates_with_traits(
         ctx.sema.db,

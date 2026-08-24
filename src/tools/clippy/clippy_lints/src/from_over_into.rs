@@ -4,8 +4,8 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanExt;
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_path};
 use rustc_hir::{
@@ -60,7 +60,7 @@ pub struct FromOverInto {
 
 impl FromOverInto {
     pub fn new(conf: &'static Conf) -> Self {
-        FromOverInto { msrv: conf.msrv }
+        FromOverInto { msrv: conf.msrv.into() }
     }
 }
 

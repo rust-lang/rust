@@ -1,8 +1,10 @@
-error[E0573]: expected type, found const parameter `C`
+error[E0573]: cannot find type `C` in this scope
   --> $DIR/struct-with-invalid-const-param.rs:3:23
    |
 LL | struct S<const C: u8>(C);
-   |                       ^ not a type
+   |                       ^ not found in this scope
+   |
+   = note: a const parameter named `C` exists in another namespace
 
 error: aborting due to 1 previous error
 

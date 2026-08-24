@@ -1,6 +1,6 @@
 use super::{Attribute, NON_MINIMAL_CFG};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use rustc_ast::{MetaItemInner, MetaItemKind};
 use rustc_errors::Applicability;
 use rustc_lint::EarlyContext;

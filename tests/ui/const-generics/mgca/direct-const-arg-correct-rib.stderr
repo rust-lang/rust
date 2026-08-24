@@ -1,0 +1,8 @@
+error: attempt to use a non-constant value in a constant
+  --> $DIR/direct-const-arg-correct-rib.rs:8:42
+   |
+LL |         let _: V<core::direct_const_arg!(self)>;
+   |                                          ^^^^ help: try using `Self`
+
+error: aborting due to 1 previous error
+

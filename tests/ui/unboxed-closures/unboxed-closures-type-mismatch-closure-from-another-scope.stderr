@@ -32,12 +32,13 @@ note: closure parameter defined here
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                       ^
 
-error[E0423]: expected function, found macro `deref`
+error[E0423]: cannot find function `deref` in this scope
   --> $DIR/unboxed-closures-type-mismatch-closure-from-another-scope.rs:13:5
    |
 LL |     deref(p);
-   |     ^^^^^ not a function
+   |     ^^^^^ not found in this scope
    |
+   = note: a macro named `deref` exists in another namespace
 help: use the `.` operator to call the method `Deref::deref` on `&&()`
    |
 LL -     deref(p);

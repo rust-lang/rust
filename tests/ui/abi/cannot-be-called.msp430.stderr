@@ -49,7 +49,7 @@ LL | fn riscv_s_ptr(f: extern "riscv-interrupt-s" fn()) {
 error[E0570]: "x86-interrupt" is not a supported ABI for the current target
   --> $DIR/cannot-be-called.rs:100:22
    |
-LL | fn x86_ptr(f: extern "x86-interrupt" fn()) {
+LL | fn x86_ptr(f: extern "x86-interrupt" fn(*const u8), frame: *const u8) {
    |                      ^^^^^^^^^^^^^^^
 
 error[E0570]: "gpu-kernel" is not a supported ABI for the current target

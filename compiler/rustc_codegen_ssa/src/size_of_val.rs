@@ -1,7 +1,7 @@
 //! Computing the size and alignment of a value.
 
 use rustc_abi::{Align, WrappingRange};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty};

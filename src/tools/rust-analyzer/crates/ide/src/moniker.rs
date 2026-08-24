@@ -118,7 +118,7 @@ pub enum MonikerResult {
 }
 
 impl MonikerResult {
-    pub fn from_def(db: &RootDatabase, def: Definition, from_crate: Crate) -> Option<Self> {
+    pub fn from_def(db: &RootDatabase, def: Definition<'_>, from_crate: Crate) -> Option<Self> {
         def_to_moniker(db, def, from_crate)
     }
 }
@@ -178,7 +178,7 @@ pub(crate) fn moniker(
     Some(RangeInfo::new(original_token.text_range(), navs))
 }
 
-pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformationKind {
+pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition<'_>) -> SymbolInformationKind {
     use SymbolInformationKind::*;
 
     match def {
@@ -250,7 +250,7 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
 ///   definitions.
 pub(crate) fn def_to_moniker(
     db: &RootDatabase,
-    definition: Definition,
+    definition: Definition<'_>,
     from_crate: Crate,
 ) -> Option<MonikerResult> {
     match definition {
@@ -266,7 +266,7 @@ pub(crate) fn def_to_moniker(
 
 fn enclosing_def_to_moniker(
     db: &RootDatabase,
-    mut def: Definition,
+    mut def: Definition<'_>,
     from_crate: Crate,
 ) -> Option<Moniker> {
     loop {
@@ -280,7 +280,7 @@ fn enclosing_def_to_moniker(
 
 fn def_to_non_local_moniker(
     db: &RootDatabase,
-    definition: Definition,
+    definition: Definition<'_>,
     from_crate: Crate,
 ) -> Option<Moniker> {
     let module = match definition {

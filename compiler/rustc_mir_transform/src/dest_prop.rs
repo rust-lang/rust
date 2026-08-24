@@ -144,16 +144,18 @@ use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
+use rustc_mir_dataflow::impls::{DefUse, LivenessTransferFunction, MaybeLiveLocals};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, GenKill};
 use tracing::{debug, trace};
 
+use crate::PassPolicy;
+
 pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 2)
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]
@@ -231,10 +233,6 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
         }
 
         apply_merges(body, tcx, relevant, merged_locals);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -621,7 +619,7 @@ fn save_as_intervals<'tcx>(
 
         state.current = state.current + 1;
         debug_assert_eq!(state.current, two_step_loc(loc, Effect::Before));
-        MaybeLiveLocals::transfer_function(&mut state).visit_terminator(term, loc);
+        LivenessTransferFunction(&mut state).visit_terminator(term, loc);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
@@ -661,7 +659,7 @@ fn save_as_intervals<'tcx>(
             // the all the writes we manually marked as live in the second half of the statement.
             state.current = TwoStepIndex::from_u32(state.current.as_u32() + 1);
             debug_assert_eq!(state.current, two_step_loc(loc, Effect::Before));
-            MaybeLiveLocals::transfer_function(&mut state).visit_statement(stmt, loc);
+            LivenessTransferFunction(&mut state).visit_statement(stmt, loc);
         }
 
         // Cleanup the current block for the next one.

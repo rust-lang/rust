@@ -12,4 +12,12 @@ fn block() {
         #![doc("Nor here")]
         //! Nor are ModuleDoc comments
     }
+     loop {
+        #![doc("This is fine, `loop` bodies accept inner attributes")]
+        //! So are ModuleDoc comments
+    }
+    for _ in 0..1 {
+        #![doc("This is fine, `for` bodies accept inner attributes")]
+        //! So are ModuleDoc comments
+    }
 }

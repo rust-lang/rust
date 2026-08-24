@@ -6,12 +6,13 @@ use super::{Builder, Kind};
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::config::flags::Color;
-use crate::core::config::{CompressDebuginfo, SplitDebuginfo};
+use crate::core::config::toml::pgo::PgoConfig;
+use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
 use crate::utils::build_stamp;
-use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags};
+use crate::utils::exec::{BootstrapCommand, command};
+use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_flags, t};
 use crate::{
-    BootstrapCommand, CLang, Compiler, Config, DryRun, EXTRA_CHECK_CFGS, GitRepo, Mode,
-    RemapScheme, TargetSelection, command, prepare_behaviour_dump_dir, t,
+    CLang, Compiler, EXTRA_CHECK_CFGS, GitRepo, Mode, RemapScheme, prepare_behaviour_dump_dir,
 };
 
 /// Represents flag values in `String` form with a `\x1f` delimiter to pass to the compiler later.
@@ -1196,7 +1197,12 @@ impl Builder<'_> {
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
         if matches!(mode, Mode::Std) {
-            cargo.arg("-Zno-embed-metadata");
+            // The `-Zembed-metadata` flag was renamed from `-Zno-embed-metadata`.
+            if self.local_rebuild {
+                cargo.arg("-Zembed-metadata=no");
+            } else {
+                cargo.arg("-Zno-embed-metadata");
+            }
         }
 
         if self.config.dump_bootstrap_shims {
@@ -1526,4 +1532,45 @@ pub fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
         (_, false) => "DEV",
     };
     format!("CARGO_PROFILE_{profile}_{name}")
+}
+
+/// Applies PGO compile flags to the given Cargo invocation based on the given PGO config.
+/// PGO flags are only applied when compiling a stage2 component.
+pub fn apply_pgo(
+    builder: &Builder<'_>,
+    cargo: &mut Cargo,
+    build_compiler: Compiler,
+    config: &PgoConfig,
+) {
+    let is_collecting = if let Some(path) = &config.generate_profile {
+        if build_compiler.stage == 1 {
+            cargo
+                .rustflag(&format!("-Cprofile-generate={}", path.to_str().expect("non-UTF8 path")));
+            // Apparently necessary to avoid overflowing the counters during
+            // a Cargo build profile
+            cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
+            true
+        } else {
+            false
+        }
+    } else if let Some(path) = &config.use_profile {
+        if build_compiler.stage == 1 {
+            cargo.rustflag(&format!("-Cprofile-use={}", path.to_str().expect("non-UTF8 path")));
+            if builder.is_verbose() {
+                cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+            }
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+    if is_collecting {
+        // Ensure paths to Rust sources are relative, not absolute.
+        cargo.rustflag(&format!(
+            "-Cllvm-args=-static-func-strip-dirname-prefix={}",
+            builder.config.src.components().count()
+        ));
+    }
 }

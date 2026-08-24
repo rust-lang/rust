@@ -176,6 +176,23 @@ macro_rules! num {
     }
 
     #[test]
+    fn inline_macro_in_included_file() {
+        // Regression test for climbing from the included file into an uncached includer root.
+        check_assist_not_applicable(
+            inline_macro,
+            r#"
+//- minicore:include
+//- /main.rs
+include!("a.rs");
+//- /a.rs
+fn foo() {
+    let x = 1$0;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn inline_macro_simple_not_applicable_broken_macro() {
         // FIXME: This is a bug. The macro should not expand, but it's
         // the same behaviour as the "Expand Macro Recursively" command

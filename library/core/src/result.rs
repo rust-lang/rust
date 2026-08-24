@@ -114,14 +114,15 @@
 //!
 //! You might instead, if you don't want to handle the error, simply
 //! assert success with [`expect`]. This will panic if the
-//! write fails, providing a marginally useful message indicating why:
+//! write fails, providing a message explaining why the write was expected
+//! to succeed:
 //!
 //! ```no_run
 //! use std::fs::File;
 //! use std::io::prelude::*;
 //!
 //! let mut file = File::create("valuable_data.txt").unwrap();
-//! file.write_all(b"important message").expect("failed to write message");
+//! file.write_all(b"important message").expect("writing to the file should succeed");
 //! ```
 //!
 //! You might also simply assert success:
@@ -978,7 +979,7 @@ impl<T, E> Result<T, E> {
     ///     .parse::<u8>()
     ///     .inspect(|x| println!("original: {x}"))
     ///     .map(|x| x.pow(3))
-    ///     .expect("failed to parse number");
+    ///     .expect("literal `4` should parse as a `u8`");
     /// ```
     #[inline]
     #[stable(feature = "result_option_inspect", since = "1.76.0")]

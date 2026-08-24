@@ -3,7 +3,7 @@
 
 use std::num::NonZero;
 
-use rustc_abi::{FieldIdx, FieldsShape, VariantIdx, Variants};
+use rustc_abi::{FieldsShape, VariantIdx, Variants};
 use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::{self, Ty};
 use tracing::trace;
@@ -12,6 +12,9 @@ use super::{InterpCx, MPlaceTy, Machine, Projectable, interp_ok, throw_inval};
 
 /// How to traverse a value and what to do when we are at the leaves.
 pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
+    // The `From<MPlaceTy>` rules out `ImmTy`... we could use a `TryFrom` instead since the only
+    // case we need this is visiting something unsized which cannot happen when visiting an `ImmTy`.
+    // But so far this was just not needed.
     type V: Projectable<'tcx, M::Provenance> + From<MPlaceTy<'tcx, M::Provenance>>;
 
     /// The visitor must have an `InterpCx` in it.
@@ -111,33 +114,9 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 // allocator field. We also assert tons of things to ensure we do not miss
                 // any other fields.
 
-                // `Box` has two fields: the pointer we care about, and the allocator.
-                assert_eq!(v.layout().fields.count(), 2, "`Box` must have exactly 2 fields");
-                let [unique_ptr, alloc] =
-                    self.ecx().project_fields(v, [FieldIdx::ZERO, FieldIdx::ONE])?;
+                let (raw_ptr, alloc) = self.ecx().project_to_ptr_in_box(v)?;
 
-                // Unfortunately there is some type junk in the way here: `unique_ptr` is a `Unique`...
-                // (which means another 2 fields, the second of which is a `PhantomData`)
-                assert_eq!(unique_ptr.layout().fields.count(), 2);
-                let [nonnull_ptr, phantom] =
-                    self.ecx().project_fields(&unique_ptr, [FieldIdx::ZERO, FieldIdx::ONE])?;
-                assert!(
-                    phantom.layout().ty.ty_adt_def().is_some_and(|adt| adt.is_phantom_data()),
-                    "2nd field of `Unique` should be PhantomData but is {:?}",
-                    phantom.layout().ty,
-                );
-
-                // ... that contains a `NonNull` whose only field finally is a raw ptr we can
-                // dereference.
-                assert_eq!(nonnull_ptr.layout().fields.count(), 1);
-                let pat_ptr = self.ecx().project_field(&nonnull_ptr, FieldIdx::ZERO)?; // `*mut T is !null`
-                let base = match *pat_ptr.layout().ty.kind() {
-                    ty::Pat(base, _) => self.ecx().layout_of(base)?,
-                    _ => unreachable!(),
-                };
-                let raw_ptr = pat_ptr.transmute(base, self.ecx())?; // The actual raw pointer
-
-                // Hand this actual pointer to the visitor.
+                // Hand the actual pointer to the visitor.
                 self.visit_box(ty, &raw_ptr)?;
 
                 // The second `Box` field is the allocator, which we recursively check for validity

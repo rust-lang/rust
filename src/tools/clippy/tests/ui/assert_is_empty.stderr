@@ -1,0 +1,208 @@
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:7:5
+   |
+LL |     assert!(vec.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::assert-is-empty` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assert_is_empty)]`
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(vec.is_empty());
+LL +     assert_eq!(vec, [] as [i32; 0]);
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:9:5
+   |
+LL |     assert!(!vec.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -     assert!(!vec.is_empty());
+LL +     assert_ne!(vec, [] as [i32; 0]);
+   |
+
+error: used `debug_assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:11:5
+   |
+LL |     debug_assert!(vec.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `debug_assert_eq!` to show the value on failure
+   |
+LL -     debug_assert!(vec.is_empty());
+LL +     debug_assert_eq!(vec, [] as [i32; 0]);
+   |
+
+error: used `debug_assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:13:5
+   |
+LL |     debug_assert!(!vec.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `debug_assert_ne!` to show the value on failure
+   |
+LL -     debug_assert!(!vec.is_empty());
+LL +     debug_assert_ne!(vec, [] as [i32; 0]);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:17:5
+   |
+LL |     assert!(vec_ref.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(vec_ref.is_empty());
+LL +     assert_eq!(vec_ref.as_slice(), []);
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:19:5
+   |
+LL |     assert!(!vec_ref.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -     assert!(!vec_ref.is_empty());
+LL +     assert_ne!(vec_ref.as_slice(), []);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:23:5
+   |
+LL |     assert!(vec_mut_ref.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(vec_mut_ref.is_empty());
+LL +     assert_eq!(vec_mut_ref.as_slice(), []);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:27:5
+   |
+LL |     assert!(slice.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(slice.is_empty());
+LL +     assert_eq!(slice, []);
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:29:5
+   |
+LL |     assert!(!slice.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -     assert!(!slice.is_empty());
+LL +     assert_ne!(slice, []);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:33:5
+   |
+LL |     assert!(array.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(array.is_empty());
+LL +     assert_eq!(array.as_slice(), []);
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:35:5
+   |
+LL |     assert!(!array.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -     assert!(!array.is_empty());
+LL +     assert_ne!(array.as_slice(), []);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:39:5
+   |
+LL |     assert!(array_ref.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(array_ref.is_empty());
+LL +     assert_eq!(array_ref.as_slice(), []);
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:43:5
+   |
+LL |     assert!(string.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(string.is_empty());
+LL +     assert_eq!(string, "");
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:45:5
+   |
+LL |     assert!(!string.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -     assert!(!string.is_empty());
+LL +     assert_ne!(string, "");
+   |
+
+error: used `assert!` to check that a value is empty
+  --> tests/ui/assert_is_empty.rs:49:5
+   |
+LL |     assert!(str_ref.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_eq!` to show the value on failure
+   |
+LL -     assert!(str_ref.is_empty());
+LL +     assert_eq!(str_ref, "");
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:51:5
+   |
+LL |     assert!(!str_ref.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -     assert!(!str_ref.is_empty());
+LL +     assert_ne!(str_ref, "");
+   |
+
+error: used `assert!` to check that a value is not empty
+  --> tests/ui/assert_is_empty.rs:63:5
+   |
+LL |     assert!(!items.is_empty());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `assert_ne!` to show the value on failure
+   |
+LL -     assert!(!items.is_empty());
+LL +     assert_ne!(items, [] as [&str; 0]);
+   |
+
+error: aborting due to 17 previous errors
+

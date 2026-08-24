@@ -28,7 +28,7 @@ error[E0700]: hidden type for `impl FnOnce() -> impl Iterator<Item = u32>` captu
 LL |   fn capture_move_once(a: &u32) -> impl FnOnce() -> impl Iterator<Item = u32> {
    |                           ----     ------------------------------------------ opaque type defined here
    |                           |
-   |                           hidden type `{gen closure@$DIR/generator_returned_from_fn.rs:43:13: 43:20}` captures the anonymous lifetime defined here
+   |                           hidden type `{gen closure@...}` captures the anonymous lifetime defined here
 LL |       iter! { move || {
    |  _____________^
 LL | |
@@ -49,7 +49,7 @@ error[E0700]: hidden type for `impl Iterator<Item = u32>` captures lifetime that
 LL |   fn capture_move_once(a: &u32) -> impl FnOnce() -> impl Iterator<Item = u32> {
    |                           ----                      ------------------------- opaque type defined here
    |                           |
-   |                           hidden type `{gen closure body@$DIR/generator_returned_from_fn.rs:43:21: 50:6}` captures the anonymous lifetime defined here
+   |                           hidden type `{gen closure body@...}` captures the anonymous lifetime defined here
 LL |       iter! { move || {
    |  _____________^
 LL | |

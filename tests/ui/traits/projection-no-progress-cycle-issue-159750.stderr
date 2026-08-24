@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `<Self as Queryable>::Container: Container<<Self as Queryable>::Output>` is not satisfied
+  --> $DIR/projection-no-progress-cycle-issue-159750.rs:18:25
+   |
+LL |     fn finish(&self) -> <Self::Container as Container<Self::Output>>::IDContainer;
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Container<<Self as Queryable>::Output>` is not implemented for `<Self as Queryable>::Container`
+   |
+help: consider further restricting the associated type
+   |
+LL |     fn finish(&self) -> <Self::Container as Container<Self::Output>>::IDContainer where <Self as Queryable>::Container: Container<<Self as Queryable>::Output>;
+   |                                                                                   ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `(): Queryable` is not satisfied
+  --> $DIR/projection-no-progress-cycle-issue-159750.rs:22:19
+   |
+LL | fn follow<E>() -> impl Queryable<Container = Option<E>> {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Queryable` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/projection-no-progress-cycle-issue-159750.rs:14:1
+   |
+LL | trait Queryable {
+   | ^^^^^^^^^^^^^^^
+
+error[E0284]: type annotations needed
+  --> $DIR/projection-no-progress-cycle-issue-159750.rs:28:14
+   |
+LL |     follow().finish();
+   |              ^^^^^^
+   |
+   = note: cannot satisfy `<impl Queryable<Container = Option<_>> as Queryable>::Output == _`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0284.
+For more information about an error, try `rustc --explain E0277`.

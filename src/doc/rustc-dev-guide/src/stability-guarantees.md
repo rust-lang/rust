@@ -20,7 +20,7 @@ This page gives an overview of our stability guarantees.
 ## Exemptions
 
 Even if some of our infrastructure can be used by others, it is still considered
-internal and comes without stability guarantees. This is a non-exhaustive list
-of components without stability guarantees:
+internal and comes without stability guarantees.
+This is a non-exhaustive list of components without stability guarantees:
 
 * The CLIs and environment variables used by `remote-test-client` / `remote-test-server`

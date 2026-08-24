@@ -815,7 +815,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let a_lane = a.value_lane(fx, lane).load_scalar(fx);
                 let b_lane = b.value_lane(fx, lane).load_scalar(fx);
 
-                let m_lane = fx.bcx.ins().icmp_imm(IntCC::Equal, m_lane, 0);
+                let m_lane = fx.bcx.ins().icmp_imm_u(IntCC::Equal, m_lane, 0);
                 let res_lane =
                     CValue::by_val(fx.bcx.ins().select(m_lane, b_lane, a_lane), lane_layout);
 
@@ -850,7 +850,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     m.force_stack(fx).0.load(
                         fx,
                         Type::int(expected_int_bits as u16).unwrap(),
-                        MemFlags::trusted(),
+                        MemFlagsData::trusted(),
                     )
                 }
                 _ => {
@@ -874,12 +874,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     Endian::Big => lane_count - 1 - lane,
                     Endian::Little => lane,
                 };
-                let m_lane = fx.bcx.ins().ushr_imm(m, mask_lane.cast_signed());
-                let m_lane = fx.bcx.ins().band_imm(m_lane, 1);
+                let m_lane = fx.bcx.ins().ushr_imm_u(m, mask_lane.cast_signed());
+                let m_lane = fx.bcx.ins().band_imm_u(m_lane, 1);
                 let a_lane = a.value_lane(fx, lane).load_scalar(fx);
                 let b_lane = b.value_lane(fx, lane).load_scalar(fx);
 
-                let m_lane = fx.bcx.ins().icmp_imm(IntCC::Equal, m_lane, 0);
+                let m_lane = fx.bcx.ins().icmp_imm_u(IntCC::Equal, m_lane, 0);
                 let res_lane =
                     CValue::by_val(fx.bcx.ins().select(m_lane, b_lane, a_lane), lane_layout);
 
@@ -933,11 +933,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let a_lane = a.value_lane(fx, lane).load_scalar(fx);
 
                 // extract sign bit of an int
-                let a_lane_sign = fx.bcx.ins().ushr_imm(a_lane, i64::from(lane_clif_ty.bits() - 1));
+                let a_lane_sign =
+                    fx.bcx.ins().ushr_imm_u(a_lane, i64::from(lane_clif_ty.bits() - 1));
 
                 // shift sign bit into result
                 let a_lane_sign = clif_intcast(fx, a_lane_sign, res_type, false);
-                res = fx.bcx.ins().ishl_imm(res, 1);
+                res = fx.bcx.ins().ishl_imm_u(res, 1);
                 res = fx.bcx.ins().bor(res, a_lane_sign);
             }
 
@@ -1002,7 +1003,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let offset_lane = offset.value_lane(fx, lane_idx).load_scalar(fx);
 
                 let ptr_diff = if pointee_size != 1 {
-                    fx.bcx.ins().imul_imm(offset_lane, pointee_size as i64)
+                    fx.bcx.ins().imul_imm_u(offset_lane, pointee_size as i64)
                 } else {
                     offset_lane
                 };
@@ -1026,8 +1027,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
             let memflags = match alignment {
-                SimdAlign::Unaligned => MemFlags::new().with_notrap(),
-                _ => MemFlags::trusted(),
+                SimdAlign::Unaligned => MemFlagsData::new().with_notrap(),
+                _ => MemFlagsData::trusted(),
             };
 
             for lane_idx in 0..val_lane_count {
@@ -1081,7 +1082,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.bcx.seal_block(if_disabled);
 
                 fx.bcx.switch_to_block(if_enabled);
-                let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), ptr_lane, 0);
+                let res = fx.bcx.ins().load(lane_clif_ty, MemFlagsData::trusted(), ptr_lane, 0);
                 fx.bcx.ins().jump(next, &[res.into()]);
 
                 fx.bcx.switch_to_block(if_disabled);
@@ -1114,8 +1115,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 generic_args[3].expect_const().to_branch()[0].to_leaf().to_simd_alignment();
 
             let memflags = match alignment {
-                SimdAlign::Unaligned => MemFlags::new().with_notrap(),
-                _ => MemFlags::trusted(),
+                SimdAlign::Unaligned => MemFlagsData::new().with_notrap(),
+                _ => MemFlagsData::trusted(),
             };
 
             for lane_idx in 0..ret_lane_count {
@@ -1170,7 +1171,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.bcx.seal_block(if_enabled);
 
                 fx.bcx.switch_to_block(if_enabled);
-                fx.bcx.ins().store(MemFlags::trusted(), val_lane, ptr_lane, 0);
+                fx.bcx.ins().store(MemFlagsData::trusted(), val_lane, ptr_lane, 0);
                 fx.bcx.ins().jump(next, &[]);
 
                 fx.bcx.seal_block(next);

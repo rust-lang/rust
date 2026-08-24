@@ -22,10 +22,20 @@
     reason = "internal details of the thread_local macro",
     issue = "none"
 )]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unreachable,
+    clippy::unimplemented,
+    reason = "TLS accesses must not call the global allocator, including via panic (#160930)"
+)]
 
 cfg_select! {
     any(
-        all(target_family = "wasm", not(target_feature = "atomics")),
+        all(target_family = "wasm", not(target_feature = "atomics"), not(target_env = "p3")),
         target_os = "uefi",
         target_os = "zkvm",
         target_os = "trusty",
@@ -54,7 +64,10 @@ cfg_select! {
 /// destructor for each variable. On these platforms, we keep track of the
 /// destructors ourselves and register (through the [`guard`] module) only a
 /// single callback that runs all of the destructors in the list.
-#[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics")))))]
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"), not(target_env = "p3")))
+))]
 pub(crate) mod destructors {
     cfg_select! {
         any(
@@ -93,9 +106,7 @@ pub(crate) mod guard {
             pub(crate) use windows::enable;
         }
         any(
-            all(target_family = "wasm", not(
-                all(target_os = "wasi", target_env = "p1", target_feature = "atomics")
-            )),
+            all(target_family = "wasm", not(target_env = "p3")),
             target_os = "uefi",
             target_os = "zkvm",
             target_os = "trusty",
@@ -150,7 +161,7 @@ pub(crate) mod key {
             ),
             all(not(target_thread_local), target_vendor = "apple"),
             target_os = "teeos",
-            all(target_os = "wasi", target_env = "p1", target_feature = "atomics"),
+            all(target_os = "wasi", target_env = "p3"),
         ) => {
             mod racy;
             mod unix;

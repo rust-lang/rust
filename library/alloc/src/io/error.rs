@@ -259,8 +259,7 @@ fn custom_owner_from_box(
         drop(unsafe { Box::from_raw(ptr) })
     }
 
-    // SAFETY: the pointer returned by Box::into_raw is non-null.
-    let error = unsafe { core::ptr::NonNull::new_unchecked(Box::into_raw(error)) };
+    let error = Box::into_non_null(error);
 
     // SAFETY:
     // * `error` is valid up to a static lifetime, and owns its pointee.
@@ -269,8 +268,7 @@ fn custom_owner_from_box(
     //   and will be stored in a `CustomOwner`.
     let custom = unsafe { Custom::from_raw(kind, error, drop_box_raw, drop_box_raw) };
 
-    // SAFETY: the pointer returned by Box::into_raw is non-null.
-    let custom = unsafe { core::ptr::NonNull::new_unchecked(Box::into_raw(Box::new(custom))) };
+    let custom = Box::into_non_null(Box::new(custom));
 
     // SAFETY: the `outer_drop` provided to `custom` is valid for itself.
     unsafe { CustomOwner::from_raw(custom) }

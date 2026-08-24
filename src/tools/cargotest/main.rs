@@ -201,6 +201,14 @@ fn run_cargo_test(
     command.args(filters);
 
     let status = command
+        // `xsv` locates binaries relative to `current_exe()`
+        // which assumes Cargo legacy build-dir layout.
+        //
+        // See failure logs:
+        // https://triage.rust-lang.org/gha-logs/rust-lang/rust/90658568103
+        //
+        // FIXME(weihanglo): replace xsv to something else with similar portfolio.
+        .env("__CARGO_TEMPORARY_BUILD_DIR_NEW_LAYOUT_OPT_OUT", "1")
         // Disable rust-lang/cargo's cross-compile tests
         .env("CFG_DISABLE_CROSS_TESTS", "1")
         // Relax #![deny(warnings)] in some crates

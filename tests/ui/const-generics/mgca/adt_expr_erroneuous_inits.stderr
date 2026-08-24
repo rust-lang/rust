@@ -13,11 +13,13 @@ LL -     accepts::<{ Fooo::<u8> { field: const { 1 } }}>();
 LL +     accepts::<{ Foo::<u8> { field: const { 1 } }}>();
    |
 
-error[E0574]: expected struct, variant or union type, found function `NonStruct`
+error[E0574]: cannot find struct, variant or union type `NonStruct` in this scope
   --> $DIR/adt_expr_erroneuous_inits.rs:23:17
    |
 LL |     accepts::<{ NonStruct { }}>();
-   |                 ^^^^^^^^^ not a struct, variant or union type
+   |                 ^^^^^^^^^ not found in this scope
+   |
+   = note: a function named `NonStruct` exists in another namespace
 
 error: struct expression with missing field initialiser for `field`
   --> $DIR/adt_expr_erroneuous_inits.rs:16:17

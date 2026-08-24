@@ -7,8 +7,8 @@ use std::hash::Hash;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stable_hash::StableHash;
+use rustc_hir::OwnerId;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModId};
-use rustc_hir::hir_id::OwnerId;
 use rustc_span::def_id::ModId;
 use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 
@@ -335,6 +335,12 @@ impl<'tcx, T: QueryKeyBounds> QueryKey for CanonicalQueryInput<'tcx, T> {
 }
 
 impl<'tcx, T: QueryKeyBounds> QueryKey for (CanonicalQueryInput<'tcx, T>, bool) {
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl<'tcx, T: QueryKeyBounds> QueryKey for (CanonicalQueryInput<'tcx, T>, usize) {
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }

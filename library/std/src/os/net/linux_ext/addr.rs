@@ -20,7 +20,14 @@ pub impl(in crate::os) trait SocketAddrExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// use std::os::unix::net::{UnixListener, SocketAddr};
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::SocketAddrExt;
@@ -48,7 +55,14 @@ pub impl(in crate::os) trait SocketAddrExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// use std::os::unix::net::{UnixListener, SocketAddr};
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::SocketAddrExt;

@@ -12,17 +12,19 @@ Supported options:
  - `no`, `n`, `off`: Do no enable instrumentation. The default option. This requires, and enables frame pointer generation.
  - `yes`, `y`, `on`: Enable mcount based function instrumentation.
  - `fentry`: Enable fentry based function instrument, where supported. The calling conventions for this are different than mcount, with less overhead, and no frame pointer requirements. This counting function is always named `__fentry__`. This is only available on x86 and s390x targets.
+ - `fentry-nop-record` and `fentry-record`: These options extend the `fentry` option by recording each call site into a section named `__mcount_loc` in the output object file, and optionally replacing the call to `__fentry__` with a nop. These options are not implemented for all targets. Support is noted the supports fentry recording column below.
 
-|target                   |mcount function|supports fentry|ABI notes|
-|---                      |---            |---            |---      |
-|aarch64-apple-darwin     | `\u{1}mcount` |               |         |
-|aarch64-pc-windows-msvc  | `mcount`      |               |         |
-|aarch64-unknown-linux-gnu| `_mcount`     |               |         |
-|i686-pc-windows-msvc     | `mcount`      |              x|         |
-|i686-unknown-linux-gnu   | `mcount`      |              x|         |
-|x86_64-pc-windows-gnu    | `_mcount`     |              x|         |
-|x86_64-pc-windows-msvc   | `mcount`      |              x|         |
-|x86_64-unknown-linux-gnu | `mcount`      |              x|        1|
+|target                   |mcount function|supports fentry|supports fentry recording|ABI notes|
+|---                      |---            |---            |----                     |--      |
+|aarch64-apple-darwin     | `\u{1}mcount` |               |                         |        |
+|aarch64-pc-windows-msvc  | `mcount`      |               |                         |        |
+|aarch64-unknown-linux-gnu| `_mcount`     |               |                         |        |
+|i686-pc-windows-msvc     | `mcount`      |              x|                         |        |
+|i686-unknown-linux-gnu   | `mcount`      |              x|                         |        |
+|x86_64-pc-windows-gnu    | `_mcount`     |              x|                         |        |
+|x86_64-pc-windows-msvc   | `mcount`      |              x|                         |        |
+|x86_64-unknown-linux-gnu | `mcount`      |              x|                         |       1|
+|s390x-unknown-linux-gnu  | `mcount`      |              x|                        x|        |
 
 On arm eabi targets, the mcount function is usually named `__gnu_mcount_nc`, though some targets may use different names. Implementers of counting function should consult the target specific documentation for quirks of each ABI function.
 

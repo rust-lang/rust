@@ -410,6 +410,21 @@ fn foo() {
 }
 
 #[test]
+fn expected_type_guard_condition() {
+    check_expected_type_and_name(
+        r#"
+enum E { V }
+fn foo() {
+    match E::V {
+        _ if a$0 => {}
+    }
+}
+"#,
+        expect![[r#"ty: bool, name: ?"#]],
+    );
+}
+
+#[test]
 fn expected_type_if_body() {
     check_expected_type_and_name(
         r#"

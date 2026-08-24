@@ -1,0 +1,237 @@
+{
+ "bless_metadata": {
+  "python_version": "3.14.5 (main, May 11 2026, 00:00:00) [GCC 16.1.1 20260501 (Red Hat 16.1.1-1)]",
+  "debugger_version": "lldb version 22.1.8",
+  "feature_flags": "LLDBFeature.StaticFields|TypeRecognizers|Float128"
+ },
+ "types": {
+  "bool": {
+   "size": 1,
+   "basic_type": 21,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "long": {
+   "size": 8,
+   "basic_type": 15,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "char32_t": {
+   "size": 4,
+   "basic_type": 9,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "char": {
+   "size": 1,
+   "basic_type": 3,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "short": {
+   "size": 2,
+   "basic_type": 11,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "int": {
+   "size": 4,
+   "basic_type": 13,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "unsigned long": {
+   "size": 8,
+   "basic_type": 16,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "unsigned char": {
+   "size": 1,
+   "basic_type": 4,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "unsigned short": {
+   "size": 2,
+   "basic_type": 12,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "unsigned int": {
+   "size": 4,
+   "basic_type": 14,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "float": {
+   "size": 4,
+   "basic_type": 23,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  },
+  "double": {
+   "size": 8,
+   "basic_type": 24,
+   "type_class": 4,
+   "fields": [],
+   "generic_params": []
+  }
+ },
+ "breakpoints": [
+  {
+   "b": {
+    "type": "bool",
+    "pretty_type_name": null,
+    "pretty_print": "false",
+    "value": false,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i": {
+    "type": "long",
+    "pretty_type_name": null,
+    "pretty_print": "-1",
+    "value": -1,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "c": {
+    "type": "char32_t",
+    "pretty_type_name": null,
+    "pretty_print": "U+0x00000061 U'a'",
+    "value": "a",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i8": {
+    "type": "char",
+    "pretty_type_name": null,
+    "pretty_print": "'D'",
+    "value": 68,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i16": {
+    "type": "short",
+    "pretty_type_name": null,
+    "pretty_print": "-16",
+    "value": -16,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i32": {
+    "type": "int",
+    "pretty_type_name": null,
+    "pretty_print": "-32",
+    "value": -32,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i64": {
+    "type": "long",
+    "pretty_type_name": null,
+    "pretty_print": "-64",
+    "value": -64,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u": {
+    "type": "unsigned long",
+    "pretty_type_name": null,
+    "pretty_print": "1",
+    "value": 1,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u8": {
+    "type": "unsigned char",
+    "pretty_type_name": null,
+    "pretty_print": "'d'",
+    "value": 100,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u16": {
+    "type": "unsigned short",
+    "pretty_type_name": null,
+    "pretty_print": "16",
+    "value": 16,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u32": {
+    "type": "unsigned int",
+    "pretty_type_name": null,
+    "pretty_print": "32",
+    "value": 32,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u64": {
+    "type": "unsigned long",
+    "pretty_type_name": null,
+    "pretty_print": "64",
+    "value": 64,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "f32": {
+    "type": "float",
+    "pretty_type_name": null,
+    "pretty_print": "2.5",
+    "value": 2.5,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "f64": {
+    "type": "double",
+    "pretty_type_name": null,
+    "pretty_print": "3.5",
+    "value": 3.5,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   }
+  }
+ ]
+}

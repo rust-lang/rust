@@ -6,9 +6,10 @@ use std::ops::Deref;
 use std::{assert_matches, mem};
 
 use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
@@ -416,7 +417,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }));
 
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if errors.is_empty() {
+        if errors.no_errors() {
             Some(ConstConditionsHold::Yes)
         } else {
             tcx.dcx()
@@ -626,28 +627,38 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(
-                CastKind::PointerCoercion(
+                CastKind::IntToInt
+                | CastKind::FloatToInt
+                | CastKind::FloatToFloat
+                | CastKind::IntToFloat
+                | CastKind::PtrToPtr
+                | CastKind::FnPtrToPtr
+                | CastKind::Transmute
+                | CastKind::BoxDerefTransmute
+                | CastKind::PointerCoercion(
                     PointerCoercion::MutToConstPointer
                     | PointerCoercion::ArrayToPointer
                     | PointerCoercion::UnsafeFnPointer
                     | PointerCoercion::ClosureFnPointer(_)
-                    | PointerCoercion::ReifyFnPointer(_),
+                    | PointerCoercion::ReifyFnPointer(_)
+                    | PointerCoercion::Unsize,
                     _,
                 ),
                 _,
                 _,
             ) => {
-                // These are all okay; they only change the type, not the data.
+                // Operations that are fully supported by const-eval.
             }
-
+            // Special checks for special casts
             Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
                 self.check_op(ops::RawPtrToIntCast);
             }
             Rvalue::Cast(CastKind::PointerWithExposedProvenance, _, _) => {
                 // Since no pointer can ever get exposed (rejected above), this is easy to support.
             }
-
-            Rvalue::Cast(_, _, _) => {}
+            Rvalue::Cast(kind @ CastKind::Subtype, _, _) => {
+                span_bug!(self.span, "invalid CastKind for this MIR phase: {kind:?}");
+            }
 
             Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);

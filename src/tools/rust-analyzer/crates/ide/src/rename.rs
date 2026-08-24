@@ -274,13 +274,14 @@ fn alias_fallback(
     Some(builder.finish())
 }
 
-fn find_definitions(
-    sema: &Semantics<'_, RootDatabase>,
+fn find_definitions<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     syntax: &SyntaxNode,
     FilePosition { file_id, offset }: FilePosition,
     new_name: &Name,
-) -> RenameResult<impl Iterator<Item = (FileRange, SyntaxKind, Definition, Name, RenameDefinition)>>
-{
+) -> RenameResult<
+    impl Iterator<Item = (FileRange, SyntaxKind, Definition<'db>, Name, RenameDefinition)>,
+> {
     let maybe_format_args =
         syntax.token_at_offset(offset).find(|t| matches!(t.kind(), SyntaxKind::STRING));
 
@@ -492,9 +493,9 @@ fn transform_assoc_fn_into_method_call(
     }
 }
 
-fn rename_to_self(
-    sema: &Semantics<'_, RootDatabase>,
-    local: hir::Local,
+fn rename_to_self<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    local: hir::Local<'db>,
 ) -> RenameResult<SourceChange> {
     if never!(local.is_self(sema.db)) {
         bail!("rename_to_self invoked on self");
@@ -749,9 +750,9 @@ fn transform_method_call_into_assoc_fn(
     }
 }
 
-fn rename_self_to_param(
-    sema: &Semantics<'_, RootDatabase>,
-    local: hir::Local,
+fn rename_self_to_param<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    local: hir::Local<'db>,
     self_param: hir::SelfParam,
     new_name: &Name,
     identifier_kind: IdentifierKind,

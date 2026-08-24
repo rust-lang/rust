@@ -183,6 +183,16 @@ pub trait IsString: AstToken {
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
 
+        if self.is_raw() {
+            let mut pos = offset;
+            for c in text.chars() {
+                let len = TextSize::of(c);
+                cb(TextRange::at(pos, len), Ok(c));
+                pos += len;
+            }
+            return;
+        }
+
         self.unescape(text, &mut |range: Range<usize>, unescaped_char| {
             if let Some((s, e)) = range.start.try_into().ok().zip(range.end.try_into().ok()) {
                 cb(TextRange::new(s, e) + offset, unescaped_char);
@@ -285,7 +295,7 @@ impl ast::ByteString {
 
         match (has_error, buf.capacity() == 0) {
             (Some(e), _) => Err(e),
-            (None, true) => Ok(Cow::Borrowed(text.as_bytes())),
+            (None, true) => Ok(Cow::Borrowed(&text.as_bytes()[..prev_end])),
             (None, false) => Ok(Cow::Owned(buf)),
         }
     }
@@ -640,6 +650,10 @@ bcde", "abcde",
         check_byte_string_value(
             r"a\
 bcde", b"abcde",
+        );
+        check_byte_string_value(
+            r"\
+    ", b"",
         );
     }
 

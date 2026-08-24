@@ -7,6 +7,7 @@
 #![feature(core_intrinsics)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(nonzero_internals)]
 #![feature(sized_hierarchy)]
 // tidy-alphabetical-end
 

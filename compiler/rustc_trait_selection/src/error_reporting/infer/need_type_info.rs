@@ -19,6 +19,7 @@ use rustc_middle::ty::{
     IsSuggestable, Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt, TypeckResults,
 };
+use rustc_next_trait_solver::solve::TyOrConstInferVar;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, sym};
 use tracing::{debug, instrument, warn};
 
@@ -28,7 +29,7 @@ use crate::diagnostics::{
     SpecifyGenericParamsSuggestion,
 };
 use crate::error_reporting::TypeErrCtxt;
-use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::infer::InferCtxt;
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
@@ -94,7 +95,7 @@ impl InferenceDiagnosticsData {
             } else {
                 match displayed_ty
                     .walk()
-                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
+                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>)
                     .take(2)
                     .count()
                 {

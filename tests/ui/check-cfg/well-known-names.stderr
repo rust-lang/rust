@@ -15,6 +15,7 @@ LL | #[cfg(list_all_well_known_cfgs)]
 `panic`
 `proc_macro`
 `relocation_model`
+`rust_analyzer`
 `rustfmt`
 `sanitize`
 `sanitizer_cfi_generalize_pointers`

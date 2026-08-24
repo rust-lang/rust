@@ -7,7 +7,7 @@ trait Trait {
 
 impl Trait for () {
     reuse Trait::<> as bar4;
-    //~^ ERROR expected function, found trait `Trait`
+    //~^ ERROR cannot find function `Trait` in this scope
 }
 
 fn main() {}

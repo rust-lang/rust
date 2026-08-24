@@ -119,7 +119,8 @@ pub impl(self) trait StdioExt {
     ///
     /// [currently]: crate::io#platform-specific-behavior
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(stdio_swap)]
     /// use std::io::{self, Read, Write};
     /// use std::os::unix::io::StdioExt;

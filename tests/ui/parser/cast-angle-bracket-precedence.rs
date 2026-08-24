@@ -27,3 +27,8 @@ fn main() {
 
     println!("{}", a as usize << long_name); //~ ERROR `<<` is interpreted as a start of generic
 }
+
+fn foo() {
+    if 1 as f64 < 0.0 && 1 >= 0 {}
+    //~^ ERROR `<` is interpreted as a start of generic arguments for `f64`, not a compariso
+}

@@ -2,7 +2,7 @@
 //@ aux-build:alias-reexport2.rs
 
 #![crate_name = "foo"]
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 #![allow(incomplete_features)]
 
 extern crate alias_reexport2;

@@ -3,6 +3,7 @@ use gccjit::Context;
 use rustc_codegen_ssa::target_features;
 use rustc_data_structures::smallvec::{SmallVec, smallvec};
 use rustc_session::Session;
+use rustc_session::config::NATIVE_CPU;
 use rustc_target::spec::Arch;
 
 fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
@@ -115,7 +116,7 @@ fn arch_to_gcc(name: &str) -> &str {
 }
 
 fn handle_native(name: &str) -> &str {
-    if name != "native" {
+    if name != NATIVE_CPU {
         return arch_to_gcc(name);
     }
 

@@ -1,8 +1,8 @@
 error[E0539]: malformed `link_ordinal` attribute input
-  --> $DIR/link-ordinal-invalid-format.rs:3:5
+  --> $DIR/link-ordinal-invalid-format.rs:3:7
    |
 LL |     #[link_ordinal("JustMonika")]
-   |     ^^^^^^^^^^^^^^^------------^^
+   |       ^^^^^^^^^^^^^------------^
    |                    |
    |                    expected an integer literal here
    |
@@ -14,10 +14,10 @@ LL +     #[link_ordinal(ordinal)]
    |
 
 error[E0539]: malformed `link_ordinal` attribute input
-  --> $DIR/link-ordinal-invalid-format.rs:6:5
+  --> $DIR/link-ordinal-invalid-format.rs:6:7
    |
 LL |     #[link_ordinal("JustMonika")]
-   |     ^^^^^^^^^^^^^^^------------^^
+   |       ^^^^^^^^^^^^^------------^
    |                    |
    |                    expected an integer literal here
    |

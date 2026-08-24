@@ -28,13 +28,13 @@ LL | #[repr(simd)]
    = help: add `#![feature(repr_simd)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: `#[repr(simd)]` attribute cannot be used on unions
-  --> $DIR/feature-gate-repr-simd.rs:9:1
+error: the `repr(simd)` attribute cannot be used on unions
+  --> $DIR/feature-gate-repr-simd.rs:9:3
    |
 LL | #[repr(simd)]
-   | ^^^^^^^^^^^^^
+   |   ^^^^^^^^^^
    |
-   = help: `#[repr(simd)]` can only be applied to structs
+   = help: the `repr(simd)` attribute can only be applied to structs
 
 error[E0658]: SIMD types are experimental and possibly buggy
   --> $DIR/feature-gate-repr-simd.rs:13:8
@@ -46,13 +46,13 @@ LL | #[repr(simd)]
    = help: add `#![feature(repr_simd)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: `#[repr(simd)]` attribute cannot be used on enums
-  --> $DIR/feature-gate-repr-simd.rs:13:1
+error: the `repr(simd)` attribute cannot be used on enums
+  --> $DIR/feature-gate-repr-simd.rs:13:3
    |
 LL | #[repr(simd)]
-   | ^^^^^^^^^^^^^
+   |   ^^^^^^^^^^
    |
-   = help: `#[repr(simd)]` can only be applied to structs
+   = help: the `repr(simd)` attribute can only be applied to structs
 
 error[E0566]: conflicting representation hints
   --> $DIR/feature-gate-repr-simd.rs:4:8

@@ -57,7 +57,7 @@ fn main() {
             let minified: String = if path.ends_with(".css") {
                 minifier::css::minify(str::from_utf8(&data_bytes).unwrap()).unwrap().to_string()
             } else {
-                minifier::js::minify(str::from_utf8(&data_bytes).unwrap()).to_string()
+                minifier::js::minify(str::from_utf8(&data_bytes).unwrap()).unwrap().to_string()
             };
             std::fs::write(&minified_path, minified.as_bytes()).expect("write to out_dir");
         } else {

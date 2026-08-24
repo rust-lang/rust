@@ -15,7 +15,6 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
-use rustc_hir_pretty as pprust_hir;
 use rustc_span::def_id::{CRATE_MOD_ID, StableCrateId};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
@@ -1153,12 +1152,6 @@ impl<'tcx> intravisit::HirTyCtxt<'tcx> for TyCtxt<'tcx> {
 
     fn hir_foreign_item(&self, id: ForeignItemId) -> &'tcx ForeignItem<'tcx> {
         (*self).hir_foreign_item(id)
-    }
-}
-
-impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
-    fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        pprust_hir::PpAnn::nested(&(self as &dyn intravisit::HirTyCtxt<'_>), state, nested)
     }
 }
 

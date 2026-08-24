@@ -9,7 +9,7 @@ use super::{
 };
 use crate::mir::interpret::ValTreeCreationError;
 use crate::ty::{self, ConstToValTreeResult, GenericArgs, TyCtxt, TypeVisitableExt};
-use crate::{error, mir};
+use crate::{diagnostics, mir};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
@@ -219,21 +219,21 @@ impl<'tcx> TyCtxt<'tcx> {
                     ValTreeCreationError::NonSupportedType(ty) => Ok(Err(ty)),
                     // Report the others.
                     ValTreeCreationError::NodesOverflow => {
-                        let handled = self.dcx().emit_err(error::MaxNumNodesInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::MaxNumNodesInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });
                         Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                     }
                     ValTreeCreationError::InvalidConst => {
-                        let handled = self.dcx().emit_err(error::InvalidConstInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::InvalidConstInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });
                         Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                     }
                     ValTreeCreationError::CyclicConst => {
-                        let handled = self.dcx().emit_err(error::CyclicConstInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::CyclicConstInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });

@@ -12,7 +12,7 @@
 //@[z13_no_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector --cfg no_vector
 //@[z13_no_vector] needs-llvm-components: systemz
 
-#![feature(no_core, lang_items, repr_simd)]
+#![feature(no_core, lang_items)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
@@ -20,14 +20,9 @@
 // See tests/ui/simd-abi-checks-s390x.rs for test for them.
 
 extern crate minicore;
+use minicore::simd::{i8x8, i8x16, i8x32};
 use minicore::*;
 
-#[repr(simd)]
-pub struct i8x8([i8; 8]);
-#[repr(simd)]
-pub struct i8x16([i8; 16]);
-#[repr(simd)]
-pub struct i8x32([i8; 32]);
 #[repr(C)]
 pub struct Wrapper<T>(T);
 #[repr(C, align(16))]
@@ -37,9 +32,6 @@ pub struct WrapperWithZst<T>(T, PhantomData<()>);
 #[repr(transparent)]
 pub struct TransparentWrapper<T>(T);
 
-impl Copy for i8x8 {}
-impl Copy for i8x16 {}
-impl Copy for i8x32 {}
 impl<T: Copy> Copy for Wrapper<T> {}
 impl<T: Copy> Copy for WrapperAlign16<T> {}
 impl<T: Copy> Copy for WrapperWithZst<T> {}

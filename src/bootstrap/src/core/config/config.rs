@@ -13,12 +13,13 @@
 //! and the `bootstrap.toml` file—merging them, applying defaults, and performing
 //! cross-component validation. The main `parse_inner` function and its supporting
 //! helpers reside here, transforming raw `Toml` data into the structured `Config` type.
+
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf, absolute};
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
@@ -49,18 +50,15 @@ use crate::core::config::toml::target::{
     DefaultLinuxLinkerOverride, Target, TomlTarget, default_linux_linker_overrides,
 };
 use crate::core::config::{
-    CompilerBuiltins, CompressDebuginfo, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge,
-    ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
+    Allocator, CompilerBuiltins, CompressDebuginfo, DebuggerPath, DebuginfoLevel, DryRun,
+    GccCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool,
+    TargetSelection, threads_from_config,
 };
-use crate::core::download::{
-    DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
-};
-use crate::utils::channel;
+use crate::core::download::{DownloadContext, download_beta_toolchain, is_download_ci_available};
+use crate::utils::channel::{self, GitInfo};
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, fail, get_host_target};
-use crate::{
-    CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, exit, helpers, t,
-};
+use crate::utils::helpers::{self, exe, fail, get_host_target, t};
+use crate::{CodegenBackendKind, check_ci_llvm, exit};
 
 /// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
 /// This means they can be modified and changes to these paths should never trigger a compiler build
@@ -97,6 +95,7 @@ pub struct Config {
     pub change_id: Option<ChangeId>,
     pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
+    pub sde: Option<PathBuf>,
     /// Call Build::ninja() instead of this.
     pub ninja_in_file: bool,
     pub submodules: Option<bool>,
@@ -235,6 +234,10 @@ pub struct Config {
     pub rust_parallel_frontend_threads: Option<u32>,
     pub rust_rustflags: Vec<String>,
     pub rust_pgo: PgoConfig,
+    pub rustdoc_pgo: PgoConfig,
+    pub cargo_pgo: PgoConfig,
+
+    pub stdlib_semver_baseline: Option<String>,
 
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
     pub enable_bolt_settings: bool,
@@ -245,7 +248,7 @@ pub struct Config {
     pub hosts: Vec<TargetSelection>,
     pub targets: Vec<TargetSelection>,
     pub local_rebuild: bool,
-    pub jemalloc: bool,
+    pub allocator: Option<Allocator>,
     pub control_flow_guard: bool,
     pub ehcont_guard: bool,
 
@@ -281,8 +284,8 @@ pub struct Config {
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
     pub yarn: Option<PathBuf>,
-    pub gdb: Option<PathBuf>,
-    pub lldb: Option<PathBuf>,
+    pub gdb: Option<DebuggerPath>,
+    pub lldb: Option<DebuggerPath>,
     pub python: Option<PathBuf>,
     pub windows_rc: Option<PathBuf>,
     pub reuse: Option<PathBuf>,
@@ -306,7 +309,11 @@ pub struct Config {
     pub initial_rustdoc: PathBuf,
     pub initial_cargo_clippy: Option<PathBuf>,
     pub initial_sysroot: PathBuf,
-    pub initial_rustfmt: Option<PathBuf>,
+
+    /// Externally configured `rustfmt` binary for formatting in-tree source code.
+    /// If you want to use rustfmt for formatting, use the `InternalRustfmt` step, instead of
+    /// accessing this directly.
+    pub external_rustfmt: Option<PathBuf>,
 
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
@@ -335,6 +342,8 @@ pub struct Config {
     pub skip_std_check_if_no_download_rustc: bool,
 
     pub exec_ctx: ExecutionContext,
+
+    pub wasm_proc_macros: bool,
 }
 
 impl Config {
@@ -529,12 +538,12 @@ impl Config {
             optimized_compiler_builtins: build_optimized_compiler_builtins,
             jobs: build_jobs,
             compiletest_diff_tool: build_compiletest_diff_tool,
-            // No longer has any effect; kept (for now) to avoid breaking people's configs.
-            compiletest_use_stage0_libtest: _,
             tidy_extra_checks: build_tidy_extra_checks,
             ccache: build_ccache,
             exclude: build_exclude,
             compiletest_allow_stage0: build_compiletest_allow_stage0,
+            sde: build_sde,
+            allocator: build_allocator,
         } = toml_build.unwrap_or_default();
 
         let Install {
@@ -603,10 +612,11 @@ impl Config {
             stack_protector: rust_stack_protector,
             strip: rust_strip,
             bootstrap_override_lld: rust_bootstrap_override_lld,
-            bootstrap_override_lld_legacy: rust_bootstrap_override_lld_legacy,
             std_features: rust_std_features,
             break_on_ice: rust_break_on_ice,
             rustflags: rust_rustflags,
+            stdlib_semver_baseline: rust_stdlib_semver_baseline,
+            wasm_proc_macros,
         } = toml_rust.unwrap_or_default();
 
         let Llvm {
@@ -656,7 +666,8 @@ impl Config {
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
         } = toml_gcc.unwrap_or_default();
 
-        let Pgo { rustc: pgo_rustc, llvm: pgo_llvm } = toml_pgo.unwrap_or_default();
+        let Pgo { rustc: pgo_rustc, llvm: pgo_llvm, rustdoc: pgo_rustdoc, cargo: pgo_cargo } =
+            toml_pgo.unwrap_or_default();
 
         // Backcompat: flags have priority over config
         if flags_rust_profile_use.is_some() || flags_rust_profile_generate.is_some() {
@@ -701,14 +712,18 @@ impl Config {
             panic!("Cannot use and generate LLVM PGO profiles at the same time");
         }
 
-        if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
-            panic!(
-                "Cannot use both `rust.use-lld` and `rust.bootstrap-override-lld`. Please use only `rust.bootstrap-override-lld`"
-            );
-        }
+        let init_pgo = |pgo: Option<PgoConfig>, name: &str| -> PgoConfig {
+            let pgo_config = pgo.unwrap_or_default();
+            if pgo_config.use_profile.is_some() && pgo_config.generate_profile.is_some() {
+                panic!("Cannot use and generate {name} PGO profiles at the same time");
+            }
+            pgo_config
+        };
 
-        let bootstrap_override_lld =
-            rust_bootstrap_override_lld.or(rust_bootstrap_override_lld_legacy).unwrap_or_default();
+        let pgo_rustdoc = init_pgo(pgo_rustdoc, "rustdoc");
+        let pgo_cargo = init_pgo(pgo_cargo, "cargo");
+
+        let bootstrap_override_lld = rust_bootstrap_override_lld.unwrap_or_default();
 
         if rust_optimize.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
             eprintln!(
@@ -962,6 +977,7 @@ impl Config {
                     codegen_backends: target_codegen_backends,
                     runner: target_runner,
                     optimized_compiler_builtins: target_optimized_compiler_builtins,
+                    allocator: target_allocator,
                     jemalloc: target_jemalloc,
                 } = cfg;
 
@@ -1038,7 +1054,12 @@ impl Config {
                 target.rpath = target_rpath;
                 target.rustflags = target_rustflags.unwrap_or_default();
                 target.optimized_compiler_builtins = target_optimized_compiler_builtins;
-                target.jemalloc = target_jemalloc;
+                target.allocator = reconcile_jemalloc(
+                    target_jemalloc,
+                    target_allocator,
+                    &format!("target.{triple}"),
+                    &format!("target.{triple}"),
+                );
                 if let Some(backends) = target_codegen_backends {
                     target.codegen_backends =
                         Some(parse_codegen_backends(backends, &format!("target.{triple}")))
@@ -1062,7 +1083,7 @@ impl Config {
             llvm_assertions,
         );
         let is_host_system_llvm =
-            is_system_llvm(&target_config, llvm_from_ci, host_target, host_target);
+            target_config.get(&host_target).and_then(|c| c.llvm_config.as_ref()).is_some();
 
         if llvm_from_ci {
             let warn = |option: &str| {
@@ -1097,17 +1118,15 @@ impl Config {
                     "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
                 );
             }
-        }
 
-        if llvm_from_ci {
             let triple = &host_target.triple;
             let ci_llvm_bin = ci_llvm_root(&dwn_ctx, llvm_from_ci, &out).join("bin");
             let build_target =
                 target_config.entry(host_target).or_insert_with(|| Target::from_triple(triple));
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
+            // FIXME: Do not overwrite the LLVM config here
             build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", host_target)));
-            build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", host_target)));
         }
 
         for (target, linker_override) in default_linux_linker_overrides() {
@@ -1153,8 +1172,6 @@ impl Config {
                     .default_linker_linux_override = linker_override;
             }
         }
-
-        let initial_rustfmt = build_rustfmt.or_else(|| maybe_download_rustfmt(&dwn_ctx, &out));
 
         if matches!(bootstrap_override_lld, BootstrapOverrideLld::SelfContained)
             && !lld_enabled
@@ -1253,8 +1270,7 @@ impl Config {
         }
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
-        #[cfg(not(test))]
-        if flags_stage.is_none() && ci_env.is_running_in_ci() {
+        if cfg!(not(test)) && flags_stage.is_none() && ci_env.is_running_in_ci() {
             match flags_cmd {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
@@ -1384,6 +1400,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
 
         Config {
             // tidy-alphabetical-start
+            allocator: reconcile_jemalloc(rust_jemalloc, build_allocator, "rust", "build"),
             android_ndk: build_android_ndk,
             backtrace: rust_backtrace.unwrap_or(true),
             backtrace_on_ice: rust_backtrace_on_ice.unwrap_or(false),
@@ -1393,6 +1410,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
             cargo_info,
             cargo_native_static: build_cargo_native_static.unwrap_or(false),
+            cargo_pgo: pgo_cargo,
             ccache,
             change_id: toml_change_id.inner,
             channel,
@@ -1432,10 +1450,11 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             explicit_stage_from_cli: flags_stage.is_some(),
             explicit_stage_from_config,
             extended: build_extended.unwrap_or(false),
+            external_rustfmt: build_rustfmt,
             free_args: flags_free_args,
             full_bootstrap: build_full_bootstrap.unwrap_or(false),
             gcc_ci_mode,
-            gdb: build_gdb.map(PathBuf::from),
+            gdb: build_gdb,
             host_target,
             hosts,
             in_tree_gcc_info,
@@ -1446,9 +1465,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             initial_cargo_clippy: build_cargo_clippy,
             initial_rustc,
             initial_rustdoc,
-            initial_rustfmt,
             initial_sysroot,
-            jemalloc: rust_jemalloc.unwrap_or(false),
             jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
             json_output: flags_json_output,
             keep_stage: flags_keep_stage,
@@ -1457,7 +1474,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
             library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
             lld_enabled,
-            lldb: build_lldb.map(PathBuf::from),
+            lldb: build_lldb,
             llvm_allow_old_toolchain: llvm_allow_old_toolchain.unwrap_or(false),
             llvm_assertions,
             llvm_bitcode_linker_enabled: rust_llvm_bitcode_linker.unwrap_or(false),
@@ -1567,9 +1584,11 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
             rustc_default_linker: rust_default_linker,
             rustc_error_format: flags_rustc_error_format,
+            rustdoc_pgo: pgo_rustdoc,
             rustfmt_info,
             sanitizers: build_sanitizers.unwrap_or(false),
             save_toolstates: rust_save_toolstates.map(PathBuf::from),
+            sde: build_sde.map(PathBuf::from),
             skip,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
             src,
@@ -1579,6 +1598,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
             stderr_is_tty: std::io::stderr().is_terminal(),
+            stdlib_semver_baseline: rust_stdlib_semver_baseline,
             stdout_is_tty: std::io::stdout().is_terminal(),
             submodules: build_submodules,
             sysconfdir: install_sysconfdir.map(PathBuf::from),
@@ -1593,6 +1613,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .unwrap_or(rust_debug == Some(true)),
             vendor,
             verbose_tests,
+            wasm_proc_macros: wasm_proc_macros.unwrap_or(false),
             windows_rc: build_windows_rc.map(PathBuf::from),
             yarn: build_yarn.map(PathBuf::from),
             // tidy-alphabetical-end
@@ -1941,8 +1962,12 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         self.enabled_codegen_backends(target).first().unwrap()
     }
 
-    pub fn jemalloc(&self, target: TargetSelection) -> bool {
-        self.target_config.get(&target).and_then(|cfg| cfg.jemalloc).unwrap_or(self.jemalloc)
+    pub fn allocator(&self, target: TargetSelection) -> Allocator {
+        self.target_config
+            .get(&target)
+            .and_then(|cfg| cfg.allocator)
+            .or(self.allocator)
+            .unwrap_or(Allocator::System)
     }
 
     pub fn rpath_enabled(&self, target: TargetSelection) -> bool {
@@ -2032,6 +2057,42 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
 impl AsRef<ExecutionContext> for Config {
     fn as_ref(&self) -> &ExecutionContext {
         &self.exec_ctx
+    }
+}
+
+/// Reconciles the deprecated `jemalloc` boolean option with the new
+/// `allocator` option.
+///
+/// Emits a warning if `jemalloc` is set, and an error if *both* `jemalloc` and `allocator` are set.
+fn reconcile_jemalloc(
+    jemalloc: Option<bool>,
+    allocator: Option<Allocator>,
+    jemalloc_section: &str,
+    allocator_section: &str,
+) -> Option<Allocator> {
+    match (jemalloc, allocator) {
+        (None, None) => None,
+        (None, Some(allocator)) => Some(allocator),
+        (Some(true), None) => {
+            println!(
+                "WARNING: The `jemalloc` option is deprecated. \
+                 Please use `{allocator_section}.allocator = \"jemalloc\"` instead of `{jemalloc_section}.jemalloc = true`",
+            );
+            Some(Allocator::Jemalloc)
+        }
+        (Some(false), None) => {
+            println!(
+                "WARNING: The `jemalloc` option is deprecated. \
+                 Please use `{allocator_section}.allocator = \"system\"` instead of `{jemalloc_section}.jemalloc = false`",
+            );
+            Some(Allocator::System)
+        }
+        _ => {
+            panic!(
+                "ERROR: `{jemalloc_section}.jemalloc` and `{allocator_section}.allocator` are both set. \
+                 Please remove the outdated `{jemalloc_section}.jemalloc` directive."
+            )
+        }
     }
 }
 
@@ -2247,24 +2308,14 @@ fn postprocess_toml(
     toml.merge(None, &mut Default::default(), override_toml, ReplaceOpt::Override);
 }
 
-#[cfg(test)]
-pub fn check_stage0_version(
-    _program_path: &Path,
-    _component_name: &'static str,
-    _src_dir: &Path,
-    _exec_ctx: &ExecutionContext,
-) {
-}
-
 /// check rustc/cargo version is same or lower with 1 apart from the building one
-#[cfg(not(test))]
 pub fn check_stage0_version(
     program_path: &Path,
     component_name: &'static str,
     src_dir: &Path,
     exec_ctx: &ExecutionContext,
 ) {
-    if exec_ctx.dry_run() {
+    if cfg!(test) || exec_ctx.dry_run() {
         return;
     }
 
@@ -2457,8 +2508,9 @@ pub fn parse_download_ci_llvm<'a>(
         }
 
         // Fetching the LLVM submodule is unnecessary for self-tests.
-        #[cfg(not(test))]
-        update_submodule(dwn_ctx, rust_info, "src/llvm-project");
+        if cfg!(not(test)) {
+            update_submodule(dwn_ctx, rust_info, "src/llvm-project");
+        }
 
         // Check for untracked changes in `src/llvm-project` and other important places.
         let has_changes = has_changes_from_upstream(dwn_ctx, LLVM_INVALIDATION_PATHS);
@@ -2479,8 +2531,11 @@ pub fn parse_download_ci_llvm<'a>(
                 );
             }
 
-            #[cfg(not(test))]
-            if b && dwn_ctx.is_running_on_ci() && CiEnv::is_rust_lang_managed_ci_job() {
+            if cfg!(not(test))
+                && b
+                && dwn_ctx.is_running_on_ci()
+                && CiEnv::is_rust_lang_managed_ci_job()
+            {
                 // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
                 panic!(
                     "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."

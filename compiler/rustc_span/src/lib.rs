@@ -19,6 +19,7 @@
 #![allow(internal_features)]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
+#![feature(diagnostic_on_unknown)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
@@ -2126,10 +2127,8 @@ impl fmt::Debug for SourceFile {
 ///
 /// When `SourceFile`s are exported in crate metadata, the `StableSourceFileId`
 /// is updated to incorporate the `StableCrateId` of the exporting crate.
-#[derive(
-    Debug, Clone, Copy, Hash, PartialEq, Eq, StableHash, Encodable, Decodable, Default, PartialOrd,
-    Ord
-)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Default, Ord)]
+#[derive(StableHash, Encodable, Decodable)]
 pub struct StableSourceFileId(Hash128);
 
 impl StableSourceFileId {

@@ -43,11 +43,29 @@ error: strict comparison of `f32` or `f64` constant
 LL |     v != ONE;
    |     ^^^^^^^^ help: consider comparing them within some margin of error: `(v - ONE).abs() > error_margin`
 
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:51:5
+   |
+LL |     assert_eq!(ONE, 1.0);
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:54:5
+   |
+LL |     assert_ne!(ONE, 2.0);
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: strict comparison of `f32` or `f64` constant
+  --> tests/ui/float_cmp_const.rs:58:5
+   |
+LL |     assert_eq!(local, ONE);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
 error: strict comparison of `f32` or `f64` constant arrays
-  --> tests/ui/float_cmp_const.rs:68:5
+  --> tests/ui/float_cmp_const.rs:79:5
    |
 LL |     NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 11 previous errors
 

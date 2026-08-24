@@ -64,11 +64,9 @@ mod tests {
             r#"
 fn foo() {
     let var = loop {};
-     // ^^^ 💡 warn: unused variable
     var();
  // ^^^ error: type annotations needed; type must be known at this point
     let var = loop {};
-     // ^^^ 💡 warn: unused variable
     var[0];
  // ^^^ error: type annotations needed; type must be known at this point
 }

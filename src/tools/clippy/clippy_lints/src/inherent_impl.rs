@@ -101,21 +101,21 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
                     InherentImplLintScope::Crate => Criterion::Crate,
                 };
                 let is_test = is_cfg_test(cx.tcx, hir_id) || is_in_cfg_test(cx.tcx, hir_id);
-                let predicates = {
-                    // Gets the predicates (bounds) for the given impl block,
+                let clauses = {
+                    // Gets the clauses (bounds) for the given impl block,
                     // sorted for consistent comparison to allow distinguishing between impl blocks
                     // with different generic bounds.
-                    let mut predicates = cx
+                    let mut clauses = cx
                         .tcx
-                        .predicates_of(impl_id)
-                        .predicates
+                        .clauses_of(impl_id)
+                        .clauses
                         .iter()
                         .map(|(clause, _)| *clause)
                         .collect::<Vec<_>>();
-                    predicates.sort_by_key(|c| format!("{c:?}"));
-                    predicates
+                    clauses.sort_by_key(|c| format!("{c:?}"));
+                    clauses
                 };
-                match type_map.entry((impl_ty, predicates, criterion, is_test)) {
+                match type_map.entry((impl_ty, clauses, criterion, is_test)) {
                     Entry::Vacant(e) => {
                         // Store the id for the first impl block of this type. The span is retrieved lazily.
                         e.insert(IdOrSpan::Id(impl_id));

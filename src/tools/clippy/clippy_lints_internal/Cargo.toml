@@ -8,7 +8,6 @@ clippy_config = { path = "../clippy_config" }
 clippy_utils = { path = "../clippy_utils" }
 itertools = "0.15"
 regex = { version = "1.5" }
-rustc-semver = "1.1"
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

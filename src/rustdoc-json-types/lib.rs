@@ -114,8 +114,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Add default-body stability metadata.
-pub const FORMAT_VERSION: u32 = 60;
+// Latest feature: Make `Stability` work with non-self-describing formats
+pub const FORMAT_VERSION: u32 = 61;
 
 /// The root of the emitted JSON blob.
 ///
@@ -354,14 +354,13 @@ pub struct Stability {
     /// For stable items, this is the historical label recorded when the item was stabilized.
     pub feature: String,
 
-    #[serde(flatten)]
     pub level: StabilityLevel,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
 #[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
-#[serde(tag = "level", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum StabilityLevel {
     Stable {
         /// The Rust version in which this item became stable, if available.

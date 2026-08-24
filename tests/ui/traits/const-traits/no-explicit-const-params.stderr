@@ -62,8 +62,8 @@ LL |     <() as Bar<false>>::bar();
    |
 help: make the `impl` of trait `Bar` `const`
    |
-LL | impl const Bar for () {
-   |      +++++
+LL | const impl Bar for () {
+   | +++++
 
 error: aborting due to 5 previous errors
 

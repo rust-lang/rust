@@ -1,7 +1,7 @@
 fn foo(num: i32) -> i32 {
     // FIXME: This case doesn't really check that `from_be` is a valid function in `i32`.
     let foo: i32::from_be(num);
-    //~^ ERROR expected type, found local variable `num`
+    //~^ ERROR cannot find type `num` in this scope
     //~| ERROR expected type, found associated function call
     foo
 }
@@ -33,9 +33,9 @@ fn main() {
     let x: ""; //~ ERROR expected type, found `""`
 
     // Functions
-    let x: bar(); //~ ERROR expected type, found function `bar`
-    let x: bar; //~ ERROR expected type, found function `bar`
+    let x: bar(); //~ ERROR cannot find type `bar` in this scope
+    let x: bar; //~ ERROR cannot find type `bar` in this scope
 
     // Locals
-    let x: x; //~ ERROR expected type, found local variable `x`
+    let x: x; //~ ERROR cannot find type `x` in this scope
 }

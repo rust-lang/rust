@@ -1,10 +1,9 @@
 #![warn(clippy::unnecessary_literal_unwrap)]
-#![allow(unreachable_code)]
 #![allow(
-    clippy::unnecessary_lazy_evaluations,
     clippy::diverging_sub_expression,
     clippy::let_unit_value,
-    clippy::no_effect
+    clippy::no_effect,
+    clippy::unnecessary_lazy_evaluations
 )]
 
 fn unwrap_option_some() {

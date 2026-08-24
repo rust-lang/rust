@@ -6,7 +6,7 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    |
    |                    move occurs because `selection.1` has type `Option<String>`, which does not implement the `Copy` trait
    |
-note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `selection.1`
+note: `std::option::Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `selection.1`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider calling `.as_ref()` to borrow the value's contents
    |
@@ -29,7 +29,7 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    |
    |                    move occurs because `selection.1` has type `Result<String, String>`, which does not implement the `Copy` trait
    |
-note: `Result::<T, E>::unwrap` takes ownership of the receiver `self`, which moves `selection.1`
+note: `std::result::Result::<T, E>::unwrap` takes ownership of the receiver `self`, which moves `selection.1`
   --> $SRC_DIR/core/src/result.rs:LL:COL
 help: consider calling `.as_ref()` to borrow the value's contents
    |

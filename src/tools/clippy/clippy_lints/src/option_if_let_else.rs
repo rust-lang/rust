@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{
@@ -10,7 +10,7 @@ use clippy_utils::{
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::ResultErr;
+use rustc_hir::attrs::lang_items::LangItem::ResultErr;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_path};
 use rustc_hir::{

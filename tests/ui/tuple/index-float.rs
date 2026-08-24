@@ -1,4 +1,6 @@
 //@ check-pass
+//@ reference: expr.tuple-index.syntax
+//@ reference: comments.normal.tokenization
 
 fn main() {
     let tuple = (((),),);

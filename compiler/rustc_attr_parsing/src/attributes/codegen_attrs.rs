@@ -1,16 +1,17 @@
-use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{
-    CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy,
+use rustc_attr_ir::{
+    CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy, find_attr,
 };
+use rustc_feature::AttributeStability;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition::Edition2024;
 
 use super::prelude::*;
 use crate::attributes::AttributeSafety;
-use crate::session_diagnostics::{
+use crate::diagnostics::{
     EmptyExportName, EmptySection, NakedFunctionIncompatibleAttribute, NullOnExport,
     NullOnObjcClass, NullOnObjcSelector, NullOnSection, ObjcClassExpectedStringLiteral,
     ObjcSelectorExpectedStringLiteral, SanitizeInvalidStatic, TargetFeatureOnLangItem,
+    TrackCallerOnLangItem,
 };
 use crate::target_checking::Policy::AllowSilent;
 
@@ -248,9 +249,6 @@ impl AttributeParser for NakedParser {
         // NOTE: when making changes to this list, check that `error_codes/E0736.md` remains
         // accurate.
         const ALLOW_LIST: &[rustc_span::Symbol] = &[
-            // conditional compilation
-            sym::cfg_trace,
-            sym::cfg_attr_trace,
             // testing (allowed here so better errors can be generated in `rustc_builtin_macros::test`)
             sym::test,
             sym::ignore,
@@ -283,7 +281,7 @@ impl AttributeParser for NakedParser {
 
         let span = self.span?;
 
-        let Some(tools) = cx.tools else {
+        let Some(tools) = cx.attr_tools else {
             unreachable!("tools required while parsing attributes");
         };
 
@@ -308,7 +306,7 @@ impl AttributeParser for NakedParser {
                 if other_attr.word_is(sym::target_feature) {
                     if !cx.features().naked_functions_target_feature() {
                         feature_err(
-                            &cx.sess(),
+                            cx.sess(),
                             sym::naked_functions_target_feature,
                             other_attr.span(),
                             "`#[target_feature(/* ... */)]` is currently unstable on `#[naked]` functions",
@@ -349,6 +347,25 @@ impl NoArgsAttributeParser for TrackCallerParser {
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        match cx.target {
+            Target::Fn => {
+                // `#[track_caller]` is not valid on weak lang items because they are called via
+                // `extern` declarations and `#[track_caller]` would alter their ABI.
+                if let Some(item) = find_attr!(cx.parsed_attrs, Lang(item) => item)
+                    && item.is_weak()
+                {
+                    cx.emit_err(TrackCallerOnLangItem {
+                        attr_span,
+                        name: item.name(),
+                        sig_span: cx.target_span,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 pub(crate) struct NoMangleParser;
@@ -399,7 +416,7 @@ impl AttributeParser for UsedParser {
                         Some(sym::compiler) => {
                             if !cx.features().used_with_arg() {
                                 feature_err(
-                                    &cx.sess(),
+                                    cx.sess(),
                                     sym::used_with_arg,
                                     cx.attr_span,
                                     "`#[used(compiler)]` is currently unstable",
@@ -411,7 +428,7 @@ impl AttributeParser for UsedParser {
                         Some(sym::linker) => {
                             if !cx.features().used_with_arg() {
                                 feature_err(
-                                    &cx.sess(),
+                                    cx.sess(),
                                     sym::used_with_arg,
                                     cx.attr_span,
                                     "`#[used(linker)]` is currently unstable",
@@ -506,7 +523,7 @@ fn parse_tf_attribute(
         let Some(value_str) = cx.expect_string_literal(value) else {
             return features;
         };
-        for feature in value_str.as_str().split(",") {
+        for feature in value_str.as_str().split(',') {
             features.push((Symbol::intern(feature), item.span()));
         }
     }
@@ -544,7 +561,7 @@ impl CombineAttributeParser for TargetFeatureParser {
         parse_tf_attribute(cx, args)
     }
 
-    fn finalize_check(cx: &FinalizeContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[target_feature]` is incompatible with lang item functions,
         // except on WASM where calling target-feature functions is safe (see #84988).
         if !cx.sess().target.is_like_wasm && !cx.sess().opts.actually_rustdoc {
@@ -605,7 +622,7 @@ impl SingleAttributeParser for InstrumentFnParser {
     const STABILITY: AttributeStability = unstable!(instrument_fn);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let instrument = match args {
+        match args {
             ArgParser::NameValue(nv) => match nv.value_as_str() {
                 Some(sym::on) => Some(AttributeKind::InstrumentFn(InstrumentFnAttr::On)),
                 Some(sym::off) => Some(AttributeKind::InstrumentFn(InstrumentFnAttr::Off)),
@@ -624,8 +641,7 @@ impl SingleAttributeParser for InstrumentFnParser {
                 cx.adcx().expected_specific_argument_strings(span, &[sym::on, sym::off]);
                 None
             }
-        };
-        instrument
+        }
     }
 }
 
@@ -676,14 +692,7 @@ impl SingleAttributeParser for SanitizeParser {
                 let is_on = match value.value_as_str() {
                     Some(sym::on) => true,
                     Some(sym::off) => false,
-                    Some(_) => {
-                        cx.adcx().expected_specific_argument_strings(
-                            value.value_span,
-                            &[sym::on, sym::off],
-                        );
-                        return;
-                    }
-                    None => {
+                    _ => {
                         cx.adcx().expected_specific_argument_strings(
                             value.value_span,
                             &[sym::on, sym::off],
@@ -740,7 +749,6 @@ impl SingleAttributeParser for SanitizeParser {
                             sym::realtime,
                         ],
                     );
-                    continue;
                 }
             }
         }
@@ -812,9 +820,7 @@ impl SingleAttributeParser for PatchableFunctionEntryParser {
         }
 
         for item in meta_item_list.mixed() {
-            let Some((ident, value)) = cx.expect_name_value(item, item.span(), None) else {
-                return None;
-            };
+            let (ident, value) = cx.expect_name_value(item, item.span(), None)?;
 
             let attrib_to_write = match ident.name {
                 sym::prefix_nops => {

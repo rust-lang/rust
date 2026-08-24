@@ -1,5 +1,9 @@
 // This test does not passed with gdb < 8.0. See #53497.
-//@ min-gdb-version: 10.1
+//
+// This test seems to have become very flaky with "Couldn't write extended state status: Bad
+// address." since around June 2026, where CI typically uses GDB 12.1 on Ubuntu 22.04. I tried
+// running this locally with GDB 15.1 and could not reproduce the flakiness. See #159073.
+//@ min-gdb-version: 15.1
 
 //@ compile-flags:-g
 //@ ignore-backends: gcc

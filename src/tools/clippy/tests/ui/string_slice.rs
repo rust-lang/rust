@@ -1,5 +1,5 @@
 #![warn(clippy::string_slice)]
-#![allow(clippy::no_effect)]
+#![expect(clippy::no_effect)]
 
 use std::borrow::Cow;
 

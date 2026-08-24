@@ -1,8 +1,8 @@
 // data structures
 #[doc(hidden)]
-pub(super) use rustc_hir::attrs::AttributeKind;
+pub(super) use rustc_attr_ir::AttributeKind;
 #[doc(hidden)]
-pub(super) use rustc_hir::{MethodKind, Target};
+pub(super) use rustc_attr_ir::target::{MethodKind, Target};
 #[doc(hidden)]
 pub(super) use rustc_span::{Ident, Span, Symbol, sym};
 #[doc(hidden)]
@@ -15,7 +15,7 @@ pub(super) use crate::attributes::{
 };
 // contexts
 #[doc(hidden)]
-pub(super) use crate::context::{AcceptContext, FinalizeContext};
+pub(super) use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeContext};
 #[doc(hidden)]
 pub(super) use crate::parser::*;
 // target checking

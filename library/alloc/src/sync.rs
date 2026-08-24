@@ -25,7 +25,7 @@ use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Lega
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Residual, Try};
 use core::panic::{RefUnwindSafe, UnwindSafe};
-use core::pin::{Pin, PinCoerceUnsized};
+use core::pin::{Pin, PinSafePointer};
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
@@ -55,8 +55,13 @@ use crate::vec::Vec;
 /// See comment in `Arc::clone`.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
-/// The error in case either counter reaches above `MAX_REFCOUNT`, and we can `panic` safely.
-const INTERNAL_OVERFLOW_ERROR: &str = "Arc counter overflow";
+#[cold]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+#[cfg_attr(panic = "immediate-abort", inline)]
+#[track_caller]
+fn panic_arc_overflow() -> ! {
+    panic!("Arc counter overflow");
+}
 
 #[cfg(not(sanitize = "thread"))]
 macro_rules! acquire {
@@ -406,7 +411,11 @@ fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
     // Previously, layout was calculated on the expression
     // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
     // reference (see #54908).
-    Layout::new::<ArcInner<()>>().extend(layout).unwrap().0.pad_to_align()
+    Layout::new::<ArcInner<()>>()
+        .extend(layout)
+        .unwrap_or_else(|_| panic!("capacity overflow"))
+        .0
+        .pad_to_align()
 }
 
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
@@ -917,7 +926,7 @@ impl<T, A: Allocator> Arc<T, A> {
 
         // Now we can properly initialize the inner value and turn our weak
         // reference into a strong reference.
-        let strong = unsafe {
+        unsafe {
             let inner = init_ptr.as_ptr();
             ptr::write(&raw mut (*inner).data, data);
 
@@ -943,9 +952,7 @@ impl<T, A: Allocator> Arc<T, A> {
             let alloc = weak.into_raw_with_allocator().1;
 
             Arc::from_inner_in(init_ptr, alloc)
-        };
-
-        strong
+        }
     }
 
     /// Constructs a new `Pin<Arc<T, A>>` in the provided allocator. If `T` does not implement `Unpin`,
@@ -1514,14 +1521,12 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Arc<T, A> {
         let mut in_progress: UniqueArcUninit<T, A> = UniqueArcUninit::new(value, alloc);
 
         // Initialize with clone of value.
-        let initialized_clone = unsafe {
+        unsafe {
             // Clone. If the clone panics, `in_progress` will be dropped and clean up.
             value.clone_to_uninit(in_progress.data_ptr().cast());
             // Cast type of pointer, now that it is initialized.
             in_progress.into_arc()
-        };
-
-        initialized_clone
+        }
     }
 
     /// Constructs a new `Arc<T>` with a clone of `value` in the provided allocator, returning an error if allocation fails
@@ -1950,8 +1955,9 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
             }
 
             // We can't allow the refcount to increase much past `MAX_REFCOUNT`.
-            assert!(cur <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
-
+            if cur > MAX_REFCOUNT {
+                panic_arc_overflow();
+            }
             // NOTE: this code currently ignores the possibility of overflow
             // into usize::MAX; in general both Rc and Arc need to be adjusted
             // to deal with overflow.
@@ -2449,8 +2455,16 @@ impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {
     }
 }
 
+// The API of this pointer type enforces that if the `T` is pinned, then *all*
+// clones of this `Arc<T>` are wrapped as `Pin<Arc<T>>`. Since an `&Arc<T>`
+// could be used to obtain an `Arc<T>` that is not wrapped in `Pin` (and later
+// used with `Arc::get_mut`), this means that this type treats `&Arc<T>` as
+// evidence that the `T` is not pinned. The implementations of various traits
+// are written accordingly. Since this type is not fundamental, downstream
+// crates cannot provide malicious implementations of any of the traits relevant
+// for `Pin`.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Arc<T, A> {}
+unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for Arc<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Arc<T, A> {}
@@ -3307,7 +3321,9 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
                 return None;
             }
             // See comments in `Arc::clone` for why we do this (for `mem::forget`).
-            assert!(n <= MAX_REFCOUNT, "{}", INTERNAL_OVERFLOW_ERROR);
+            if n > MAX_REFCOUNT {
+                panic_arc_overflow();
+            }
             Some(n + 1)
         }
 
@@ -4327,7 +4343,6 @@ impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
     }
 }
 
-#[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized, A: Allocator> Drop for UniqueArcUninit<T, A> {
     fn drop(&mut self) {
         // SAFETY:
@@ -4911,7 +4926,7 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueArc<T, A> {
 
 // #[unstable(feature = "unique_rc_arc", issue = "112566")]
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for UniqueArc<T> {}
+unsafe impl<T: ?Sized, A: Allocator + 'static> PinSafePointer for UniqueArc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> DerefMut for UniqueArc<T, A> {

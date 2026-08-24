@@ -25,7 +25,7 @@ pub(super) enum PlaceOp {
     Index,
 }
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(super) fn try_overloaded_deref(
         &self,
         expr: ExprId,
@@ -107,7 +107,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         expr: ExprId,
         base_expr: ExprId,
         index_expr: ExprId,
-        autoderef: &mut InferenceContextAutoderef<'_, 'a, 'db>,
+        autoderef: &mut InferenceContextAutoderef<'_, 'db>,
         index_ty: Ty<'db>,
     ) -> Option<(/*index type*/ Ty<'db>, /*element type*/ Ty<'db>)> {
         let ty = autoderef.final_ty();
@@ -235,7 +235,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
         // We have to replace the operator with the mutable variant for the
         // program to compile, so we don't really have a choice here and want
-        // to just try using `DerefMut` even if its not in the item bounds
+        // to just try using `DerefMut` even if it's not in the item bounds
         // of the opaque.
         let treat_opaques = TreatNotYetDefinedOpaques::AsInfer;
         table.lookup_method_for_operator(

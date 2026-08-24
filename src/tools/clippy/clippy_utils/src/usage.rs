@@ -1,5 +1,5 @@
 use crate::macros::root_macro_call_first_node;
-use crate::res::MaybeResPath;
+use crate::res::MaybeResPath as _;
 use crate::visitors::{Descend, Visitable, for_each_expr, for_each_expr_without_closures};
 use crate::{self as utils, get_enclosing_loop_or_multi_call_closure, sym};
 use core::ops::ControlFlow;

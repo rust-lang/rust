@@ -1083,7 +1083,6 @@ macro_rules! super_body {
             $self.visit_local_decl(local, & $($mutability)? $body.local_decls[local]);
         }
 
-        #[allow(unused_macro_rules)]
         macro_rules! type_annotations {
             (mut) => ($body.user_type_annotations.iter_enumerated_mut());
             () => ($body.user_type_annotations.iter_enumerated());
@@ -1355,8 +1354,6 @@ pub enum MutatingUseContext {
     /// f(&mut x.y);
     /// ```
     Projection,
-    /// Retagging, a "Stacked Borrows" shadow state operation
-    Retag,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

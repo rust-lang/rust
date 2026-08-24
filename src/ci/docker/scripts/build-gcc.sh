@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# ignore-tidy-file-linelength
 set -eux
 
 source shared.sh
@@ -29,7 +30,7 @@ cd gcc-$GCC
 # the expression will need to be updated. That new URL is available at:
 # https://github.com/gcc-mirror/gcc/blob/6e6e3f144a33ae504149dc992453b4f6dea12fdb/contrib/download_prerequisites#L35
 #
-sed -i'' 's|ftp://gcc\.gnu\.org/|https://gcc.gnu.org/|g' ./contrib/download_prerequisites
+sed -i'' 's|ftp://gcc\.gnu\.org/pub/gcc/infrastructure|https://ci-mirrors.rust-lang.org/rustc/gcc|g' ./contrib/download_prerequisites
 
 ./contrib/download_prerequisites
 mkdir ../gcc-build

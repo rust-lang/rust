@@ -2,9 +2,10 @@
 
 use hir_def::{
     DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
-    expr_store::{ExpressionStore, path::Path},
-    hir::{BindingId, Expr, ExprId, ExprOrPatId},
+    expr_store::{ExpressionStore, StoreVisitor, StoreVisitorExt, path::Path},
+    hir::{BindingId, Expr, ExprId, PatId},
     resolver::{HasResolver, Resolver, ValueNs},
+    type_ref::TypeRefId,
 };
 use hir_expand::mod_path::PathKind;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -111,140 +112,114 @@ pub fn upvars_mentioned_impl(
 ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
     let store = ExpressionStore::of(db, owner);
     store.expr_roots().next()?;
-    let mut resolver = owner.resolver(db);
-    let mut result = FxHashMap::default();
-    for root_expr in store.expr_roots() {
-        handle_expr_outside_closure(db, &mut resolver, owner, store, root_expr, &mut result);
-    }
-    return if result.is_empty() {
+    let resolver = owner.resolver(db);
+    let mut visitor = UpvarsMentionedVisitor {
+        db,
+        resolver,
+        owner,
+        store,
+        closures_map: FxHashMap::default(),
+        current_closure: None,
+    };
+    visitor.on_exprs(store.expr_roots());
+    let mut result = visitor.closures_map;
+    if result.is_empty() {
         None
     } else {
         result.shrink_to_fit();
         Some(Box::new(result))
-    };
-
-    fn handle_expr_outside_closure<'db>(
-        db: &'db dyn HirDatabase,
-        resolver: &mut Resolver<'db>,
-        owner: ExpressionStoreOwnerId,
-        body: &ExpressionStore,
-        expr: ExprId,
-        closures_map: &mut FxHashMap<ExprId, Upvars>,
-    ) {
-        match &body[expr] {
-            &Expr::Closure { body: body_expr, .. } => {
-                let mut upvars = FxHashSet::default();
-                handle_expr_inside_closure(
-                    db,
-                    resolver,
-                    owner,
-                    body,
-                    expr,
-                    body_expr,
-                    &mut upvars,
-                    closures_map,
-                );
-                if !upvars.is_empty() {
-                    closures_map.insert(expr, Upvars::new(&upvars));
-                }
-            }
-            _ => body.walk_child_exprs(expr, |expr| {
-                handle_expr_outside_closure(db, resolver, owner, body, expr, closures_map)
-            }),
-        }
-    }
-
-    fn handle_expr_inside_closure<'db>(
-        db: &'db dyn HirDatabase,
-        resolver: &mut Resolver<'db>,
-        owner: ExpressionStoreOwnerId,
-        body: &ExpressionStore,
-        current_closure: ExprId,
-        expr: ExprId,
-        upvars: &mut FxHashSet<BindingId>,
-        closures_map: &mut FxHashMap<ExprId, Upvars>,
-    ) {
-        match &body[expr] {
-            Expr::Path(path) => {
-                resolve_maybe_upvar(
-                    db,
-                    resolver,
-                    owner,
-                    body,
-                    current_closure,
-                    expr,
-                    expr.into(),
-                    upvars,
-                    path,
-                );
-            }
-            &Expr::Closure { body: body_expr, .. } => {
-                let mut closure_upvars = FxHashSet::default();
-                handle_expr_inside_closure(
-                    db,
-                    resolver,
-                    owner,
-                    body,
-                    expr,
-                    body_expr,
-                    &mut closure_upvars,
-                    closures_map,
-                );
-                if !closure_upvars.is_empty() {
-                    closures_map.insert(expr, Upvars::new(&closure_upvars));
-                    // All nested closure's upvars are also upvars of the parent closure.
-                    upvars.extend(
-                        closure_upvars
-                            .iter()
-                            .copied()
-                            .filter(|local| body.binding_owner(*local) != Some(current_closure)),
-                    );
-                }
-                return;
-            }
-            _ => {}
-        }
-        body.walk_child_exprs(expr, |expr| {
-            handle_expr_inside_closure(
-                db,
-                resolver,
-                owner,
-                body,
-                current_closure,
-                expr,
-                upvars,
-                closures_map,
-            )
-        });
     }
 }
 
-fn resolve_maybe_upvar<'db>(
+struct UpvarsMentionedVisitor<'db> {
     db: &'db dyn HirDatabase,
-    resolver: &mut Resolver<'db>,
+    resolver: Resolver<'db>,
     owner: ExpressionStoreOwnerId,
-    body: &ExpressionStore,
-    current_closure: ExprId,
-    expr: ExprId,
-    id: ExprOrPatId,
-    upvars: &mut FxHashSet<BindingId>,
-    path: &Path,
-) {
-    if let Path::BarePath(mod_path) = path
+    store: &'db ExpressionStore,
+    closures_map: FxHashMap<ExprId, Upvars>,
+    current_closure: Option<(ExprId, FxHashSet<BindingId>)>,
+}
+
+impl UpvarsMentionedVisitor<'_> {
+    fn resolve_maybe_upvar(&mut self, expr: ExprId, path: &Path) {
+        let Some((current_closure, upvars)) = &mut self.current_closure else { return };
+
+        if let Path::BarePath(mod_path) = path
         && matches!(mod_path.kind, PathKind::Plain | PathKind::SELF)
         // `self` is length zero.
         && mod_path.segments().len() <= 1
-    {
-        // Could be a variable.
-        let guard = resolver.update_to_inner_scope(db, owner, expr);
-        let resolution =
-            resolver.resolve_path_in_value_ns_fully(db, path, body.expr_or_pat_path_hygiene(id));
-        if let Some(ValueNs::LocalBinding(local)) = resolution
-            && body.binding_owner(local) != Some(current_closure)
         {
-            upvars.insert(local);
+            // Could be a variable.
+            let guard = self.resolver.update_to_inner_scope(self.db, self.owner, expr);
+            let resolution = self.resolver.resolve_path_in_value_ns_fully(
+                self.db,
+                path,
+                self.store.expr_or_pat_path_hygiene(expr.into()),
+            );
+            if let Some(ValueNs::LocalBinding(local)) = resolution
+                && self.store.binding_owner(local) != Some(*current_closure)
+            {
+                upvars.insert(local);
+            }
+            self.resolver.reset_to_guard(guard);
         }
-        resolver.reset_to_guard(guard);
+    }
+}
+
+impl StoreVisitor for UpvarsMentionedVisitor<'_> {
+    fn on_expr(&mut self, expr: ExprId) {
+        match &self.store[expr] {
+            Expr::Path(path) => {
+                self.resolve_maybe_upvar(expr, path);
+                self.on_path(path);
+            }
+            Expr::Closure {
+                body: body_expr,
+                args,
+                arg_types,
+                ret_type,
+                capture_by: _,
+                closure_kind: _,
+            } => {
+                self.on_pats(args);
+                arg_types.iter().for_each(|arg_ty| self.on_type_opt(*arg_ty));
+                self.on_type_opt(*ret_type);
+
+                let mut old_current_closure =
+                    self.current_closure.replace((expr, FxHashSet::default()));
+                self.on_expr(*body_expr);
+                let closure_upvars = self.current_closure.take().unwrap().1;
+                if !closure_upvars.is_empty() {
+                    self.closures_map.insert(expr, Upvars::new(&closure_upvars));
+                    // All nested closure's upvars are also upvars of the parent closure.
+                    if let Some((current_closure, upvars)) = &mut old_current_closure {
+                        upvars.extend(closure_upvars.iter().copied().filter(|local| {
+                            self.store.binding_owner(*local) != Some(*current_closure)
+                        }));
+                    }
+                }
+                self.current_closure = old_current_closure;
+            }
+            _ => self.store.visit_expr_children(expr, self),
+        }
+    }
+
+    fn on_anon_const_expr(&mut self, expr: ExprId) {
+        // Anon consts don't contribute upvars.
+        let old_current_closure = self.current_closure.take();
+        self.on_expr(expr);
+        self.current_closure = old_current_closure;
+    }
+
+    fn on_pat(&mut self, pat: PatId) {
+        self.store.visit_pat_children(pat, self);
+    }
+
+    fn on_type(&mut self, ty: TypeRefId) {
+        // Anon consts don't contribute upvars.
+        let old_current_closure = self.current_closure.take();
+        self.store.visit_type_ref_children(ty, &mut *self);
+        self.current_closure = old_current_closure;
     }
 }
 
@@ -392,6 +367,23 @@ impl Foo {
 }
         "#,
             expect!["56..65: self"],
+        );
+    }
+
+    #[test]
+    fn const_block() {
+        check(
+            r#"
+fn main() {
+    || {
+        const {
+            let v = ();
+            v
+        }
+    };
+}
+        "#,
+            expect![""],
         );
     }
 }

@@ -49,15 +49,14 @@ fn main() {
     if cfg!(not(windows)) {
         test_directory();
         test_canonicalize();
-        #[cfg(not(target_os = "solaris"))]
+        #[cfg(not(target_os = "solaris"))] // does not have flock
         test_flock();
-        #[cfg(not(target_os = "android"))]
         test_hard_link();
 
         test_readv_writev();
         #[cfg(unix)]
         test_pread_pwrite();
-        #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+        #[cfg(all(unix, not(target_os = "solaris")))]
         test_preadv_pwritev();
     }
 }
@@ -513,11 +512,9 @@ fn test_readv_writev() {
 
 /// Test vectored reads and vectored writes with byte offsets.
 ///
-/// **Note**: We skip this test on Solaris and Android targets. This is
-/// because Solaris doesn't have `preadv`/`pwritev`, and on Android the
-/// standard library uses `syscall(...)` for vectored reads/writes with
-/// offsets because older Android versions also didn't have `preadv`/`pwritev`.
-#[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+/// **Note**: We skip this test on Solaris targets because Solaris doesn't
+/// have `preadv`/`pwritev`.
+#[cfg(all(unix, not(target_os = "solaris")))]
 fn test_preadv_pwritev() {
     use std::os::unix::fs::FileExt;
 
@@ -559,8 +556,6 @@ fn test_preadv_pwritev() {
     assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
 }
 
-// std uses `libc::link` on Android which we do not support.
-#[cfg(not(target_os = "android"))]
 fn test_hard_link() {
     let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
     let link = utils::prepare("miri_test_fs_hard_link_link.txt");

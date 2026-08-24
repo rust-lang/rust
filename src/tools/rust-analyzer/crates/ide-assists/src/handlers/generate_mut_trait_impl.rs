@@ -210,7 +210,7 @@ fn get_trait_mut(apply_trait: &hir::Trait, famous: FamousDefs<'_, '_>) -> Option
 }
 
 fn process_method_name(name: ast::Name) -> Option<(ast::Name, &'static str)> {
-    let new_name = match &*name.text() {
+    let new_name = match name.text() {
         "index" => "index_mut",
         "as_ref" => "as_mut",
         "borrow" => "borrow_mut",

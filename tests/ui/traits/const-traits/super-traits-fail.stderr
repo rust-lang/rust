@@ -6,8 +6,8 @@ LL | const impl Bar for S {}
    |
 help: make the `impl` of trait `Foo` `const`
    |
-LL | impl const Foo for S {
-   |      +++++
+LL | const impl Foo for S {
+   | +++++
 
 error: aborting due to 1 previous error
 

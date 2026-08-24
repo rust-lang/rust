@@ -38,13 +38,12 @@
 // * `description` is an optional description of the snippet, if unset the snippet name will be used.
 //
 // * `requires` is an optional list of item paths that have to be resolvable in the current crate where the completion is rendered.
-
 // On failure of resolution the snippet won't be applicable, otherwise the snippet will insert an import for the items on insertion if
 // the items aren't yet in scope.
 //
 // * `scope` is an optional filter for when the snippet should be applicable. Possible values are:
-// ** for Snippet-Scopes: `expr`, `item` (default: `item`)
-// ** for Postfix-Snippet-Scopes: `expr`, `type` (default: `expr`)
+//   * for Snippet-Scopes: `expr`, `item` (default: `item`)
+//   * for Postfix-Snippet-Scopes: `expr`, `type` (default: `expr`)
 //
 // The `body` field also has access to placeholders as visible in the example as `$0`.
 // These placeholders take the form of `$number` or `${number:placeholder_text}` which can be traversed as tabstop in ascending order starting from 1,
@@ -98,7 +97,7 @@
 //         "scope": "expr"
 //     }
 // }
-// ````
+// ```
 
 use hir::{ModPath, Name, Symbol};
 use ide_db::imports::import_assets::LocatedImport;

@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::source::{IntoSpan, SpanExt};
+use clippy_utils::source::{IntoSpan as _, SpanExt as _};
 use rustc_ast::{Local, TyKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {

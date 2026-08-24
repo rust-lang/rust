@@ -6,34 +6,12 @@
 
 #![crate_type = "rlib"]
 #![feature(no_core, asm_experimental_arch)]
-#![feature(simd_ffi, intrinsics, repr_simd)]
+#![feature(simd_ffi, intrinsics)]
 #![no_core]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
-
-#[repr(simd)]
-struct i8x16([i8; 16]);
-
-#[repr(simd)]
-struct i16x8([i16; 8]);
-
-#[repr(simd)]
-struct i32x4([i32; 4]);
-
-#[repr(simd)]
-struct i64x2([i64; 2]);
-
-#[repr(simd)]
-struct f32x4([f32; 4]);
-
-#[repr(simd)]
-struct f64x2([f64; 2]);
-
-impl Copy for i8x16 {}
-impl Copy for i16x8 {}
-impl Copy for i32x4 {}
-impl Copy for i64x2 {}
 
 #[rustc_intrinsic]
 unsafe fn simd_ge<T, U>(x: T, y: T) -> U;

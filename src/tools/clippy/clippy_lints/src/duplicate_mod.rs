@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{Crate, Inline, Item, ItemKind, ModKind};
 use rustc_errors::MultiSpan;
-use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext as _};
 use rustc_middle::lint::UnstableLevelSpec;
 use rustc_session::impl_lint_pass;
 use rustc_span::{FileName, Span};

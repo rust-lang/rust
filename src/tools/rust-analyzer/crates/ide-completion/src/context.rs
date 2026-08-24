@@ -273,7 +273,7 @@ pub(crate) enum Qualified<'db> {
     No,
     With {
         path: ast::Path,
-        resolution: Option<PathResolution>,
+        resolution: Option<PathResolution<'db>>,
         /// How many `super` segments are present in the path
         ///
         /// This would be None, if path is not solely made of
@@ -491,7 +491,7 @@ pub(crate) struct CompletionContext<'a, 'db> {
 
     pub(crate) qualifier_ctx: QualifierCtx,
 
-    pub(crate) locals: FxHashMap<Name, Local>,
+    pub(crate) locals: FxHashMap<Name, Local<'db>>,
 
     /// The module depth of the current module of the cursor position.
     /// - crate-root
@@ -545,7 +545,7 @@ impl<'db> CompletionContext<'_, 'db> {
     }
 
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.
-    pub(crate) fn def_is_visible(&self, item: &ScopeDef) -> Visible {
+    pub(crate) fn def_is_visible(&self, item: &ScopeDef<'db>) -> Visible {
         match item {
             ScopeDef::ModuleDef(def) => match def {
                 hir::ModuleDef::Module(it) => self.is_visible(it),
@@ -664,7 +664,7 @@ impl<'db> CompletionContext<'_, 'db> {
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and
     /// passes all doc-aliases along, to funnel it into `Completions::add_path_resolution`.
-    pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef, Vec<SmolStr>)) {
+    pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef<'db>, Vec<SmolStr>)) {
         let _p = tracing::info_span!("CompletionContext::process_all_names").entered();
         self.scope.process_all_names(&mut |name, def| {
             if self.is_scope_def_hidden(def) {
@@ -675,12 +675,12 @@ impl<'db> CompletionContext<'_, 'db> {
         });
     }
 
-    pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
+    pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef<'db>)) {
         let _p = tracing::info_span!("CompletionContext::process_all_names_raw").entered();
         self.scope.process_all_names(f);
     }
 
-    fn is_scope_def_hidden(&self, scope_def: ScopeDef) -> bool {
+    fn is_scope_def_hidden(&self, scope_def: ScopeDef<'db>) -> bool {
         if let (Some(attrs), Some(krate)) = (scope_def.attrs(self.db), scope_def.krate(self.db)) {
             return self.is_doc_hidden(&attrs, krate);
         }
@@ -722,7 +722,7 @@ impl<'db> CompletionContext<'_, 'db> {
         self.krate != defining_crate && attrs.is_doc_hidden()
     }
 
-    pub(crate) fn doc_aliases_in_scope(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
+    pub(crate) fn doc_aliases_in_scope(&self, scope_def: ScopeDef<'db>) -> Vec<SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
             attrs.doc_aliases(self.db).iter().map(|it| it.as_str().into()).collect()
         } else {

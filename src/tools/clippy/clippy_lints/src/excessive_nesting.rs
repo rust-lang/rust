@@ -4,7 +4,7 @@ use clippy_utils::source::snippet;
 use rustc_ast::node_id::NodeSet;
 use rustc_ast::visit::{Visitor, walk_block, walk_item};
 use rustc_ast::{Block, Crate, Inline, Item, ItemKind, ModKind, NodeId};
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 

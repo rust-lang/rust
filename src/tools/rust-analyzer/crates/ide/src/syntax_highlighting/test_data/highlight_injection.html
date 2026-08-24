@@ -43,6 +43,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 </style>
 <pre><code><span class="keyword">fn</span> <span class="function declaration">fixture</span><span class="parenthesis">(</span><span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="tool_module attribute">rust_analyzer</span><span class="operator attribute">::</span><span class="tool_module attribute">rust_fixture</span><span class="attribute_bracket attribute">]</span> <span class="value_param declaration reference">ra_fixture</span><span class="colon">:</span> <span class="punctuation">&</span><span class="builtin_type">str</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
+<span class="keyword">fn</span> <span class="function declaration">non_fixture</span><span class="parenthesis">(</span><span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="tool_module attribute">rust_analyzer</span><span class="attribute_bracket attribute">]</span> <span class="value_param declaration reference">ra_fixture</span><span class="colon">:</span> <span class="punctuation">&</span><span class="builtin_type">str</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="function">fixture</span><span class="parenthesis">(</span><span class="string_literal">r#"</span>
 @@- minicore: sized
@@ -59,4 +61,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 </span>    <span class="brace injected">}</span><span class="keyword injected">$0</span><span class="parenthesis injected">)</span><span class="none injected">
 </span><span class="brace injected">}</span><span class="string_literal">"</span>
     <span class="parenthesis">)</span><span class="semicolon">;</span>
+
+    <span class="function">non_fixture</span><span class="parenthesis">(</span><span class="string_literal">r"@@- "</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span></code></pre>

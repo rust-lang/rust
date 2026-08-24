@@ -1,4 +1,4 @@
-# (WIP) Testing
+# Testing
 
 The debug info test suite is undergoing a substantial rewrite. This section will be filled out as
 the rewrite makes progress.

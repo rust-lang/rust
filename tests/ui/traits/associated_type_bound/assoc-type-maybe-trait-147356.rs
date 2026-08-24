@@ -1,7 +1,7 @@
 use std::str::FromStr;
 fn foo<T: FromStr>() -> T
 where
-    <T as FromStr>::Err: Debug, //~ ERROR expected trait
+    <T as FromStr>::Err: Debug, //~ ERROR cannot find trait `Debug` in this scope
 {
     "".parse().unwrap()
 }

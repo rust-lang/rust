@@ -1,8 +1,8 @@
 error[E0565]: malformed `doc` attribute input
-  --> $DIR/doc_cfg_hide-2.rs:4:1
+  --> $DIR/doc_cfg_hide-2.rs:4:4
    |
 LL | #![doc(auto_cfg(hide(not(windows))))]
-   | ^^^^^^^^^^^^^^^^^^^^^---^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^^^^^^^^---^^^^^^^^^^^^
    |                      |
    |                      expected a valid identifier here
 

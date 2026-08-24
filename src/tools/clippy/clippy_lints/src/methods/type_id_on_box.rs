@@ -25,7 +25,7 @@ fn is_subtrait_of_any(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
                 cx.tcx.is_diagnostic_item(sym::Any, tr.def_id)
                     || cx
                         .tcx
-                        .explicit_super_predicates_of(tr.def_id)
+                        .explicit_super_clauses_of(tr.def_id)
                         .iter_identity_copied()
                         .map(Unnormalized::skip_norm_wip)
                         .any(|(clause, _)| {

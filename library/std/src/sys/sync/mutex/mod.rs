@@ -9,6 +9,7 @@ cfg_select! {
         target_os = "dragonfly",
         all(target_family = "wasm", target_feature = "atomics"),
         target_os = "hermit",
+        all(target_os = "wasi", target_env = "p3"),
     ) => {
         mod futex;
         pub use futex::Mutex;

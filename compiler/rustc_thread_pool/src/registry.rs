@@ -615,14 +615,17 @@ impl Registry {
 }
 
 /// Mark a Rayon worker thread as blocked. This triggers the deadlock handler
-/// if no other worker thread is active
+/// if no other worker thread is active. Then wait for the user-specified condition.
 #[inline]
-pub fn mark_blocked() {
+pub fn mark_blocked_and_wait(wait: impl FnOnce()) {
     let worker_thread = WorkerThread::current();
     assert!(!worker_thread.is_null());
     unsafe {
         let registry = &(*worker_thread).registry;
-        registry.sleep.mark_blocked(&registry.deadlock_handler)
+        registry.sleep.mark_blocked(&registry.deadlock_handler);
+        registry.release_thread();
+        wait();
+        registry.acquire_thread();
     }
 }
 

@@ -1,8 +1,8 @@
 error[E0539]: malformed `cfg_attr` attribute input
-  --> $DIR/cfg_attr-invalid-predicate-inner.rs:3:1
+  --> $DIR/cfg_attr-invalid-predicate-inner.rs:3:4
    |
 LL | #![cfg_attr(a())]
-   | ^^^^^^^^^^^^---^^
+   |    ^^^^^^^^^---^
    |             |
    |             valid arguments are `any`, `all`, `not` or `target`
    |
@@ -14,10 +14,10 @@ LL + #![cfg_attr(predicate, attr1, attr2, ...)]
    |
 
 error[E0539]: malformed `cfg_attr` attribute input
-  --> $DIR/cfg_attr-invalid-predicate-inner.rs:3:1
+  --> $DIR/cfg_attr-invalid-predicate-inner.rs:3:4
    |
 LL | #![cfg_attr(a())]
-   | ^^^^^^^^^^^^---^^
+   |    ^^^^^^^^^---^
    |             |
    |             valid arguments are `any`, `all`, `not` or `target`
    |

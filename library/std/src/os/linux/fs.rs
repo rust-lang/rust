@@ -25,7 +25,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -45,7 +46,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -62,7 +64,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -79,7 +82,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -96,7 +100,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -113,7 +118,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -130,7 +136,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -147,7 +154,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -167,7 +175,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -184,7 +193,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -203,7 +213,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -220,7 +231,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -239,7 +251,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -256,7 +269,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -275,7 +289,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -292,7 +307,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;
@@ -309,7 +325,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "linux", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::linux::fs::MetadataExt;

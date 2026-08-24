@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, GenericArg, GenericArgs, Instance, Ty, TyCtxt, Unnormalized};

@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_span::Span;
 
 use super::TOO_MANY_LINES;
@@ -18,7 +18,7 @@ pub(super) fn check_fn(
 ) {
     // Closures must be contained in a parent body, which will be checked for `too_many_lines`.
     // Don't check closures for `too_many_lines` to avoid duplicated lints.
-    if matches!(kind, FnKind::Closure) || span.in_external_macro(cx.sess().source_map()) {
+    if matches!(kind, FnKind::Closure) || (span.from_expansion() && span.in_external_macro(cx.sess().source_map())) {
         return;
     }
 

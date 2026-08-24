@@ -555,3 +555,81 @@ mod track_caller_attribute {}
 /// [function-like procedural macros]: ../reference/procedural-macros.html#the-proc_macro-attribute
 /// [`proc_macro`]: ../proc_macro/index.html
 mod proc_macro_attribute {}
+
+#[doc(attribute = "link_section")]
+//
+/// Places a function or static in a specific object-file section.
+///
+/// The `link_section` attribute specifies the section of the generated object file where a
+/// function or static is placed. Section names and their meaning are target-specific.
+///
+/// ```rust,no_run
+/// # #[cfg(target_os = "linux")] {
+/// #[unsafe(link_section = ".example_section")]
+/// pub static VALUE: u32 = 42;
+/// # }
+/// ```
+///
+/// Incorrectly placing code or data in a section can violate requirements imposed by the target,
+/// linker, or runtime. For example, placing mutable data in a read-only section may result in
+/// undefined behavior. For this reason, `link_section` is an unsafe attribute.
+///
+/// Starting with the 2024 edition, the attribute must be written using the `unsafe(...)` syntax.
+/// Earlier editions also permit `#[link_section = "..."]`.
+///
+/// For more information, see the Reference on [the `link_section` attribute].
+///
+/// [the `link_section` attribute]: ../reference/abi.html#the-link_section-attribute
+mod link_section_attribute {}
+
+#[doc(attribute = "non_exhaustive")]
+//
+/// Indicates that a type might have more fields or variants added in the future.
+///
+/// Placing `#[non_exhaustive]` on a struct or enum tells code in other crates not to assume
+/// the definition is complete. This lets a library add new fields or variants without breaking
+/// existing code.
+///
+/// On an enum, code outside the defining crate must include a wildcard arm when matching:
+///
+/// ```rust,ignore (cross-crate effect only)
+/// // in crate `errors`:
+/// #[non_exhaustive]
+/// pub enum ConnectionError {
+///     Refused,
+///     Timeout,
+/// }
+///
+/// // in another crate:
+/// use errors::ConnectionError;
+///
+/// match error {
+///     ConnectionError::Refused => println!("connection refused"),
+///     ConnectionError::Timeout => println!("timed out"),
+///     _ => println!("other error"), // required because of #[non_exhaustive]
+/// }
+/// ```
+///
+/// On a struct, code outside the defining crate cannot construct instances using struct literal
+/// syntax:
+///
+/// ```rust,ignore (cross-crate effect only)
+/// // in crate `config`:
+/// #[non_exhaustive]
+/// pub struct Config {
+///     pub width: u32,
+///     pub height: u32,
+/// }
+///
+/// // in another crate:
+/// use config::Config;
+///
+/// let c = Config { width: 800, height: 600 }; // ERROR: cannot construct
+/// ```
+///
+/// Inside the defining crate, exhaustive matching and direct construction are still allowed.
+///
+/// For more information, see the Reference on [the `non_exhaustive` attribute].
+///
+/// [the `non_exhaustive` attribute]: ../reference/attributes/type_system.html#the-non_exhaustive-attribute
+mod non_exhaustive_attribute {}

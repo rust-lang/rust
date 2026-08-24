@@ -7,8 +7,8 @@ pub mod suggestions;
 
 use std::{fmt, iter};
 
+use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -21,8 +21,8 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
-use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
+use thin_vec::ThinVec;
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -75,20 +75,18 @@ impl<'v> Visitor<'v> for FindExprBySpan<'v> {
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        ensure_sufficient_stack(|| {
-            if self.span == ex.span {
+        if self.span == ex.span {
+            self.result = Some(ex);
+        } else {
+            if let hir::ExprKind::Closure(..) = ex.kind
+                && self.include_closures
+                && let closure_header_sp = self.span.with_hi(ex.span.hi())
+                && closure_header_sp == ex.span
+            {
                 self.result = Some(ex);
-            } else {
-                if let hir::ExprKind::Closure(..) = ex.kind
-                    && self.include_closures
-                    && let closure_header_sp = self.span.with_hi(ex.span.hi())
-                    && closure_header_sp == ex.span
-                {
-                    self.result = Some(ex);
-                }
-                hir::intravisit::walk_expr(self, ex);
             }
-        });
+            hir::intravisit::walk_expr(self, ex);
+        }
     }
 
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
@@ -140,7 +138,7 @@ pub enum DefIdOrName {
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
         &self,
-        mut errors: Vec<FulfillmentError<'tcx>>,
+        mut errors: ThinVec<FulfillmentError<'tcx>>,
     ) -> ErrorGuaranteed {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
@@ -489,15 +487,15 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     )
     .unwrap();
 
-    let predicates = tcx.predicates_of(impl_def_id).predicates;
-    let mut pretty_predicates = Vec::with_capacity(predicates.len());
+    let clauses = tcx.clauses_of(impl_def_id).clauses;
+    let mut pretty_clauses = Vec::with_capacity(clauses.len());
 
     let sized_trait = tcx.lang_items().sized_trait();
     let meta_sized_trait = tcx.lang_items().meta_sized_trait();
 
-    for (p, _) in predicates {
+    for (c, _) in clauses {
         // Accumulate the sizedness bounds for each self ty.
-        if let Some(trait_clause) = p.as_trait_clause() {
+        if let Some(trait_clause) = c.as_trait_clause() {
             let self_ty = trait_clause.self_ty().skip_binder();
             let sizedness_of = types_with_sizedness_bounds.entry(self_ty).or_default();
             if Some(trait_clause.def_id()) == sized_trait {
@@ -509,7 +507,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
             }
         }
 
-        pretty_predicates.push(p.to_string());
+        pretty_clauses.push(c.to_string());
     }
 
     for (ty, sizedness) in types_with_sizedness_bounds {
@@ -517,22 +515,22 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
             if sizedness.sized {
                 // Maybe a default bound, don't write anything.
             } else {
-                pretty_predicates.push(format!("{ty}: ?Sized"));
+                pretty_clauses.push(format!("{ty}: ?Sized"));
             }
         } else {
             if sizedness.sized {
                 // Maybe a default bound, don't write anything.
-                pretty_predicates.push(format!("{ty}: Sized"));
+                pretty_clauses.push(format!("{ty}: Sized"));
             } else if sizedness.meta_sized {
-                pretty_predicates.push(format!("{ty}: MetaSized"));
+                pretty_clauses.push(format!("{ty}: MetaSized"));
             } else {
-                pretty_predicates.push(format!("{ty}: PointeeSized"));
+                pretty_clauses.push(format!("{ty}: PointeeSized"));
             }
         }
     }
 
-    if !pretty_predicates.is_empty() {
-        write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();
+    if !pretty_clauses.is_empty() {
+        write!(w, "\n  where {}", pretty_clauses.join(", ")).unwrap();
     }
 
     w.push(';');

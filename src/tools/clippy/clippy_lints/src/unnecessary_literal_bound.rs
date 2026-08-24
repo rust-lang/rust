@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -81,7 +81,7 @@ struct FindNonLiteralReturn;
 
 impl<'hir> Visitor<'hir> for FindNonLiteralReturn {
     type Result = std::ops::ControlFlow<()>;
-    type NestedFilter = intravisit::nested_filter::None;
+    type NestedFilter = intravisit::IgnoreNested;
 
     fn visit_expr(&mut self, expr: &'hir Expr<'hir>) -> Self::Result {
         if let ExprKind::Ret(Some(ret_val_expr)) = expr.kind

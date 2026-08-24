@@ -18,7 +18,7 @@ pub use self::drop_flag_effects::{
 pub use self::framework::{
     Analysis, Backward, Direction, EntryStates, Forward, GenKill, JoinSemiLattice, MaybeReachable,
     Results, ResultsCursor, ResultsVisitor, SwitchTargetIndex, fmt, graphviz, lattice,
-    visit_reachable_results, visit_results,
+    visit_results,
 };
 use self::move_paths::MoveData;
 

@@ -11,13 +11,13 @@ LL -     #[cfg_attr(, (cc))]
 LL +     #[cfg_attr(predicate, attr1, attr2, ...)]
    |
 
-error: `#[inline]` attribute cannot be used on expressions
-  --> $DIR/cfg-attr-parsed-span-issue-154801.rs:9:5
+error: the `inline` attribute cannot be used on expressions
+  --> $DIR/cfg-attr-parsed-span-issue-154801.rs:9:7
    |
 LL |     #[inline]
-   |     ^^^^^^^^^
+   |       ^^^^^^
    |
-   = help: `#[inline]` can only be applied to functions
+   = help: the `inline` attribute can only be applied to functions
 
 error[E0308]: mismatched types
   --> $DIR/cfg-attr-parsed-span-issue-154801.rs:4:5

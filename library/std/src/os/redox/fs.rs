@@ -21,7 +21,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -45,7 +46,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -62,7 +64,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -79,7 +82,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -96,7 +100,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -113,7 +118,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -130,7 +136,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -147,7 +154,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -167,7 +175,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -184,7 +193,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -203,7 +213,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -220,7 +231,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -239,7 +251,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -256,7 +269,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -275,7 +289,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -292,7 +307,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;
@@ -309,7 +325,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "redox", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "redox"), doc = "```ignore (needs redox)")]
     /// use std::fs;
     /// use std::io;
     /// use std::os::redox::fs::MetadataExt;

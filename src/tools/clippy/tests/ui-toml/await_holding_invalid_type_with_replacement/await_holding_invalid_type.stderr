@@ -1,8 +1,10 @@
-error: error reading Clippy's configuration file: replacement not allowed for this configuration
-  --> $DIR/tests/ui-toml/await_holding_invalid_type_with_replacement/clippy.toml:2:5
+error: unknown key
+  --> $DIR/tests/ui-toml/await_holding_invalid_type_with_replacement/clippy.toml:2:37
    |
 LL |     { path = "std::string::String", replacement = "std::net::Ipv4Addr" },
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                     ^^^^^^^^^^^
+   |
+   = note: possible values: `path`, `reason`, `allow-invalid`
 
 error: aborting due to 1 previous error
 

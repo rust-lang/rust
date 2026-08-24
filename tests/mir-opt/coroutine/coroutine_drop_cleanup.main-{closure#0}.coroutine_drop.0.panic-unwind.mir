@@ -14,7 +14,7 @@ fn main::{closure#0}(_1: &mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12
 
     bb0: {
         _7 = discriminant((*_1));
-        switchInt(move _7) -> [0: bb7, 3: bb10, otherwise: bb11];
+        switchInt(move _7) -> [0: bb7, 3: bb8, otherwise: bb9];
     }
 
     bb1: {
@@ -25,7 +25,7 @@ fn main::{closure#0}(_1: &mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12
 
     bb2: {
         nop;
-        goto -> bb8;
+        goto -> bb3;
     }
 
     bb3: {
@@ -46,24 +46,16 @@ fn main::{closure#0}(_1: &mut {coroutine@$DIR/coroutine_drop_cleanup.rs:12:5: 12
     }
 
     bb7: {
-        goto -> bb9;
-    }
-
-    bb8: {
-        goto -> bb3;
-    }
-
-    bb9: {
         goto -> bb6;
     }
 
-    bb10: {
+    bb8: {
         StorageLive(_4);
         StorageLive(_5);
         goto -> bb1;
     }
 
-    bb11: {
+    bb9: {
         return;
     }
 }

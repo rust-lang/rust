@@ -19,6 +19,10 @@ pub mod pgo;
 pub mod rust;
 pub mod target;
 
+use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::{Path, PathBuf};
+
 use build::Build;
 use change_id::{ChangeId, ChangeIdWrapper};
 use dist::Dist;
@@ -29,8 +33,10 @@ use rust::Rust;
 use target::TomlTarget;
 
 use crate::core::config::toml::pgo::Pgo;
-use crate::core::config::{Merge, ReplaceOpt};
-use crate::{Config, HashMap, HashSet, Path, PathBuf, exit, fs, t};
+use crate::core::config::{Config, Merge, ReplaceOpt};
+use crate::exit;
+use crate::utils::change_tracker::{find_recent_config_change_ids, human_readable_changes};
+use crate::utils::helpers::t;
 
 /// Structure of the `bootstrap.toml` file that configuration is read from.
 ///
@@ -183,11 +189,11 @@ impl Config {
                     toml::from_str::<toml::Value>(&contents)
                         .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
                 {
-                    let changes = crate::find_recent_config_change_ids(id);
+                    let changes = find_recent_config_change_ids(id);
                     if !changes.is_empty() {
                         println!(
                             "WARNING: There have been changes to x.py since you last updated:\n{}",
-                            crate::human_readable_changes(changes)
+                            human_readable_changes(changes)
                         );
                     }
                 }

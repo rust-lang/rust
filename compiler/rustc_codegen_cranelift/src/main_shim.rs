@@ -1,5 +1,5 @@
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::ty::{AssocTag, GenericArg, Unnormalized};
 use rustc_session::config::EntryFnType;
 use rustc_span::{DUMMY_SP, Ident};
@@ -156,7 +156,7 @@ pub(crate) fn maybe_create_entry_wrapper(
 
             bcx.ins().return_(&[result]);
             bcx.seal_all_blocks();
-            bcx.finalize();
+            bcx.finalize(m.target_config());
         }
 
         if let Err(err) = m.define_function(cmain_func_id, &mut ctx) {

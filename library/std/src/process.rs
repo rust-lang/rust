@@ -14,7 +14,7 @@
 //! let output = Command::new("echo")
 //!     .arg("Hello world")
 //!     .output()
-//!     .expect("Failed to execute command");
+//!     .expect("echo command should execute successfully");
 //!
 //! assert_eq!(b"Hello world\n", output.stdout.as_slice());
 //! ```
@@ -41,20 +41,20 @@
 //!     .arg("Oh no, a tpyo!")
 //!     .stdout(Stdio::piped())
 //!     .spawn()
-//!     .expect("Failed to start echo process");
+//!     .expect("echo command should start");
 //!
 //! // Note that `echo_child` is moved here, but we won't be needing
 //! // `echo_child` anymore
-//! let echo_out = echo_child.stdout.expect("Failed to open echo stdout");
+//! let echo_out = echo_child.stdout.expect("child stdout should open");
 //!
 //! let mut sed_child = Command::new("sed")
 //!     .arg("s/tpyo/typo/")
 //!     .stdin(Stdio::from(echo_out))
 //!     .stdout(Stdio::piped())
 //!     .spawn()
-//!     .expect("Failed to start sed process");
+//!     .expect("sed command should start");
 //!
-//! let output = sed_child.wait_with_output().expect("Failed to wait on sed");
+//! let output = sed_child.wait_with_output().expect("wait_with_output on sed should succeed");
 //! assert_eq!(b"Oh no, a typo!\n", output.stdout.as_slice());
 //! ```
 //!
@@ -69,21 +69,21 @@
 //!     .stdin(Stdio::piped())
 //!     .stdout(Stdio::piped())
 //!     .spawn()
-//!     .expect("failed to execute child");
+//!     .expect("child should start");
 //!
 //! // If the child process fills its stdout buffer, it may end up
 //! // waiting until the parent reads the stdout, and not be able to
 //! // read stdin in the meantime, causing a deadlock.
 //! // Writing from another thread ensures that stdout is being read
 //! // at the same time, avoiding the problem.
-//! let mut stdin = child.stdin.take().expect("failed to get stdin");
+//! let mut stdin = child.stdin.take().expect("stdin should be able to be retrieved");
 //! std::thread::spawn(move || {
-//!     stdin.write_all(b"test").expect("failed to write to stdin");
+//!     stdin.write_all(b"test").expect("writing to stdin should succeed");
 //! });
 //!
 //! let output = child
 //!     .wait_with_output()
-//!     .expect("failed to wait on child");
+//!     .expect("wait_with_output on child should succeed");
 //!
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
@@ -157,6 +157,7 @@
         target_os = "xous",
         target_os = "trusty",
         target_os = "hermit",
+        target_os = "l4re",
     ))
 ))]
 mod tests;
@@ -206,9 +207,9 @@ use crate::{fmt, format_args_nl, fs, str};
 /// let mut child = Command::new("/bin/cat")
 ///     .arg("file.txt")
 ///     .spawn()
-///     .expect("failed to execute child");
+///     .expect("child should spawn");
 ///
-/// let ecode = child.wait().expect("failed to wait on child");
+/// let ecode = child.wait().expect("child should be running");
 ///
 /// assert!(ecode.success());
 /// ```
@@ -223,7 +224,7 @@ pub struct Child {
     /// has been captured. You might find it helpful to do
     ///
     /// ```ignore (incomplete)
-    /// let stdin = child.stdin.take().expect("handle present");
+    /// let stdin = child.stdin.take().expect("handle should be present");
     /// ```
     ///
     /// to avoid partially moving the `child` and thus blocking yourself from calling
@@ -235,7 +236,7 @@ pub struct Child {
     /// has been captured. You might find it helpful to do
     ///
     /// ```ignore (incomplete)
-    /// let stdout = child.stdout.take().expect("handle present");
+    /// let stdout = child.stdout.take().expect("handle should be present");
     /// ```
     ///
     /// to avoid partially moving the `child` and thus blocking yourself from calling
@@ -247,7 +248,7 @@ pub struct Child {
     /// has been captured. You might find it helpful to do
     ///
     /// ```ignore (incomplete)
-    /// let stderr = child.stderr.take().expect("handle present");
+    /// let stderr = child.stderr.take().expect("handle should be present");
     /// ```
     ///
     /// to avoid partially moving the `child` and thus blocking yourself from calling
@@ -543,13 +544,13 @@ impl fmt::Debug for ChildStderr {
 ///     Command::new("cmd")
 ///         .args(["/C", "echo hello"])
 ///         .output()
-///         .expect("failed to execute process")
+///         .expect("process should execute successfully")
 /// } else {
 ///     Command::new("sh")
 ///         .arg("-c")
 ///         .arg("echo hello")
 ///         .output()
-///         .expect("failed to execute process")
+///         .expect("process should execute successfully")
 /// };
 ///
 /// let hello = output.stdout;
@@ -564,8 +565,8 @@ impl fmt::Debug for ChildStderr {
 ///
 /// let mut echo_hello = Command::new("sh");
 /// echo_hello.arg("-c").arg("echo hello");
-/// let hello_1 = echo_hello.output().expect("failed to execute process");
-/// let hello_2 = echo_hello.output().expect("failed to execute process");
+/// let hello_1 = echo_hello.output().expect("process should execute successfully");
+/// let hello_2 = echo_hello.output().expect("process should execute successfully");
 /// ```
 ///
 /// Similarly, you can call builder methods after spawning a process and then
@@ -577,7 +578,7 @@ impl fmt::Debug for ChildStderr {
 /// let mut list_dir = Command::new("ls");
 ///
 /// // Execute `ls` in the current directory of the program.
-/// list_dir.status().expect("process failed to execute");
+/// list_dir.status().expect("process should execute successfully");
 ///
 /// println!();
 ///
@@ -585,7 +586,7 @@ impl fmt::Debug for ChildStderr {
 /// list_dir.current_dir("/");
 ///
 /// // And then execute `ls` again but in the root directory.
-/// list_dir.status().expect("process failed to execute");
+/// list_dir.status().expect("process should execute successfully");
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Command")]
@@ -661,7 +662,7 @@ impl Command {
     ///
     /// Command::new("sh")
     ///     .spawn()
-    ///     .expect("sh command failed to start");
+    ///     .expect("sh command should start");
     /// ```
     ///
     /// # Caveats
@@ -677,7 +678,7 @@ impl Command {
     /// Command::new("ls")
     ///     .arg("-l") // arg passed separately
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     ///
     /// [`arg`]: Self::arg
@@ -743,7 +744,7 @@ impl Command {
     ///     .arg("-l")
     ///     .arg("-a")
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Command {
@@ -789,7 +790,7 @@ impl Command {
     /// Command::new("ls")
     ///     .args(["-l", "-a"])
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn args<I, S>(&mut self, args: I) -> &mut Command
@@ -825,7 +826,7 @@ impl Command {
     /// Command::new("ls")
     ///     .env("PATH", "/bin")
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Command
@@ -869,7 +870,7 @@ impl Command {
     ///     .env_clear()
     ///     .envs(&filtered_env)
     ///     .spawn()
-    ///     .expect("printenv failed to start");
+    ///     .expect("printenv command should start");
     /// ```
     #[stable(feature = "command_envs", since = "1.19.0")]
     pub fn envs<I, K, V>(&mut self, vars: I) -> &mut Command
@@ -967,7 +968,7 @@ impl Command {
     /// Command::new("ls")
     ///     .current_dir("/bin")
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     ///
     /// [`canonicalize`]: crate::fs::canonicalize
@@ -996,7 +997,7 @@ impl Command {
     /// Command::new("ls")
     ///     .stdin(Stdio::null())
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdin<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
@@ -1023,7 +1024,7 @@ impl Command {
     /// Command::new("ls")
     ///     .stdout(Stdio::null())
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdout<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
@@ -1050,7 +1051,7 @@ impl Command {
     /// Command::new("ls")
     ///     .stderr(Stdio::null())
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stderr<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
@@ -1089,7 +1090,7 @@ impl Command {
     ///
     /// Command::new("ls")
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
@@ -1166,7 +1167,7 @@ impl Command {
     /// let status = Command::new("/bin/cat")
     ///     .arg("file.txt")
     ///     .status()
-    ///     .expect("failed to execute process");
+    ///     .expect("process should execute successfully");
     ///
     /// println!("process finished with: {status}");
     ///
@@ -1557,7 +1558,7 @@ impl Stdio {
     ///     .arg("Hello, world!")
     ///     .stdout(Stdio::piped())
     ///     .output()
-    ///     .expect("Failed to execute command");
+    ///     .expect("process should execute successfully");
     ///
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "Hello, world!\n");
     /// // Nothing echoed to console
@@ -1573,14 +1574,14 @@ impl Stdio {
     ///     .stdin(Stdio::piped())
     ///     .stdout(Stdio::piped())
     ///     .spawn()
-    ///     .expect("Failed to spawn child process");
+    ///     .expect("rev command should start");
     ///
-    /// let mut stdin = child.stdin.take().expect("Failed to open stdin");
+    /// let mut stdin = child.stdin.take().expect("child stdin should be retrievable");
     /// std::thread::spawn(move || {
-    ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
+    ///     stdin.write_all("Hello, world!".as_bytes()).expect("writing to child stdin should succeed");
     /// });
     ///
-    /// let output = child.wait_with_output().expect("Failed to read stdout");
+    /// let output = child.wait_with_output().expect("child stdout should be able to be read");
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH");
     /// ```
     ///
@@ -1609,7 +1610,7 @@ impl Stdio {
     ///     .arg("Hello, world!")
     ///     .stdout(Stdio::inherit())
     ///     .output()
-    ///     .expect("Failed to execute command");
+    ///     .expect("process should execute successfully");
     ///
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     /// // "Hello, world!" echoed to console
@@ -1650,7 +1651,7 @@ impl Stdio {
     ///     .arg("Hello, world!")
     ///     .stdout(Stdio::null())
     ///     .output()
-    ///     .expect("Failed to execute command");
+    ///     .expect("process should execute successfully");
     ///
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     /// // Nothing echoed to console
@@ -1665,7 +1666,7 @@ impl Stdio {
     ///     .stdin(Stdio::null())
     ///     .stdout(Stdio::piped())
     ///     .output()
-    ///     .expect("Failed to execute command");
+    ///     .expect("process should execute successfully");
     ///
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     /// // Ignores any piped-in input
@@ -1720,13 +1721,13 @@ impl From<ChildStdin> for Stdio {
     /// let reverse = Command::new("rev")
     ///     .stdin(Stdio::piped())
     ///     .spawn()
-    ///     .expect("failed reverse command");
+    ///     .expect("rev command should start");
     ///
     /// let _echo = Command::new("echo")
     ///     .arg("Hello, world!")
     ///     .stdout(reverse.stdin.unwrap()) // Converted into a Stdio here
     ///     .output()
-    ///     .expect("failed echo command");
+    ///     .expect("echo command should execute successfully");
     ///
     /// // "!dlrow ,olleH" echoed to console
     /// ```
@@ -1750,12 +1751,12 @@ impl From<ChildStdout> for Stdio {
     ///     .arg("Hello, world!")
     ///     .stdout(Stdio::piped())
     ///     .spawn()
-    ///     .expect("failed echo command");
+    ///     .expect("echo command should start");
     ///
     /// let reverse = Command::new("rev")
     ///     .stdin(hello.stdout.unwrap())  // Converted into a Stdio here
     ///     .output()
-    ///     .expect("failed reverse command");
+    ///     .expect("rev command should execute successfully");
     ///
     /// assert_eq!(reverse.stdout, b"!dlrow ,olleH\n");
     /// ```
@@ -1777,13 +1778,13 @@ impl From<ChildStderr> for Stdio {
     ///     .arg("non_existing_file.txt")
     ///     .stderr(Stdio::piped())
     ///     .spawn()
-    ///     .expect("failed reverse command");
+    ///     .expect("rev command should start");
     ///
     /// let cat = Command::new("cat")
     ///     .arg("-")
     ///     .stdin(reverse.stderr.unwrap()) // Converted into a Stdio here
     ///     .output()
-    ///     .expect("failed echo command");
+    ///     .expect("cat command should execute successfully");
     ///
     /// assert_eq!(
     ///     String::from_utf8_lossy(&cat.stdout),
@@ -1951,7 +1952,7 @@ impl ExitStatus {
     /// let status = Command::new("ls")
     ///     .arg("/dev/nonexistent")
     ///     .status()
-    ///     .expect("ls could not be executed");
+    ///     .expect("ls command should execute successfully");
     ///
     /// println!("ls: {status}");
     /// status.exit_ok().expect_err("/dev/nonexistent could be listed!");
@@ -1973,7 +1974,7 @@ impl ExitStatus {
     /// let status = Command::new("mkdir")
     ///     .arg("projects")
     ///     .status()
-    ///     .expect("failed to execute mkdir");
+    ///     .expect("mkdir command should execute successfully");
     ///
     /// if status.success() {
     ///     println!("'projects/' directory created");
@@ -2006,7 +2007,7 @@ impl ExitStatus {
     /// let status = Command::new("mkdir")
     ///     .arg("projects")
     ///     .status()
-    ///     .expect("failed to execute mkdir");
+    ///     .expect("mkdir command should execute successfully");
     ///
     /// match status.code() {
     ///     Some(code) => println!("Exited with status code: {code}"),
@@ -2334,7 +2335,7 @@ impl Child {
     ///
     /// let mut command = Command::new("yes");
     /// if let Ok(mut child) = command.spawn() {
-    ///     child.kill().expect("command couldn't be killed");
+    ///     child.kill().expect("process should be killed");
     /// } else {
     ///     println!("yes command didn't start");
     /// }
@@ -2385,7 +2386,7 @@ impl Child {
     ///
     /// let mut command = Command::new("ls");
     /// if let Ok(mut child) = command.spawn() {
-    ///     child.wait().expect("command wasn't running");
+    ///     child.wait().expect("child should be running");
     ///     println!("Child has finished its execution!");
     /// } else {
     ///     println!("ls command didn't start");
@@ -2458,11 +2459,11 @@ impl Child {
     ///     .arg("file.txt")
     ///     .stdout(Stdio::piped())
     ///     .spawn()
-    ///     .expect("failed to execute child");
+    ///     .expect("child should spawn");
     ///
     /// let output = child
     ///     .wait_with_output()
-    ///     .expect("failed to wait on child");
+    ///     .expect("wait_with_output on child should succeed");
     ///
     /// assert!(output.status.success());
     /// ```

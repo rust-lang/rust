@@ -6,7 +6,7 @@ use clippy_utils::{is_in_test, sym};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, ClosureKind, CoroutineKind, Expr, ExprKind, LetStmt, LocalSource, Node, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};
 

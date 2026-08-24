@@ -365,7 +365,7 @@ fn suggest_receiver_name(
     match receiver {
         ast::Expr::PathExpr(path) => {
             if let Some(name) = path.path().and_then(|it| it.as_single_name_ref()) {
-                return placeholder(name.text().as_str());
+                return placeholder(name.text());
             }
         }
         ast::Expr::RefExpr(it) => {

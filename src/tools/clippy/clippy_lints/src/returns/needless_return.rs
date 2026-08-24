@@ -6,11 +6,12 @@ use clippy_utils::{
 };
 use rustc_ast::MetaItemInner;
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Expr, ExprKind, HirId, LangItem, MatchSource, StmtKind};
-use rustc_lint::{LateContext, Level, LintContext};
+use rustc_hir::{Body, Expr, ExprKind, HirId, MatchSource, StmtKind};
+use rustc_lint::{LateContext, Level, LintContext as _};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos as _, Span};
 use std::borrow::Cow;
 use std::fmt::Display;
 

@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `a` because it is borrowed
-  --> $DIR/custom_marker_coerce_shared_move.rs:19:14
+  --> $DIR/custom_marker_coerce_shared_move.rs:18:14
    |
 LL |     let a = CustomMarker(PhantomData);
    |         - binding `a` declared here

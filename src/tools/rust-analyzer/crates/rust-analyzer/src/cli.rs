@@ -42,6 +42,9 @@ impl Verbosity {
     pub fn is_spammy(self) -> bool {
         matches!(self, Verbosity::Spammy)
     }
+    pub fn is_quiet(self) -> bool {
+        matches!(self, Verbosity::Quiet)
+    }
 }
 
 fn read_stdin() -> anyhow::Result<String> {
@@ -82,10 +85,7 @@ fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
 
 fn full_name_of_item(db: &dyn HirDatabase, module: Module, name: Name) -> String {
     module
-        .path_to_root(db)
-        .into_iter()
-        .rev()
-        .filter_map(|it| it.name(db))
+        .path_segments(db)
         .chain(Some(name))
         .map(|it| it.display(db, Edition::LATEST).to_string())
         .join("::")

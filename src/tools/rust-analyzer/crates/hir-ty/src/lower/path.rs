@@ -334,7 +334,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
 
     #[tracing::instrument(skip(self), ret)]
     pub(crate) fn resolve_path_in_type_ns(&mut self) -> Option<(TypeNs, Option<usize>)> {
-        let (resolution, remaining_index, _, prefix_info) =
+        let (resolution, remaining_index, _, prefix_info, _) =
             self.ctx.resolver.resolve_path_in_type_ns_with_prefix_info(self.ctx.db, self.path)?;
 
         let segments = self.segments;
@@ -385,7 +385,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         &mut self,
         hygiene_id: HygieneId,
     ) -> Option<ResolveValueResult> {
-        let (res, prefix_info) = self.ctx.resolver.resolve_path_in_value_ns_with_prefix_info(
+        let (res, prefix_info, _) = self.ctx.resolver.resolve_path_in_value_ns_with_prefix_info(
             self.ctx.db,
             self.path,
             hygiene_id,
@@ -890,11 +890,11 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         )
     }
 
-    pub(super) fn assoc_type_bindings_from_type_bound<'c>(
+    pub(super) fn assoc_type_bindings_from_type_bound(
         mut self,
         trait_ref: TraitRef<'db>,
         span: Span,
-    ) -> Option<impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'c, 'db>>
+    ) -> Option<impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'db>>
     {
         let interner = self.ctx.interner;
         self.current_or_prev_segment.args_and_bindings.map(|args_and_bindings| {
@@ -956,16 +956,20 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque,
                             ) => {
                                 let ty = this.ctx.lower_ty(type_ref);
+                                let bound_vars = this.ctx.peek_bound_vars();
                                 let pred = Clause(Predicate::new(
                                     interner,
-                                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                        rustc_type_ir::ClauseKind::Projection(
-                                            ProjectionPredicate {
-                                                projection_term,
-                                                term: ty.into(),
-                                            },
+                                    Binder::bind_with_vars(
+                                        rustc_type_ir::PredicateKind::Clause(
+                                            rustc_type_ir::ClauseKind::Projection(
+                                                ProjectionPredicate {
+                                                    projection_term,
+                                                    term: ty.into(),
+                                                },
+                                            ),
                                         ),
-                                    )),
+                                        bound_vars,
+                                    ),
                                 ));
                                 predicates.push((pred, GenericPredicateSource::SelfOnly));
                             }
@@ -1187,7 +1191,7 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
         ctx,
     );
 
-    let mut substs = Vec::with_capacity(def_generics.len());
+    let mut substs = Vec::with_capacity(def_generics.len(true));
 
     substs.extend(
         def_generics.iter_parent_id().enumerate().map(|(idx, id)| ctx.parent_arg(idx as u32, id)),
@@ -1230,6 +1234,12 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
         };
         params.next();
         substs.push(self_ty);
+    } else if has_self_arg {
+        // A qualified path `<T as Trait>::Assoc` where `Trait` resolved to something without a
+        // `Self` parameter, e.g. a struct. `check_generic_args_len()` skips the self type
+        // unconditionally, so drop it here too instead of matching it against a real parameter.
+        // FIXME: Report a diagnostic here, rustc emits `E0404: expected trait, found struct`.
+        args.next();
     }
 
     loop {

@@ -1,13 +1,16 @@
+use std::ops::ControlFlow;
+
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::{Span, Symbol, kw};
+use rustc_type_ir::{TypeSuperVisitable as _, TypeVisitable, TypeVisitor};
 use tracing::instrument;
 
-use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt, Unnormalized};
-use crate::ty;
-use crate::ty::{EarlyBinder, GenericArgsRef};
+use super::{Clause, InstantiatedClauses, ParamConst, ParamTy, Ty, TyCtxt, Unnormalized};
+use crate::ty::region::RegionExt;
+use crate::ty::{self, ClauseKind, EarlyBinder, GenericArgsRef, Region, RegionKind, TyKind};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub enum GenericParamDefKind {
@@ -380,18 +383,18 @@ impl<'tcx> Generics {
 
 /// Bounds on generics.
 #[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, StableHash)]
-pub struct GenericPredicates<'tcx> {
+pub struct GenericClauses<'tcx> {
     pub parent: Option<DefId>,
-    pub predicates: &'tcx [(Clause<'tcx>, Span)],
+    pub clauses: &'tcx [(Clause<'tcx>, Span)],
 }
 
-impl<'tcx> GenericPredicates<'tcx> {
+impl<'tcx> GenericClauses<'tcx> {
     pub fn instantiate(
         self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
-    ) -> InstantiatedPredicates<'tcx> {
-        let mut instantiated = InstantiatedPredicates::empty();
+    ) -> InstantiatedClauses<'tcx> {
+        let mut instantiated = InstantiatedClauses::empty();
         self.instantiate_into(tcx, &mut instantiated, args);
         instantiated
     }
@@ -404,7 +407,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     + DoubleEndedIterator
     + ExactSizeIterator
     + Clone {
-        EarlyBinder::bind_iter(self.predicates).iter_instantiated_copied(tcx, args).map(|u| {
+        EarlyBinder::bind_iter(self.clauses).iter_instantiated_copied(tcx, args).map(|u| {
             let (clause, span) = u.unzip();
             (clause, span.skip_normalization())
         })
@@ -416,7 +419,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     + DoubleEndedIterator
     + ExactSizeIterator
     + Clone {
-        EarlyBinder::bind_iter(self.predicates).iter_identity_copied().map(|u| {
+        EarlyBinder::bind_iter(self.clauses).iter_identity_copied().map(|u| {
             let (clause, span) = u.unzip();
             (clause, span.skip_normalization())
         })
@@ -426,20 +429,20 @@ impl<'tcx> GenericPredicates<'tcx> {
     fn instantiate_into(
         self,
         tcx: TyCtxt<'tcx>,
-        instantiated: &mut InstantiatedPredicates<'tcx>,
+        instantiated: &mut InstantiatedClauses<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) {
         if let Some(def_id) = self.parent {
-            tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, args);
+            tcx.clauses_of(def_id).instantiate_into(tcx, instantiated, args);
         }
-        instantiated.predicates.extend(
-            self.predicates.iter().map(|(p, _)| EarlyBinder::bind(tcx, *p).instantiate(tcx, args)),
+        instantiated.clauses.extend(
+            self.clauses.iter().map(|(p, _)| EarlyBinder::bind(tcx, *p).instantiate(tcx, args)),
         );
-        instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
+        instantiated.spans.extend(self.clauses.iter().map(|(_, sp)| *sp));
     }
 
-    pub fn instantiate_identity(self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
-        let mut instantiated = InstantiatedPredicates::empty();
+    pub fn instantiate_identity(self, tcx: TyCtxt<'tcx>) -> InstantiatedClauses<'tcx> {
+        let mut instantiated = InstantiatedClauses::empty();
         self.instantiate_identity_into(tcx, &mut instantiated);
         instantiated
     }
@@ -447,24 +450,94 @@ impl<'tcx> GenericPredicates<'tcx> {
     fn instantiate_identity_into(
         self,
         tcx: TyCtxt<'tcx>,
-        instantiated: &mut InstantiatedPredicates<'tcx>,
+        instantiated: &mut InstantiatedClauses<'tcx>,
     ) {
         if let Some(def_id) = self.parent {
-            tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
+            tcx.clauses_of(def_id).instantiate_identity_into(tcx, instantiated);
         }
-        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| Unnormalized::new(*p)));
-        instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
+        instantiated.clauses.extend(self.clauses.iter().map(|(p, _)| Unnormalized::new(*p)));
+        instantiated.spans.extend(self.clauses.iter().map(|(_, s)| s));
+    }
+
+    /// Allow simple where bounds like `T: Debug`, but prevent any kind of
+    /// outlives bounds or uses of generic parameters on the right hand side.
+    ///
+    /// We allow simple bounds because when the `T` actually gets substituted with a concrete type
+    /// during monomorphization, we will be checking its `Debug` impl for fully_generic_for_reflection.
+    ///
+    /// Constants (associated or generic) are irrelevant for this analysis, as their value is neither
+    /// affected by lifetimes, nor do they affect lifetimes.
+    pub fn is_fully_generic_for_reflection(self) -> bool {
+        struct ParamChecker;
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamChecker {
+            type Result = ControlFlow<()>;
+            fn visit_region(&mut self, r: Region<'tcx>) -> Self::Result {
+                match r.kind() {
+                    RegionKind::ReEarlyParam(_) | RegionKind::ReStatic | RegionKind::ReError(_) => {
+                        ControlFlow::Break(())
+                    }
+                    RegionKind::ReVar(_)
+                    | RegionKind::RePlaceholder(_)
+                    | RegionKind::ReErased
+                    | RegionKind::ReLateParam(_) => {
+                        bug!("unexpected lifetime in impl: {r:?}")
+                    }
+                    RegionKind::ReBound(..) => ControlFlow::Continue(()),
+                }
+            }
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                match t.kind() {
+                    TyKind::Param(_p) => {
+                        // Reject using parameters used in the type in where bounds
+                        return ControlFlow::Break(());
+                    }
+                    TyKind::Alias(..) => return ControlFlow::Break(()),
+                    _ => (),
+                }
+                t.super_visit_with(self)
+            }
+        }
+
+        // Pessimistic: if any of the parameters have where bounds
+        // don't allow this impl to be used.
+        self.clauses.iter().all(|(clause, _)| {
+            match clause.kind().skip_binder() {
+                ClauseKind::Trait(trait_predicate) => {
+                    // In a `T: Trait`, if the rhs bound does not contain any generic params
+                    // or 'static lifetimes, then it cannot transitively cause such requirements,
+                    // considering we apply the fully-generic-for-reflection rules to any impls for
+                    // that trait, too.
+                    if matches!(trait_predicate.self_ty().kind(), ty::Param(_))
+                        && trait_predicate.trait_ref.args[1..]
+                            .iter()
+                            .all(|arg| arg.visit_with(&mut ParamChecker).is_continue())
+                    {
+                        return true;
+                    }
+                }
+                ClauseKind::RegionOutlives(_)
+                | ClauseKind::TypeOutlives(_)
+                | ClauseKind::Projection(_)
+                | ClauseKind::ConstArgHasType(_, _)
+                | ClauseKind::WellFormed(_)
+                | ClauseKind::ConstEvaluatable(_)
+                | ClauseKind::HostEffect(_)
+                | ClauseKind::UnstableFeature(_) => {}
+            }
+            clause.visit_with(&mut ParamChecker).is_continue()
+        })
     }
 }
 
 /// `[const]` bounds for a given item. This is represented using a struct much like
-/// `GenericPredicates`, where you can either choose to only instantiate the "own"
+/// `GenericClauses`, where you can either choose to only instantiate the "own"
 /// bounds or all of the bounds including those from the parent. This distinction
-/// is necessary for code like `compare_method_predicate_entailment`.
+/// is necessary for code like `compare_method_clause_entailment`.
 #[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct ConstConditions<'tcx> {
     pub parent: Option<DefId>,
-    pub predicates: &'tcx [(ty::PolyTraitRef<'tcx>, Span)],
+    pub clauses: &'tcx [(ty::PolyTraitRef<'tcx>, Span)],
 }
 
 impl<'tcx> ConstConditions<'tcx> {
@@ -486,7 +559,7 @@ impl<'tcx> ConstConditions<'tcx> {
     + DoubleEndedIterator
     + ExactSizeIterator
     + Clone {
-        EarlyBinder::bind_iter(self.predicates).iter_instantiated_copied(tcx, args).map(|u| {
+        EarlyBinder::bind_iter(self.clauses).iter_instantiated_copied(tcx, args).map(|u| {
             let (trait_ref, span) = u.unzip();
             (trait_ref, span.skip_normalization())
         })
@@ -498,7 +571,7 @@ impl<'tcx> ConstConditions<'tcx> {
     + DoubleEndedIterator
     + ExactSizeIterator
     + Clone {
-        EarlyBinder::bind_iter(self.predicates).iter_identity_copied().map(|u| {
+        EarlyBinder::bind_iter(self.clauses).iter_identity_copied().map(|u| {
             let (trait_ref, span) = u.unzip();
             (trait_ref, span.skip_normalization())
         })
@@ -515,9 +588,9 @@ impl<'tcx> ConstConditions<'tcx> {
             tcx.const_conditions(def_id).instantiate_into(tcx, instantiated, args);
         }
         instantiated.extend(
-            self.predicates
+            self.clauses
                 .iter()
-                .map(|&(p, s)| (EarlyBinder::bind(tcx, p).instantiate(tcx, args), s)),
+                .map(|&(c, s)| (EarlyBinder::bind(tcx, c).instantiate(tcx, args), s)),
         );
     }
 
@@ -539,7 +612,7 @@ impl<'tcx> ConstConditions<'tcx> {
             tcx.const_conditions(def_id).instantiate_identity_into(tcx, instantiated);
         }
         instantiated.extend(
-            self.predicates
+            self.clauses
                 .iter()
                 .copied()
                 .map(|(trait_ref, span)| (Unnormalized::new(trait_ref), span)),

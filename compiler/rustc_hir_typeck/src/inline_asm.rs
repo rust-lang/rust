@@ -2,8 +2,9 @@ use rustc_abi::FieldIdx;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
+use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy, Unnormalized,
@@ -17,7 +18,7 @@ use rustc_target::asm::{
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::FnCtxt;
-use crate::diagnostics::RegisterTypeUnstable;
+use crate::diagnostics::{AsmConstPtrUnstable, RegisterTypeUnstable};
 
 pub(crate) struct InlineAsmCtxt<'a, 'tcx> {
     target_features: &'tcx FxIndexSet<Symbol>,
@@ -548,7 +549,36 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     match ty.kind() {
                         ty::Error(_) => {}
                         _ if ty.is_integral() => {}
+                        ty::FnPtr(..) => {
+                            if !self.tcx().features().asm_const_ptr() {
+                                self.tcx()
+                                    .sess
+                                    .create_feature_err(
+                                        AsmConstPtrUnstable { span: op_sp },
+                                        sym::asm_const_ptr,
+                                    )
+                                    .emit();
+                            }
+                        }
+                        ty::RawPtr(pointee, _) | ty::Ref(_, pointee, _)
+                            if self.is_thin_ptr_ty(*pointee) =>
+                        {
+                            if !self.tcx().features().asm_const_ptr() {
+                                self.tcx()
+                                    .sess
+                                    .create_feature_err(
+                                        AsmConstPtrUnstable { span: op_sp },
+                                        sym::asm_const_ptr,
+                                    )
+                                    .emit();
+                            }
+                        }
                         _ => {
+                            let const_possible_ty = if !self.tcx().features().asm_const_ptr() {
+                                "integer"
+                            } else {
+                                "integer or thin pointer"
+                            };
                             self.fcx
                                 .dcx()
                                 .struct_span_err(op_sp, "invalid type for `const` operand")
@@ -556,7 +586,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                     self.tcx().def_span(anon_const.def_id),
                                     format!("is {} `{}`", ty.kind().article(), ty),
                                 )
-                                .with_help("`const` operands must be of an integer type")
+                                .with_help(format!(
+                                    "`const` operands must be of an {const_possible_ty} type"
+                                ))
                                 .emit();
                         }
                     }

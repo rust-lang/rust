@@ -9,6 +9,8 @@ mod hey { //~ HELP consider importing this derive macro
 
 #[derive(Bla)]
 //~^ ERROR cannot find derive macro `Bla`
+//~| NOTE `Bla` is a trait, not a derive macro
+//~| HELP consider implementing `Bla` for your type manually
 struct A;
 
 #[derive(println)]

@@ -171,12 +171,9 @@ impl Process {
         }
     }
 
-    pub fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
-        // See note in `send_signal` regarding recycled PIDs.
-        if self.status.is_some() {
-            return Ok(());
-        }
-        cvt(unsafe { libc::killpg(self.pid, signal) }).map(drop)
+    pub fn send_process_group_signal(&self, _signal: i32) -> io::Result<()> {
+        // VxWorks doesn't have process groups
+        unimplemented!()
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {

@@ -121,34 +121,29 @@ chore: bump rustfmt toolchain to nightly-$LATEST_NIGHTLY_DATE
 
 Bumping the toolchain version as part of a git subtree push.
 
-current toolchain (nightly-$CURRENT_NIGHTLY_DATE):
-   - $CURRENT_NIGHTLY_VERSION-nightly ($CURRENT_NIGHTLY_HASH $CURRENT_NIGHTLY_DATE)
+Before:
 
-latest toolchain (nightly-$LATEST_NIGHTLY_DATE):
-   - $LATEST_NIGHTLY_VERSION-nightly ($LATEST_NIGHTLY_HASH $LATEST_NIGHTLY_DATE)
+```
+$CURRENT_NIGHTLY_VERSION-nightly ($CURRENT_NIGHTLY_HASH $CURRENT_NIGHTLY_DATE)
+```
+
+After:
+
+```
+$LATEST_NIGHTLY_VERSION-nightly ($LATEST_NIGHTLY_HASH $LATEST_NIGHTLY_DATE)
 ```
 
 Substituting the placeholders with the right information.
 
-> [!TIP]
->
-> Example bump commit message:
->
-> ```text
-> chore: bump rustfmt toolchain to nightly-2025-10-07
->
-> Bumping the toolchain version as part of a git subtree push.
->
-> current toolchain (nightly-2025-04-02): - 1.88.0-nightly (e2014e876 2025-04-01)
->
-> latest toolchain (nightly-2025-10-07): - 1.92.0-nightly (f6aa851db 2025-10-07)
-> ```
-
 ### 5. Open a PR against `rustfmt`
 
 And wait for the sync PR to be merged. The `rustfmt` maintainers will run Diff Check against the PR
-to catch any unexpected formatting changes. Once Diff Check failures are investigated and are
-resolved, the PR can then be merged.
+to catch any unexpected formatting changes.
+
+- Maintainers should trigger Diff-Check for the combinations of Edition {2021, 2024} x Style
+  Edition {2021, 2024}.
+
+Once Diff Check failures are investigated and are resolved, the PR can then be merged.
 
 For the PR:
 
@@ -157,29 +152,14 @@ For the PR:
 - Include a copy of the bump commit message in the PR description for quick reference. Feel free to
   include additional notes that might be helpful for the maintainers when reviewing.
 
-> [!TIP]
->
-> Example subtree-push PR title and description:
->
-> **PR title**: `subtree-push nightly-2025-10-07`
->
-> **PR description**:
->
-> ```text
-> Bumping the toolchain version as part of a git subtree push.
->
-> current toolchain (nightly-2025-04-02):
-> - 1.88.0-nightly (e2014e876 2025-04-01)
->
-> latest toolchain (nightly-2025-10-07):
-> - 1.92.0-nightly (f6aa851db 2025-10-07)
-> ```
+**Make sure to minimize the time between the subtree-push direction and the subtree-pull direction
+to avoid unnecessary complications.**
 
-> [!WARNING]
->
-> Make sure to immediately follow-up with a subtree-pull direction, syncing `rustfmt` to
-> `rust-lang/rust`. We need the {subtree-push, subtree-pull} directions to be performed in
-> lock-step, to minimize any changes in between that makes the logistics more complex.
+### 5. (Where applicable) Update changelog and bump rustfmt version number
+
+Where applicable, we may need to update the CHANGELOG entries with merged PRs (both in `rustfmt`
+repository and also in the `rust-lang/rust` `rustfmt` subtree that was included in the subtree-push
+merge), and then bump rustfmt version number.
 
 ## Subtree pull direction: syncing from `rustfmt` to `rust-lang/rust`
 

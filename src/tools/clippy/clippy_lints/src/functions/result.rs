@@ -1,8 +1,8 @@
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use rustc_errors::Diag;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::{Span, sym};

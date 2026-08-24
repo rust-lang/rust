@@ -92,8 +92,6 @@ impl SubdiagnosticDerive {
 
         let diag = &self.diag;
 
-        // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
-        #[allow(keyword_idents_2024)]
         let ret = structure.gen_impl(quote! {
             gen impl rustc_errors::Subdiagnostic for @Self {
                 fn add_to_diag<__G>(

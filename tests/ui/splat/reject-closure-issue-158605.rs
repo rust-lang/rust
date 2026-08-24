@@ -7,20 +7,20 @@
 use std::marker::Tuple;
 
 trait Trait: Tuple + Sized {
-    extern "rust-call" fn method(#[splat] self: Self);
-    //~^ ERROR: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+    extern "rust-call" fn method(#[rustc_splat] self: Self);
+    //~^ ERROR: `#[rustc_splat]` is not allowed in the arguments of functions with the `rust-call` ABI
 }
 
 impl Trait for (i32, i64) {
-    extern "rust-call" fn method(#[splat] self: Self) {
-        //~^ ERROR: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+    extern "rust-call" fn method(#[rustc_splat] self: Self) {
+        //~^ ERROR: `#[rustc_splat]` is not allowed in the arguments of functions with the `rust-call` ABI
         println!("{self:?}");
     }
 }
 
 fn main() {
-    (|#[splat] x: i32| {
-        //~^ ERROR `#[splat]` is not allowed on closure arguments
+    (|#[rustc_splat] x: i32| {
+        //~^ ERROR `#[rustc_splat]` is not allowed on closure arguments
         println!("{x}");
     })(1);
 

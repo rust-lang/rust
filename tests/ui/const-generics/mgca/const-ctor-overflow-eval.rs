@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
 #![expect(incomplete_features)]
 use std::marker::ConstParamTy;
 

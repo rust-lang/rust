@@ -1,7 +1,8 @@
 use std::ops::Deref;
 
 use rustc_type_ir::solve::{
-    Certainty, FetchEligibleAssocItemResponse, Goal, NoSolution, VisibleForLeakCheck,
+    Certainty, ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, NoSolution,
+    VisibleForLeakCheck,
 };
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner, TypeFoldable};
 
@@ -23,12 +24,13 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
-    ) -> Option<Certainty>;
+    ) -> ComputeGoalFastPathOutcome<Self::Interner>;
 
-    fn fresh_var_for_kind_with_span(
+    fn fresh_var_for_kind(
         &self,
         arg: <Self::Interner as Interner>::GenericArg,
         span: <Self::Interner as Interner>::Span,
+        universe: ty::UniverseIndex,
     ) -> <Self::Interner as Interner>::GenericArg;
 
     // FIXME: Uplift the leak check into this crate.

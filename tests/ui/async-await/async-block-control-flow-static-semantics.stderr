@@ -10,7 +10,7 @@ LL | |         return 0u8;
 LL | | }
    | |_^ expected `u8`, found `()`
 
-error[E0271]: expected `{async block@$DIR/async-block-control-flow-static-semantics.rs:23:17: 23:22}` to be a future that resolves to `()`, but it resolves to `u8`
+error[E0271]: expected `{async block@async-block-control-flow-static-semantics.rs:23:17}` to be a future that resolves to `()`, but it resolves to `u8`
   --> $DIR/async-block-control-flow-static-semantics.rs:26:39
    |
 LL |     let _: &dyn Future<Output = ()> = &block;
@@ -26,7 +26,7 @@ LL | fn return_targets_async_block_not_fn() -> u8 {
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 
-error[E0271]: expected `{async block@$DIR/async-block-control-flow-static-semantics.rs:14:17: 14:22}` to be a future that resolves to `()`, but it resolves to `u8`
+error[E0271]: expected `{async block@async-block-control-flow-static-semantics.rs:14:17}` to be a future that resolves to `()`, but it resolves to `u8`
   --> $DIR/async-block-control-flow-static-semantics.rs:17:39
    |
 LL |     let _: &dyn Future<Output = ()> = &block;

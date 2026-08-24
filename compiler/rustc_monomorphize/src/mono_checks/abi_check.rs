@@ -57,7 +57,7 @@ fn do_check_simd_vector_abi<'tcx>(
 ) {
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     let have_feature = |feat: Symbol| {
-        let target_feats = tcx.sess.unstable_target_features.contains(&feat);
+        let target_feats = tcx.sess.internal_target_features.contains(&feat);
         let fn_feats = codegen_attrs.target_features.iter().any(|x| x.name == feat);
         target_feats || fn_feats
     };

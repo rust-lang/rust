@@ -38,8 +38,12 @@ pub(crate) fn mismatched_arg_count(
 ) -> Diagnostic {
     let s = if d.expected == 1 { "" } else { "s" };
     let message = format!("expected {} argument{s}, found {}", d.expected, d.found);
+    // E0057 is the code rustc emits when calling something via the `Fn`/`FnMut`/`FnOnce`
+    // traits with the wrong number of arguments; E0061 is used for direct function calls.
+    // (Previously this used E0107, which is actually "wrong number of generic arguments".)
+    let code = if d.is_fn_trait_call { "E0057" } else { "E0061" };
     Diagnostic::new(
-        DiagnosticCode::RustcHardError("E0107"),
+        DiagnosticCode::RustcHardError(code),
         message,
         invalid_args_range(ctx, d.call_expr, d.expected, d.found),
     )
@@ -395,10 +399,36 @@ fn main() {
         )
     }
 
+    // A multi-argument closure exercises the same tuple-arguments code path in
+    // hir-ty (`TupleArgumentsFlag::TupleArguments` in `crates/hir-ty/src/infer/expr.rs`)
+    // as calls through `Fn`/`FnMut`/`FnOnce`. The mismatch is reported with error
+    // code E0057 (rustc's Fn-trait code), not E0061 which is reserved for direct
+    // function calls. `arg_count_lambda` above covers the 1-tuple case; this one
+    // covers the multi-argument case to make sure the tuple size is reported
+    // correctly.
+    #[test]
+    fn arg_count_multi_arg_closure() {
+        check_diagnostics(
+            r#"
+//- minicore: fn
+fn main() {
+    let f = |_a: u8, _b: u8| ();
+    f();
+   //^^ error: expected 2 arguments, found 0
+    f(1, 2);
+    f(1, 2, 3);
+          //^^ error: expected 2 arguments, found 3
+}
+"#,
+        )
+    }
+
     #[test]
     fn cfgd_out_call_arguments() {
         check_diagnostics(
             r#"
+#![allow(rust_analyzer::inactive_code)]
+
 struct C(#[cfg(FALSE)] ());
 impl C {
     fn new() -> Self {
@@ -422,6 +452,8 @@ fn main() {
     fn cfgd_out_fn_params() {
         check_diagnostics(
             r#"
+#![allow(rust_analyzer::inactive_code)]
+
 fn foo(#[cfg(NEVER)] x: ()) {}
 
 struct S;

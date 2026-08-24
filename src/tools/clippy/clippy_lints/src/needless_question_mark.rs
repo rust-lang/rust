@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::MaybeQPath as _;
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Block, Body, Expr, ExprKind, LangItem, MatchSource};
+use rustc_hir::{Block, Body, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 

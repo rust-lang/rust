@@ -6,6 +6,7 @@ use rustc_ast::ast::{
     NodeId, Path, RestrictionKind, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
+use rustc_feature::is_builtin_attr_name;
 use rustc_span::{BytePos, LocalExpnId, Span, Symbol, SyntaxContext, sym, symbol};
 use unicode_width::UnicodeWidthStr;
 
@@ -180,6 +181,15 @@ pub(crate) fn format_pinnedness_and_mutability(
 }
 
 #[inline]
+pub(crate) fn format_range_end(end: ast::RangeEnd) -> &'static str {
+    match end {
+        ast::RangeEnd::Included(ast::RangeSyntax::DotDotDot) => "...",
+        ast::RangeEnd::Included(ast::RangeSyntax::DotDotEq) => "..=",
+        ast::RangeEnd::Excluded => "..",
+    }
+}
+
+#[inline]
 pub(crate) fn format_extern(ext: ast::Extern, explicit_abi: bool) -> Cow<'static, str> {
     match ext {
         ast::Extern::None => Cow::from(""),
@@ -316,6 +326,13 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
     attrs
         .iter()
         .any(|a| a.meta().map_or(false, |a| is_skip(&a)))
+}
+
+#[inline]
+pub(crate) fn contains_custom_attributes(attrs: &[Attribute]) -> bool {
+    attrs
+        .iter()
+        .any(|a| a.name().is_some_and(|name| !is_builtin_attr_name(name)))
 }
 
 #[inline]

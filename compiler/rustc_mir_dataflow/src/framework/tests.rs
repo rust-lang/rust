@@ -139,11 +139,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
             SeekTarget::After(loc) => Effect::Primary.at_index(loc.statement_index),
         };
 
-        let mut pos = if D::IS_FORWARD {
-            Effect::Early.at_index(0)
-        } else {
-            Effect::Early.at_index(self.body[block].statements.len())
-        };
+        let mut pos = D::first_index(&self.body[block]);
 
         loop {
             ret.insert(self.effect(pos));
@@ -152,11 +148,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
                 return ret;
             }
 
-            if D::IS_FORWARD {
-                pos = pos.next_in_forward_order();
-            } else {
-                pos = pos.next_in_backward_order();
-            }
+            pos = D::next_index(pos);
         }
     }
 }
@@ -205,15 +197,14 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         assert!(state.insert(idx));
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         let idx = self.effect(Effect::Primary.at_index(location.statement_index));
         assert!(state.insert(idx));
-        terminator.edges()
     }
 }
 

@@ -2729,6 +2729,7 @@ tracing::error!();
             "unresolved-macro-call",
             "syntax-error",
             "macro-error",
+            "inactive_code",
         ],
     );
 }

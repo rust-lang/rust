@@ -8,7 +8,7 @@
 //@ [WINDOWS_MSVC] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel
 //@ [WINDOWS_MSVC] compile-flags: --target x86_64-pc-windows-msvc
 //@ [WINDOWS_MSVC] needs-llvm-components: x86
-#![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 

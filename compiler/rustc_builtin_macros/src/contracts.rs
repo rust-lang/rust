@@ -48,9 +48,9 @@ fn expand_contract_clause(
     ecx: &mut ExtCtxt<'_>,
     attr_span: Span,
     annotated: TokenStream,
-    inject: impl FnOnce(&mut TokenStream) -> Result<(), ErrorGuaranteed>,
+    inject: impl FnOnce(&mut Vec<TokenTree>) -> Result<(), ErrorGuaranteed>,
 ) -> Result<TokenStream, ErrorGuaranteed> {
-    let mut new_tts = TokenStream::default();
+    let mut new_tts = vec![];
     let mut cursor = annotated.iter();
 
     let is_kw = |tt: &TokenTree, sym: Symbol| {
@@ -60,7 +60,7 @@ fn expand_contract_clause(
     // Find the `fn` keyword to check if this is a function.
     if cursor
         .find(|tt| {
-            new_tts.push_tree((*tt).clone());
+            new_tts.push((*tt).clone());
             is_kw(tt, kw::Fn)
         })
         .is_none()
@@ -102,7 +102,7 @@ fn expand_contract_clause(
         if is_kw(tt, kw::Where) {
             break tt;
         }
-        new_tts.push_tree(tt.clone());
+        new_tts.push(tt.clone());
     };
 
     // At this point, we've transcribed everything from the `fn` through the formal parameter list
@@ -114,9 +114,9 @@ fn expand_contract_clause(
 
     // Above we injected the internal AST requires/ensures construct. Now copy over all the other
     // token trees.
-    new_tts.push_tree(next_tt.clone());
+    new_tts.push(next_tt.clone());
     while let Some(tt) = cursor.next() {
-        new_tts.push_tree(tt.clone());
+        new_tts.push(tt.clone());
         if cursor.peek().is_none()
             && !matches!(tt, TokenTree::Delimited(_, _, token::Delimiter::Brace, _))
         {
@@ -127,7 +127,7 @@ fn expand_contract_clause(
         }
     }
 
-    Ok(new_tts)
+    Ok(TokenStream::new(new_tts))
 }
 
 fn expand_contract_clause_tts(
@@ -139,11 +139,11 @@ fn expand_contract_clause_tts(
 ) -> Result<TokenStream, ErrorGuaranteed> {
     let feature_span = ecx.with_def_site_ctxt(attr_span);
     expand_contract_clause(ecx, attr_span, annotated, |new_tts| {
-        new_tts.push_tree(TokenTree::Token(
+        new_tts.push(TokenTree::Token(
             token::Token::from_ast_ident(Ident::new(clause_keyword, feature_span)),
             Spacing::Joint,
         ));
-        new_tts.push_tree(TokenTree::Delimited(
+        new_tts.push(TokenTree::Delimited(
             DelimSpan::from_single(attr_span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
             token::Delimiter::Brace,

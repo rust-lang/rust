@@ -9,11 +9,15 @@ use either::Either;
 use hir_def::expr_store::path::Path;
 use hir_def::{ExpressionStoreOwnerId, GenericDefId};
 use hir_def::{expr_store::ExpressionStore, type_ref::TypeRefId};
-use hir_def::{hir::ExprOrPatId, resolver::Resolver};
-use la_arena::{Idx, RawIdx};
+use hir_def::{
+    hir::{ExprId, ExprOrPatIdPacked},
+    resolver::Resolver,
+};
+use la_arena::RawIdx;
 use rustc_hash::FxHashMap;
 use thin_vec::ThinVec;
 
+use crate::lower::LifetimeLoweringMode;
 use crate::{
     InferenceDiagnostic, InferenceTyDiagnosticSource, Span, TyLoweringDiagnostic,
     db::{AnonConstId, HirDatabase},
@@ -54,7 +58,7 @@ impl Diagnostics {
 }
 
 pub(crate) struct PathDiagnosticCallbackData<'a> {
-    node: ExprOrPatId,
+    node: ExprOrPatIdPacked,
     diagnostics: &'a Diagnostics,
 }
 
@@ -89,7 +93,7 @@ pub(super) struct InferenceTyLoweringContext<'db, 'a> {
     ctx: TyLoweringContext<'db, 'a>,
     diagnostics: &'a Diagnostics,
     source: InferenceTyDiagnosticSource,
-    defined_anon_consts: &'a RefCell<ThinVec<AnonConstId>>,
+    defined_anon_consts: &'a RefCell<ThinVec<AnonConstId<'db>>>,
 }
 
 impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
@@ -97,7 +101,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
     pub(super) fn new(
         db: &'db dyn HirDatabase,
         resolver: &'a Resolver<'db>,
-        store: &'a ExpressionStore,
+        store: &'db ExpressionStore,
         diagnostics: &'a Diagnostics,
         source: InferenceTyDiagnosticSource,
         def: ExpressionStoreOwnerId,
@@ -106,7 +110,8 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
         lifetime_elision: LifetimeElisionKind<'db>,
         allow_using_generic_params: bool,
         infer_vars: Option<&'a mut dyn TyLoweringInferVarsCtx<'db>>,
-        defined_anon_consts: &'a RefCell<ThinVec<AnonConstId>>,
+        defined_anon_consts: &'a RefCell<ThinVec<AnonConstId<'db>>>,
+        lifetime_lowering_mode: LifetimeLoweringMode,
     ) -> Self {
         let mut ctx = TyLoweringContext::new(
             db,
@@ -116,6 +121,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
             generic_def,
             generics,
             lifetime_elision,
+            lifetime_lowering_mode,
         )
         .with_infer_vars_behavior(infer_vars);
         if !allow_using_generic_params {
@@ -128,7 +134,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
     pub(super) fn at_path<'b>(
         &'b mut self,
         path: &'b Path,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
     ) -> PathLoweringContext<'b, 'a, 'db> {
         let on_diagnostic = PathDiagnosticCallback {
             data: Either::Right(PathDiagnosticCallbackData { diagnostics: self.diagnostics, node }),
@@ -149,7 +155,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
         let on_diagnostic = PathDiagnosticCallback {
             data: Either::Right(PathDiagnosticCallbackData {
                 diagnostics: self.diagnostics,
-                node: ExprOrPatId::ExprId(Idx::from_raw(RawIdx::from_u32(0))),
+                node: ExprOrPatIdPacked::from(ExprId::from_raw(RawIdx::from_u32(0))),
             }),
             callback: |_data, _, _diag| {},
         };

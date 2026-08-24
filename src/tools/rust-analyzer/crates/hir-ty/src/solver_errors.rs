@@ -29,7 +29,7 @@ pub struct SolverDiagnostic {
 pub enum SolverDiagnosticKind {
     TraitUnimplemented {
         trait_predicate: StoredTraitPredicate,
-        root_trait_predicate: Option<StoredTraitPredicate>,
+        parent_trait_predicates: Vec<StoredTraitPredicate>,
     },
 }
 
@@ -78,13 +78,19 @@ fn handle_trait_unimplemented<'db>(
         polarity: trait_pred.polarity,
     };
 
-    let root_trait_predicate = match error.root_obligation.predicate.kind().skip_binder() {
-        PredicateKind::Clause(ClauseKind::Trait(trait_pred)) => Some(StoredTraitPredicate {
-            trait_ref: StoredTraitRef::new(trait_pred.trait_ref),
-            polarity: trait_pred.polarity,
-        }),
-        _ => None,
-    };
+    let mut parent_trait_predicates = error
+        .parent_trait_obligations
+        .iter()
+        .filter_map(|predicate| predicate.as_trait_clause())
+        .map(|trait_predicate| {
+            let trait_predicate = trait_predicate.skip_binder();
+            StoredTraitPredicate {
+                trait_ref: StoredTraitRef::new(trait_predicate.trait_ref),
+                polarity: trait_predicate.polarity,
+            }
+        })
+        .collect::<Vec<_>>();
+    parent_trait_predicates.reverse();
 
-    Some(SolverDiagnosticKind::TraitUnimplemented { trait_predicate, root_trait_predicate })
+    Some(SolverDiagnosticKind::TraitUnimplemented { trait_predicate, parent_trait_predicates })
 }

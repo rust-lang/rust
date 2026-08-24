@@ -123,7 +123,7 @@ fn default_enum_substructure(
                             cx.field_imm(
                                 field.span,
                                 field.ident.unwrap(),
-                                match &field.default {
+                                match field.default_value() {
                                     // We use `Default::default()`.
                                     None => default_call(cx, field.span),
                                     // We use the field default const expression.
@@ -217,7 +217,7 @@ fn extract_default_variant<'a>(
 
     if cx.ecfg.features.default_field_values()
         && let VariantData::Struct { fields, .. } = &variant.data
-        && fields.iter().all(|f| f.default.is_some())
+        && fields.iter().all(|f| f.default_value().is_some())
         // Disallow `#[default] Variant {}`
         && !fields.is_empty()
     {

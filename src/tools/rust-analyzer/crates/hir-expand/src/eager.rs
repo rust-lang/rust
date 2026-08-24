@@ -44,6 +44,7 @@ pub fn expand_eager_macro_input(
     ast_id: AstId<ast::MacroCall>,
     def: MacroDefId,
     call_site: SyntaxContext,
+    macro_depth: u32,
     resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<Option<MacroCallId>> {
@@ -58,6 +59,7 @@ pub fn expand_eager_macro_input(
         krate,
         kind: MacroCallKind::FnLike { ast_id, expand_to: ExpandTo::Expr, eager: None },
         ctxt: call_site,
+        macro_depth,
     };
     let arg_id = MacroCallId::new(db, loc);
     #[allow(deprecated)] // builtin eager macros are never derives
@@ -76,6 +78,7 @@ pub fn expand_eager_macro_input(
             InFile::new(arg_id.into(), arg_exp.syntax_node()),
             krate,
             call_site,
+            macro_depth,
             resolver,
             eager_callback,
         )
@@ -112,6 +115,7 @@ pub fn expand_eager_macro_input(
             })),
         },
         ctxt: call_site,
+        macro_depth,
     };
 
     ExpandResult { value: Some(MacroCallId::new(db, loc)), err }
@@ -124,6 +128,7 @@ fn lazy_expand<'db>(
     ast_id: AstId<ast::MacroCall>,
     krate: Crate,
     call_site: SyntaxContext,
+    macro_depth: u32,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<(InFile<Parse<SyntaxNode>>, &'db ExpansionSpanMap)> {
     let expand_to = ExpandTo::from_call_site(macro_call);
@@ -132,6 +137,7 @@ fn lazy_expand<'db>(
         krate,
         MacroCallKind::FnLike { ast_id, expand_to, eager: None },
         call_site,
+        macro_depth,
     );
     eager_callback(ast_id.map(|ast_id| (AstPtr::new(macro_call), ast_id)), id);
 
@@ -148,6 +154,7 @@ fn eager_macro_recur(
     curr: InFile<SyntaxNode>,
     krate: Crate,
     call_site: SyntaxContext,
+    macro_depth: u32,
     macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
@@ -215,6 +222,7 @@ fn eager_macro_recur(
                     curr.with_value(ast_id),
                     def,
                     call_site,
+                    macro_depth + 1,
                     macro_resolver,
                     eager_callback,
                 );
@@ -254,6 +262,7 @@ fn eager_macro_recur(
                     curr.with_value(ast_id),
                     krate,
                     call_site,
+                    macro_depth,
                     eager_callback,
                 );
 
@@ -267,6 +276,7 @@ fn eager_macro_recur(
                     parse.as_ref().map(|it| it.syntax_node()),
                     krate,
                     call_site,
+                    macro_depth + 1,
                     macro_resolver,
                     eager_callback,
                 );

@@ -116,6 +116,9 @@ pub struct SerializedDepGraph {
     /// [`SerializedDepNodeIndex`] via the node's key fingerprint. See
     /// [`LazyNodeIndex`].
     reverse_index: LazyNodeIndex,
+    /// The number of nodes actually encoded, which is below [`Self::index_space_len`]
+    /// whenever a thread left part of its batch of indices unused.
+    live_node_count: usize,
     /// The number of previous compilation sessions. This is used to generate
     /// unique anon dep nodes per session.
     session_count: u64,
@@ -133,6 +136,7 @@ impl std::fmt::Debug for SerializedDepGraph {
             .field("edge_list_indices", &self.edge_list_indices)
             .field("edge_list_data", &self.edge_list_data)
             .field("reverse_index", &self.reverse_index)
+            .field("live_node_count", &self.live_node_count)
             .field("session_count", &self.session_count)
             .finish_non_exhaustive()
     }
@@ -251,9 +255,15 @@ impl SerializedDepGraph {
         self.value_fingerprints[dep_node_index]
     }
 
+    /// The number of dep-node indices, counting those that hold no node.
     #[inline]
-    pub fn node_count(&self) -> usize {
+    pub fn index_space_len(&self) -> usize {
         self.nodes.len()
+    }
+
+    #[inline]
+    pub fn live_node_count(&self) -> usize {
+        self.live_node_count
     }
 
     #[inline]
@@ -377,9 +387,9 @@ impl SerializedDepGraph {
 
         // Read the number of nodes of each dep kind, and perform
         // counting sort for `LazyNodeIndex`.
-        let mut kinds = Vec::with_capacity(DepKind::MAX as usize + 1);
+        let mut kinds = Vec::with_capacity(DepKind::NUM_VARIANTS);
         let mut offset = 0u32;
-        for _ in 0..(DepKind::MAX + 1) {
+        for _ in 0..(DepKind::NUM_VARIANTS) {
             let len = d.read_u32();
             kinds.push(LazyKindIndex { start: offset, len, map: OnceLock::new() });
             offset += len;
@@ -414,6 +424,7 @@ impl SerializedDepGraph {
             edge_list_indices,
             edge_list_data,
             reverse_index,
+            live_node_count: node_count,
             session_count,
             profiler: Some(profiler.clone()),
         })
@@ -643,7 +654,7 @@ impl EncoderState {
                     edge_count: 0,
                     node_count: 0,
                     encoder: MemEncoder::new(),
-                    kind_stats: iter::repeat_n(0, DepKind::MAX as usize + 1).collect(),
+                    kind_stats: iter::repeat_n(0, DepKind::NUM_VARIANTS).collect(),
                 })
             }),
         }
@@ -781,7 +792,7 @@ impl EncoderState {
 
         let mut encoder = self.file.lock().take().unwrap();
 
-        let mut kind_stats: Vec<u32> = iter::repeat_n(0, DepKind::MAX as usize + 1).collect();
+        let mut kind_stats: Vec<u32> = iter::repeat_n(0, DepKind::NUM_VARIANTS).collect();
 
         let mut node_max = 0;
         let mut node_count = 0;
@@ -892,14 +903,14 @@ impl GraphEncoder {
     pub(crate) fn new(
         sess: &Session,
         encoder: FileEncoder<'static>,
-        prev_node_count: usize,
+        prev_index_space_len: usize,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
         let retained_graph = sess
             .opts
             .unstable_opts
             .query_dep_graph
-            .then(|| Lock::new(RetainedDepGraph::new(prev_node_count)));
+            .then(|| Lock::new(RetainedDepGraph::new(prev_index_space_len)));
         let status = EncoderState::new(encoder, sess.opts.unstable_opts.incremental_info, previous);
         GraphEncoder { status, retained_graph, profiler: sess.prof.clone() }
     }

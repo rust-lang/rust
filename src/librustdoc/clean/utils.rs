@@ -117,18 +117,22 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     };
 
     let mut elision_has_failed_once_before = false;
+
+    // Calculates where the parent trait's generic parameters end
+    let index_offset = generics.count() - args.len();
     let clean_arg = |(index, &arg): (usize, &ty::GenericArg<'tcx>)| {
         // Elide the self type.
         if has_self && index == 0 {
             return None;
         }
 
-        let param = generics.param_at(index, cx.tcx);
+        // Skips over the parent trait's generic parameters
+        let param = generics.param_at(index + index_offset, cx.tcx);
         let arg = ty::Binder::bind_with_vars(arg, bound_vars);
 
         // Elide arguments that coincide with their default.
         if !elision_has_failed_once_before && let Some(default) = param.default_value(cx.tcx) {
-            let default = default.instantiate(cx.tcx, args.as_ref()).skip_norm_wip();
+            let default = default.instantiate(cx.tcx, args.as_ref()).skip_normalization();
             if can_elide_generic_arg(arg, arg.rebind(default)) {
                 return None;
             }

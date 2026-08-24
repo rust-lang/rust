@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use rustc_data_structures::either::Either;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_span::Symbol;
 
 use crate::*;
 
@@ -21,7 +23,7 @@ macro_rules! no_provenance {
         )+
     }
 }
-no_provenance!(i8 i16 i32 i64 isize u8 u16 u32 u64 usize bool ThreadId Deadline);
+no_provenance!(i8 i16 i32 i64 isize u8 u16 u32 u64 usize bool ThreadId Deadline Symbol);
 
 impl VisitProvenance for &'static str {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
@@ -46,6 +48,18 @@ where
     }
 }
 
+impl<T: ?Sized + VisitProvenance> VisitProvenance for Box<T> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        (**self).visit_provenance(visit);
+    }
+}
+
+impl<T: ?Sized + VisitProvenance> VisitProvenance for Rc<T> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        (**self).visit_provenance(visit);
+    }
+}
+
 impl<T: VisitProvenance> VisitProvenance for Vec<T> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         self.iter().for_each(|el| el.visit_provenance(visit));
@@ -53,6 +67,15 @@ impl<T: VisitProvenance> VisitProvenance for Vec<T> {
 }
 
 impl<K: VisitProvenance, V: VisitProvenance> VisitProvenance for BTreeMap<K, V> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        self.iter().for_each(|(key, value)| {
+            key.visit_provenance(visit);
+            value.visit_provenance(visit);
+        });
+    }
+}
+
+impl<K: VisitProvenance, V: VisitProvenance> VisitProvenance for FxHashMap<K, V> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         self.iter().for_each(|(key, value)| {
             key.visit_provenance(visit);

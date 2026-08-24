@@ -599,7 +599,7 @@ macro_rules! r#try {
 /// }
 ///
 /// let mut m = Example{};
-/// write!(&mut m, "Hello World").expect("Not written");
+/// write!(&mut m, "Hello World").expect("Writing to `Example` should succeed");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1913,7 +1913,7 @@ pub(crate) mod builtin {
         issue = "23416",
         reason = "placeholder syntax for type ascription"
     )]
-    #[rustfmt::skip]
+    #[diagnostic::opaque]
     pub macro type_ascribe($expr:expr, $ty:ty) {
         builtin # type_ascribe($expr, $ty)
     }
@@ -1925,6 +1925,7 @@ pub(crate) mod builtin {
         issue = "87121",
         reason = "placeholder syntax for deref patterns"
     )]
+    #[diagnostic::opaque]
     pub macro deref($pat:pat) {
         builtin # deref($pat)
     }

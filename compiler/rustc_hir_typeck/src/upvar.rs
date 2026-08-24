@@ -36,6 +36,7 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, HirId, find_attr};
@@ -1637,7 +1638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
-            let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, closure_span);
+            let drop_trait = self.tcx.require_lang_item(LangItem::Drop, closure_span);
             self.infcx
                 .type_implements_trait(drop_trait, [ty], self.tcx.param_env(closure_def_id))
                 .must_apply_modulo_regions()
@@ -2344,10 +2345,20 @@ fn adjust_for_non_move_closure(
         place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     match kind {
-        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
+        ty::UpvarCapture::ByValue => {
             if let Some(idx) = contains_deref {
                 truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
             }
+        }
+
+        // A non-`move`/`use` closure that only `.use`s an upvar does not need to
+        // own (and thus clone-on-capture) the value. The `ByUse` kind here can only
+        // come from a `x.use` in the body (a `use ||` capture clause goes through
+        // `adjust_for_use_closure` instead). Capturing such a place by immutable
+        // borrow lets the `.use` expression clone per evaluation, rather than also
+        // cloning the value into the closure at construction time. See #157141.
+        ty::UpvarCapture::ByUse => {
+            kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
         }
 
         ty::UpvarCapture::ByRef(..) => {}

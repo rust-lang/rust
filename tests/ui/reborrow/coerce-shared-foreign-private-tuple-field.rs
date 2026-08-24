@@ -1,5 +1,3 @@
-//@ check-pass
-
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, PhantomData, Reborrow};
@@ -18,5 +16,6 @@ struct LocalPtrMut<'a>(*const i32, PhantomData<&'a ()>);
 impl<'a> Reborrow for LocalPtrMut<'a> {}
 
 impl<'a> CoerceShared<ForeignPtrRef<'a>> for LocalPtrMut<'a> {}
+//~^ ERROR
 
 fn main() {}

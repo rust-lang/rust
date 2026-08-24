@@ -3,7 +3,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 
-// Regression test for trait-system-refactor-initiative#176.
+// Test from trait-system-refactor-initiative#176.
 //
 // Normalizing `<Vec<T> as IntoIterator>::IntoIter` has two candidates
 // inside of the function:
@@ -13,7 +13,11 @@
 //     - where-clause requires `<Vec<T> as IntoIterator>::IntoIter eq Vec<T>`
 //       - normalize `<Vec<T> as IntoIterator>::IntoIter` again, cycle
 //
-// We need to treat this cycle as an error to be able to use the actual impl.
+// The blanket impl is unfortunately also a productive cycle, so we have to
+// break this code, see trait-system-refactor-initiative#273.
+//
+// As we currently incorrectly treat aliases in the environment as rigid, this compiles
+// even with the new solver, see #158643.
 
 fn test<T>()
 where

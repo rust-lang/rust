@@ -390,3 +390,9 @@ fn issue_155746_make_mut_panic_safety() {
     assert_eq!(*arc, [[1]]);
     assert_eq!(Arc::strong_count(&arc), 1); // if this is 0, we have a UAF!
 }
+
+#[test]
+#[should_panic = "capacity overflow"]
+fn new_uninit_slice_capacity_overflow() {
+    let _ = Arc::<[u8]>::new_uninit_slice(isize::MAX as usize);
+}

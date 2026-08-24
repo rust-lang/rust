@@ -1,8 +1,8 @@
 error[E0539]: malformed `cfi_encoding` attribute input
-  --> $DIR/invalid-attr-encoding.rs:10:1
+  --> $DIR/invalid-attr-encoding.rs:10:3
    |
 LL | #[cfi_encoding]
-   | ^^^^^^^^^^^^^^^ expected this to be of the form `cfi_encoding = "..."`
+   |   ^^^^^^^^^^^^ expected this to be of the form `cfi_encoding = "..."`
    |
 help: must be of the form
    |

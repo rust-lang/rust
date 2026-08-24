@@ -2,7 +2,7 @@
 
 const _: () = {
     let f = #[rustc_comptime]
-    //~^ ERROR: `#[rustc_comptime]` attribute cannot be used on closures
+    //~^ ERROR: the `rustc_comptime` attribute cannot be used on closures
     || ();
 
     // FIXME(comptime): closures should work, too.

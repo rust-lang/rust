@@ -14,12 +14,13 @@
 
 #![crate_type = "lib"]
 #![no_core]
-#![feature(no_core, lang_items, repr_simd)]
+#![feature(no_core, lang_items)]
 
 extern crate minicore;
-use minicore::*;
 
 pub mod tests {
+    use minicore::simd::Simd;
+
     // regparm doesn't work for "fastcall" calling conv (only 2 inregs)
     // CHECK: @f1(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 noundef %_3)
     #[no_mangle]
@@ -98,8 +99,7 @@ pub mod tests {
     pub extern "C" fn f10(_: f32, _: f64, _: bool, _: i16) {}
 
     #[allow(non_camel_case_types)]
-    #[repr(simd)]
-    pub struct __m128([f32; 4]);
+    type __m128 = Simd<f32, 4>;
 
     // regparm0: @f11(i32 noundef %_1, <4 x float> %_2, i32 noundef %_3, i32 noundef %_4)
     // regparm1: @f11(i32 inreg noundef %_1, <4 x float> %_2, i32 noundef %_3, i32 noundef %_4)
@@ -111,8 +111,7 @@ pub mod tests {
     pub extern "C" fn f11(_: i32, _: __m128, _: i32, _: i32) {}
 
     #[allow(non_camel_case_types)]
-    #[repr(simd)]
-    pub struct __m256([f32; 8]);
+    type __m256 = Simd<f32, 8>;
 
     // regparm0: @f12(i32 noundef %_1, <8 x float> %_2, i32 noundef %_3, i32 noundef %_4)
     // regparm1: @f12(i32 inreg noundef %_1, <8 x float> %_2, i32 noundef %_3, i32 noundef %_4)

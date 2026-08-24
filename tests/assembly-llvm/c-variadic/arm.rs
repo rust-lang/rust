@@ -5,7 +5,6 @@
 //@ ignore-android
 #![no_std]
 #![crate_type = "lib"]
-#![feature(c_variadic)]
 
 // Check that the assembly that rustc generates matches what clang emits. This example in particular
 // is related to https://github.com/rust-lang/rust/pull/144549 and shows the effect of us correctly

@@ -1,7 +1,8 @@
 //! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
 use rustc_errors::DiagMessage;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
@@ -115,6 +116,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::fdiv_algebraic
         | sym::field_offset
         | sym::field_representing_type_actual_type_id
+        | sym::field_representing_type_name
+        | sym::field_representing_type_offset
         | sym::floorf16
         | sym::floorf32
         | sym::floorf64
@@ -163,6 +166,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minimumf128
         | sym::mul_with_overflow
         | sym::needs_drop
+        | sym::non_exhaustive
         | sym::offload
         | sym::offset_of
         | sym::overflow_checks
@@ -216,6 +220,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_eq
         | sym::type_id_field_representing_type
         | sym::type_id_fields
+        | sym::type_id_generics
+        | sym::type_id_is_signed
         | sym::type_id_variants
         | sym::type_id_vtable
         | sym::type_name
@@ -327,6 +333,7 @@ pub(crate) fn check_intrinsic_type(
             (0, 0, vec![type_id_ty(), tcx.types.usize, tcx.types.usize], type_id_ty())
         }
         sym::type_id_fields => (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.usize),
+        sym::type_id_is_signed => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_variants => (0, 0, vec![type_id_ty()], tcx.types.usize),
         sym::type_id_vtable => {
             let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
@@ -349,6 +356,22 @@ pub(crate) fn check_intrinsic_type(
             tcx.type_of(tcx.lang_items().type_struct().unwrap()).no_bound_vars().unwrap(),
         ),
         sym::field_representing_type_actual_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
+        sym::field_representing_type_name => (0, 0, vec![type_id_ty()], Ty::new_static_str(tcx)),
+        sym::field_representing_type_offset => (0, 0, vec![type_id_ty()], tcx.types.usize),
+        sym::non_exhaustive => (0, 0, vec![type_id_ty()], tcx.types.bool),
+        sym::type_id_generics => (
+            0,
+            0,
+            vec![type_id_ty()],
+            Ty::new_imm_ref(
+                tcx,
+                tcx.lifetimes.re_static,
+                Ty::new_slice(
+                    tcx,
+                    tcx.type_of(tcx.lang_items().type_generic().unwrap()).no_bound_vars().unwrap(),
+                ),
+            ),
+        ),
         sym::offload => (
             3,
             0,
@@ -619,9 +642,8 @@ pub(crate) fn check_intrinsic_type(
         }
 
         sym::discriminant_value => {
-            let assoc_items = tcx.associated_item_def_ids(
-                tcx.require_lang_item(hir::LangItem::DiscriminantKind, span),
-            );
+            let assoc_items = tcx
+                .associated_item_def_ids(tcx.require_lang_item(LangItem::DiscriminantKind, span));
             let discriminant_def_id = assoc_items[0];
 
             let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
@@ -659,9 +681,7 @@ pub(crate) fn check_intrinsic_type(
             (0, 0, vec![va_list_ref_ty], va_list_ty)
         }
 
-        sym::va_start | sym::va_end => {
-            (0, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], tcx.types.unit)
-        }
+        sym::va_end => (0, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], tcx.types.unit),
 
         sym::va_arg => (1, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], param(0)),
 

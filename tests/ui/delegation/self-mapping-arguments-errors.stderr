@@ -22,11 +22,16 @@ LL | |     }
 error[E0277]: the trait bound `(): target_expr_doesnt_relower_when_defs_inside::MyAdd` is not satisfied
   --> $DIR/self-mapping-arguments-errors.rs:14:5
    |
-LL | /     reuse impl MyAdd for W {
-...  |
-LL | |         self.0
-LL | |     }
-   | |_____^ the trait `target_expr_doesnt_relower_when_defs_inside::MyAdd` is not implemented for `()`
+LL |        reuse impl MyAdd for W {
+   |   _____^                      -
+   |  |____________________________|
+...  ||
+LL | ||         self.0
+LL | ||     }
+   | ||     ^
+   | ||_____|
+   |  |_____`{type error}` doesn't satisfy the trait bound
+   |        the trait `target_expr_doesnt_relower_when_defs_inside::MyAdd` is not implemented for `()`
    |
 help: the following other types implement trait `target_expr_doesnt_relower_when_defs_inside::MyAdd`
   --> $DIR/self-mapping-arguments-errors.rs:8:5

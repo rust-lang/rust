@@ -1,0 +1,34 @@
+error: constant evaluation is taking a long time
+  --> $DIR/lack-of-wfcheck-gat-generic-const-args.rs:11:63
+   |
+LL | type Several<'a> = dyn HasGenericAssocType<Type<'a, String, { loop {} }> = [u8]>;
+   |                                                               ^^^^^^^
+   |
+   = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+           If your compilation actually takes a long time, you can safely allow the lint
+help: the constant being evaluated
+  --> $DIR/lack-of-wfcheck-gat-generic-const-args.rs:11:61
+   |
+LL | type Several<'a> = dyn HasGenericAssocType<Type<'a, String, { loop {} }> = [u8]>;
+   |                                                             ^^^^^^^^^^^
+   = note: `#[deny(long_running_const_eval)]` on by default
+
+error[E0038]: the trait `HasGenericAssocType` is not dyn compatible
+  --> $DIR/lack-of-wfcheck-gat-generic-const-args.rs:19:12
+   |
+LL |     let _: &Several<'_>;
+   |            ^^^^^^^^^^^^ `HasGenericAssocType` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/lack-of-wfcheck-gat-generic-const-args.rs:15:10
+   |
+LL | trait HasGenericAssocType {
+   |       ------------------- this trait is not dyn compatible...
+LL |     type Type<'a: 'static, T: Copy, const N: usize>;
+   |          ^^^^ ...because it contains generic associated type `Type`
+   = help: consider moving `Type` to another trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

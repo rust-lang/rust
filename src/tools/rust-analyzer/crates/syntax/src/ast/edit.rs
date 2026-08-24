@@ -200,7 +200,7 @@ impl ast::IdentPat {
                     if let Some(last) =
                         self.syntax().last_token().filter(|it| it.kind() == WHITESPACE)
                     {
-                        last.detach();
+                        editor.delete(last);
                     }
                 }
             }
@@ -360,7 +360,7 @@ impl ast::RecordExprField {
             // shorthand `{ x }` → expand to `{ x: expr }`
             let new_field = editor
                 .make()
-                .record_expr_field(editor.make().name_ref(&name_ref.text()), Some(expr));
+                .record_expr_field(editor.make().name_ref(name_ref.text()), Some(expr));
             editor.replace(self.syntax(), new_field.syntax());
         }
     }

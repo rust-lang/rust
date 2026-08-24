@@ -261,9 +261,9 @@ For targets: `loongarch64-unknown-linux-gnu`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 5.19.16
-- Binary utilities > Version of binutils = 2.45
+- Binary utilities > Version of binutils = 2.46.1
 - C-library > glibc version = 2.36
-- C compiler > gcc version = 15.2.0
+- C compiler > gcc version = 16.1.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `loongarch64-unknown-linux-musl.defconfig`
@@ -277,9 +277,9 @@ For targets: `loongarch64-unknown-linux-musl`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 5.19.16
-- Binary utilities > Version of binutils = 2.45
+- Binary utilities > Version of binutils = 2.46.1
 - C-library > musl version = 1.2.5
-- C compiler > gcc version = 15.2.0
+- C compiler > gcc version = 16.1.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `mips-linux-gnu.defconfig`
@@ -459,6 +459,22 @@ For targets: `riscv64-unknown-linux-gnu`
 - Operating System > Linux kernel version = 4.20.17
 - Binary utilities > Version of binutils = 2.40
 - C-library > glibc version = 2.29
+- C compiler > gcc version = 8.5.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
+### `riscv64-unknown-linux-musl.defconfig`
+
+For targets: `riscv64-unknown-linux-musl`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = riscv
+- Target options > Bitness = 64-bit
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.20.17
+- Binary utilities > Version of binutils = 2.40
+- C-library > musl version = 1.2.5
 - C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 

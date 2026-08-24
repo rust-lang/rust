@@ -152,13 +152,13 @@ LL | #[diagnostic::on_unimplemented = "Message"]
    |
    = help: only `message`, `note` and `label` are allowed as options
 
-warning: `#[diagnostic::on_unimplemented]` attribute cannot be used on trait impl blocks
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:22:1
+warning: the `diagnostic::on_unimplemented` attribute cannot be used on trait impl blocks
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:22:3
    |
 LL | #[diagnostic::on_unimplemented(message = "Not allowed to apply it on a impl")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_unimplemented]` can only be applied to traits
+   = help: the `diagnostic::on_unimplemented` attribute can only be applied to traits
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: format specifiers are not permitted in diagnostic attributes

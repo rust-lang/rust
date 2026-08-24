@@ -7,7 +7,7 @@
 //@ [AMDGPU] needs-llvm-components: amdgpu
 //@ [NVPTX] compile-flags: --crate-type=rlib --target=nvptx64-nvidia-cuda
 //@ [NVPTX] needs-llvm-components: nvptx
-#![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 

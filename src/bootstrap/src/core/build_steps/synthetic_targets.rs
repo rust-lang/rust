@@ -8,7 +8,7 @@
 //! that calls create_synthetic_target.
 
 use crate::Compiler;
-use crate::core::builder::{Builder, ShouldRun, Step};
+use crate::core::builder::{Builder, Step};
 use crate::core::config::TargetSelection;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -19,14 +19,6 @@ pub(crate) struct MirOptPanicAbortSyntheticTarget {
 
 impl Step for MirOptPanicAbortSyntheticTarget {
     type Output = TargetSelection;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    fn is_default_step(_builder: &Builder<'_>) -> bool {
-        true
-    }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         create_synthetic_target(builder, self.compiler, "miropt-abort", self.base, |spec| {

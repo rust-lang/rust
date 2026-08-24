@@ -549,27 +549,6 @@ impl Default for Subcommand {
 }
 
 impl Subcommand {
-    pub fn kind(&self) -> Kind {
-        match self {
-            Subcommand::Bench { .. } => Kind::Bench,
-            Subcommand::Build { .. } => Kind::Build,
-            Subcommand::Check { .. } => Kind::Check,
-            Subcommand::Clippy { .. } => Kind::Clippy,
-            Subcommand::Doc { .. } => Kind::Doc,
-            Subcommand::Fix => Kind::Fix,
-            Subcommand::Format { .. } => Kind::Format,
-            Subcommand::Test { .. } => Kind::Test,
-            Subcommand::Miri { .. } => Kind::Miri,
-            Subcommand::Clean { .. } => Kind::Clean,
-            Subcommand::Dist => Kind::Dist,
-            Subcommand::Install => Kind::Install,
-            Subcommand::Run { .. } => Kind::Run,
-            Subcommand::Setup { .. } => Kind::Setup,
-            Subcommand::Vendor { .. } => Kind::Vendor,
-            Subcommand::Perf { .. } => Kind::Perf,
-        }
-    }
-
     pub fn compiletest_rustc_args(&self) -> Vec<&str> {
         match *self {
             Subcommand::Test { ref compiletest_rustc_args, .. } => {

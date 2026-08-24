@@ -1,6 +1,6 @@
 use rustc_abi::FieldIdx;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use rustc_middle::bug;
@@ -10,13 +10,14 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
 use tracing::{debug, instrument};
 
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 
 pub(super) struct ScalarReplacementOfAggregates;
 
 impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 2)
     }
 
     #[instrument(level = "debug", skip(self, tcx, body))]
@@ -49,10 +50,6 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
             }
         }
     }
-
-    fn is_required(&self) -> bool {
-        false
-    }
 }
 
 /// Identify all locals that are not eligible for SROA.
@@ -72,7 +69,9 @@ fn escaping_locals<'tcx>(
             return true;
         }
         if let ty::Adt(def, _args) = ty.kind()
-            && (def.repr().simd() || tcx.is_lang_item(def.did(), LangItem::DynMetadata))
+            && (def.repr().simd()
+                || def.repr().scalable()
+                || tcx.is_lang_item(def.did(), LangItem::DynMetadata))
         {
             // Exclude #[repr(simd)] types so that they are not de-optimized into an array
             // (MCP#838 banned projections into SIMD types, but if the value is unused

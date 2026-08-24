@@ -8,14 +8,15 @@
 
 use std::ops::ControlFlow;
 
-use hir::LangItem;
 use hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt, elaborate,
+    self, ExistentialPredicate, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt,
+    elaborate,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::DUMMY_SP;
@@ -131,6 +132,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation,
                         &mut candidates,
                     );
+                }
+                Some(LangItem::TryAsDyn) => {
+                    self.assemble_candidates_for_try_as_dyn(obligation, &mut candidates);
                 }
                 Some(LangItem::Field) => {
                     self.assemble_candidates_for_field_trait(obligation, &mut candidates);
@@ -661,8 +665,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return false;
         };
 
-        for &(predicate, _) in self.tcx().predicates_of(impl_def_id).predicates {
-            let ty::ClauseKind::Trait(pred) = predicate.kind().skip_binder() else { continue };
+        for &(clause, _) in self.tcx().clauses_of(impl_def_id).clauses {
+            let ty::ClauseKind::Trait(pred) = clause.kind().skip_binder() else { continue };
             if fn_ptr_trait != pred.trait_ref.def_id {
                 continue;
             }
@@ -1059,7 +1063,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             if upcast_trait_ref.def_id() == target_trait_did
                                 && let Ok(nested) = self.match_upcast_principal(
                                     obligation,
-                                    upcast_trait_ref,
+                                    ty::Unnormalized::new_wip(upcast_trait_ref),
                                     a_data,
                                     b_data,
                                     a_region,
@@ -1454,6 +1458,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 candidates.ambiguous = true;
             }
+        }
+    }
+
+    fn assemble_candidates_for_try_as_dyn(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match *obligation.predicate.self_ty().skip_binder().kind() {
+            ty::Dynamic(bounds, _lifetime) => {
+                for bound in bounds {
+                    match bound.skip_binder() {
+                        ExistentialPredicate::Trait(_) => {}
+                        // FIXME(try_as_dyn): check what kind of projections we can allow
+                        ExistentialPredicate::Projection(_) => return,
+                        // Auto traits do not affect lifetimes outside of specialization,
+                        // which is disabled in reflection.
+                        ExistentialPredicate::AutoTrait(_) => {}
+                    }
+                }
+                candidates.vec.push(TryAsDynCandidate);
+            }
+
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                candidates.ambiguous = true;
+            }
+
+            _ => {}
         }
     }
 

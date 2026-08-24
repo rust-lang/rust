@@ -11,8 +11,8 @@ use base_db::{SourceDatabase, all_crates};
 use either::Either;
 use hir::{
     Adt, AsAssocItem, DefWithBody, EditionedFileId, ExpressionStoreOwner, FileRange,
-    FileRangeWrapper, HasAttrs, HasContainer, HasSource, InFile, InFileWrapper, InRealFile,
-    InlineAsmOperand, ItemContainer, ModuleSource, PathResolution, Semantics, Visibility,
+    FileRangeWrapper, HasContainer, HasSource, InFile, InFileWrapper, InRealFile, InlineAsmOperand,
+    ItemContainer, ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -119,13 +119,13 @@ impl FileReferenceNode {
             _ => None,
         }
     }
-    pub fn text(&self) -> syntax::TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             FileReferenceNode::NameRef(name_ref) => name_ref.text(),
             FileReferenceNode::Name(name) => name.text(),
             FileReferenceNode::Lifetime(lifetime) => lifetime.text(),
             FileReferenceNode::FormatStringEntry(it, range) => {
-                syntax::TokenText::borrowed(&it.text()[*range - it.syntax().text_range().start()])
+                &it.text()[*range - it.syntax().text_range().start()]
             }
         }
     }
@@ -286,7 +286,7 @@ impl IntoIterator for SearchScope {
     }
 }
 
-impl Definition {
+impl<'db> Definition<'db> {
     fn search_scope(&self, db: &RootDatabase) -> SearchScope {
         let _p = tracing::info_span!("search_scope").entered();
 
@@ -397,24 +397,6 @@ impl Definition {
             };
         }
 
-        if let Definition::Macro(macro_def) = self {
-            return match macro_def.kind(db) {
-                hir::MacroKind::Declarative => {
-                    if macro_def.attrs(db).is_macro_export() {
-                        SearchScope::reverse_dependencies(db, module.krate(db))
-                    } else {
-                        SearchScope::krate(db, module.krate(db))
-                    }
-                }
-                hir::MacroKind::AttrBuiltIn
-                | hir::MacroKind::DeriveBuiltIn
-                | hir::MacroKind::DeclarativeBuiltIn => SearchScope::crate_graph(db),
-                hir::MacroKind::Derive | hir::MacroKind::Attr | hir::MacroKind::ProcMacro => {
-                    SearchScope::reverse_dependencies(db, module.krate(db))
-                }
-            };
-        }
-
         if let Definition::DeriveHelper(_) = self {
             return SearchScope::reverse_dependencies(db, module.krate(db));
         }
@@ -440,7 +422,7 @@ impl Definition {
         }
     }
 
-    pub fn usages<'a, 'db>(self, sema: &'a Semantics<'db, RootDatabase>) -> FindUsages<'a, 'db> {
+    pub fn usages<'a>(self, sema: &'a Semantics<'db, RootDatabase>) -> FindUsages<'a, 'db> {
         FindUsages {
             def: self,
             rename: None,
@@ -457,7 +439,7 @@ impl Definition {
 
 #[derive(Clone)]
 pub struct FindUsages<'a, 'db> {
-    def: Definition,
+    def: Definition<'db>,
     rename: Option<&'a Rename>,
     sema: &'a Semantics<'db, RootDatabase>,
     scope: Option<&'a SearchScope>,
@@ -678,7 +660,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
                 db: &RootDatabase,
                 to_process: &mut Vec<(SmolStr, SearchScope)>,
                 alias_name: &str,
-                def: Definition,
+                def: Definition<'_>,
             ) {
                 let alias = alias_name.trim_start_matches("r#").to_smolstr();
                 tracing::debug!("found alias: {alias}");
@@ -751,7 +733,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
                                     insert_type_alias(
                                         sema.db,
                                         &mut to_process,
-                                        name.text().as_str(),
+                                        name.text(),
                                         def.into(),
                                     );
                                 } else {
@@ -814,7 +796,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
                                             insert_type_alias(
                                                 sema.db,
                                                 &mut to_process,
-                                                name.text().as_str(),
+                                                name.text(),
                                                 def.into(),
                                             );
                                         } else {
@@ -1211,7 +1193,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
         file_id: EditionedFileId,
         range: TextRange,
         token: ast::String,
-        res: Either<PathResolution, InlineAsmOperand>,
+        res: Either<PathResolution<'db>, InlineAsmOperand>,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         let def = res.either(Definition::from, Definition::from);
@@ -1393,7 +1375,10 @@ impl<'a, 'db> FindUsages<'a, 'db> {
     }
 }
 
-fn def_to_ty<'db>(sema: &Semantics<'db, RootDatabase>, def: &Definition) -> Option<hir::Type<'db>> {
+fn def_to_ty<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    def: &Definition<'db>,
+) -> Option<hir::Type<'db>> {
     match def {
         Definition::Adt(adt) => Some(adt.ty(sema.db)),
         Definition::TypeAlias(it) => Some(it.ty(sema.db)),
@@ -1406,7 +1391,7 @@ fn def_to_ty<'db>(sema: &Semantics<'db, RootDatabase>, def: &Definition) -> Opti
 impl ReferenceCategory {
     fn new(
         sema: &Semantics<'_, RootDatabase>,
-        def: &Definition,
+        def: &Definition<'_>,
         r: &ast::NameRef,
     ) -> ReferenceCategory {
         let mut result = ReferenceCategory::empty();

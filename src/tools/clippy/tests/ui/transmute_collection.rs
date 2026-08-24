@@ -1,5 +1,5 @@
 #![warn(clippy::unsound_collection_transmute)]
-#![allow(clippy::missing_transmute_annotations)]
+#![expect(clippy::missing_transmute_annotations)]
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
 use std::mem::{MaybeUninit, transmute};

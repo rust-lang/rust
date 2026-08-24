@@ -54,7 +54,7 @@ fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
 
     bb0: {
         _34 = discriminant((*_1));
-        switchInt(move _34) -> [0: bb9, 3: bb12, otherwise: bb13];
+        switchInt(move _34) -> [0: bb9, 3: bb10, otherwise: bb11];
     }
 
     bb1: {
@@ -78,7 +78,7 @@ fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
         StorageDead(_5);
         nop;
         nop;
-        goto -> bb10;
+        goto -> bb4;
     }
 
     bb4: {
@@ -112,18 +112,10 @@ fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
     }
 
     bb9: {
-        goto -> bb11;
-    }
-
-    bb10: {
-        goto -> bb4;
-    }
-
-    bb11: {
         goto -> bb8;
     }
 
-    bb12: {
+    bb10: {
         StorageLive(_5);
         StorageLive(_9);
         StorageLive(_10);
@@ -135,7 +127,7 @@ fn hello_world::{closure#0}(_1: &mut {async fn body of hello_world()}) -> () {
         goto -> bb1;
     }
 
-    bb13: {
+    bb11: {
         return;
     }
 }

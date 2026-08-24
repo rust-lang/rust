@@ -1,4 +1,4 @@
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::ty::get_iterator_item_ty;
 use hir::ExprKind;
 use rustc_lint::LateContext;

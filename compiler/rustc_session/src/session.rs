@@ -1,27 +1,25 @@
 use std::any::Any;
+use std::path::Component::Prefix;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
-use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use rustc_data_structures::sync::{
-    AppendOnlyVec, DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock,
-};
+use rustc_data_structures::sync::{AppendOnlyVec, DynSend, DynSync, Lock};
+use rustc_data_structures::{Limit, flock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort, PResult,
     TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
-use rustc_hir::limit::Limit;
 use rustc_macros::StableHash;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -37,9 +35,9 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
-    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, OptLevel, OutFileName, OutputType,
-    PointerAuthOption, SwitchWithOptPath,
+    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
+    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
+    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -330,7 +328,7 @@ pub struct Session {
     pub target: Target,
     pub host: Target,
     pub opts: config::Options,
-    pub target_tlib_path: Arc<SearchPath>,
+    pub target_tlib_path: SearchPath,
     pub psess: ParseSess,
     pub unstable_features: UnstableFeatures,
     pub config: Cfg,
@@ -341,8 +339,6 @@ pub struct Session {
 
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
-
-    incr_comp_session: RwLock<IncrCompSession>,
 
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
@@ -376,11 +372,11 @@ pub struct Session {
     /// Architecture to use for interpreting asm!.
     pub asm_arch: Option<InlineAsmArch>,
 
-    /// Set of enabled features for the current target.
-    pub target_features: FxIndexSet<Symbol>,
-
-    /// Set of enabled features for the current target, including unstable ones.
-    pub unstable_target_features: FxIndexSet<Symbol>,
+    /// Set of actually enabled features for the current target, including ones that are not
+    /// in `cfg(target_feature)` because they are unstable or internal-only.
+    /// This is used by the compiler itself when it needs to know which target features are actually
+    /// going to be enabled in the backend.
+    pub internal_target_features: FxIndexSet<Symbol>,
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
@@ -397,8 +393,8 @@ pub struct Session {
     /// File paths accessed during the build.
     pub file_depinfo: Lock<FxIndexSet<Symbol>>,
 
-    target_filesearch: FileSearch,
-    host_filesearch: FileSearch,
+    target_filesearch: Arc<FileSearch>,
+    host_filesearch: Arc<FileSearch>,
 
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
@@ -689,62 +685,6 @@ impl Session {
         }
     }
 
-    pub fn init_incr_comp_session(&self, session_dir: PathBuf, lock_file: flock::Lock) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::NotInitialized = *incr_comp_session {
-        } else {
-            panic!("Trying to initialize IncrCompSession `{:?}`", *incr_comp_session)
-        }
-
-        *incr_comp_session =
-            IncrCompSession::Active { session_directory: session_dir, _lock_file: lock_file };
-    }
-
-    pub fn finalize_incr_comp_session(&self, new_directory_path: PathBuf) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::Active { .. } = *incr_comp_session {
-        } else {
-            panic!("trying to finalize `IncrCompSession` `{:?}`", *incr_comp_session);
-        }
-
-        // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::Finalized { session_directory: new_directory_path };
-    }
-
-    pub fn mark_incr_comp_session_as_invalid(&self) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        let session_directory = match *incr_comp_session {
-            IncrCompSession::Active { ref session_directory, .. } => session_directory.clone(),
-            IncrCompSession::InvalidBecauseOfErrors { .. } => return,
-            _ => panic!("trying to invalidate `IncrCompSession` `{:?}`", *incr_comp_session),
-        };
-
-        // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
-    }
-
-    pub fn incr_comp_session_dir(&self) -> MappedReadGuard<'_, PathBuf> {
-        let incr_comp_session = self.incr_comp_session.borrow();
-        ReadGuard::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
-            IncrCompSession::NotInitialized => panic!(
-                "trying to get session directory from `IncrCompSession`: {:?}",
-                *incr_comp_session,
-            ),
-            IncrCompSession::Active { ref session_directory, .. }
-            | IncrCompSession::Finalized { ref session_directory }
-            | IncrCompSession::InvalidBecauseOfErrors { ref session_directory } => {
-                session_directory
-            }
-        })
-    }
-
-    pub fn incr_comp_session_dir_opt(&self) -> Option<MappedReadGuard<'_, PathBuf>> {
-        self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
-    }
-
     /// Is this edition 2015?
     pub fn is_rust_2015(&self) -> bool {
         self.edition().is_rust_2015()
@@ -831,6 +771,41 @@ impl Session {
         match self.lint_store {
             Some(ref lint_store) => lint_store.lint_groups_iter(),
             None => Box::new(std::iter::empty()),
+        }
+    }
+
+    /// Resolves a `path` mentioned inside Rust code, returning an absolute path.
+    ///
+    /// This unifies the logic used for resolving `include_*!` and debugger visualizers.
+    pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PResult<'_, PathBuf> {
+        let path = path.into();
+
+        // Relative paths are resolved relative to the file in which they are found
+        // after macro expansion (that is, they are unhygienic).
+        if !path.is_absolute() {
+            let callsite = span.source_callsite();
+            let source_map = self.source_map();
+            let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path()
+            else {
+                return Err(self.dcx().create_err(diagnostics::ResolveRelativePath {
+                    span,
+                    path: source_map
+                        .filename_for_diagnostics(&source_map.span_to_filename(callsite))
+                        .to_string(),
+                }));
+            };
+            base_path.pop();
+            base_path.push(path);
+            Ok(base_path)
+        } else {
+            // This ensures that Windows verbatim paths are fixed if mixed path separators are used,
+            // which can happen when `concat!` is used to join paths.
+            match path.components().next() {
+                Some(Prefix(prefix)) if prefix.kind().is_verbatim() => {
+                    Ok(path.components().collect())
+                }
+                _ => Ok(path),
+            }
         }
     }
 }
@@ -1017,6 +992,30 @@ impl Session {
         }
     }
 
+    /// Returns the `-Zbranch-protection` info. Note that it is adjusted to the current target, e.g.
+    /// some targets only support certain Pointer Authentication Code keys.
+    ///
+    /// Accessing the session's unstable `branch_protection` option fields directly is linted
+    /// against.
+    pub fn branch_protection(&self) -> Option<BranchProtection> {
+        let mut bp = self.opts.unstable_opts.branch_protection;
+
+        if let Some(bp) = bp.as_mut() {
+            // Windows on Arm only supports PAC Key B for return address signing, as shown in
+            // https://github.com/llvm/llvm-project/pull/203989. We parse the CLI flags for branch
+            // protection and target separately though, so we adjust this possible discrepancy here.
+            if self.target.os == Os::Windows && self.target.arch == Arch::AArch64 {
+                if let Some(pac_ret) = bp.pac_ret.as_mut()
+                    && pac_ret.key == PAuthKey::A
+                {
+                    pac_ret.key = PAuthKey::B;
+                }
+            }
+        }
+
+        bp
+    }
+
     pub fn must_emit_unwind_tables(&self) -> bool {
         // This is used to control the emission of the `uwtable` attribute on
         // LLVM functions. The `uwtable` attribute according to LLVM is:
@@ -1052,15 +1051,6 @@ impl Session {
                 .cg
                 .force_unwind_tables
                 .unwrap_or(self.panic_strategy().unwinds() || self.target.default_uwtable)
-    }
-
-    /// Returns the number of threads used for the thread pool.
-    ///
-    /// `None` means thread pool is not used and synchronization is disabled.
-    /// `Some(n)` means synchronization is enabled with `n` worker threads.
-    #[inline]
-    pub fn threads(&self) -> Option<usize> {
-        self.opts.unstable_opts.threads
     }
 
     /// Returns the number of codegen units that should be used for this
@@ -1331,15 +1321,8 @@ pub fn build_session(
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
     // FIXME use host sysroot?
-    let host_tlib_path =
-        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple));
-    let target_tlib_path = if host_triple == target_triple {
-        // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
-        // rescanning of the target lib path and an unnecessary allocation.
-        Arc::clone(&host_tlib_path)
-    } else {
-        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple))
-    };
+    let host_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple);
+    let target_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple);
 
     let prof = SelfProfilerRef::new(
         self_profiler,
@@ -1353,9 +1336,22 @@ pub fn build_session(
     });
 
     let asm_arch = if target.allow_asm { InlineAsmArch::from_arch(&target.arch) } else { None };
-    let target_filesearch =
-        filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
-    let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
+    let target_filesearch = Arc::new(filesearch::FileSearch::new(
+        &sopts.search_paths,
+        &target_tlib_path,
+        &target,
+        sopts.unstable_opts.implicit_sysroot_deps,
+    ));
+    let host_filesearch = if target == host {
+        Arc::clone(&target_filesearch)
+    } else {
+        Arc::new(filesearch::FileSearch::new(
+            &sopts.search_paths,
+            &host_tlib_path,
+            &host,
+            sopts.unstable_opts.implicit_sysroot_deps,
+        ))
+    };
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
@@ -1373,7 +1369,6 @@ pub fn build_session(
         check_config: CheckCfg::default(),
         proc_macro_quoted_spans: Default::default(),
         io,
-        incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         timings,
         code_stats: Default::default(),
@@ -1382,8 +1377,7 @@ pub fn build_session(
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
-        target_features: Default::default(),
-        unstable_target_features: Default::default(),
+        internal_target_features: Default::default(),
         cfg_version,
         using_internal_features,
         env_depinfo: Default::default(),
@@ -1630,10 +1624,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.unstable_opts.instrument_mcount == InstrumentMcount::Fentry
-        && !sess.target.options.supports_fentry
-    {
-        sess.dcx().emit_err(diagnostics::InstrumentationNotSupported { us: "fentry".to_string() });
+    if let InstrumentMcount::Fentry(opts) = sess.opts.unstable_opts.instrument_mcount {
+        if !sess.target.options.supports_fentry {
+            sess.dcx()
+                .emit_err(diagnostics::InstrumentationNotSupported { us: "fentry".to_string() });
+        }
+        if (opts.no_call || opts.record) && sess.target.arch != Arch::S390x {
+            sess.dcx()
+                .emit_err(diagnostics::InstrumentationNotSupported { us: "fentry-*".to_string() });
+        }
     }
 
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {
@@ -1695,26 +1694,27 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             sess.dcx().emit_err(diagnostics::UnsupportedPackedStack);
         }
     }
+
+    if let Some(ref cpu_name) = sess.opts.cg.target_cpu {
+        if cpu_name == NATIVE_CPU && sess.target.requires_consistent_cpu {
+            sess.dcx().emit_fatal(diagnostics::NativeTargetCpuNotAllowed {
+                target_triple: &sess.opts.target_triple,
+                need_explicit_cpu: sess.target.need_explicit_cpu,
+            });
+        }
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.
-#[derive(Debug)]
-enum IncrCompSession {
-    /// This is the state the session will be in until the incr. comp. dir is
-    /// needed.
-    NotInitialized,
-    /// This is the state during which the session directory is private and can
-    /// be modified. `_lock_file` is never directly used, but its presence
+pub struct IncrCompSession {
+    /// The directory containing all cached data. Cached data from a previous
+    /// session can be read out of it and new data for the current session will
+    /// be written into it.
+    pub session_directory: PathBuf,
+    /// `_lock_file` is never directly used, but its presence
     /// alone has an effect, because the file will unlock when the session is
     /// dropped.
-    Active { session_directory: PathBuf, _lock_file: flock::Lock },
-    /// This is the state after the session directory has been finalized. In this
-    /// state, the contents of the directory must not be modified any more.
-    Finalized { session_directory: PathBuf },
-    /// This is an error state that is reached when some compilation error has
-    /// occurred. It indicates that the contents of the session directory must
-    /// not be used, since they might be invalid.
-    InvalidBecauseOfErrors { session_directory: PathBuf },
+    pub _lock_file: flock::Lock,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.

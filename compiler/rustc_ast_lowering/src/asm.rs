@@ -93,7 +93,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 match asm::InlineAsmClobberAbi::parse(
                     asm_arch,
                     &self.tcx.sess.target,
-                    &self.tcx.sess.unstable_target_features,
+                    &self.tcx.sess.internal_target_features,
                     *abi_name,
                 ) {
                     Ok(abi) => {

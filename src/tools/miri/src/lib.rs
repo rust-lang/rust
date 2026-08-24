@@ -29,12 +29,8 @@
 #![feature(uint_carryless_mul)]
 // Configure clippy and other lints
 #![allow(
-    clippy::collapsible_else_if,
     clippy::collapsible_if,
-    clippy::if_same_then_else,
-    clippy::comparison_chain,
     clippy::enum_variant_names,
-    clippy::field_reassign_with_default,
     clippy::manual_map,
     clippy::neg_cmp_op_on_partial_ord,
     clippy::new_without_default,
@@ -49,8 +45,6 @@
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
-    clippy::collapsible_match,
-    clippy::question_mark,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]
@@ -110,7 +104,7 @@ pub use rustc_const_eval::interpret::*;
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
 pub use rustc_data_structures::either::Either;
-pub use rustc_log::tracing::{self, info, trace};
+pub use rustc_log::tracing::{self, info, trace, warn};
 pub use rustc_middle::{bug, span_bug};
 
 #[cfg(all(feature = "native-lib", unix))]
@@ -146,6 +140,7 @@ pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
 };
 pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceRef};
+pub use crate::concurrency::scheduler::EvalContextExt as _;
 pub use crate::concurrency::sync::{CondvarRef, EvalContextExt as _, MutexRef, RwLockRef};
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
@@ -175,8 +170,8 @@ pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::EvalContextExt as _;
 pub use crate::shims::readiness::{
-    EvalContextExt as _, Readiness, ReadinessInterest, ReadinessInterestKey,
-    ReadinessInterestTable, ReadinessWatcher,
+    EvalContextExt as _, Readiness, ReadinessInterest, ReadinessUpdateFlags, ReadinessWatched,
+    ReadinessWatcher,
 };
 pub use crate::shims::sig::EvalContextExt as _;
 pub use crate::shims::time::EvalContextExt as _;

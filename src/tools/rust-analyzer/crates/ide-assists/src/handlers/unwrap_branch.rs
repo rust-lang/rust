@@ -832,6 +832,25 @@ fn main() {
     }
 
     #[test]
+    fn regression_22759() {
+        check_assist(
+            unwrap_branch,
+            r#"
+fn main() {
+    match () {
+        () $0=> let x = (),
+    }
+}
+"#,
+            r#"
+fn main() {
+    let x = ()
+}
+"#,
+        );
+    }
+
+    #[test]
     fn simple_if_in_while_bad_cursor_position() {
         check_assist_not_applicable(
             unwrap_branch,

@@ -4,7 +4,7 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Symbol, sym};
 
-use crate::lints::{NonBindingLet, NonBindingLetSub};
+use crate::diagnostics::{NonBindingLet, NonBindingLetSub};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

@@ -3,7 +3,6 @@
 // Creating a function pointer from a method on an `&dyn T` value creates a ReifyShim.
 // This shim cannot reliably forward C-variadic arguments. Thus the trait as a whole
 // is dyn-incompatible to prevent invalid shims from being created.
-#![feature(c_variadic)]
 
 #[repr(transparent)]
 struct Struct(u64);

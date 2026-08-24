@@ -5,5 +5,5 @@
 #![feature(abort_unwind)]
 
 fn main() {
-    std::panic::abort_unwind(|| panic!("PANIC!!!"));
+    std::panic::abort_on_unwind(|| panic!("PANIC!!!"));
 }

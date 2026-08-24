@@ -7,7 +7,6 @@ use rustc_middle::{mir, throw_ub_format};
 
 use super::GenmcScalar;
 use crate::alloc_addresses::EvalContextExt as _;
-use crate::intrinsics::AtomicRmwOp;
 use crate::*;
 
 /// Maximum size memory access in bytes that GenMC supports.
@@ -177,6 +176,7 @@ pub(super) fn to_genmc_rmw_op(atomic_op: AtomicRmwOp, is_signed: bool) -> RMWBin
         (AtomicRmwOp::Max, true) => RMWBinOp::Max,
         (AtomicRmwOp::Min, false) => RMWBinOp::UMin,
         (AtomicRmwOp::Max, false) => RMWBinOp::UMax,
+        (AtomicRmwOp::Swap, _is_signed) => RMWBinOp::Xchg,
         (AtomicRmwOp::MirOp { op, neg }, _is_signed) =>
             match (op, neg) {
                 (mir::BinOp::Add, false) => RMWBinOp::Add,

@@ -1,5 +1,5 @@
 error: constant C cannot be used as pattern
-  --> $DIR/cyclic-const-long-chain-issue-144719.rs:22:12
+  --> $DIR/cyclic-const-long-chain-issue-144719.rs:21:12
    |
 LL |     if let C = C {}
    |            ^

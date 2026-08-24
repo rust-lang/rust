@@ -6,6 +6,8 @@ use std::ops::Range;
 use std::str::CharIndices;
 
 use itertools::Itertools as _;
+use rustc_ast::attr::AttributeExt;
+use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_hir::HirId;
 use rustc_resolve::rustdoc::pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag, TagEnd};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
@@ -16,7 +18,7 @@ use crate::html::markdown::main_body_opts;
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
     let tcx = cx.tcx;
-    let report_diag = |msg: String, range: &Range<usize>, is_open_tag: bool| {
+    let report_diag = |msg: String, range: &Range<usize>, mode: HtmlDiagMode| {
         let sp = match source_span_for_markdown_range(tcx, dox, range, &item.attrs.doc_strings) {
             Some((sp, _)) => sp,
             None => item.attr_span(tcx),
@@ -34,7 +36,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                 // We don't try to detect stuff `<like, this>` because that's not valid HTML,
                 // and we don't try to detect stuff `<like this>` because that's not valid Rust.
                 let mut generics_end = range.end;
-                if is_open_tag
+                if mode == HtmlDiagMode::Unclosed
                     && dox[..generics_end].ends_with('>')
                     && let Some(mut generics_start) = extract_path_backwards(dox, range.start)
                 {
@@ -103,6 +105,78 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                         ],
                         Applicability::MaybeIncorrect,
                     );
+                } else if let HtmlDiagMode::Unopened { possible_pair: Some(possible_pair) } = mode {
+                    let (reason_display_text, reason_range) = match possible_pair.reason {
+                        HtmlOrMarkdownTag::Markdown(tag @ TagEnd::Paragraph, range)
+                            if dox.as_bytes().get(range.end) == Some(&b'>') =>
+                        {
+                            (
+                                format!(
+                                    "because the Markdown {} is interrupted by this block quote",
+                                    markdown_tag_name(tag)
+                                ),
+                                range.end..range.end,
+                            )
+                        }
+                        HtmlOrMarkdownTag::Markdown(
+                            tag @ (TagEnd::Paragraph | TagEnd::TableCell),
+                            range,
+                        ) => (
+                            format!("because the Markdown {} ends here", markdown_tag_name(tag)),
+                            range.end..range.end,
+                        ),
+                        HtmlOrMarkdownTag::Markdown(tag, range) => {
+                            (format!("because of this Markdown {}", markdown_tag_name(tag)), range)
+                        }
+                        HtmlOrMarkdownTag::Html(name, range) => {
+                            (format!("because of this HTML `{name}`"), range)
+                        }
+                    };
+                    if let HtmlOrMarkdownTag::Html(_, unclosed_tag_range) =
+                        possible_pair.unclosed_tag
+                        && let Some((unclosed_tag_span, _)) = source_span_for_markdown_range(
+                            tcx,
+                            dox,
+                            &unclosed_tag_range,
+                            &item.attrs.doc_strings,
+                        )
+                    {
+                        lint.span_label(sp, "this unopened tag");
+                        lint.span_label(unclosed_tag_span, "does not match this unclosed tag");
+                    }
+                    if let Some((reason_span, _)) = source_span_for_markdown_range(
+                        tcx,
+                        dox,
+                        &reason_range,
+                        &item.attrs.doc_strings,
+                    ) {
+                        lint.span_label(reason_span, reason_display_text);
+                    }
+                } else if let HtmlDiagMode::MarkdownNestedInRawText(html_tag_range, html_tag) = mode {
+                    lint.span_label(sp, format!("Markdown translates this into HTML, but the browser parses it as {language}", language = html_tag.language()));
+                    if
+                        // get the span for this diagnostic, if possible
+                        let Some((html_tag_span, _)) = source_span_for_markdown_range(
+                            tcx,
+                            dox,
+                            &html_tag_range,
+                            &item.attrs.doc_strings,
+                        ) &&
+                        // this suggestion is only implemented for line doc comments
+                        item.attrs.doc_strings.iter().all(|f| f.kind == DocFragmentKind::Sugared(CommentKind::Line)) &&
+                        // this suggestion is only implemented if every line doc comment has the same position (either outer or inner)
+                        let Some(def_id) = item.def_id() &&
+                        let mut style_iter = inline::load_attrs(cx.tcx, def_id).iter().filter_map(|attr| attr.doc_resolution_scope()) &&
+                        let Some(doc_attr_style) = style_iter.next() &&
+                        style_iter.all(|style| style == doc_attr_style)
+                    {
+                        lint.span_suggestion(
+                            html_tag_span,
+                            "to turn off Markdown parsing, put the tag at the start of the line",
+                            format!("\n{mark} {doc}", mark=doc_attr_style.line_doc_comment_prefix(), doc=&dox[html_tag_range.clone()]),
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
             }),
         );
@@ -110,7 +184,6 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
 
     let mut tagp = TagParser::new();
     let mut is_in_comment = None;
-    let mut in_code_block = false;
 
     let link_names = item.link_names(&cx.cache);
 
@@ -148,37 +221,63 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
 
     for (event, range) in p {
         match event {
-            Event::Start(Tag::CodeBlock(_)) => in_code_block = true,
-            Event::Html(text) | Event::InlineHtml(text) if !in_code_block => {
+            Event::Html(text) | Event::InlineHtml(text) => {
                 tagp.extract_tags(&text, range, &mut is_in_comment, &report_diag)
             }
-            Event::End(TagEnd::CodeBlock) => in_code_block = false,
+            Event::Start(Tag::HtmlBlock) | Event::End(TagEnd::HtmlBlock) => {}
+            Event::Start(tag) => {
+                tagp.push_markdown_tag(tag.into(), range, &report_diag);
+            }
+            Event::End(tag) => {
+                tagp.pop_markdown_tag(tag, range, &report_diag);
+            }
             _ => {}
         }
     }
 
     if let Some(range) = is_in_comment {
-        report_diag("Unclosed HTML comment".to_string(), &range, false);
+        report_diag("Unclosed HTML comment".to_string(), &range, HtmlDiagMode::Incomplete);
     } else if let &Some(quote_pos) = &tagp.quote_pos {
         let qr = Range { start: quote_pos, end: quote_pos };
         report_diag(
             format!("unclosed quoted HTML attribute on tag `{}`", &tagp.tag_name),
             &qr,
-            false,
+            HtmlDiagMode::Incomplete,
         );
     } else {
         if !tagp.tag_name.is_empty() {
             report_diag(
                 format!("incomplete HTML tag `{}`", &tagp.tag_name),
                 &(tagp.tag_start_pos..dox.len()),
-                false,
+                HtmlDiagMode::Incomplete,
             );
         }
-        for (tag, range) in tagp.tags.iter().filter(|(t, _)| {
-            let t = t.to_lowercase();
-            !is_implicitly_self_closing(&t)
-        }) {
-            report_diag(format!("unclosed HTML tag `{tag}`"), range, true);
+        for tag in tagp.tags.iter().chain(
+            tagp.unclosed_tag_buf
+                .iter()
+                .map(|buffered_unclosed_tag| &buffered_unclosed_tag.unclosed_tag),
+        ) {
+            match tag {
+                HtmlOrMarkdownTag::Html(tag, range) => {
+                    if !is_implicitly_self_closing(&tag.to_ascii_lowercase()) {
+                        report_diag(
+                            format!("unclosed HTML tag `{tag}`"),
+                            range,
+                            HtmlDiagMode::Unclosed,
+                        );
+                    }
+                }
+                HtmlOrMarkdownTag::Markdown(tag, range) => {
+                    report_diag(
+                        format!(
+                            "invalid tree with Markdown delimiter `{tag_name}`",
+                            tag_name = markdown_tag_name(*tag)
+                        ),
+                        range,
+                        HtmlDiagMode::Unclosed,
+                    );
+                }
+            }
         }
     }
 }
@@ -254,10 +353,68 @@ fn is_valid_for_html_tag_name(c: char, is_empty: bool) -> bool {
     c.is_ascii_alphabetic() || !is_empty && (c == '-' || c.is_ascii_digit())
 }
 
+#[derive(Eq, PartialEq, Debug, Clone)]
+enum HtmlOrMarkdownTag {
+    Html(String, Range<usize>),
+    Markdown(TagEnd, Range<usize>),
+}
+
+impl HtmlOrMarkdownTag {
+    fn range(&self) -> Range<usize> {
+        match self {
+            HtmlOrMarkdownTag::Html(_, range) => range.clone(),
+            HtmlOrMarkdownTag::Markdown(_, range) => range.clone(),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Debug, Clone)]
+struct BufferedUnclosedTag {
+    unclosed_tag: HtmlOrMarkdownTag,
+    reason: HtmlOrMarkdownTag,
+}
+
+#[derive(Eq, PartialEq, Debug, Clone, Copy)]
+enum HtmlRawTextTag {
+    Script,
+    Style,
+}
+
+impl HtmlRawTextTag {
+    fn name(self) -> &'static str {
+        match self {
+            HtmlRawTextTag::Script => "script",
+            HtmlRawTextTag::Style => "style",
+        }
+    }
+    fn language(self) -> &'static str {
+        match self {
+            HtmlRawTextTag::Script => "JavaScript",
+            HtmlRawTextTag::Style => "CSS",
+        }
+    }
+    fn from_tag(tag: &str) -> Option<HtmlRawTextTag> {
+        match &tag.to_ascii_lowercase() {
+            "script" => Some(HtmlRawTextTag::Script),
+            "style" => Some(HtmlRawTextTag::Style),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Debug, Clone)]
+enum HtmlDiagMode {
+    Unclosed,
+    Unopened { possible_pair: Option<BufferedUnclosedTag> },
+    Incomplete,
+    MarkdownNestedInRawText(Range<usize>, HtmlRawTextTag),
+}
+
 /// Parse html tags to ensure they are well-formed
 #[derive(Debug, Clone)]
 struct TagParser {
-    tags: Vec<(String, Range<usize>)>,
+    tags: Vec<HtmlOrMarkdownTag>,
+    unclosed_tag_buf: Vec<BufferedUnclosedTag>,
     /// Name of the tag that is being parsed, if we are within a tag.
     ///
     /// Since the `<` and name of a tag must appear on the same line with no whitespace,
@@ -279,6 +436,7 @@ impl TagParser {
     fn new() -> Self {
         Self {
             tags: Vec::new(),
+            unclosed_tag_buf: Vec::new(),
             tag_name: String::with_capacity(8),
             tag_start_pos: 0,
             is_closing: false,
@@ -289,34 +447,58 @@ impl TagParser {
         }
     }
 
-    fn drop_tag(&mut self, range: Range<usize>, f: &impl Fn(String, &Range<usize>, bool)) {
-        let tag_name_low = self.tag_name.to_lowercase();
-        if let Some(pos) = self.tags.iter().rposition(|(t, _)| t.to_lowercase() == tag_name_low) {
+    fn drop_tag(&mut self, range: Range<usize>, f: &impl Fn(String, &Range<usize>, HtmlDiagMode)) {
+        let tag_name_low = self.tag_name.to_ascii_lowercase();
+        let tag_name_is_match = |tag: &HtmlOrMarkdownTag| match tag {
+            HtmlOrMarkdownTag::Html(name, _span) => name.to_ascii_lowercase() == tag_name_low,
+            HtmlOrMarkdownTag::Markdown(..) => false,
+        };
+        if let Some(pos) = self.tags.iter().rposition(tag_name_is_match) {
             // If the tag is nested inside a "<script>" or a "<style>" tag, no warning should
             // be emitted.
-            let should_not_warn = self.tags.iter().take(pos + 1).any(|(at, _)| {
-                let at = at.to_lowercase();
-                at == "script" || at == "style"
+            let should_not_warn = self.tags.iter().take(pos + 1).any(|tag| match tag {
+                HtmlOrMarkdownTag::Html(at, _span) => HtmlRawTextTag::from_tag(at).is_some(),
+                HtmlOrMarkdownTag::Markdown(..) => false,
             });
-            for (last_tag_name, last_tag_span) in self.tags.drain(pos + 1..) {
-                if should_not_warn {
-                    continue;
-                }
-                let last_tag_name_low = last_tag_name.to_lowercase();
-                if is_implicitly_self_closing(&last_tag_name_low) {
-                    continue;
-                }
+            if should_not_warn {
+                // HTML tags nested within <script> should just be ignored.
+                //
+                // Markdown tags already produce a warning when added as children of
+                // raw text HTML elements, so we want to avoid producing a redundant
+                // warning for improper nesting.
+                self.tags
+                    .extract_if(pos.., |tag| matches!(tag, HtmlOrMarkdownTag::Html(..)))
+                    .for_each(|_| ());
+            } else {
+                let (HtmlOrMarkdownTag::Html(_, start_range)
+                | HtmlOrMarkdownTag::Markdown(_, start_range)) = &self.tags[pos];
+                let range = start_range.start..range.end;
                 // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
                 // So `<h2><h3></h2>` will look like `["h2", "h3"]`. So when closing `h2`, we will still
                 // have `h3`, meaning the tag wasn't closed as it should have.
-                f(format!("unclosed HTML tag `{last_tag_name}`"), &last_tag_span, true);
+                self.unclosed_tag_buf.extend(self.tags.drain(pos + 1..).map(|unclosed_tag| {
+                    BufferedUnclosedTag {
+                        unclosed_tag,
+                        reason: HtmlOrMarkdownTag::Html(self.tag_name.clone(), range.clone()),
+                    }
+                }));
+                // Remove the `tag_name` that was originally closed
+                self.tags.pop();
             }
-            // Remove the `tag_name` that was originally closed
-            self.tags.pop();
-        } else {
+        } else if !self.tags.iter().any(|tag| match tag {
+            HtmlOrMarkdownTag::Html(at, _span) => HtmlRawTextTag::from_tag(at).is_some(),
+            HtmlOrMarkdownTag::Markdown(..) => false,
+        }) {
             // It can happen for example in this case: `<h2></script></h2>` (the `h2` tag isn't required
             // but it helps for the visualization).
-            f(format!("unopened HTML tag `{}`", &self.tag_name), &range, false);
+            let mode = HtmlDiagMode::Unopened {
+                possible_pair: self
+                    .unclosed_tag_buf
+                    .iter()
+                    .rposition(|buf| tag_name_is_match(&buf.unclosed_tag))
+                    .map(|pos| self.unclosed_tag_buf.remove(pos)),
+            };
+            f(format!("unopened HTML tag `{}`", &self.tag_name), &range, mode);
         }
     }
 
@@ -325,7 +507,7 @@ impl TagParser {
         &mut self,
         range: Range<usize>,
         lt_pos: usize,
-        f: &impl Fn(String, &Range<usize>, bool),
+        f: &impl Fn(String, &Range<usize>, HtmlDiagMode),
     ) {
         let global_pos = range.start + lt_pos;
         // is this check needed?
@@ -337,7 +519,7 @@ impl TagParser {
         f(
             format!("incomplete HTML tag `{}`", &self.tag_name),
             &(self.tag_start_pos..global_pos),
-            false,
+            HtmlDiagMode::Incomplete,
         );
         self.tag_parsed();
     }
@@ -348,7 +530,7 @@ impl TagParser {
         range: &Range<usize>,
         start_pos: usize,
         iter: &mut Peekable<CharIndices<'_>>,
-        f: &impl Fn(String, &Range<usize>, bool),
+        f: &impl Fn(String, &Range<usize>, HtmlDiagMode),
     ) {
         let mut prev_pos = start_pos;
 
@@ -419,7 +601,7 @@ impl TagParser {
         pos: usize,
         c: char,
         iter: &mut Peekable<CharIndices<'_>>,
-        f: &impl Fn(String, &Range<usize>, bool),
+        f: &impl Fn(String, &Range<usize>, HtmlDiagMode),
     ) {
         // we can store this as a local, since html5 does require the `/` and `>`
         // to not be separated by whitespace.
@@ -469,15 +651,22 @@ impl TagParser {
         if is_self_closing {
             // https://html.spec.whatwg.org/#parse-error-non-void-html-element-start-tag-with-trailing-solidus
             let valid = ALLOWED_UNCLOSED.contains(&&self.tag_name[..])
-                || self.tags.iter().take(pos + 1).any(|(at, _)| {
-                    let at = at.to_lowercase();
-                    at == "svg" || at == "math"
+                || self.tags.iter().take(pos + 1).any(|tag| match tag {
+                    HtmlOrMarkdownTag::Html(at, _) => {
+                        let at = at.to_ascii_lowercase();
+                        at == "svg" || at == "math"
+                    }
+                    HtmlOrMarkdownTag::Markdown(..) => false,
                 });
             if !valid {
-                f(format!("invalid self-closing HTML tag `{}`", self.tag_name), &r, false);
+                f(
+                    format!("invalid self-closing HTML tag `{}`", self.tag_name),
+                    &r,
+                    HtmlDiagMode::Incomplete,
+                );
             }
         } else if !self.tag_name.is_empty() {
-            self.tags.push((std::mem::take(&mut self.tag_name), r));
+            self.tags.push(HtmlOrMarkdownTag::Html(std::mem::take(&mut self.tag_name), r));
         }
         self.tag_parsed();
     }
@@ -493,7 +682,7 @@ impl TagParser {
         text: &str,
         range: Range<usize>,
         is_in_comment: &mut Option<Range<usize>>,
-        f: &impl Fn(String, &Range<usize>, bool),
+        f: &impl Fn(String, &Range<usize>, HtmlDiagMode),
     ) {
         let mut iter = text.char_indices().peekable();
         let mut prev_pos = 0;
@@ -539,6 +728,123 @@ impl TagParser {
                 self.extract_html_tag(text, &range, start_pos, &mut iter, f);
             }
         }
+    }
+
+    fn push_markdown_tag(
+        &mut self,
+        tag: TagEnd,
+        range: Range<usize>,
+        f: &impl Fn(String, &Range<usize>, HtmlDiagMode),
+    ) {
+        // If the tag is nested inside a "<script>" or a "<style>" tag, unconditionally warn.
+        let script_or_style_tag = self.tags.iter().find_map(|tag| match tag {
+            HtmlOrMarkdownTag::Html(at, _span) => {
+                Some((HtmlRawTextTag::from_tag(at)?, tag.range()))
+            }
+            HtmlOrMarkdownTag::Markdown(..) => None,
+        });
+        if let Some((html_tag, tag_range)) = script_or_style_tag {
+            f(
+                format!(
+                    "nested Markdown {} in HTML `{}` tag",
+                    markdown_tag_name(tag),
+                    html_tag.name()
+                ),
+                &range,
+                HtmlDiagMode::MarkdownNestedInRawText(tag_range.clone(), html_tag),
+            );
+        }
+        self.tags.push(HtmlOrMarkdownTag::Markdown(tag, range));
+    }
+
+    fn pop_markdown_tag(
+        &mut self,
+        tag_end: TagEnd,
+        range: Range<usize>,
+        f: &impl Fn(String, &Range<usize>, HtmlDiagMode),
+    ) {
+        let tag_is_match = |tag: &HtmlOrMarkdownTag| match tag {
+            HtmlOrMarkdownTag::Html(..) => false,
+            HtmlOrMarkdownTag::Markdown(last_tag, _span) => *last_tag == tag_end,
+        };
+        if let Some(pos) = self.tags.iter().rposition(tag_is_match) {
+            // If the tag is interleaved with a "<script>" or a "<style>" tag,
+            // give a different warning.
+            //
+            // Notice the `skip(pos + 1)` is here to catch `*a <script> b*`:
+            // the case where an MD is *properly* nested within the tag is already
+            // covered by `push_markdown_tag`.
+            let script_or_style_tag = self.tags.iter().skip(pos + 1).find_map(|tag| match tag {
+                HtmlOrMarkdownTag::Html(at, _span) => {
+                    Some((HtmlRawTextTag::from_tag(at)?, tag.range()))
+                }
+                HtmlOrMarkdownTag::Markdown(..) => None,
+            });
+            if let Some((tag, tag_range)) = script_or_style_tag {
+                f(
+                    format!(
+                        "improperly nested Markdown {} in HTML `{}` tag",
+                        markdown_tag_name(tag_end),
+                        tag.name()
+                    ),
+                    &range,
+                    HtmlDiagMode::MarkdownNestedInRawText(tag_range.clone(), tag),
+                );
+                self.tags.truncate(pos);
+                // Do not implicitly close a raw text tag when its nesting Markdown closes it.
+                // This silences the "unopened script tag" warning that you would get from:
+                //
+                //     <script>a *b c</script> d*
+                self.tags.push(HtmlOrMarkdownTag::Html(tag.name().to_owned(), tag_range));
+            } else {
+                // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
+                // So `*<span>*` will look like `["*", "span"]`. So when closing `*`, we will still
+                // have `span`, meaning the tag wasn't closed as it should have.
+                self.unclosed_tag_buf.extend(self.tags.drain(pos + 1..).map(|unclosed_tag| {
+                    BufferedUnclosedTag {
+                        unclosed_tag,
+                        reason: HtmlOrMarkdownTag::Markdown(tag_end, range.clone()),
+                    }
+                }));
+                // Remove the tag that was originally closed
+                self.tags.pop();
+            }
+        } else {
+            // It can happen for example in this case: `<h2></script></h2>` (the `h2` tag isn't required
+            // but it helps for the visualization).
+            let mode = HtmlDiagMode::Unopened {
+                possible_pair: self
+                    .unclosed_tag_buf
+                    .iter()
+                    .rposition(|buf| tag_is_match(&buf.unclosed_tag))
+                    .map(|pos| self.unclosed_tag_buf.remove(pos)),
+            };
+            f(format!("improperly nested Markdown {}", markdown_tag_name(tag_end)), &range, mode);
+        }
+    }
+}
+
+fn markdown_tag_name(tag: TagEnd) -> &'static str {
+    match tag {
+        TagEnd::Paragraph => "paragraph",
+        TagEnd::Heading(..) => "heading",
+        TagEnd::BlockQuote => "block quote `>`",
+        TagEnd::CodeBlock => "code block",
+        TagEnd::HtmlBlock => "HTML",
+        TagEnd::List(true) => "numbered list",
+        TagEnd::List(false) => "bulleted list",
+        TagEnd::Item => "list item",
+        TagEnd::FootnoteDefinition => "footnote definition",
+        TagEnd::Table => "table",
+        TagEnd::TableHead => "table head",
+        TagEnd::TableRow => "table row",
+        TagEnd::TableCell => "table cell",
+        TagEnd::Emphasis => "emphasis",
+        TagEnd::Strong => "strong emphasis",
+        TagEnd::Strikethrough => "strikethrough",
+        TagEnd::Link => "link",
+        TagEnd::Image => "image",
+        TagEnd::MetadataBlock(..) => "front matter",
     }
 }
 

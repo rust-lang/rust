@@ -53,12 +53,11 @@ impl Invert for i64 {
 }
 
 // CHECK: .balign
-// CHECK-LABEL: generic_function:
+// CHECK-LABEL: generic_functionxEB2_:
 // CHECK: call
 // CHECK: ret
 
 #[unsafe(naked)]
-#[no_mangle]
 pub extern "C" fn generic_function<T: Invert>(x: i64) -> i64 {
     naked_asm!(
         "call {}",

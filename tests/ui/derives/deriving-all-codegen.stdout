@@ -1243,6 +1243,49 @@ impl ::core::cmp::Ord for Fieldless {
     }
 }
 
+// A C-like, fieldless enum with variants of varying name lengths.
+enum Fieldless0 { A, BBB, CC, }
+#[automatically_derived]
+impl ::core::fmt::Debug for Fieldless0 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::write_str(f,
+            match self {
+                Fieldless0::A => "A",
+                Fieldless0::BBB => "BBB",
+                Fieldless0::CC => "CC",
+            })
+    }
+}
+
+// A C-like, fieldless enum with 10 variants.
+enum Fieldless10 {
+    AAAAA,
+    BBBB,
+    CC,
+    DDDDDDDD,
+    E,
+    FFFFFFFFFFFFF,
+    GGGGGG,
+    Hatsune,
+    IIIIIII,
+    JJJJJJJJJ,
+}
+#[automatically_derived]
+impl ::core::fmt::Debug for Fieldless10 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        static __NAMES: &str =
+            "AAAAABBBBCCDDDDDDDDEFFFFFFFFFFFFFGGGGGGHatsuneIIIIIIIJJJJJJJJJ";
+        static __OFFSET: [usize; 11] =
+            [0usize, 5usize, 9usize, 11usize, 19usize, 20usize, 33usize,
+                    39usize, 46usize, 53usize, 62usize];
+        let __d = ::core::intrinsics::discriminant_value(self) as usize;
+        ::core::fmt::Formatter::debug_c_like_enum_write_str(f, __NAMES,
+            &__OFFSET, __d)
+    }
+}
+
 // An enum with multiple fieldless and fielded variants.
 enum Mixed {
 

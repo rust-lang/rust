@@ -1,14 +1,15 @@
-use std::cell::{Ref, RefCell};
+use std::assert_matches;
+use std::cell::RefCell;
 use std::collections::{BTreeMap, VecDeque};
 use std::rc::{Rc, Weak};
 
 use crate::concurrency::VClock;
-use crate::shims::files::{DynFileDescriptionRef, FdNum};
+use crate::shims::files::{DynFileDescriptionRef, FdNum, WeakDynFileDescriptionRef};
 use crate::shims::*;
 use crate::*;
 
 /// Struct reflecting the readiness of a file description.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Readiness {
     /// Boolean whether the file description is readable.
     pub readable: bool,
@@ -72,7 +73,20 @@ impl Readiness {
     };
 }
 
-pub type ReadinessInterestKey = (FdId, FdNum);
+bitflags::bitflags! {
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    pub struct ReadinessUpdateFlags: u32 {
+        const DEFAULT = 0;
+        /// Trigger edge-triggered even if the set of ready events did not change. This can lead to
+        /// spurious wakeups. Use with caution!
+        const FORCE_EDGE = 1 << 0;
+        /// Do not treat this as a release event from the current thread. This can lead to incorrect
+        /// data race reports. Use with caution!
+        const NO_RELEASE_CLOCK = 1 << 1;
+    }
+}
+
+type ReadinessInterestKey = (FdId, FdNum);
 
 /// Returns the range of all [`ReadinessInterestKey`] for the given FD ID.
 fn range_for_id(id: FdId) -> std::ops::RangeInclusive<ReadinessInterestKey> {
@@ -81,6 +95,8 @@ fn range_for_id(id: FdId) -> std::ops::RangeInclusive<ReadinessInterestKey> {
 
 #[derive(Debug, Clone)]
 pub struct ReadinessInterest {
+    /// The FD we are interested in.
+    watched_fd: WeakDynFileDescriptionRef,
     /// The mask of events the interest is interested in
     /// for this file descriptor.
     pub relevant: Readiness,
@@ -93,30 +109,20 @@ pub struct ReadinessInterest {
     pub data: u64,
     /// The currently active readiness for this file descriptor.
     active: Readiness,
-    /// The vector clock for wakeups.
-    clock: VClock,
 }
 
 impl ReadinessInterest {
     pub fn active(&self) -> &Readiness {
         &self.active
     }
-
-    pub fn clock(&self) -> &VClock {
-        &self.clock
-    }
 }
-
-type ReadinessWatcherId = usize;
 
 /// A struct which stores [`ReadinessInterest`]s for a set of file descriptions
 /// together with which interests are currently satisfied, and a list of
 /// threads which should be unblocked once a [`ReadinessInterest`] of the
 /// watcher is fulfilled.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ReadinessWatcher {
-    /// Globally unique identifier of the watcher.
-    id: ReadinessWatcherId,
     /// A map of [`ReadinessInterest`]s registered for this watcher. Each entry is
     /// identified using a [`FdId`] [`FdNum`] tuple.
     interests: RefCell<BTreeMap<ReadinessInterestKey, ReadinessInterest>>,
@@ -130,13 +136,28 @@ pub struct ReadinessWatcher {
     queue: RefCell<VecDeque<ThreadId>>,
 }
 
-impl ReadinessWatcher {
-    /// Get a reference to the map of registered interests of the watcher
-    /// together with their keys.
-    pub fn interests(&self) -> Ref<'_, BTreeMap<ReadinessInterestKey, ReadinessInterest>> {
-        self.interests.borrow()
+impl Drop for ReadinessWatcher {
+    fn drop(&mut self) {
+        // Remove ourselves from the FDs we were interested in, at most once per description.
+        let mut last_id = None;
+        for ((id, _fd_num), interest) in self.interests.borrow().iter() {
+            // We'll see interested sorted by ID. Only do something once for each ID.
+            if Some(id) == last_id {
+                continue;
+            }
+            last_id = Some(id);
+            // If the FD still exists, remove ourselves from it.
+            if let Some(fd) = interest.watched_fd.upgrade() {
+                // We can't easily figure out who in that list is us, but we can just remove
+                // everything that has no more strong refs.
+                let mut watchers = fd.readiness_watched().unwrap().watchers.borrow_mut();
+                watchers.retain(|w| w.strong_count() > 0);
+            }
+        }
     }
+}
 
+impl ReadinessWatcher {
     /// Add an interest for the file description to which the file descriptor
     /// `fd_num` belongs.
     /// `relevant` contains the readiness mask of relevant events.
@@ -159,8 +180,8 @@ impl ReadinessWatcher {
         let key = (fd_id, fd_num);
 
         let interest = ReadinessInterest {
+            watched_fd: FileDescriptionRef::downgrade(&fd_ref),
             active: Readiness::EMPTY,
-            clock: VClock::default(),
             relevant,
             is_edge_triggered,
             data,
@@ -168,9 +189,11 @@ impl ReadinessWatcher {
         let mut interests = self.interests.borrow_mut();
         if interests.range(range_for_id(fd_id)).next().is_none() {
             // This is the first time this FD got added to the watcher.
-            // We need to remember that in the global list such that we
-            // get notified about FD events.
-            ecx.machine.readiness_interests.insert(fd_id, self);
+            // Let's make sure it can be watched, and add ourselves to its list.
+            let watched = fd_ref.readiness_watched().ok_or_else(|| {
+                err_unsup_format!("I/O readiness watching not supported for {}", fd_ref.name())
+            })?;
+            watched.insert(self);
         }
         if interests.try_insert(key, interest).is_err() {
             return interp_ok(Err(()));
@@ -181,7 +204,7 @@ impl ReadinessWatcher {
 
         ecx.update_readiness(
             self,
-            fd_ref.readiness()?,
+            fd_ref.readiness(),
             /* force_edge */ true,
             move |callback| {
                 // Need to release the RefCell when this closure returns, so we have to move
@@ -215,7 +238,7 @@ impl ReadinessWatcher {
         let fd_ref = ecx.machine.fds.get(key.1).expect("File description should exist");
         ecx.update_readiness(
             self,
-            fd_ref.readiness()?,
+            fd_ref.readiness(),
             /* force_edge */ true,
             move |callback| {
                 // Need to release the RefCell when this closure returns, so we have to move
@@ -231,17 +254,14 @@ impl ReadinessWatcher {
     ///
     /// This function returns [`None`] when no interest is registered
     /// for the specified `key`.
-    pub fn remove_interest<'tcx>(
-        self: &Rc<ReadinessWatcher>,
-        key: ReadinessInterestKey,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> Option<()> {
+    pub fn remove_interest(self: &Rc<ReadinessWatcher>, key: ReadinessInterestKey) -> Option<()> {
         let mut interests = self.interests.borrow_mut();
 
-        if interests.remove(&key).is_none() {
+        let Some(interest) = interests.remove(&key) else {
             // We did not have interest in this.
             return None;
-        }
+        };
+        let fd_ref = interest.watched_fd.upgrade().expect("dead watched");
 
         // Remove the ready event for this key, should one exist.
         let mut ready_events = self.ready.borrow_mut();
@@ -251,7 +271,7 @@ impl ReadinessWatcher {
         // If this was the last interest in this FD, remove us from the global list
         // of who is interested in this FD.
         if interests.range(range_for_id(key.0)).next().is_none() {
-            ecx.machine.readiness_interests.remove(key.0, self);
+            fd_ref.readiness_watched()?.remove(self);
         }
 
         Some(())
@@ -277,7 +297,7 @@ impl ReadinessWatcher {
         self.ready.borrow().len()
     }
 
-    /// Get at most the first `count` ready interests from the ready queue.
+    /// Get at most the first `max` ready interests from the ready queue.
     ///
     /// If the interest is a level-triggered interest, it's automatically
     /// added to the end of the queue again such that it will only be reported
@@ -288,59 +308,56 @@ impl ReadinessWatcher {
     /// are level-triggered interests.
     pub fn get_ready_interests<'tcx>(
         &self,
-        count: usize,
+        max: usize,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Vec<ReadinessInterest>> {
+        // The goal below is to do work proportyional to how much we're actually reporting to the
+        // client, i.e., how many interests of this watcher are ready. In particular, we do *not*
+        // iterate over all interests of this watcher, or all watchers, or all FDs being watched, or
+        // anything like that.
+
+        // Process delayed readiness updates, to ensure we have fully up-to-date information.
+        // This is almost always a NOP.
+        DelayedReadinessUpdates::process(ecx)?;
+
         let interests = self.interests.borrow();
         let mut ready = self.ready.borrow_mut();
 
         // Sanity-check to ensure that all event info is up-to-date.
         if cfg!(debug_assertions) {
-            for (key, interest) in interests.iter() {
+            for interest in interests.values() {
                 // Ensure this matches the latest readiness of this FD.
-                // We have to do an FD lookup by ID for this. The FdNum might be already closed.
-                let fd = ecx.machine.fds.fds.values().find(|fd| fd.id() == key.0).unwrap();
-                let current_active = fd.readiness()?;
-                assert_eq!(interest.active(), &(current_active & interest.relevant.clone()));
+                let fd = interest.watched_fd.upgrade().expect("dead watched");
+                let current_active = fd.readiness();
+                assert_eq!(interest.active(), &(current_active & interest.relevant));
             }
         }
 
-        // Compute how many events we can actually return.
-        let count = count.min(ready.len());
-        let mut ready_interests = Vec::with_capacity(count);
+        let mut ready_interests = Vec::with_capacity(max.min(ready.len()));
+        let mut re_add_interests = Vec::new();
 
-        // We have to bound this iterator by `count`. Iterating until `ready` is empty would not
-        // work since we are re-adding level-triggered events to `ready` during the loop.
-        while ready_interests.len() < count {
-            let key = ready.pop_front().unwrap();
+        // Continue while we haven't yet gotten `max` events, and while there are more to add.
+        while ready_interests.len() < max
+            && let Some(key) = ready.pop_front()
+        {
             let interest = interests.get(&key).expect("non-existing interest in ready set");
+            let fd = interest.watched_fd.upgrade().expect("dead watched");
 
             if !interest.is_edge_triggered {
-                // This is a level-triggered interest, so we need to re-add the event
-                // at the end of the ready queue like Linux does with epoll:
-                // <https://github.com/torvalds/linux/blob/HEAD/fs/eventpoll.c#L1835-L1847>
-                ready.push_back(key);
+                // This is a level-triggered interest, so we need to re-add the event:
+                // <https://github.com/torvalds/linux/blob/HEAD/fs/eventpoll.c#L1835-L1847>.
+                // We delay adding them back so they do not get picked up by later loop iterations.
+                re_add_interests.push(key);
             }
 
             ready_interests.push(interest.clone());
+            // We now "see" the readiness of this FD, so make the data race system aware of that.
+            ecx.acquire_clock(&fd.readiness_watched().unwrap().ready_clock.borrow())?;
         }
+        // Add back the level-triggered ones.
+        ready.extend(re_add_interests);
 
         interp_ok(ready_interests)
-    }
-
-    /// Destroy the watcher instance.
-    ///
-    /// This also deregisters all interests of the watcher
-    /// from the global readiness interest table.
-    pub fn destroy<'tcx>(self, ecx: &mut MiriInterpCx<'tcx>) {
-        // If we were interested in some FDs, we can remove that now.
-        let mut ids = self.interests.borrow().keys().map(|(id, _num)| *id).collect::<Vec<_>>();
-        // Because the ids come out of the map sorted,
-        // deduping only keeps all unique entries.
-        ids.dedup();
-        for id in ids {
-            ecx.machine.readiness_interests.remove(id, &self);
-        }
     }
 }
 
@@ -348,133 +365,163 @@ impl VisitProvenance for ReadinessWatcher {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
 }
 
-/// The table with all [`ReadinessWatcher`]s.
-/// This tracks, for each file description, which watchers have an interest in events
-/// for this file description.
-pub struct ReadinessInterestTable {
-    /// The id of the next [`ReadinessWatcher`] created through
-    /// [`ReadinessInterestTable::new_watcher`].
-    next_watcher_id: ReadinessWatcherId,
-    /// Maps each file description (identified by its [`FdId`]) to the list of watchers that are
-    /// interested in that FD. We also store the [`ReadinessWatcher`]s ID
-    /// separately so we can access it without calling `upgrade`. The list
-    /// is sorted by that id. We use an ID so that we can identify the watcher even after it has
-    /// been moved, e.g. in [`ReadinessWatcher::destroy`].
-    interests: BTreeMap<FdId, Vec<(ReadinessWatcherId, Weak<ReadinessWatcher>)>>,
+/// Data about a file description that can be watched for readiness
+/// (meant to be stored inside said file description).
+#[derive(Debug, Default)]
+pub struct ReadinessWatched {
+    /// List of readiness watchers that are interested in us.
+    watchers: RefCell<Vec<Weak<ReadinessWatcher>>>,
+    /// Vector clock for the most recent change to our readiness.
+    /// (Ideally this would be one clock per readiness flag, but we're not bothering with that.)
+    ready_clock: RefCell<VClock>,
 }
 
-impl ReadinessInterestTable {
-    pub(crate) fn new() -> Self {
-        ReadinessInterestTable { interests: BTreeMap::new(), next_watcher_id: 0 }
-    }
-
-    /// Create a new [`ReadinessWatcher`] with a globally unique id.
-    /// Every watcher gets a sequentially increasing id such that no two
-    /// watchers ever get the same id.
-    pub fn new_watcher(&mut self) -> ReadinessWatcher {
-        let id = self.next_watcher_id;
-        self.next_watcher_id = id.strict_add(1);
-        ReadinessWatcher {
-            id,
-            interests: RefCell::new(BTreeMap::new()),
-            ready: RefCell::new(VecDeque::new()),
-            queue: RefCell::new(VecDeque::new()),
+impl Drop for ReadinessWatched {
+    fn drop(&mut self) {
+        // "A file descriptor is removed from an interest list only after all the file
+        // descriptors referring to the underlying open file description have been closed."
+        // So, remove ourselves from all interest lists.
+        for watcher in self.watchers.borrow().iter() {
+            // If the watcher still exists, remove ourselves from it.
+            let Some(watcher) = watcher.upgrade() else { continue };
+            // We can't easily figure out who in that list is us, but we can just remove everything
+            // that has no more strong refs.
+            let mut ready_events = watcher.ready.borrow_mut();
+            watcher.interests.borrow_mut().retain(|key, interest| {
+                if interest.watched_fd.is_closed() {
+                    // We'll remove this one. Also remove it from the ready queue if applicable!
+                    if let Some(idx) = ready_events.iter().position(|k| k == key) {
+                        ready_events.remove(idx);
+                    }
+                    false // do not retain
+                } else {
+                    true // do retain
+                }
+            });
         }
     }
+}
 
-    /// Add an interest for `watcher` for the file description with id `fd_id`.
-    fn insert(&mut self, fd_id: FdId, watcher: &Rc<ReadinessWatcher>) {
-        let watchers = self.interests.entry(fd_id).or_default();
-        let idx = watchers
-            .binary_search_by_key(&watcher.id, |&(id, _)| id)
-            .expect_err("watcher already has a registered interest in the provided fd");
-        watchers.insert(idx, (watcher.id, Rc::downgrade(watcher)));
+impl ReadinessWatched {
+    fn insert(&self, watcher: &Rc<ReadinessWatcher>) {
+        let mut watchers = self.watchers.borrow_mut();
+        if cfg!(debug_assertions) {
+            // Ensure uniqueness.
+            assert_matches!(
+                watchers.iter().find(|elem| elem.as_ptr() == Rc::as_ptr(watcher)),
+                None,
+                "watcher has already been added to this watched fd",
+            );
+        }
+        watchers.push(Rc::downgrade(watcher));
     }
 
-    /// Remove the interest of `watcher` for the file description with id `fd_id`.
-    fn remove(&mut self, fd_id: FdId, watcher: &ReadinessWatcher) {
-        let watchers = self.interests.entry(fd_id).or_default();
+    fn remove(&self, watcher: &Rc<ReadinessWatcher>) {
+        let mut watchers = self.watchers.borrow_mut();
+        // We need to do a linear scan to find the watcher to remove. That's not ideal, but removing
+        // a watched FD from an epoll is rare so it's not worth the non-trivial effort it would take
+        // to make this more efficient.
         let idx = watchers
-            .binary_search_by_key(&watcher.id, |&(id, _)| id)
-            .expect("watcher has no registered interest in the provided fd");
+            .iter()
+            .position(|elem| elem.as_ptr() == Rc::as_ptr(watcher))
+            .expect("watcher has no registered interest in the provided watched fd");
         watchers.remove(idx);
     }
 
-    /// Get all watchers which have a registered interest in the file description
-    /// with id `fd_id`.
-    fn get_watchers_for_fd(
-        &self,
-        fd_id: FdId,
-    ) -> Option<impl Iterator<Item = Rc<ReadinessWatcher>>> {
-        let watchers = self.interests.get(&fd_id)?;
-        Some(watchers.iter().map(|(_id, watcher)| {
-            watcher
-                .upgrade()
-                .expect("someone forgot to remove the garbage from `machine.readiness_interests`")
-        }))
+    /// Returns whether the watched FD has any readiness watcher with a blocked thread watching it.
+    pub fn has_watcher_with_blocked_thread(&self) -> bool {
+        let watchers = self.watchers.borrow();
+        // See if any of those watchers has a blocked thread.
+        watchers.iter().any(|w| w.upgrade().expect("dead watcher").queue.borrow().len() > 0)
     }
 
-    /// Remove all watchers for the file description with id `fd_id`.
-    pub fn remove_watchers_for_fd(&mut self, fd_id: FdId) {
-        let Some(watchers) = self.interests.remove(&fd_id) else {
-            return;
-        };
+    /// Remove all interes in the given file descriptor, which must refer to the file description
+    /// that contains `self`.
+    pub fn remove_file_num_interests(&self, fd_id: FdId, fd_num: FdNum) {
+        // We make a copy since `remove_interest` may want to mutate `watchers`. This is not
+        // very efficient, but this code anyway only runs on `close` on Illumos.
+        let watchers = self.watchers.borrow().clone();
+        for watcher in watchers.iter() {
+            let watcher = watcher.upgrade().expect("dead watcher");
+            // Remove this interest, if it exists.
+            watcher.remove_interest((fd_id, fd_num));
+        }
+    }
+}
 
-        for watcher in watchers.iter().filter_map(|(_id, watcher)| Weak::upgrade(watcher)) {
-            // This is a still-live watcher with interest in this FD. Remove all
-            // relevant interests (including from the ready set).
-            watcher
-                .interests
-                .borrow_mut()
-                .extract_if(range_for_id(fd_id), |_, _| true)
-                // Consume the iterator.
-                .for_each(drop);
-            // Remove the ready interests for this file description.
-            watcher.ready.borrow_mut().retain(|(id, _)| id != &fd_id);
+/// If a file description's readiness is known to change but we don't have an `ecx` around to update
+/// it immediately, we arange for a referene to the delayed readiness updates queue to be available
+/// and perform the update on the next scheduler call.
+#[derive(Default, Debug)]
+pub struct DelayedReadinessUpdates {
+    to_update: RefCell<Vec<DynFileDescriptionRef>>,
+}
+
+impl DelayedReadinessUpdates {
+    pub fn add(&self, fd: DynFileDescriptionRef) {
+        self.to_update.borrow_mut().push(fd);
+    }
+
+    pub fn process<'tcx>(ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx> {
+        loop {
+            // Avoid keeping the RefCell open over the `update_fd_readiness` as that can invoke
+            // arbitrary code via the unblock callback.
+            let Some(fd) = ecx.machine.delayed_readiness_updates.to_update.borrow_mut().pop()
+            else {
+                return interp_ok(());
+            };
+            ecx.update_fd_readiness(fd, ReadinessUpdateFlags::DEFAULT)?;
         }
     }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
-    /// Returns whether the given FD has any readiness watcher with a blocked thread watching it.
-    fn has_watcher_with_blocked_thread(&self, fd_id: FdId) -> bool {
-        let this = self.eval_context_ref();
-        let Some(mut watchers) = this.machine.readiness_interests.get_watchers_for_fd(fd_id) else {
-            return false;
-        };
-        // See if any of those watchers has a blocked thread.
-        watchers.any(|w| w.queue.borrow().len() > 0)
-    }
-
     /// For a specific file description, get its current readiness and send it to everyone who
     /// registered interest in this FD. This function must be called whenever the result of
     /// `FileDescription::readiness` might change.
-    ///
-    /// If `force_edge` is set, edge-triggered interests will be triggered even if the set of
-    /// ready events did not change. This can lead to spurious wakeups. Use with caution!
     fn update_fd_readiness(
         &mut self,
         fd: DynFileDescriptionRef,
-        force_edge: bool,
+        flags: ReadinessUpdateFlags,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let fd_id = fd.id();
+        let watched = fd.readiness_watched().unwrap();
 
-        let Some(watchers) = this.machine.readiness_interests.get_watchers_for_fd(fd_id) else {
+        if !flags.contains(ReadinessUpdateFlags::NO_RELEASE_CLOCK) {
+            // We capture a vector clock even if there is nobody watching, since someone might get
+            // interested in the future and then synchronize with this event.
+            // FIXME: currently we do this even if the readiness did not change!
+            this.release_clock(|clock| {
+                watched.ready_clock.borrow_mut().join(clock);
+            })?;
+        }
+
+        let watchers_ref = watched.watchers.borrow();
+        // Need to make a copy so below we can unblock threads which may need the same `RefCell`.
+        let watchers =
+            watchers_ref.iter().map(|w| w.upgrade().expect("dead watcher")).collect::<Vec<_>>();
+        if watchers.is_empty() {
             return interp_ok(());
         };
-        let watchers = watchers.collect::<Vec<_>>(); // need to make a copy so below we can unblock threads
-        let active_readiness = fd.readiness()?;
+        drop(watchers_ref);
+
+        let active_readiness = fd.readiness();
         for watcher in watchers {
-            this.update_readiness(&watcher, active_readiness.clone(), force_edge, |callback| {
-                for (&key, interest) in
-                    watcher.interests.borrow_mut().range_mut(range_for_id(fd_id))
-                {
-                    callback(key, interest)?;
-                }
-                interp_ok(())
-            })?;
+            this.update_readiness(
+                &watcher,
+                active_readiness,
+                flags.contains(ReadinessUpdateFlags::FORCE_EDGE),
+                |callback| {
+                    for (&key, interest) in
+                        watcher.interests.borrow_mut().range_mut(range_for_id(fd_id))
+                    {
+                        callback(key, interest)?;
+                    }
+                    interp_ok(())
+                },
+            )?;
         }
 
         interp_ok(())
@@ -501,29 +548,23 @@ pub trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let mut ready = watcher.ready.borrow_mut();
         for_each_interest(&mut |key, interest| {
-            let new_readiness = interest.relevant.clone() & active.clone();
-            let prev_readiness = std::mem::replace(&mut interest.active, new_readiness.clone());
+            let new_readiness = interest.relevant & active;
+            let prev_readiness = std::mem::replace(&mut interest.active, new_readiness);
             if new_readiness == Readiness::EMPTY {
                 // Un-trigger this, there's nothing left to report here.
                 if let Some(idx) = ready.iter().position(|k| k == &key) {
                     ready.remove(idx);
                 }
-            } else if force_edge || new_readiness != prev_readiness & new_readiness.clone() {
+            } else if force_edge || new_readiness != prev_readiness & new_readiness {
                 // Either we force an "edge" to be detected or there's a bit set in `new_readiness`
                 // that was not set in `prev_readiness`. In both cases, this is ready now.
 
                 // We need to ensure that this event is not already part of the `ready` queue
                 // before enqueueing, as Linux does it with epoll:
-                // <https://github.com/torvalds/linux/blob/HEAD/fs/eventpoll.c#L1292-L1296>
+                // <https://github.com/torvalds/linux/blob/13dce771bbad42da6ecf086446d8ddfd1fce3a1b/fs/eventpoll.c#L1290-L1293>
                 if !ready.contains(&key) {
                     ready.push_back(key);
                 }
-
-                // No matter whether this is newly ready or just re-triggered,
-                // the waiter fetching this event should sync with the current thread.
-                this.release_clock(|clock| {
-                    interest.clock.join(clock);
-                })?;
             }
             interp_ok(())
         })?;

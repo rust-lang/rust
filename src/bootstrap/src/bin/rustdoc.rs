@@ -5,17 +5,10 @@
 use std::env;
 use std::path::PathBuf;
 
-use arg_file_command::ArgFileCommand;
-use shared_helpers::{
-    collect_args, dylib_path, dylib_path_var, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
-    parse_value_from_args,
+use shim_utils::{
+    ArgFileCommand, collect_args, dylib_path, dylib_path_var, maybe_dump, parse_rustc_stage,
+    parse_rustc_verbose, parse_value_from_args,
 };
-
-#[path = "../utils/shared_helpers.rs"]
-mod shared_helpers;
-
-#[path = "../../../build_helper/src/arg_file_command.rs"]
-mod arg_file_command;
 
 fn main() {
     let args = collect_args();

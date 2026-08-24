@@ -51,7 +51,7 @@ LL |     extern "x86-interrupt" fn im7(_p: *const u8) {}
 error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-x86-interrupt.rs:28:18
    |
-LL | type A7 = extern "x86-interrupt" fn();
+LL | type A7 = extern "x86-interrupt" fn(*const u8);
    |                  ^^^^^^^^^^^^^^^
    |
    = note: see issue #40180 <https://github.com/rust-lang/rust/issues/40180> for more information

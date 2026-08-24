@@ -5,6 +5,6 @@
 Name: <none>, Id: _1, Ty: Outer, Value: <uninit>
 Name: <none>, Id: _2, Ty: Inner, Value: <uninit>
 Name: <none>, Id: _3, Ty: Inner, Value: <uninit>
-Name: x.inner.value, Id: _4, Ty: u8, Value: <immediate>
+Name: x.inner.value, Id: _4, Ty: u8, Value: 7_u8
 Name: <none>, Id: _5, Ty: u8, Value: <dead>
 (priroda) quitting

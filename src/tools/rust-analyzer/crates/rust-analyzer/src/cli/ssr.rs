@@ -48,8 +48,8 @@ impl flags::Ssr {
 
 impl flags::Search {
     /// Searches for `patterns`, printing debug information for any nodes whose text exactly matches
-    /// `debug_snippet`. This is intended for debugging and probably isn't in it's current form useful
-    /// for much else.
+    /// `debug_snippet`. This is intended for debugging and probably isn't useful in its current
+    /// form for much else.
     pub fn run(self) -> anyhow::Result<()> {
         use ide_db::base_db::SourceDatabase;
         let cargo_config =

@@ -6,7 +6,7 @@ pub trait T {}
 
 // CHECK-LABEL: @copy_fat_ptr
 #[no_mangle]
-pub fn copy_fat_ptr(x: &T) {
+pub fn copy_fat_ptr(x: &dyn T) {
     // CHECK-NOT: extractvalue
     let x2 = x;
 }

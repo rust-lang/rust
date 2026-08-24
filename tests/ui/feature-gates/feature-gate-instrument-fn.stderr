@@ -1,18 +1,18 @@
-error[E0658]: the `#[instrument_fn]` attribute is an experimental feature
-  --> $DIR/feature-gate-instrument-fn.rs:9:1
+error[E0658]: the `instrument_fn` attribute is an experimental feature
+  --> $DIR/feature-gate-instrument-fn.rs:9:3
    |
 LL | #[instrument_fn = "on"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^
    |
    = note: see issue #157081 <https://github.com/rust-lang/rust/issues/157081> for more information
    = help: add `#![feature(instrument_fn)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the `#[instrument_fn]` attribute is an experimental feature
-  --> $DIR/feature-gate-instrument-fn.rs:12:1
+error[E0658]: the `instrument_fn` attribute is an experimental feature
+  --> $DIR/feature-gate-instrument-fn.rs:12:3
    |
 LL | #[instrument_fn = "off"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^
    |
    = note: see issue #157081 <https://github.com/rust-lang/rust/issues/157081> for more information
    = help: add `#![feature(instrument_fn)]` to the crate attributes to enable

@@ -1,13 +1,13 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{IntoSpan, SpanExt};
+use clippy_utils::res::MaybeDef as _;
+use clippy_utils::source::{IntoSpan as _, SpanExt as _};
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{LimitStack, get_async_fn_body, sym};
 use core::ops::ControlFlow;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Attribute, Body, Expr, ExprKind, FnDecl};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;

@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{has_non_owning_mutable_access, make_normalized_projection, make_projection};
@@ -33,6 +33,10 @@ pub(super) fn check<'tcx>(
     let iter_ty = cx.typeck_results().expr_ty(iter_expr);
     if has_non_owning_mutable_access(cx, iter_ty) {
         return; // don't lint if the iterator has side effects
+    }
+
+    if collect_turbofish_is_fully_concrete(collect_expr) {
+        return; // don't lint if turbofish on collect maybe the only thing anchoring the type
     }
 
     match cx.tcx.parent_hir_node(collect_expr.hir_id) {
@@ -230,6 +234,41 @@ fn check_collect_into_intoiterator<'tcx>(
     }
 }
 
+/// Returns `true` if `collect_expr`'s turbofish is fully concrete (has
+/// generic arguments and none of them are inference placeholders)
+fn collect_turbofish_is_fully_concrete(collect_expr: &Expr<'_>) -> bool {
+    if let ExprKind::MethodCall(segment, ..) = collect_expr.kind
+        && let Some(args) = segment.args
+        && let [a] = args.args
+    {
+        generic_arg_is_fully_concrete(a)
+    } else {
+        false
+    }
+}
+
+fn generic_arg_is_fully_concrete(arg: &rustc_hir::GenericArg<'_>) -> bool {
+    match arg {
+        rustc_hir::GenericArg::Infer(_) => false,
+        rustc_hir::GenericArg::Type(ty) => ty_is_fully_concrete(ty.as_unambig_ty()),
+        rustc_hir::GenericArg::Const(ct) => !matches!(ct.as_unambig_ct().kind, rustc_hir::ConstArgKind::Infer(..)),
+        rustc_hir::GenericArg::Lifetime(_) => true,
+    }
+}
+
+fn ty_is_fully_concrete(ty: &rustc_hir::Ty<'_>) -> bool {
+    match &ty.kind {
+        rustc_hir::TyKind::Infer(..) => false,
+        rustc_hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)) => path.segments.iter().all(|seg| {
+            seg.args
+                .is_none_or(|a| a.args.iter().all(generic_arg_is_fully_concrete))
+        }),
+        rustc_hir::TyKind::Ref(_, mut_ty) => ty_is_fully_concrete(mut_ty.ty),
+        rustc_hir::TyKind::Slice(ty) | rustc_hir::TyKind::Array(ty, _) => ty_is_fully_concrete(ty),
+        rustc_hir::TyKind::Tup(tys) => tys.iter().all(ty_is_fully_concrete),
+        _ => true,
+    }
+}
 /// Checks if the given method call matches the expected signature of `([&[mut]] self) -> bool`
 fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
     cx.typeck_results().type_dependent_def_id(call_id).is_some_and(|id| {

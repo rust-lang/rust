@@ -147,7 +147,7 @@ When opening the stabilization PR, CC the lang team and its advisors (`@rust-lan
 - `@rust-lang/types`, for type system interactions.
 - `@rust-lang/opsem`, for interactions with unsafe code.
 - `@rust-lang/compiler`, for implementation robustness.
-- `@rust-lang/libs-api`, for changes to the standard library API or its guarantees.
+- `@rust-lang/libs`, for changes to the standard library API or its guarantees.
 - `@rust-lang/lang-docs`, for questions about how this should be documented in the Reference.
 
 After the stabilization PR is opened with the stabilization report, wait a bit for any immediate comments.

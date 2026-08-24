@@ -1,5 +1,5 @@
 #![warn(clippy::use_self)]
-#![allow(clippy::type_complexity)]
+#![expect(clippy::type_complexity)]
 
 fn main() {}
 

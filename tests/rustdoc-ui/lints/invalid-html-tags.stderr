@@ -1,5 +1,5 @@
 error: unclosed HTML tag `p`
-  --> $DIR/invalid-html-tags.rs:3:5
+  --> $DIR/invalid-html-tags.rs:4:5
    |
 LL | //! <p>💩<p>
    |     ^^^
@@ -11,115 +11,115 @@ LL | #![deny(rustdoc::invalid_html_tags)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unclosed HTML tag `p`
-  --> $DIR/invalid-html-tags.rs:3:9
+  --> $DIR/invalid-html-tags.rs:4:9
    |
 LL | //! <p>💩<p>
    |          ^^^
 
 error: unclosed HTML tag `unknown`
-  --> $DIR/invalid-html-tags.rs:11:5
+  --> $DIR/invalid-html-tags.rs:12:5
    |
 LL | /// <unknown>
    |     ^^^^^^^^^
 
 error: unclosed HTML tag `script`
-  --> $DIR/invalid-html-tags.rs:14:5
+  --> $DIR/invalid-html-tags.rs:15:5
    |
 LL | /// <script>
    |     ^^^^^^^^
 
+error: unopened HTML tag `hello`
+  --> $DIR/invalid-html-tags.rs:25:5
+   |
+LL | /// </hello>
+   |     ^^^^^^^^
+
 error: unclosed HTML tag `h2`
-  --> $DIR/invalid-html-tags.rs:19:7
+  --> $DIR/invalid-html-tags.rs:20:7
    |
 LL | ///   <h2>
    |       ^^^^
 
 error: unclosed HTML tag `h3`
-  --> $DIR/invalid-html-tags.rs:21:9
+  --> $DIR/invalid-html-tags.rs:22:9
    |
 LL | ///     <h3>
    |         ^^^^
 
-error: unopened HTML tag `hello`
-  --> $DIR/invalid-html-tags.rs:24:5
-   |
-LL | /// </hello>
-   |     ^^^^^^^^
-
 error: unclosed HTML tag `p`
-  --> $DIR/invalid-html-tags.rs:29:14
+  --> $DIR/invalid-html-tags.rs:30:14
    |
 LL | ///    <br/> <p>
    |              ^^^
 
 error: incomplete HTML tag `script`
-  --> $DIR/invalid-html-tags.rs:45:5
+  --> $DIR/invalid-html-tags.rs:46:5
    |
 LL | /// <script
    |     ^^^^^^^
 
 error: unclosed HTML tag `div`
-  --> $DIR/invalid-html-tags.rs:41:5
+  --> $DIR/invalid-html-tags.rs:42:5
    |
 LL | /// <div style="hello">
    |     ^^^^
 
 error: unclosed HTML tag `h3`
-  --> $DIR/invalid-html-tags.rs:43:7
+  --> $DIR/invalid-html-tags.rs:44:7
    |
 LL | ///   <h3>
    |       ^^^^
 
 error: incomplete HTML tag `div`
-  --> $DIR/invalid-html-tags.rs:73:10
+  --> $DIR/invalid-html-tags.rs:74:10
    |
 LL | /// <div></div
    |          ^^^^^
 
 error: unclosed HTML tag `div`
-  --> $DIR/invalid-html-tags.rs:73:5
+  --> $DIR/invalid-html-tags.rs:74:5
    |
 LL | /// <div></div
    |     ^^^^^
 
 error: Unclosed HTML comment
-  --> $DIR/invalid-html-tags.rs:88:5
+  --> $DIR/invalid-html-tags.rs:89:5
    |
 LL | /// <!--
    |     ^^^^
 
 error: unopened HTML tag `unopened-tag`
-  --> $DIR/invalid-html-tags.rs:115:26
+  --> $DIR/invalid-html-tags.rs:116:26
    |
 LL | /// Web Components style </unopened-tag>
    |                          ^^^^^^^^^^^^^^^
 
 error: unclosed HTML tag `dashed-tags`
-  --> $DIR/invalid-html-tags.rs:113:26
+  --> $DIR/invalid-html-tags.rs:114:26
    |
 LL | /// Web Components style <dashed-tags>
    |                          ^^^^^^^^^^^^^
 
 error: unclosed HTML tag `a`
-  --> $DIR/invalid-html-tags.rs:122:19
+  --> $DIR/invalid-html-tags.rs:123:19
    |
 LL | /// backslashed \<<a href="">
    |                   ^^
 
 error: incomplete HTML tag `img`
-  --> $DIR/invalid-html-tags.rs:156:5
+  --> $DIR/invalid-html-tags.rs:157:5
    |
 LL | /// <img
    |     ^^^^
 
 error: incomplete HTML tag `img`
-  --> $DIR/invalid-html-tags.rs:161:8
+  --> $DIR/invalid-html-tags.rs:162:8
    |
 LL | /// <p><img</p>
    |        ^^^^
 
 error: incomplete HTML tag `img`
-  --> $DIR/invalid-html-tags.rs:166:7
+  --> $DIR/invalid-html-tags.rs:167:7
    |
 LL |   /// > <img
    |  _______^
@@ -127,28 +127,94 @@ LL | | /// > href="#broken"
    | |____________________^
 
 error: incomplete HTML tag `br`
-  --> $DIR/invalid-html-tags.rs:172:5
+  --> $DIR/invalid-html-tags.rs:173:5
    |
 LL | /// <br<br>
    |     ^^^
 
 error: incomplete HTML tag `br`
-  --> $DIR/invalid-html-tags.rs:177:5
+  --> $DIR/invalid-html-tags.rs:178:5
    |
 LL | /// <br
    |     ^^^
 
 error: incomplete HTML tag `p`
-  --> $DIR/invalid-html-tags.rs:210:5
+  --> $DIR/invalid-html-tags.rs:211:5
    |
 LL | /// <p <!-->foobar</p>
    |     ^^^
 
 error: Unclosed HTML comment
-  --> $DIR/invalid-html-tags.rs:210:8
+  --> $DIR/invalid-html-tags.rs:211:8
    |
 LL | /// <p <!-->foobar</p>
    |        ^^^^
 
-error: aborting due to 24 previous errors
+error: unopened HTML tag `span`
+  --> $DIR/invalid-html-tags.rs:216:36
+   |
+LL | /// *Improperly <span> nested* HTML</span>
+   |     --------------------------     ^^^^^^^ this unopened tag
+   |     |           |
+   |     |           does not match this unclosed tag
+   |     because of this Markdown emphasis
+
+error: improperly nested Markdown emphasis
+  --> $DIR/invalid-html-tags.rs:223:22
+   |
+LL | /// <span>Improperly *nested </span> HTML*
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     because of this HTML `span`
+
+error: unopened HTML tag `span`
+  --> $DIR/invalid-html-tags.rs:228:43
+   |
+LL | /// <em>Improperly <span> nested</em> HTML</span>
+   |     ---------------------------------     ^^^^^^^ this unopened tag
+   |     |              |
+   |     |              does not match this unclosed tag
+   |     because of this HTML `em`
+
+error: unopened HTML tag `em`
+  --> $DIR/invalid-html-tags.rs:237:10
+   |
+LL | /// Improperly <em> nested
+   |                ---- does not match this unclosed tag
+LL | ///
+   | - because the Markdown paragraph ends here
+LL | /// HTML </em> emphasis
+   |          ^^^^^ this unopened tag
+
+error: unopened HTML tag `svg`
+  --> $DIR/invalid-html-tags.rs:285:5
+   |
+LL | /// <svg viewBox="0 0 10 10">
+   |     ---- does not match this unclosed tag
+...
+LL | /// >
+   |     - because the Markdown paragraph is interrupted by this block quote
+LL | /// </svg>
+   |     ^^^^^^ this unopened tag
+
+error: unopened HTML tag `i`
+  --> $DIR/invalid-html-tags.rs:294:19
+   |
+LL | /// | <i>`one|two`</i> | `three|four` |
+   |       ---    -    ^^^^ this unopened tag
+   |       |      |
+   |       |      because the Markdown table cell ends here
+   |       does not match this unclosed tag
+
+error: unopened HTML tag `div`
+  --> $DIR/invalid-html-tags.rs:304:5
+   |
+LL | /// | <div> | foo |
+   |       ----- - because the Markdown table cell ends here
+   |       |
+   |       does not match this unclosed tag
+LL | /// </div>
+   |     ^^^^^^ this unopened tag
+
+error: aborting due to 31 previous errors
 

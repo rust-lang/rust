@@ -125,8 +125,8 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     /// including their whole reexport chains.
     fn set_bindings_effective_visibilities(&mut self, module_id: LocalDefId) {
         let module = self.r.expect_module(module_id.to_def_id());
-        for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
-            let Some(decl) = name_resolution.borrow().best_decl() else {
+        for (_, name_resolution) in self.r.resolutions(module).iter() {
+            let Some(decl) = name_resolution.borrow(self.r).best_decl() else {
                 continue;
             };
             self.update_decl_chain(decl, ParentId::Def(module_id));
@@ -309,8 +309,8 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     ) {
         if self.macro_reachable.insert((module_def_id, defining_mod)) {
             let module = self.r.expect_module(module_def_id.to_def_id());
-            for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
-                let Some(decl) = name_resolution.borrow().best_decl() else {
+            for (_, name_resolution) in self.r.resolutions(module).iter() {
+                let Some(decl) = name_resolution.borrow(self.r).best_decl() else {
                     continue;
                 };
 

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
+use rustc_data_structures::Limit;
 use rustc_errors::codes::*;
-use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
 
@@ -125,14 +125,6 @@ pub(crate) struct UnknownMacroVariable {
 }
 
 #[derive(Diagnostic)]
-#[diag("cannot resolve relative path in non-file source `{$path}`")]
-pub(crate) struct ResolveRelativePath {
-    #[primary_span]
-    pub span: Span,
-    pub path: String,
-}
-
-#[derive(Diagnostic)]
 #[diag("macros cannot have body stability attributes")]
 pub(crate) struct MacroBodyStability {
     #[primary_span]
@@ -187,40 +179,6 @@ pub(crate) struct RecursionLimitReached {
 pub(crate) struct RemoveExprNotSupported {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-pub(crate) enum InvalidCfg {
-    #[diag("`cfg` is not followed by parentheses")]
-    NotFollowedByParens {
-        #[primary_span]
-        #[suggestion(
-            "expected syntax is",
-            code = "cfg(/* predicate */)",
-            applicability = "has-placeholders"
-        )]
-        span: Span,
-    },
-    #[diag("`cfg` predicate is not specified")]
-    NoPredicate {
-        #[primary_span]
-        #[suggestion(
-            "expected syntax is",
-            code = "cfg(/* predicate */)",
-            applicability = "has-placeholders"
-        )]
-        span: Span,
-    },
-    #[diag("multiple `cfg` predicates are specified")]
-    MultiplePredicates {
-        #[primary_span]
-        span: Span,
-    },
-    #[diag("`cfg` predicate key cannot be a literal")]
-    PredicateLiteral {
-        #[primary_span]
-        span: Span,
-    },
 }
 
 #[derive(Diagnostic)]
@@ -450,14 +408,14 @@ pub(crate) struct GlobDelegationOutsideImpls {
 }
 
 #[derive(Diagnostic)]
-#[diag("`crate_name` within an `#![cfg_attr]` attribute is forbidden")]
+#[diag("the `crate_name` attribute is forbidden within a `cfg_attr` attribute")]
 pub(crate) struct CrateNameInCfgAttr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag("`crate_type` within an `#![cfg_attr]` attribute is forbidden")]
+#[diag("the `crate_type` attribute is forbidden within a `cfg_attr` attribute")]
 pub(crate) struct CrateTypeInCfgAttr {
     #[primary_span]
     pub span: Span,

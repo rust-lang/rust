@@ -30,13 +30,12 @@ pub(crate) mod collect_intra_doc_links;
 pub(crate) use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
 mod check_doc_test_visibility;
-pub(crate) use self::check_doc_test_visibility::CHECK_DOC_TEST_VISIBILITY;
+pub(crate) use self::check_doc_test_visibility::{
+    CHECK_DOC_TEST_VISIBILITY, Tests, should_have_doc_example,
+};
 
 mod collect_trait_impls;
 pub(crate) use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
-
-mod calculate_doc_coverage;
-pub(crate) use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
 
 mod lint;
 pub(crate) use self::lint::RUN_LINTS;
@@ -81,7 +80,6 @@ pub(crate) const PASSES: &[Pass] = &[
     PROPAGATE_STABILITY,
     COLLECT_INTRA_DOC_LINKS,
     COLLECT_TRAIT_IMPLS,
-    CALCULATE_DOC_COVERAGE,
     RUN_LINTS,
 ];
 
@@ -103,7 +101,6 @@ pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
 pub(crate) const COVERAGE_PASSES: &[ConditionalPass] = &[
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
-    ConditionalPass::always(CALCULATE_DOC_COVERAGE),
 ];
 
 impl ConditionalPass {

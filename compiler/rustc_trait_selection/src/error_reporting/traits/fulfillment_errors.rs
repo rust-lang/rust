@@ -14,12 +14,13 @@ use rustc_errors::{
     pluralize, struct_span_code_err,
 };
 use rustc_hir::attrs::diagnostic::CustomDiagnostic;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, LangItem, Node, expr_needs_parens, find_attr};
+use rustc_hir::{self as hir, Node, expr_needs_parens, find_attr};
 use rustc_infer::infer::{InferOk, TypeTrace};
-use rustc_infer::traits::ImplSource;
 use rustc_infer::traits::solve::Goal;
+use rustc_infer::traits::{ImplSource, TraitErrors};
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -285,27 +286,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             || self.tcx.is_diagnostic_item(sym::TryFrom, trait_def_id))
                             && (self.tcx.is_diagnostic_item(sym::From, leaf_trait_def_id)
                                 || self.tcx.is_diagnostic_item(sym::TryFrom, leaf_trait_def_id))
-                        {
-                            let trait_ref = leaf_trait_predicate.skip_binder().trait_ref;
-
-                            if let Some(found_ty) =
+                            && let Some(trait_ref) =
+                                leaf_trait_predicate.no_bound_vars().map(|pred| pred.trait_ref)
+                            && let Some(found_ty) =
                                 trait_ref.args.get(1).and_then(|arg| arg.as_type())
-                            {
-                                let ty = main_trait_predicate.skip_binder().self_ty();
+                            && let Some(ty) =
+                                main_trait_predicate.no_bound_vars().map(|pred| pred.self_ty())
+                            && let Some(cast_ty) =
+                                self.find_explicit_cast_type(obligation.param_env, found_ty, ty)
+                        {
+                            let found_ty_str = self.tcx.short_string(found_ty, &mut long_ty_file);
+                            let cast_ty_str = self.tcx.short_string(cast_ty, &mut long_ty_file);
 
-                                if let Some(cast_ty) =
-                                    self.find_explicit_cast_type(obligation.param_env, found_ty, ty)
-                                {
-                                    let found_ty_str =
-                                        self.tcx.short_string(found_ty, &mut long_ty_file);
-                                    let cast_ty_str =
-                                        self.tcx.short_string(cast_ty, &mut long_ty_file);
-
-                                    err.help(format!(
-                                        "consider casting the `{found_ty_str}` value to `{cast_ty_str}`",
-                                    ));
-                                }
-                            }
+                            err.help(format!(
+                                "consider casting the `{found_ty_str}` value to `{cast_ty_str}`",
+                            ));
                         }
 
                         *err.long_ty_path() = long_ty_file;
@@ -555,7 +550,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         };
                         if is_fn_trait && is_target_feature_fn {
                             err.note(
-                                "`#[target_feature]` functions do not implement the `Fn` traits",
+                                "`#[target_feature(..)]` functions do not implement the `Fn` traits",
                             );
                             err.note(
                                 "try casting the function to a `fn` pointer or wrapping it in a closure",
@@ -641,9 +636,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err
                     }
 
-                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => self
+                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(clause)) => self
                         .report_host_effect_error(
-                            bound_predicate.rebind(predicate),
+                            bound_predicate.rebind(clause),
                             &obligation,
                             span,
                         ),
@@ -863,22 +858,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn report_host_effect_error(
         &self,
-        predicate: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        clause: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
         main_obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Diag<'a> {
-        // FIXME(const_trait_impl): We should recompute the predicate with `[const]`
+        // FIXME(const_trait_impl): We should recompute the clause with `[const]`
         // if it's `const`, and if it holds, explain that this bound only
         // *conditionally* holds.
-        let trait_ref = predicate.map_bound(|predicate| ty::TraitPredicate {
-            trait_ref: predicate.trait_ref,
+        let trait_ref = clause.map_bound(|clause| ty::TraitPredicate {
+            trait_ref: clause.trait_ref,
             polarity: ty::PredicatePolarity::Positive,
         });
         let mut file = None;
 
         let err_msg = self.get_standard_error_message(
             trait_ref,
-            Some(predicate.constness()),
+            Some(clause.constness()),
             String::new(),
             &mut file,
         );
@@ -949,12 +944,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 } else if let Some(impl_did) = impl_did.as_local()
                     && let item = self.tcx.hir_expect_item(impl_did)
-                    && let hir::ItemKind::Impl(item) = item.kind
-                    && let Some(of_trait) = item.of_trait
+                    && let hir::ItemKind::Impl(impl_) = item.kind
+                    && impl_.of_trait.is_some()
                 {
                     // trait is const, impl is local and not const
                     diag.span_suggestion_verbose(
-                        of_trait.trait_ref.path.span.shrink_to_lo(),
+                        item.span.shrink_to_lo(),
                         format!("make the `impl` of trait `{trait_name}` `const`"),
                         "const ".to_string(),
                         Applicability::MaybeIncorrect,
@@ -1517,8 +1512,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_host_effect(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        goal: ty::HostEffectPredicate<'tcx>,
-        assumption: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        goal: ty::HostEffectClause<'tcx>,
+        assumption: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>,
     ) -> bool {
         let assumption = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
@@ -1532,9 +1527,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn as_host_effect_clause(
         predicate: ty::Predicate<'tcx>,
-    ) -> Option<ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>> {
+    ) -> Option<ty::Binder<'tcx, ty::HostEffectClause<'tcx>>> {
         predicate.as_clause().and_then(|clause| match clause.kind().skip_binder() {
-            ty::ClauseKind::HostEffect(pred) => Some(clause.kind().rebind(pred)),
+            ty::ClauseKind::HostEffect(host_clause) => Some(clause.kind().rebind(host_clause)),
             _ => None,
         })
     }
@@ -1660,7 +1655,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             let mut file = None;
-            let (msg, span, closure_span) = values
+            let (msg, mut span, mut closure_span) = values
                 .and_then(|(predicate, normalized_term, expected_term)| {
                     self.maybe_detailed_projection_msg(
                         obligation.cause.span,
@@ -1681,29 +1676,87 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         None,
                     )
                 });
+
+            // When the obligation comes from a closure arg and the projection isn't FnOnceOutput
+            // (which maybe_detailed_projection_msg handles via self_ty), point at the closure's
+            // return expression and label the closure declaration.
+            if closure_span.is_none()
+                && let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
+                && let Node::Expr(arg_expr) = self.tcx.hir_node(*arg_hir_id)
+                && let hir::ExprKind::Closure(closure) = arg_expr.kind
+                && closure.kind == hir::ClosureKind::Closure
+            {
+                let body = self.tcx.hir_body(closure.body);
+                let ret_span = match body.value.kind {
+                    hir::ExprKind::Block(hir::Block { expr: Some(expr), .. }, _) => expr.span,
+                    hir::ExprKind::Block(hir::Block { expr: None, stmts: [.., last], .. }, _) => {
+                        last.span
+                    }
+                    _ => body.value.span,
+                };
+                if !closure.fn_decl_span.overlaps(ret_span) {
+                    closure_span = Some(closure.fn_decl_span);
+                    span = ret_span;
+                }
+            }
+
             let mut diag = struct_span_code_err!(self.dcx(), span, E0271, "{msg}");
             *diag.long_ty_path() = file;
+            let mut mention_bounds = true;
             if let Some(span) = closure_span {
-                // Mark the closure decl so that it is seen even if we are pointing at the return
-                // type or expression.
-                //
-                // error[E0271]: expected `{closure@foo.rs:41:16}` to be a closure that returns
-                //               `Unit3`, but it returns `Unit4`
-                //   --> $DIR/foo.rs:43:17
-                //    |
-                // LL |     let v = Unit2.m(
-                //    |                   - required by a bound introduced by this call
-                // ...
-                // LL |             f: |x| {
-                //    |                --- /* this span */
-                // LL |                 drop(x);
-                // LL |                 Unit4
-                //    |                 ^^^^^ expected `Unit3`, found `Unit4`
-                //    |
-                diag.span_label(span, "this closure");
-                if !span.overlaps(obligation.cause.span) {
-                    // Point at the binding corresponding to the closure where it is used.
-                    diag.span_label(obligation.cause.span, "closure used here");
+                if let Some((_, _, expected_ty)) = values
+                    && let Some(expected_ty) = expected_ty.as_type()
+                    && let ty::Closure(def_id, _) = expected_ty.kind()
+                    && self.tcx.def_span(*def_id).overlaps(span)
+                    && let ObligationCauseCode::FunctionArg { parent_code, arg_hir_id, .. } =
+                        obligation.cause.code()
+                    && let ObligationCauseCode::WhereClauseInExpr(def_id, span, _, _)
+                    | ObligationCauseCode::WhereClause(def_id, span) = &**parent_code
+                {
+                    // We have a trait bound for a closure to return itself, like
+                    // `T: FnOnce() -> T`. This is nonsensical, but as far as the type system is
+                    // concerned, valid. This is quite an edge case, but lets produce a reasonable
+                    // diagnostic even in the face of an unreasonable user :)
+                    let mut multispan: MultiSpan = (*span).into();
+                    multispan.push_span_label(*span, "this requires the closure to return itself");
+                    if let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id) {
+                        multispan
+                            .push_span_label(arg.span, "this closure would have to return itself");
+                    }
+                    let in_the_item = match self.tcx.opt_item_name(*def_id) {
+                        Some(name) => format!("in `{name}`"),
+                        None => String::new(),
+                    };
+                    diag.span_note(
+                        multispan,
+                        format!(
+                            "a bound {in_the_item} requires that a closure return itself, which is \
+                             not possible",
+                        ),
+                    );
+                    mention_bounds = false;
+                } else {
+                    // Mark the closure decl so that it is seen even if we are pointing at the
+                    // return type or expression.
+                    //
+                    // error[E0271]: expected `{closure@foo.rs:41:16}` to be a closure that returns
+                    //               `Unit3`, but it returns `Unit4`
+                    //   --> $DIR/foo.rs:43:17
+                    //    |
+                    // LL |     let v = Unit2.m(
+                    //    |                   - required by a bound introduced by this call
+                    // ...
+                    // LL |             f: |x| {
+                    //    |                --- /* this span */
+                    // LL |                 drop(x);
+                    // LL |                 Unit4
+                    //    |                 ^^^^^ expected `Unit3`, found `Unit4`
+                    //    |
+                    diag.span_label(span, "this closure");
+                    if !span.overlaps(obligation.cause.span) {
+                        // Point at the binding corresponding to the closure where it is used.
+                        diag.span_label(obligation.cause.span, "closure used here");
+                    }
                 }
             }
 
@@ -1775,7 +1828,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 false,
                 Some(span),
             );
-            self.note_obligation_cause(&mut diag, obligation);
+            if mention_bounds {
+                self.note_obligation_cause(&mut diag, obligation);
+            }
             diag.emit()
         })
     }
@@ -2119,7 +2174,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     ocx.register_obligations(
                         self.tcx
-                            .predicates_of(single.impl_def_id)
+                            .clauses_of(single.impl_def_id)
                             .instantiate(self.tcx, impl_args)
                             .into_iter()
                             .map(|(clause, _)| {
@@ -2131,7 +2186,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 )
                             }),
                     );
-                    if !ocx.try_evaluate_obligations().is_empty() {
+                    if !ocx.try_evaluate_obligations().no_errors() {
                         return false;
                     }
 
@@ -2147,7 +2202,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             terrs.push(terr);
                         }
-                        if !ocx.try_evaluate_obligations().is_empty() {
+                        if !ocx.try_evaluate_obligations().no_errors() {
                             return false;
                         }
                     }
@@ -2317,11 +2372,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         )
                                         .is_err()
                                     {
-                                        return Vec::new();
+                                        return TraitErrors::NoErrors;
                                     }
                                     ocx.register_obligations(
                                         self.tcx
-                                            .predicates_of(def_id)
+                                            .clauses_of(def_id)
                                             .instantiate(self.tcx, impl_args)
                                             .into_iter()
                                             .map(|(clause, span)| {
@@ -2337,13 +2392,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 })
                             };
                             let failing_obligations =
-                                if !self.tcx.predicates_of(def_id).predicates.is_empty() {
+                                if !self.tcx.clauses_of(def_id).clauses.is_empty() {
                                     self.probe(|_| evaluate_obligations())
                                 } else {
-                                    Vec::new()
+                                    TraitErrors::NoErrors
                                 };
 
-                            if failing_obligations.is_empty() {
+                            if failing_obligations.no_errors() {
                                 (" implemented for `", "")
                             } else {
                                 for error in failing_obligations {
@@ -2430,10 +2485,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
                 err.span_help(span, msg);
             } else {
+                // When more than 5 tuples implement the same trait, the output might be very verbose
+                // Instead of displaying each of these, we sort the candidates by arity in ascending
+                // order, then we compute the min and the max arity, ensuring that the arities are
+                // consecutive (by step of one). If these conditions are met, then the output is shown
+                // as a range of tuples [tuple_min_arity:tuple_max_arity]
+                let mut tuple_min_arity = usize::MAX;
+                let mut tuple_max_arity = 0_usize;
+                let mut last_arity = None;
+                let mut all_types_tuples_cont_arity = true;
+                candidates.sort_by(|(c1, _), (c2, _)| {
+                    if let ty::Tuple(tys1) = c1.self_ty().kind()
+                        && let ty::Tuple(tys2) = c2.self_ty().kind()
+                    {
+                        tys1.len().cmp(&tys2.len())
+                    } else {
+                        std::cmp::Ordering::Equal
+                    }
+                });
                 let candidate_names: Vec<String> = candidates
                     .iter()
                     .map(|(c, _)| {
                         if all_traits_equal {
+                            if all_types_tuples_cont_arity
+                                && let ty::Tuple(tys) = c.self_ty().kind()
+                                && last_arity.map_or(1, |a: usize| a.abs_diff(tys.len())) == 1
+                            {
+                                last_arity = Some(tys.len());
+                                if tys.len() > tuple_max_arity {
+                                    tuple_max_arity = tys.len();
+                                }
+                                if tys.len() < tuple_min_arity {
+                                    tuple_min_arity = tys.len();
+                                }
+                            } else {
+                                all_types_tuples_cont_arity = false;
+                            }
                             format!(
                                 "\n  {}",
                                 self.tcx.short_string(c.self_ty(), err.long_ty_path())
@@ -2454,6 +2541,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                     })
                     .collect();
+
+                let details = if all_traits_equal && all_types_tuples_cont_arity {
+                    if tuple_min_arity == 0 {
+                        format!("up to tuples of arity {tuple_max_arity}")
+                    } else {
+                        format!(
+                            "for tuples of arity {tuple_min_arity} up to and including {tuple_max_arity}"
+                        )
+                    }
+                } else {
+                    String::new()
+                };
+                let (candidate_names, end) = if all_traits_equal && all_types_tuples_cont_arity {
+                    (
+                        vec![
+                            // (T₁, T₂, …, Tₙ)
+                            format!("\n  (T\u{2081}, T\u{2082}, …, T\u{2099}) {details}"),
+                        ],
+                        1,
+                    )
+                } else {
+                    (candidate_names, end)
+                };
                 let msg = if all_types_equal {
                     format!(
                         "`{}` implements trait `{}`",
@@ -3757,7 +3867,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 let ocx = ObligationCtxt::new(self);
                 ocx.register_obligation(obligation);
-                if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                if ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                     return Ok((
                         self.tcx
                             .fn_trait_kind_from_def_id(trait_def_id)

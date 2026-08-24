@@ -2,9 +2,9 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
+use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
-use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
 use rustc_middle::bug;
 use rustc_parse::parser::{Parser, Recovery, token_descr};

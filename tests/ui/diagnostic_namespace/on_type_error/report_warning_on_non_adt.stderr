@@ -1,51 +1,51 @@
-warning: `#[diagnostic::on_type_error]` attribute cannot be used on functions
-  --> $DIR/report_warning_on_non_adt.rs:3:1
+warning: the `diagnostic::on_type_error` attribute cannot be used on functions
+  --> $DIR/report_warning_on_non_adt.rs:3:3
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_type_error]` can only be applied to data types
+   = help: the `diagnostic::on_type_error` attribute can only be applied to data types
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
-warning: `#[diagnostic::on_type_error]` attribute cannot be used on statics
-  --> $DIR/report_warning_on_non_adt.rs:7:1
+warning: the `diagnostic::on_type_error` attribute cannot be used on statics
+  --> $DIR/report_warning_on_non_adt.rs:7:3
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_type_error]` can only be applied to data types
+   = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 
-warning: `#[diagnostic::on_type_error]` attribute cannot be used on modules
-  --> $DIR/report_warning_on_non_adt.rs:11:1
+warning: the `diagnostic::on_type_error` attribute cannot be used on modules
+  --> $DIR/report_warning_on_non_adt.rs:11:3
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_type_error]` can only be applied to data types
+   = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 
-warning: `#[diagnostic::on_type_error]` attribute cannot be used on traits
-  --> $DIR/report_warning_on_non_adt.rs:15:1
+warning: the `diagnostic::on_type_error` attribute cannot be used on traits
+  --> $DIR/report_warning_on_non_adt.rs:15:3
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_type_error]` can only be applied to data types
+   = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 
-warning: `#[diagnostic::on_type_error]` attribute cannot be used on type aliases
-  --> $DIR/report_warning_on_non_adt.rs:19:1
+warning: the `diagnostic::on_type_error` attribute cannot be used on type aliases
+  --> $DIR/report_warning_on_non_adt.rs:19:3
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_type_error]` can only be applied to data types
+   = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 
-warning: `#[diagnostic::on_type_error]` attribute cannot be used on inherent methods
-  --> $DIR/report_warning_on_non_adt.rs:26:5
+warning: the `diagnostic::on_type_error` attribute cannot be used on inherent methods
+  --> $DIR/report_warning_on_non_adt.rs:26:7
    |
 LL |     #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_type_error]` can only be applied to data types
+   = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 
 error[E0308]: mismatched types
   --> $DIR/report_warning_on_non_adt.rs:38:25

@@ -20,7 +20,6 @@ use self::helper::{
 use self::run::GenmcMode;
 use self::thread_id_map::ThreadIdMap;
 use crate::diagnostics::SpanDedupDiagnostic;
-use crate::intrinsics::AtomicRmwOp;
 use crate::*;
 
 mod config;
@@ -325,7 +324,7 @@ impl GenmcCtx {
     /// Returns `(old_val, Option<new_val>)`. `new_val` might not be the latest write in coherence order, which is indicated by `None`.
     ///
     /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitialized.
-    pub(crate) fn atomic_rmw_op<'tcx>(
+    pub(crate) fn atomic_rmw<'tcx>(
         &self,
         ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
         address: Size,
@@ -342,29 +341,6 @@ impl GenmcCtx {
             size,
             ordering,
             to_genmc_rmw_op(atomic_op, is_signed),
-            scalar_to_genmc_scalar(ecx, self, rhs_scalar)?,
-            scalar_to_genmc_scalar(ecx, self, old_value)?,
-        )
-    }
-
-    /// Returns `(old_val, Option<new_val>)`. `new_val` might not be the latest write in coherence order, which is indicated by `None`.
-    ///
-    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitialized.
-    pub(crate) fn atomic_exchange<'tcx>(
-        &self,
-        ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-        address: Size,
-        size: Size,
-        rhs_scalar: Scalar,
-        ordering: AtomicRwOrd,
-        old_value: Scalar,
-    ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
-        self.handle_atomic_rmw_op(
-            ecx,
-            address,
-            size,
-            ordering,
-            /* genmc_rmw_op */ RMWBinOp::Xchg,
             scalar_to_genmc_scalar(ecx, self, rhs_scalar)?,
             scalar_to_genmc_scalar(ecx, self, old_value)?,
         )

@@ -265,7 +265,7 @@ impl HasSource for LifetimeParam {
     }
 }
 
-impl HasSource for LocalSource {
+impl HasSource for LocalSource<'_> {
     type Ast = Either<ast::IdentPat, ast::SelfParam>;
 
     fn source(self, _: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {

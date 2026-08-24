@@ -328,9 +328,7 @@ where
 
     mem::forget(dst_guard);
 
-    let vec = unsafe { Vec::from_parts(dst_buf, len, dst_cap) };
-
-    vec
+    unsafe { Vec::from_parts(dst_buf, len, dst_cap) }
 }
 
 fn write_in_place_with_drop<T>(

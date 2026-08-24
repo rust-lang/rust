@@ -45,6 +45,8 @@ use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, trace};
 
+use crate::PassPolicy;
+
 pub(super) enum SimplifyCfg {
     Initial,
     PromoteConsts,
@@ -93,13 +95,13 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
         self.name()
     }
 
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(true)
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.name(), body.source);
         simplify_cfg(tcx, body);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -427,8 +429,8 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
         }
     }
 
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() > 0)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -456,10 +458,6 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
 
             body.local_decls.shrink_to_fit();
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

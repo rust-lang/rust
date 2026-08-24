@@ -17,10 +17,10 @@ use rustc_errors::{
     Applicability, Diag, MultiSpan, StashKey, StringPart, listify, pluralize, struct_span_code_err,
 };
 use rustc_hir::attrs::diagnostic::CustomDiagnostic;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, ExprKind, HirId, Node, PathSegment, QPath, find_attr, is_range_literal,
 };
@@ -31,7 +31,9 @@ use rustc_middle::ty::print::{
     PrintTraitRefExt as _, with_crate_prefix, with_forced_trimmed_paths,
     with_no_visible_paths_if_doc_hidden,
 };
-use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, GenericArgKind, IsSuggestable, RegionExt, Ty, TyCtxt, TypeVisitableExt,
+};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, Ident, MacroKind, Span, Symbol, edit_distance,
@@ -3397,7 +3399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return;
                 };
 
-                let name = self.ty_to_value_string(actual);
+                let name = self.ty_to_string(actual);
                 let inner_id = kind.did();
                 let mutable = if let Some(AutorefOrPtrAdjustment::Autoref { mutbl, .. }) =
                     pick.autoref_or_ptr_adjustment
@@ -3810,8 +3812,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         let is_inclusive = match lang_item {
-            hir::LangItem::RangeTo => false,
-            hir::LangItem::RangeToInclusive | hir::LangItem::RangeInclusiveCopy => true,
+            LangItem::RangeTo => false,
+            LangItem::RangeToInclusive | LangItem::RangeInclusiveCopy => true,
             _ => return,
         };
 
@@ -3866,7 +3868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Print out the type for use in value namespace.
     fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
         match ty.kind() {
-            ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), args),
+            ty::Adt(def, args) => self.tcx.value_path_str_with_args(def.did(), args),
             _ => self.ty_to_string(ty),
         }
     }

@@ -55,8 +55,7 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
             } else {
                 test_type_match::extract_verify_if_eq(
                     tcx,
-                    &outlives
-                        .map_bound(|ty::OutlivesPredicate(ty, bound)| VerifyIfEq { ty, bound }),
+                    &outlives.map_bound(|ty::OutlivesClause(ty, bound)| VerifyIfEq { ty, bound }),
                     // FIXME(#155345): Region handling should generally only
                     // deal with rigid aliases, making sure we do so correctly
                     // everywhere is effort, so we're just using `No` everywhere
@@ -345,7 +344,7 @@ fn live_args_for_outlives_clause<'tcx>(
     tcx: TyCtxt<'tcx>,
     alias_def_id: DefId,
     ty: Ty<'tcx>,
-    outlives: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
+    outlives: ty::Binder<'tcx, ty::TypeOutlivesClause<'tcx>>,
 ) -> Option<FxIndexSet<ty::EarlyBinder<'tcx, ty::GenericArg<'tcx>>>> {
     // N.B. it's okay to skip the binder here (and in the rest of the function),
     // because all variables under binders do not escape
@@ -370,7 +369,7 @@ fn live_args_for_outlives_clause<'tcx>(
     // we want *all* the identity regions in `ty` that match the outlives bound.
     test_type_match::extract_verify_if_eq(
         tcx,
-        &outlives.map_bound(|ty::OutlivesPredicate(ty, bound)| VerifyIfEq { ty, bound }),
+        &outlives.map_bound(|ty::OutlivesClause(ty, bound)| VerifyIfEq { ty, bound }),
         ty,
     )?;
 

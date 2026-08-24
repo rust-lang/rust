@@ -75,15 +75,9 @@ enum TTLocation {
     Callsite,
 }
 
-#[cfg_attr(not(feature = "llvm_enzyme"), allow(unused))]
 pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: FncTree) {
-    // TypeTree processing uses functions from Enzyme, which we might not have available if we did
-    // not build this compiler with `llvm_enzyme`. This feature is not strictly necessary, but
-    // skipping this function increases the chance that Enzyme fails to compile some code.
-    // FIXME(autodiff): In the future we should conditionally run this function even without the
-    // `llvm_enzyme` feature, in case that libEnzyme was provided via rustup.
-    #[cfg(not(feature = "llvm_enzyme"))]
-    return;
+    // TypeTree processing uses functions from Enzyme. This feature is not strictly necessary,
+    // but skipping this function increases the chance that Enzyme fails to compile some code.
 
     let tcx = cx.tcx;
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {

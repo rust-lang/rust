@@ -6,8 +6,7 @@ use clippy_utils::ty::{ExprFnSig, expr_sig, ty_sig};
 use clippy_utils::{as_some_expr, get_expr_use_or_unification_node, is_none_expr, std_or_core, sym};
 
 use rustc_errors::Applicability;
-use rustc_hir::hir_id::HirId;
-use rustc_hir::{Expr, ExprKind, Node};
+use rustc_hir::{Expr, ExprKind, HirId, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Binder;
 use rustc_span::Symbol;
@@ -44,9 +43,9 @@ fn is_arg_ty_unified_in_fn<'tcx>(
 
     fn_sig
         .predicates_id()
-        .map(|def_id| cx.tcx.predicates_of(def_id))
+        .map(|def_id| cx.tcx.clauses_of(def_id))
         .is_some_and(|generics| {
-            generics.predicates.iter().any(|(clause, _)| {
+            generics.clauses.iter().any(|(clause, _)| {
                 clause
                     .as_projection_clause()
                     .and_then(|p| p.map_bound(|p| p.term.as_type()).transpose())

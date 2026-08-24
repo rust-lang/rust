@@ -1,9 +1,3 @@
-error: `Trait(...)` syntax does not support named parameters
-  --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:5:32
-   |
-LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
-   |                                ^ help: remove the parameter name
-
 error[E0425]: cannot find function `dealloc` in this scope
   --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:5:9
    |
@@ -20,6 +14,16 @@ error[E0425]: cannot find value `ptr2` in this scope
    |
 LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
    |                 ^^^^ not found in this scope
+
+error[E0658]: named parameters in parenthesized generic argument lists are experimental
+  --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:5:32
+   |
+LL |         dealloc(ptr2, Layout::(x: !)(1, 1));
+   |                                ^
+   |
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
+   = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `!` type is experimental
   --> $DIR/diagnostics-parenthesized-type-arguments-ice-issue-122345.rs:5:35

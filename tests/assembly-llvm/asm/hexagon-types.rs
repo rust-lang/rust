@@ -5,23 +5,19 @@
 //@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: hexagon
 
-#![feature(no_core, repr_simd, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
 type ptr = *const i32;
 
-#[repr(simd)]
-pub struct i32x32([i32; 32]); // 1024-bit HVX vector (128B mode)
-impl Copy for i32x32 {}
-
-#[repr(simd)]
-pub struct i32x64([i32; 64]); // 2048-bit HVX vector pair (128B mode)
-impl Copy for i32x64 {}
+type i32x32 = Simd<i32, 32>; // 1024-bit HVX vector (128B mode)
+type i32x64 = Simd<i32, 64>; // 2048-bit HVX vector pair (128B mode)
 
 extern "C" {
     fn extern_func();

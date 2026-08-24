@@ -4,7 +4,7 @@ use rustc_middle::ty::RawPtr;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, sym};
 
-use crate::lints::{InvalidNullArgumentsDiag, UselessPtrNullChecksDiag};
+use crate::diagnostics::{InvalidNullArgumentsDiag, UselessPtrNullChecksDiag};
 use crate::utils::peel_casts;
 use crate::{LateContext, LateLintPass, LintContext};
 
@@ -112,7 +112,7 @@ fn useless_check<'a, 'tcx: 'a>(
 
 /// Checks if the given expression is a null pointer (modulo casting)
 fn is_null_ptr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Span> {
-    let (expr, _) = peel_casts(cx, expr);
+    let expr = peel_casts(cx, expr);
 
     if let ExprKind::Call(path, []) = expr.kind
         && let ExprKind::Path(ref qpath) = path.kind

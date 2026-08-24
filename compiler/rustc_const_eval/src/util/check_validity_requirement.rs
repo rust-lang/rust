@@ -76,7 +76,7 @@ fn check_validity_requirement_strict<'tcx>(
     // option this is fine, but if this is ever meant to be stable we should probably add
     // a "fast mode" to validation.
     with_no_trimmed_paths!(
-        cx.validate_operand(
+        cx.validate_place(
             &allocated.into(),
             /*recursive*/ false,
             /*reset_provenance_and_padding*/ false,
@@ -124,7 +124,7 @@ fn check_validity_requirement_lax<'tcx>(
             BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
                 scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2)
             }
-            BackendRepr::SimdVector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
+            BackendRepr::SimdVector { element: s, count: _ } => scalar_allows_raw_init(s),
             BackendRepr::Memory { .. } => true, // Fields are checked below.
             BackendRepr::SimdScalableVector { element, .. } => scalar_allows_raw_init(element),
         };
@@ -200,7 +200,7 @@ pub(crate) fn validate_scalar_in_layout<'tcx>(
 
     cx.write_scalar(scalar, &allocated).unwrap();
 
-    cx.validate_operand(
+    cx.validate_place(
         &allocated.into(),
         /*recursive*/ false,
         /*reset_provenance_and_padding*/ false,

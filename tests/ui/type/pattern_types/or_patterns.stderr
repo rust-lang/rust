@@ -45,13 +45,7 @@ error: layout_of((i8) is (i8::MIN..=-1 | 1..)) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I8,
-                       true,
-                   ),
-                   valid_range: 1..=255,
-               },
+               i8 is (..=-1) | (1..),
            ),
            fields: Arbitrary {
                offsets: [
@@ -64,10 +58,7 @@ error: layout_of((i8) is (i8::MIN..=-1 | 1..)) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       true,
-                   ),
+                   value: i8,
                    valid_range: 1..=255,
                },
            ),
@@ -90,13 +81,7 @@ error: layout_of((i8) is (i8::MIN..=-2 | 0..)) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I8,
-                       true,
-                   ),
-                   valid_range: 0..=254,
-               },
+               i8 is (..=-2) | (0..),
            ),
            fields: Arbitrary {
                offsets: [
@@ -109,10 +94,7 @@ error: layout_of((i8) is (i8::MIN..=-2 | 0..)) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       true,
-                   ),
+                   value: i8,
                    valid_range: 0..=254,
                },
            ),

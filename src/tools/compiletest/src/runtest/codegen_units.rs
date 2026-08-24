@@ -6,7 +6,7 @@ use crate::{errors, fatal};
 
 impl TestCx<'_> {
     pub(super) fn run_codegen_units_test(&self) {
-        assert!(self.revision.is_none(), "revisions not relevant here");
+        assert!(self.variant.revision.is_none(), "revisions not relevant here");
 
         let proc_res = self.compile_test(WillExecute::No, Emit::None);
 

@@ -30,8 +30,8 @@ interned_slice!(
     SolverDefIds,
     StoredSolverDefIds,
     def_ids,
-    SolverDefId,
-    SolverDefId,
+    SolverDefId<'db>,
+    SolverDefId<'static>,
 );
 impl_foldable_for_interned_slice!(SolverDefIds);
 

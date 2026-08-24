@@ -1,5 +1,5 @@
 error: use of `const` in the type system not defined as `type const`
-  --> $DIR/path-to-non-type-inherent-associated-const.rs:24:24
+  --> $DIR/path-to-non-type-inherent-associated-const.rs:27:24
    |
 LL |     let _ = Struct::<{ StructImpl::INHERENT }>;
    |                        ^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     type const INHERENT: usize = 1;
    |     ++++
 
 error: use of `const` in the type system not defined as `type const`
-  --> $DIR/path-to-non-type-inherent-associated-const.rs:26:24
+  --> $DIR/path-to-non-type-inherent-associated-const.rs:29:24
    |
 LL |     let _ = Struct::<{ GenericStructImpl::<2>::INHERENT }>;
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

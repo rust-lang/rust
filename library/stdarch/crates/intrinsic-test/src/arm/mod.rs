@@ -111,10 +111,6 @@ impl SupportedArchitecture for Arm {
             // zeroed vectors in Rust, which are inherently going to be different than the
             // undefined vectors returned by the C intrinsics.
             .filter(|i| !i.name.starts_with("svundef"))
-            // Skip `sveorv` intrinsics - the code produced by `intrinsic-test` for these
-            // miscompiles and the Rust intrinsic call gets replaced by a constant zero (see
-            // llvm/llvm-project#203921).
-            .filter(|i| !i.name.starts_with("sveorv"))
             // These load intrinsics expect each element in the scalable vector `bases` argument to
             // be able to be cast to a pointer, which we don't support generating tests for yet.
             .filter(|i| !(i.name.starts_with("svld") && i.name.contains("_gather_")))
@@ -233,72 +229,91 @@ const fn svprfop_from_i32(value: i32) -> svprfop {
     }
 }
 
-macro_rules! debug_print_integral {
-    ($($name:ident => ($ty:ty, $svptrue_fn:ident, $svcnt_fn:ident, $svst_fn:ident)),*) => {
-        $(
-            #[inline]
-            #[target_feature(enable = "sve")]
-            #[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
-            pub fn $name(v: $ty) -> String {
-                unsafe {
-                    let __pred = $svptrue_fn();
-                    let __num_elems = $svcnt_fn() as usize;
-                    let mut __buf = std::vec::Vec::with_capacity(__num_elems);
-                    $svst_fn(__pred, __buf.as_mut_ptr(), v);
-                    __buf.set_len(__num_elems);
-                    format!(
-                        "[{}]",
-                        __buf.iter().map(|el| el.to_string()).collect::<Vec<_>>().join(", ")
-                    )
-                }
-            }
-        )*
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svint8_to_slice(a: &svint8_t) -> &[i8] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntb() as usize)
     }
 }
 
-debug_print_integral! {
-    debug_print_f32 => (svfloat32_t, svptrue_b32, svcntw, svst1_f32),
-    debug_print_f64 => (svfloat64_t, svptrue_b64, svcntd, svst1_f64),
-    debug_print_s8 => (svint8_t, svptrue_b8, svcntb, svst1_s8),
-    debug_print_s16 => (svint16_t, svptrue_b16, svcnth, svst1_s16),
-    debug_print_s32 => (svint32_t, svptrue_b32, svcntw, svst1_s32),
-    debug_print_s64 => (svint64_t, svptrue_b64, svcntd, svst1_s64),
-    debug_print_u8 => (svuint8_t, svptrue_b8, svcntb, svst1_u8),
-    debug_print_u16 => (svuint16_t, svptrue_b16, svcnth, svst1_u16),
-    debug_print_u32 => (svuint32_t, svptrue_b32, svcntw, svst1_u32),
-    debug_print_u64 => (svuint64_t, svptrue_b64, svcntd, svst1_u64)
-}
-
-macro_rules! debug_print_bool {
-    ($($name:ident => ($ty:ty, $svst_fn:ident, $svdup_fn:ident)),*) => {
-        $(
-            #[inline]
-            #[target_feature(enable = "sve")]
-            #[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
-            pub fn $name(v: $ty) -> String {
-                unsafe {
-                    let __num_elems = svcntb() as usize;
-                    let mut __buf = std::vec::Vec::with_capacity(__num_elems);
-                    $svst_fn(v, __buf.as_mut_ptr(), $svdup_fn(1));
-                    __buf.set_len(__num_elems);
-                    format!(
-                        "[{}]",
-                        __buf.iter()
-                            .map(|el| *el == 1)
-                            .map(|el| el.to_string())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                }
-            }
-        )*
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svuint8_to_slice(a: &svuint8_t) -> &[u8] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntb() as usize)
     }
 }
 
-debug_print_bool! {
-    debug_print_b8 => (svbool_t, svst1_u8, svdup_n_u8),
-    debug_print_b16 => (svbool_t, svst1_u16, svdup_n_u16),
-    debug_print_b32 => (svbool_t, svst1_u32, svdup_n_u32),
-    debug_print_b64 => (svbool_t, svst1_u64, svdup_n_u64)
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svint16_to_slice(a: &svint16_t) -> &[i16] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcnth() as usize)
+    }
 }
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svuint16_to_slice(a: &svuint16_t) -> &[u16] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcnth() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svint32_to_slice(a: &svint32_t) -> &[i32] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntw() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svuint32_to_slice(a: &svuint32_t) -> &[u32] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntw() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svint64_to_slice(a: &svint64_t) -> &[i64] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntd() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svuint64_to_slice(a: &svuint64_t) -> &[u64] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntd() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svfloat32_to_slice(a: &svfloat32_t) -> &[NanEqF32] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntw() as usize)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svfloat64_to_slice(a: &svfloat64_t) -> &[NanEqF64] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntd() as usize)
+    }
+}
+
+#[repr(transparent)]
+#[derive(Copy,Clone,PartialEq,Eq)]
+struct b8(u8);
+
+impl std::fmt::Debug for b8 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:08b}", self.0)
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"))]
+fn svbool_to_slice(a: &svbool_t) -> &[b8] {
+    unsafe {
+        core::slice::from_raw_parts(core::ptr::from_ref(a).cast(), svcntd() as usize)
+    }
+}
+
 "#;

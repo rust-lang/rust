@@ -238,14 +238,7 @@ impl<T> StableHash for PhantomData<T> {
     fn stable_hash<Hcx>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {}
 }
 
-impl StableHash for NonZero<u32> {
-    #[inline]
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.get().stable_hash(hcx, hasher)
-    }
-}
-
-impl StableHash for NonZero<usize> {
+impl<T: StableHash + std::num::ZeroablePrimitive> StableHash for NonZero<T> {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.get().stable_hash(hcx, hasher)

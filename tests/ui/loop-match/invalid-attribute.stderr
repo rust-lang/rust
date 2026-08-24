@@ -1,114 +1,114 @@
-error: `#[loop_match]` attribute cannot be used on crates
-  --> $DIR/invalid-attribute.rs:6:1
+error: the `loop_match` attribute cannot be used on crates
+  --> $DIR/invalid-attribute.rs:6:4
    |
 LL | #![loop_match]
-   | ^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^
    |
-   = help: `#[loop_match]` can only be applied to loops
+   = help: the `loop_match` attribute can only be applied to loops
 
-error: `#[const_continue]` attribute cannot be used on crates
-  --> $DIR/invalid-attribute.rs:7:1
+error: the `const_continue` attribute cannot be used on crates
+  --> $DIR/invalid-attribute.rs:7:4
    |
 LL | #![const_continue]
-   | ^^^^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can only be applied to break expressions
+   = help: the `const_continue` attribute can only be applied to break expressions
 
-error: `#[loop_match]` attribute cannot be used on foreign functions
-  --> $DIR/invalid-attribute.rs:10:5
+error: the `loop_match` attribute cannot be used on foreign functions
+  --> $DIR/invalid-attribute.rs:10:7
    |
 LL |     #[loop_match]
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^^^
    |
-   = help: `#[loop_match]` can only be applied to loops
+   = help: the `loop_match` attribute can only be applied to loops
 
-error: `#[const_continue]` attribute cannot be used on foreign functions
-  --> $DIR/invalid-attribute.rs:11:5
+error: the `const_continue` attribute cannot be used on foreign functions
+  --> $DIR/invalid-attribute.rs:11:7
    |
 LL |     #[const_continue]
-   |     ^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can only be applied to break expressions
+   = help: the `const_continue` attribute can only be applied to break expressions
 
-error: `#[loop_match]` attribute cannot be used on structs
-  --> $DIR/invalid-attribute.rs:15:1
+error: the `loop_match` attribute cannot be used on structs
+  --> $DIR/invalid-attribute.rs:15:3
    |
 LL | #[loop_match]
-   | ^^^^^^^^^^^^^
+   |   ^^^^^^^^^^
    |
-   = help: `#[loop_match]` can only be applied to loops
+   = help: the `loop_match` attribute can only be applied to loops
 
-error: `#[const_continue]` attribute cannot be used on structs
-  --> $DIR/invalid-attribute.rs:16:1
+error: the `const_continue` attribute cannot be used on structs
+  --> $DIR/invalid-attribute.rs:16:3
    |
 LL | #[const_continue]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can only be applied to break expressions
+   = help: the `const_continue` attribute can only be applied to break expressions
 
-error: `#[loop_match]` attribute cannot be used on required trait methods
-  --> $DIR/invalid-attribute.rs:24:5
+error: the `loop_match` attribute cannot be used on required trait methods
+  --> $DIR/invalid-attribute.rs:24:7
    |
 LL |     #[loop_match]
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^^^
    |
-   = help: `#[loop_match]` can only be applied to loops
+   = help: the `loop_match` attribute can only be applied to loops
 
-error: `#[const_continue]` attribute cannot be used on required trait methods
-  --> $DIR/invalid-attribute.rs:25:5
+error: the `const_continue` attribute cannot be used on required trait methods
+  --> $DIR/invalid-attribute.rs:25:7
    |
 LL |     #[const_continue]
-   |     ^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can only be applied to break expressions
+   = help: the `const_continue` attribute can only be applied to break expressions
 
-error: `#[loop_match]` attribute cannot be used on functions
-  --> $DIR/invalid-attribute.rs:29:1
+error: the `loop_match` attribute cannot be used on functions
+  --> $DIR/invalid-attribute.rs:29:3
    |
 LL | #[loop_match]
-   | ^^^^^^^^^^^^^
+   |   ^^^^^^^^^^
    |
-   = help: `#[loop_match]` can only be applied to loops
+   = help: the `loop_match` attribute can only be applied to loops
 
-error: `#[const_continue]` attribute cannot be used on functions
-  --> $DIR/invalid-attribute.rs:30:1
+error: the `const_continue` attribute cannot be used on functions
+  --> $DIR/invalid-attribute.rs:30:3
    |
 LL | #[const_continue]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can only be applied to break expressions
+   = help: the `const_continue` attribute can only be applied to break expressions
 
-error: `#[loop_match]` attribute cannot be used on closures
-  --> $DIR/invalid-attribute.rs:34:5
+error: the `loop_match` attribute cannot be used on closures
+  --> $DIR/invalid-attribute.rs:34:7
    |
 LL |     #[loop_match]
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^^^
    |
-   = help: `#[loop_match]` can only be applied to loops
+   = help: the `loop_match` attribute can only be applied to loops
 
-error: `#[const_continue]` attribute cannot be used on closures
-  --> $DIR/invalid-attribute.rs:35:5
+error: the `const_continue` attribute cannot be used on closures
+  --> $DIR/invalid-attribute.rs:35:7
    |
 LL |     #[const_continue]
-   |     ^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can only be applied to break expressions
+   = help: the `const_continue` attribute can only be applied to break expressions
 
-error: `#[loop_match]` attribute cannot be used on expressions
-  --> $DIR/invalid-attribute.rs:39:9
+error: the `loop_match` attribute cannot be used on expressions
+  --> $DIR/invalid-attribute.rs:39:11
    |
 LL |         #[loop_match]
-   |         ^^^^^^^^^^^^^
+   |           ^^^^^^^^^^
    |
-   = help: `#[loop_match]` can only be applied to loops
+   = help: the `loop_match` attribute can only be applied to loops
 
-error: `#[const_continue]` attribute cannot be used on expressions
-  --> $DIR/invalid-attribute.rs:40:9
+error: the `const_continue` attribute cannot be used on expressions
+  --> $DIR/invalid-attribute.rs:40:11
    |
 LL |         #[const_continue]
-   |         ^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^
    |
-   = help: `#[const_continue]` can only be applied to break expressions
+   = help: the `const_continue` attribute can only be applied to break expressions
 
 error: aborting due to 14 previous errors
 

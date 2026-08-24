@@ -13,7 +13,7 @@ trait Trait {
 fn main() {
     let _: dyn Trait; //~ ERROR the trait `Trait` is not dyn compatible
 
-    // Check that specifying the non-type assoc const doesn't "magically make it work".
+    // Check that specifying the non-type assoc const doesn't work without full GCA.
     let _: dyn Trait<K = 0>;
     //~^ ERROR the trait `Trait` is not dyn compatible
     //~| ERROR use of trait associated const not defined as `type const`

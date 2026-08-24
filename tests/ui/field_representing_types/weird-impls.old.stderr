@@ -3,8 +3,6 @@ error[E0120]: the `Drop` trait may only be implemented for local structs, enums,
    |
 LL | impl Drop for field_of!(MyStruct, 0) {
    |               ^^^^^^^^^^^^^^^^^^^^^^ must be a struct, enum, or union in the current crate
-   |
-   = note: this error originates in the macro `field_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type defined in the current crate
   --> $DIR/weird-impls.rs:15:1

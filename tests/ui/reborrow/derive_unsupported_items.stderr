@@ -1,0 +1,27 @@
+error[E0802]: `derive(Reborrow)` is only supported for structs, not enums
+  --> $DIR/derive_unsupported_items.rs:5:10
+   |
+LL | #[derive(Reborrow)]
+   |          ^^^^^^^^
+
+error[E0802]: `derive(CoerceShared)` is only supported for structs, not enums
+  --> $DIR/derive_unsupported_items.rs:10:10
+   |
+LL | #[derive(CoerceShared)]
+   |          ^^^^^^^^^^^^
+
+error[E0802]: `derive(Reborrow)` is only supported for structs, not unions
+  --> $DIR/derive_unsupported_items.rs:19:10
+   |
+LL | #[derive(Reborrow)]
+   |          ^^^^^^^^
+
+error[E0802]: `derive(CoerceShared)` is only supported for structs, not unions
+  --> $DIR/derive_unsupported_items.rs:24:10
+   |
+LL | #[derive(CoerceShared)]
+   |          ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0802`.

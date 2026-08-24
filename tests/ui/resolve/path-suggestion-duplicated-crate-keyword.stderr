@@ -1,4 +1,4 @@
-error[E0433]: cannot find `linux` in `crate`
+error[E0433]: cannot find `linux` in the crate root
   --> $DIR/path-suggestion-duplicated-crate-keyword.rs:10:33
    |
 LL |                 let _x = crate::linux::system::Y;

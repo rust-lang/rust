@@ -45,23 +45,50 @@ pub(crate) fn type_mismatch(
         cov_mark::hit!(type_mismatch_range_adjustment);
         Some(salient_token_range)
     });
+
+    let expected = d
+        .expected
+        .display(ctx.db(), ctx.display_target)
+        .with_closure_style(ClosureStyle::ClosureWithId)
+        .to_string();
+    let actual = d
+        .actual
+        .display(ctx.db(), ctx.display_target)
+        .with_closure_style(ClosureStyle::ClosureWithId)
+        .to_string();
+
+    // The types differ (that's why we're here), yet they render the same, e.g. `foo::S` and
+    // `bar::S` both render as `S`. Retry with qualified paths so the message isn't a useless
+    // "expected S, found S".
+    let (expected, actual) = if expected == actual {
+        qualified_display(ctx, d).unwrap_or((expected, actual))
+    } else {
+        (expected, actual)
+    };
+
     Some(
         Diagnostic::new(
             DiagnosticCode::RustcHardError("E0308"),
-            format!(
-                "expected {}, found {}",
-                d.expected
-                    .display(ctx.db(), ctx.display_target)
-                    .with_closure_style(ClosureStyle::ClosureWithId),
-                d.actual
-                    .display(ctx.db(), ctx.display_target)
-                    .with_closure_style(ClosureStyle::ClosureWithId),
-            ),
+            format!("expected {expected}, found {actual}"),
             display_range,
         )
         .stable()
         .with_fixes(fixes(ctx, d)),
     )
+}
+
+/// Renders both sides of the mismatch with qualified paths, for when their plain names collide.
+/// Returns `None` if either side has no renderable path, in which case both keep their plain
+/// names — mixing a qualified and an unqualified name would be more confusing, not less.
+fn qualified_display(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::TypeMismatch<'_>,
+) -> Option<(String, String)> {
+    let root = d.expr_or_pat.file_id.parse_or_expand(ctx.db());
+    let module = ctx.sema.scope(d.expr_or_pat.value.to_node(&root).syntax())?.module();
+    let expected = d.expected.display_source_code(ctx.db(), module.into(), true).ok()?;
+    let actual = d.actual.display_source_code(ctx.db(), module.into(), true).ok()?;
+    Some((expected, actual))
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::TypeMismatch<'_>) -> Option<Vec<Assist>> {
@@ -1809,6 +1836,115 @@ fn main() {
     let _x = foo(2);
      // ^^ error: type annotations needed
           // ^^^ error: the trait bound `i32: Foo` is not satisfied
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_21668() {
+        check_diagnostics(
+            r#"
+mod std {
+    pub enum Ordering { Less }
+}
+pub use std::*;
+
+pub mod evil {
+    pub struct Ordering(pub i32);
+}
+
+pub mod oblivious {
+    use crate::Ordering;
+
+    pub fn what() -> Ordering {
+        Ordering(2)
+    }
+}
+pub use evil::Ordering;
+"#,
+        );
+    }
+
+    // Tests for qualified paths on name collision (issue #22331)
+
+    #[test]
+    fn type_mismatch_collision_basic_structs() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub struct S;
+}
+mod bar {
+    pub struct S;
+}
+fn test(_: foo::S) {
+    test(bar::S);
+       //^^^^^^ error: expected foo::S, found bar::S
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_collision_in_generic() {
+        check_diagnostics(
+            r#"
+//- minicore: option
+mod foo {
+    pub struct S;
+}
+mod bar {
+    pub struct S;
+}
+fn make() -> Option<bar::S> { loop {} }
+fn test(_: Option<foo::S>) {
+    test(make());
+       //^^^^^^ error: expected Option<foo::S>, found Option<bar::S>
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_no_collision_unchanged() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub struct S;
+}
+mod bar {
+    pub struct T;
+}
+fn test(_: foo::S) {
+    test(bar::T);
+       //^^^^^^ error: expected S, found T
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_multiple_collisions() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+mod foo {
+    pub struct T;
+}
+mod bar {
+    pub struct T;
+}
+mod baz {
+    pub struct E;
+}
+mod qux {
+    pub struct E;
+}
+fn make() -> Result<bar::T, qux::E> { loop {} }
+fn test(_: Result<foo::T, baz::E>) {
+    test(make());
+       //^^^^^^ error: expected Result<foo::T, baz::E>, found Result<bar::T, qux::E>
 }
 "#,
         );

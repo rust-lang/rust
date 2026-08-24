@@ -1,5 +1,3 @@
-//@ check-pass
-
 //@ aux-build: reborrow_foreign_private.rs
 
 #![feature(reborrow)]
@@ -16,5 +14,6 @@ struct LocalMut<'a> {
 impl<'a> Reborrow for LocalMut<'a> {}
 
 impl<'a> CoerceShared<ForeignRef<'a>> for LocalMut<'a> {}
+//~^ ERROR
 
 fn main() {}

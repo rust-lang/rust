@@ -1258,7 +1258,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     ///
     ///     Ok(heap.pop())
     /// }
-    /// # find_max_slow(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// # find_max_slow(&[1, 2, 3]).expect("reserving capacity for 12 bytes should never fail");
     /// ```
     #[stable(feature = "try_reserve_2", since = "1.63.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -1294,7 +1294,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     ///
     ///     Ok(heap.pop())
     /// }
-    /// # find_max_slow(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// # find_max_slow(&[1, 2, 3]).expect("reserving capacity for 12 bytes should never fail");
     /// ```
     #[stable(feature = "try_reserve_2", since = "1.63.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {

@@ -14,6 +14,7 @@ Allowed values are:
 - `lang_items`: Language items used and missing, if any.
 - `features`: Library features defined via the `#[stable]` and `#[unstable]` internal attributes.
 - `items`: All items (such as modules, functions...) in the crate, including attributes like their visibility
+- `target_modifiers`: Values of command-line arguments that rustc may require to match across linked crates.
 - `all`: All of the above
 
 ## Example

@@ -39,7 +39,7 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
         _25 = std::future::ResumeTy(move _26);
         _24 = copy (_1.0: &mut {async fn body of simple()});
         _23 = discriminant((*_24));
-        switchInt(move _23) -> [0: bb18, 2: bb23, 3: bb21, 4: bb22, otherwise: bb24];
+        switchInt(move _23) -> [0: bb18, 2: bb22, 3: bb20, 4: bb21, otherwise: bb23];
     }
 
     bb1: {
@@ -68,7 +68,7 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb6 (cleanup): {
-        goto -> bb20;
+        goto -> bb19;
     }
 
     bb7: {
@@ -131,35 +131,31 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb18: {
-        goto -> bb19;
-    }
-
-    bb19: {
         goto -> bb17;
     }
 
-    bb20 (cleanup): {
+    bb19 (cleanup): {
         discriminant((*_24)) = 2;
         resume;
     }
 
-    bb21: {
+    bb20: {
         StorageLive(_6);
         _6 = move _25;
         goto -> bb9;
     }
 
-    bb22: {
+    bb21: {
         StorageLive(_13);
         _13 = move _25;
         goto -> bb16;
     }
 
-    bb23: {
-        assert(const false, "`async fn` resumed after panicking") -> [success: bb23, unwind continue];
+    bb22: {
+        assert(const false, "`async fn` resumed after panicking") -> [success: bb22, unwind continue];
     }
 
-    bb24: {
+    bb23: {
         _0 = Poll::<()>::Ready(const ());
         return;
     }

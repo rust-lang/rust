@@ -72,7 +72,8 @@ pub impl(self) trait OsStringExt {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::ffi::OsString;
     /// use std::os::windows::prelude::*;
     ///
@@ -104,7 +105,8 @@ pub impl(self) trait OsStrExt {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::ffi::OsString;
     /// use std::os::windows::prelude::*;
     ///

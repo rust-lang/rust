@@ -1,8 +1,8 @@
 error[E0806]: `other` has 0 parameters but #[foo] requires it to have 1
   --> $DIR/cross_crate_wrong_ty.rs:12:1
    |
-LL | #[unsafe(cross_crate_eii_declaration::foo)]
-   | ------------------------------------------- required because of this attribute
+LL | #[cross_crate_eii_declaration::foo]
+   | ----------------------------------- required because of this attribute
 LL | fn other() -> u64 {
    | ^^^^^^^^^^^^^^^^^ expected 1 parameter, found 0
    |

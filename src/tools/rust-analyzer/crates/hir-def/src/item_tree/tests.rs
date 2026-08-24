@@ -122,14 +122,14 @@ enum E {
         "#,
         expect![[r#"
             // AstId: Struct[ED35, 0]
-            pub(self) struct Unit;
+            pub(self) struct Unit { ... }
 
             #[derive(Debug)]
             // AstId: Struct[A47C, 0]
             pub(self) struct Struct { ... }
 
             // AstId: Struct[C8C9, 0]
-            pub(self) struct Tuple(...);
+            pub(self) struct Tuple { ... }
 
             // AstId: Union[2797, 0]
             pub(self) union Ize { ... }
@@ -240,7 +240,7 @@ pub(self) struct S;
         "#,
         expect![[r#"
             // AstId: Struct[5024, 0]
-            pub(self) struct S;
+            pub(self) struct S { ... }
         "#]],
     )
 }

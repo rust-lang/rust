@@ -21,7 +21,6 @@ itertools.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
 salsa.workspace = true
-salsa-macros.workspace = true
 thin-vec.workspace = true
 
 # local deps

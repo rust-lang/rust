@@ -33,7 +33,7 @@ is_bytewise_comparable!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128,
 
 // SAFETY: These have *niches*, but no *padding* and no *provenance*,
 // so we can compare them directly.
-is_bytewise_comparable!(bool, char, super::Ordering);
+is_bytewise_comparable!(bool, char, super::Ordering, crate::ascii::Char);
 
 // SAFETY: Similarly, the `NonZero` type has a niche, but no undef and no pointers,
 // and they compare like their underlying numeric type.

@@ -3,9 +3,9 @@
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 //@ normalize-stderr: "(size): Size\([48] bytes\)" -> "$1: $$SOME_SIZE"
 //@ normalize-stderr: "(can_unwind): (true|false)" -> "$1: $$SOME_BOOL"
-//@ normalize-stderr: "(valid_range): 0\.\.=(4294967295|18446744073709551615)" -> "$1: $$FULL"
+//@ normalize-stderr: "(pointer is|valid_range:) 0\.\.=(4294967295|18446744073709551615)" -> "$1 $$FULL"
 // This pattern is prepared for when we account for alignment in the niche.
-//@ normalize-stderr: "(valid_range): [1-9]\.\.=(429496729[0-9]|1844674407370955161[0-9])" -> "$1: $$NON_NULL"
+//@ normalize-stderr: "(pointer is|valid_range:) [1-9]\.\.=(429496729[0-9]|1844674407370955161[0-9])" -> "$1 $$NON_NULL"
 // Some attributes are only computed for release builds:
 //@ compile-flags: -O
 //@ revisions: generic riscv64 loongarch64
@@ -39,12 +39,12 @@ type TestFnPtr = fn(bool) -> u8; //~ ERROR: fn_abi
 #[rustc_abi(debug)]
 fn test_generic<T>(_x: *const T) {} //~ ERROR: fn_abi
 
-#[rustc_abi(debug)] //~ ERROR: `#[rustc_abi]` attribute cannot be used on constants
-const C: () = (); //~ ERROR: `#[rustc_abi]` can only be applied to
+#[rustc_abi(debug)] //~ ERROR: the `rustc_abi` attribute cannot be used on constants
+const C: () = (); //~ ERROR: the `rustc_abi` attribute can only be applied to
 
 impl S {
-    #[rustc_abi(debug)] //~ ERROR: `#[rustc_abi]` attribute cannot be used on assoc
-    const C: () = (); //~ ERROR: `#[rustc_abi]` can only be applied to
+    #[rustc_abi(debug)] //~ ERROR: the `rustc_abi` attribute cannot be used on assoc
+    const C: () = (); //~ ERROR: the `rustc_abi` attribute can only be applied to
 }
 
 impl S {

@@ -47,7 +47,7 @@
 -         _5 = <String as Clone>::clone(move _6) -> [return: bb1, unwind: bb31];
 +         _18 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:26:5: 26:18});
 +         _17 = discriminant((*_18));
-+         switchInt(move _17) -> [0: bb36, 1: bb34, 2: bb33, 3: bb31, 4: bb32, otherwise: bb35];
++         switchInt(move _17) -> [0: bb35, 1: bb33, 2: bb32, 3: bb30, 4: bb31, otherwise: bb34];
       }
   
       bb1: {
@@ -149,7 +149,7 @@
   
       bb13: {
 -         drop(_1) -> [return: bb14, unwind: bb37];
-+         goto -> bb29;
++         goto -> bb14;
       }
   
       bb14: {
@@ -261,39 +261,31 @@
 -         StorageDead(_12);
 -         StorageDead(_10);
 -         StorageDead(_9);
--         goto -> bb29;
-+         goto -> bb30;
+          goto -> bb29;
       }
   
--     bb29 (cleanup): {
+      bb29 (cleanup): {
 -         StorageDead(_11);
 -         StorageDead(_8);
 -         goto -> bb35;
-+     bb29: {
-+         goto -> bb14;
-      }
-  
-      bb30 (cleanup): {
--         StorageDead(_7);
--         drop(_5) -> [return: bb32, unwind terminate(cleanup)];
 +         discriminant((*_18)) = 2;
 +         resume;
       }
   
--     bb31 (cleanup): {
--         StorageDead(_6);
--         goto -> bb32;
-+     bb31: {
+-     bb30 (cleanup): {
+-         StorageDead(_7);
+-         drop(_5) -> [return: bb32, unwind terminate(cleanup)];
++     bb30: {
 +         StorageLive(_3);
 +         StorageLive(_4);
 +         _3 = move _2;
 +         goto -> bb4;
       }
   
--     bb32 (cleanup): {
--         StorageDead(_5);
--         goto -> bb33;
-+     bb32: {
+-     bb31 (cleanup): {
+-         StorageDead(_6);
+-         goto -> bb32;
++     bb31: {
 +         StorageLive(_8);
 +         StorageLive(_9);
 +         StorageLive(_11);
@@ -302,26 +294,31 @@
 +         goto -> bb10;
       }
   
+-     bb32 (cleanup): {
+-         StorageDead(_5);
+-         goto -> bb33;
++     bb32: {
++         assert(const false, "coroutine resumed after panicking") -> [success: bb32, unwind continue];
+      }
+  
 -     bb33 (cleanup): {
 -         StorageDead(_4);
 -         goto -> bb34;
 +     bb33: {
-+         assert(const false, "coroutine resumed after panicking") -> [success: bb33, unwind continue];
++         assert(const false, "coroutine resumed after completion") -> [success: bb33, unwind continue];
       }
   
 -     bb34 (cleanup): {
 -         StorageDead(_3);
 -         goto -> bb35;
 +     bb34: {
-+         assert(const false, "coroutine resumed after completion") -> [success: bb34, unwind continue];
++         unreachable;
       }
   
 -     bb35 (cleanup): {
 -         drop(_2) -> [return: bb36, unwind terminate(cleanup)];
-+     bb35: {
-+         unreachable;
-      }
-  
+-     }
+- 
 -     bb36 (cleanup): {
 -         drop(_1) -> [return: bb37, unwind terminate(cleanup)];
 -     }
@@ -332,7 +329,7 @@
 - 
 -     bb38 (cleanup): {
 -         drop(_1) -> [return: bb37, unwind terminate(cleanup)];
-+     bb36: {
++     bb35: {
 +         (((*_18) as variant#4).0: std::string::String) = move _2;
 +         StorageLive(_3);
 +         StorageLive(_4);

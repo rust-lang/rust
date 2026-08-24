@@ -14,25 +14,18 @@
 // ignore-tidy-file-linelength
 
 #![crate_type = "rlib"]
-#![feature(no_core, repr_simd, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::{i32x4, i64x2};
 use minicore::*;
-
-#[repr(simd)]
-pub struct i32x4([i32; 4]);
-#[repr(simd)]
-pub struct i64x2([i64; 2]);
-
-impl Copy for i32x4 {}
-impl Copy for i64x2 {}
 
 fn f() {
     let mut x = 0;
-    let mut v32x4 = i32x4([0; 4]);
-    let mut v64x2 = i64x2([0; 2]);
+    let mut v32x4 = i32x4::from_array([0; 4]);
+    let mut v64x2 = i64x2::from_array([0; 2]);
     unsafe {
         // Unsupported registers
         asm!("", out("sp") _);
@@ -91,7 +84,6 @@ fn f() {
         asm!("", out("v29") _);
         asm!("", out("v30") _);
         asm!("", out("v31") _);
-
 
         // vsreg
         asm!("", out("vs0") _); // always ok

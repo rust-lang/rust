@@ -206,7 +206,7 @@ fn test_aligned_alloc() {
     for _ in 0..16 {
         // alignment 1, size 4 should succeed and actually must align to 4 (because C says so...)
         // ... but on native macOS they don't seem to actually implement this correctly.
-        if cfg!(miri) || cfg!(not(target_vendor = "apple")) {
+        if cfg!(miri) || cfg!(not(target_os = "macos")) {
             unsafe {
                 let p = libc::aligned_alloc(1, 4);
                 assert!(!p.is_null());
@@ -342,6 +342,14 @@ fn test_memset() {
     }
 }
 
+fn test_memcmp() {
+    unsafe {
+        assert_eq!(libc::memcmp(b"123".as_ptr().cast(), b"132".as_ptr().cast(), 3), -1);
+        assert_eq!(libc::memcmp(b"abc".as_ptr().cast(), b"aaa".as_ptr().cast(), 3), 1);
+        assert_eq!(libc::memcmp(b"xyz".as_ptr().cast(), b"xyz".as_ptr().cast(), 3), 0);
+    }
+}
+
 fn test_memchr() {
     unsafe {
         let buf = b"0abcdefd";
@@ -440,6 +448,7 @@ fn main() {
     test_memcpy();
     test_strcpy();
     test_memset();
+    test_memcmp();
     test_memchr();
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
     test_memrchr();

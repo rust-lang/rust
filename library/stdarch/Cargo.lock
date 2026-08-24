@@ -831,6 +831,7 @@ dependencies = [
  "serde",
  "serde_with",
  "serde_yaml",
+ "stdarch-gen-common",
  "walkdir",
 ]
 

@@ -278,45 +278,48 @@ error[E0404]: expected trait, found variant `E::Y`
 LL |     <u8 as E::Y>::NN;
    |            ^^^^ not a trait
 
-error[E0575]: expected associated type, found associated function `Dr::Z`
-  --> $DIR/ufcs-partially-resolved.rs:52:12
+error[E0575]: cannot find associated type `Z` in trait `Dr`
+  --> $DIR/ufcs-partially-resolved.rs:52:24
    |
 LL |     type X = u16;
    |     ------------- similarly named associated type `X` defined here
 ...
 LL |     let _: <u8 as Dr>::Z;
-   |            ^^^^^^^^^^^^^
+   |                        ^
    |
+   = note: an associated function named `Dr::Z` exists in another namespace
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Dr>::Z;
 LL +     let _: <u8 as Dr>::X;
    |
 
-error[E0575]: expected method or associated constant, found associated type `Dr::X`
-  --> $DIR/ufcs-partially-resolved.rs:53:5
+error[E0575]: cannot find method or associated constant `X` in trait `Dr`
+  --> $DIR/ufcs-partially-resolved.rs:53:17
    |
 LL |     fn Z() {}
    |     ------ similarly named associated function `Z` defined here
 ...
 LL |     <u8 as Dr>::X;
-   |     ^^^^^^^^^^^^^
+   |                 ^
    |
+   = note: an associated type named `Dr::X` exists in another namespace
 help: an associated function with a similar name exists
    |
 LL -     <u8 as Dr>::X;
 LL +     <u8 as Dr>::Z;
    |
 
-error[E0575]: expected associated type, found associated function `Dr::Z`
-  --> $DIR/ufcs-partially-resolved.rs:54:12
+error[E0575]: cannot find associated type `Z` in trait `Dr`
+  --> $DIR/ufcs-partially-resolved.rs:54:24
    |
 LL |     type X = u16;
    |     ------------- similarly named associated type `X` defined here
 ...
 LL |     let _: <u8 as Dr>::Z::N;
-   |            ^^^^^^^^^^^^^^^^
+   |                        ^
    |
+   = note: an associated function named `Dr::Z` exists in another namespace
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Dr>::Z::N;

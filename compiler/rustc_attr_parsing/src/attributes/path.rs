@@ -19,6 +19,6 @@ impl SingleAttributeParser for PathParser {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let path = cx.expect_string_literal(nv)?;
 
-        Some(AttributeKind::Path(path))
+        Some(AttributeKind::Path(path, cx.attr_span))
     }
 }

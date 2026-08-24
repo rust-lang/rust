@@ -32,6 +32,7 @@ pub(super) fn generate<'tcx>(
     move_data: &MoveData<'tcx>,
 ) {
     debug!("liveness::generate");
+    let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness");
 
     let mut free_regions = regions_that_outlive_free_regions(
         typeck.infcx.num_region_vars(),

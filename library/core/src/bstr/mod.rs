@@ -38,6 +38,7 @@ use crate::ops::{Deref, DerefMut, DerefPure};
 /// The `Display` implementation behaves as if the `ByteStr` were first lossily converted to a
 /// `str`, with invalid UTF-8 presented as the Unicode replacement character (�).
 #[unstable(feature = "bstr", issue = "134915")]
+#[rustc_has_incoherent_inherent_impls]
 #[repr(transparent)]
 #[doc(alias = "BStr")]
 pub struct ByteStr(pub [u8]);
@@ -171,7 +172,7 @@ impl fmt::Debug for ByteStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "bstr_to_string", issue = "134915")]
 impl fmt::Display for ByteStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn emit(byte_str: &ByteStr, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -19,6 +19,7 @@
 
 use derive_where::derive_where;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
+use thin_vec::ThinVec;
 
 use crate::solve::{CandidateSource, Certainty, Goal, GoalSource, QueryResult};
 use crate::{Canonical, CanonicalVarValues, Interner};
@@ -48,7 +49,7 @@ pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 #[derive_where(PartialEq, Eq, Hash; I: Interner)]
 pub struct GoalEvaluation<I: Interner> {
     pub uncanonicalized_goal: Goal<I, I::Predicate>,
-    pub orig_values: Vec<I::GenericArg>,
+    pub orig_values: ThinVec<I::GenericArg>,
     pub final_revision: I::Probe,
     pub result: QueryResult<I>,
 }

@@ -1,9 +1,7 @@
 //@no-rustfix: overlapping suggestions
 #![warn(clippy::unnecessary_wraps)]
-#![allow(clippy::no_effect)]
+#![expect(clippy::if_same_then_else, clippy::no_effect)]
 #![allow(clippy::needless_return)]
-#![allow(clippy::if_same_then_else)]
-#![allow(dead_code)]
 
 // should be linted
 fn func1(a: bool, b: bool) -> Option<i32> {

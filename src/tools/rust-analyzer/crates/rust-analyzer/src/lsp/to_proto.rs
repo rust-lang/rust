@@ -183,18 +183,21 @@ pub(crate) fn text_edit(line_index: &LineIndex, indel: Indel) -> lsp_types::Text
 
 pub(crate) fn completion_text_edit(
     line_index: &LineIndex,
-    insert_replace_support: Option<lsp_types::Position>,
+    cursor_position: lsp_types::Position,
+    insert_replace_support: bool,
     indel: Indel,
 ) -> lsp_types::CompletionItemTextEdit {
     let text_edit = text_edit(line_index, indel);
-    match insert_replace_support {
-        Some(cursor_pos) => lsp_types::InsertReplaceEdit {
+    let insert = lsp_types::Range { start: text_edit.range.start, end: cursor_position };
+    if insert_replace_support {
+        lsp_types::InsertReplaceEdit {
             new_text: text_edit.new_text,
-            insert: lsp_types::Range { start: text_edit.range.start, end: cursor_pos },
+            insert,
             replace: text_edit.range,
         }
-        .into(),
-        None => text_edit.into(),
+        .into()
+    } else {
+        lsp_types::TextEdit { range: insert, new_text: text_edit.new_text }.into()
     }
 }
 
@@ -296,7 +299,7 @@ fn completion_item(
     completion_trigger_character: Option<char>,
     item: CompletionItem,
 ) {
-    let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
+    let insert_replace_support = config.insert_replace_support();
     let ref_match = item.ref_match();
 
     let mut additional_text_edits = Vec::new();
@@ -321,7 +324,12 @@ fn completion_item(
             if indel.delete.contains_range(source_range) {
                 // Extract this indel as the main edit
                 text_edit = Some(if indel.delete == source_range {
-                    self::completion_text_edit(line_index, insert_replace_support, indel.clone())
+                    self::completion_text_edit(
+                        line_index,
+                        tdpp.position,
+                        insert_replace_support,
+                        indel.clone(),
+                    )
                 } else {
                     assert!(source_range.end() == indel.delete.end());
                     let range1 = TextRange::new(indel.delete.start(), source_range.start());
@@ -329,7 +337,12 @@ fn completion_item(
                     let indel1 = Indel::delete(range1);
                     let indel2 = Indel::replace(range2, indel.insert.clone());
                     additional_text_edits.push(self::text_edit(line_index, indel1));
-                    self::completion_text_edit(line_index, insert_replace_support, indel2)
+                    self::completion_text_edit(
+                        line_index,
+                        tdpp.position,
+                        insert_replace_support,
+                        indel2,
+                    )
                 })
             } else {
                 assert!(source_range.intersect(indel.delete).is_none());

@@ -1,5 +1,5 @@
 error[E0609]: no field `0` on type `Point`
-  --> $DIR/tuple-index-not-tuple.rs:6:12
+  --> $DIR/tuple-index-not-tuple.rs:7:12
    |
 LL |     origin.0;
    |            ^ unknown field
@@ -11,7 +11,7 @@ LL +     origin.x;
    |
 
 error[E0609]: no field `0` on type `Empty`
-  --> $DIR/tuple-index-not-tuple.rs:8:11
+  --> $DIR/tuple-index-not-tuple.rs:9:11
    |
 LL |     Empty.0;
    |           ^ unknown field

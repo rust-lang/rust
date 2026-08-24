@@ -136,6 +136,11 @@ impl JsonLinesParser<DiscoverProjectMessage> for DiscoverProjectParser {
     fn from_eof(&self) -> Option<DiscoverProjectMessage> {
         None
     }
+
+    fn from_stderr_line(&self, line: &str, _error: &mut String) -> Option<DiscoverProjectMessage> {
+        tracing::info!(%line, "discover command stderr");
+        None
+    }
 }
 
 #[test]

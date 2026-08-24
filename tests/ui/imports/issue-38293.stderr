@@ -4,12 +4,13 @@ error[E0432]: unresolved import `foo::f`
 LL | use foo::f::{self};
    |          ^ expected type, found function `f` in `foo`
 
-error[E0423]: expected function, found module `baz`
+error[E0423]: cannot find function `baz` in this scope
   --> $DIR/issue-38293.rs:16:5
    |
 LL |     baz();
-   |     ^^^ not a function
+   |     ^^^ not found in this scope
    |
+   = note: a module named `baz` exists in another namespace
 help: consider importing this function instead
    |
 LL + use bar::baz;

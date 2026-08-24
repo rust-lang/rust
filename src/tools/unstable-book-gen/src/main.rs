@@ -128,6 +128,7 @@ fn collect_compiler_flags(rustc_path: impl AsRef<Path>) -> Features {
     rustc.env("RUSTC_BOOTSTRAP", "1");
     rustc.arg("-Zhelp");
     let output = t!(rustc.output());
+    assert!(output.status.success(), "`rustc -Zhelp` failed: {output:?}");
     let help_str = t!(String::from_utf8(output.stdout));
     let parts = help_str.split("\n    -Z").collect::<Vec<_>>();
     assert!(!parts[1..].is_empty(), "no -Z options were found");

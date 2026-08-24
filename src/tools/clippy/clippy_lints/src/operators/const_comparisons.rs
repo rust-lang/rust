@@ -1,11 +1,11 @@
-#![allow(clippy::match_same_arms)]
+#![expect(clippy::match_same_arms)]
 
 use std::cmp::Ordering;
 
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::layout::HasTyCtxt as _;
 use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_span::{Span, Spanned};
 

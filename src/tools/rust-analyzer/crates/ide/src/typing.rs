@@ -365,7 +365,7 @@ fn on_left_angle_typed(
 ) -> Option<TextEdit> {
     let file_text = reparsed.syntax().text();
 
-    // Find the next non-whitespace char in the line, check if its a `>`
+    // Find the next non-whitespace char in the line, check if it's a `>`
     let mut next_offset = offset;
     while file_text.char_at(next_offset) == Some(' ') {
         next_offset += TextSize::of(' ')

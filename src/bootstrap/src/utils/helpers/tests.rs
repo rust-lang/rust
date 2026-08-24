@@ -7,7 +7,6 @@ use crate::utils::helpers::{
     symlink_dir,
 };
 use crate::utils::tests::TestCtx;
-use crate::{Config, Flags};
 
 #[test]
 fn test_make() {

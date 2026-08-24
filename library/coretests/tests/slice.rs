@@ -6,6 +6,60 @@ use core::ops::{Range, RangeInclusive};
 use core::slice;
 
 #[test]
+fn test_contains_bytewise_types() {
+    let mut bools = [false; 64];
+    assert!(bools.contains(&false));
+    assert!(!bools.contains(&true));
+    bools[31] = true;
+    assert!(bools.contains(&true));
+
+    let one = NonZero::new(1_u8).unwrap();
+    let two = NonZero::new(2_u8).unwrap();
+    let three = NonZero::new(3_u8).unwrap();
+    let mut nonzeros = [one; 64];
+    nonzeros[31] = two;
+    assert!(nonzeros.contains(&one));
+    assert!(nonzeros.contains(&two));
+    assert!(!nonzeros.contains(&three));
+
+    let mut optional_nonzeros = [Some(one); 64];
+    optional_nonzeros[31] = None;
+    assert!(optional_nonzeros.contains(&Some(one)));
+    assert!(optional_nonzeros.contains(&None));
+    assert!(!optional_nonzeros.contains(&Some(two)));
+
+    let minus_one = NonZero::new(-1_i8).unwrap();
+    let signed_one = NonZero::new(1_i8).unwrap();
+    let signed_two = NonZero::new(2_i8).unwrap();
+    let mut signed_nonzeros = [minus_one; 64];
+    signed_nonzeros[31] = signed_one;
+    assert!(signed_nonzeros.contains(&minus_one));
+    assert!(signed_nonzeros.contains(&signed_one));
+    assert!(!signed_nonzeros.contains(&signed_two));
+
+    let mut optional_signed_nonzeros = [Some(minus_one); 64];
+    optional_signed_nonzeros[31] = None;
+    assert!(optional_signed_nonzeros.contains(&Some(minus_one)));
+    assert!(optional_signed_nonzeros.contains(&None));
+    assert!(!optional_signed_nonzeros.contains(&Some(signed_one)));
+
+    let mut orderings = [Ordering::Less; 64];
+    orderings[31] = Ordering::Greater;
+    assert!(orderings.contains(&Ordering::Less));
+    assert!(orderings.contains(&Ordering::Greater));
+    assert!(!orderings.contains(&Ordering::Equal));
+
+    let a = core::ascii::Char::CapitalA;
+    let q = core::ascii::Char::CapitalQ;
+    let z = core::ascii::Char::CapitalZ;
+    let mut ascii = [a; 64];
+    ascii[31] = z;
+    assert!(ascii.contains(&a));
+    assert!(ascii.contains(&z));
+    assert!(!ascii.contains(&q));
+}
+
+#[test]
 fn test_position() {
     let b = [1, 2, 3, 5, 5];
     assert_eq!(b.iter().position(|&v| v == 9), None);
@@ -1779,6 +1833,17 @@ pub mod memchr {
     #[test]
     fn no_match() {
         assert_eq!(None, memchr(b'a', b"xyz"));
+    }
+
+    #[test]
+    fn each_alignment() {
+        let mut data = [1u8; 64];
+        let needle = 2;
+        let pos = 40;
+        data[pos] = needle;
+        for start in 0..16 {
+            assert_eq!(Some(pos - start), memchr(needle, &data[start..]));
+        }
     }
 
     #[test]

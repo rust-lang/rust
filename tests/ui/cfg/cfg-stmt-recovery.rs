@@ -1,7 +1,7 @@
 // Verify that we do not ICE when failing to parse a statement in `cfg_eval`.
 
 #![feature(cfg_eval)]
-#![feature(stmt_expr_attributes)]
+#![feature(stmt_expr_attributes, proc_macro_hygiene)]
 
 #[cfg_eval]
 fn main() {

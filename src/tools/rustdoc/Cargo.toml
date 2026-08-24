@@ -14,4 +14,7 @@ path = "main.rs"
 rustdoc = { path = "../../librustdoc" }
 
 [features]
-jemalloc = ['rustdoc/jemalloc']
+max_level_info = ["rustdoc/max_level_info"]
+
+[package.metadata.rust-analyzer]
+rustc_private = true

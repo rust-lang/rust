@@ -9,17 +9,12 @@
 //@ [S390X] compile-flags: -Copt-level=3 --target s390x-unknown-linux-gnu -Ctarget-feature=+vector
 //@ [S390X] needs-llvm-components: systemz
 #![crate_type = "lib"]
-#![feature(repr_simd)]
 #![feature(no_core)]
 #![no_std]
 #![no_core]
 extern crate minicore;
+use minicore::simd::u8x16;
 use minicore::*;
-
-#[repr(simd)]
-pub struct Simd<T, const N: usize>(pub [T; N]);
-
-pub type u8x16 = Simd<u8, 16>;
 
 // Regression test for https://github.com/rust-lang/rust/issues/97804.
 

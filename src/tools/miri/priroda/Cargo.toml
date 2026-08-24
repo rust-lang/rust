@@ -6,6 +6,7 @@ repository = "https://github.com/rust-lang/miri"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
 
 [[bin]]
 name = "priroda"
@@ -18,10 +19,19 @@ name = "cli"
 harness = false
 
 [dependencies]
+emmy_dap_types = "0.2.0"
 miri = { path = ".." }
 
 [package.metadata.rust-analyzer]
 rustc_private = true
+
+# Same lint policy as miri/src/lib.rs.
+[lints.rust]
+rust_2018_idioms = "warn"
+
+[lints.clippy]
+as_conversions = "warn"
+manual_let_else = "warn"
 
 [dev-dependencies]
 ui_test = "0.30.2"

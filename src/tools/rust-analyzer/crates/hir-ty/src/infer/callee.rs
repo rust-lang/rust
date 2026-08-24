@@ -33,7 +33,7 @@ enum CallStep<'db> {
     Overloaded(MethodCallee<'db>),
 }
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(crate) fn infer_call(
         &mut self,
         call_expr: ExprId,
@@ -106,7 +106,7 @@ impl<'db> InferenceContext<'_, 'db> {
         call_expr: ExprId,
         callee_expr: ExprId,
         arg_exprs: &[ExprId],
-        autoderef: &mut InferenceContextAutoderef<'_, '_, 'db>,
+        autoderef: &mut InferenceContextAutoderef<'_, 'db>,
         error_reported: &mut bool,
     ) -> Option<CallStep<'db>> {
         let final_ty = autoderef.final_ty();
@@ -540,8 +540,8 @@ pub(crate) struct DeferredCallResolution<'db> {
     fn_sig: FnSig<'db>,
 }
 
-impl<'a, 'db> DeferredCallResolution<'db> {
-    pub(crate) fn resolve(self, ctx: &mut InferenceContext<'a, 'db>) {
+impl<'db> DeferredCallResolution<'db> {
+    pub(crate) fn resolve(self, ctx: &mut InferenceContext<'db>) {
         debug!("DeferredCallResolution::resolve() {:?}", self);
 
         // we should not be invoked until the closure kind has been

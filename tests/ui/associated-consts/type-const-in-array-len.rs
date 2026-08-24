@@ -1,7 +1,6 @@
 //@ check-pass
 
-#![feature(min_generic_const_args)]
-#![feature(inherent_associated_types)]
+#![feature(min_generic_const_args, macroless_generic_const_args, inherent_associated_types)]
 
 // Test case from #138226: generic impl with multiple type parameters
 struct Foo<A, B>(A, B);

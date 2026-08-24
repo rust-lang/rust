@@ -39,10 +39,11 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig, back};
+use rustc_data_structures::unord::UnordSet;
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::WorkProductMap;
-use rustc_session::Session;
-use rustc_session::config::OutputFilenames;
+use rustc_session::config::{NATIVE_CPU, OutputFilenames};
+use rustc_session::{IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, CfgAbi, Env, Os};
 
@@ -83,7 +84,7 @@ mod prelude {
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::{
-        AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot,
+        AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlagsData, Signature, SourceLoc, StackSlot,
         StackSlotData, StackSlotKind, TrapCode, Type, Value, types,
     };
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
@@ -170,8 +171,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             },
             _ => vec![],
         };
-        // FIXME do `unstable_target_features` properly
-        let unstable_target_features = target_features.clone();
 
         // FIXME(f16_f128): `rustc_codegen_llvm` currently disables support on Windows GNU
         // targets due to GCC using a different ABI than LLVM. Therefore `f16` and `f128`
@@ -186,8 +185,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let has_reliable_f128_math = has_reliable_f16_f128 && sess.target.env == Env::Gnu;
 
         TargetConfig {
-            target_features,
-            unstable_target_features,
+            internal_target_features: UnordSet::from_iter(target_features),
             // `rustc_codegen_cranelift` polyfills functionality not yet
             // available in Cranelift.
             has_reliable_f16: has_reliable_f16_f128,
@@ -233,13 +231,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
         _outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, WorkProductMap) {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<driver::aot::AotDriver>>()
             .unwrap()
-            .join(sess, crate_info)
+            .join(sess, incr_comp_session, crate_info)
     }
 
     fn fallback_intrinsics(&self) -> Vec<Symbol> {
@@ -341,7 +340,7 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
     let flags = settings::Flags::new(flags_builder);
 
     let isa_builder = match sess.opts.cg.target_cpu.as_deref() {
-        Some("native") => cranelift_native::builder_with_options(true).unwrap(),
+        Some(NATIVE_CPU) => cranelift_native::builder_with_options(true).unwrap(),
         Some(value) => {
             let mut builder =
                 cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {

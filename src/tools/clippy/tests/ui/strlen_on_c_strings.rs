@@ -1,5 +1,5 @@
 #![warn(clippy::strlen_on_c_strings)]
-#![allow(clippy::manual_c_str_literals, clippy::boxed_local)]
+#![expect(clippy::boxed_local, clippy::manual_c_str_literals)]
 
 use libc::strlen;
 use std::ffi::{CStr, CString};

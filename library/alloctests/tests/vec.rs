@@ -2807,3 +2807,26 @@ fn const_make_global_empty_or_zst_regression() {
 
     assert_eq!(ZST_SLICE, &[(), (), ()]);
 }
+
+#[test]
+fn const_heap_vec_macro() {
+    const X: &'static [u32] = {
+        let x: Vec<u32> = vec![];
+        assert!(x == []);
+        x.const_make_global()
+    };
+
+    const Y: &'static [u32] = {
+        let y: Vec<u32> = vec![1, 2, 3];
+        assert!(y == [1, 2, 3]);
+        y.const_make_global()
+    };
+
+    // This arm isn't const yet.
+    // const Z: &'static [u32] = {
+    //     vec![4; 2].const_make_global()
+    // };
+
+    assert_eq!(X, []);
+    assert_eq!(Y, [1, 2, 3]);
+}

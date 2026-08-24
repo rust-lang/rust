@@ -1,4 +1,4 @@
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Node};
 use rustc_lint::LateContext;

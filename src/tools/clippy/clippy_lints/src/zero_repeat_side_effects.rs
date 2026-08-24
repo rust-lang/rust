@@ -6,7 +6,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{ConstArgKind, Expr, ExprKind, LetStmt, LocalSource, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{IsSuggestable, Ty};
+use rustc_middle::ty::{IsSuggestable as _, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 

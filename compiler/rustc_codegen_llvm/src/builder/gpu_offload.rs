@@ -296,7 +296,7 @@ struct KernelArgsTy {
 
 impl KernelArgsTy {
     const OFFLOAD_VERSION: u64 = 3;
-    const FLAGS: u64 = 0;
+    const FLAGS: u64 = 1 << 6; // Enable StrictBlocksAndThreads
     const TRIPCOUNT: u64 = 0;
     fn new_decl<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         let kernel_arguments_ty = cx.type_named_struct("struct.__tgt_kernel_arguments");

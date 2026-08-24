@@ -54,13 +54,14 @@ fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
     let mut missing_punctuation = Vec::new();
     let mut current_paragraph = None;
     let mut current_event_is_missing_punctuation = false;
-
+    let mut current_event_is_image = false;
     for (event, offset) in
         Parser::new_ext(doc_string, main_body_opts() - Options::ENABLE_SMART_PUNCTUATION).into_offset_iter()
     {
         let last_event_was_missing_punctuation = current_event_is_missing_punctuation;
         current_event_is_missing_punctuation = false;
-
+        let last_event_was_image = current_event_is_image;
+        current_event_is_image = false;
         match event {
             Event::Start(Tag::FootnoteDefinition(_) | Tag::Heading { .. } | Tag::HtmlBlock | Tag::Table(_)) => {
                 no_report_depth += 1;
@@ -82,7 +83,11 @@ fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
                 no_report_depth -= 1;
                 current_paragraph = None;
             },
-            Event::InlineHtml(_) | Event::Start(Tag::Image { .. }) | Event::End(TagEnd::Image) => {
+            Event::InlineHtml(_) | Event::Start(Tag::Image { .. }) => {
+                current_paragraph = None;
+            },
+            Event::End(TagEnd::Image) => {
+                current_event_is_image = true;
                 current_paragraph = None;
             },
             Event::End(TagEnd::Paragraph) => {
@@ -94,7 +99,9 @@ fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
             Event::Code(..) | Event::Start(Tag::Link { .. }) | Event::End(TagEnd::Link)
                 if no_report_depth == 0 && !offset.is_empty() =>
             {
-                if trim_trailing_symbols(&doc_string[..offset.end]).ends_with(TERMINAL_PUNCTUATION_MARKS) {
+                if trim_trailing_symbols(&doc_string[..offset.end]).ends_with(TERMINAL_PUNCTUATION_MARKS)
+                    || last_event_was_image
+                {
                     current_paragraph = None;
                 } else {
                     current_paragraph = Some(MissingPunctuation::Fixable(offset.end));

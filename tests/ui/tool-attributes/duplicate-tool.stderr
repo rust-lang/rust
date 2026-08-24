@@ -1,0 +1,48 @@
+warning: duplicate tool `foo` registered
+  --> $DIR/duplicate-tool.rs:6:18
+   |
+LL | #![register_tool(foo)]
+   |                  --- already registered here
+LL | #![register_tool(foo)]
+   |                  ^^^
+   |
+note: the lint level is defined here
+  --> $DIR/duplicate-tool.rs:3:9
+   |
+LL | #![warn(duplicate_tools)]
+   |         ^^^^^^^^^^^^^^^
+
+warning: duplicate tool `bar` registered
+  --> $DIR/duplicate-tool.rs:8:28
+   |
+LL | #![register_tool(bar)]
+   |                  --- already registered here
+LL | #![register_attribute_tool(bar)]
+   |                            ^^^
+
+warning: duplicate tool `baz` registered
+  --> $DIR/duplicate-tool.rs:10:23
+   |
+LL | #![register_tool(baz)]
+   |                  --- already registered here
+LL | #![register_lint_tool(baz)]
+   |                       ^^^
+
+warning: duplicate tool `qux` registered
+  --> $DIR/duplicate-tool.rs:12:28
+   |
+LL | #![register_attribute_tool(qux)]
+   |                            --- already registered here
+LL | #![register_attribute_tool(qux)]
+   |                            ^^^
+
+warning: duplicate tool `quux` registered
+  --> $DIR/duplicate-tool.rs:14:23
+   |
+LL | #![register_lint_tool(quux)]
+   |                       ---- already registered here
+LL | #![register_lint_tool(quux)]
+   |                       ^^^^
+
+warning: 5 warnings emitted
+

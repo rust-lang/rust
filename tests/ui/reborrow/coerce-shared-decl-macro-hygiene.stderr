@@ -1,12 +1,17 @@
-error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-decl-macro-hygiene.rs:20:14
+error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
+  --> $DIR/coerce-shared-decl-macro-hygiene.rs:20:5
    |
 LL |     impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
-   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^---------^^^^^^---------^^^
+   |     |                     |              |
+   |     |                     |              source type has 2 non-ZST reborrow data fields
+   |     |                     target type has 2 non-ZST reborrow data fields
+   |     in this `CoerceShared` implementation
 ...
 LL | my_macro!(field);
    | ---------------- in this macro invocation
    |
+   = note: this is a temporary restriction until `CoerceShared` lowering supports non-trivially memcpy-compatible field layouts
    = note: this error originates in the macro `my_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error

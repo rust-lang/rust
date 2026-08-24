@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `t` as mutable more than once at a time
-  --> $DIR/gat-outlives-env.rs:49:13
+  --> $DIR/gat-outlives-env.rs:51:13
    |
 LL |     let a = t.changes(static_unit);
    |             - first mutable borrow occurs here

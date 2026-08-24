@@ -16,7 +16,7 @@ use rustc_middle::ty::relate::{
     structurally_relate_tys,
 };
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, RegionExt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
@@ -216,9 +216,12 @@ where
             match arg {
                 ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id))
                 | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)) => {
-                    added.push(def_id);
-                    let unique = self.in_scope_parameters.insert(def_id, ParamKind::Late);
-                    assert_eq!(unique, None);
+                    // Return type notation introduces a binder containing the referenced
+                    // function's own bound parameters. For self-referential RTN, these may
+                    // already be present as `Free` entries from the enclosing signature.
+                    // Temporarily shadow them as `Late` and restore them when leaving.
+                    let previous = self.in_scope_parameters.insert(def_id, ParamKind::Late);
+                    added.push((def_id, previous));
                 }
                 _ => {
                     self.tcx.dcx().span_delayed_bug(
@@ -231,10 +234,13 @@ where
 
         t.super_visit_with(self);
 
-        // And remove them. The `shift_remove` should be `O(1)` since we're popping
-        // them off from the end.
-        for arg in added.into_iter().rev() {
-            self.in_scope_parameters.shift_remove(&arg);
+        // Restore the previous scope entries, removing newly added parameters.
+        for (arg, previous) in added.into_iter().rev() {
+            if let Some(previous) = previous {
+                self.in_scope_parameters.insert(arg, previous);
+            } else {
+                self.in_scope_parameters.shift_remove(&arg);
+            }
         }
     }
 

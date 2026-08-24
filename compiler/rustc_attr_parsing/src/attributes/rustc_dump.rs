@@ -1,6 +1,6 @@
+use rustc_attr_ir::target::{MethodKind, Target};
+use rustc_attr_ir::{AttributeKind, RustcDumpLayoutKind};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{AttributeKind, RustcDumpLayoutKind};
-use rustc_hir::{MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
 use super::prelude::*;
@@ -123,8 +123,7 @@ impl CombineAttributeParser for RustcDumpLayoutParser {
         Allow(Target::TyAlias),
     ]);
 
-    const TEMPLATE: AttributeTemplate =
-        template!(List: &["abi", "align", "size", "homogenous_aggregate", "debug"]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["abi", "align", "size", "homogenous_aggregate", "largest_niche", "debug"]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn extend(
@@ -150,6 +149,7 @@ impl CombineAttributeParser for RustcDumpLayoutParser {
                 sym::backend_repr => RustcDumpLayoutKind::BackendRepr,
                 sym::debug => RustcDumpLayoutKind::Debug,
                 sym::homogeneous_aggregate => RustcDumpLayoutKind::HomogenousAggregate,
+                sym::largest_niche => RustcDumpLayoutKind::LargestNiche,
                 sym::size => RustcDumpLayoutKind::Size,
                 _ => {
                     cx.adcx().expected_specific_argument(
@@ -261,10 +261,8 @@ impl NoArgsAttributeParser for RustcDumpVariancesParser {
         Allow(Target::Struct),
         Allow(Target::Union),
     ]);
-    const STABILITY: AttributeStability = unstable!(
-        rustc_attrs,
-        "the `#[rustc_dump_variances]` attribute is used for rustc unit tests"
-    );
+    const STABILITY: AttributeStability =
+        unstable!(rustc_attrs, "the `rustc_dump_variances` attribute is used for rustc unit tests");
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpVariances;
 }
 

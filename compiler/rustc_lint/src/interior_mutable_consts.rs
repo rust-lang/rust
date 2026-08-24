@@ -3,7 +3,9 @@ use rustc_hir::{Expr, ExprKind, ItemKind, Node, find_attr};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_session::{declare_lint, declare_lint_pass};
 
-use crate::lints::{ConstItemInteriorMutationsDiag, ConstItemInteriorMutationsSuggestionStatic};
+use crate::diagnostics::{
+    ConstItemInteriorMutationsDiag, ConstItemInteriorMutationsSuggestionStatic,
+};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

@@ -310,6 +310,11 @@ impl ExpnId {
     /// `expn_id.is_descendant_of(ctxt.outer_expn())`.
     #[inline]
     pub fn outer_expn_is_descendant_of(self, ctxt: SyntaxContext) -> bool {
+        // fast path to avoid locking: everything is a descendant of the root context's
+        // outer expansion
+        if ctxt.is_root() {
+            return true;
+        }
         HygieneData::with(|data| data.is_descendant_of(self, data.outer_expn(ctxt)))
     }
 
@@ -367,6 +372,8 @@ impl HygieneData {
             None,
         );
 
+        // Index 0 is the root context, and nothing but its `dollar_crate_name` is ever
+        // mutated afterwards. The lock-free root paths on `SyntaxContext` rely on that.
         let root_ctxt_data = SyntaxContextData::root();
         HygieneData {
             local_expn_data: IndexVec::from_elem_n(Some(root_data), 1),
@@ -876,11 +883,19 @@ impl SyntaxContext {
 
     #[inline]
     pub fn normalize_to_macros_2_0(self) -> SyntaxContext {
+        // fast path to avoid locking: the root context normalizes to itself
+        if self.is_root() {
+            return self;
+        }
         HygieneData::with(|data| data.normalize_to_macros_2_0(self))
     }
 
     #[inline]
     pub fn normalize_to_macro_rules(self) -> SyntaxContext {
+        // fast path to avoid locking: the root context normalizes to itself
+        if self.is_root() {
+            return self;
+        }
         HygieneData::with(|data| data.normalize_to_macro_rules(self))
     }
 

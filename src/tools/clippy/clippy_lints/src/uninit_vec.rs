@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::ty::is_uninit_value_valid_for_ty;
 use clippy_utils::{SpanlessEq, is_integer_literal, is_lint_allowed, peel_hir_expr_while, sym};
 use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKind};

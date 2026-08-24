@@ -8,7 +8,7 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt,
 };
 use rustc_type_ir::{
-    self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Unnormalized, Upcast as _,
+    self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Unnormalized, Upcast as _,
 };
 use tracing::instrument;
 
@@ -219,10 +219,10 @@ where
         // FIXME: We don't need these, since these are the type's own WF obligations.
         ecx.add_goals(
             GoalSource::AliasWellFormed,
-            cx.own_predicates_of(goal.predicate.alias.expect_projection_def_id().into())
+            cx.own_clauses_of(goal.predicate.alias.expect_projection_def_id().into())
                 .iter_instantiated(cx, goal.predicate.alias.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|pred| goal.with(cx, pred)),
+                .map(|clause| goal.with(cx, clause)),
         )?;
 
         then(ecx)
@@ -253,18 +253,17 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, NormalizesTo<I>>,
+        goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
         let alias_def_id = goal.predicate.alias.expect_projection_def_id();
-        let goal_trait_ref = goal.predicate.alias.trait_ref(cx);
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx()).args_may_unify(
-            goal.predicate.alias.trait_ref(cx).args,
-            impl_trait_ref.skip_binder().args,
-        ) {
+        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
+            .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
+        {
             return Err(NoSolution.into());
         }
 
@@ -285,10 +284,10 @@ where
             ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
 
             let where_clause_bounds = cx
-                .predicates_of(impl_def_id.into())
+                .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|pred| goal.with(cx, pred));
+                .map(|clause| goal.with(cx, clause));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // Bail if the nested goals don't hold here. This is to avoid unnecessarily
@@ -302,10 +301,10 @@ where
             // see tests/ui/generic-associated-types/must-prove-where-clauses-on-norm.rs.
             ecx.add_goals(
                 GoalSource::AliasWellFormed,
-                cx.own_predicates_of(alias_def_id.into())
+                cx.own_clauses_of(alias_def_id.into())
                     .iter_instantiated(cx, goal.predicate.alias.args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|pred| goal.with(cx, pred)),
+                    .map(|clause| goal.with(cx, clause)),
             )?;
 
             let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
@@ -348,6 +347,7 @@ where
                             | ty::TypingMode::PostTypeckUntilBorrowck { .. }
                             | ty::TypingMode::PostBorrowck { .. }
                             | ty::TypingMode::PostAnalysis
+                            | ty::TypingMode::Reflection
                             | ty::TypingMode::Codegen => {
                                 ecx.instantiate_normalizes_to_as_rigid(goal)?;
                                 return ecx.evaluate_added_goals_and_make_canonical_response(
@@ -1076,6 +1076,13 @@ where
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
+
+    fn consider_builtin_try_as_dyn_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        unreachable!("try_as_dyn helper trait doesn't have assoc types")
+    }
 }
 
 impl<D, I> EvalCtxt<'_, D>
@@ -1111,10 +1118,10 @@ where
             // target impl's params.
             self.add_goals(
                 GoalSource::Misc,
-                cx.predicates_of(target_container_def_id)
+                cx.clauses_of(target_container_def_id)
                     .iter_instantiated(cx, target_args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|pred| goal.with(cx, pred)),
+                    .map(|clause| goal.with(cx, clause)),
             )?;
             goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id.into(), target_args)
         })

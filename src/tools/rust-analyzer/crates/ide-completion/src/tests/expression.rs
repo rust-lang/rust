@@ -3278,6 +3278,7 @@ fn bar() {
             ma panic!(…)                         macro_rules! panic
             ma print!(…)                         macro_rules! print
             md core::
+            md panic::
             md result:: (use core::result)
             md rust_2015:: (use core::prelude::rust_2015)
             md rust_2018:: (use core::prelude::rust_2018)

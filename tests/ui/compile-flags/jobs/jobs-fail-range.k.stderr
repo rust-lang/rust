@@ -1,0 +1,2 @@
+error: unstable option `threads` requires a string (`-Z threads=<value>`)
+

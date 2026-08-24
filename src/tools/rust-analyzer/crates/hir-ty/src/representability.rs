@@ -23,7 +23,7 @@ macro_rules! rtry {
     };
 }
 
-#[salsa::tracked(cycle_result = representability_cycle)]
+#[salsa::tracked(cycle_result = representability_cycle, returns(copy))]
 pub(crate) fn representability(db: &dyn HirDatabase, id: AdtId) -> Representability {
     match id {
         AdtId::StructId(id) => variant_representability(db, id.into()),

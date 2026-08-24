@@ -14,9 +14,10 @@ global_asm!(
     .section .boot, "ax"
     .global _boot
 
+    .arm
     _boot:
         ldr sp, =__stack_top @ Set up the user stack.
-        b _start             @ Jump to the Rust entrypoint.
+        blx _start           @ Jump to the Rust entrypoint.
     "#
 );
 

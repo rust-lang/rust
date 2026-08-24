@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         }
 
         let def_id = opaque.def_id.to_def_id();
-        let infcx = &cx.tcx.infer_ctxt().ignoring_regions().build(cx.typing_mode());
+        let infcx = &cx.tcx.infer_ctxt().build(cx.typing_mode());
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.
@@ -157,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         cx.param_env,
                         Unnormalized::new_wip(assoc_pred),
                     );
-                    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                         // Can't normalize for some reason...?
                         continue;
                     }
@@ -172,7 +172,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     // If that predicate doesn't hold modulo regions (but passed during type-check),
                     // then we must've taken advantage of the hack in `project_and_unify_types` where
                     // we replace opaques with inference vars. Emit a warning!
-                    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                         // If it's a trait bound and an opaque that doesn't satisfy it,
                         // then we can emit a suggestion to add the bound.
                         let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {

@@ -55,7 +55,7 @@ pub fn deprecate<'cx>(cx: ParseCx<'cx>, clippy_version: Version, name: &'cx str,
     if remove_lint_declaration(name, &mod_path, &mut lints).unwrap_or(false) {
         generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
         println!("info: `{name}` has successfully been deprecated");
-        println!("note: you must run `cargo uitest` to update the test results");
+        println!("note: you must run `cargo uibless` to update the test results");
     } else {
         eprintln!("error: lint not found");
     }
@@ -107,7 +107,7 @@ pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
     if remove_lint_declaration(old_name, &mod_path, &mut lints).unwrap_or(false) {
         generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
         println!("info: `{old_name}` has successfully been uplifted");
-        println!("note: you must run `cargo uitest` to update the test results");
+        println!("note: you must run `cargo uibless` to update the test results");
     } else {
         eprintln!("error: lint not found");
     }

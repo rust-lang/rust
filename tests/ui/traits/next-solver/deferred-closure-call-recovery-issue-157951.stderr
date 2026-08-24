@@ -30,8 +30,8 @@ LL |     let f = |f: dyn Fn()| f;
    |             ^^^^^^^^^^^^^
 help: provide the argument
    |
-LL |     f(/* (dyn Fn() + 'static) */);
-   |       ++++++++++++++++++++++++++
+LL |     f(/* dyn Fn() */);
+   |       ++++++++++++++
 
 error: aborting due to 3 previous errors
 

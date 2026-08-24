@@ -1,0 +1,40 @@
+error[E0531]: it works `empty` `blah`
+  --> $DIR/late_res.rs:13:16
+   |
+LL |         empty::blah => {}
+   |                ^^^^ label it works
+   |
+   = note: cannot find unit struct, unit variant or constant `blah` in module `empty`
+   = note: note it works
+
+error[E0425]: it works `empty` `blah`
+  --> $DIR/late_res.rs:18:27
+   |
+LL |     println!("{}", empty::blah);
+   |                           ^^^^ label it works
+   |
+   = note: cannot find value `blah` in module `empty`
+   = note: note it works
+
+error[E0425]: it works `empty` `blah`
+  --> $DIR/late_res.rs:22:16
+   |
+LL |         empty::blah,
+   |                ^^^^ label it works
+   |
+   = note: cannot find value `blah` in module `empty`
+   = note: note it works
+
+error[E0425]: it works `empty` `blah2`
+  --> $DIR/late_res.rs:24:16
+   |
+LL |         empty::blah2,
+   |                ^^^^^ label it works
+   |
+   = note: cannot find value `blah2` in module `empty`
+   = note: note it works
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0425, E0531.
+For more information about an error, try `rustc --explain E0425`.

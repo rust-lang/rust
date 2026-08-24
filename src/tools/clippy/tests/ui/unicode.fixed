@@ -1,7 +1,6 @@
-#![allow(dead_code)]
-
-#[warn(clippy::invisible_characters)]
 fn zero() {
+    #![warn(clippy::invisible_characters)]
+
     print!("Here >\u{200B}< is a ZWS, and \u{200B}another");
     //~^ invisible_characters
     print!("This\u{200B}is\u{200B}fine");
@@ -13,15 +12,16 @@ fn zero() {
     print!("This\u{2060}is\u{2060}fine");
 }
 
-#[warn(clippy::unicode_not_nfc)]
 fn canon() {
+    #![warn(clippy::unicode_not_nfc)]
+
     print!("̀àh?");
     //~^ unicode_not_nfc
     print!("a\u{0300}h?"); // also ok
 }
 
 mod non_ascii_literal {
-    #![deny(clippy::non_ascii_literal)]
+    #![warn(clippy::non_ascii_literal)]
 
     fn uni() {
         print!("\u{dc}ben!");
@@ -43,8 +43,6 @@ mod non_ascii_literal {
     }
 
     mod issue_8263 {
-        #![deny(clippy::non_ascii_literal)]
-
         // Re-allow for a single test
         #[test]
         #[allow(clippy::non_ascii_literal)]
@@ -81,7 +79,7 @@ mod ascii_value_from_non_ascii_snippet {
     // The reverse: `file!()` produces an ASCII value (the file path), but the
     // literal's span covers the whole macro invocation, so the snippet is
     // non-ASCII and the lint must fire. Checking the value would miss it.
-    #![deny(clippy::non_ascii_literal)]
+    #![warn(clippy::non_ascii_literal)]
 
     macro_rules! with_location {
         ($($arg:tt)*) => {

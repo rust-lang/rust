@@ -8,6 +8,8 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use tracing::instrument;
 
+use crate::PassPolicy;
+
 pub(super) struct CtfeLimit;
 
 impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
@@ -37,8 +39,9 @@ impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // This is part of CTFE diagnostics rather than an optimization.
+        PassPolicy::optional_non_optimization(true)
     }
 }
 

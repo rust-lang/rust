@@ -1,5 +1,5 @@
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;

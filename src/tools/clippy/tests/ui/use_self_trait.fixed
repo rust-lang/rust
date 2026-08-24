@@ -1,6 +1,4 @@
 #![warn(clippy::use_self)]
-#![allow(dead_code)]
-#![allow(clippy::should_implement_trait, clippy::boxed_local)]
 
 use std::ops::Mul;
 

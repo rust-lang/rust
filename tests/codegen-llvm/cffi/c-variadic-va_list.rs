@@ -2,7 +2,6 @@
 //@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
-#![feature(c_variadic)]
 #![no_std]
 use core::ffi::VaList;
 

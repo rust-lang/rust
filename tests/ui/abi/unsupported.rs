@@ -143,7 +143,7 @@ extern "cdecl" {}
 //[x64_win]~^ WARN unsupported_calling_conventions
 //[x64_win]~^^ WARN this was previously accepted
 
-fn custom_ptr(f: extern "custom" fn()) {
+fn custom_ptr(f: unsafe extern "custom" fn()) {
     //[wasm32,wasm64]~^ ERROR is not a supported ABI
     let _ = f;
 }

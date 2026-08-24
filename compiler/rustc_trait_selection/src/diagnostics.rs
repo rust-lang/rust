@@ -739,13 +739,12 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             }
             if introduce_new {
-                let new_param_suggestion = if let Some(first) =
-                    generics.params.iter().find(|p| !p.name.ident().span.is_empty())
-                {
-                    (first.span.shrink_to_lo(), format!("{suggestion_param_name}, "))
-                } else {
-                    (generics.span, format!("<{suggestion_param_name}>"))
-                };
+                let new_param_suggestion =
+                    if let Some(span) = generics.span_for_lifetime_suggestion() {
+                        (span, format!("{suggestion_param_name}, "))
+                    } else {
+                        (generics.span, format!("<{suggestion_param_name}>"))
+                    };
 
                 visitor.suggestions.push(new_param_suggestion);
             }
@@ -1203,9 +1202,9 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
 #[diag("`impl` item signature doesn't match `trait` item signature")]
 pub(crate) struct TraitImplDiff {
     #[primary_span]
-    #[label("found `{$found}`")]
+    #[label("found `{$found_short}`")]
     pub sp: Span,
-    #[label("expected `{$expected}`")]
+    #[label("expected `{$expected_short}`")]
     pub trait_sp: Span,
     #[note(
         "expected signature `{$expected}`
@@ -1218,6 +1217,8 @@ pub(crate) struct TraitImplDiff {
         "verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output"
     )]
     pub rel_help: bool,
+    pub expected_short: String,
+    pub found_short: String,
     pub expected: String,
     pub found: String,
 }
@@ -1423,6 +1424,18 @@ pub(crate) enum ConsiderAddingAwait {
     FutureSuggMultiple {
         #[suggestion_part(code = ".await")]
         spans: Vec<Span>,
+    },
+    #[multipart_suggestion(
+        "consider making the function `async` and `await`ing on the `Future`",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    MakeFunctionAsync {
+        #[suggestion_part(code = "{async_prefix}")]
+        async_span: Span,
+        async_prefix: String,
+        #[suggestion_part(code = ".await")]
+        await_span: Span,
     },
 }
 

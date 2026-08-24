@@ -24,7 +24,7 @@ pub(crate) fn fully_perform_op_raw<'tcx, R: fmt::Debug, Op>(
     body: &Body<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
     region_bound_pairs: &RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &[ty::PolyTypeOutlivesClause<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     locations: Locations,
     category: ConstraintCategory<'tcx>,
@@ -141,18 +141,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn normalize_and_prove_instantiated_predicates(
+    pub(super) fn normalize_and_prove_instantiated_clauses(
         &mut self,
         // Keep this parameter for now, in case we start using
         // it in `ConstraintCategory` at some point.
         _def_id: DefId,
-        instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
+        instantiated_clauses: ty::InstantiatedClauses<'tcx>,
         locations: Locations,
     ) {
-        for (predicate, span) in instantiated_predicates {
-            debug!(?span, ?predicate);
+        for (clause, span) in instantiated_clauses {
+            debug!(?span, ?clause);
             let category = ConstraintCategory::Predicate(span);
-            let clause = self.normalize_with_category(predicate, locations, category);
+            let clause = self.normalize_with_category(clause, locations, category);
             self.prove_clause(clause, locations, category);
         }
     }
@@ -196,16 +196,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.normalize_with_category(value, location, ConstraintCategory::Boring)
     }
 
-    pub(super) fn deeply_normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
+    pub(super) fn deeply_normalize<T>(
+        &mut self,
+        value: Unnormalized<'tcx, T>,
+        location: impl NormalizeLocation,
+    ) -> Result<T, ErrorGuaranteed>
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        let result: Result<_, ErrorGuaranteed> = self.fully_perform_op(
+        self.fully_perform_op(
             location.to_locations(),
             ConstraintCategory::Boring,
-            self.infcx.param_env.and(type_op::normalize::DeeplyNormalize { value }),
-        );
-        result.unwrap_or(value)
+            self.infcx.param_env.and(type_op::normalize::Normalize { value }),
+        )
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -218,14 +221,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        let value = value.skip_normalization();
         let param_env = self.infcx.param_env;
         let result: Result<_, ErrorGuaranteed> = self.fully_perform_op(
             location.to_locations(),
             category,
             param_env.and(type_op::normalize::Normalize { value }),
         );
-        result.unwrap_or(value)
+        result.unwrap_or(value.skip_norm_wip())
     }
 
     #[instrument(skip(self), level = "debug")]

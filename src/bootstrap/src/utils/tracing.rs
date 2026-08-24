@@ -117,7 +117,7 @@ mod inner {
     use tracing_subscriber::{EnvFilter, Layer};
 
     use super::{COMMAND_SPAN_TARGET, IO_SPAN_TARGET};
-    use crate::STEP_SPAN_TARGET;
+    use crate::core::builder::STEP_SPAN_TARGET;
 
     pub fn setup_tracing(env_name: &str) -> TracingGuard {
         let filter = EnvFilter::from_env(env_name);

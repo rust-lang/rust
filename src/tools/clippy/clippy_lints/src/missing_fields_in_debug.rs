@@ -1,13 +1,14 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::sym;
 use clippy_utils::visitors::{Visitable, for_each_expr};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Block, Expr, ExprKind, Impl, Item, ItemKind, LangItem, Node, QPath, TyKind, VariantData};
+use rustc_hir::{Block, Expr, ExprKind, Impl, Item, ItemKind, Node, QPath, TyKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::declare_lint_pass;

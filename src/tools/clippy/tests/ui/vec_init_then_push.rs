@@ -1,4 +1,3 @@
-#![allow(unused_variables)]
 #![warn(clippy::vec_init_then_push)]
 //@no-rustfix
 fn main() {

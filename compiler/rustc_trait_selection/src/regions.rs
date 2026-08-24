@@ -5,12 +5,9 @@ use rustc_infer::infer::{
     InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt, TypeOutlivesConstraint,
 };
 use rustc_macros::extension;
-use rustc_middle::traits::ObligationCause;
-use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode, Unnormalized, elaborate};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, elaborate};
+use rustc_span::DUMMY_SP;
 
-use crate::traits::ScrubbedTraitError;
 use crate::traits::outlives_bounds::InferCtxtExt;
 
 #[extension(pub trait OutlivesEnvironmentBuildExt<'tcx>)]
@@ -34,18 +31,8 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
         let mut bounds = vec![];
 
         for bound in param_env.caller_bounds() {
-            if let Some(mut type_outlives) = bound.as_type_outlives_clause() {
-                if infcx.next_trait_solver() {
-                    match crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
-                        infcx.at(&ObligationCause::dummy(), param_env),
-                        Unnormalized::new_wip(type_outlives),
-                    ) {
-                        Ok(new) => type_outlives = new,
-                        Err(_) => {
-                            infcx.dcx().delayed_bug(format!("could not normalize `{bound}`"));
-                        }
-                    }
-                }
+            if let Some(type_outlives) = bound.as_type_outlives_clause() {
+                debug_assert!(!infcx.next_trait_solver() || !type_outlives.has_non_rigid_aliases());
                 bounds.push(type_outlives);
             }
         }
@@ -75,14 +62,12 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
 
 #[extension(pub trait InferCtxtRegionExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
-    /// Resolve regions, using the deep normalizer to normalize any type-outlives
-    /// obligations in the process. This is in `rustc_trait_selection` because
-    /// we need to normalize.
-    ///
-    /// Prefer this method over `resolve_regions_with_normalize`, unless you are
-    /// doing something specific for normalization.
+    /// Resolve regions lexically.
     ///
     /// This function assumes that all infer variables are already constrained.
+    ///
+    /// FIXME(#155345): this can probably be moved back to `rustc_infer` now that normalization is
+    /// no longer required. These two extension traits won't be needed then.
     fn resolve_regions(
         &self,
         body_def_id: LocalDefId,
@@ -92,34 +77,6 @@ impl<'tcx> InferCtxt<'tcx> {
         self.resolve_regions_with_outlives_env(
             &OutlivesEnvironment::new(self, body_def_id, param_env, assumed_wf_tys),
             self.tcx.def_span(body_def_id),
-        )
-    }
-
-    /// Don't call this directly unless you know what you're doing.
-    fn resolve_regions_with_outlives_env(
-        &self,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-        span: Span,
-    ) -> Vec<RegionResolutionError<'tcx>> {
-        self.resolve_regions_with_normalize(
-            &outlives_env,
-            |ty, origin| {
-                let ty = self.resolve_vars_if_possible(ty);
-
-                if self.next_trait_solver() {
-                    crate::solve::deeply_normalize(
-                        self.at(
-                            &ObligationCause::dummy_with_span(origin.span()),
-                            outlives_env.param_env,
-                        ),
-                        Unnormalized::new_wip(ty),
-                    )
-                    .map_err(|_: Vec<ScrubbedTraitError<'tcx>>| NoSolution)
-                } else {
-                    Ok(ty)
-                }
-            },
-            span,
         )
     }
 }

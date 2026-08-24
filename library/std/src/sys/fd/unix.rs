@@ -19,6 +19,27 @@ use libc::off_t as off64_t;
 use libc::off64_t;
 
 cfg_select! {
+    target_os = "vxworks" => {
+        // VxWorks does not have pread/pwrite.
+        // See <https://github.com/rust-lang/libc/issues/5328>.
+        pub unsafe fn pread64(
+            _fd: libc::c_int,
+            _buf: *mut libc::c_void,
+            _count: libc::size_t,
+            _offset: off64_t,
+        ) -> libc::ssize_t {
+            -1
+        }
+
+        pub unsafe fn pwrite64(
+            _fd: libc::c_int,
+            _buf: *const libc::c_void,
+            _count: libc::size_t,
+            _offset: off64_t,
+        ) -> libc::ssize_t {
+            -1
+        }
+    }
     any(
         all(target_os = "linux", not(target_env = "musl")),
         target_os = "android",
@@ -27,9 +48,11 @@ cfg_select! {
         // Prefer explicit pread64 for 64-bit offset independently of libc
         // #[cfg(gnu_file_offset_bits64)].
         use libc::pread64;
+        use libc::pwrite64;
     }
     _ => {
         use libc::pread as pread64;
+        use libc::pwrite as pwrite64;
     }
 }
 
@@ -398,19 +421,6 @@ impl FileDesc {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-        #[cfg(not(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        )))]
-        use libc::pwrite as pwrite64;
-        #[cfg(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        ))]
-        use libc::pwrite64;
-
         unsafe {
             cvt(pwrite64(
                 self.as_raw_fd(),

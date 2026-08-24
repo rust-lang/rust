@@ -1,5 +1,6 @@
 use std::fmt;
 
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
@@ -9,19 +10,8 @@ use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 /// Amdgpu register classes
 ///
 /// The number is the size of the register class in bits.
-#[derive(
-    Copy,
-    Clone,
-    rustc_macros::Encodable,
-    rustc_macros::Decodable,
-    Debug,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Hash,
-    rustc_macros::StableHash
-)]
-#[allow(non_camel_case_types)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
+#[derive(StableHash, Encodable, Decodable)]
 pub enum AmdgpuInlineAsmRegClass {
     Sgpr(u16),
     Vgpr(u16),
@@ -267,18 +257,8 @@ impl AmdgpuInlineAsmRegClass {
 /// Start index of a register.
 ///
 /// Together with the register size this gives the range occupied by a register.
-#[derive(
-    Copy,
-    Clone,
-    rustc_macros::Encodable,
-    rustc_macros::Decodable,
-    Debug,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Hash,
-    rustc_macros::StableHash
-)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
+#[derive(Encodable, Decodable, StableHash)]
 enum AmdgpuRegStart {
     /// Low 16-bit of the register at this index
     Low(u16),
@@ -288,19 +268,8 @@ enum AmdgpuRegStart {
     Full(u16),
 }
 
-#[derive(
-    Copy,
-    Clone,
-    rustc_macros::Encodable,
-    rustc_macros::Decodable,
-    Debug,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Hash,
-    rustc_macros::StableHash
-)]
-#[allow(non_camel_case_types)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
+#[derive(Encodable, Decodable, StableHash)]
 pub struct AmdgpuInlineAsmReg {
     class: AmdgpuInlineAsmRegClass,
     range: AmdgpuRegStart,

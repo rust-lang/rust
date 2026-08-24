@@ -362,11 +362,11 @@ impl Module {
         (refs, adt_fields, use_stmts_to_be_inserted)
     }
 
-    fn expand_and_group_usages_file_wise(
+    fn expand_and_group_usages_file_wise<'db>(
         &self,
-        ctx: &AssistContext<'_, '_>,
+        ctx: &AssistContext<'_, 'db>,
         replace_range: TextRange,
-        node_def: Definition,
+        node_def: Definition<'db>,
         refs_in_files: &mut FxHashMap<FileId, Vec<(TextRange, String)>>,
         use_stmts_to_be_inserted: &mut FxHashMap<TextSize, ast::Use>,
     ) {
@@ -535,12 +535,12 @@ impl Module {
         imports_to_remove
     }
 
-    fn process_def_in_sel(
+    fn process_def_in_sel<'db>(
         &mut self,
-        def: Definition,
+        def: Definition<'db>,
         use_node: &SyntaxNode,
         curr_parent_module: &Option<ast::Module>,
-        ctx: &AssistContext<'_, '_>,
+        ctx: &AssistContext<'_, 'db>,
         make: &SyntaxFactory,
     ) -> Option<TextRange> {
         //We only need to find in the current file
@@ -738,7 +738,7 @@ fn check_intersection_and_push(
 }
 
 fn check_def_in_mod_and_out_sel(
-    def: Definition,
+    def: Definition<'_>,
     ctx: &AssistContext<'_, '_>,
     curr_parent_module: &Option<ast::Module>,
     selection_range: TextRange,

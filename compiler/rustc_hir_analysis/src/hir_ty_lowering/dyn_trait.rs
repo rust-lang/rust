@@ -5,9 +5,10 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, StashKey,
     Suggestions, struct_span_code_err,
 };
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_hir::{self as hir, HirId};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
@@ -231,9 +232,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         ordered_associated_items.extend(
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
-                                // Only associated types & type consts can possibly be
-                                // constrained in a trait object type via a binding.
-                                .filter(|item| item.is_type() || item.is_type_const())
+                                .filter(|item| item.can_have_equality_constraint(tcx))
                                 // Traits with RPITITs are simply not dyn compatible (for now).
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 .map(|item| (item.def_id, trait_ref)),

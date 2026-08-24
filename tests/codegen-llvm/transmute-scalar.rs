@@ -3,10 +3,10 @@
 //@ needs-llvm-components: x86
 
 #![crate_type = "lib"]
-#![feature(no_core, repr_simd)]
+#![feature(no_core)]
 #![no_core]
 extern crate minicore;
-
+use minicore::simd::Simd;
 use minicore::*;
 
 // With opaque ptrs in LLVM, `transmute` can load/store any `alloca` as any type,
@@ -108,8 +108,7 @@ pub fn fake_bool_unsigned_to_bool(b: FakeBoolUnsigned) -> bool {
     unsafe { mem::transmute(b) }
 }
 
-#[repr(simd)]
-struct S([i64; 1]);
+type S = Simd<i64, 1>;
 
 // CHECK-LABEL: define{{.*}}i64 @single_element_simd_to_scalar(<1 x i64> %b)
 // CHECK-NEXT: start:

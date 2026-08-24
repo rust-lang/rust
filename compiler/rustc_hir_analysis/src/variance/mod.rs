@@ -181,24 +181,24 @@ fn variance_of_opaque(
     let mut collector =
         OpaqueTypeLifetimeCollector { tcx, root_def_id: item_def_id.to_def_id(), variances };
     let id_args = ty::GenericArgs::identity_for_item(tcx, item_def_id);
-    for (pred, _) in tcx
+    for (clause, _) in tcx
         .explicit_item_bounds(item_def_id)
         .iter_instantiated_copied(tcx, id_args)
         .map(Unnormalized::skip_norm_wip)
     {
-        debug!(?pred);
+        debug!(?clause);
 
         // We only ignore opaque type args if the opaque type is the outermost type.
         // The opaque type may be nested within itself via recursion in e.g.
         // type Foo<'a> = impl PartialEq<Foo<'a>>;
         // which thus mentions `'a` and should thus accept hidden types that borrow 'a
         // instead of requiring an additional `+ 'a`.
-        match pred.kind().skip_binder() {
+        match clause.kind().skip_binder() {
             ty::ClauseKind::Trait(ty::TraitPredicate {
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 polarity: _,
             })
-            | ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            | ty::ClauseKind::HostEffect(ty::HostEffectClause {
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 constness: _,
             }) => {
@@ -215,11 +215,11 @@ fn variance_of_opaque(
                 }
                 term.visit_with(&mut collector);
             }
-            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_, region)) => {
+            ty::ClauseKind::TypeOutlives(ty::OutlivesClause(_, region)) => {
                 region.visit_with(&mut collector);
             }
             _ => {
-                pred.visit_with(&mut collector);
+                clause.visit_with(&mut collector);
             }
         }
     }

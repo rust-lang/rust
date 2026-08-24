@@ -7,17 +7,15 @@
 
 #![feature(iter_collect_into)]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications
 )]
-#![allow(
-    clippy::collapsible_else_if,
-    clippy::needless_borrows_for_generic_args,
-    clippy::module_name_repetitions,
-    clippy::literal_string_with_formatting_args
+#![expect(
+    clippy::literal_string_with_formatting_args,
+    clippy::needless_borrows_for_generic_args
 )]
 
 mod config;

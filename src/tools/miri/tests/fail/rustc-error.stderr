@@ -1,9 +1,10 @@
-error[E0423]: expected function, found macro `println`
+error[E0423]: cannot find function `println` in this scope
   --> tests/fail/rustc-error.rs:LL:CC
    |
 LL |     println("Hello, world!");
-   |     ^^^^^^^ not a function
+   |     ^^^^^^^ not found in this scope
    |
+   = note: a macro named `println` exists in another namespace
 help: use `!` to invoke the macro
    |
 LL |     println!("Hello, world!");

@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_session::{declare_lint, declare_lint_pass};
 
-use crate::lints::UnitBindingsDiag;
+use crate::diagnostics::UnitBindingsDiag;
 use crate::{LateLintPass, LintContext};
 
 declare_lint! {
@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitBindings {
         // - explicitly wrote `let pat = ();`
         // - explicitly wrote `let () = init;`.
         if !local.span.from_expansion()
-            && let Some(tyck_results) = cx.maybe_typeck_results()
+            && let Some(tyck_results) = cx.typeck_results
             && let Some(init) = local.init
             && let init_ty = tyck_results.expr_ty(init)
             && let local_ty = tyck_results.node_type(local.hir_id)

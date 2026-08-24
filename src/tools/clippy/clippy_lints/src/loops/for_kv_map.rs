@@ -1,6 +1,6 @@
 use super::FOR_KV_MAP;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::{snippet_with_applicability, walk_span_to_context};
 use clippy_utils::{pat_is_wild, sugg};
 use rustc_errors::Applicability;

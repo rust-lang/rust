@@ -1,58 +1,7 @@
-use std::env;
 use std::process::Command;
-use std::sync::Arc;
 
 use camino::Utf8Path;
-
-use crate::common::{Config, Debugger};
-
-pub(crate) fn configure_cdb(config: &Config) -> Option<Arc<Config>> {
-    config.cdb.as_ref()?;
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Cdb), ..config.clone() }))
-}
-
-pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
-    config.gdb_version?;
-
-    if config.matches_env("msvc") {
-        return None;
-    }
-
-    if config.remote_test_client.is_some() && !config.target.contains("android") {
-        println!(
-            "WARNING: debuginfo tests are not available when \
-             testing with remote"
-        );
-        return None;
-    }
-
-    if config.target.contains("android") {
-        println!(
-            "{} debug-info test uses tcp 5039 port.\
-             please reserve it",
-            config.target
-        );
-
-        // android debug-info test uses remote debugger so, we test 1 thread
-        // at once as they're all sharing the same TCP port to communicate
-        // over.
-        //
-        // we should figure out how to lift this restriction! (run them all
-        // on different ports allocated dynamically).
-        //
-        // SAFETY: at this point we are still single-threaded.
-        unsafe { env::set_var("RUST_TEST_THREADS", "1") };
-    }
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.clone() }))
-}
-
-pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
-    config.lldb.as_ref()?;
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
-}
+use semver::Version;
 
 pub(crate) fn query_cdb_version(cdb: &Utf8Path) -> Option<[u16; 4]> {
     let mut version = None;
@@ -138,40 +87,89 @@ pub(crate) fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     Some(((major * 1000) + minor) * 1000 + patch)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum LldbVersion {
+    /// LLDB distributed by Apple as part of Xcode. Uses a unique versioning scheme that does not
+    /// match LLVM's LLDB.
+    Apple([u64; 4]),
+    /// LLDB distributed by LLVM, uses traditional semver.
+    Llvm(Version),
+}
+
+impl LldbVersion {
+    /// Takes a string consisting of 1-4 `.`-separated numbers and returns an `LldbVersion::Apple`.
+    ///
+    /// If a number fails to parse, that section and any following sections are silently converted
+    /// to `0` (e.g. `"15.6.asdf.3"` -> `[15, 6, 0, 0]`)
+    pub(crate) fn apple_from_str(version_num: &str) -> Self {
+        let mut ver: [u64; 4] = [0; 4];
+
+        for (i, val) in version_num.split('.').enumerate().take_while(|(i, _)| *i < 4) {
+            if let Ok(part) = val.parse::<u64>() {
+                ver[i] = part;
+            } else {
+                eprintln!(
+                    "Warning: Invalid LLDB version format: '{version_num}'. Falling back to version '{ver:?}'"
+                );
+                break;
+            }
+        }
+
+        Self::Apple(ver)
+    }
+
+    /// Takes a string consisting of 1-3 `.`-separated numbers and returns an `LldbVersion::Llvm`.
+    ///
+    /// If a number fails to parse, that section and any following sections are silently converted
+    /// to `0` (e.g. `"15.asdf.3"` -> `[15, 0, 0]`)
+    pub(crate) fn llvm_from_str(version_num: &str) -> Self {
+        let mut ver: [u64; 3] = [0; 3];
+
+        for (i, val) in version_num.split('.').enumerate().take_while(|(i, _)| *i < 3) {
+            if let Ok(part) = val.parse::<u64>() {
+                ver[i] = part;
+            } else {
+                eprintln!(
+                    "Warning: Invalid LLDB version number format: '{version_num}'. Falling back to version '{ver:?}'"
+                );
+                break;
+            }
+        }
+
+        Self::Llvm(Version::new(ver[0], ver[1], ver[2]))
+    }
+}
+
 /// Returns LLDB version
-pub(crate) fn extract_lldb_version(full_version_line: &str) -> Option<u32> {
+pub(crate) fn extract_lldb_version(full_version_line: &str) -> Option<LldbVersion> {
     // Extract the major LLDB version from the given version string.
     // LLDB version strings are different for Apple and non-Apple platforms.
     // The Apple variant looks like this:
     //
     // LLDB-179.5 (older versions)
     // lldb-300.2.51 (new versions)
+    // lldb-1703.0.236.21 (even newer versions)
     //
-    // We are only interested in the major version number, so this function
-    // will return `Some(179)` and `Some(300)` respectively.
-    //
-    // Upstream versions look like:
+    // LLVM versions look like:
     // lldb version 6.0.1
     //
     // There doesn't seem to be a way to correlate the Apple version
-    // with the upstream version, and since the tests were originally
-    // written against Apple versions, we make a fake Apple version by
-    // multiplying the first number by 100. This is a hack.
+    // with the upstream version.
 
     let full_version_line = full_version_line.trim();
 
-    if let Some(apple_ver) =
+    if let Some(apple_str) =
         full_version_line.strip_prefix("LLDB-").or_else(|| full_version_line.strip_prefix("lldb-"))
     {
-        if let Some(idx) = apple_ver.find(not_a_digit) {
-            let version: u32 = apple_ver[..idx].parse().unwrap();
-            return Some(version);
-        }
-    } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ") {
-        if let Some(idx) = lldb_ver.find(not_a_digit) {
-            let version: u32 = lldb_ver[..idx].parse().ok()?;
-            return Some(version * 100);
-        }
+        let version_str = apple_str.split_whitespace().next()?;
+
+        return Some(LldbVersion::apple_from_str(version_str));
+    }
+
+    if let Some(lldb_str) = full_version_line.strip_prefix("lldb version ") {
+        let version_str = lldb_str.split_whitespace().next()?;
+
+        return Some(LldbVersion::llvm_from_str(version_str));
     }
     None
 }

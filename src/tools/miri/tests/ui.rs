@@ -440,7 +440,10 @@ fn main() -> Result<()> {
 
     ui(Mode::Pass { native: false }, "tests/pass", &target, WithoutDeps, tmpdir.path())?;
     ui(Mode::Pass { native: false }, "tests/pass-dep", &target, WithDeps, tmpdir.path())?;
-    if target == host {
+    if target == host
+        // Skip native test execution during bootstrap as the sysroot is not quite right there.
+        && env::var("RUSTC_STAGE").ok().is_none_or(|s| s != "0")
+    {
         ui(Mode::Pass { native: true }, "tests/pass", &target, WithoutDeps, tmpdir.path())?;
         ui(Mode::Pass { native: true }, "tests/pass-dep", &target, WithDeps, tmpdir.path())?;
     }

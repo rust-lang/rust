@@ -1,9 +1,10 @@
-error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
-  --> $DIR/tuple-struct-expr-pat.rs:10:36
+error[E0575]: cannot find method or associated constant `Assoc` in trait `Trait`
+  --> $DIR/tuple-struct-expr-pat.rs:10:53
    |
 LL |     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^
+   |                                                     ^^^^^
    |
+   = note: an associated type named `Trait::Assoc` exists in another namespace
    = note: can't use a type alias as a constructor
 help: use struct expression instead
    |
@@ -11,12 +12,13 @@ LL -     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
 LL +     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc {};
    |
 
-error[E0575]: expected tuple struct or tuple variant, found associated type `Trait::Assoc`
-  --> $DIR/tuple-struct-expr-pat.rs:10:9
+error[E0575]: cannot find tuple struct or tuple variant `Assoc` in trait `Trait`
+  --> $DIR/tuple-struct-expr-pat.rs:10:26
    |
 LL |     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |                          ^^^^^
    |
+   = note: an associated type named `Trait::Assoc` exists in another namespace
    = note: can't use a type alias as tuple pattern
 help: use struct pattern instead
    |
@@ -24,12 +26,13 @@ LL -     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
 LL +     let <T<0> as Trait>::Assoc {} = <T<0> as Trait>::Assoc();
    |
 
-error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
-  --> $DIR/tuple-struct-expr-pat.rs:13:38
+error[E0575]: cannot find method or associated constant `Assoc` in trait `Trait`
+  --> $DIR/tuple-struct-expr-pat.rs:13:55
    |
 LL |     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^
+   |                                                       ^^^^^
    |
+   = note: an associated type named `Trait::Assoc` exists in another namespace
    = note: can't use a type alias as a constructor
 help: use struct expression instead
    |
@@ -37,12 +40,13 @@ LL -     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
 LL +     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc { 0: 0 };
    |
 
-error[E0575]: expected tuple struct or tuple variant, found associated type `Trait::Assoc`
-  --> $DIR/tuple-struct-expr-pat.rs:13:9
+error[E0575]: cannot find tuple struct or tuple variant `Assoc` in trait `Trait`
+  --> $DIR/tuple-struct-expr-pat.rs:13:26
    |
 LL |     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |                          ^^^^^
    |
+   = note: an associated type named `Trait::Assoc` exists in another namespace
    = note: can't use a type alias as tuple pattern
 help: use struct pattern instead
    |
@@ -50,12 +54,13 @@ LL -     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
 LL +     let <T<1> as Trait>::Assoc { 0: _a } = <T<1> as Trait>::Assoc(0);
    |
 
-error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
-  --> $DIR/tuple-struct-expr-pat.rs:16:42
+error[E0575]: cannot find method or associated constant `Assoc` in trait `Trait`
+  --> $DIR/tuple-struct-expr-pat.rs:16:59
    |
 LL |     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^
+   |                                                           ^^^^^
    |
+   = note: an associated type named `Trait::Assoc` exists in another namespace
    = note: can't use a type alias as a constructor
 help: use struct expression instead
    |
@@ -63,12 +68,13 @@ LL -     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
 LL +     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc { 0: 0, 1: 1 };
    |
 
-error[E0575]: expected tuple struct or tuple variant, found associated type `Trait::Assoc`
-  --> $DIR/tuple-struct-expr-pat.rs:16:9
+error[E0575]: cannot find tuple struct or tuple variant `Assoc` in trait `Trait`
+  --> $DIR/tuple-struct-expr-pat.rs:16:26
    |
 LL |     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |                          ^^^^^
    |
+   = note: an associated type named `Trait::Assoc` exists in another namespace
    = note: can't use a type alias as tuple pattern
 help: use struct pattern instead
    |
@@ -76,12 +82,13 @@ LL -     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
 LL +     let <T<2> as Trait>::Assoc { 0: _a, 1: _b } = <T<2> as Trait>::Assoc(0, 1);
    |
 
-error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
-  --> $DIR/tuple-struct-expr-pat.rs:19:62
+error[E0575]: cannot find method or associated constant `Assoc` in trait `Trait`
+  --> $DIR/tuple-struct-expr-pat.rs:19:79
    |
 LL |     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
-   |                                                              ^^^^^^^^^^^^^^^^^^^^^^
+   |                                                                               ^^^^^
    |
+   = note: an associated type named `Trait::Assoc` exists in another namespace
    = note: can't use a type alias as a constructor
 help: use struct expression instead
    |
@@ -89,12 +96,13 @@ LL -     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait
 LL +     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc { 0: 0, 1: 1, 2: 2 };
    |
 
-error[E0575]: expected tuple struct or tuple variant, found associated type `Trait::Assoc`
-  --> $DIR/tuple-struct-expr-pat.rs:19:9
+error[E0575]: cannot find tuple struct or tuple variant `Assoc` in trait `Trait`
+  --> $DIR/tuple-struct-expr-pat.rs:19:26
    |
 LL |     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |                          ^^^^^
    |
+   = note: an associated type named `Trait::Assoc` exists in another namespace
    = note: can't use a type alias as tuple pattern
 help: use struct pattern instead
    |

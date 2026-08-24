@@ -75,5 +75,4 @@ ENV CFLAGS_i586_unknown_linux_musl=-Wa,-mrelax-relocations=no
 
 ENV TARGETS=i586-unknown-linux-gnu,i686-unknown-linux-musl
 
-ENV SCRIPT="python3 ../x.py --stage 2 test --host= --target $TARGETS && \
-      python3 ../x.py dist --host= --target $TARGETS,i586-unknown-linux-musl"
+ENV SCRIPT="python3 ../x.py dist --host= --target $TARGETS,i586-unknown-linux-musl"

@@ -12,6 +12,7 @@ extern crate test;
 
 mod binary_heap;
 mod btree;
+mod io;
 mod linked_list;
 mod slice;
 mod str;

@@ -11,6 +11,7 @@
 use rustc_middle::query::Providers;
 
 pub mod abi_test;
+mod canonical_symbols;
 mod check_attr;
 mod check_export;
 pub mod dead;
@@ -31,6 +32,7 @@ mod upvars;
 mod weak_lang_items;
 
 pub fn provide(providers: &mut Providers) {
+    canonical_symbols::provide(providers);
     check_attr::provide(providers);
     dead::provide(providers);
     debugger_visualizer::provide(providers);

@@ -285,7 +285,7 @@ where
 }
 
 #[unstable(feature = "abort_unwind", issue = "130338")]
-pub use core::panic::abort_unwind;
+pub use core::panic::abort_on_unwind;
 
 /// Invokes a closure, capturing the cause of an unwinding panic if one occurs.
 ///
