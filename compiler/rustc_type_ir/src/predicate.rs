@@ -863,7 +863,7 @@ impl CompressedTraitRefs {
 /// So we don't, and assume that it's enough to fold/visit into the `self_ty`. This works because
 /// the traits represented by [`ClauseKind::CompressedTrait`] don't have generic args or anything
 /// complicated. A normal fold/visit of them will effectively only care about `self_ty`.
-#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -875,6 +875,17 @@ pub struct CompressedTraitClause<I: Interner> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub compressed_trait_refs: CompressedTraitRefs,
+}
+
+impl<I: Interner> fmt::Debug for CompressedTraitClause<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?} as {}",
+            self.self_ty,
+            self.compressed_trait_refs.iter_names().map(|i| i.0).collect::<Vec<_>>().join(",")
+        )
+    }
 }
 
 impl<I: Interner> CompressedTraitClause<I> {
