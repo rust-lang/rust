@@ -280,7 +280,7 @@ Here are some notable ones:
 | `rustc_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |
 | `rustc_dump_layout` | [See this section](#debugging-type-layouts). |
 | `rustc_dump_object_lifetime_defaults` | Dumps the [object lifetime defaults] of an item. |
-| `rustc_dump_predicates` | Dumps the [`clauses_of`] an item. |
+| `rustc_dump_clauses` | Dumps the [`clauses_of`] an item. |
 | `rustc_dump_symbol_name` | Dumps the mangled & demangled [`symbol_name`] of an item. |
 | `rustc_dump_variances` | Dumps the [variances] of an item. |
 | `rustc_dump_vtable` | Dumps the vtable layout of an impl, or a type alias of a dyn type. |

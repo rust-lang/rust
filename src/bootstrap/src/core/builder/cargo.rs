@@ -4,17 +4,20 @@ use std::sync::OnceLock;
 use std::{env, fs};
 
 use super::{Builder, Kind};
+use crate::core::build_steps::compile::is_lto_stage;
 use crate::core::build_steps::llvm::prebuilt_llvm_output;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::compiler::Compiler;
-use crate::core::config::flags::Color;
+use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::toml::pgo::PgoConfig;
-use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
+use crate::core::config::{
+    CompressDebuginfo, Config, DryRun, RustcLto, SplitDebuginfo, TargetSelection,
+};
+use crate::core::session::{CLang, GitRepo, Mode, RemapScheme};
 use crate::utils::build_stamp;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, envify, linker_flags, t};
-use crate::{CLang, GitRepo, Mode, RemapScheme};
 
 /// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))
@@ -139,7 +142,7 @@ impl HostFlags {
 }
 
 #[derive(Debug)]
-pub struct Cargo {
+pub(crate) struct Cargo {
     command: BootstrapCommand,
     args: Vec<OsString>,
     compiler: Compiler,
@@ -152,13 +155,14 @@ pub struct Cargo {
     build_compiler_stage: u32,
     extra_rustflags: Vec<String>,
     profile: Option<&'static str>,
+    kind: Kind,
 }
 
 impl Cargo {
     /// Calls [`Builder::cargo`] and [`Cargo::configure_linker`] to prepare an invocation of `cargo`
     /// to be run.
     #[track_caller]
-    pub fn new(
+    pub(crate) fn new(
         builder: &Builder<'_>,
         compiler: Compiler,
         mode: Mode,
@@ -182,30 +186,35 @@ impl Cargo {
         cargo
     }
 
-    pub fn release_build(&mut self, release_build: bool) {
+    pub(crate) fn release_build(&mut self, release_build: bool) {
         self.profile = if release_build { Some("release") } else { None };
     }
 
-    pub fn profile(&mut self, profile: &'static str) {
+    #[expect(dead_code, reason = "general-purpose, currently unused")]
+    pub(crate) fn profile(&mut self, profile: &'static str) {
         self.profile = Some(profile);
     }
 
-    pub fn compiler(&self) -> Compiler {
+    pub(crate) fn compiler(&self) -> Compiler {
         self.compiler
     }
 
-    pub fn mode(&self) -> Mode {
+    pub(crate) fn mode(&self) -> Mode {
         self.mode
     }
 
-    pub fn into_cmd(self) -> BootstrapCommand {
+    pub(crate) fn into_cmd(self) -> BootstrapCommand {
         self.into()
+    }
+
+    pub(crate) fn kind(&self) -> Kind {
+        self.kind
     }
 
     /// Same as [`Cargo::new`] except this one doesn't configure the linker with
     /// [`Cargo::configure_linker`].
     #[track_caller]
-    pub fn new_for_mir_opt_tests(
+    pub(crate) fn new_for_mir_opt_tests(
         builder: &Builder<'_>,
         compiler: Compiler,
         mode: Mode,
@@ -220,22 +229,22 @@ impl Cargo {
         cargo
     }
 
-    pub fn rustdocflag(&mut self, arg: &str) -> &mut Cargo {
+    pub(crate) fn rustdocflag(&mut self, arg: &str) -> &mut Cargo {
         self.rustdocflags.arg(arg);
         self
     }
 
-    pub fn rustflag(&mut self, arg: &str) -> &mut Cargo {
+    pub(crate) fn rustflag(&mut self, arg: &str) -> &mut Cargo {
         self.rustflags.arg(arg);
         self
     }
 
-    pub fn arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Cargo {
+    pub(crate) fn arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Cargo {
         self.args.push(arg.as_ref().into());
         self
     }
 
-    pub fn args<I, S>(&mut self, args: I) -> &mut Cargo
+    pub(crate) fn args<I, S>(&mut self, args: I) -> &mut Cargo
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -249,7 +258,7 @@ impl Cargo {
     /// Add an env var to the cargo command instance. Note that `RUSTFLAGS`/`RUSTDOCFLAGS` must go
     /// through [`Cargo::rustdocflags`] and [`Cargo::rustflags`] because inconsistent `RUSTFLAGS`
     /// and `RUSTDOCFLAGS` usages will trigger spurious rebuilds.
-    pub fn env(&mut self, key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Cargo {
+    pub(crate) fn env(&mut self, key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Cargo {
         assert_ne!(key.as_ref(), "RUSTFLAGS");
         assert_ne!(key.as_ref(), "RUSTDOCFLAGS");
         self.command.env(key.as_ref(), value.as_ref());
@@ -262,7 +271,7 @@ impl Cargo {
     ///
     /// Note that this only considers the existence of the env. var. configured on this `Cargo`
     /// instance. It does not look at the environment of this process.
-    pub fn append_to_env(
+    pub(crate) fn append_to_env(
         &mut self,
         key: impl AsRef<OsStr>,
         value: impl AsRef<OsStr>,
@@ -282,11 +291,11 @@ impl Cargo {
         }
     }
 
-    pub fn add_rustc_lib_path(&mut self, builder: &Builder<'_>) {
+    pub(crate) fn add_rustc_lib_path(&mut self, builder: &Builder<'_>) {
         builder.add_rustc_lib_path(self.compiler, &mut self.command);
     }
 
-    pub fn current_dir(&mut self, dir: &Path) -> &mut Cargo {
+    pub(crate) fn current_dir(&mut self, dir: &Path) -> &mut Cargo {
         self.command.current_dir(dir);
         self
     }
@@ -295,7 +304,7 @@ impl Cargo {
     ///
     /// By default, all nightly features are allowed. Once this is called, it will be restricted to
     /// the given set.
-    pub fn allow_features(&mut self, features: &str) -> &mut Cargo {
+    pub(crate) fn allow_features(&mut self, features: &str) -> &mut Cargo {
         if !self.allow_features.is_empty() {
             self.allow_features.push(',');
         }
@@ -445,10 +454,34 @@ impl Cargo {
             let cc = ccacheify(&builder.cc(target));
             self.command.env(format!("CC_{triple_underscored}"), &cc);
 
+            // Compiling C deps, like jemalloc and llvm-wrapper, should be with
+            // the same LTO mode as the Rust code they are linked into.
+            //
+            // Std's C deps, e.g. compiler_builtins, ship inside rlibs that
+            // end users consume directly. Building with `-flto` may break
+            // non-LLVM linkers or mismatch on bitcode versions. Therefore we
+            // must not build std in LTO mode here.
+            let lto_cflag = if matches!(self.mode, Mode::Rustc | Mode::ToolRustcPrivate)
+                && is_lto_stage(&self.compiler)
+                && builder.cc_tool(target).is_like_clang()
+            {
+                match builder.config.rust_lto {
+                    RustcLto::Thin => Some("-flto=thin"),
+                    RustcLto::Fat => Some("-flto=full"),
+                    RustcLto::ThinLocal | RustcLto::Off => None,
+                }
+            } else {
+                None
+            };
+
             // Extend `CXXFLAGS_$TARGET` with our extra flags.
             let env = format!("CFLAGS_{triple_underscored}");
             let mut cflags =
                 builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
+            if let Some(lto_cflag) = lto_cflag {
+                cflags.push(' ');
+                cflags.push_str(lto_cflag);
+            }
             if let Ok(var) = std::env::var(&env) {
                 cflags.push(' ');
                 cflags.push_str(&var);
@@ -470,6 +503,10 @@ impl Cargo {
                 let env = format!("CXXFLAGS_{triple_underscored}");
                 let mut cxxflags =
                     builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
+                if let Some(lto_cflag) = lto_cflag {
+                    cxxflags.push(' ');
+                    cxxflags.push_str(lto_cflag);
+                }
                 if let Ok(var) = std::env::var(&env) {
                     cxxflags.push(' ');
                     cxxflags.push_str(&var);
@@ -554,7 +591,7 @@ impl From<Cargo> for BootstrapCommand {
 impl Builder<'_> {
     /// Like [`Builder::cargo`], but only passes flags that are valid for all commands.
     #[track_caller]
-    pub fn bare_cargo(
+    pub(crate) fn bare_cargo(
         &self,
         compiler: Compiler,
         mode: Mode,
@@ -718,6 +755,14 @@ impl Builder<'_> {
             if prebuilt_llvm_output(self, target).is_none() {
                 cargo.env("RUST_CHECK", "1");
             }
+        }
+
+        // Forward `./x fix --allow-dirty` from bootstrap to cargo.
+        if matches!(cmd_kind, Kind::Fix)
+            && let Subcommand::Fix { allow_dirty } = self.config.cmd
+            && allow_dirty
+        {
+            cargo.arg("--allow-dirty");
         }
 
         let build_compiler_stage = if compiler.stage == 0 && self.local_rebuild {
@@ -1210,14 +1255,7 @@ impl Builder<'_> {
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
-        if matches!(mode, Mode::Std) {
-            // The `-Zembed-metadata` flag was renamed from `-Zno-embed-metadata`.
-            if self.local_rebuild {
-                cargo.arg("-Zembed-metadata=no");
-            } else {
-                cargo.arg("-Zno-embed-metadata");
-            }
-        }
+        cargo.arg("-Zembed-metadata=no");
 
         if self.config.dump_bootstrap_shims {
             prepare_shims_dump_dir(self);
@@ -1449,14 +1487,6 @@ impl Builder<'_> {
         if matches!(mode, Mode::Std) {
             rustflags.arg("-Cprefer-dynamic");
         }
-        if matches!(mode, Mode::Rustc) && !self.link_std_into_rustc_driver(target) {
-            rustflags.arg("-Cprefer-dynamic");
-        }
-
-        cargo.env(
-            "RUSTC_LINK_STD_INTO_RUSTC_DRIVER",
-            if self.link_std_into_rustc_driver(target) { "1" } else { "0" },
-        );
 
         // When building incrementally we default to a lower ThinLTO import limit
         // (unless explicitly specified otherwise). This will produce a somewhat
@@ -1534,11 +1564,12 @@ impl Builder<'_> {
             build_compiler_stage,
             extra_rustflags,
             profile,
+            kind: cmd_kind,
         }
     }
 }
 
-pub fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
+pub(crate) fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
     let profile = match (mode, config.rust_optimize.is_release()) {
         // Some std configuration exists in its own profile
         (Mode::Std, _) => "DIST",
@@ -1550,7 +1581,7 @@ pub fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
 
 /// Applies PGO compile flags to the given Cargo invocation based on the given PGO config.
 /// PGO flags are only applied when compiling a stage2 component.
-pub fn apply_pgo(
+pub(crate) fn apply_pgo(
     builder: &Builder<'_>,
     cargo: &mut Cargo,
     build_compiler: Compiler,

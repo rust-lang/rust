@@ -8,8 +8,7 @@ use clippy_utils::visitors::is_expr_unsafe;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, Node, UnsafeSource};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -57,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for NonnullUncheckedOnBoxPtr {
                 .ty_rel_def_if_named(cx, sym::new_unchecked)
                 .opt_parent(cx)
                 .opt_impl_ty(cx)
-                .is_diag_item(cx, sym::NonNull)
+                .is_lang_item(cx, LangItem::NonNull)
             && box_into_raw
                 .ty_rel_def_if_named(cx, sym::into_raw)
                 .opt_parent(cx)

@@ -5,7 +5,7 @@ LL | impl TheTrait<usize> for isize {}
    | ^^^^^---------------^^^^^-----
    |      |                   |
    |      |                   `isize` is not defined in the current crate
-   |      `usize` is not defined in the current crate
+   |      this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules

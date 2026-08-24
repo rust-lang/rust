@@ -10,9 +10,8 @@ use rustc_hir::{
     AmbigArg, Expr, ExprKind, ForeignItem, HirId, ImplItem, ImplItemImplKind, Item, ItemKind, OwnerId, Pat, Path, Stmt,
     TraitItem, Ty,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
 use rustc_span::{ExpnId, MacroKind, Span};
 
 use crate::utils::attr_collector::AttrStorage;

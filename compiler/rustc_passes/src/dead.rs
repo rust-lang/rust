@@ -15,16 +15,16 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath, find_attr};
+use rustc_lint_defs::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
+use rustc_lint_defs::{self as lint, Lint, StableLintExpectationId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dead_code::{DeadCodeLivenessSnapshot, DeadCodeLivenessSummary};
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::CrateType;
-use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
-use rustc_session::lint::{self, Lint, StableLintExpectationId};
 use rustc_span::{Symbol, kw};
+use rustc_structures::CrateType;
 
 use crate::diagnostics::{
     ChangeFields, DeadCodePubInBinaryNote, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
@@ -120,7 +120,7 @@ struct MarkSymbolVisitor<'tcx> {
     scanned: FxHashSet<(LocalDefId, ComesFromAllowExpect)>,
     live_symbols: LocalDefIdSet,
     repr_unconditionally_treats_fields_as_live: bool,
-    repr_has_repr_simd: bool,
+    repr_has_repr_simd_or_scalable: bool,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
     // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
@@ -292,7 +292,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         {
             let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
             self.tcx.emit_node_span_lint(
-                lint::builtin::DEAD_CODE,
+                DEAD_CODE,
                 assign.hir_id,
                 assign.span,
                 UselessAssignment { is_field_assign, ty: self.typeck_results().expr_ty(lhs) },
@@ -466,16 +466,17 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
         let unconditionally_treated_fields_as_live =
             self.repr_unconditionally_treats_fields_as_live;
-        let had_repr_simd = self.repr_has_repr_simd;
+        let had_repr_simd_or_scalable = self.repr_has_repr_simd_or_scalable;
         self.repr_unconditionally_treats_fields_as_live = false;
-        self.repr_has_repr_simd = false;
+        self.repr_has_repr_simd_or_scalable = false;
         let walk_result = match node {
             Node::Item(item) => match item.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                     let def = self.tcx.adt_def(item.owner_id);
                     self.repr_unconditionally_treats_fields_as_live =
                         def.repr().c() || def.repr().transparent();
-                    self.repr_has_repr_simd = def.repr().simd();
+                    self.repr_has_repr_simd_or_scalable =
+                        def.repr().simd() || def.repr().scalable();
 
                     intravisit::walk_item(self, item)
                 }
@@ -524,7 +525,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Node::OpaqueTy(opaq) => intravisit::walk_opaque_ty(self, opaq),
             _ => ControlFlow::Continue(()),
         };
-        self.repr_has_repr_simd = had_repr_simd;
+        self.repr_has_repr_simd_or_scalable = had_repr_simd_or_scalable;
         self.repr_unconditionally_treats_fields_as_live = unconditionally_treated_fields_as_live;
 
         walk_result
@@ -599,11 +600,13 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>) -> Self::Result {
         let tcx = self.tcx;
         let unconditionally_treat_fields_as_live = self.repr_unconditionally_treats_fields_as_live;
-        let has_repr_simd = self.repr_has_repr_simd;
+        let has_repr_simd_or_scalable = self.repr_has_repr_simd_or_scalable;
         let effective_visibilities = &tcx.effective_visibilities(());
         let live_fields = def.fields().iter().filter_map(|f| {
             let def_id = f.def_id;
-            if unconditionally_treat_fields_as_live || (f.is_positional() && has_repr_simd) {
+            if unconditionally_treat_fields_as_live
+                || (f.is_positional() && has_repr_simd_or_scalable)
+            {
                 return Some(def_id);
             }
             if !effective_visibilities.is_reachable(f.hir_id.owner.def_id) {
@@ -770,7 +773,7 @@ fn has_allow_dead_code_or_lang_attr(
 ) -> Option<ComesFromAllowExpect> {
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let lint_level = tcx.lint_level_spec_at_node(lint::builtin::DEAD_CODE, hir_id).level();
+        let lint_level = tcx.lint_level_spec_at_node(DEAD_CODE, hir_id).level();
         matches!(lint_level, lint::Allow | lint::Expect)
     }
 
@@ -982,7 +985,7 @@ fn live_symbols_and_ignored_derived_traits(
         scanned: Default::default(),
         live_symbols: Default::default(),
         repr_unconditionally_treats_fields_as_live: false,
-        repr_has_repr_simd: false,
+        repr_has_repr_simd_or_scalable: false,
         in_pat: false,
         ignore_variant_stack: vec![],
         ignored_derived_traits: Default::default(),

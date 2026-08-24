@@ -8,10 +8,10 @@ use std::any::Any;
 use rustc_data_structures::sync::par_join;
 use rustc_hir::def_id::{LocalDefId, LocalModId};
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
+use rustc_lint_defs::LintPass;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
-use rustc_session::lint::LintPass;
 use rustc_span::Span;
 use tracing::debug;
 

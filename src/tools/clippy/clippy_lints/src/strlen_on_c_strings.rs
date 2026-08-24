@@ -8,8 +8,7 @@ use clippy_utils::{match_libc_symbol, sym};
 use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, Node, UnsafeSource};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does

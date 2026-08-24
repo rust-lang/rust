@@ -5,6 +5,7 @@ use rustc_index::IndexVec;
 
 use crate::search_graph::{
     AvailableDepth, CandidateHeadUsages, Cx, CycleHeads, HeadUsages, NestedGoals, PathKind,
+    RequiredDepth,
 };
 
 rustc_index::newtype_index! {
@@ -59,8 +60,8 @@ pub(super) struct StackEntry<X: Cx> {
 }
 
 impl<X: Cx> StackEntry<X> {
-    pub(super) fn required_depth(&self) -> usize {
-        self.available_depth.0 - self.min_reached_available_depth.0
+    pub(super) fn required_depth(&self) -> RequiredDepth {
+        RequiredDepth(self.available_depth.0 - self.min_reached_available_depth.0)
     }
 }
 

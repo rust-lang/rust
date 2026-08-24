@@ -31,7 +31,7 @@ pub use rustc_span::def_id;
 // FIXME: Remove this use tree, replace by `rustc_hir::attrs` or `rustc_attr_ir` imports
 #[doc(hidden)]
 pub use {
-    attrs::target::{self, MethodKind, Target},
+    attrs::target::{self, AssocCtxt, MethodKind, Target},
     attrs::{
         AttrArgs, AttrItem, AttrPath, Attribute, ConstStability, DefaultBodyStability,
         HashIgnoredAttrId, PartialConstStability, Stability, StabilityLevel, StableSince,

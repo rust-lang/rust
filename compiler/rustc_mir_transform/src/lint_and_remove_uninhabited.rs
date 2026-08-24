@@ -1,7 +1,7 @@
 use rustc_hir::def::DefKind;
+use rustc_lint_defs::builtin::UNREACHABLE_CODE;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::UNREACHABLE_CODE;
 
 use crate::PassPolicy;
 use crate::diagnostics::UnreachableDueToUninhabited;

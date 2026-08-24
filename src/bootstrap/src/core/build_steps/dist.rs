@@ -38,6 +38,8 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::{GccCiMode, TargetSelection};
+use crate::core::session::{DependencyType, FileType, Mode};
+use crate::trace;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -45,7 +47,6 @@ use crate::utils::helpers::{
     exe, is_dylib, move_file, t, target_supports_cranelift_backend, timeit,
 };
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
-use crate::{DependencyType, FileType, Mode, trace};
 
 pub(crate) const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -786,6 +787,9 @@ impl Step for DebuggerScripts {
 
         cp_debugger_script("lldb_lookup.py");
         cp_debugger_script("lldb_providers.py");
+        if builder.build.unstable_features() {
+            cp_debugger_script("lldb_trim_paths.py");
+        }
     }
 }
 
@@ -3145,6 +3149,7 @@ impl CommandLineStep for ReproducibleArtifacts {
             &builder.config.llvm_pgo.use_profile,
             &builder.config.rustdoc_pgo.use_profile,
             &builder.config.cargo_pgo.use_profile,
+            &builder.config.clippy_pgo.use_profile,
         ];
         for profile in pgo_profiles {
             if let Some(path) = profile.as_ref() {

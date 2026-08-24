@@ -203,13 +203,16 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
     if tcx.features().rustc_attrs() {
         tcx.sess.time("dumping_rustc_attr_data", || {
-            outlives::dump::inferred_outlives(tcx);
-            variance::dump::variances(tcx);
-            collect::dump::generics(tcx);
-            collect::dump::opaque_hidden_types(tcx);
+            // tidy-alphabetical-start
             collect::dump::clauses_and_item_bounds(tcx);
             collect::dump::def_parents(tcx);
+            collect::dump::generics(tcx);
+            collect::dump::object_lifetime_defaults(tcx);
+            collect::dump::opaque_hidden_types(tcx);
             collect::dump::vtables(tcx);
+            outlives::dump::inferred_outlives(tcx);
+            variance::dump::variances(tcx);
+            // tidy-alphabetical-end
         });
     }
 
@@ -226,7 +229,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 /// It's used in rustdoc and Clippy.
 ///
 /// </div>
-pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope. This is derived from the enclosing item-like thing.
@@ -240,7 +243,7 @@ pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
 // FIXME(const_generics): having special methods for rustdoc in `rustc_hir_analysis` is cursed
 pub fn lower_const_arg_for_rustdoc<'tcx>(
     tcx: TyCtxt<'tcx>,
-    hir_ct: &hir::ConstArg<'tcx>,
+    hir_ct: &hir::ConstArg<'_>,
     ty: Ty<'tcx>,
 ) -> Const<'tcx> {
     let env_def_id = tcx.hir_get_parent_item(hir_ct.hir_id);

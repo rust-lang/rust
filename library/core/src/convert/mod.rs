@@ -41,6 +41,8 @@ use crate::marker::PointeeSized;
 
 mod num;
 
+#[unstable(feature = "float_conversions", issue = "159913")]
+pub use num::FloatToFloat;
 #[unstable(feature = "convert_float_to_int", issue = "67057")]
 pub use num::FloatToInt;
 #[unstable(feature = "integer_casts", issue = "157388")]

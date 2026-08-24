@@ -9,20 +9,22 @@ cfg_select! {
     any(target_family = "unix", target_os = "wasi") => {
         mod unix;
         use unix as imp;
-        #[cfg(not(target_os = "wasi"))]
-        pub use unix::{chown, fchown, lchown, mkfifo};
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        pub(super) use unix::CachedFileMetadata;
         #[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
         pub use unix::chroot;
         #[cfg(not(target_os = "wasi"))]
         pub(crate) use unix::debug_assert_fd_is_open;
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        pub(super) use unix::CachedFileMetadata;
+        #[cfg(not(target_os = "wasi"))]
+        pub use unix::{chown, fchown, lchown, mkfifo};
+
         use crate::sys::helpers::run_path_with_cstr as with_native_path;
     }
     target_os = "windows" => {
         mod windows;
         use windows as imp;
-        pub use windows::{symlink_inner, junction_point};
+        pub use windows::{junction_point, symlink_inner};
+
         use crate::sys::path::with_native_path;
     }
     target_os = "hermit" => {

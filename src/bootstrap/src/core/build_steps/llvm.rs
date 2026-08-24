@@ -21,12 +21,13 @@ use crate::core::builder::{
     Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
 };
 use crate::core::config::{Config, LlvmCiMode, LlvmPgoGenerationMode, TargetSelection};
+use crate::core::session::{CLang, GitRepo};
+use crate::trace;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, trace};
 
 /// Path where a file containing the link type (dynamic or static) is stored in the LLVM CI tarball.
 pub const LLVM_CI_LINK_TYPE_PATH: &str = "link-type.txt";
@@ -167,7 +168,13 @@ pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> O
             kind: LlvmKind::External,
         });
     }
-    None
+
+    // If LLVM is not available from CI, not externally, it is still possible that it was already
+    // built locally before. In that case we still treat it as prebuilt config.
+    match get_locally_built_llvm_build_status(builder, target) {
+        LlvmBuildStatus::AlreadyBuilt(output) => Some(output),
+        LlvmBuildStatus::ShouldBuild(_) => None,
+    }
 }
 
 /// This returns whether we've already previously built LLVM.
@@ -185,6 +192,16 @@ pub fn get_llvm_build_status(builder: &Builder<'_>, target: TargetSelection) -> 
     // If submodules are disabled, this does nothing.
     builder.config.update_submodule("src/llvm-project");
 
+    get_locally_built_llvm_build_status(builder, target)
+}
+
+/// Return build status of LLVM, considering only the (possibly) locally built LLVM.
+///
+/// Calling this function should never attempt to checkout the LLVM submodule.
+fn get_locally_built_llvm_build_status(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+) -> LlvmBuildStatus {
     let out_dir = builder.llvm_out(target);
 
     let build_llvm_config = if let Some(build_llvm_config) = builder
@@ -355,13 +372,10 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("x86_64-unknown-netbsd", false),
     ];
 
-    if !supported_platforms.contains(&(&*host_target.triple, asserts))
-        && (asserts || !supported_platforms.contains(&(&*host_target.triple, true)))
-    {
-        return false;
-    }
-
-    true
+    // Check if the host target is available with the requested assertions (true/false),
+    supported_platforms.contains(&(&*host_target.triple, asserts))
+        // if it is not available for the given `asserts`, check if it is available with assertions (superset).
+        || supported_platforms.contains(&(&*host_target.triple, true))
 }
 
 #[derive(Clone)]
@@ -1298,16 +1312,63 @@ impl CommandLineStep for OmpOffload {
 
         builder.config.update_submodule("src/llvm-project");
 
-        // OpenMP/Offload builds currently (LLVM-22) still depend on Clang, although there are
-        // intentions to loosen this requirement over time. FIXME(offload): re-evaluate on LLVM 23
-        let clang_dir = if !builder.config.llvm_clang {
+        let offload_clang_dir = if !builder.config.llvm_clang {
             // We must have an external clang to use.
-            assert!(&builder.build.config.llvm_clang_dir.is_some());
-            builder.build.config.llvm_clang_dir.clone()
+            builder.build.config.offload_clang_dir.clone()
         } else {
             // No need to specify it, since we use the in-tree clang
             None
         };
+
+        // We currently build libompdevice by accident. It includes bitcode for our amd/nvptx
+        // targets, and only the latest clang compiler can build those. We could stop building those
+        // to fix this requirement, but we plan on instead building libc-for-gpu very soon, which
+        // will have the same clang requirement, so we wouldn't save much. There are two ways in
+        // which we can find a suitable clang. Either a user enabled the llvm.clang, in which case
+        // we built our own clang based on the llvm submodule first, this always works. The
+        // alternative is that the user sets the offload_clang_dir path, in which case they hopefully point
+        // to a suitable clang, otherwise the build will fail.
+        let clang_bin_dir = if builder.config.llvm_clang {
+            llvm_output.host_llvm_config.parent().map(Path::to_path_buf)
+        } else {
+            // We expect the following (default) structure of the offload_clang_dir:
+            // <prefix>/lib/cmake/clang, with a ClangConfig.cmake inside.
+            // The clang binary is located in <prefix>/bin, so we go up three levels to find it.
+            // This hardcodes the ClangConfig.cmake logic, which isn't great, so we filter for the
+            // binary and error if we can't find it (presumably because LLVM build layout changed?).
+            offload_clang_dir
+                .as_deref()
+                .and_then(|dir| dir.ancestors().nth(3))
+                .map(|prefix| prefix.join("bin"))
+        }
+        .filter(|dir| dir.join(exe("clang", target)).exists());
+
+        let Some(clang_bin_dir) = clang_bin_dir else {
+            eprintln!(
+                "Building Offload requires a clang binary. Please either set `llvm.offload-clang-dir` or enable `llvm.clang` to build it."
+            );
+            helpers::exit_process(1);
+        };
+        let clang = clang_bin_dir.join(exe("clang", target));
+        let clangxx = clang_bin_dir.join(exe("clang++", target));
+
+        // This was encountered when using gcc 13 to build the llvm submodule on a server, where no
+        // clang was available. We first built clang along with llvm, and then switched over to use
+        // the newly built clang to build the offload runtimes. Since we switched compiler, we have
+        // to make sure that we're still using the same libstdc++ we used before. Without this
+        // change, clang picked up a system libstdc++ from a different gcc and failed.
+        let cxx_lib_dir = builder.cxx(target).ok().and_then(|cxx| {
+            let stdout = command(&cxx)
+                .arg("-print-file-name=libstdc++.so")
+                .cached()
+                .run_capture_stdout(builder)
+                .stdout();
+            let libstdcxx = PathBuf::from(stdout.trim());
+            if !libstdcxx.is_absolute() {
+                return None;
+            }
+            libstdcxx.parent().map(Path::to_path_buf)
+        });
 
         // In the context of OpenMP offload, some libraries must be compiled for the gpu target,
         // some for the host, and others for both. We do not perform a full cross-compilation, since
@@ -1320,7 +1381,6 @@ impl CommandLineStep for OmpOffload {
             // come with it's own set of default include directories, which are based on a potentially older
             // LLVM. This can cause issues, so we overwrite it to include headers based on our
             // `src/llvm-project` submodule instead.
-            // FIXME(offload): With LLVM-22 we hopefully won't need an external clang anymore.
             let mut cflags = CcFlags::default();
             if !builder.config.llvm_clang {
                 let base = builder.llvm_out(target).join("include");
@@ -1335,8 +1395,17 @@ impl CommandLineStep for OmpOffload {
             if builder.config.llvm_thin_lto && !target.contains("apple") {
                 ldflags.push_all("-fuse-ld=lld");
             }
+            if *omp_target == *target.triple
+                && let Some(dir) = &cxx_lib_dir
+            {
+                ldflags.push_all(format!("-L{}", dir.display()));
+            }
 
             configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
+
+            cfg.define("CMAKE_C_COMPILER", &clang)
+                .define("CMAKE_CXX_COMPILER", &clangxx)
+                .define("CMAKE_ASM_COMPILER", &clang);
 
             // Re-use the same flags as llvm to control the level of debug information
             // generated for offload.
@@ -1354,7 +1423,7 @@ impl CommandLineStep for OmpOffload {
                 .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
                 .define("LLVM_DIR", llvm_output.cmake_dir())
                 .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
-            if let Some(p) = clang_dir.clone() {
+            if let Some(p) = offload_clang_dir.clone() {
                 cfg.define("Clang_DIR", p);
             }
 

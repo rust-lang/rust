@@ -5,11 +5,11 @@ use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
+use rustc_lint_defs::builtin::ASM_SUB_REGISTER;
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy, Unnormalized,
 };
-use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::asm::{
@@ -401,7 +401,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     size: default_size,
                 } = reg_class.default_modifier(asm_arch).unwrap();
                 self.tcx().emit_node_span_lint(
-                    lint::builtin::ASM_SUB_REGISTER,
+                    ASM_SUB_REGISTER,
                     expr.hir_id,
                     spans,
                     FormattingSubRegisterArg {

@@ -16,6 +16,7 @@ extern crate rustc_log;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
+extern crate rustc_structures;
 
 // Override the C allocator in the same way that the `rustc` binary would do.
 rustc_driver::override_c_allocator_in_binary!();
@@ -44,7 +45,8 @@ use rustc_interface::util::DummyCodegenBackend;
 use rustc_log::tracing::debug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
+use rustc_structures::CrateType;
+use rustc_session::config::{ ErrorOutputType, OptLevel};
 use rustc_session::{EarlyDiagCtxt, Session};
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};

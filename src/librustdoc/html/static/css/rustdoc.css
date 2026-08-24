@@ -1098,7 +1098,7 @@ rustdoc-topbar {
 	position: relative;
 }
 
-.docblock > :not(.more-examples-toggle):not(.example-wrap) {
+.docblock pre, .docblock div.table {
 	max-width: 100%;
 	overflow-x: auto;
 }

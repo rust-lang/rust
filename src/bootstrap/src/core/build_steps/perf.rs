@@ -23,7 +23,7 @@ enum PerfCommand {
     },
     /// Run `profile_local samply`
     /// This executes the compiler on the given benchmarks and profiles it with `samply`.
-    /// You need to install `samply`, e.g. using `cargo install samply`.
+    /// You need to install `samply`, e.g. using `cargo install --locked samply`.
     Samply {
         #[clap(flatten)]
         opts: SharedOpts,

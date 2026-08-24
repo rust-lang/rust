@@ -362,6 +362,11 @@ pub(crate) struct Config {
     /// (in case the JSON format has changed since the last bootstrap bump).
     pub(crate) query_rustc_path: Option<Utf8PathBuf>,
 
+    /// Path to the libraries needed to run the compiler at [`Self::query_rustc_path`].
+    ///
+    /// If unset, [`Self::host_compile_lib_path`] will be used instead.
+    pub(crate) query_rustc_lib_path: Option<Utf8PathBuf>,
+
     /// Path to the `rustdoc`-under-test. Like [`Self::rustc_path`], this `rustdoc` is *staged*.
     pub(crate) rustdoc_path: Option<Utf8PathBuf>,
 
@@ -547,6 +552,11 @@ pub(crate) struct Config {
     /// FIXME: this flag / config option is somewhat misleading. For instance, in ui tests, it's
     /// *only* applied to the [`PassFailMode::RunPass`] test crate and not its auxiliaries.
     pub(crate) optimize_tests: bool,
+
+    /// Whether rustdoc should disable CSS/JS minification when generating docs for tests.
+    ///
+    /// Forwarded from bootstrap's `build.docs-minification = false`.
+    pub(crate) disable_minification: bool,
 
     /// Target platform tuple.
     pub(crate) target: String,
@@ -1194,7 +1204,10 @@ pub(crate) fn query_rustc_output(
     let query_rustc_path = config.query_rustc_path.as_deref().unwrap_or(&config.rustc_path);
 
     let mut command = Command::new(query_rustc_path);
-    add_dylib_path(&mut command, iter::once(&config.host_compile_lib_path));
+    add_dylib_path(
+        &mut command,
+        iter::once(config.query_rustc_lib_path.as_deref().unwrap_or(&config.host_compile_lib_path)),
+    );
     command.args(&config.target_rustcflags).args(args);
     command.env("RUSTC_BOOTSTRAP", "1");
     command.envs(envs);

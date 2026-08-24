@@ -2,8 +2,8 @@ use std::iter;
 use std::path::PathBuf;
 
 use super::*;
-use crate::Build;
 use crate::core::config::{Target, TargetSelection};
+use crate::core::session::Build;
 use crate::utils::tests::TestCtx;
 
 #[test]

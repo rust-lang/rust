@@ -41,7 +41,7 @@ where
 
         let trait_ref = goal.predicate.alias.trait_ref(cx);
         let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-            let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
+            let trait_goal: Goal<I, ty::TraitClause<I>> = goal.with(cx, trait_ref);
             ecx.compute_trait_goal(trait_goal)
         })?;
         self.assemble_and_merge_candidates(
@@ -264,6 +264,13 @@ where
         if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
             .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
         {
+            return Err(NoSolution.into());
+        }
+
+        // For every `default impl`, there's always a non-default `impl` that will *also* apply.
+        // There's no reason to register a candidate for this impl, since it is *not* proof that
+        // the trait goal holds.
+        if cx.impl_is_default(impl_def_id) {
             return Err(NoSolution.into());
         }
 
@@ -536,7 +543,7 @@ where
         let output_is_sized_pred =
             ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
 
-        let pred = ty::ProjectionPredicate {
+        let pred = ty::ProjectionClause {
             projection_term: ty::AliasTerm::new(
                 cx,
                 goal.predicate.alias.kind,
@@ -625,7 +632,7 @@ where
         } else {
             panic!("no such associated type in `AsyncFn*`: {:?}", def_id)
         };
-        let pred = ty::ProjectionPredicate { projection_term, term }.upcast(cx);
+        let pred = ty::ProjectionClause { projection_term, term }.upcast(cx);
 
         Self::probe_and_consider_implied_clause(
             ecx,
@@ -821,7 +828,7 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionPredicate {
+            ty::ProjectionClause {
                 projection_term: ty::AliasTerm::new(
                     ecx.cx(),
                     cx.alias_term_kind_from_def_id(
@@ -859,7 +866,7 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionPredicate {
+            ty::ProjectionClause {
                 projection_term: ty::AliasTerm::new(
                     ecx.cx(),
                     cx.alias_term_kind_from_def_id(
@@ -950,7 +957,7 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionPredicate {
+            ty::ProjectionClause {
                 projection_term: ty::AliasTerm::new(
                     ecx.cx(),
                     goal.predicate.alias.kind,

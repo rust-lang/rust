@@ -1,8 +1,8 @@
-error[E0015]: cannot call non-const associated function `Box::<isize>::new` in statics
-  --> $DIR/static-mut-not-constant.rs:1:28
+error[E0015]: cannot call non-const associated function `Foo::new` in statics
+  --> $DIR/static-mut-not-constant.rs:7:21
    |
-LL | static mut a: Box<isize> = Box::new(3);
-   |                            ^^^^^^^^^^^
+LL | static mut a: Foo = Foo::new(3);
+   |                     ^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`

@@ -14,9 +14,8 @@ use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, Node};
-use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, Lint, impl_lint_pass};
+use rustc_middle::ty::{self, ClauseKind, ClausePolarity, GenericArgKind, Ty};
 use rustc_span::{DesugaringKind, Span, Spanned, SyntaxContext};
 use std::cmp::Ordering;
 
@@ -436,7 +435,7 @@ fn can_switch_ranges<'tcx>(
                 .into_iter()
                 .any(|c| {
                     if let ClauseKind::Trait(t) = c.kind().skip_binder()
-                        && t.polarity == PredicatePolarity::Positive
+                        && t.polarity == ClausePolarity::Positive
                         && matches!(
                             cx.tcx.get_diagnostic_name(t.trait_ref.def_id),
                             Some(sym::Iterator | sym::IntoIterator | sym::RangeBounds)

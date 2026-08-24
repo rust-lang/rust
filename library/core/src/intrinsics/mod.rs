@@ -130,7 +130,9 @@ pub const unsafe fn atomic_cxchgweak<
 /// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
+pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+    src: *const T,
+) -> T;
 
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
@@ -139,7 +141,10 @@ pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const 
 /// [`atomic`] types via the `store` method. For example, [`AtomicBool::store`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, val: T);
+pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+    dst: *mut T,
+    val: T,
+);
 
 /// Stores the value at the specified memory location, returning the old value.
 /// `T` must be an integer or pointer type.
@@ -3152,6 +3157,28 @@ pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize>;
 #[rustc_comptime]
 pub fn type_id_variants(_id: crate::any::TypeId) -> usize;
 
+/// Gets the name of the variant represented by the base `TypeId` and variant_idx.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::VariantId::name`].
+///
+/// [`TypeId`]: crate::any::TypeId
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn variant_name(_base: crate::any::TypeId, _variant_index: usize) -> &'static str;
+
+/// Returns true when the variant represented by the base `TypeId` and variant_idx is non
+/// exhaustive.
+///
+/// The more user-friendly version of this intrinsic is
+/// [`core::mem::type_info::VariantId::non_exhaustive`].
+///
+/// [`TypeId`]: crate::any::TypeId
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn variant_non_exhaustive(base: crate::any::TypeId, variant: usize) -> bool;
+
 /// Gets the number of fields at the given `variant_index` represented by this `TypeId`.
 ///
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::fields`].
@@ -3781,13 +3808,15 @@ pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) ->
 /// - `f`: The kernel function to offload.
 /// - `workgroup_dim`: A 3D size specifying the number of workgroups to launch.
 /// - `thread_dim`: A 3D size specifying the number of threads per workgroup.
+/// - `dyn_cache`: The amount of dynamic shared memory to request for the kernel.
+/// - `device_id`: The device to offload to. Use `-1` to select the default device.
 /// - `args`: A tuple of arguments forwarded to `f`.
 ///
 /// Example usage (pseudocode):
 ///
 /// ```rust,ignore (pseudocode)
 /// fn kernel(x: *mut [f64; 128]) {
-///     core::intrinsics::offload(kernel_1, [256, 1, 1], [32, 1, 1], (x,))
+///     core::intrinsics::offload(kernel_1, [256, 1, 1], [32, 1, 1], 0, -1, (x,))
 /// }
 ///
 /// #[cfg(target_os = "linux")]
@@ -3811,8 +3840,19 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
     workgroup_dim: [u32; 3],
     thread_dim: [u32; 3],
     dyn_cache: u32,
+    device_id: i32,
     args: T,
 ) -> R;
+
+/// Returns the number of offload devices available on the system.
+///
+/// Use this to discover which `device_id` values are valid to pass to
+/// [`offload`]. Devices are numbered from `0` to the returned value minus one.
+///
+/// Returns `0` if no offloading devices are present.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn offload_get_num_devices() -> i32;
 
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]

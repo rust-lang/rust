@@ -3,8 +3,7 @@ use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{BINOP_TRAITS, OP_ASSIGN_TRAITS, binop_traits, trait_ref_of_method};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {

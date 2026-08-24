@@ -1618,7 +1618,7 @@ impl<'db> InferenceContext<'db> {
             TyKind::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
                 let (opt_slice_ty, expected) =
-                    self.check_array_pat_len(pat, element_ty, expected, slice, len, min.into());
+                    self.check_array_pat_len(pat, element_ty, expected, slice, len, min);
                 // `opt_slice_ty.is_none()` => `slice.is_none()`.
                 // Note, though, that opt_slice_ty could be `Some(error_ty)`.
                 assert!(opt_slice_ty.is_some() || slice.is_none());
@@ -1662,11 +1662,11 @@ impl<'db> InferenceContext<'db> {
         arr_ty: Ty<'db>,
         slice: Option<PatId>,
         len: Const<'db>,
-        min_len: u128,
+        min_len: u64,
     ) -> (Option<Ty<'db>>, Ty<'db>) {
-        let len = crate::consteval::try_const_usize(self.db, len);
+        let len = self.table.try_structurally_resolve_const(pat.into(), len);
 
-        if let Some(len) = len {
+        if let Some(len) = len.try_to_target_usize(self.data_layout()) {
             // Now we know the length...
             if slice.is_none() {
                 // ...and since there is no variable-length pattern,
@@ -1702,7 +1702,7 @@ impl<'db> InferenceContext<'db> {
             let updated_arr_ty = Ty::new_array(self.interner(), element_ty, min_len);
             _ = self.demand_eqtype(pat.into(), updated_arr_ty, arr_ty);
             return (None, updated_arr_ty);
-        } else {
+        } else if !len.is_error() {
             // We have a variable-length pattern and don't know the array length.
             // This happens if we have e.g.,
             // `let [a, b, ..] = arr` where `arr: [T; N]` where `const N: usize`.

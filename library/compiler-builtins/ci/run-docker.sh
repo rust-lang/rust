@@ -11,8 +11,6 @@ host_arch="$(uname -m | sed 's/arm64/aarch64/')"
 # calling docker, otherwise docker will create them but they will be owned
 # by root.
 mkdir -p target
-cargo generate-lockfile
-cargo generate-lockfile --manifest-path builtins-test-intrinsics/Cargo.toml
 
 run() {
     local target="$1"

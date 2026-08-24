@@ -23,9 +23,9 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
+use crate::core::session::{FileType, Mode};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, add_dylib_path, exe, t};
-use crate::{FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -140,6 +140,7 @@ impl Step for ToolBuild {
         let pgo_config = match self.path {
             "src/tools/rustdoc" => Some(&builder.config.rustdoc_pgo),
             "src/tools/cargo" => Some(&builder.config.cargo_pgo),
+            "src/tools/clippy" => Some(&builder.config.clippy_pgo),
             _ => None,
         };
         if let Some(pgo_config) = pgo_config {
@@ -409,8 +410,9 @@ macro_rules! bootstrap_tool {
         ;
     )+) => {
         #[derive(PartialEq, Eq, Clone)]
-        pub enum Tool {
+        pub(crate) enum Tool {
             $(
+                #[allow(dead_code, reason = "not all bootstrap-tools need a variant")]
                 $name,
             )+
         }
@@ -419,14 +421,14 @@ macro_rules! bootstrap_tool {
             /// Ensure a tool is built, then get the path to its executable.
             ///
             /// The actual building, if any, will be handled via [`ToolBuild`].
-            pub fn tool_exe(&self, tool: Tool) -> PathBuf {
+            pub(crate) fn tool_exe(&self, tool: Tool) -> PathBuf {
                 self.tool(tool).tool_path
             }
 
             /// Ensure a tool is built, then return its build output.
             ///
             /// The actual building, if any, will be handled via [`ToolBuild`].
-            pub fn tool(&self, tool: Tool) -> ToolBuildResult {
+            pub(crate) fn tool(&self, tool: Tool) -> ToolBuildResult {
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
@@ -1621,7 +1623,7 @@ impl Builder<'_> {
     /// `host`.
     ///
     /// This also ensures that the given tool is built (using [`ToolBuild`]).
-    pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
+    pub(crate) fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
         let mut cmd = command(self.tool_exe(tool));
         let compiler = self.compiler(0, self.config.host_target);
         let host = &compiler.host;

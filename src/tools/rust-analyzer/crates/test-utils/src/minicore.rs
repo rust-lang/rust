@@ -22,6 +22,7 @@
 //!     cell: copy, drop
 //!     clone: sized
 //!     coerce_pointee: derive, sized, unsize, coerce_unsized, dispatch_from_dyn
+//!     reborrow: derive, copy
 //!     coerce_unsized: unsize
 //!     concat:
 //!     copy: clone
@@ -208,6 +209,20 @@ pub mod marker {
         /* compiler built-in */
     }
     // endregion:coerce_pointee
+
+    // region:reborrow
+    #[rustc_builtin_macro(Reborrow)]
+    pub macro Reborrow($item:item) {}
+
+    #[lang = "reborrow"]
+    pub trait Reborrow {}
+
+    #[rustc_builtin_macro(CoerceShared, attributes(coerce_shared))]
+    pub macro CoerceShared($item:item) {}
+
+    #[lang = "coerce_shared"]
+    pub trait CoerceShared<Target: Copy>: Reborrow {}
+    // endregion:reborrow
 }
 
 // region:default
@@ -780,6 +795,13 @@ pub mod ops {
             pub(crate) exhausted: bool,
         }
 
+        impl<Idx> RangeInclusive<Idx> {
+            #[lang = "range_inclusive_new"]
+            pub const fn new(start: Idx, end: Idx) -> Self {
+                Self { start, end, exhausted: false }
+            }
+        }
+
         #[lang = "RangeToInclusive"]
         pub struct RangeToInclusive<Idx> {
             pub end: Idx,
@@ -1250,12 +1272,12 @@ pub mod range {
     #[lang = "RangeInclusiveCopy"]
     pub struct RangeInclusive<Idx> {
         pub start: Idx,
-        pub end: Idx,
+        pub last: Idx,
     }
 
     #[lang = "RangeToInclusiveCopy"]
     pub struct RangeToInclusive<Idx> {
-        pub end: Idx,
+        pub last: Idx,
     }
 }
 // endregion:new_range

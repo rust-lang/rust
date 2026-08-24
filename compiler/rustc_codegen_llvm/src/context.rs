@@ -21,10 +21,11 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{
-    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
+    BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_session::{PointerAuthSchema, Session};
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
+use rustc_structures::CrateType;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
     Target, TlsModel,
@@ -560,6 +561,17 @@ pub(crate) unsafe fn create_module<'ll>(
             llvm::ModuleFlagMergeBehavior::Error,
             "target-abi",
             llvm_abiname.desc(),
+        );
+    }
+
+    if llvm_version >= (24, 0, 0)
+        && let Some(floatabi) = sess.target.llvm_floatabi
+    {
+        llvm::add_module_flag_str(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "float-abi",
+            floatabi.desc(),
         );
     }
 

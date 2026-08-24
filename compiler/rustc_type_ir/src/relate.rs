@@ -639,16 +639,16 @@ impl<I: Interner, T: Relate<I>> Relate<I> for ty::Binder<I, T> {
     }
 }
 
-impl<I: Interner> Relate<I> for ty::TraitPredicate<I> {
+impl<I: Interner> Relate<I> for ty::TraitClause<I> {
     fn relate<R: TypeRelation<I>>(
         relation: &mut R,
-        a: ty::TraitPredicate<I>,
-        b: ty::TraitPredicate<I>,
-    ) -> RelateResult<I, ty::TraitPredicate<I>> {
+        a: ty::TraitClause<I>,
+        b: ty::TraitClause<I>,
+    ) -> RelateResult<I, ty::TraitClause<I>> {
         let trait_ref = relation.relate(a.trait_ref, b.trait_ref)?;
         if a.polarity != b.polarity {
             return Err(TypeError::PolarityMismatch(ExpectedFound::new(a.polarity, b.polarity)));
         }
-        Ok(ty::TraitPredicate { trait_ref, polarity: a.polarity })
+        Ok(ty::TraitClause { trait_ref, polarity: a.polarity })
     }
 }

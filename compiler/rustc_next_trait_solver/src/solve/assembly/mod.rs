@@ -562,14 +562,7 @@ where
             )
             .map_err_to_rerun()?
             {
-                Ok(candidate) => {
-                    // For every `default impl`, there's always a non-default `impl`
-                    // that will *also* apply. There's no reason to register a candidate
-                    // for this impl, since it is *not* proof that the trait goal holds.
-                    if !cx.impl_is_default(impl_def_id) {
-                        candidates.push(candidate);
-                    }
-                }
+                Ok(candidate) => candidates.push(candidate),
                 Err(NoSolution) => {}
             }
 
@@ -1179,13 +1172,6 @@ where
             let cx = self.cx();
             let goal_trait_ref = goal.predicate.trait_ref(cx);
             cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
-                // For every `default impl`, there's always a non-default `impl`
-                // that will *also* apply. There's no reason to register a candidate
-                // for this impl, since it is *not* proof that the trait goal holds.
-                if cx.impl_is_default(impl_def_id) {
-                    return Ok(());
-                }
-
                 match G::consider_impl_candidate(
                     self,
                     goal,

@@ -13,6 +13,7 @@ fi
 # Print machine information
 uname -a
 lscpu || true
+rustc -Vv
 
 gungraun_home="gungraun-home"
 

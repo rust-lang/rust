@@ -16,8 +16,8 @@
 
 
 fn main() {}
-//~^ ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
-//~| ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with
+//~? ERROR that is not compiled with

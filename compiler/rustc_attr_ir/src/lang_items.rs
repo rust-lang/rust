@@ -14,7 +14,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::{Symbol, kw, sym};
 
 use crate::PrintAttribute;
-use crate::target::{MethodKind, Target};
+use crate::target::{AssocCtxt, MethodKind, Target};
 
 /// All of the lang items, defined or not.
 /// Defined lang items can come from the current crate or its dependencies.
@@ -161,8 +161,8 @@ language_item_table! {
     MetaSized,               sym::meta_sized,          meta_sized_trait,           Target::Trait,          GenericRequirement::Exact(0);
     PointeeSized,            sym::pointee_sized,       pointee_sized_trait,        Target::Trait,          GenericRequirement::Exact(0);
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
-    AlignOf,                 sym::mem_align_const,     align_const,                Target::AssocConst,     GenericRequirement::Exact(0);
-    SizeOf,                  sym::mem_size_const,      size_const,                 Target::AssocConst,     GenericRequirement::Exact(0);
+    AlignOf,                 sym::mem_align_const,     align_const,                Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
+    SizeOf,                  sym::mem_size_const,      size_const,                 Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
     OffsetOf,                sym::offset_of,           offset_of,                  Target::Fn,             GenericRequirement::Exact(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;
@@ -174,17 +174,21 @@ language_item_table! {
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
     /// The associated item of the `DiscriminantKind` trait.
-    Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy,        GenericRequirement::None;
+    Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;
 
     PointeeTrait,            sym::pointee_trait,       pointee_trait,              Target::Trait,          GenericRequirement::None;
-    Metadata,                sym::metadata_type,       metadata_type,              Target::AssocTy,        GenericRequirement::None;
+    Metadata,                sym::metadata_type,       metadata_type,              Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;
     DynMetadata,             sym::dyn_metadata,        dyn_metadata,               Target::Struct,         GenericRequirement::None;
+
+    NonNull,                 sym::non_null,            non_null_trait,             Target::Struct,         GenericRequirement::Exact(1);
 
     Freeze,                  sym::freeze,              freeze_trait,               Target::Trait,          GenericRequirement::Exact(0);
     UnsafeUnpin,             sym::unsafe_unpin,        unsafe_unpin_trait,         Target::Trait,          GenericRequirement::Exact(0);
 
     FnPtrTrait,              sym::fn_ptr_trait,        fn_ptr_trait,               Target::Trait,          GenericRequirement::Exact(0);
-    FnPtrAddr,               sym::fn_ptr_addr,         fn_ptr_addr,                Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    FnPtrAsPtr,              sym::fn_ptr_as_ptr,       fn_ptr_as_ptr,              Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    FnPtrFromPtr,            sym::fn_ptr_from_ptr,     fn_ptr_from_ptr,            Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    Code,                    sym::code,                code,                       Target::ForeignTy,      GenericRequirement::None;
 
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
     Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
@@ -237,36 +241,37 @@ language_item_table! {
     Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
     DerefPure,               sym::deref_pure,          deref_pure_trait,           Target::Trait,          GenericRequirement::Exact(0);
-    DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
+    DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;
     Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
-    ReceiverTarget,          sym::receiver_target,     receiver_target,            Target::AssocTy,        GenericRequirement::None;
+    ReceiverTarget,          sym::receiver_target,     receiver_target,            Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;
     LegacyReceiver,          sym::legacy_receiver,     legacy_receiver_trait,      Target::Trait,          GenericRequirement::None;
 
     Fn,                      kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
     FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
+    FnStatic,                sym::fn_static,           fn_static_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
     AsyncFn,                 sym::async_fn,            async_fn_trait,             Target::Trait,          GenericRequirement::Exact(1);
     AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);
     AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        Target::Trait,          GenericRequirement::Exact(1);
-    AsyncFnOnceOutput,       sym::async_fn_once_output, async_fn_once_output,       Target::AssocTy,        GenericRequirement::Exact(1);
-    CallOnceFuture,          sym::call_once_future,    call_once_future,           Target::AssocTy,        GenericRequirement::Exact(1);
-    CallRefFuture,           sym::call_ref_future,     call_ref_future,            Target::AssocTy,        GenericRequirement::Exact(2);
+    AsyncFnOnceOutput,       sym::async_fn_once_output, async_fn_once_output,       Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(1);
+    CallOnceFuture,          sym::call_once_future,    call_once_future,           Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(1);
+    CallRefFuture,           sym::call_ref_future,     call_ref_future,            Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(2);
     AsyncFnKindHelper,       sym::async_fn_kind_helper, async_fn_kind_helper,      Target::Trait,          GenericRequirement::Exact(1);
-    AsyncFnKindUpvars,       sym::async_fn_kind_upvars, async_fn_kind_upvars,      Target::AssocTy,          GenericRequirement::Exact(5);
+    AsyncFnKindUpvars,       sym::async_fn_kind_upvars, async_fn_kind_upvars,      Target::AssocTy(AssocCtxt::Trait),          GenericRequirement::Exact(5);
 
-    FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
+    FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;
 
     Iterator,                sym::iterator,            iterator_trait,             Target::Trait,          GenericRequirement::Exact(0);
     FusedIterator,           sym::fused_iterator,      fused_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
-    FutureOutput,            sym::future_output,       future_output,              Target::AssocTy,        GenericRequirement::Exact(0);
+    FutureOutput,            sym::future_output,       future_output,              Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(0);
     AsyncIterator,           sym::async_iterator,      async_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
 
     CoroutineState,          sym::coroutine_state,     coroutine_state,            Target::Enum,           GenericRequirement::None;
     Coroutine,               sym::coroutine,           coroutine_trait,            Target::Trait,          GenericRequirement::Exact(1);
-    CoroutineReturn,         sym::coroutine_return,    coroutine_return,           Target::AssocTy,        GenericRequirement::Exact(1);
-    CoroutineYield,          sym::coroutine_yield,     coroutine_yield,            Target::AssocTy,        GenericRequirement::Exact(1);
+    CoroutineReturn,         sym::coroutine_return,    coroutine_return,           Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(1);
+    CoroutineYield,          sym::coroutine_yield,     coroutine_yield,            Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(1);
     CoroutineResume,         sym::coroutine_resume,    coroutine_resume,           Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
 
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
@@ -384,8 +389,8 @@ language_item_table! {
     PollPending,             sym::Pending,             poll_pending_variant,       Target::Variant,        GenericRequirement::None;
 
     AsyncGenReady,           sym::AsyncGenReady,       async_gen_ready,            Target::Method(MethodKind::Inherent), GenericRequirement::Exact(1);
-    AsyncGenPending,         sym::AsyncGenPending,     async_gen_pending,          Target::AssocConst,     GenericRequirement::Exact(1);
-    AsyncGenFinished,        sym::AsyncGenFinished,    async_gen_finished,         Target::AssocConst,     GenericRequirement::Exact(1);
+    AsyncGenPending,         sym::AsyncGenPending,     async_gen_pending,          Target::AssocConst(AssocCtxt::Impl { of_trait: false }), GenericRequirement::Exact(1);
+    AsyncGenFinished,        sym::AsyncGenFinished,    async_gen_finished,         Target::AssocConst(AssocCtxt::Impl { of_trait: false }), GenericRequirement::Exact(1);
 
     // FIXME(swatinem): the following lang items are used for async lowering and
     // should become obsolete eventually.
@@ -421,8 +426,8 @@ language_item_table! {
     Range,                   sym::Range,               range_struct,               Target::Struct,         GenericRequirement::None;
     RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct,         GenericRequirement::None;
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
-    RangeMax,                sym::RangeMax,            range_max,                  Target::AssocConst,     GenericRequirement::Exact(0);
-    RangeMin,                sym::RangeMin,            range_min,                  Target::AssocConst,     GenericRequirement::Exact(0);
+    RangeMax,                sym::RangeMax,            range_max,                  Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
+    RangeMin,                sym::RangeMin,            range_min,                  Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
     RangeSub,                sym::RangeSub,            range_sub,                  Target::Method(MethodKind::Trait { body: false }),     GenericRequirement::Exact(0);
 
     // `new_range` types that are `Copy + IntoIterator`
@@ -453,9 +458,9 @@ language_item_table! {
     // Field representing types.
     FieldRepresentingType,   sym::field_representing_type, field_representing_type,    Target::Struct,         GenericRequirement::Exact(3);
     Field,                   sym::field,                   field,                      Target::Trait,          GenericRequirement::Exact(0);
-    FieldBase,               sym::field_base,              field_base,                 Target::AssocTy,        GenericRequirement::Exact(0);
-    FieldType,               sym::field_type,              field_type,                 Target::AssocTy,        GenericRequirement::Exact(0);
-    FieldOffset,             sym::field_offset,            field_offset,               Target::AssocConst,     GenericRequirement::Exact(0);
+    FieldBase,               sym::field_base,              field_base,                 Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(0);
+    FieldType,               sym::field_type,              field_type,                 Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(0);
+    FieldOffset,             sym::field_offset,            field_offset,               Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
 
     // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);

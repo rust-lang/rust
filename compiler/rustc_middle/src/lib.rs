@@ -81,6 +81,7 @@ pub mod metadata;
 pub mod middle;
 pub mod mir;
 pub mod mono;
+pub mod ptrauth;
 pub mod queries;
 pub mod query;
 pub mod thir;

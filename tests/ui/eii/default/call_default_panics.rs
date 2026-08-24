@@ -1,3 +1,5 @@
+//@ revisions: rlib dylib
+//@[dylib] needs-crate-type: dylib
 //@ aux-build: decl_with_default_panics.rs
 //@ edition: 2021
 //@ run-pass

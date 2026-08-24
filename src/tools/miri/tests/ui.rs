@@ -300,6 +300,7 @@ fn run_tests(
             )
             .into(),
         );
+
         if let Ok(extra_flags) = env::var("MIRIFLAGS") {
             for flag in extra_flags.split_whitespace() {
                 config.program.args.push(flag.into());

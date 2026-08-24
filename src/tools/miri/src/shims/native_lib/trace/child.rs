@@ -1,8 +1,5 @@
 use std::cell::RefCell;
-#[cfg(not(bootstrap))]
 use std::panic::abort_on_unwind;
-#[cfg(bootstrap)]
-use std::panic::abort_unwind as abort_on_unwind;
 use std::ptr::NonNull;
 use std::rc::Rc;
 

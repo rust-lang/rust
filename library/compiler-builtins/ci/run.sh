@@ -13,6 +13,12 @@ if [ -z "$target" ]; then
     target="$host_target"
 fi
 
+# Print machine information
+uname -a
+lscpu || true
+rustc -Vv
+cc -v || true
+
 if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
     # Install nonstandard components if we have control of the environment
     rustup target list --installed |
@@ -72,8 +78,8 @@ fi
 # Ensure there are no duplicate symbols or references to `core` when
 # `compiler-builtins` is built with various features. Symcheck invokes Cargo to
 # build with the arguments we provide it, then validates the built artifacts.
-SYMCHECK_TEST_TARGET="$target" cargo test -p symbol-check --release
-symcheck=(cargo run -p symbol-check --release)
+SYMCHECK_TEST_TARGET="$target" cargo test -p symcheck --release
+symcheck=(cargo run -p symcheck --release)
 symcheck+=(-- --build-and-check --target "$target")
 
 # Executable section checks are meaningless on no-std targets
@@ -145,10 +151,6 @@ case "$target" in
 
     # We can build musl on MinGW but running tests gets a stack overflow
     *windows-gnu*) ;;
-    # FIXME(#309): LE PPC crashes calling the musl version of some functions. It
-    # seems like a qemu bug but should be investigated further at some point.
-    # See <https://github.com/rust-lang/libm/issues/309>.
-    *powerpc64le*) ;;
 
     # Everything else gets musl enabled
     *) mflags+=(--features libm-test/build-musl) ;;
@@ -184,7 +186,7 @@ if [ "${BUILD_ONLY:-}" = "1" ]; then
     echo "can't run tests on $target; skipping"
 else
     # symcheck tests need specific env setup, and is already tested above
-    mflags+=(--workspace --exclude symbol-check --target "$target")
+    mflags+=(--workspace --exclude symcheck --target "$target")
     cmd=("${test_runner[@]}" "${mflags[@]}")
 
     # Test once without intrinsics

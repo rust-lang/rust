@@ -130,6 +130,7 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
 impl<'tcx> rustc_type_ir::inherent::IntoKind for GenericArg<'tcx> {
     type Kind = GenericArgKind<'tcx>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         self.kind()
     }
@@ -516,6 +517,11 @@ impl<'tcx> GenericArgs<'tcx> {
     #[inline]
     pub fn consts(&self) -> impl DoubleEndedIterator<Item = ty::Const<'tcx>> {
         self.iter().filter_map(|k| k.as_const())
+    }
+
+    #[inline]
+    pub fn terms(&self) -> impl DoubleEndedIterator<Item = ty::Term<'tcx>> {
+        self.iter().filter_map(|k| k.as_term())
     }
 
     /// Returns generic arguments that are not lifetimes.

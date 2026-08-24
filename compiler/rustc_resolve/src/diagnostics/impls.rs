@@ -24,13 +24,13 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, MacroKinds, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{Attribute, PrimTy, Stability, StabilityLevel, find_attr};
-use rustc_middle::bug;
-use rustc_middle::ty::{TyCtxt, Visibility};
-use rustc_session::Session;
-use rustc_session::lint::builtin::{
+use rustc_lint_defs::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_IMPORT_VISIBILITIES,
     AMBIGUOUS_PANIC_IMPORTS, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
+use rustc_middle::bug;
+use rustc_middle::ty::{TyCtxt, Visibility};
+use rustc_session::Session;
 use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::def_id::ModId;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -1282,6 +1282,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::ParamInTyOfConstParam { name } => {
                 self.dcx().create_err(diagnostics::ParamInTyOfConstParam { span, name })
             }
+            ResolutionError::SelfInConstParam => {
+                self.dcx().create_err(diagnostics::SelfInConstGenericTy {
+                    span,
+                    enable_feature: self.tcx().sess.is_nightly_build(),
+                })
+            }
             ResolutionError::ParamInNonTrivialAnonConst { is_gca, name, param_kind: is_type } => {
                 self.dcx().create_err(diagnostics::ParamInNonTrivialAnonConst {
                     span,
@@ -1305,9 +1311,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ForwardGenericParamBanReason::Default => {
                     self.dcx().create_err(diagnostics::SelfInGenericParamDefault { span })
                 }
-                ForwardGenericParamBanReason::ConstParamTy => {
-                    self.dcx().create_err(diagnostics::SelfInConstGenericTy { span })
-                }
+                ForwardGenericParamBanReason::ConstParamTy => self
+                    .dcx()
+                    .create_err(diagnostics::SelfInConstGenericTy { span, enable_feature: false }),
             },
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
                 let ((sub_suggestion_label, sub_suggestion), sub_unreachable_label) =
@@ -1871,7 +1877,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     self.resolutions(parent_scope.module).iter().any(|(key, name_resolution)| {
                         if key.ns == TypeNS
                             && key.ident == *ident
-                            && let Some(decl) = name_resolution.borrow(self).best_decl()
+                            && let Some(decl) = name_resolution.borrow_checked(self).best_decl()
                         {
                             match decl.res() {
                                 // No disambiguation needed if the identically named item we
@@ -1926,9 +1932,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ident,
             is_expected,
         );
-        if !self.add_typo_suggestion(err, suggestion, ident.span) {
-            self.detect_derive_attribute(err, ident, parent_scope, sugg_span);
-        }
+        self.add_typo_suggestion(err, suggestion, ident.span);
+        self.detect_derive_attribute(err, ident, parent_scope, sugg_span);
 
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
@@ -2209,11 +2214,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         err: &mut Diag<'_>,
         suggestion: Option<TypoSuggestion>,
         span: Span,
-    ) -> bool {
+    ) {
         let suggestion = match suggestion {
-            None => return false,
+            None => return,
             // We shouldn't suggest underscore.
-            Some(suggestion) if suggestion.candidate == kw::Underscore => return false,
+            Some(suggestion) if suggestion.candidate == kw::Underscore => return,
             Some(suggestion) => suggestion,
         };
 
@@ -2239,7 +2244,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //    |
                 // LL | const Y: X = Y("ö");
                 //    |              ^
-                return false;
+                return;
             }
             let span = self.tcx.sess.source_map().guess_head_span(def_span);
             let candidate_descr = suggestion.res.descr();
@@ -2269,7 +2274,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 "the leading underscore in `{candidate}` marks it as unused, consider renaming it to `{snippet}`"
             );
             if !did_label_def_span {
-                err.span_label(span, format!("`{candidate}` defined here"));
+                err.span_note(span, format!("`{candidate}` defined here"));
             }
             (span, msg, snippet)
         } else {
@@ -2286,7 +2291,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             (span, msg, suggestion.candidate.to_ident_string())
         };
         err.span_suggestion_verbose(span, msg, sugg, Applicability::MaybeIncorrect);
-        true
     }
 
     fn decl_description(&self, b: Decl<'_>, ident: Ident, scope: Scope<'_>) -> String {
@@ -3635,7 +3639,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let mut res = false;
                 let m = r.expect_module(parent_module);
                 if m.is_local() {
-                    for importer in m.glob_importers.borrow(r).iter() {
+                    for importer in m.glob_importers.borrow_checked(r).iter() {
                         if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id()
                         {
                             if next_parent_module == module

@@ -43,7 +43,7 @@ The recommended way to build artifacts that can be installed and run on PlayStat
 To install the tool run:
 
 ```sh
-cargo install cargo-vita
+cargo install --locked cargo-vita
 ```
 
 [VITASDK](https://vitasdk.org/) toolchain must be installed, and the `VITASDK` environment variable must be set to its location, e.g.:

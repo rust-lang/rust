@@ -1,10 +1,10 @@
 use itertools::Itertools;
 use rustc_abi::ExternAbi;
 use rustc_hir::def_id::DefId;
+use rustc_lint_defs::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
-use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{Span, Spanned, sym};
 
 use crate::diagnostics;
@@ -164,9 +164,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             other_abi => format!("extern {other_abi} "),
         };
         let ident = self.tcx.item_ident(fn_id);
-        let ty_params = fn_args.types().map(|ty| format!("{ty}"));
-        let const_params = fn_args.consts().map(|c| format!("{c}"));
-        let params = ty_params.chain(const_params).join(", ");
+        let params = fn_args.terms().map(|term| format!("{term}")).join(", ");
         let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
