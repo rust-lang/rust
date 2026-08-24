@@ -1,5 +1,5 @@
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/issue-100631.rs:4:8
+  --> $DIR/issue-100631.rs:5:8
    |
 LL | #[repr(C)]
    |        ^
@@ -8,10 +8,10 @@ LL | #[repr(C)]
    |        ^
    |
    = note: for consistency, only specify the representation once
-   = note: `#[warn(repeated_reprs)]` on by default
+   = note: requested on the command line with `-W repeated-reprs`
 
 error[E0084]: unsupported representation for zero-variant enum
-  --> $DIR/issue-100631.rs:4:8
+  --> $DIR/issue-100631.rs:5:8
    |
 LL | #[repr(C)]
    |        ^

@@ -1,4 +1,5 @@
 // Tests to ensure we warn on repeated `#[repr(..)]` attributes.
+//@ compile-flags: -W repeated-reprs
 
 #[repr(transparent, transparent)] //~ WARN `#[repr(..)]` attribute is specified more than once [repeated_reprs]
 //~^ ERROR transparent struct cannot have other repr hints

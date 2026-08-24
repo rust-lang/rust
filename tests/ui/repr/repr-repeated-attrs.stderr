@@ -1,5 +1,5 @@
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:3:8
+  --> $DIR/repr-repeated-attrs.rs:4:8
    |
 LL | #[repr(transparent, transparent)]
    |        ^^^^^^^^^^^  ^^^^^^^^^^^
@@ -8,10 +8,10 @@ LL | #[repr(transparent)]
    |        ^^^^^^^^^^^
    |
    = note: for consistency, only specify the representation once
-   = note: `#[warn(repeated_reprs)]` on by default
+   = note: requested on the command line with `-W repeated-reprs`
 
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-repeated-attrs.rs:3:8
+  --> $DIR/repr-repeated-attrs.rs:4:8
    |
 LL | #[repr(transparent, transparent)]
    |        ^^^^^^^^^^^  ^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL | #[repr(transparent)]
    |        ^^^^^^^^^^^
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:8:8
+  --> $DIR/repr-repeated-attrs.rs:9:8
    |
 LL | #[repr(transparent)]
    |        ^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL | #[repr(transparent)]
    = note: for consistency, only specify the representation once
 
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-repeated-attrs.rs:8:8
+  --> $DIR/repr-repeated-attrs.rs:9:8
    |
 LL | #[repr(transparent)]
    |        ^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL | #[repr(transparent)]
    |        ^^^^^^^^^^^
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:13:8
+  --> $DIR/repr-repeated-attrs.rs:14:8
    |
 LL | #[repr(Rust, Rust)]
    |        ^^^^  ^^^^
@@ -48,7 +48,7 @@ LL | #[repr(Rust, Rust)]
    = note: for consistency, only specify the representation once
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:17:8
+  --> $DIR/repr-repeated-attrs.rs:18:8
    |
 LL | #[repr(C, C)]
    |        ^  ^
@@ -59,7 +59,7 @@ LL | #[repr(C, C, C)]
    = note: for consistency, only specify the representation once
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:22:8
+  --> $DIR/repr-repeated-attrs.rs:23:8
    |
 LL | #[repr(u8, u8)]
    |        ^^  ^^
@@ -67,7 +67,7 @@ LL | #[repr(u8, u8)]
    = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:22:8
+  --> $DIR/repr-repeated-attrs.rs:23:8
    |
 LL | #[repr(u8, u8)]
    |        ^^  ^^
@@ -77,7 +77,7 @@ LL | #[repr(u8, u8)]
    = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:29:8
+  --> $DIR/repr-repeated-attrs.rs:30:8
    |
 LL | #[repr(C, C, u8)]
    |        ^  ^  ^^
@@ -88,7 +88,7 @@ LL | #[repr(C, u8, u8)]
    = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:29:8
+  --> $DIR/repr-repeated-attrs.rs:30:8
    |
 LL | #[repr(C, C, u8)]
    |        ^  ^  ^^
@@ -100,7 +100,7 @@ LL | #[repr(C, u8, u8)]
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:37:14
+  --> $DIR/repr-repeated-attrs.rs:38:14
    |
 LL | #[repr(Rust, u8, u8)]
    |              ^^  ^^
@@ -108,13 +108,13 @@ LL | #[repr(Rust, u8, u8)]
    = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:37:8
+  --> $DIR/repr-repeated-attrs.rs:38:8
    |
 LL | #[repr(Rust, u8, u8)]
    |        ^^^^  ^^  ^^
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:37:8
+  --> $DIR/repr-repeated-attrs.rs:38:8
    |
 LL | #[repr(Rust, u8, u8)]
    |        ^^^^  ^^  ^^
@@ -123,7 +123,7 @@ LL | #[repr(Rust, u8, u8)]
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:45:8
+  --> $DIR/repr-repeated-attrs.rs:46:8
    |
 LL | #[repr(u8, u8)]
    |        ^^  ^^
@@ -131,7 +131,7 @@ LL | #[repr(u8, u8)]
    = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:45:8
+  --> $DIR/repr-repeated-attrs.rs:46:8
    |
 LL | #[repr(u8, u8)]
    |        ^^  ^^
@@ -143,7 +143,7 @@ LL | #[repr(u16)]
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:53:8
+  --> $DIR/repr-repeated-attrs.rs:54:8
    |
 LL | #[repr(C, u8)]
    |        ^  ^^
@@ -152,7 +152,7 @@ LL | #[repr(C, u8)]
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
 warning: `#[repr(..)]` attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:61:8
+  --> $DIR/repr-repeated-attrs.rs:62:8
    |
 LL | #[repr(C, C, u8, u8, u8)]
    |        ^  ^  ^^  ^^  ^^
@@ -160,7 +160,7 @@ LL | #[repr(C, C, u8, u8, u8)]
    = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:61:8
+  --> $DIR/repr-repeated-attrs.rs:62:8
    |
 LL | #[repr(C, C, u8, u8, u8)]
    |        ^  ^  ^^  ^^  ^^
@@ -174,7 +174,7 @@ Some errors have detailed explanations: E0566, E0692.
 For more information about an error, try `rustc --explain E0566`.
 Future incompatibility report: Future breakage diagnostic:
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:22:8
+  --> $DIR/repr-repeated-attrs.rs:23:8
    |
 LL | #[repr(u8, u8)]
    |        ^^  ^^
@@ -185,7 +185,7 @@ LL | #[repr(u8, u8)]
 
 Future breakage diagnostic:
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:29:8
+  --> $DIR/repr-repeated-attrs.rs:30:8
    |
 LL | #[repr(C, C, u8)]
    |        ^  ^  ^^
@@ -199,7 +199,7 @@ LL | #[repr(C, u8, u8)]
 
 Future breakage diagnostic:
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:37:8
+  --> $DIR/repr-repeated-attrs.rs:38:8
    |
 LL | #[repr(Rust, u8, u8)]
    |        ^^^^  ^^  ^^
@@ -210,7 +210,7 @@ LL | #[repr(Rust, u8, u8)]
 
 Future breakage diagnostic:
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:45:8
+  --> $DIR/repr-repeated-attrs.rs:46:8
    |
 LL | #[repr(u8, u8)]
    |        ^^  ^^
@@ -224,7 +224,7 @@ LL | #[repr(u16)]
 
 Future breakage diagnostic:
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:53:8
+  --> $DIR/repr-repeated-attrs.rs:54:8
    |
 LL | #[repr(C, u8)]
    |        ^  ^^
@@ -235,7 +235,7 @@ LL | #[repr(C, u8)]
 
 Future breakage diagnostic:
 error[E0566]: conflicting representation hints
-  --> $DIR/repr-repeated-attrs.rs:61:8
+  --> $DIR/repr-repeated-attrs.rs:62:8
    |
 LL | #[repr(C, C, u8, u8, u8)]
    |        ^  ^  ^^  ^^  ^^

@@ -1,3 +1,4 @@
+//@ compile-flags: -W repeated-reprs
 #![allow(dead_code)]
 
 #[repr(C)]
