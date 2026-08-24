@@ -84,6 +84,11 @@ fn main() {
     primitive_arg(1u32);
     enum_arg(NotATuple::A(1u32));
 
+    #[rustfmt::skip]
+    let primitive_arg_: fn(#[rustc_splat] u32) = primitive_arg;
+    primitive_arg_(1u32);
+    //~^ ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a u32
+
     let foo = Foo;
     struct_arg(foo);
     foo.tuple_2_self((1u32, 2i8));
