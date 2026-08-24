@@ -1595,8 +1595,8 @@ impl MarkdownSummaryLine<'_> {
 
         html::push_html(&mut s, without_paragraphs);
 
-        let has_more_content =
-            matches!(summary.inner.peek(), Some(Event::Start(_))) || summary.skipped_tags > 0;
+        let has_more_content = matches!(summary.inner.peek(), Some(Event::Start(_) | Event::Rule))
+            || summary.skipped_tags > 0;
 
         (s, has_more_content)
     }
