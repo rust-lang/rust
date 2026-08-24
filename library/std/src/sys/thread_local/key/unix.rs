@@ -25,7 +25,16 @@ pub type Key = libc::pthread_key_t;
 #[inline]
 pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
     let mut key = 0;
-    if unsafe { libc::pthread_key_create(&mut key, mem::transmute::<core::option::Option<unsafe extern "C" fn(*mut u8)>, core::option::Option<unsafe extern "C" fn(*mut libc::c_void)>>(dtor)) } != 0 {
+    if unsafe {
+        libc::pthread_key_create(
+            &mut key,
+            mem::transmute::<
+                core::option::Option<unsafe extern "C" fn(*mut u8)>,
+                core::option::Option<unsafe extern "C" fn(*mut libc::c_void)>,
+            >(dtor),
+        )
+    } != 0
+    {
         rtabort!("out of TLS keys");
     }
     key
