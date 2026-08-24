@@ -153,6 +153,8 @@ fn visit_implementation_of_unpin(checker: &Checker<'_>) -> Result<(), ErrorGuara
                 }));
             }
             ty::Adt(_, _) => {}
+            // `extern type`s have no fields, so they can't be structurally pinned.
+            ty::Foreign(_) => {}
             _ => {
                 return Err(tcx.dcx().span_delayed_bug(span, "impl of `Unpin` for a non-adt type"));
             }
