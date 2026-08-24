@@ -1565,7 +1565,7 @@ impl CommandLineStep for RustdocGUI {
 
         let mut cmd = builder.tool_cmd(Tool::RustdocGUITest);
 
-        let out_dir = builder.test_out(self.target).join("rustdoc-gui");
+        let out_dir = builder.out.join(self.target).join("test").join("rustdoc-gui");
         build_stamp::clear_if_dirty(
             builder,
             &out_dir,

@@ -817,10 +817,6 @@ impl Build {
         self.out.join(target).join("json-doc")
     }
 
-    pub(crate) fn test_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(target).join("test")
-    }
-
     /// Output directory for all documentation for a target
     pub(crate) fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("compiler-doc")
