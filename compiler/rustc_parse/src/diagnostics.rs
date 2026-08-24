@@ -3750,6 +3750,13 @@ pub(crate) struct AddBoxNew {
 }
 
 #[derive(Diagnostic)]
+#[diag("`box_patterns` has been removed")]
+pub(crate) struct BoxPatternsRemoved {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("return type not allowed with return type notation")]
 pub(crate) struct BadReturnTypeNotationOutput {
     #[primary_span]

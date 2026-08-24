@@ -1,7 +1,7 @@
 //@ edition:2015..2021
 //@ run-rustfix
 
-#![feature(box_patterns, stmt_expr_attributes, yeet_expr)]
+#![feature(stmt_expr_attributes, yeet_expr)]
 
 #![allow(
     dead_code,
@@ -52,11 +52,6 @@ fn lint_break_if_not_followed_by_block() {
 
 // Don't lint in these cases (#64106).
 fn or_patterns_no_lint() {
-    match Box::new(0) {
-        box (0 | 1) => {} // Should not lint as `box 0 | 1` binds as `(box 0) | 1`.
-        _ => {}
-    }
-
     match 0 {
         x @ (0 | 1) => {} // Should not lint as `x @ 0 | 1` binds as `(x @ 0) | 1`.
         _ => {}

@@ -16,7 +16,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::thir::{
-    Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
@@ -352,11 +352,6 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 }
                 PatKind::Deref { pin, subpattern }
             }
-            hir::PatKind::Box(subpattern) => PatKind::DerefPattern {
-                subpattern: self.lower_pattern(subpattern),
-                borrow: DerefPatBorrowMode::Box,
-            },
-
             hir::PatKind::Slice(prefix, slice, suffix) => {
                 return self.slice_or_array_pattern(pat, prefix, slice, suffix);
             }
