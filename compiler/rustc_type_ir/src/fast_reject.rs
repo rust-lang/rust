@@ -243,7 +243,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
                     ty::GenericArgKind::Type(obl)
                         if let ty::GenericArgKind::Type(imp) = imp.kind() =>
                     {
-                        self.types_may_unify_inner(obl, imp, depth)
+                        self.inlined_types_may_unify_inner(obl, imp, depth)
                     }
                     ty::GenericArgKind::Const(obl)
                         if let ty::GenericArgKind::Const(imp) = imp.kind() =>
@@ -256,7 +256,13 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         )
     }
 
+    #[inline(never)]
     fn types_may_unify_inner(self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
+        self.inlined_types_may_unify_inner(lhs, rhs, depth)
+    }
+
+    #[inline(always)]
+    fn inlined_types_may_unify_inner(self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
         if lhs == rhs {
             return true;
         }
