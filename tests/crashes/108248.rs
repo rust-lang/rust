@@ -1,4 +1,4 @@
-//@ known-bug: #108428
+//@ known-bug: #108248
 //@ needs-rustc-debug-assertions
 //@ compile-flags: -Wunused-lifetimes
 fn main() {
