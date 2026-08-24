@@ -10,6 +10,7 @@ impl Bar for u8 {}
 //~| HELP the trait `Bar` is implemented for `u8`
 //~| HELP the trait `Bar` is implemented for `u8`
 //~| HELP the trait `Bar` is implemented for `u8`
+//~| HELP the trait `Bar` is implemented for `u8`
 
 fn bar<R: Bar>(_: impl Fn() -> R) {}
 
@@ -22,6 +23,14 @@ fn unrelated<R: Bar>(_: impl Fn() -> ()) -> R {
 struct S;
 impl S {
     fn run<R: Bar>(&self, _: impl Fn() -> R) {}
+}
+
+trait Callable<T: Bar> {
+    const CALL: fn();
+}
+
+impl<T: Bar> Callable<T> for () {
+    const CALL: fn() = || {};
 }
 
 fn main() {
@@ -58,5 +67,10 @@ fn main() {
     // No suggestion: `R` is the return type of `unrelated` and is inferred as `()` from the
     // expected type, so keeping the closure's value would not satisfy the bound.
     let _: () = unrelated(|| { 5u8; });
+    //~^ ERROR the trait bound `(): Bar` is not satisfied
+
+    // No suggestion: the failing clause belongs to an associated const, which has no signature to
+    // match a closure argument against.
+    <() as Callable<()>>::CALL();
     //~^ ERROR the trait bound `(): Bar` is not satisfied
 }

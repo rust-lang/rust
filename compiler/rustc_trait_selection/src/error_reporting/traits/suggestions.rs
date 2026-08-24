@@ -2549,7 +2549,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             // A function body has a single return type, so keeping the value can't break any
             // other use of it.
-            self.suggest_removing_semicolon(
+            self.emit_semicolon_removal_suggestion(
                 err,
                 trait_pred,
                 candidate,
@@ -2566,7 +2566,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         block: &hir::Block<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> Option<(&'tcx hir::Stmt<'tcx>, &'tcx hir::Expr<'tcx>, Ty<'tcx>)> {
         if block.expr.is_none()
             && let Some(stmt) = block.stmts.last()
@@ -2587,10 +2587,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_removing_semicolon(
+    fn emit_semicolon_removal_suggestion(
         &self,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         (stmt, expr, ty): (&hir::Stmt<'_>, &hir::Expr<'_>, Ty<'tcx>),
         applicability: Applicability,
     ) {
@@ -2622,13 +2622,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         let &ObligationCauseCode::WhereClauseInExpr(callee_def_id, _, hir_id, idx) =
             obligation.cause.code().peel_derives()
         else {
             return false;
         };
+        // This cause code is used for the clauses of any item named in an expression, like an
+        // associated const or a type alias, and `fn_sig` is only defined for functions.
+        if !matches!(self.tcx.def_kind(callee_def_id), DefKind::Fn | DefKind::AssocFn) {
+            return false;
+        }
         let hir::Node::Expr(expr) = self.tcx.hir_node(hir_id) else {
             return false;
         };
@@ -2707,7 +2712,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             // The same closure can be passed to somewhere else that expects it to return `()`,
             // where keeping the value would introduce a new error.
-            self.suggest_removing_semicolon(
+            self.emit_semicolon_removal_suggestion(
                 err,
                 trait_pred,
                 candidate,
