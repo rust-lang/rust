@@ -3721,6 +3721,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         if let Some(self_type_def_id) = self_type_def_id {
                             this.fill_delegation_inh_functions_map(
                                 self_type_def_id,
+                                // If rename is specified then ident equals rename.
                                 &delegation.ident,
                             );
                         }
