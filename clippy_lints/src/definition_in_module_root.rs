@@ -139,7 +139,8 @@ fn definition_kind(item: &ast::Item) -> Option<&'static str> {
         | ItemKind::MacCall(..)
         | ItemKind::MacroDef(..)
         | ItemKind::Delegation(..)
-        | ItemKind::DelegationMac(..) => None,
+        | ItemKind::DelegationMac(..)
+        | ItemKind::TestBinderConstraints(..) => None,
     }
 }
 

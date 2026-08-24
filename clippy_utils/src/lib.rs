@@ -2789,7 +2789,9 @@ pub fn expr_use_sites<'tcx>(
                 | Node::TraitRef(_)
                 | Node::Ty(_)
                 | Node::TyPat(_)
-                | Node::WherePredicate(_) => {
+                | Node::WherePredicate(_)
+                | Node::TestBinderForall(_)
+                | Node::TestBinderExists(_) => {
                     // This shouldn't be possible to hit; the inner iterator should have
                     // been moved to the end before we hit any of these nodes.
                     debug_assert!(false, "found {parent:?} which is after the final use node");
