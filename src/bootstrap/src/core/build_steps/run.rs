@@ -148,7 +148,7 @@ impl CommandLineStep for Miri {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.host_target;
+        let host = builder.sess.host_target;
         let compilers = self.compilers;
         let target = self.target;
 
@@ -257,7 +257,7 @@ impl CommandLineStep for GenerateCopyright {
         let paths_to_vendor = default_paths_to_vendor(builder);
         for (_, submodules) in &paths_to_vendor {
             for submodule in submodules {
-                builder.build.require_submodule(submodule, None);
+                builder.sess.require_submodule(submodule, None);
             }
         }
         let cargo_manifests = paths_to_vendor
@@ -491,7 +491,7 @@ impl CommandLineStep for Rustfmt {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.host_target;
+        let host = builder.sess.host_target;
 
         // `x run` uses stage 0 by default but rustfmt does not work well with stage 0.
         // Change the stage to 1 if it's not set explicitly.

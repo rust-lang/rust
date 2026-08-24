@@ -173,7 +173,7 @@ impl CommandLineStep for Profile {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        setup(&builder.build.config, self);
+        setup(&builder.sess.config, self);
     }
 }
 

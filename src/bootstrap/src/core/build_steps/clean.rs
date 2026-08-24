@@ -14,7 +14,7 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::flags::Subcommand;
-use crate::core::session::{Build, Mode};
+use crate::core::session::{Mode, Session};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::helpers::t;
 
@@ -47,7 +47,7 @@ impl CommandLineStep for CleanAll {
             panic!("--all and --stage can't be used at the same time for `x clean`");
         }
 
-        clean(builder.build, all, stage)
+        clean(builder.sess, all, stage)
     }
 }
 
@@ -105,8 +105,8 @@ clean_crate_tree! {
     Std, Mode::Std, "sysroot";
 }
 
-fn clean(build: &Build, all: bool, stage: Option<u32>) {
-    if build.config.dry_run() {
+fn clean(sess: &Session, all: bool, stage: Option<u32>) {
+    if sess.config.dry_run() {
         return;
     }
 
@@ -114,23 +114,23 @@ fn clean(build: &Build, all: bool, stage: Option<u32>) {
 
     // Clean the entire build directory
     if all {
-        rm_rf(&build.out);
+        rm_rf(&sess.out);
         return;
     }
 
     // Clean the target stage artifacts
     if let Some(stage) = stage {
-        clean_specific_stage(build, stage);
+        clean_specific_stage(sess, stage);
         return;
     }
 
     // Follow the default behaviour
-    clean_default(build);
+    clean_default(sess);
 }
 
-fn clean_specific_stage(build: &Build, stage: u32) {
-    for host in &build.hosts {
-        let entries = match build.out.join(host).read_dir() {
+fn clean_specific_stage(sess: &Session, stage: u32) {
+    for host in &sess.hosts {
+        let entries = match sess.out.join(host).read_dir() {
             Ok(iter) => iter,
             Err(_) => continue,
         };
@@ -150,18 +150,18 @@ fn clean_specific_stage(build: &Build, stage: u32) {
     }
 }
 
-fn clean_default(build: &Build) {
-    rm_rf(&build.out.join("tmp"));
-    rm_rf(&build.out.join("dist"));
-    rm_rf(&build.out.join("bootstrap").join(".last-warned-change-id"));
-    rm_rf(&build.out.join("bootstrap-shims-dump"));
-    rm_rf(BuildStamp::new(&build.out).with_prefix("rustfmt").path());
+fn clean_default(sess: &Session) {
+    rm_rf(&sess.out.join("tmp"));
+    rm_rf(&sess.out.join("dist"));
+    rm_rf(&sess.out.join("bootstrap").join(".last-warned-change-id"));
+    rm_rf(&sess.out.join("bootstrap-shims-dump"));
+    rm_rf(BuildStamp::new(&sess.out).with_prefix("rustfmt").path());
 
-    let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t)).collect();
+    let mut hosts: Vec<_> = sess.hosts.iter().map(|t| sess.out.join(t)).collect();
     // After cross-compilation, artifacts of the host architecture (which may differ from build.host)
     // might not get removed.
     // Adding its path (linked one for easier accessibility) will solve this problem.
-    hosts.push(build.out.join("host"));
+    hosts.push(sess.out.join("host"));
 
     for host in hosts {
         let entries = match host.read_dir() {
