@@ -11,8 +11,8 @@ LL | | }
    |
 help: consider restricting type parameter `O` with unstable trait `FromResidual`
    |
-LL | async fn once<O: std::ops::FromResidual<std::result::Result<std::convert::Infallible, ()>>, F: AsyncFnOnce() -> O>(f: F) -> O {
-   |                +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL | async fn once<O: std::ops::FromResidual<std::result::Result<!, ()>>, F: AsyncFnOnce() -> O>(f: F) -> O {
+   |                ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/wrong-suggestion-result.rs:7:5
@@ -41,8 +41,8 @@ LL | | }
    |
 help: consider restricting type parameter `O` with unstable trait `FromResidual`
    |
-LL | async fn fnref<O: std::ops::FromResidual<std::result::Result<std::convert::Infallible, ()>>, F: AsyncFn() -> O>(f: F) -> O {
-   |                 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL | async fn fnref<O: std::ops::FromResidual<std::result::Result<!, ()>>, F: AsyncFn() -> O>(f: F) -> O {
+   |                 ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/wrong-suggestion-result.rs:15:5
@@ -71,8 +71,8 @@ LL | | }
    |
 help: consider restricting type parameter `O` with unstable trait `FromResidual`
    |
-LL | async fn fnmut<O: std::ops::FromResidual<std::result::Result<std::convert::Infallible, ()>>, F: AsyncFnMut() -> O>(f: F) -> O {
-   |                 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL | async fn fnmut<O: std::ops::FromResidual<std::result::Result<!, ()>>, F: AsyncFnMut() -> O>(f: F) -> O {
+   |                 ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/wrong-suggestion-result.rs:24:5

@@ -5,7 +5,6 @@
 //
 //@ check-pass
 
-#![feature(never_type)]
 #![feature(type_ascription)]
 #![deny(unreachable_code)]
 

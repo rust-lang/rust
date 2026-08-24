@@ -1,5 +1,5 @@
 error[E0277]: cannot add `u32` to `!`
-  --> $DIR/return-never-type.rs:7:13
+  --> $DIR/return-never-type.rs:5:13
    |
 LL | fn foo() -> impl Add<u32> {
    |             ^^^^^^^^^^^^^ no implementation for `! + u32`

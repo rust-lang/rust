@@ -7,7 +7,7 @@
 #![feature(iter_partition_in_place)]
 #![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
