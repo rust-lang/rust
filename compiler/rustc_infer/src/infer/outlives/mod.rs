@@ -5,6 +5,7 @@ use std::iter;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty;
+use rustc_type_ir::CallerBoundsIterator;
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
@@ -25,7 +26,8 @@ pub fn explicit_outlives_bounds<'tcx>(
 ) -> impl Iterator<Item = OutlivesBound<'tcx>> {
     param_env
         .caller_bounds()
-        .into_iter()
+        .non_trait_clauses()
+        .iter()
         .filter_map(ty::Clause::as_region_outlives_clause)
         .filter_map(ty::Binder::no_bound_vars)
         .map(|ty::OutlivesClause(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a))
