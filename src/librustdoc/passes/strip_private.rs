@@ -1,20 +1,14 @@
-//! Strip all private items from the output. Additionally implies strip_priv_imports.
-//! Basically, the goal is to remove items that are not relevant for public documentation.
+//! Strip all private items from the output.
+//!
+//! Implies `strip_priv_imports`.
 
 use crate::clean::{self, ItemIdSet};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::{ImplStripper, ImportStripper, Pass, Stripper};
 
-pub(crate) const STRIP_PRIVATE: Pass = Pass {
-    name: "strip-private",
-    run: Some(strip_private),
-    description: "strips all private items from a crate which cannot be seen externally, \
-                  implies strip-priv-imports",
-};
+pub(crate) const STRIP_PRIVATE: Pass = Pass { name: "strip-private", run: Some(strip_private) };
 
-/// Strip private items from the point of view of a crate or externally from a
-/// crate, specified by the `xcrate` flag.
 pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     // This stripper collects all *retained* nodes.
     let mut retained = ItemIdSet::default();
