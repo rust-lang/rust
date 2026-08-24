@@ -166,5 +166,17 @@ LL +             a = [] as [(); 0]
 LL ~         },
    |
 
-error: aborting due to 13 previous errors
+error: expression with side effects as the initial value in a zero-sized array initializer
+  --> tests/ui/zero_repeat_side_effects.rs:133:5
+   |
+LL |     let _data = [panic!(); 0];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider performing the side effect separately
+   |
+LL ~     panic!();
+LL +     let _data: [!; 0] = [];
+   |
+
+error: aborting due to 14 previous errors
 

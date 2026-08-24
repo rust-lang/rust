@@ -1427,7 +1427,6 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// # Examples
 ///
 /// ```
-/// # #![feature(never_type)]
 /// # #![feature(variant_count)]
 ///
 /// use std::mem;
