@@ -94,7 +94,7 @@ pub(crate) struct Config {
     pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
     pub sde: Option<PathBuf>,
-    /// Call Build::ninja() instead of this.
+    /// Call `Session::ninja` instead of this.
     pub ninja_in_file: bool,
     pub submodules: Option<bool>,
     pub compiler_docs: bool,
@@ -1853,7 +1853,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     ///
     /// This *does not* update the submodule if `bootstrap.toml` explicitly says
     /// not to, or if we're not in a git repository (like a plain source
-    /// tarball). Typically [`crate::core::session::Build::require_submodule`] should be
+    /// tarball). Typically [`crate::core::session::Session::require_submodule`] should be
     /// used instead to provide a nice error to the user if the submodule is
     /// missing.
     #[cfg_attr(
