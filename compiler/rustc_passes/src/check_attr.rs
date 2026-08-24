@@ -1221,7 +1221,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match repr {
                 ReprAttr::ReprRust => {
                     if is_explicit_rust {
-                        repeated_repr = true
+                        repeated_repr = true;
                     }
                     is_explicit_rust = true;
                 }
@@ -1250,9 +1250,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     is_simd = true;
                 }
                 ReprAttr::ReprTransparent => {
-                    if is_transparent {
-                        repeated_repr = true;
-                    }
+                    // No need to check for repeated transparent because that is already checked
+                    // when checking for any other attribute together with transparent.
                     is_transparent = true;
                 }
                 ReprAttr::ReprInt(_) => {
