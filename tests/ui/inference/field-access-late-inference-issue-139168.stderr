@@ -1,0 +1,45 @@
+error[E0282]: type annotations needed
+  --> $DIR/field-access-late-inference-issue-139168.rs:12:9
+   |
+LL |     let mut value = Default::default();
+   |         ^^^^^^^^^
+LL |
+LL |     value.value = 100;
+   |     ----- type must be known at this point
+   |
+help: consider giving `value` an explicit type
+   |
+LL |     let mut value: /* Type */ = Default::default();
+   |                  ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/field-access-late-inference-issue-139168.rs:28:9
+   |
+LL |     let value = Default::default();
+   |         ^^^^^
+LL |
+LL |     let _ = value.field;
+   |             ----- type must be known at this point
+   |
+help: consider giving `value` an explicit type
+   |
+LL |     let value: /* Type */ = Default::default();
+   |              ++++++++++++
+
+error[E0282]: type annotations needed for `BTreeMap<{integer}, _>`
+  --> $DIR/field-access-late-inference-issue-139168.rs:35:9
+   |
+LL |     let mut result = BTreeMap::new();
+   |         ^^^^^^^^^^
+LL |
+LL |     result.entry(1).or_default().push(1);
+   |     ---------------------------- type must be known at this point
+   |
+help: consider giving `result` an explicit type, where the type for type parameter `V` is specified
+   |
+LL |     let mut result: BTreeMap<{integer}, V> = BTreeMap::new();
+   |                   ++++++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
