@@ -282,8 +282,7 @@ pub(crate) unsafe fn create_module<'ll>(
         llvm::LLVMRustSetModuleCodeModel(llmod, to_llvm_code_model(sess.code_model()));
     }
 
-    let large_data_threshold = sess.opts.unstable_opts.large_data_threshold.unwrap_or(0);
-    if large_data_threshold != 0 {
+    if let Some(large_data_threshold) = sess.opts.unstable_opts.large_data_threshold {
         unsafe {
             llvm::LLVMRustSetModuleLargeDataThreshold(llmod, large_data_threshold);
         }
