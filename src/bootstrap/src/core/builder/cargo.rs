@@ -1296,10 +1296,13 @@ impl Builder<'_> {
         // separate Cargo projects. We can add LLVM's library path to the
         // rustc args as a workaround.
         if (mode == Mode::ToolRustcPrivate || mode == Mode::Codegen)
-            && let Some(llvm_config) = self.llvm_config(target)
+            && self.is_llvm_enabled_for(target)
         {
-            let llvm_libdir_raw =
-                command(llvm_config).cached().arg("--libdir").run_capture_stdout(self).stdout();
+            let llvm_libdir_raw = command(self.host_llvm_config())
+                .cached()
+                .arg("--libdir")
+                .run_capture_stdout(self)
+                .stdout();
             let llvm_libdir = llvm_libdir_raw.trim();
             if target.is_msvc() {
                 rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
