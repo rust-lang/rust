@@ -2708,7 +2708,7 @@ pub fn _mm_mul_pch(a: __m128h, b: __m128h) -> __m128h {
 #[cfg_attr(test, assert_instr(vfmulcph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_mul_pch(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    unsafe { transmute(vfmulcph_128(transmute(a), transmute(b), transmute(src), k)) }
+    unsafe { transmute(vfmulcph_128(transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a), transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b), transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(src), k)) }
 }
 
 /// Multiply packed complex numbers in a and b, and store the results in dst using zeromask k (the element
@@ -2747,7 +2747,7 @@ pub fn _mm256_mul_pch(a: __m256h, b: __m256h) -> __m256h {
 #[cfg_attr(test, assert_instr(vfmulcph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_mask_mul_pch(src: __m256h, k: __mmask8, a: __m256h, b: __m256h) -> __m256h {
-    unsafe { transmute(vfmulcph_256(transmute(a), transmute(b), transmute(src), k)) }
+    unsafe { transmute(vfmulcph_256(transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(a), transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(b), transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(src), k)) }
 }
 
 /// Multiply packed complex numbers in a and b, and store the results in dst using zeromask k (the element
@@ -2852,9 +2852,9 @@ pub fn _mm512_mask_mul_round_pch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfmulcph_512(
-            transmute(a),
-            transmute(b),
-            transmute(src),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(a),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(b),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(src),
             k,
             ROUNDING,
         ))
@@ -2982,9 +2982,9 @@ pub fn _mm_mask_mul_round_sch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfmulcsh(
-            transmute(a),
-            transmute(b),
-            transmute(src),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(src),
             k,
             ROUNDING,
         ))
@@ -3350,7 +3350,7 @@ pub fn _mm_cmul_pch(a: __m128h, b: __m128h) -> __m128h {
 #[cfg_attr(test, assert_instr(vfcmulcph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_cmul_pch(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    unsafe { transmute(vfcmulcph_128(transmute(a), transmute(b), transmute(src), k)) }
+    unsafe { transmute(vfcmulcph_128(transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a), transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b), transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(src), k)) }
 }
 
 /// Multiply packed complex numbers in a by the complex conjugates of packed complex numbers in b, and
@@ -3392,7 +3392,7 @@ pub fn _mm256_cmul_pch(a: __m256h, b: __m256h) -> __m256h {
 #[cfg_attr(test, assert_instr(vfcmulcph))]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_mask_cmul_pch(src: __m256h, k: __mmask8, a: __m256h, b: __m256h) -> __m256h {
-    unsafe { transmute(vfcmulcph_256(transmute(a), transmute(b), transmute(src), k)) }
+    unsafe { transmute(vfcmulcph_256(transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(a), transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(b), transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(src), k)) }
 }
 
 /// Multiply packed complex numbers in a by the complex conjugates of packed complex numbers in b, and
@@ -3503,9 +3503,9 @@ pub fn _mm512_mask_cmul_round_pch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfcmulcph_512(
-            transmute(a),
-            transmute(b),
-            transmute(src),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(a),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(b),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(src),
             k,
             ROUNDING,
         ))
@@ -3632,9 +3632,9 @@ pub fn _mm_mask_cmul_round_sch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfcmulcsh(
-            transmute(a),
-            transmute(b),
-            transmute(src),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(src),
             k,
             ROUNDING,
         ))
@@ -4006,7 +4006,7 @@ pub fn _mm_maskz_fcmul_round_sch<const ROUNDING: i32>(
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_abs_ph(v2: __m128h) -> __m128h {
-    unsafe { transmute(_mm_and_si128(transmute(v2), _mm_set1_epi16(i16::MAX))) }
+    unsafe { transmute(_mm_and_si128(transmute::<core_arch::x86::__m128h, core_arch::x86::__m128i>(v2), _mm_set1_epi16(i16::MAX))) }
 }
 
 /// Finds the absolute value of each packed half-precision (16-bit) floating-point element in v2, storing
@@ -4018,7 +4018,7 @@ pub const fn _mm_abs_ph(v2: __m128h) -> __m128h {
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_abs_ph(v2: __m256h) -> __m256h {
-    unsafe { transmute(_mm256_and_si256(transmute(v2), _mm256_set1_epi16(i16::MAX))) }
+    unsafe { transmute(_mm256_and_si256(transmute::<core_arch::x86::__m256h, core_arch::x86::__m256i>(v2), _mm256_set1_epi16(i16::MAX))) }
 }
 
 /// Finds the absolute value of each packed half-precision (16-bit) floating-point element in v2, storing
@@ -4030,7 +4030,7 @@ pub const fn _mm256_abs_ph(v2: __m256h) -> __m256h {
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_abs_ph(v2: __m512h) -> __m512h {
-    unsafe { transmute(_mm512_and_si512(transmute(v2), _mm512_set1_epi16(i16::MAX))) }
+    unsafe { transmute(_mm512_and_si512(transmute::<core_arch::x86::__m512h, core_arch::x86::__m512i>(v2), _mm512_set1_epi16(i16::MAX))) }
 }
 
 /// Compute the complex conjugates of complex numbers in a, and store the results in dst. Each complex
@@ -4044,7 +4044,7 @@ pub const fn _mm512_abs_ph(v2: __m512h) -> __m512h {
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_conj_pch(a: __m128h) -> __m128h {
-    unsafe { transmute(_mm_xor_si128(transmute(a), _mm_set1_epi32(i32::MIN))) }
+    unsafe { transmute(_mm_xor_si128(transmute::<core_arch::x86::__m128h, core_arch::x86::__m128i>(a), _mm_set1_epi32(i32::MIN))) }
 }
 
 /// Compute the complex conjugates of complex numbers in a, and store the results in dst using writemask k
@@ -4060,7 +4060,7 @@ pub const fn _mm_conj_pch(a: __m128h) -> __m128h {
 pub const fn _mm_mask_conj_pch(src: __m128h, k: __mmask8, a: __m128h) -> __m128h {
     unsafe {
         let r: __m128 = transmute(_mm_conj_pch(a));
-        transmute(simd_select_bitmask(k, r, transmute(src)))
+        transmute(simd_select_bitmask(k, r, transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(src)))
     }
 }
 
@@ -4088,7 +4088,7 @@ pub const fn _mm_maskz_conj_pch(k: __mmask8, a: __m128h) -> __m128h {
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_conj_pch(a: __m256h) -> __m256h {
-    unsafe { transmute(_mm256_xor_si256(transmute(a), _mm256_set1_epi32(i32::MIN))) }
+    unsafe { transmute(_mm256_xor_si256(transmute::<core_arch::x86::__m256h, core_arch::x86::__m256i>(a), _mm256_set1_epi32(i32::MIN))) }
 }
 
 /// Compute the complex conjugates of complex numbers in a, and store the results in dst using writemask k
@@ -4104,7 +4104,7 @@ pub const fn _mm256_conj_pch(a: __m256h) -> __m256h {
 pub const fn _mm256_mask_conj_pch(src: __m256h, k: __mmask8, a: __m256h) -> __m256h {
     unsafe {
         let r: __m256 = transmute(_mm256_conj_pch(a));
-        transmute(simd_select_bitmask(k, r, transmute(src)))
+        transmute(simd_select_bitmask(k, r, transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(src)))
     }
 }
 
@@ -4132,7 +4132,7 @@ pub const fn _mm256_maskz_conj_pch(k: __mmask8, a: __m256h) -> __m256h {
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_conj_pch(a: __m512h) -> __m512h {
-    unsafe { transmute(_mm512_xor_si512(transmute(a), _mm512_set1_epi32(i32::MIN))) }
+    unsafe { transmute(_mm512_xor_si512(transmute::<core_arch::x86::__m512h, core_arch::x86::__m512i>(a), _mm512_set1_epi32(i32::MIN))) }
 }
 
 /// Compute the complex conjugates of complex numbers in a, and store the results in dst using writemask k
@@ -4148,7 +4148,7 @@ pub const fn _mm512_conj_pch(a: __m512h) -> __m512h {
 pub const fn _mm512_mask_conj_pch(src: __m512h, k: __mmask16, a: __m512h) -> __m512h {
     unsafe {
         let r: __m512 = transmute(_mm512_conj_pch(a));
-        transmute(simd_select_bitmask(k, r, transmute(src)))
+        transmute(simd_select_bitmask(k, r, transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(src)))
     }
 }
 
@@ -4192,7 +4192,7 @@ pub fn _mm_fmadd_pch(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 pub fn _mm_mask_fmadd_pch(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let r: __m128 = transmute(_mm_mask3_fmadd_pch(a, b, c, k)); // using `0xff` would have been fine here, but this is what CLang does
-        transmute(simd_select_bitmask(k, r, transmute(a)))
+        transmute(simd_select_bitmask(k, r, transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a)))
     }
 }
 
@@ -4209,9 +4209,9 @@ pub fn _mm_mask_fmadd_pch(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __
 pub fn _mm_mask3_fmadd_pch(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe {
         transmute(vfmaddcph_mask3_128(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c),
             k,
         ))
     }
@@ -4230,9 +4230,9 @@ pub fn _mm_mask3_fmadd_pch(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> _
 pub fn _mm_maskz_fmadd_pch(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         transmute(vfmaddcph_maskz_128(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c),
             k,
         ))
     }
@@ -4264,7 +4264,7 @@ pub fn _mm256_fmadd_pch(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
 pub fn _mm256_mask_fmadd_pch(a: __m256h, k: __mmask8, b: __m256h, c: __m256h) -> __m256h {
     unsafe {
         let r: __m256 = transmute(_mm256_mask3_fmadd_pch(a, b, c, k)); // using `0xff` would have been fine here, but this is what CLang does
-        transmute(simd_select_bitmask(k, r, transmute(a)))
+        transmute(simd_select_bitmask(k, r, transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(a)))
     }
 }
 
@@ -4281,9 +4281,9 @@ pub fn _mm256_mask_fmadd_pch(a: __m256h, k: __mmask8, b: __m256h, c: __m256h) ->
 pub fn _mm256_mask3_fmadd_pch(a: __m256h, b: __m256h, c: __m256h, k: __mmask8) -> __m256h {
     unsafe {
         transmute(vfmaddcph_mask3_256(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(a),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(b),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(c),
             k,
         ))
     }
@@ -4302,9 +4302,9 @@ pub fn _mm256_mask3_fmadd_pch(a: __m256h, b: __m256h, c: __m256h, k: __mmask8) -
 pub fn _mm256_maskz_fmadd_pch(k: __mmask8, a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe {
         transmute(vfmaddcph_maskz_256(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(a),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(b),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(c),
             k,
         ))
     }
@@ -4416,7 +4416,7 @@ pub fn _mm512_mask_fmadd_round_pch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         let r: __m512 = transmute(_mm512_mask3_fmadd_round_pch::<ROUNDING>(a, b, c, k)); // using `0xffff` would have been fine here, but this is what CLang does
-        transmute(simd_select_bitmask(k, r, transmute(a)))
+        transmute(simd_select_bitmask(k, r, transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(a)))
     }
 }
 
@@ -4448,9 +4448,9 @@ pub fn _mm512_mask3_fmadd_round_pch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfmaddcph_mask3_512(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(a),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(b),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(c),
             k,
             ROUNDING,
         ))
@@ -4485,9 +4485,9 @@ pub fn _mm512_maskz_fmadd_round_pch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfmaddcph_maskz_512(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(a),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(b),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(c),
             k,
             ROUNDING,
         ))
@@ -4575,9 +4575,9 @@ pub fn _mm_fmadd_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m12
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfmaddcsh_mask(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c),
             0xff,
             ROUNDING,
         ))
@@ -4612,8 +4612,8 @@ pub fn _mm_mask_fmadd_round_sch<const ROUNDING: i32>(
 ) -> __m128h {
     unsafe {
         static_assert_rounding!(ROUNDING);
-        let a = transmute(a);
-        let r = vfmaddcsh_mask(a, transmute(b), transmute(c), k, ROUNDING); // using `0xff` would have been fine here, but this is what CLang does
+        let a = transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a);
+        let r = vfmaddcsh_mask(a, transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b), transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c), k, ROUNDING); // using `0xff` would have been fine here, but this is what CLang does
         transmute(_mm_mask_move_ss(a, k, a, r))
     }
 }
@@ -4646,8 +4646,8 @@ pub fn _mm_mask3_fmadd_round_sch<const ROUNDING: i32>(
 ) -> __m128h {
     unsafe {
         static_assert_rounding!(ROUNDING);
-        let c = transmute(c);
-        let r = vfmaddcsh_mask(transmute(a), transmute(b), c, k, ROUNDING);
+        let c = transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c);
+        let r = vfmaddcsh_mask(transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a), transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b), c, k, ROUNDING);
         transmute(_mm_move_ss(c, r))
     }
 }
@@ -4681,9 +4681,9 @@ pub fn _mm_maskz_fmadd_round_sch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfmaddcsh_maskz(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c),
             k,
             ROUNDING,
         ))
@@ -4718,7 +4718,7 @@ pub fn _mm_fcmadd_pch(a: __m128h, b: __m128h, c: __m128h) -> __m128h {
 pub fn _mm_mask_fcmadd_pch(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         let r: __m128 = transmute(_mm_mask3_fcmadd_pch(a, b, c, k)); // using `0xff` would have been fine here, but this is what CLang does
-        transmute(simd_select_bitmask(k, r, transmute(a)))
+        transmute(simd_select_bitmask(k, r, transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a)))
     }
 }
 
@@ -4736,9 +4736,9 @@ pub fn _mm_mask_fcmadd_pch(a: __m128h, k: __mmask8, b: __m128h, c: __m128h) -> _
 pub fn _mm_mask3_fcmadd_pch(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> __m128h {
     unsafe {
         transmute(vfcmaddcph_mask3_128(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c),
             k,
         ))
     }
@@ -4758,9 +4758,9 @@ pub fn _mm_mask3_fcmadd_pch(a: __m128h, b: __m128h, c: __m128h, k: __mmask8) -> 
 pub fn _mm_maskz_fcmadd_pch(k: __mmask8, a: __m128h, b: __m128h, c: __m128h) -> __m128h {
     unsafe {
         transmute(vfcmaddcph_maskz_128(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c),
             k,
         ))
     }
@@ -4794,7 +4794,7 @@ pub fn _mm256_fcmadd_pch(a: __m256h, b: __m256h, c: __m256h) -> __m256h {
 pub fn _mm256_mask_fcmadd_pch(a: __m256h, k: __mmask8, b: __m256h, c: __m256h) -> __m256h {
     unsafe {
         let r: __m256 = transmute(_mm256_mask3_fcmadd_pch(a, b, c, k)); // using `0xff` would have been fine here, but this is what CLang does
-        transmute(simd_select_bitmask(k, r, transmute(a)))
+        transmute(simd_select_bitmask(k, r, transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(a)))
     }
 }
 
@@ -4812,9 +4812,9 @@ pub fn _mm256_mask_fcmadd_pch(a: __m256h, k: __mmask8, b: __m256h, c: __m256h) -
 pub fn _mm256_mask3_fcmadd_pch(a: __m256h, b: __m256h, c: __m256h, k: __mmask8) -> __m256h {
     unsafe {
         transmute(vfcmaddcph_mask3_256(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(a),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(b),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(c),
             k,
         ))
     }
@@ -4834,9 +4834,9 @@ pub fn _mm256_mask3_fcmadd_pch(a: __m256h, b: __m256h, c: __m256h, k: __mmask8) 
 pub fn _mm256_maskz_fcmadd_pch(k: __mmask8, a: __m256h, b: __m256h, c: __m256h) -> __m256h {
     unsafe {
         transmute(vfcmaddcph_maskz_256(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(a),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(b),
+            transmute::<core_arch::x86::__m256h, core_arch::x86::__m256>(c),
             k,
         ))
     }
@@ -4954,7 +4954,7 @@ pub fn _mm512_mask_fcmadd_round_pch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         let r: __m512 = transmute(_mm512_mask3_fcmadd_round_pch::<ROUNDING>(a, b, c, k)); // using `0xffff` would have been fine here, but this is what CLang does
-        transmute(simd_select_bitmask(k, r, transmute(a)))
+        transmute(simd_select_bitmask(k, r, transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(a)))
     }
 }
 
@@ -4987,9 +4987,9 @@ pub fn _mm512_mask3_fcmadd_round_pch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfcmaddcph_mask3_512(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(a),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(b),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(c),
             k,
             ROUNDING,
         ))
@@ -5025,9 +5025,9 @@ pub fn _mm512_maskz_fcmadd_round_pch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfcmaddcph_maskz_512(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(a),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(b),
+            transmute::<core_arch::x86::__m512h, core_arch::x86::__m512>(c),
             k,
             ROUNDING,
         ))
@@ -5121,9 +5121,9 @@ pub fn _mm_fcmadd_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h, c: __m1
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfcmaddcsh_mask(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c),
             0xff,
             ROUNDING,
         ))
@@ -5159,8 +5159,8 @@ pub fn _mm_mask_fcmadd_round_sch<const ROUNDING: i32>(
 ) -> __m128h {
     unsafe {
         static_assert_rounding!(ROUNDING);
-        let a = transmute(a);
-        let r = vfcmaddcsh_mask(a, transmute(b), transmute(c), k, ROUNDING);
+        let a = transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a);
+        let r = vfcmaddcsh_mask(a, transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b), transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c), k, ROUNDING);
         transmute(_mm_mask_move_ss(a, k, a, r))
     }
 }
@@ -5194,8 +5194,8 @@ pub fn _mm_mask3_fcmadd_round_sch<const ROUNDING: i32>(
 ) -> __m128h {
     unsafe {
         static_assert_rounding!(ROUNDING);
-        let c = transmute(c);
-        let r = vfcmaddcsh_mask(transmute(a), transmute(b), c, k, ROUNDING);
+        let c = transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c);
+        let r = vfcmaddcsh_mask(transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a), transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b), c, k, ROUNDING);
         transmute(_mm_move_ss(c, r))
     }
 }
@@ -5230,9 +5230,9 @@ pub fn _mm_maskz_fcmadd_round_sch<const ROUNDING: i32>(
     unsafe {
         static_assert_rounding!(ROUNDING);
         transmute(vfcmaddcsh_maskz(
-            transmute(a),
-            transmute(b),
-            transmute(c),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(a),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(b),
+            transmute::<core_arch::x86::__m128h, core_arch::x86::__m128>(c),
             k,
             ROUNDING,
         ))

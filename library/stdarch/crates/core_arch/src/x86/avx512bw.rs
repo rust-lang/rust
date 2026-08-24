@@ -3348,7 +3348,7 @@ pub const fn _mm_mask_cmple_epu16_mask(k1: __mmask8, a: __m128i, b: __m128i) -> 
     _mm_mask_cmp_epu16_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
-/// Compare packed unsigned 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.   
+/// Compare packed unsigned 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_cmple_epu8_mask&expand=1007)
 #[inline]
@@ -3372,7 +3372,7 @@ pub const fn _mm512_mask_cmple_epu8_mask(k1: __mmask64, a: __m512i, b: __m512i) 
     _mm512_mask_cmp_epu8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
-/// Compare packed unsigned 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.   
+/// Compare packed unsigned 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmple_epu8_mask&expand=1005)
 #[inline]
@@ -3396,7 +3396,7 @@ pub const fn _mm256_mask_cmple_epu8_mask(k1: __mmask32, a: __m256i, b: __m256i) 
     _mm256_mask_cmp_epu8_mask::<_MM_CMPINT_LE>(k1, a, b)
 }
 
-/// Compare packed unsigned 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.   
+/// Compare packed unsigned 8-bit integers in a and b for less-than-or-equal, and store the results in mask vector k.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmple_epu8_mask&expand=1003)
 #[inline]
@@ -7220,7 +7220,7 @@ pub const fn _mm512_slli_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
         if IMM8 >= 16 {
             _mm512_setzero_si512()
         } else {
-            transmute(simd_shl(a.as_u16x32(), u16x32::splat(IMM8 as u16)))
+            transmute::<core_arch::simd::Simd<u16, 32>, core_arch::x86::__m512i>(simd_shl(a.as_u16x32(), u16x32::splat(IMM8 as u16)))
         }
     }
 }
@@ -7266,7 +7266,7 @@ pub const fn _mm512_maskz_slli_epi16<const IMM8: u32>(k: __mmask32, a: __m512i) 
             _mm512_setzero_si512()
         } else {
             let shf = simd_shl(a.as_u16x32(), u16x32::splat(IMM8 as u16));
-            transmute(simd_select_bitmask(k, shf, u16x32::ZERO))
+            transmute::<core_arch::simd::Simd<u16, 32>, core_arch::x86::__m512i>(simd_select_bitmask(k, shf, u16x32::ZERO))
         }
     }
 }
@@ -7312,7 +7312,7 @@ pub const fn _mm256_maskz_slli_epi16<const IMM8: u32>(k: __mmask16, a: __m256i) 
             _mm256_setzero_si256()
         } else {
             let shf = simd_shl(a.as_u16x16(), u16x16::splat(IMM8 as u16));
-            transmute(simd_select_bitmask(k, shf, u16x16::ZERO))
+            transmute::<core_arch::simd::Simd<u16, 16>, core_arch::x86::__m256i>(simd_select_bitmask(k, shf, u16x16::ZERO))
         }
     }
 }
@@ -7358,7 +7358,7 @@ pub const fn _mm_maskz_slli_epi16<const IMM8: u32>(k: __mmask8, a: __m128i) -> _
             _mm_setzero_si128()
         } else {
             let shf = simd_shl(a.as_u16x8(), u16x8::splat(IMM8 as u16));
-            transmute(simd_select_bitmask(k, shf, u16x8::ZERO))
+            transmute::<core_arch::simd::Simd<u16, 8>, core_arch::x86::__m128i>(simd_select_bitmask(k, shf, u16x8::ZERO))
         }
     }
 }
@@ -7624,7 +7624,7 @@ pub const fn _mm512_srli_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
         if IMM8 >= 16 {
             _mm512_setzero_si512()
         } else {
-            transmute(simd_shr(a.as_u16x32(), u16x32::splat(IMM8 as u16)))
+            transmute::<core_arch::simd::Simd<u16, 32>, core_arch::x86::__m512i>(simd_shr(a.as_u16x32(), u16x32::splat(IMM8 as u16)))
         }
     }
 }
@@ -7671,7 +7671,7 @@ pub const fn _mm512_maskz_srli_epi16<const IMM8: i32>(k: __mmask32, a: __m512i) 
             _mm512_setzero_si512()
         } else {
             let shf = simd_shr(a.as_u16x32(), u16x32::splat(IMM8 as u16));
-            transmute(simd_select_bitmask(k, shf, u16x32::ZERO))
+            transmute::<core_arch::simd::Simd<u16, 32>, core_arch::x86::__m512i>(simd_select_bitmask(k, shf, u16x32::ZERO))
         }
     }
 }
@@ -8140,7 +8140,7 @@ pub const fn _mm512_srav_epi16(a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let count = count.as_u16x32();
         let no_overflow: u16x32 = simd_lt(count, u16x32::splat(u16::BITS as u16));
-        let count = simd_select(no_overflow, transmute(count), i16x32::splat(15));
+        let count = simd_select(no_overflow, transmute::<core_arch::simd::Simd<u16, 32>, core_arch::simd::Simd<i16, 32>>(count), i16x32::splat(15));
         simd_shr(a.as_i16x32(), count).as_m512i()
     }
 }
@@ -8192,7 +8192,7 @@ pub const fn _mm256_srav_epi16(a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let count = count.as_u16x16();
         let no_overflow: u16x16 = simd_lt(count, u16x16::splat(u16::BITS as u16));
-        let count = simd_select(no_overflow, transmute(count), i16x16::splat(15));
+        let count = simd_select(no_overflow, transmute::<core_arch::simd::Simd<u16, 16>, core_arch::simd::Simd<i16, 16>>(count), i16x16::splat(15));
         simd_shr(a.as_i16x16(), count).as_m256i()
     }
 }
@@ -8244,7 +8244,7 @@ pub const fn _mm_srav_epi16(a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let count = count.as_u16x8();
         let no_overflow: u16x8 = simd_lt(count, u16x8::splat(u16::BITS as u16));
-        let count = simd_select(no_overflow, transmute(count), i16x8::splat(15));
+        let count = simd_select(no_overflow, transmute::<core_arch::simd::Simd<u16, 8>, core_arch::simd::Simd<i16, 8>>(count), i16x8::splat(15));
         simd_shr(a.as_i16x8(), count).as_m128i()
     }
 }

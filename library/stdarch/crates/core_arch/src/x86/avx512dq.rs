@@ -82,7 +82,7 @@ pub const fn _mm256_maskz_and_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256d
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_and_pd(a: __m512d, b: __m512d) -> __m512d {
-    unsafe { transmute(simd_and(transmute::<_, u64x8>(a), transmute::<_, u64x8>(b))) }
+    unsafe { transmute(simd_and(transmute::<core_arch::x86::__m512d, core_arch::simd::Simd<u64, 8>>(a), transmute::<core_arch::x86::__m512d, core_arch::simd::Simd<u64, 8>>(b))) }
 }
 
 /// Compute the bitwise AND of packed double-precision (64-bit) floating point numbers in a and b
@@ -196,8 +196,8 @@ pub const fn _mm256_maskz_and_ps(k: __mmask8, a: __m256, b: __m256) -> __m256 {
 pub const fn _mm512_and_ps(a: __m512, b: __m512) -> __m512 {
     unsafe {
         transmute(simd_and(
-            transmute::<_, u32x16>(a),
-            transmute::<_, u32x16>(b),
+            transmute::<core_arch::x86::__m512, core_arch::simd::Simd<u32, 16>>(a),
+            transmute::<core_arch::x86::__m512, core_arch::simd::Simd<u32, 16>>(b),
         ))
     }
 }
@@ -315,7 +315,7 @@ pub const fn _mm256_maskz_andnot_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m2
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_andnot_pd(a: __m512d, b: __m512d) -> __m512d {
-    unsafe { _mm512_and_pd(_mm512_xor_pd(a, transmute(_mm512_set1_epi64(-1))), b) }
+    unsafe { _mm512_and_pd(_mm512_xor_pd(a, transmute::<core_arch::x86::__m512i, core_arch::x86::__m512d>(_mm512_set1_epi64(-1))), b) }
 }
 
 /// Compute the bitwise NOT of packed double-precision (64-bit) floating point numbers in a and then
@@ -430,7 +430,7 @@ pub const fn _mm256_maskz_andnot_ps(k: __mmask8, a: __m256, b: __m256) -> __m256
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_andnot_ps(a: __m512, b: __m512) -> __m512 {
-    unsafe { _mm512_and_ps(_mm512_xor_ps(a, transmute(_mm512_set1_epi32(-1))), b) }
+    unsafe { _mm512_and_ps(_mm512_xor_ps(a, transmute::<core_arch::x86::__m512i, core_arch::x86::__m512>(_mm512_set1_epi32(-1))), b) }
 }
 
 /// Compute the bitwise NOT of packed single-precision (32-bit) floating point numbers in a and then
@@ -545,7 +545,7 @@ pub const fn _mm256_maskz_or_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256d 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_or_pd(a: __m512d, b: __m512d) -> __m512d {
-    unsafe { transmute(simd_or(transmute::<_, u64x8>(a), transmute::<_, u64x8>(b))) }
+    unsafe { transmute(simd_or(transmute::<core_arch::x86::__m512d, core_arch::simd::Simd<u64, 8>>(a), transmute::<core_arch::x86::__m512d, core_arch::simd::Simd<u64, 8>>(b))) }
 }
 
 /// Compute the bitwise OR of packed double-precision (64-bit) floating point numbers in a and b and
@@ -659,8 +659,8 @@ pub const fn _mm256_maskz_or_ps(k: __mmask8, a: __m256, b: __m256) -> __m256 {
 pub const fn _mm512_or_ps(a: __m512, b: __m512) -> __m512 {
     unsafe {
         transmute(simd_or(
-            transmute::<_, u32x16>(a),
-            transmute::<_, u32x16>(b),
+            transmute::<core_arch::x86::__m512, core_arch::simd::Simd<u32, 16>>(a),
+            transmute::<core_arch::x86::__m512, core_arch::simd::Simd<u32, 16>>(b),
         ))
     }
 }
@@ -776,7 +776,7 @@ pub const fn _mm256_maskz_xor_pd(k: __mmask8, a: __m256d, b: __m256d) -> __m256d
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm512_xor_pd(a: __m512d, b: __m512d) -> __m512d {
-    unsafe { transmute(simd_xor(transmute::<_, u64x8>(a), transmute::<_, u64x8>(b))) }
+    unsafe { transmute(simd_xor(transmute::<core_arch::x86::__m512d, core_arch::simd::Simd<u64, 8>>(a), transmute::<core_arch::x86::__m512d, core_arch::simd::Simd<u64, 8>>(b))) }
 }
 
 /// Compute the bitwise XOR of packed double-precision (64-bit) floating point numbers in a and b and
@@ -890,8 +890,8 @@ pub const fn _mm256_maskz_xor_ps(k: __mmask8, a: __m256, b: __m256) -> __m256 {
 pub const fn _mm512_xor_ps(a: __m512, b: __m512) -> __m512 {
     unsafe {
         transmute(simd_xor(
-            transmute::<_, u32x16>(a),
-            transmute::<_, u32x16>(b),
+            transmute::<core_arch::x86::__m512, core_arch::simd::Simd<u32, 16>>(a),
+            transmute::<core_arch::x86::__m512, core_arch::simd::Simd<u32, 16>>(b),
         ))
     }
 }

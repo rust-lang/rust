@@ -2738,7 +2738,7 @@ pub const fn _mm256_slli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
         if IMM8 >= 16 {
             _mm256_setzero_si256()
         } else {
-            transmute(simd_shl(a.as_u16x16(), u16x16::splat(IMM8 as u16)))
+            transmute::<core_arch::simd::Simd<u16, 16>, core_arch::x86::__m256i>(simd_shl(a.as_u16x16(), u16x16::splat(IMM8 as u16)))
         }
     }
 }
@@ -2759,7 +2759,7 @@ pub const fn _mm256_slli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
         if IMM8 >= 32 {
             _mm256_setzero_si256()
         } else {
-            transmute(simd_shl(a.as_u32x8(), u32x8::splat(IMM8 as u32)))
+            transmute::<core_arch::simd::Simd<u32, 8>, core_arch::x86::__m256i>(simd_shl(a.as_u32x8(), u32x8::splat(IMM8 as u32)))
         }
     }
 }
@@ -2780,7 +2780,7 @@ pub const fn _mm256_slli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
         if IMM8 >= 64 {
             _mm256_setzero_si256()
         } else {
-            transmute(simd_shl(a.as_u64x4(), u64x4::splat(IMM8 as u64)))
+            transmute::<core_arch::simd::Simd<u64, 4>, core_arch::x86::__m256i>(simd_shl(a.as_u64x4(), u64x4::splat(IMM8 as u64)))
         }
     }
 }
@@ -3005,7 +3005,7 @@ pub const fn _mm_srav_epi32(a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let count = count.as_u32x4();
         let no_overflow: u32x4 = simd_lt(count, u32x4::splat(u32::BITS));
-        let count = simd_select(no_overflow, transmute(count), i32x4::splat(31));
+        let count = simd_select(no_overflow, transmute::<core_arch::simd::Simd<u32, 4>, core_arch::simd::Simd<i32, 4>>(count), i32x4::splat(31));
         simd_shr(a.as_i32x4(), count).as_m128i()
     }
 }
@@ -3023,7 +3023,7 @@ pub const fn _mm256_srav_epi32(a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let count = count.as_u32x8();
         let no_overflow: u32x8 = simd_lt(count, u32x8::splat(u32::BITS));
-        let count = simd_select(no_overflow, transmute(count), i32x8::splat(31));
+        let count = simd_select(no_overflow, transmute::<core_arch::simd::Simd<u32, 8>, core_arch::simd::Simd<i32, 8>>(count), i32x8::splat(31));
         simd_shr(a.as_i32x8(), count).as_m256i()
     }
 }
@@ -3157,7 +3157,7 @@ pub const fn _mm256_srli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
         if IMM8 >= 16 {
             _mm256_setzero_si256()
         } else {
-            transmute(simd_shr(a.as_u16x16(), u16x16::splat(IMM8 as u16)))
+            transmute::<core_arch::simd::Simd<u16, 16>, core_arch::x86::__m256i>(simd_shr(a.as_u16x16(), u16x16::splat(IMM8 as u16)))
         }
     }
 }
@@ -3178,7 +3178,7 @@ pub const fn _mm256_srli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
         if IMM8 >= 32 {
             _mm256_setzero_si256()
         } else {
-            transmute(simd_shr(a.as_u32x8(), u32x8::splat(IMM8 as u32)))
+            transmute::<core_arch::simd::Simd<u32, 8>, core_arch::x86::__m256i>(simd_shr(a.as_u32x8(), u32x8::splat(IMM8 as u32)))
         }
     }
 }
@@ -3199,7 +3199,7 @@ pub const fn _mm256_srli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
         if IMM8 >= 64 {
             _mm256_setzero_si256()
         } else {
-            transmute(simd_shr(a.as_u64x4(), u64x4::splat(IMM8 as u64)))
+            transmute::<core_arch::simd::Simd<u64, 4>, core_arch::x86::__m256i>(simd_shr(a.as_u64x4(), u64x4::splat(IMM8 as u64)))
         }
     }
 }

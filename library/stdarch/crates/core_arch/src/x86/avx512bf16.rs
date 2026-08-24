@@ -385,7 +385,7 @@ pub fn _mm512_maskz_dpbf16_ps(k: __mmask16, src: __m512, a: __m512bh, b: __m512b
 #[target_feature(enable = "avx512bf16,avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_cvtpbh_ps(a: __m256bh) -> __m512 {
-    unsafe { _mm512_castsi512_ps(_mm512_slli_epi32::<16>(_mm512_cvtepi16_epi32(transmute(a)))) }
+    unsafe { _mm512_castsi512_ps(_mm512_slli_epi32::<16>(_mm512_cvtepi16_epi32(transmute::<core_arch::x86::__m256bh, core_arch::x86::__m256i>(a)))) }
 }
 
 /// Converts packed BF16 (16-bit) floating-point elements in a to packed single-precision (32-bit)
@@ -426,7 +426,7 @@ pub fn _mm512_maskz_cvtpbh_ps(k: __mmask16, a: __m256bh) -> __m512 {
 #[target_feature(enable = "avx512bf16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_cvtpbh_ps(a: __m128bh) -> __m256 {
-    unsafe { _mm256_castsi256_ps(_mm256_slli_epi32::<16>(_mm256_cvtepi16_epi32(transmute(a)))) }
+    unsafe { _mm256_castsi256_ps(_mm256_slli_epi32::<16>(_mm256_cvtepi16_epi32(transmute::<core_arch::x86::__m128bh, core_arch::x86::__m128i>(a)))) }
 }
 
 /// Converts packed BF16 (16-bit) floating-point elements in a to packed single-precision (32-bit)
@@ -467,7 +467,7 @@ pub fn _mm256_maskz_cvtpbh_ps(k: __mmask8, a: __m128bh) -> __m256 {
 #[target_feature(enable = "avx512bf16,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_cvtpbh_ps(a: __m128bh) -> __m128 {
-    unsafe { _mm_castsi128_ps(_mm_slli_epi32::<16>(_mm_cvtepi16_epi32(transmute(a)))) }
+    unsafe { _mm_castsi128_ps(_mm_slli_epi32::<16>(_mm_cvtepi16_epi32(transmute::<core_arch::x86::__m128bh, core_arch::x86::__m128i>(a)))) }
 }
 
 /// Converts packed BF16 (16-bit) floating-point elements in a to single-precision (32-bit) floating-point
