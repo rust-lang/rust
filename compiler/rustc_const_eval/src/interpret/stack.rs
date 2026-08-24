@@ -90,7 +90,7 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     ///
     /// Do *not* access this directly; always go through the machine hook!
-    pub locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
+    pub(super) locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
 
     /// The complete variable argument list of this frame. Its elements must be dropped when the
     /// frame is popped.
@@ -168,8 +168,9 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
 
     /// This is a hack because Miri needs a way to visit all the provenance in a `LocalState`
     /// without having a layout or `TyCtxt` available, and we want to keep the `Operand` type
-    /// private.
-    pub fn as_mplace_or_imm(
+    /// private. Does not count as a read of the local for the AM! It's a "ghost" read, like for
+    /// validation or similar purposes.
+    pub fn as_mplace_or_imm_for_validation(
         &self,
     ) -> Option<Either<(Pointer<Option<Prov>>, MemPlaceMeta<Prov>), Immediate<Prov>>> {
         match self.value {
@@ -291,6 +292,10 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
 
     pub fn return_cont(&self) -> ReturnContinuation {
         self.return_cont
+    }
+
+    pub fn locals(&self) -> &IndexVec<mir::Local, LocalState<'tcx, Prov>> {
+        &self.locals
     }
 
     /// Return the `SourceInfo` of the current instruction.

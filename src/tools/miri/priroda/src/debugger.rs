@@ -890,7 +890,7 @@ impl<'tcx> PrirodaContext<'tcx> {
             value: "<unsupported>".to_string(),
         };
 
-        match &frame.locals[local].as_mplace_or_imm() {
+        match &frame.locals()[local].as_mplace_or_imm_for_validation() {
             None => {
                 local_desc.value = "<dead>".to_string();
             }

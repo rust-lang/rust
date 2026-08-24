@@ -345,8 +345,8 @@ impl VisitProvenance for Thread<'_> {
 impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let return_place = self.return_place();
+        let locals = self.locals();
         let Frame {
-            locals,
             extra,
             // There are some private fields we cannot access; they contain no tags.
             ..
@@ -356,7 +356,8 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
         return_place.visit_provenance(visit);
         // Locals.
         for local in locals.iter() {
-            match local.as_mplace_or_imm() {
+            // We only need the provenance so it's good for this to not be a real read.
+            match local.as_mplace_or_imm_for_validation() {
                 None => {}
                 Some(Either::Left((ptr, meta))) => {
                     ptr.visit_provenance(visit);
