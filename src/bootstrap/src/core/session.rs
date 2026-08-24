@@ -3,8 +3,6 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::sync::OnceLock;
 use std::time::{Instant, SystemTime};
 use std::{env, fs, io, str};
 
@@ -295,14 +293,21 @@ impl Session {
             .clone()
             .unwrap_or_else(|| initial_rustc.with_file_name(exe("rustdoc", config.host_target)));
 
-        let initial_sysroot = t!(PathBuf::from_str(
-            command(&initial_rustc)
-                .args(["--print", "sysroot"])
-                .run_in_dry_run()
-                .run_capture_stdout(&config.exec_ctx)
-                .stdout()
-                .trim()
-        ));
+        // Gather both the sysroot and the target libdir to avoid an unnecessary rustc execution
+        // and speed up bootstrap slightly.
+        let rustc_paths = command(&initial_rustc)
+            .args(["--print", "sysroot", "--print", "target-libdir"])
+            .run_in_dry_run()
+            .run_capture_stdout(&config)
+            .stdout();
+        let mut rustc_paths = rustc_paths.lines();
+        let initial_sysroot =
+            rustc_paths.next().map(PathBuf::from).expect("Missing sysroot from initial rustc");
+        let initial_target_libdir = rustc_paths
+            .next()
+            .map(PathBuf::from)
+            .expect("Missing target libdir from initial rustc");
+        assert!(rustc_paths.next().is_none());
 
         let initial_cargo = config.external_cargo.clone().unwrap_or_else(|| {
             download_beta_toolchain(&dwn_ctx, &config.out);
@@ -316,17 +321,9 @@ impl Session {
             fs::create_dir_all(&config.out).expect("Failed to create dry-run directory");
         }
 
-        let initial_target_libdir = command(&initial_rustc)
-            .run_in_dry_run()
-            .args(["--print", "target-libdir"])
-            .run_capture_stdout(&config)
-            .stdout()
-            .trim()
-            .to_owned();
-
-        let initial_target_dir = Path::new(&initial_target_libdir)
+        let initial_target_dir = initial_target_libdir
             .parent()
-            .unwrap_or_else(|| panic!("{initial_target_libdir} has no parent"));
+            .unwrap_or_else(|| panic!("{initial_target_libdir:?} has no parent"));
 
         let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
