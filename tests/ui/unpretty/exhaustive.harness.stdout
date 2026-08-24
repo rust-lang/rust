@@ -1,3 +1,4 @@
+#![feature(prelude_import)]
 //@ revisions: expanded hir harness
 //@[expanded]compile-flags: -Zunpretty=expanded
 //@[expanded]check-pass
@@ -14,40 +15,53 @@
 // rustc_builtin_macros walk the complete AST. `-Zunpretty=expanded` stops
 // before the analyses that make the `hir` revision fail.
 
+#![feature(auto_traits)]
+#![feature(box_patterns)]
+#![feature(builtin_syntax)]
+#![feature(const_trait_impl)]
+#![feature(coroutines)]
+#![feature(decl_macro)]
+#![feature(deref_patterns)]
+#![feature(explicit_tail_calls)]
+#![feature(gen_blocks)]
+#![feature(more_qualified_paths)]
+#![feature(never_patterns)]
+#![feature(never_type)]
+#![feature(pattern_types)]
+#![feature(pattern_type_macro)]
+#![feature(prelude_import)]
+#![feature(specialization)]
+#![feature(trace_macros)]
+#![feature(trait_alias)]
+#![feature(try_blocks)]
+#![feature(try_blocks_heterogeneous)]
+#![feature(yeet_expr)]
 #![allow(incomplete_features)]
-#![attr = Feature([auto_traits#0, box_patterns#0, builtin_syntax#0,
-const_trait_impl#0, coroutines#0, decl_macro#0, deref_patterns#0,
-explicit_tail_calls#0, gen_blocks#0, more_qualified_paths#0, never_patterns#0,
-never_type#0, pattern_types#0, pattern_type_macro#0, prelude_import#0,
-specialization#0, trace_macros#0, trait_alias#0, try_blocks#0,
-try_blocks_heterogeneous#0, yeet_expr#0])]
 extern crate std;
-#[attr = PreludeImport]
+#[prelude_import]
 use std::prelude::rust_2024::*;
 
 mod prelude {
-    use std::prelude::rust_2024::*;
+    pub use std::prelude::rust_2024::*;
 
-    type T = _;
+    pub type T = _;
 
-    trait Trait {
-        const
-        CONST:
-        ();
+    pub trait Trait {
+        const CONST: ();
     }
 }
 
-#[attr = PreludeImport]
+#[prelude_import]
 use self::prelude::*;
 
-/// inner single-line doc comment
-/**
+mod attributes {
+    //! inner single-line doc comment
+    /*!
      * inner multi-line doc comment
      */
-#[doc = "inner doc attribute"]
-#[allow(dead_code, unused_variables)]
-#[attr = NoStd]
-mod attributes {
+    #![doc = "inner doc attribute"]
+    #![allow(dead_code, unused_variables)]
+    #![no_std]
 
     /// outer single-line doc comment
     /**
@@ -56,7 +70,7 @@ mod attributes {
     #[doc = "outer doc attribute"]
     #[doc = "macro"]
     #[allow()]
-    #[attr = Repr {reprs: [ReprC]}]
+    #[repr(C)]
     struct Struct;
 }
 
@@ -74,12 +88,11 @@ mod expressions {
 
     /// ExprKind::ConstBlock
     fn expr_const_block() {
-        const { };
+        const {};
         const { 1 };
-        const
-                {
-                    struct S;
-                };
+        const {
+                struct S;
+            };
     }
 
     /// ExprKind::Call
@@ -120,77 +133,49 @@ mod expressions {
     fn expr_unary() { let expr; *expr; !expr; -expr; }
 
     /// ExprKind::Lit
-    fn expr_lit() { 'x'; 1000i8; 1.00000000000000000000001; }
+    fn expr_lit() { 'x'; 1_000_i8; 1.00000000000000000000001; }
 
     /// ExprKind::Cast
     fn expr_cast() { let expr; expr as T; expr as T<u8>; }
 
     /// ExprKind::Type
-    fn expr_type() { let expr; type_ascribe!(expr, T); }
+    fn expr_type() { let expr; builtin # type_ascribe(expr, T); }
 
     /// ExprKind::Let
     fn expr_let() {
         let b;
-        if let Some(a) = b { }
-        if let _ = true && false { }
-        if let _ = (true && false) { }
+        if let Some(a) = b {}
+        if let _ = true && false {}
+        if let _ = (true && false) {}
     }
 
     /// ExprKind::If
     fn expr_if() {
-        if true { }
-        if !true { }
-        if let true = true { } else { }
-        if true { } else if false { }
-        if true { } else if false { } else { }
+        if true {}
+        if !true {}
+        if let true = true {} else {}
+        if true {} else if false {}
+        if true {} else if false {} else {}
         if true { return; } else if false { 0 } else { 0 }
     }
 
     /// ExprKind::While
     fn expr_while() {
-        loop { if false { } else { break; } }
-        'a: loop { if false { } else { break; } }
-        loop { if let true = true { } else { break; } }
+        while false {}
+        'a: while false {}
+        while let true = true {}
     }
 
     /// ExprKind::ForLoop
-    fn expr_for_loop() {
-        let x;
-        {
-            let _t =
-                match into_iter(x) {
-                    mut iter =>
-                        loop {
-                            match next(&mut iter) {
-                                None {} => break,
-                                Some {  0: _ } => { }
-                            }
-                        },
-                };
-            _t
-        };
-        {
-            let _t =
-                match into_iter(x) {
-                    mut iter =>
-                        'a: loop {
-                            match next(&mut iter) {
-                                None {} => break,
-                                Some {  0: _ } => { }
-                            }
-                        },
-                };
-            _t
-        }
-    }
+    fn expr_for_loop() { let x; for _ in x {} 'a: for _ in x {} }
 
     /// ExprKind::Loop
-    fn expr_loop() { loop { } 'a: loop { } }
+    fn expr_loop() { loop {} 'a: loop {} }
 
     /// ExprKind::Match
     fn expr_match() {
         let value;
-        match value { }
+        match value {}
         match value { ok => 1, }
         match value { ok => 1, err => 0, }
     }
@@ -198,64 +183,56 @@ mod expressions {
     /// ExprKind::Closure
     fn expr_closure() {
         let value;
-        || { };
-        |x| { };
-        |x: u8| { };
+        || {};
+        |x| {};
+        |x: u8| {};
         || ();
         move || value;
-        || |mut _task_context: ResumeTy| { { let _t = value; _t } };
-        move || |mut _task_context: ResumeTy| { { let _t = value; _t } };
-        || value;
-        move || value;
-        || |mut _task_context: ResumeTy| { { let _t = value; _t } };
-        move || |mut _task_context: ResumeTy| { { let _t = value; _t } };
+        async || value;
+        async move || value;
+        static || value;
+        static move || value;
+        (static async || value);
+        (static async move || value);
         || -> u8 { value };
-        1 + (|| { });
+        1 + || {};
     }
 
     /// ExprKind::Block
     fn expr_block() {
-        { }
-        unsafe { }
-        'a: { }
+        {}
+        unsafe {}
+        'a: {}
+
         #[allow()]
-        { }
-        #[allow()]
-        { }
+        {}
+        {
+            #![allow()]
+        }
     }
 
     /// ExprKind::Gen
     fn expr_gen() {
-        |mut _task_context: ResumeTy| { };
-        move |mut _task_context: ResumeTy| { };
-        || { };
-        move || { };
-        |mut _task_context: ResumeTy| { };
-        move |mut _task_context: ResumeTy| { };
+        async {};
+        async move {};
+        gen {};
+        gen move {};
+        async gen {};
+        async gen move {};
     }
 
     /// ExprKind::Await
     fn expr_await() {
         let fut;
-        {
-            fut;
-            (/*ERROR*/)
-        };
+        fut.await;
     }
 
     /// ExprKind::TryBlock
     fn expr_try_block() {
-        { from_output(()) }
-        { return; from_output(()) }
-        type_ascribe!({ from_output(()) }, Option<_>);
-        type_ascribe!({
-                from_output(match branch(None) {
-                        Break {  0: residual } => #[allow(unreachable_code)]
-                            break from_residual(residual),
-                        Continue {  0: val } => #[allow(unreachable_code)]
-                            val,
-                    })
-            }, Option<String>)
+        try {}
+        try { return; }
+        try bikeshed Option<_> {}
+        try bikeshed Option<String> { None? }
     }
 
     /// ExprKind::Assign
@@ -273,19 +250,19 @@ mod expressions {
     /// ExprKind::Range
     fn expr_range() {
         let (lo, hi);
-        RangeFull {  };
-        RangeTo { end: hi };
-        RangeFrom { start: lo };
-        Range { start: lo, end: hi };
-        Range { start: lo, end: hi };
-        RangeToInclusive { end: hi };
-        range_inclusive_new(lo, hi);
-        range_inclusive_new(-2, -1);
+        ..;
+        ..hi;
+        lo..;
+        lo..hi;
+        lo..hi;
+        ..=hi;
+        lo..=hi;
+        -2..=-1;
     }
 
     /// ExprKind::Underscore
     fn expr_underscore() {
-        (/*ERROR*/);
+        _;
     }
 
     /// ExprKind::Path
@@ -294,11 +271,11 @@ mod expressions {
         crate::expressions::expr_path;
         crate::expressions::expr_path::<'static>;
         <T as Default>::default;
-        <T as ::core::default::Default>::default;
-        x;
-        x::<T, T>;
-        crate::expressions::expr_path;
-        core::marker::PhantomData;
+        <T as ::core::default::Default>::default::<>;
+        x::();
+        x::(T, T) -> T;
+        crate::() -> ()::expressions::() -> ()::expr_path;
+        core::()::marker::()::PhantomData;
     }
 
     /// ExprKind::AddrOf
@@ -346,17 +323,16 @@ mod expressions {
 
 
 
-        const { offset_of!(T, field) };
+        const { builtin # offset_of(T, field) };
     }
     /// ExprKind::MacCall
     fn expr_mac_call() { "..."; "..."; "..."; }
     /// ExprKind::Struct
     fn expr_struct() {
-        struct Struct {
-        }
+        struct Struct {}
         let (x, base);
-        Struct {  };
-        <Struct as ToOwned>::Owned {  };
+        Struct {};
+        <Struct as ToOwned>::Owned {};
         Struct { .. };
         Struct { ..base };
         Struct { x };
@@ -369,21 +345,13 @@ mod expressions {
     /// ExprKind::Repeat
     fn expr_repeat() { [(); 0]; }
     /// ExprKind::Paren
-    fn expr_paren() { let expr; expr; }
+    fn expr_paren() { let expr; (expr); }
     /// ExprKind::Try
-    fn expr_try() {
-        let expr;
-        match branch(expr) {
-            Break {  0: residual } => #[allow(unreachable_code)]
-                return from_residual(residual),
-            Continue {  0: val } => #[allow(unreachable_code)]
-                val,
-        };
-    }
+    fn expr_try() { let expr; expr?; }
     /// ExprKind::Yield
-    fn expr_yield() { yield (); yield true; }
+    fn expr_yield() { yield; yield true; }
     /// ExprKind::Yeet
-    fn expr_yeet() { return from_yeet(()); return from_yeet(0); }
+    fn expr_yeet() { do yeet; do yeet 0; }
     /// ExprKind::Become
     fn expr_become() { become true; }
     /// ExprKind::IncludedBytes
@@ -393,12 +361,8 @@ mod expressions {
     /// ExprKind::FormatArgs
     fn expr_format_args() {
         let expr;
-        format_arguments::from_str("");
-        {
-            super let args = (&expr,);
-            super let args = [format_argument::new_display(args.0)];
-            unsafe { format_arguments::new(b"\xc0\x00", &args) }
-        };
+        format_args!("");
+        format_args!("{0}", expr);
     }
 }
 mod items {
@@ -406,84 +370,67 @@ mod items {
     mod item_extern_crate {
         extern crate core;
         extern crate self as unpretty;
-        extern crate core as _;
+        pub extern crate core as _;
     }
     /// ItemKind::Use
     mod item_use {
-        use ::{};
-        use crate::expressions;
-        use crate::items::item_use;
-        use core::*;
+        use crate::{expressions, items::item_use};
+        pub use core::*;
     }
     /// ItemKind::Static
     mod item_static {
-        static A: () = { };
-        static mut B: () = { };
+        pub static A: () = {};
+        static mut B: () = {};
     }
     /// ItemKind::Const
     mod item_const {
-        const A: () = { };
+        pub const A: () = {};
         trait TraitItems {
-            const
-            B:
-            ();
-            const
-            C:
-            ()
-            =
-            { };
+            const B: ();
+            const C: () = {};
         }
     }
     /// ItemKind::Fn
     mod item_fn {
-        const unsafe extern "C" fn f() { }
-        async unsafe extern "C" fn g()
-            ->
-                /*impl Trait*/ |mut _task_context: ResumeTy|
-            { { let _t = { }; _t } }
-        fn h<'a, T>() where T: 'a { }
+        pub const unsafe extern "C" fn f() {}
+        pub async unsafe extern "C" fn g() {}
+        fn h<'a, T>() where T: 'a {}
         trait TraitItems {
             unsafe extern "C" fn f();
         }
         impl TraitItems for _ {
-            unsafe extern "C" fn f() { }
+            default unsafe extern "C" fn f() {}
         }
     }
     /// ItemKind::Mod
     mod item_mod { }
     /// ItemKind::ForeignMod
     mod item_foreign_mod {
-        extern "Rust" { }
-        extern "C" { }
+        unsafe extern "C++" {}
+        unsafe extern "C" {}
     }
     /// ItemKind::GlobalAsm: see exhaustive-asm.rs
     /// ItemKind::TyAlias
     mod item_ty_alias {
-        type Type<'a> where T: 'a = T;
+        pub type Type<'a> where T: 'a = T;
     }
     /// ItemKind::Enum
     mod item_enum {
-        enum Void { }
-        enum Empty {
-            Unit,
-            Tuple(),
-            Struct {
-                },
-        }
+        pub enum Void {}
+        enum Empty { Unit, Tuple(), Struct {}, }
         enum Generic<'a, T> where T: 'a {
             Tuple(T),
             Struct {
-                    t: T,
-                },
+                t: T,
+            },
         }
     }
     /// ItemKind::Struct
     mod item_struct {
-        struct Unit;
+        pub struct Unit;
         struct Tuple();
         struct Newtype(Unit);
-        struct Struct {
-        }
+        struct Struct {}
         struct Generic<'a, T> where T: 'a {
             t: T,
         }
@@ -496,37 +443,39 @@ mod items {
     }
     /// ItemKind::Trait
     mod item_trait {
-        auto unsafe trait Send { }
-        trait Trait<'a>: Sized where Self: 'a { }
+        pub unsafe auto trait Send {}
+        trait Trait<'a>: Sized where Self: 'a {}
     }
     /// ItemKind::TraitAlias
     mod item_trait_alias {
-        trait Trait<T> = Sized where for<'a> T: 'a;
+        pub trait Trait<T> = Sized where for<'a> T: 'a;
     }
     /// ItemKind::Impl
     mod item_impl {
-        impl () { }
-        impl <T> () { }
-        impl Default for () { }
-        impl <T> const Default for () { }
+        impl () {}
+        impl<T> () {}
+        impl Default for () {}
+        const impl<T> Default for () {}
     }
     /// ItemKind::MacCall
     mod item_mac_call { }
     /// ItemKind::MacroDef
     mod item_macro_def {
         macro_rules! mac { () => {...}; }
-        macro stringify { () => {} }
+        pub macro stringify { () => {} }
     }
     /// ItemKind::Delegation
-    /** FIXME: todo */
-    mod item_delegation { }
+    mod item_delegation {
+        /*! FIXME: todo */
+    }
     /// ItemKind::DelegationMac
-    /** FIXME: todo */
-    mod item_delegation_mac { }
+    mod item_delegation_mac {
+        /*! FIXME: todo */
+    }
 }
 mod patterns {
     /// PatKind::Missing
-    fn pat_missing() { let _: for fn(u32, T, &'_ str); }
+    fn pat_missing() { let _: fn(u32, T, &str); }
     /// PatKind::Wild
     fn pat_wild() { let _; }
     /// PatKind::Ident
@@ -535,19 +484,19 @@ mod patterns {
         let ref x;
         let mut x;
         let ref mut x;
-        let ref mut x@_;
+        let ref mut x @ _;
     }
     /// PatKind::Struct
     fn pat_struct() {
         let T {};
         let T::<T> {};
         let T::<'static> {};
-        let T {  x };
-        let T {  x: _x };
+        let T { x };
+        let T { x: _x };
         let T { .. };
-        let T {  x, .. };
-        let T {  x: _x, .. };
-        let T {  0: _x, .. };
+        let T { x, .. };
+        let T { x: _x, .. };
+        let T { 0: _x, .. };
         let <T as ToOwned>::Owned {};
     }
     /// PatKind::TupleStruct
@@ -561,7 +510,7 @@ mod patterns {
         let Tuple(x, ..);
     }
     /// PatKind::Or
-    fn pat_or() { let true | false; let true; let true | false; }
+    fn pat_or() { let (true | false); let (true); let (true | false); }
     /// PatKind::Path
     fn pat_path() {
         let core::marker::PhantomData;
@@ -578,17 +527,17 @@ mod patterns {
     /// PatKind::Ref
     fn pat_ref() { let &pat; let &mut pat; }
     /// PatKind::Expr
-    fn pat_expr() { let 1000i8; let -""; }
+    fn pat_expr() { let 1_000_i8; let -""; }
     /// PatKind::Range
-    fn pat_range() { let ..1; let 0...; let 0..1; let 0...1; let -2...-1; }
+    fn pat_range() { let ..1; let 0..; let 0..1; let 0..=1; let -2..=-1; }
     /// PatKind::Slice
     fn pat_slice() { let []; let [true]; let [true]; let [true, false]; }
     /// PatKind::Rest
-    fn pat_rest() { let _; }
+    fn pat_rest() { let ..; }
     /// PatKind::Never
     fn pat_never() { let !; let Some(!); }
     /// PatKind::Paren
-    fn pat_paren() { let pat; }
+    fn pat_paren() { let (pat); }
     /// PatKind::MacCall
     fn pat_mac_call() { let ""; let ""; let ""; }
 }
@@ -602,8 +551,7 @@ mod statements {
     }
     /// StmtKind::Item
     fn stmt_item() {
-        struct Struct {
-        }
+        struct Struct {}
         struct Unit;
     }
     /// StmtKind::Expr
@@ -611,7 +559,7 @@ mod statements {
     /// StmtKind::Semi
     fn stmt_semi() { 1 + 1; }
     /// StmtKind::Empty
-    fn stmt_empty() { }
+    fn stmt_empty() { ; }
     /// StmtKind::MacCall
     fn stmt_mac_call() { "..."; "..."; "..."; }
 }
@@ -650,35 +598,37 @@ mod types {
         let _: T<'static>;
         let _: T<T>;
         let _: T<T>;
-        let _: T;
+        let _: T() -> !;
         let _: <T as ToOwned>::Owned;
     }
     /// TyKind::TraitObject
     fn ty_trait_object() {
         let _: dyn Send;
         let _: dyn Send + 'static;
-        let _: dyn Send + 'static;
+        let _: dyn 'static + Send;
         let _: dyn for<'a> Send;
     }
     /// TyKind::ImplTrait
     const fn ty_impl_trait() {
-        let _: (/*ERROR*/);
-        let _: (/*ERROR*/);
-        let _: (/*ERROR*/);
-        let _: (/*ERROR*/);
-        let _: (/*ERROR*/);
-        let _: (/*ERROR*/);
+        let _: impl Send;
+        let _: impl Send + 'static;
+        let _: impl 'static + Send;
+        let _: impl ?Sized;
+        let _: impl [const] Clone;
+        let _: impl for<'a> Send;
     }
     /// TyKind::Paren
-    fn ty_paren() { let _: T; }
+    fn ty_paren() { let _: (T); }
     /// TyKind::Typeof
-    /** unused for now */
-    fn ty_typeof() { }
+    fn ty_typeof() {
+        /*! unused for now */
+    }
     /// TyKind::Infer
     fn ty_infer() { let _: _; }
     /// TyKind::ImplicitSelf
-    /** there is no syntax for this */
-    fn ty_implicit_self() { }
+    fn ty_implicit_self() {
+        /*! there is no syntax for this */
+    }
     /// TyKind::MacCall
     fn ty_mac_call() {
         macro_rules! ty { ($ty:ty) => { $ty } }
@@ -687,26 +637,34 @@ mod types {
         let _: T;
     }
     /// TyKind::CVarArgs
-    /** FIXME: todo */
-    fn ty_c_var_args() { }
+    fn ty_c_var_args() {
+        /*! FIXME: todo */
+    }
     /// TyKind::Pat
-    fn ty_pat() { let _: u32 is 1..=RangeMax; }
+    fn ty_pat() { let _: u32 is const 1..; }
 }
 mod visibilities {
     /// VisibilityKind::Public
     mod visibility_public {
-        struct Pub;
+        pub struct Pub;
     }
     /// VisibilityKind::Restricted
     mod visibility_restricted {
-        struct PubCrate;
-        struct PubSelf;
-        struct PubSuper;
-        struct PubInCrate;
-        struct PubInSelf;
-        struct PubInSuper;
-        struct PubInCrateVisibilities;
-        struct PubInSelfSuper;
-        struct PubInSuperMod;
+        pub(crate) struct PubCrate;
+        pub(self) struct PubSelf;
+        pub(super) struct PubSuper;
+        pub(in crate) struct PubInCrate;
+        pub(in self) struct PubInSelf;
+        pub(in super) struct PubInSuper;
+        pub(in crate::visibilities) struct PubInCrateVisibilities;
+        pub(in self::super) struct PubInSelfSuper;
+        pub(in super::visibility_restricted) struct PubInSuperMod;
     }
+}
+#[rustc_main]
+#[coverage(off)]
+#[doc(hidden)]
+pub fn main() -> () {
+    extern crate test;
+    test::test_main_static(&[])
 }
