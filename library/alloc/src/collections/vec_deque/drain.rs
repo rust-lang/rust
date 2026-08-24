@@ -1,6 +1,6 @@
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
-use core::mem::{self, SizedTypeProperties};
+use core::mem::{self, DropGuard, SizedTypeProperties};
 use core::ptr::NonNull;
 use core::{fmt, ptr};
 
@@ -93,140 +93,133 @@ unsafe impl<T: Send, A: Allocator + Send> Send for Drain<'_, T, A> {}
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> Drop for Drain<'_, T, A> {
     fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T, A: Allocator>(&'r mut Drain<'a, T, A>);
+        // Dropping `guard` handles moving the remaining elements into place.
+        let mut guard = DropGuard::new(self, |this| {
+            if mem::needs_drop::<T>() && this.remaining != 0 {
+                unsafe {
+                    // SAFETY: We just checked that `self.remaining != 0`.
+                    let (front, back) = this.as_slices();
+                    ptr::drop_in_place(front);
+                    ptr::drop_in_place(back);
+                }
+            }
 
-        let guard = DropGuard(self);
+            let source_deque = unsafe { this.deque.as_mut() };
 
-        if mem::needs_drop::<T>() && guard.0.remaining != 0 {
+            let drain_len = this.drain_len;
+            let head_len = source_deque.len; // #elements in front of the drain
+            let tail_len = this.tail_len; // #elements behind the drain
+            let new_len = head_len + tail_len;
+
+            if T::IS_ZST {
+                // no need to copy around any memory if T is a ZST
+                source_deque.len = new_len;
+                return;
+            }
+
+            // Next, we will fill the hole left by the drain with as few writes as possible.
+            // The code below handles the following control flow and reduces the amount of
+            // branches under the assumption that `head_len == 0 || tail_len == 0`, i.e.
+            // draining at the front or at the back of the dequeue is especially common.
+            //
+            // H = "head index" = `deque.head`
+            // h = elements in front of the drain
+            // d = elements in the drain
+            // t = elements behind the drain
+            //
+            // Note that the buffer may wrap at any point and the wrapping is handled by
+            // `wrap_copy` and `to_physical_idx`.
+            //
+            // Case 1: if `head_len == 0 && tail_len == 0`
+            // Everything was drained, reset the head index back to 0.
+            //             H
+            // [ . . . . . d d d d . . . . . ]
+            //   H
+            // [ . . . . . . . . . . . . . . ]
+            //
+            // Case 2: else if `tail_len == 0`
+            // Don't move data or the head index.
+            //         H
+            // [ . . . h h h h d d d d . . . ]
+            //         H
+            // [ . . . h h h h . . . . . . . ]
+            //
+            // Case 3: else if `head_len == 0`
+            // Don't move data, but move the head index.
+            //         H
+            // [ . . . d d d d t t t t . . . ]
+            //                 H
+            // [ . . . . . . . t t t t . . . ]
+            //
+            // Case 4: else if `tail_len <= head_len`
+            // Move data, but not the head index.
+            //       H
+            // [ . . h h h h d d d d t t . . ]
+            //       H
+            // [ . . h h h h t t . . . . . . ]
+            //
+            // Case 5: else
+            // Move data and the head index.
+            //       H
+            // [ . . h h d d d d t t t t . . ]
+            //               H
+            // [ . . . . . . h h t t t t . . ]
+
+            // When draining at the front (`.drain(..n)`) or at the back (`.drain(n..)`),
+            // we don't need to copy any data. The number of elements copied would be 0.
+            if head_len != 0 && tail_len != 0 {
+                join_head_and_tail_wrapping(source_deque, drain_len, head_len, tail_len);
+                // Marking this function as cold helps LLVM to eliminate it entirely if
+                // this branch is never taken.
+                // We use `#[cold]` instead of `#[inline(never)]`, because inlining this
+                // function into the general case (`.drain(n..m)`) is fine.
+                // See `tests/codegen-llvm/vecdeque-drain.rs` for a test.
+                #[cold]
+                fn join_head_and_tail_wrapping<T, A: Allocator>(
+                    source_deque: &mut VecDeque<T, A>,
+                    drain_len: usize,
+                    head_len: usize,
+                    tail_len: usize,
+                ) {
+                    // Pick whether to move the head or the tail here.
+                    let (src, dst, len);
+                    if head_len < tail_len {
+                        src = source_deque.head;
+                        dst = source_deque.to_wrapped_index(drain_len);
+                        len = head_len;
+                    } else {
+                        src = source_deque.to_wrapped_index(head_len + drain_len);
+                        dst = source_deque.to_wrapped_index(head_len);
+                        len = tail_len;
+                    };
+
+                    unsafe {
+                        source_deque.wrap_copy(src, dst, len);
+                    }
+                }
+            }
+
+            if new_len == 0 {
+                // Special case: If the entire deque was drained, reset the head back to 0,
+                // like `.clear()` does.
+                source_deque.head = WrappedIndex::zero();
+            } else if head_len < tail_len {
+                // If we moved the head above, then we need to adjust the head index here.
+                source_deque.head = source_deque.to_wrapped_index(drain_len);
+            }
+            source_deque.len = new_len;
+        });
+
+        if mem::needs_drop::<T>() && guard.remaining != 0 {
             unsafe {
                 // SAFETY: We just checked that `self.remaining != 0`.
-                let (front, back) = guard.0.as_slices();
+                let (front, back) = guard.as_slices();
                 // since idx is a logical index, we don't need to worry about wrapping.
-                guard.0.idx += front.len();
-                guard.0.remaining -= front.len();
+                guard.idx += front.len();
+                guard.remaining -= front.len();
                 ptr::drop_in_place(front);
-                guard.0.remaining = 0;
+                guard.remaining = 0;
                 ptr::drop_in_place(back);
-            }
-        }
-
-        // Dropping `guard` handles moving the remaining elements into place.
-        impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
-            #[inline]
-            fn drop(&mut self) {
-                if mem::needs_drop::<T>() && self.0.remaining != 0 {
-                    unsafe {
-                        // SAFETY: We just checked that `self.remaining != 0`.
-                        let (front, back) = self.0.as_slices();
-                        ptr::drop_in_place(front);
-                        ptr::drop_in_place(back);
-                    }
-                }
-
-                let source_deque = unsafe { self.0.deque.as_mut() };
-
-                let drain_len = self.0.drain_len;
-                let head_len = source_deque.len; // #elements in front of the drain
-                let tail_len = self.0.tail_len; // #elements behind the drain
-                let new_len = head_len + tail_len;
-
-                if T::IS_ZST {
-                    // no need to copy around any memory if T is a ZST
-                    source_deque.len = new_len;
-                    return;
-                }
-
-                // Next, we will fill the hole left by the drain with as few writes as possible.
-                // The code below handles the following control flow and reduces the amount of
-                // branches under the assumption that `head_len == 0 || tail_len == 0`, i.e.
-                // draining at the front or at the back of the dequeue is especially common.
-                //
-                // H = "head index" = `deque.head`
-                // h = elements in front of the drain
-                // d = elements in the drain
-                // t = elements behind the drain
-                //
-                // Note that the buffer may wrap at any point and the wrapping is handled by
-                // `wrap_copy` and `to_physical_idx`.
-                //
-                // Case 1: if `head_len == 0 && tail_len == 0`
-                // Everything was drained, reset the head index back to 0.
-                //             H
-                // [ . . . . . d d d d . . . . . ]
-                //   H
-                // [ . . . . . . . . . . . . . . ]
-                //
-                // Case 2: else if `tail_len == 0`
-                // Don't move data or the head index.
-                //         H
-                // [ . . . h h h h d d d d . . . ]
-                //         H
-                // [ . . . h h h h . . . . . . . ]
-                //
-                // Case 3: else if `head_len == 0`
-                // Don't move data, but move the head index.
-                //         H
-                // [ . . . d d d d t t t t . . . ]
-                //                 H
-                // [ . . . . . . . t t t t . . . ]
-                //
-                // Case 4: else if `tail_len <= head_len`
-                // Move data, but not the head index.
-                //       H
-                // [ . . h h h h d d d d t t . . ]
-                //       H
-                // [ . . h h h h t t . . . . . . ]
-                //
-                // Case 5: else
-                // Move data and the head index.
-                //       H
-                // [ . . h h d d d d t t t t . . ]
-                //               H
-                // [ . . . . . . h h t t t t . . ]
-
-                // When draining at the front (`.drain(..n)`) or at the back (`.drain(n..)`),
-                // we don't need to copy any data. The number of elements copied would be 0.
-                if head_len != 0 && tail_len != 0 {
-                    join_head_and_tail_wrapping(source_deque, drain_len, head_len, tail_len);
-                    // Marking this function as cold helps LLVM to eliminate it entirely if
-                    // this branch is never taken.
-                    // We use `#[cold]` instead of `#[inline(never)]`, because inlining this
-                    // function into the general case (`.drain(n..m)`) is fine.
-                    // See `tests/codegen-llvm/vecdeque-drain.rs` for a test.
-                    #[cold]
-                    fn join_head_and_tail_wrapping<T, A: Allocator>(
-                        source_deque: &mut VecDeque<T, A>,
-                        drain_len: usize,
-                        head_len: usize,
-                        tail_len: usize,
-                    ) {
-                        // Pick whether to move the head or the tail here.
-                        let (src, dst, len);
-                        if head_len < tail_len {
-                            src = source_deque.head;
-                            dst = source_deque.to_wrapped_index(drain_len);
-                            len = head_len;
-                        } else {
-                            src = source_deque.to_wrapped_index(head_len + drain_len);
-                            dst = source_deque.to_wrapped_index(head_len);
-                            len = tail_len;
-                        };
-
-                        unsafe {
-                            source_deque.wrap_copy(src, dst, len);
-                        }
-                    }
-                }
-
-                if new_len == 0 {
-                    // Special case: If the entire deque was drained, reset the head back to 0,
-                    // like `.clear()` does.
-                    source_deque.head = WrappedIndex::zero();
-                } else if head_len < tail_len {
-                    // If we moved the head above, then we need to adjust the head index here.
-                    source_deque.head = source_deque.to_wrapped_index(drain_len);
-                }
-                source_deque.len = new_len;
             }
         }
     }
