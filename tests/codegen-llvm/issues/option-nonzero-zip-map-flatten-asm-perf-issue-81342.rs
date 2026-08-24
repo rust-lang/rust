@@ -1,6 +1,7 @@
 // Regression tests for https://github.com/rust-lang/rust/issues/81342
 // foo and bar should generate the same, efficient assembly code
 //@ compile-flags: -O
+//@ only-64bit
 #![crate_type = "lib"]
 
 use std::num::NonZeroUsize;
