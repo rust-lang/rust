@@ -13,7 +13,7 @@ trait Trait {
 impl dyn Trait {
     extern "rust-call" fn f(#[rustc_splat] _: ()) where Self: Sized {}
     //~^ ERROR `#[rustc_splat]` is not allowed in the arguments of functions with the `rust-call` ABI
-    //~| ERROR the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
+    //~| ERROR the size for values of type `dyn Trait + 'static` cannot be known at compilation time
 }
 
 fn main() {}

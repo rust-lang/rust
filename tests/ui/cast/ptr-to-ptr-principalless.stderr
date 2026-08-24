@@ -1,4 +1,4 @@
-error[E0606]: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<(dyn Send + 'b)>` is invalid
+error[E0606]: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<dyn Send + 'b>` is invalid
   --> $DIR/ptr-to-ptr-principalless.rs:63:5
    |
 LL |     x as _
@@ -6,7 +6,7 @@ LL |     x as _
    |
    = note: the trait objects may have different vtables
 
-error[E0606]: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<(dyn Send + 'static)>` is invalid
+error[E0606]: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<dyn Send + 'static>` is invalid
   --> $DIR/ptr-to-ptr-principalless.rs:70:5
    |
 LL |     x as _

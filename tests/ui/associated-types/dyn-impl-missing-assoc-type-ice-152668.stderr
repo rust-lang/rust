@@ -1,10 +1,10 @@
-error[E0277]: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Vector2 + 'static` cannot be known at compilation time
   --> $DIR/dyn-impl-missing-assoc-type-ice-152668.rs:10:5
    |
 LL |     fn sub(self, rhs: Self) -> Self::Output {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Vector2 + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Vector2 + 'static`
 note: required by an implicit `Sized` bound in `Sub`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
@@ -16,23 +16,23 @@ LL | impl Sub for dyn Vector2 {
    |
    = help: implement the missing item: `type Output = /* Type */;`
 
-error[E0277]: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Vector2 + 'static` cannot be known at compilation time
   --> $DIR/dyn-impl-missing-assoc-type-ice-152668.rs:7:14
    |
 LL | impl Sub for dyn Vector2 {
    |              ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Vector2 + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Vector2 + 'static`
 note: required by an implicit `Sized` bound in `Sub`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
-error[E0277]: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Vector2 + 'static` cannot be known at compilation time
   --> $DIR/dyn-impl-missing-assoc-type-ice-152668.rs:10:32
    |
 LL |     fn sub(self, rhs: Self) -> Self::Output {}
    |                                ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Vector2 + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Vector2 + 'static`
 note: required by an implicit `Sized` bound in `Sub`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
@@ -44,31 +44,31 @@ LL |     fn sub(self, rhs: Self) -> Self::Output {}
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
    |
-   = note: expected associated type `<(dyn Vector2 + 'static) as Sub>::Output`
+   = note: expected associated type `<dyn Vector2 + 'static as Sub>::Output`
                     found unit type `()`
-   = help: consider constraining the associated type `<(dyn Vector2 + 'static) as Sub>::Output` to `()` or calling a method that returns `<(dyn Vector2 + 'static) as Sub>::Output`
+   = help: consider constraining the associated type `<dyn Vector2 + 'static as Sub>::Output` to `()` or calling a method that returns `<dyn Vector2 + 'static as Sub>::Output`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
-error[E0277]: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Vector2 + 'static` cannot be known at compilation time
   --> $DIR/dyn-impl-missing-assoc-type-ice-152668.rs:10:12
    |
 LL |     fn sub(self, rhs: Self) -> Self::Output {}
    |            ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Vector2 + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Vector2 + 'static`
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     fn sub(&self, rhs: Self) -> Self::Output {}
    |            +
 
-error[E0277]: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `dyn Vector2 + 'static` cannot be known at compilation time
   --> $DIR/dyn-impl-missing-assoc-type-ice-152668.rs:10:23
    |
 LL |     fn sub(self, rhs: Self) -> Self::Output {}
    |                       ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Vector2 + 'static)`
+   = help: the trait `Sized` is not implemented for `dyn Vector2 + 'static`
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |

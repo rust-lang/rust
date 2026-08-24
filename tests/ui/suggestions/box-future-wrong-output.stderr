@@ -6,7 +6,7 @@ LL |     let _: BoxFuture<'static, bool> = async {}.boxed();
    |            |
    |            expected due to this
    |
-   = note: expected struct `Pin<Box<(dyn Future<Output = bool> + Send + 'static)>>`
+   = note: expected struct `Pin<Box<dyn Future<Output = bool> + Send + 'static>>`
               found struct `Pin<Box<dyn Future<Output = ()> + Send>>`
 
 error: aborting due to 1 previous error

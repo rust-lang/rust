@@ -16,6 +16,6 @@ pub trait Foo {
 }
 
 pub struct Wrap<U: Foo>(<dyn Trait<i32, Assoc = i64> as Trait<U::FooAssoc>>::Assoc);
-//~^ ERROR: the trait bound `(dyn Trait<i32, Assoc = i64> + 'static): Trait<<U as Foo>::FooAssoc>` is not satisfied
+//~^ ERROR: the trait bound `dyn Trait<i32, Assoc = i64> + 'static: Trait<<U as Foo>::FooAssoc>` is not satisfied
 
 fn main() {}

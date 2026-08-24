@@ -173,10 +173,10 @@ error[E0223]: ambiguous associated type
 LL | type G = dyn 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: if there were a trait named `Example` with associated type `AssocTy` implemented for `(dyn Send + 'static)`, you could use the fully-qualified path
+help: if there were a trait named `Example` with associated type `AssocTy` implemented for `dyn Send + 'static`, you could use the fully-qualified path
    |
 LL - type G = dyn 'static + (Send)::AssocTy;
-LL + type G = <(dyn Send + 'static) as Example>::AssocTy;
+LL + type G = <dyn Send + 'static as Example>::AssocTy;
    |
 
 error[E0782]: expected a type, found a trait

@@ -1,4 +1,4 @@
-<svg width="785px" height="434px" xmlns="http://www.w3.org/2000/svg">
+<svg width="768px" height="434px" xmlns="http://www.w3.org/2000/svg">
   <style>
     .fg { fill: #AAAAAA }
     .bg { fill: #000000 }
@@ -37,9 +37,9 @@
 </tspan>
     <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="172px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: expected fn pointer `</tspan><tspan class="fg-magenta bold">for&lt;'a&gt; </tspan><tspan>fn(Box&lt;</tspan><tspan class="fg-magenta bold">(dyn Any + Send + 'a)</tspan><tspan>&gt;) -&gt; Pin&lt;_&gt;`</tspan>
+    <tspan x="10px" y="172px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: expected fn pointer `</tspan><tspan class="fg-magenta bold">for&lt;'a&gt; </tspan><tspan>fn(Box&lt;</tspan><tspan class="fg-magenta bold">dyn Any + Send + 'a</tspan><tspan>&gt;) -&gt; Pin&lt;_&gt;`</tspan>
 </tspan>
-    <tspan x="10px" y="190px"><tspan>                 found fn item `fn(Box&lt;</tspan><tspan class="fg-magenta bold">(dyn Any + Send + 'static)</tspan><tspan>&gt;) -&gt; Pin&lt;_&gt;</tspan><tspan class="fg-magenta bold"> {wrapped_fn}</tspan><tspan>`</tspan>
+    <tspan x="10px" y="190px"><tspan>                 found fn item `fn(Box&lt;</tspan><tspan class="fg-magenta bold">dyn Any + Send + 'static</tspan><tspan>&gt;) -&gt; Pin&lt;_&gt;</tspan><tspan class="fg-magenta bold"> {wrapped_fn}</tspan><tspan>`</tspan>
 </tspan>
     <tspan x="10px" y="208px"><tspan class="fg-bright-green bold">note</tspan><tspan>: function defined here</tspan>
 </tspan>
