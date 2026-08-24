@@ -16,7 +16,7 @@ pub fn syscall<'tcx>(
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let ([op], varargs) = ecx.check_shim_sig_variadic(
-        shim_sig_variadic!(extern "C" fn(isize) -> isize),
+        shim_sig!(extern "C" fn(isize, ...) -> isize),
         (link_name, abi, args),
     )?;
     // The syscall variadic function is legal to call with more arguments than needed,
