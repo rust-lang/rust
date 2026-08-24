@@ -1,4 +1,3 @@
-#![feature(box_patterns)]
 #![feature(deref_patterns)]
 #![feature(macro_metavar_expr)]
 #![feature(rustc_private)]
