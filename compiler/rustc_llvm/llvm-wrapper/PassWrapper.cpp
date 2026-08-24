@@ -1185,6 +1185,11 @@ extern "C" void LLVMRustSetModuleCodeModel(LLVMModuleRef M,
   unwrap(M)->setCodeModel(*CM);
 }
 
+extern "C" void LLVMRustSetModuleLargeDataThreshold(LLVMModuleRef M,
+                                                    uint64_t Threshold) {
+  unwrap(M)->setLargeDataThreshold(Threshold);
+}
+
 // Here you'll find an implementation of ThinLTO as used by the Rust compiler
 // right now. This ThinLTO support is only enabled on "recent ish" versions of
 // LLVM, and otherwise it's just blanket rejected from other compilers.
