@@ -1,9 +1,8 @@
 use std::sync::LazyLock as Lazy;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_lint::LintStore;
-use rustc_lint_defs::{Lint, LintId, declare_tool_lint};
-use rustc_session::{Session, lint};
+use rustc_lint::{self as lint, Lint, LintId, LintStore, declare_tool_lint};
+use rustc_session::Session;
 
 /// This function is used to setup the lint initialization. By default, in rustdoc, everything
 /// is "allowed". Depending if we run in test mode or not, we want some of them to be at their
@@ -210,6 +209,17 @@ declare_rustdoc_lint! {
     "detects unused footnote definitions"
 }
 
+declare_rustdoc_lint! {
+    /// This lint is **warn-by-default**. It detects unescaped pipes in table rows which
+    /// lead to some row cells being ignored. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_markdown_table
+    INVALID_MARKDOWN_TABLE,
+    Warn,
+    "detects unescaped pipe in table rows in doc comments"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -225,6 +235,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         REDUNDANT_EXPLICIT_LINKS,
         BROKEN_FOOTNOTE,
         UNUSED_FOOTNOTE_DEFINITION,
+        INVALID_MARKDOWN_TABLE,
     ]
 });
 

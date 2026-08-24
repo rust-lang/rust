@@ -442,7 +442,7 @@ pub fn expect_fragment<'t>(
     }
 
     let res = cursor.crossed();
-    tt_iter.flat_advance(res.len());
+    tt_iter.flat_advance_to(&cursor);
 
     ExpandResult { value: res, err }
 }

@@ -10,8 +10,7 @@ use rustc_hir::{
     BindingMode, Block, Expr, ExprKind, HirId, HirIdMap, HirIdSet, LetStmt, LocalSource, MatchSource, Node, Pat,
     PatKind, Stmt, StmtKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 use std::borrow::Cow;
 

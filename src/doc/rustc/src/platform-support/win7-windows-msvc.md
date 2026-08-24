@@ -54,7 +54,7 @@ Windows SDK, which can be acquired using [`xwin`](https://github.com/Jake-Shadle
 
 - Install `clang-cl` and `lld-link` on your machine, and make sure they are in
   your $PATH.
-- Install `xwin`: `cargo install xwin`
+- Install `xwin`: `cargo install --locked xwin`
 - Use `xwin` to install the Windows SDK: `xwin splat --output winsdk`
 - Create an `xwin-lld-link` script with the following content:
 

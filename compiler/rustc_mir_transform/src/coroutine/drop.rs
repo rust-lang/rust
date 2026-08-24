@@ -27,6 +27,23 @@ impl<'tcx> MutVisitor<'tcx> for FixReturnPendingVisitor<'tcx> {
             && let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind
         {
             *args = self.tcx.mk_args(&[self.tcx.types.unit.into()]);
+        } else if let Rvalue::Use(Operand::Constant(constant), _) = rvalue {
+            if let Some(async_gen_pending_def_id) = self.tcx.lang_items().async_gen_pending()
+                && let Const::Unevaluated(unevaluated, _) = constant.const_
+                && unevaluated.def == async_gen_pending_def_id
+            {
+                let poll_def_id = self.tcx.lang_items().poll().unwrap();
+                *rvalue = Rvalue::Aggregate(
+                    Box::new(AggregateKind::Adt(
+                        poll_def_id,
+                        VariantIdx::from_u32(1),
+                        self.tcx.mk_args(&[self.tcx.types.unit.into()]),
+                        None,
+                        None,
+                    )),
+                    IndexVec::new(),
+                );
+            }
         }
     }
 }

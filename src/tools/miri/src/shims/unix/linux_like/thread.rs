@@ -39,7 +39,7 @@ pub fn prctl<'tcx>(
             let thread = ecx.pthread_self()?;
             let len = Scalar::from_target_usize(TASK_COMM_LEN, ecx);
             ecx.check_ptr_access(
-                name.to_pointer(ecx)?,
+                name.to_pointer(ecx),
                 Size::from_bytes(TASK_COMM_LEN),
                 CheckInAllocMsg::MemoryAccess,
             )?;

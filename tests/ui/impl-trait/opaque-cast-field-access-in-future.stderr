@@ -8,6 +8,7 @@ LL |     loop {}
    |     ------- return type was inferred to be `!` here
    |
    = note: the type must implement `Future`
+   = note: cannot satisfy `<_ as Future>::Output == ()`
 
 error: aborting due to 1 previous error
 

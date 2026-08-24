@@ -2,8 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::leaks_droppable_temporary_with_limited_lifetime;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind, HirId, MatchSource, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::edition::Edition::Edition2021;
 
 declare_clippy_lint! {

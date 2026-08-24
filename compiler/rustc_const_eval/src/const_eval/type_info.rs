@@ -61,7 +61,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         // Fill all fields of the `TypeInfo` struct.
         for (idx, field) in ty_struct.fields.iter_enumerated() {
             let field_dest = self.project_field(dest, idx)?;
-            let ptr_bit_width = || self.tcx.data_layout.pointer_size().bits();
             match field.name {
                 sym::kind => {
                     let variant_index = match ty.kind() {
@@ -115,33 +114,19 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                                 self.project_downcast_named(&field_dest, sym::Char)?;
                             variant
                         }
-                        ty::Int(int_ty) => {
-                            let (variant, variant_place) =
+                        ty::Int(_) => {
+                            let (variant, _variant_place) =
                                 self.project_downcast_named(&field_dest, sym::Int)?;
-                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_int_type_info(
-                                place,
-                                int_ty.bit_width().unwrap_or_else(/* isize */ ptr_bit_width),
-                                true,
-                            )?;
                             variant
                         }
-                        ty::Uint(uint_ty) => {
-                            let (variant, variant_place) =
+                        ty::Uint(_) => {
+                            let (variant, _variant_place) =
                                 self.project_downcast_named(&field_dest, sym::Int)?;
-                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_int_type_info(
-                                place,
-                                uint_ty.bit_width().unwrap_or_else(/* usize */ ptr_bit_width),
-                                false,
-                            )?;
                             variant
                         }
-                        ty::Float(float_ty) => {
-                            let (variant, variant_place) =
+                        ty::Float(_) => {
+                            let (variant, _variant_place) =
                                 self.project_downcast_named(&field_dest, sym::Float)?;
-                            let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_float_type_info(place, float_ty.bit_width())?;
                             variant
                         }
                         ty::Str => {
@@ -313,48 +298,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             }
         }
 
-        interp_ok(())
-    }
-
-    fn write_int_type_info(
-        &mut self,
-        place: impl Writeable<'tcx, CtfeProvenance>,
-        bit_width: u64,
-        signed: bool,
-    ) -> InterpResult<'tcx> {
-        for (field_idx, field) in
-            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
-        {
-            let field_place = self.project_field(&place, field_idx)?;
-            match field.name {
-                sym::bits => self.write_scalar(
-                    Scalar::from_u32(bit_width.try_into().expect("bit_width overflowed")),
-                    &field_place,
-                )?,
-                sym::signed => self.write_scalar(Scalar::from_bool(signed), &field_place)?,
-                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
-            }
-        }
-        interp_ok(())
-    }
-
-    fn write_float_type_info(
-        &mut self,
-        place: impl Writeable<'tcx, CtfeProvenance>,
-        bit_width: u64,
-    ) -> InterpResult<'tcx> {
-        for (field_idx, field) in
-            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
-        {
-            let field_place = self.project_field(&place, field_idx)?;
-            match field.name {
-                sym::bits => self.write_scalar(
-                    Scalar::from_u32(bit_width.try_into().expect("bit_width overflowed")),
-                    &field_place,
-                )?,
-                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
-            }
-        }
         interp_ok(())
     }
 

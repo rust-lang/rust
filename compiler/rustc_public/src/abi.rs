@@ -55,7 +55,7 @@ pub enum PassMode {
     /// The argument has a layout abi of `ScalarPair`.
     Pair(Opaque, Opaque),
     /// Pass the argument after casting it.
-    Cast { pad_i32: bool, cast: Opaque },
+    Cast { pad_i32_count: u8, cast: Opaque },
     /// Pass the argument indirectly via a hidden pointer.
     Indirect { attrs: Opaque, meta_attrs: Opaque, on_stack: bool },
 }

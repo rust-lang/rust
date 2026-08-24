@@ -124,7 +124,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match method {
             SpecialAllocatorMethod::Alloc | SpecialAllocatorMethod::AllocZeroed => {
                 let [size, align] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::Rust, link_name, args)?;
                 let size = this.read_target_usize(size)?;
                 let align = this.read_target_usize(align)?;
 
@@ -145,7 +145,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             SpecialAllocatorMethod::Dealloc => {
                 let [ptr, old_size, align] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let old_size = this.read_target_usize(old_size)?;
                 let align = this.read_target_usize(align)?;
@@ -159,7 +159,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             SpecialAllocatorMethod::Realloc => {
                 let [ptr, old_size, align, new_size] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let old_size = this.read_target_usize(old_size)?;
                 let align = this.read_target_usize(align)?;

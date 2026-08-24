@@ -19,8 +19,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv, MsrvStack};
 use rustc_ast::{self as ast, AttrArgs, AttrKind, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, ImplItemKind, Item, ItemKind, TraitFn, TraitItem, TraitItemKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext as _};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::sym;
 use utils::is_lint_level;
 
@@ -573,9 +572,8 @@ impl PostExpansionEarlyAttributes {
 }
 
 impl EarlyLintPass for PostExpansionEarlyAttributes {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, _krate: &ast::Crate) {
         blanket_clippy_restriction_lints::check_command_line(cx);
-        duplicated_attributes::check(cx, &krate.attrs);
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
@@ -631,8 +629,15 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
         }
 
         mixed_attributes_style::check(cx, item.span, &item.attrs);
-        duplicated_attributes::check(cx, &item.attrs);
     }
 
-    extract_msrv_attr!();
+    fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[Attribute]) {
+        self.msrv.check_attributes(attrs);
+        duplicated_attributes::check(cx, attrs);
+        msrvs::check_attrs(cx.sess(), attrs);
+    }
+
+    fn check_attributes_post(&mut self, _cx: &EarlyContext<'_>, attrs: &[Attribute]) {
+        self.msrv.check_attributes_post(attrs);
+    }
 }

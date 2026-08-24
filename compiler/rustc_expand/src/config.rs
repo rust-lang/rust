@@ -21,6 +21,7 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, REMOVED_LANG_FEATURES,
     UNSTABLE_LANG_FEATURES,
 };
+use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
@@ -259,7 +260,7 @@ impl<'a> StripUnconfigured<'a> {
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
             self.sess.psess.buffer_lint(
-                rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
+                UNUSED_ATTRIBUTES,
                 cfg_attr.span,
                 ast::CRATE_NODE_ID,
                 crate::diagnostics::CfgAttrNoAttributes,

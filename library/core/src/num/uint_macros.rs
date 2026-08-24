@@ -565,7 +565,7 @@ macro_rules! uint_impl {
         /// This operation can be thought of as concatenating `self` and `right` into an
         /// integer twice the size of
         #[doc = concat!("`", stringify!($SelfT) , "`,")]
-        /// performing a right shift by `n`, and returning the **left half** of the result.
+        /// performing a right shift by `n`, and returning the **right half** of the result.
         ///
         /// The name comes from "funneling" a wider integer to a narrower integer.
         ///
@@ -4168,7 +4168,7 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[deprecated(since = "CURRENT_RUSTC_VERSION", note = "replaced by the `MIN` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MIN` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_min_value")]
         pub const fn min_value() -> Self { Self::MIN }
 
@@ -4180,7 +4180,7 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[deprecated(since = "CURRENT_RUSTC_VERSION", note = "replaced by the `MAX` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MAX` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self { Self::MAX }
 

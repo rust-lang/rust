@@ -143,17 +143,18 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
         // is both expensive (depending on the size of the clauses) and a pure function.
         let index = *self
             .tcx
+            .caches
             .highest_var_in_clauses_cache
             .lock()
             .entry(c)
             .or_insert_with(|| highest_var_in_clauses(c));
         let c_args = &self.var_values[..=index];
 
-        if let Some(c) = self.tcx.clauses_cache.lock().get(&(c, c_args)) {
+        if let Some(c) = self.tcx.caches.clauses_cache.lock().get(&(c, c_args)) {
             c
         } else {
             let folded = c.super_fold_with(self);
-            self.tcx.clauses_cache.lock().insert((c, c_args), folded);
+            self.tcx.caches.clauses_cache.lock().insert((c, c_args), folded);
             folded
         }
     }

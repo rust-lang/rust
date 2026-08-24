@@ -1,0 +1,42 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Priroda: Start DAP Server",
+            "type": "process",
+            "command": "cargo",
+            "args": [
+                "run",
+                "--manifest-path",
+                "${workspaceFolder}/Cargo.toml",
+                "--",
+                "--dap",
+                "--port",
+                "4711",
+                "--sysroot",
+                "${env:MIRI_SYSROOT}",
+                "../tests/pass/empty_main.rs"
+            ],
+            "isBackground": true,
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated"
+            },
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^(.*)$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".",
+                    "endsPattern": "priroda dap listening on 127\\.0\\.0\\.1:4711"
+                }
+            }
+        }
+    ]
+}

@@ -14,7 +14,8 @@ use rustc_middle::middle::exported_symbols::{
 };
 use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::Session;
-use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
+use rustc_session::config::{self, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
+use rustc_structures::CrateType;
 use rustc_target::spec::{Arch, Cc, CfgAbi, LinkOutputKind, LinkerFlavor, Lld, Os};
 use tracing::{debug, warn};
 
@@ -413,7 +414,7 @@ impl<'a> GccLinker<'a> {
             config::OptLevel::Aggressive => "O3",
         };
 
-        if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
+        if let Some(path) = &self.sess.opts.cg.profile_sample_use {
             self.link_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
         let prefix = if self.codegen_backend == "gcc" {

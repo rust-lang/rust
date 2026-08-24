@@ -31,6 +31,7 @@ use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_infer::traits::TraitErrors;
+use rustc_lint_defs::builtin::MUST_NOT_SUSPEND;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, CoroutineArgs, CoroutineArgsExt, Ty, TyCtxt, TypingMode};
@@ -692,7 +693,7 @@ fn check_must_not_suspend_def(
     if let Some(reason_str) = find_attr!(tcx, def_id, MustNotSupend {reason} => reason) {
         let reason = reason_str.map(|s| MustNotSuspendReason { span: data.source_span, reason: s });
         tcx.emit_node_span_lint(
-            rustc_session::lint::builtin::MUST_NOT_SUSPEND,
+            MUST_NOT_SUSPEND,
             hir_id,
             data.source_span,
             MustNotSupend {

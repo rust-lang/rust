@@ -35,30 +35,6 @@ help: you might have meant to write a path instead of an associated type bound
 LL |     c: Vec<foo::A>,
    |                +
 
-error[E0107]: struct takes at least 1 generic argument but 0 generic arguments were supplied
-  --> $DIR/struct-field-type-including-single-colon.rs:20:8
-   |
-LL |     c: Vec<foo:A>,
-   |        ^^^ expected at least 1 generic argument
-   |
-help: add missing generic argument
-   |
-LL |     c: Vec<T, foo:A>,
-   |            ++
+error: aborting due to 3 previous errors
 
-error[E0229]: associated item constraints are not allowed here
-  --> $DIR/struct-field-type-including-single-colon.rs:20:12
-   |
-LL |     c: Vec<foo:A>,
-   |            ^^^^^ associated item constraint not allowed here
-   |
-help: consider removing this associated item constraint
-   |
-LL -     c: Vec<foo:A>,
-LL +     c: Vec,
-   |
-
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0107, E0229, E0405.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0405`.

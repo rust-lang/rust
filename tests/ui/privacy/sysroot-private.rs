@@ -21,6 +21,8 @@ trait Trait { type Bar; }
 // present in diagnostics (it is a dependency of the compiler).
 type AssociatedTy = dyn Trait<ExpressionStack = i32, Bar = i32>;
 //~^ ERROR associated type `ExpressionStack` not found
+//[default]~| HELP `Trait` has the following associated type
+//[default]~| SUGGESTION Bar
 //[rustc_private_enabled]~| NOTE there is an associated type `ExpressionStack` in the trait `gimli::read::op::EvaluationStorage`
 
 // Attempt to get a suggestion for `hashbrown::Equivalent`
@@ -31,6 +33,11 @@ trait Trait2<K>: Equivalent<K> {}
 // Attempt to get a suggestion for `hashbrown::Equivalent::equivalent`
 fn trait_member<T>(val: &T, key: &K) -> bool {
     //~^ ERROR cannot find type `K`
+    //~| NOTE not found in this scope
+    //~| SUGGESTION K
+    //~| SUGGESTION T
+    //~| HELP you might be missing a type parameter
+    //~| HELP a type parameter with a similar name exists
     //~| NOTE similarly named
     val.equivalent(key)
 }
@@ -40,4 +47,5 @@ fn free_function(buf: &[u8]) -> Option<usize> {
     memchr2(b'a', b'b', buf)
     //~^ ERROR cannot find function
     //~| NOTE not found
+
 }

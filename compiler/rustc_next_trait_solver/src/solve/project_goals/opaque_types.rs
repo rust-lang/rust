@@ -16,7 +16,7 @@ where
     #[tracing::instrument(skip(self))]
     pub(super) fn normalize_opaque_type(
         &mut self,
-        goal: Goal<I, ty::ProjectionPredicate<I>>,
+        goal: Goal<I, ty::ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let opaque_ty = goal.predicate.projection_term;

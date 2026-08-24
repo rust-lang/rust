@@ -97,6 +97,13 @@ Thanks! <3
 """
 label = "O-ARM"
 
+[ping.arm-maintainers]
+message = """\
+Dear ARM Maintainers, your feedback has been requested on this issue/PR.
+Thanks! <3
+"""
+label = "O-ARM"
+
 [ping.loongarch]
 message = """\
 Hey LoongArch Group! This issue has been identified as a good "LoongArch candidate".
@@ -843,7 +850,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: beta-nominated"
 message_on_add = [
     """\
-@*T-libs* PR #{number} "{title}" has been nominated for beta backport.
+@*T-libs-fcp* PR #{number} "{title}" has been nominated for beta backport.
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -867,7 +874,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: stable-nominated"
 message_on_add = [
     """\
-@**channel** PR #{number} "{title}" has been nominated for stable backport.
+@*T-libs-fcp* PR #{number} "{title}" has been nominated for stable backport.
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -1303,11 +1310,19 @@ cc = ["@TaKO8Ki", "@JonathanBrouwer"]
 message = "This PR changes rustc_public"
 cc = ["@oli-obk", "@celinval", "@ouz-a", "@makai410"]
 
-[mentions."compiler/rustc_target/src/spec"]
+[mentions."compiler/rustc_target/src/spec/targets"]
 message = """
 These commits modify **compiler targets**.
 (See the [Target Tier Policy](https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html).)
 """
+
+[mentions."compiler/rustc_target/src/spec/consistency.rs"]
+message = "Target consistency checks are being changed"
+cc = ["@RalfJung"]
+
+[mentions."compiler/rustc_target/src/target_features.rs"]
+message = "Target features are being changed; ensure all ABI effects are being accounted for"
+cc = ["@RalfJung"]
 
 [mentions."src/doc/style-guide"]
 cc = ["@rust-lang/style"]
@@ -1573,6 +1588,7 @@ cc = ["@rust-lang/wg-const-eval"]
 [assign]
 warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
+llm_policy_url = "https://forge.rust-lang.org/policies/llm-usage.html"
 
 [[assign.warn_non_default_branch.exceptions]]
 title = "[beta"
@@ -1605,7 +1621,6 @@ infra-ci = [
     "@Mark-Simulacrum",
     "@Kobzol",
     "@marcoieni",
-    "@jdno",
     "@jieyouxu",
     "@ubiratansoares"
 ]
@@ -1800,7 +1815,7 @@ dep-bumps = [
 # ------------------------------------------------------------------------------
 
 [no-merges]
-exclude_titles = ["Rollup of", "subtree update", "Subtree update"]
+exclude_titles = ["Rollup of", "subtree update", "Subtree update", "subtree sync", "Subtree sync"]
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
 [github-releases]

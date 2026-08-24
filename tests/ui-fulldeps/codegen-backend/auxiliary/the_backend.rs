@@ -8,6 +8,7 @@ extern crate rustc_driver as _;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
+extern crate rustc_structures;
 
 use std::any::Any;
 
@@ -58,8 +59,9 @@ impl CodegenBackend for TheBackend {
     ) {
         use std::io::Write;
 
-        use rustc_session::config::{CrateType, OutFileName};
+        use rustc_session::config::OutFileName;
         use rustc_session::output::out_filename;
+        use rustc_structures::CrateType;
 
         let crate_name = crate_info.local_crate_name;
         for &crate_type in sess.opts.crate_types.iter() {

@@ -162,6 +162,7 @@ pub struct Command {
     startupinfo_untrusted_source: bool,
     startupinfo_force_feedback: Option<bool>,
     inherit_handles: bool,
+    desktop: Option<Vec<u16>>,
 }
 
 pub enum Stdio {
@@ -191,6 +192,7 @@ impl Command {
             startupinfo_untrusted_source: false,
             startupinfo_force_feedback: None,
             inherit_handles: true,
+            desktop: None,
         }
     }
 
@@ -215,6 +217,7 @@ impl Command {
     pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
     }
+
     pub fn show_window(&mut self, cmd_show: Option<u16>) {
         self.show_window = cmd_show;
     }
@@ -237,6 +240,10 @@ impl Command {
 
     pub fn startupinfo_force_feedback(&mut self, enabled: Option<bool>) {
         self.startupinfo_force_feedback = enabled;
+    }
+
+    pub fn desktop(&mut self, desktop: &OsStr) {
+        self.desktop = Some(desktop.encode_wide().chain([0]).collect());
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -389,6 +396,10 @@ impl Command {
                 si.dwFlags |= c::STARTF_FORCEOFFFEEDBACK;
             }
             None => {}
+        }
+
+        if let Some(desktop) = &mut self.desktop {
+            si.lpDesktop = desktop.as_mut_ptr();
         }
 
         let si_ptr: *mut c::STARTUPINFOW;

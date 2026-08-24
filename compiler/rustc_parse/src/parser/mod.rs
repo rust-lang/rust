@@ -36,8 +36,9 @@ use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, BinOpKind, ByRef, Const, CoroutineKind,
-    DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasTokens, ImplRestriction, MutRestriction,
-    Mutability, Recovered, RestrictionKind, Safety, StrLit, Visibility, VisibilityKind,
+    CoroutineMarker, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, Extern, HasTokens, ImplRestriction,
+    MutRestriction, Mutability, Recovered, RestrictionKind, Safety, StrLit, Visibility,
+    VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -495,9 +496,7 @@ impl<'a> Parser<'a> {
 
     // Check the first token after the delimiter that closes the current
     // delimited sequence. (Panics if used in the outermost token stream, which
-    // has no delimiters.) It uses a clone of the relevant tree cursor to skip
-    // past the entire `TokenTree::Delimited` in a single step, avoiding the
-    // need for unbounded token lookahead.
+    // has no delimiters.)
     //
     // Primarily used when `self.token` matches `OpenInvisible(_))`, to look
     // ahead through the current metavar expansion.
@@ -1124,7 +1123,7 @@ impl<'a> Parser<'a> {
     pub fn bump(&mut self) {
         // Note: destructuring here would give nicer code, but it was found in #96210 to be slower
         // than `.0`/`.1` access.
-        let mut next = self.token_cursor.inlined_next();
+        let mut next = self.token_cursor.inlined_next_and_bump();
         self.num_bump_calls += 1;
         // We got a token from the underlying cursor and no longer need to
         // worry about an unglued token. See `break_and_eat` for more details.
@@ -1152,8 +1151,8 @@ impl<'a> Parser<'a> {
         // Typically around 98% of the `dist > 0` cases have `dist == 1`, so we
         // have a fast special case for that.
         if dist == 1 {
-            // `look_ahead(0)` returns the *next* token.
-            match self.token_cursor.look_ahead(0) {
+            // `look_ahead(1)` returns the next token.
+            match self.token_cursor.look_ahead(1) {
                 Some(tree) => {
                     // Indexing stayed within the current token tree.
                     match tree {
@@ -1179,13 +1178,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        // Just clone the token cursor and use `next`, skipping delimiters as
+        // Just clone the token cursor and use `next_and_bump`, skipping delimiters as
         // necessary. Slow but simple.
         let mut cursor = self.token_cursor.clone();
         let mut i = 0;
         let mut token = Token::dummy();
         while i < dist {
-            token = cursor.next().0;
+            token = cursor.next_and_bump().0;
             if let token::OpenInvisible(origin) | token::CloseInvisible(origin) = token.kind
                 && origin.skip()
             {
@@ -1197,14 +1196,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Like `look_ahead`, but skips over token trees rather than tokens. Useful
-    /// when looking past possible metavariable pasting sites.
+    /// when looking past possible metavariable pasting sites. Panics if `dist` is zero.
     pub fn tree_look_ahead<R>(
         &self,
         dist: usize,
         looker: impl FnOnce(&TokenTree) -> R,
     ) -> Option<R> {
-        assert_ne!(dist, 0);
-        self.token_cursor.look_ahead(dist - 1).map(looker)
+        self.token_cursor.look_ahead(dist).map(looker)
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
@@ -1212,8 +1210,8 @@ impl<'a> Parser<'a> {
         self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
     }
 
-    /// Parses asyncness: `async` or nothing.
-    fn parse_coroutine_kind(&mut self, case: Case) -> Option<CoroutineKind> {
+    /// Parses optional coroutine marker: `async`/`gen`/`async gen`.
+    fn parse_coroutine_marker(&mut self, case: Case) -> Option<CoroutineMarker> {
         let span = self.token_uninterpolated_span();
         if self.eat_keyword_case(exp!(Async), case) {
             // FIXME(gen_blocks): Do we want to unconditionally parse `gen` and then
@@ -1222,29 +1220,18 @@ impl<'a> Parser<'a> {
                 && self.eat_keyword_case(exp!(Gen), case)
             {
                 let gen_span = self.prev_token_uninterpolated_span();
-                Some(CoroutineKind::AsyncGen {
-                    span: span.to(gen_span),
-                    closure_id: DUMMY_NODE_ID,
-                    return_impl_trait_id: DUMMY_NODE_ID,
-                })
+                Some((CoroutineKind::AsyncGen, span.to(gen_span)))
             } else {
-                Some(CoroutineKind::Async {
-                    span,
-                    closure_id: DUMMY_NODE_ID,
-                    return_impl_trait_id: DUMMY_NODE_ID,
-                })
+                Some((CoroutineKind::Async, span))
             }
         } else if self.token_uninterpolated_span().at_least_rust_2024()
             && self.eat_keyword_case(exp!(Gen), case)
         {
-            Some(CoroutineKind::Gen {
-                span,
-                closure_id: DUMMY_NODE_ID,
-                return_impl_trait_id: DUMMY_NODE_ID,
-            })
+            Some((CoroutineKind::Gen, span))
         } else {
             None
         }
+        .map(|(kind, span)| CoroutineMarker::new(kind, span))
     }
 
     /// Parses fn unsafety: `unsafe`, `safe` or nothing.
@@ -1421,7 +1408,7 @@ impl<'a> Parser<'a> {
                 debug_assert_eq!(self.token_cursor.depth(), target_depth);
             } else {
                 loop {
-                    // Advance one token at a time, so `TokenCursor::next()`
+                    // Advance one token at a time, so `TokenCursor::next_and_bump()`
                     // can capture these tokens if necessary.
                     self.bump();
                     if self.token_cursor.depth() == target_depth {

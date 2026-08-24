@@ -25,7 +25,8 @@ struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
     callee: FnVal<'tcx, M::ExtraFnVal>,
     args: Vec<FnArg<'tcx, M::Provenance>>,
     fn_sig: ty::FnSig<'tcx>,
-    fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+    /// None if LLVM intrinsic
+    fn_abi: Option<&'tcx FnAbi<'tcx, Ty<'tcx>>>,
     /// True if the function is marked as `#[track_caller]` ([`ty::InstanceKind::requires_caller_location`])
     with_caller_location: bool,
 }
@@ -491,13 +492,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ty::FnPtr(..) => {
                 let fn_ptr = self.read_pointer(&func)?;
                 let fn_val = self.get_ptr_fn(fn_ptr)?;
-                (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
+                (fn_val, Some(self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?), false)
             }
             ty::FnDef(def_id, args) => {
                 let instance = self.resolve(def_id, args.no_bound_vars().unwrap())?;
+                // Don't compute FnAbi for LLVM intrinsics. Trying to do that would panic.
+                // Rust intrinsics however *do* need a FnAbi as we may invoke the
+                // fallback body like a regular function.
+                let has_fn_abi = !matches!(instance.def, ty::InstanceKind::LlvmIntrinsic(_));
                 (
                     FnVal::Instance(instance),
-                    self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?,
+                    has_fn_abi
+                        .then(|| self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args))
+                        .transpose()?,
                     instance.def.requires_caller_location(*self.tcx),
                 )
             }
@@ -576,8 +583,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     with_caller_location,
                     &dest_place,
                     target,
-                    if fn_abi.can_unwind { unwind } else { mir::UnwindAction::Unreachable },
+                    if fn_abi.map_or(false, |fn_abi| fn_abi.can_unwind) {
+                        unwind
+                    } else {
+                        mir::UnwindAction::Unreachable
+                    },
                 )?;
+
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
                 // did a jump to another block. We disable the sanity check for functions that
                 // can't return, since Miri sometimes does have to keep the location the same

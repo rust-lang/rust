@@ -766,8 +766,32 @@ fn relative_file(
     }
 }
 
-fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
-    let mut tt = TtElement::Subtree(tt.top_subtree(), tt.iter());
+fn parse_string(tt: &tt::TopSubtree, allow_rest_args: bool) -> Result<(Symbol, Span), ExpandError> {
+    let expect_literal = |span| ExpandError::other(span, "expected string literal");
+    let mut tt = {
+        let mut tt_iter = tt.iter();
+        let extracted =
+            tt_iter.next().ok_or_else(|| expect_literal(tt.top_subtree().delimiter.close))?;
+
+        match tt_iter.next() {
+            None => {}
+            Some(TtElement::Leaf(tt::Leaf::Punct(it))) if it.char == ',' => {
+                // Tail comma
+                // FIXME: Ignored like env!("NAME", "compile_error message")
+                if let Some(tt) = tt_iter.next()
+                    && !allow_rest_args
+                {
+                    return Err(ExpandError::other(tt.first_span(), "unexpected input"));
+                }
+            }
+            Some(tt) => {
+                return Err(ExpandError::other(tt.first_span(), "unexpected input"));
+            }
+        }
+
+        extracted
+    };
+
     (|| {
         // FIXME: We wrap expression fragments in parentheses which can break this expectation
         // here
@@ -795,7 +819,7 @@ fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
             TtElement::Subtree(tt, _) => Err(tt.delimiter.open.cover(tt.delimiter.close)),
         }
     })()
-    .map_err(|span| ExpandError::other(span, "expected string literal"))
+    .map_err(expect_literal)
 }
 
 fn include_expand(
@@ -827,7 +851,7 @@ pub fn include_input_to_file_id(
     arg_id: MacroCallId,
     arg: &tt::TopSubtree,
 ) -> Result<EditionedFileId, ExpandError> {
-    let (s, span) = parse_string(arg)?;
+    let (s, span) = parse_string(arg, false)?;
     relative_file(db, arg_id, s.as_str(), false, span)
 }
 
@@ -851,7 +875,7 @@ fn include_str_expand(
     tt: &tt::TopSubtree,
     call_site: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let (path, input_span) = match parse_string(tt) {
+    let (path, input_span) = match parse_string(tt, false) {
         Ok(it) => it,
         Err(e) => {
             return ExpandResult::new(
@@ -889,7 +913,7 @@ fn env_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let (key, span) = match parse_string(tt) {
+    let (key, span) = match parse_string(tt, true) {
         Ok(it) => it,
         Err(e) => {
             return ExpandResult::new(
@@ -927,7 +951,7 @@ fn option_env_expand(
     tt: &tt::TopSubtree,
     call_site: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let (key, span) = match parse_string(tt) {
+    let (key, span) = match parse_string(tt, false) {
         Ok(it) => it,
         Err(e) => {
             return ExpandResult::new(

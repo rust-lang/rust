@@ -229,7 +229,7 @@ pub const trait Try: [const] FromResidual {
         all(
             from_desugaring = "QuestionMark",
             Self = "core::result::Result<T, E>",
-            R = "core::option::Option<core::convert::Infallible>",
+            R = "core::option::Option<!>",
         ),
         message = "the `?` operator can only be used on `Result`s, not `Option`s, \
             in {ItemContext} that returns `Result`",

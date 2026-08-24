@@ -1,6 +1,6 @@
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fs::TryLockError;
-use crate::io::{self, BorrowedCursor, Error, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::MaybeUninit;
 use crate::os::hermit::ffi::OsStringExt;
 use crate::os::hermit::hermit_abi::{

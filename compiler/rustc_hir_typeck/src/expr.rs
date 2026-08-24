@@ -3575,9 +3575,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ocx.register_obligations(traits::predicates_for_generics(
                 |idx, span| {
                     cause.clone().derived_cause(
-                        ty::Binder::dummy(ty::TraitPredicate {
+                        ty::Binder::dummy(ty::TraitClause {
                             trait_ref: impl_trait_ref,
-                            polarity: ty::PredicatePolarity::Positive,
+                            polarity: ty::ClausePolarity::Positive,
                         }),
                         |derived| {
                             ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedCause {

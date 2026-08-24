@@ -1150,6 +1150,17 @@ pub(crate) struct DeprecatedItemSuggestion {
 }
 
 #[derive(Diagnostic)]
+#[diag("this `#[deprecated]` annotation has no effect")]
+pub(crate) struct DeprecatedAnnotationHasNoEffect {
+    #[suggestion(
+        "remove the unnecessary deprecation attribute",
+        applicability = "machine-applicable",
+        code = ""
+    )]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("expected single version literal")]
 pub(crate) struct ExpectedSingleVersionLiteral {
     #[primary_span]

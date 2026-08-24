@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_data_structures::intern::Interned;
-use rustc_error_messages::MultiSpan;
 use rustc_macros::StableHash;
+use rustc_span::Span;
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
@@ -142,9 +142,9 @@ impl<'tcx> Const<'tcx> {
 
     /// Like [Ty::new_error_with_message] but for constants.
     #[track_caller]
-    pub fn new_error_with_message<S: Into<MultiSpan>>(
+    pub fn new_error_with_message(
         tcx: TyCtxt<'tcx>,
-        span: S,
+        span: Span,
         msg: impl Into<Cow<'static, str>>,
     ) -> Const<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);

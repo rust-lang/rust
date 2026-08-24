@@ -29,6 +29,29 @@ fn sock_addr_from_pathname() {
     assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
 }
 
+// the trailing NUL is not counted in the reported length on freebsd, netbsd
+// and qnx, and a caller may bind(2) without one anywhere
+#[test]
+fn sock_addr_without_trailing_nul() {
+    const PATH: &[u8] = b"/path/to/socket";
+
+    // SAFETY: all zeros is a valid representation for `sockaddr_un`.
+    let mut addr: libc::sockaddr_un = unsafe { crate::mem::zeroed() };
+    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
+    for (dst, &src) in addr.sun_path.iter_mut().zip(PATH) {
+        *dst = src as _;
+    }
+    let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
+
+    // length excluding the NUL, as reported by freebsd, netbsd and qnx
+    let address = or_panic!(SocketAddr::from_parts(addr, (offset + PATH.len()) as _));
+    assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
+
+    // length including the NUL, as reported by linux
+    let address = or_panic!(SocketAddr::from_parts(addr, (offset + PATH.len() + 1) as _));
+    assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
+}
+
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]

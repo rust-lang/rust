@@ -1,0 +1,55 @@
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:10:1
+   |
+LL | impl PartialEq for Option<u32> {
+   | ^^^^^---------^^^^^-----------
+   |      |             |
+   |      |             `Option` is not defined in the current crate
+   |      this is not defined in the current crate because this is a foreign trait
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:27:1
+   |
+LL | impl PartialEq<String> for Option<u32> {
+   | ^^^^^-----------------^^^^^-----------
+   |      |                     |
+   |      |                     `Option` is not defined in the current crate
+   |      this is not defined in the current crate because this is a foreign trait
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:38:1
+   |
+LL | impl PartialEq<[i32; 3]> for Option<u32> {
+   | ^^^^^-------------------^^^^^-----------
+   |      |                       |
+   |      |                       `Option` is not defined in the current crate
+   |      this is not defined in the current crate because this is a foreign trait
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for primitive types
+  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:18:1
+   |
+LL | impl Add for u32 {
+   | ^^^^^---^^^^^---
+   |      |       |
+   |      |       `u32` is not defined in the current crate
+   |      this is not defined in the current crate because this is a foreign trait
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0117`.

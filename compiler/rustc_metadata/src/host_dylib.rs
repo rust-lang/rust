@@ -33,7 +33,7 @@ fn attempt_load_dylib(path: &Path) -> Result<libloading::Library, libloading::Er
             .map(|lib| lib.into());
     }
 
-    unsafe { libloading::Library::new(&path) }
+    unsafe { libloading::Library::new(path) }
 }
 
 // On Windows the compiler would sometimes intermittently fail to open the

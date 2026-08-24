@@ -1,7 +1,7 @@
 error[E0277]: `{integer}` is not a tuple
   --> $DIR/non_tuple_args.rs:7:36
    |
-LL |     core::intrinsics::offload::<_, _, ()>(kernel_0, [1, 1, 1], [1, 1, 1], 0, 42);
+LL |     core::intrinsics::offload::<_, _, ()>(kernel_0, [1, 1, 1], [1, 1, 1], 0, -1, 42);
    |                                    ^ the nightly-only, unstable trait `std::marker::Tuple` is not implemented for `{integer}`
    |
 note: required by a bound in `offload`

@@ -216,9 +216,14 @@ A simple example of a test using `rustc_clean` is the [hello_world test].
 
 ### Debuginfo tests
 
-The tests in [`tests/debuginfo`] test debuginfo generation.
-They build a program, launch a debugger, and issue commands to the debugger.
-A single test can work with cdb, gdb, and lldb.
+>[!IMPORTANT]
+> As of [#159455](https://github.com/rust-lang/rust/pull/159455) These tests were made
+> opt-in. For further context, see:
+> [Stabilizing the state of the debuginfo test suite](https://github.com/rust-lang/compiler-team/issues/1012)
+
+The tests in [`tests/debuginfo`] test how debuginfo is interpreted by the supported debuggers, and
+confirm our visualizers still work as expected. They build a program, launch a debugger, and issue
+commands to the debugger. A single test can work with cdb, gdb, and lldb.
 
 Most tests should have the `//@ compile-flags: -g` directive or something
 similar to generate the appropriate debuginfo.
@@ -228,20 +233,16 @@ To set a breakpoint on a line, add a `// #break` comment on the line.
 The debuginfo tests consist of a series of debugger commands along with
 "check" lines which specify output that is expected from the debugger.
 
-The commands are comments of the form `// $DEBUGGER-command:$COMMAND` where
+The commands are comments of the form `//@ $DEBUGGER-command:$COMMAND` where
 `$DEBUGGER` is the debugger being used and `$COMMAND` is the debugger command to execute.
 
 The debugger values can be:
 
 - `cdb`
 - `gdb`
-- `gdbg` — GDB without Rust support (versions older than 7.11)
-- `gdbr` — GDB with Rust support
 - `lldb`
-- `lldbg` — LLDB without Rust support
-- `lldbr` — LLDB with Rust support (this no longer exists)
 
-The command to check the output are of the form `// $DEBUGGER-check:$OUTPUT`
+The command to check the output are of the form `//@ $DEBUGGER-check:$OUTPUT`
 where `$OUTPUT` is the output to expect.
 
 For example, the following will build the test, start the debugger, set a
@@ -262,6 +263,35 @@ fn main() {
 fn b() {}
 ```
 
+Additionally, there is a special command, `//@ $DEBUGGER-repr:$VAR_NAME` intended to verify
+variables (and their visualizers) with more granularity than can be achieved with simple string
+comparison. This directive should be preferred over the `-command`/`-check` whenever possible.
+
+> [!NOTE]
+> At time of writing (July 2026) this command is limited to LLDB, with an implementation coming soon
+> for GDB. There are not firm plans to port the logic to CDB.
+
+This command effectivly desugars into:
+
+```
+//@ $DEBUGGER-command:repr $VAR_NAME
+//@ $DEBUGGER-check:$VAR_NAME ok
+```
+
+The `repr $VAR_NAME` command is intercepted by special logic that uses the debuggers' API to inspect
+data that isn't reflected in the variable's printed output. The variable in memory is compared
+against input data stored in
+`tests/debuginfo/<test_name>/input/<debugger>_input/<target_group>.json` and
+provides detailed error messages on failure.
+
+> [!IMPORTANT]
+> `-repr` directives **are** compatible with the `--bless` option, unlike `-command`/`-check`.
+> `--bless`-ing a file with `-repr` commands will automatically create/update the appropriate
+> target's input data file.
+
+The implementation details of this command are further described in
+[the Testing section of the Debug Info chapter](../debuginfo/testing.md).
+
 The following [directives](directives.md) are available to disable a test based on
 the debugger currently being used:
 
@@ -272,7 +302,11 @@ the debugger currently being used:
   to the given version
 - `ignore-gdb-version: 7.11.90 - 8.0.9` — ignores the test if the version of
   gdb is in a range (inclusive)
-- `min-lldb-version: 310` — ignores the test if the version of lldb is below the given version
+- `min-apple-lldb-version: 1703.0.236.21`/`min-llvm-lldb-version: 21.1.0` — ignores the test if the
+  version of lldb is below the given version.
+  Note: Apple's fork of LLDB (distributed with Xcode) uses a different versioning scheme that is not
+  easily mappable to LLVM's LLDB version numbers. As such, the version gates are specified by
+  vendor. Further info on manually checking version equivalence is available [here](../debuginfo/testing.md#lldb-versioning)
 - `rust-lldb` — ignores the test if lldb is not contain the Rust plugin.
   NOTE: The "Rust" version of LLDB doesn't exist anymore, so this will always be ignored.
   This should probably be removed.
@@ -343,7 +377,7 @@ If you need to work with `#![no_std]` cross-compiling tests, consult the
 ### Assembly tests
 
 The tests in [`tests/assembly-llvm`] test LLVM assembly output.
-They compile the test with the `--emit=asm` flag to emit a `.s` file with the assembly output.
+They compile the test with the `--emit asm` flag to emit a `.s` file with the assembly output.
 They then run the LLVM [FileCheck] tool.
 
 Each test should be annotated with the `//@ assembly-output:` directive with a
@@ -562,7 +596,7 @@ some reason, use the `//@ ignore-coverage-map` or `//@ ignore-coverage-run` dire
 
 In `coverage-map` mode, these tests verify the mappings between source code
 regions and coverage counters that are emitted by LLVM.
-They compile the test with `--emit=llvm-ir`, then use a custom tool ([`src/tools/coverage-dump`]) to
+They compile the test with `--emit llvm-ir`, then use a custom tool ([`src/tools/coverage-dump`]) to
 extract and pretty-print the coverage mappings embedded in the IR.
 These tests don't require the profiler runtime, so they run in PR CI jobs and are easy to
 run/bless locally.
@@ -679,12 +713,11 @@ However, it uses the `--extern` flag
 to link to the extern crate to make the crate be available as an extern prelude.
 That allows you to specify the additional syntax of the `--extern` flag, such as
 renaming a dependency.
-For example, `//@ aux-crate:foo=bar.rs` will compile
-`auxiliary/bar.rs` and make it available under then name `foo` within the test.
+For example, `//@ aux-crate: foo=bar.rs` will compile
+`auxiliary/bar.rs` and make it available under the name `foo` within the test.
 This is similar to how Cargo does dependency renaming.
-It is also possible to
-specify [`--extern` modifiers](https://github.com/rust-lang/rust/issues/98405).
-For example, `//@ aux-crate:noprelude:foo=bar.rs`.
+It is also possible to specify [`--extern` modifiers].
+For example, `//@ aux-crate: noprelude:foo=bar.rs`.
 
 `aux-bin` is similar to `aux-build` but will build a binary instead of a library.
 The binary will be available in `auxiliary/bin` relative to the working directory of the test.
@@ -702,7 +735,7 @@ same parent folder as the main test file.
 However, it also has four additional
 preset behavior compared to `aux-build` for the proc-macro test auxiliary:
 
-1. The aux test file is built with `--crate-type=proc-macro`.
+1. The aux test file is built with `--crate-type proc-macro`.
 2. The aux test file is built without `-C prefer-dynamic`, i.e. it will not try
    to produce a dylib for the aux crate.
 3. The aux crate is made available to the test file via extern prelude with
@@ -871,3 +904,5 @@ Where `N` is the number of threads to use for the parallel frontend, and `M` is 
 Also, when running with `--parallel-frontend-threads`, the `compare-output-by-lines` directive would be implied for all tests, since the output from the parallel frontend can be non-deterministic in terms of the order of lines.
 
 The parallel frontend is available in UI tests only at the moment, and is not currently supported in other test suites.
+
+[`--extern` modifiers]: https://github.com/rust-lang/rust/issues/98405

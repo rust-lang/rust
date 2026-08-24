@@ -8,6 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, find_attr};
+use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
@@ -697,6 +698,51 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
             }
 
+            sym::variant_name => {
+                let base = ecx.read_type_id(&args[0])?;
+
+                let field_name = if let ty::Adt(def, _) = base.kind() {
+                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
+                    if variant_idx >= def.variants().len() {
+                        throw_ub!(BoundsCheckFailed {
+                            len: def.variants().len() as u64,
+                            index: variant_idx as u64
+                        });
+                    }
+                    let variant_idx = VariantIdx::from_usize(variant_idx);
+                    def.variant(variant_idx).name
+                } else {
+                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
+                };
+                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
+                ecx.write_immediate(
+                    Immediate::ScalarPair(
+                        Scalar::from_pointer(ptr, ecx),
+                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
+                    ),
+                    dest,
+                )?;
+            }
+
+            sym::variant_non_exhaustive => {
+                let base = ecx.read_type_id(&args[0])?;
+
+                let non_exhaustive = if let ty::Adt(def, _) = base.kind() {
+                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
+                    if variant_idx >= def.variants().len() {
+                        throw_ub!(BoundsCheckFailed {
+                            len: def.variants().len() as u64,
+                            index: variant_idx as u64
+                        });
+                    }
+                    let variant_idx = VariantIdx::from_usize(variant_idx);
+                    def.variant(variant_idx).is_field_list_non_exhaustive()
+                } else {
+                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
+                };
+                ecx.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
+            }
+
             sym::field_offset => {
                 let frt_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(frt_ty)?;
@@ -900,15 +946,12 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let hir_id = ecx.machine.best_lint_scope(*ecx.tcx);
                 let is_error = ecx
                     .tcx
-                    .lint_level_spec_at_node(
-                        rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
-                        hir_id,
-                    )
+                    .lint_level_spec_at_node(LONG_RUNNING_CONST_EVAL, hir_id)
                     .level()
                     .is_error();
                 let span = ecx.cur_span();
                 ecx.tcx.emit_node_span_lint(
-                    rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
+                    LONG_RUNNING_CONST_EVAL,
                     hir_id,
                     span,
                     LongRunning { item_span: ecx.tcx.span },
@@ -1019,12 +1062,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         // (Do nothing on `None` provenance, that cannot store immutability anyway.)
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
             && *mutbl == Mutability::Not
-            && val
-                .to_scalar_and_meta()
-                .0
-                .to_pointer(ecx)?
-                .provenance
-                .is_some_and(|p| !p.immutable())
+            && val.to_scalar_and_meta().0.to_pointer(ecx).provenance.is_some_and(|p| !p.immutable())
         {
             // That next check is expensive, that's why we have all the guards above.
             let is_immutable = ty.is_freeze(*ecx.tcx, ecx.typing_env());

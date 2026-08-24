@@ -12,21 +12,8 @@ use crate::builder::{BlockAnd, BlockAndExtension, Builder};
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    pub(crate) fn as_temp(
-        &mut self,
-        block: BasicBlock,
-        temp_lifetime: TempLifetime,
-        expr_id: ExprId,
-        mutability: Mutability,
-    ) -> BlockAnd<Local> {
-        // this is the only place in mir building that we need to truly need to worry about
-        // infinite recursion. Everything else does recurse, too, but it always gets broken up
-        // at some point by inserting an intermediate temporary
-        self.as_temp_inner(block, temp_lifetime, expr_id, mutability)
-    }
-
     #[instrument(skip(self), level = "debug")]
-    fn as_temp_inner(
+    pub(crate) fn as_temp(
         &mut self,
         mut block: BasicBlock,
         temp_lifetime: TempLifetime,

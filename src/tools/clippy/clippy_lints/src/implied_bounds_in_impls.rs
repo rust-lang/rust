@@ -7,9 +7,8 @@ use rustc_hir::{
     TyKind, WherePredicateKind,
 };
 use rustc_hir_analysis::lower_ty;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{self, AssocItem, ClauseKind, Generics, Ty, TyCtxt};
-use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {

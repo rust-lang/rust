@@ -1,0 +1,21 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:7:37
+   |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+   |                                     ^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<'_, A, C> {
+   |                                       +++
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-wrong-header-args-ice.rs:13:24
+   |
+LL |     reuse S::<(), ()>::foo_self;
+   |                        ^^^^^^^^ not found in `S`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0425, E0726.
+For more information about an error, try `rustc --explain E0425`.

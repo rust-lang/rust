@@ -74,7 +74,7 @@ pub fn format_location(location: std::panic::Location<'static>) -> String {
 const COMMAND_SPAN_TARGET: &str = "COMMAND";
 
 #[cfg(feature = "tracing")]
-pub fn trace_cmd(command: &crate::BootstrapCommand) -> tracing::span::EnteredSpan {
+pub fn trace_cmd(command: &crate::utils::exec::BootstrapCommand) -> tracing::span::EnteredSpan {
     let fingerprint = command.fingerprint();
     let location = command.get_created_location();
     let location = format_location(location);
@@ -122,7 +122,10 @@ mod inner {
     pub fn setup_tracing(env_name: &str) -> TracingGuard {
         let filter = EnvFilter::from_env(env_name);
 
-        let registry = tracing_subscriber::registry().with(filter).with(TracingPrinter::default());
+        let mut printer = TracingPrinter::default();
+        printer.show_time =
+            !std::env::var("BOOTSTRAP_TRACING_SKIP_TIME").map(|v| v == "1").unwrap_or(false);
+        let registry = tracing_subscriber::registry().with(filter).with(printer);
 
         // When we're creating this layer, we do not yet know the location of the tracing output
         // directory, because it is stored in the output directory determined after Config is parsed,
@@ -233,6 +236,7 @@ mod inner {
     struct TracingPrinter {
         indent: std::sync::atomic::AtomicU32,
         span_values: std::sync::Mutex<std::collections::HashMap<tracing::Id, FieldValues>>,
+        show_time: bool,
     }
 
     impl TracingPrinter {
@@ -242,9 +246,11 @@ mod inner {
             time: DateTime<Utc>,
             level: &Level,
         ) -> std::io::Result<()> {
-            // Use a fixed-width timestamp without date, that shouldn't be very important
-            let timestamp = time.format("%H:%M:%S.%3f");
-            write!(writer, "{timestamp} ")?;
+            if self.show_time {
+                // Use a fixed-width timestamp without date, that shouldn't be very important
+                let timestamp = time.format("%H:%M:%S.%3f");
+                write!(writer, "{timestamp} ")?;
+            }
             // Make sure that levels are aligned to the same number of characters, in order not to
             // break the layout
             write!(writer, "{level:>5} ")?;

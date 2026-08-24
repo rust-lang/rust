@@ -21,8 +21,8 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use super::{
     AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo,
-    interp_ok, read_target_uint, write_target_uint,
+    ResourceExhaustionInfo, Scalar, UndefinedBehaviorInfo, UnsupportedOpInfo, interp_ok,
+    read_target_uint, write_target_uint,
 };
 use crate::ty;
 
@@ -303,8 +303,6 @@ impl<'tcx> ConstAllocation<'tcx> {
 /// is added when converting to `InterpError`.
 #[derive(Debug)]
 pub enum AllocError {
-    /// A scalar had the wrong size.
-    ScalarSizeMismatch(ScalarSizeMismatch),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsInt(Option<BadBytesAccess>),
     /// Partially copying a pointer.
@@ -314,19 +312,10 @@ pub enum AllocError {
 }
 pub type AllocResult<T = ()> = Result<T, AllocError>;
 
-impl From<ScalarSizeMismatch> for AllocError {
-    fn from(s: ScalarSizeMismatch) -> Self {
-        AllocError::ScalarSizeMismatch(s)
-    }
-}
-
 impl AllocError {
     pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpErrorKind<'tcx> {
         use AllocError::*;
         match self {
-            ScalarSizeMismatch(s) => {
-                InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
-            }
             ReadPointerAsInt(info) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::ReadPointerAsInt(info.map(|b| (alloc_id, b))),
             ),
@@ -753,7 +742,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
         // as-is into memory. This also double-checks that `val.size()` matches `range.size`.
-        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
+        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size) {
             Right(ptr) => {
                 let (provenance, offset) = ptr.into_raw_parts();
                 (u128::from(offset.bytes()), Some(provenance))

@@ -18,11 +18,7 @@ cfg_select! {
     target_env = "msvc" => {
         // Windows MSVC no extra unwinder support needed
     }
-    any(
-        target_os = "none",
-        target_os = "espidf",
-        target_os = "nuttx",
-    ) => {
+    any(target_os = "none", target_os = "espidf", target_os = "nuttx") => {
         // These "unix" family members do not have unwinder.
     }
     any(
@@ -48,6 +44,7 @@ cfg_select! {
         // no unwinder on the system!
         // - os=none ("bare metal" targets)
         // - os=hermit
+        // - os=motor
         // - os=uefi
         // - os=cuda
         // - nvptx64-nvidia-cuda
@@ -65,20 +62,35 @@ unsafe extern "C" {}
 #[cfg(all(target_env = "musl", not(target_abi = "pauthtest")))]
 cfg_select! {
     all(feature = "llvm-libunwind", feature = "system-llvm-libunwind") => {
-        compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
+        compile_error!(
+            "`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time"
+        );
     }
     feature = "llvm-libunwind" => {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
         unsafe extern "C" {}
     }
     feature = "system-llvm-libunwind" => {
-        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+        #[link(
+            name = "unwind",
+            kind = "static",
+            modifiers = "-bundle",
+            cfg(target_feature = "crt-static")
+        )]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
         unsafe extern "C" {}
     }
     _ => {
-        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
-        #[link(name = "gcc_s", cfg(all(not(target_feature = "crt-static"), not(target_arch = "hexagon"))))]
+        #[link(
+            name = "unwind",
+            kind = "static",
+            modifiers = "-bundle",
+            cfg(target_feature = "crt-static")
+        )]
+        #[link(
+            name = "gcc_s",
+            cfg(all(not(target_feature = "crt-static"), not(target_arch = "hexagon")))
+        )]
         unsafe extern "C" {}
     }
 }
@@ -91,7 +103,12 @@ cfg_select! {
         unsafe extern "C" {}
     }
     feature = "system-llvm-libunwind" => {
-        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+        #[link(
+            name = "unwind",
+            kind = "static",
+            modifiers = "-bundle",
+            cfg(target_feature = "crt-static")
+        )]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
         unsafe extern "C" {}
     }
@@ -105,14 +122,21 @@ cfg_select! {
 #[cfg(target_env = "ohos")]
 cfg_select! {
     all(feature = "llvm-libunwind", feature = "system-llvm-libunwind") => {
-        compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
+        compile_error!(
+            "`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time"
+        );
     }
     feature = "llvm-libunwind" => {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
         unsafe extern "C" {}
     }
     _ => {
-        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+        #[link(
+            name = "unwind",
+            kind = "static",
+            modifiers = "-bundle",
+            cfg(target_feature = "crt-static")
+        )]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
         unsafe extern "C" {}
     }
@@ -124,7 +148,12 @@ cfg_select! {
         compile_error!("`llvm-libunwind` is not supported for Android targets");
     }
     _ => {
-        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+        #[link(
+            name = "unwind",
+            kind = "static",
+            modifiers = "-bundle",
+            cfg(target_feature = "crt-static")
+        )]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
         unsafe extern "C" {}
     }
@@ -213,6 +242,10 @@ cfg_select! {
 
 #[cfg(target_os = "hurd")]
 #[link(name = "gcc_s")]
+unsafe extern "C" {}
+
+#[cfg(all(target_os = "wasi", panic = "unwind"))]
+#[link(name = "unwind")]
 unsafe extern "C" {}
 
 #[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]

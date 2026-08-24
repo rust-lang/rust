@@ -19,6 +19,7 @@ aot.dst_field_align
 aot.subslice-patterns-const-eval
 aot.track-caller-attribute
 aot.float-minmax-pass
+aot.powi_libcall_signature
 aot.issue-72793
 aot.issue-59326
 aot.neon

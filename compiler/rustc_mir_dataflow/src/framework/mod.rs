@@ -264,7 +264,7 @@ pub trait Analysis<'tcx> {
     fn apply_switch_int_edge_effect(
         &self,
         _state: &mut Self::Domain,
-        _data: &mut Self::SwitchIntData,
+        _data: &Self::SwitchIntData,
         _target_idx: SwitchTargetIndex,
     ) {
         unreachable!();

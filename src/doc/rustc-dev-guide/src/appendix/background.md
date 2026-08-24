@@ -264,7 +264,7 @@ don't actually do this in `rustc` though!):
 Check out the subtyping chapter from the
 [Rust Nomicon](https://doc.rust-lang.org/nomicon/subtyping.html).
 
-See the [variance](../variance.html) chapter of this guide for more info on how
+See the [variance](../variance.md) chapter of this guide for more info on how
 the type checker handles variance.
 
 <a id="free-vs-bound"></a>

@@ -1,6 +1,3 @@
-/* SPDX-License-Identifier: MIT */
-/* origin: musl src/math/fma.c, fmaf.c Ported to generic Rust algorithm in 2025, TG. */
-
 use super::generic;
 use crate::support::Round;
 
@@ -15,6 +12,7 @@ pub fn fmaf(x: f32, y: f32, z: f32) -> f32 {
         name: fmaf,
         use_arch: any(
             all(target_arch = "aarch64", target_feature = "neon"),
+            all(any(target_arch = "loongarch32", target_arch = "loongarch64"), target_feature = "f"),
             target_feature = "sse2",
         ),
         args: x, y, z,
@@ -32,6 +30,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
         name: fma,
         use_arch: any(
             all(target_arch = "aarch64", target_feature = "neon"),
+            all(any(target_arch = "loongarch32", target_arch = "loongarch64"), target_feature = "d"),
             target_feature = "sse2",
         ),
         args: x, y, z,

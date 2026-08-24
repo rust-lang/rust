@@ -418,7 +418,7 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_ty(a);
                 self.add_ty(b);
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionPredicate {
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(ty::ProjectionClause {
                 projection_term,
                 term,
             })) => {

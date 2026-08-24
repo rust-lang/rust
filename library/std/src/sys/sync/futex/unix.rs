@@ -67,7 +67,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
                         expected,
                         timespec.as_ref().map_or(null(), |t| t as *const libc::timespec),
                         null::<u32>(), // This argument is unused for FUTEX_WAIT_BITSET.
-                        !0u32,         // A full bitmask, to make it behave like a regular FUTEX_WAIT.
+                        !0u32, // A full bitmask, to make it behave like a regular FUTEX_WAIT.
                     )
                 }
                 _ => {

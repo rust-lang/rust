@@ -129,7 +129,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             let Some(decl) = name_resolution.borrow(self.r).best_decl() else {
                 continue;
             };
-            self.update_decl_chain(decl, ParentId::Def(module_id));
+            self.update_decl_chain(decl, ParentId::Def(module_id), &mut FxHashSet::default());
         }
     }
 
@@ -137,24 +137,23 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     /// Set the given effective visibility level to `Level::Direct` and
     /// sets the rest of the `use` chain to `Level::Reexported` until
     /// we hit the actual exported item.
-    fn update_decl_chain(&mut self, mut decl: Decl<'ra>, mut parent_id: ParentId<'ra>) {
+    fn update_decl_chain(
+        &mut self,
+        mut decl: Decl<'ra>,
+        mut parent_id: ParentId<'ra>,
+        seen_most_visible: &mut FxHashSet<Decl<'ra>>,
+    ) {
         let priv_vis = |this: &Self, parent_id, decl| match parent_id {
             ParentId::Def(_) => this.current_private_vis,
             ParentId::Import(_) => this.r.private_vis_decl(decl),
         };
         while let DeclKind::Import { source_decl, .. } = decl.kind {
             self.update_import(decl, parent_id, priv_vis(self, parent_id, decl));
-            if let Some(max_vis_decl) = decl.ambiguity_vis_max.get() {
-                // The name is exported with the visibility of the most visible declaration
-                // in its ambiguous glob set (see `DeclData::vis`), so everything on that
-                // declaration's reexport chain, including the final item, must get its
-                // effective visibility from that declaration as well. Otherwise the item
-                // would be considered unreachable by dead code analysis and metadata
-                // encoding despite being exported (see the regression test
-                // `ambiguous-import-visibility-globglob-mir.rs`).
-                // This also avoids the most visible import in an ambiguous glob set
-                // being reported as unused.
-                self.update_decl_chain(max_vis_decl, parent_id);
+            // `ambiguity_vis_max` can cycle on mutual globs; follow each once.
+            if let Some(most_visible) = decl.ambiguity_vis_max.get()
+                && seen_most_visible.insert(most_visible)
+            {
+                self.update_decl_chain(most_visible, parent_id, seen_most_visible);
             }
             parent_id = ParentId::Import(decl);
             decl = source_decl;

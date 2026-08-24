@@ -157,7 +157,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
     match rvalue {
         Use(op, _) | Repeat(op, _) | Cast(_, op, _) | UnaryOp(_, op) => visit_op(op),
         Aggregate(_, ops) => ops.iter().for_each(visit_op),
-        BinaryOp(_, box (lhs, rhs)) => {
+        BinaryOp(_, (lhs, rhs)) => {
             visit_op(lhs);
             visit_op(rhs);
         },

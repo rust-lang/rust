@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
-use rustc_data_structures::Limit;
 use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
+use rustc_structures::Limit;
 
 #[derive(Diagnostic)]
 #[diag("`#[cfg_attr]` does not expand to any attributes")]

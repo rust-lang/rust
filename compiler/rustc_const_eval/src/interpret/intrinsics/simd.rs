@@ -260,7 +260,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         }
                         Op::SaturatingOp(mir_op) => self.saturating_arith(mir_op, &left, &right)?,
                         Op::WrappingOffset => {
-                            let ptr = left.to_scalar().to_pointer(self)?;
+                            let ptr = left.to_scalar().to_pointer(self);
                             let offset_count = right.to_scalar().to_target_isize(self)?;
                             let pointee_ty = left.layout.ty.builtin_deref(true).unwrap();
 

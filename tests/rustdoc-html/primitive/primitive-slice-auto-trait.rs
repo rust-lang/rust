@@ -11,4 +11,4 @@
 //@ has - '//div[@id="synthetic-implementations-list"]//h3' 'impl<T> Sync for [T]where T: Sync'
 #[rustc_doc_primitive = "slice"]
 /// this is a test!
-mod slice_prim {}
+const _: () = ();

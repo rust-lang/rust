@@ -1,12 +1,14 @@
 error[E0422]: cannot find struct, variant or union type `TyUInt` in this scope
   --> $DIR/typo-suggestion-improvement-46332.rs:10:5
    |
-LL | struct TyUint {}
-   | ------------- similarly named struct `TyUint` defined here
-...
 LL |     TyUInt {};
-   |     ^^^^^^
+   |     ^^^^^^ not found in this scope
    |
+note: similarly named struct `TyUint` defined here
+  --> $DIR/typo-suggestion-improvement-46332.rs:5:1
+   |
+LL | struct TyUint {}
+   | ^^^^^^^^^^^^^
 help: a struct with a similar name exists (notice the capitalization)
    |
 LL -     TyUInt {};

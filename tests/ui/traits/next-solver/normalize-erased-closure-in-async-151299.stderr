@@ -1,0 +1,11 @@
+error[E0277]: `()` is not a future
+  --> $DIR/normalize-erased-closure-in-async-151299.rs:7:24
+   |
+LL | fn invalid_future() -> impl Future {}
+   |                        ^^^^^^^^^^^ `()` is not a future
+   |
+   = help: the trait `Future` is not implemented for `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

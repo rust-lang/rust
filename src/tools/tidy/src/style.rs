@@ -310,7 +310,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
 
     walk(path, skip, &mut |entry, contents| {
         let file = entry.path();
-        check_file_style(&mut check, file, contents);
+        check_file_style(path, &mut check, file, contents);
     });
 }
 
@@ -323,7 +323,7 @@ static PROBLEMATIC_REGEX: LazyLock<regex::RegexSet> = LazyLock::new(|| {
         .unwrap()
 });
 
-fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
+fn check_file_style(base_path: &Path, check: &mut RunningCheck, file: &Path, contents: &str) {
     // In some cases, a style check would be triggered by its own implementation
     // or comments. A simple workaround is to just allowlist this file.
     let this_file = Path::new(file!());
@@ -526,8 +526,9 @@ fn check_file_style(check: &mut RunningCheck, file: &Path, contents: &str) {
         if trimmed.contains("unsafe {")
             && !trimmed.starts_with("//")
             && !last_safety_comment
-            && file.components().any(|c| c.as_os_str() == "core")
             && !is_test
+            && base_path.ends_with("library")
+            && file.strip_prefix(base_path).is_ok_and(|rel| rel.starts_with("core"))
         {
             suppressible_tidy_err!(err, ignore.undocumented_unsafe, "undocumented unsafe");
         }

@@ -84,11 +84,7 @@ intrinsics! {
     ///
     /// Usual `memcpy` requirements apply.
     #[cfg(not(target_vendor = "apple"))]
-    pub unsafe extern "aapcs" fn __aeabi_memcpy(
-        dst: *mut core::ffi::c_void,
-        src: *const core::ffi::c_void,
-        n: usize
-    ) {
+    pub unsafe extern "aapcs" fn __aeabi_memcpy(dst: *mut u8, src: *const u8, n: usize) {
         // SAFETY: memcpy preconditions apply.
         unsafe { crate::mem::memcpy(dst, src, n) };
     }
@@ -100,11 +96,7 @@ intrinsics! {
     /// Usual `memcpy` requirements apply. Additionally, `dest` and `src` must be aligned to
     /// four bytes.
     #[cfg(not(target_vendor = "apple"))]
-    pub unsafe extern "aapcs" fn __aeabi_memcpy4(
-        dst: *mut core::ffi::c_void,
-        src: *const core::ffi::c_void,
-        n: usize
-    ) {
+    pub unsafe extern "aapcs" fn __aeabi_memcpy4(dst: *mut u8, src: *const u8, n: usize) {
         // We are guaranteed 4-alignment, so accessing at u32 is okay.
         let mut dst = dst.cast::<u32>();
         let mut src = src.cast::<u32>();
@@ -129,7 +121,7 @@ intrinsics! {
         }
 
         // SAFETY: `dst` and `src` will still be valid for `n` bytes
-        unsafe { __aeabi_memcpy(dst.cast::<core::ffi::c_void>(), src.cast::<core::ffi::c_void>(), n) };
+        unsafe { __aeabi_memcpy(dst.cast::<u8>(), src.cast::<u8>(), n) };
     }
 
     /// `memcpy` for 8-byte alignment.
@@ -139,11 +131,7 @@ intrinsics! {
     /// Usual `memcpy` requirements apply. Additionally, `dest` and `src` must be aligned to
     /// eight bytes.
     #[cfg(not(target_vendor = "apple"))]
-    pub unsafe extern "aapcs" fn __aeabi_memcpy8(
-        dst: *mut core::ffi::c_void,
-        src: *const core::ffi::c_void,
-        n: usize
-    ) {
+    pub unsafe extern "aapcs" fn __aeabi_memcpy8(dst: *mut u8, src: *const u8, n: usize) {
         debug_assert!(dst.addr().is_multiple_of(8));
         debug_assert!(src.addr().is_multiple_of(8));
 
@@ -157,11 +145,7 @@ intrinsics! {
     ///
     /// Usual `memmove` requirements apply.
     #[cfg(not(target_vendor = "apple"))]
-    pub unsafe extern "aapcs" fn __aeabi_memmove(
-        dst: *mut core::ffi::c_void,
-        src: *const core::ffi::c_void,
-        n: usize
-    ) {
+    pub unsafe extern "aapcs" fn __aeabi_memmove(dst: *mut u8, src: *const u8, n: usize) {
         // SAFETY: memmove preconditions apply.
         unsafe { crate::mem::memmove(dst, src, n) };
     }
@@ -173,11 +157,7 @@ intrinsics! {
     /// Usual `memmove` requirements apply. Additionally, `dest` and `src` must be aligned to
     /// four bytes.
     #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
-    pub unsafe extern "aapcs" fn __aeabi_memmove4(
-        dst: *mut core::ffi::c_void,
-        src: *const core::ffi::c_void,
-        n: usize
-    ) {
+    pub unsafe extern "aapcs" fn __aeabi_memmove4(dst: *mut u8, src: *const u8, n: usize) {
         debug_assert!(dst.addr().is_multiple_of(4));
         debug_assert!(src.addr().is_multiple_of(4));
 
@@ -192,11 +172,7 @@ intrinsics! {
     /// Usual `memmove` requirements apply. Additionally, `dst` and `src` must be aligned to
     /// eight bytes.
     #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
-    pub unsafe extern "aapcs" fn __aeabi_memmove8(
-        dst: *mut core::ffi::c_void,
-        src: *const core::ffi::c_void,
-        n: usize
-    ) {
+    pub unsafe extern "aapcs" fn __aeabi_memmove8(dst: *mut u8, src: *const u8, n: usize) {
         debug_assert!(dst.addr().is_multiple_of(8));
         debug_assert!(src.addr().is_multiple_of(8));
 
@@ -210,11 +186,7 @@ intrinsics! {
     ///
     /// Usual `memset` requirements apply.
     #[cfg(not(target_vendor = "apple"))]
-    pub unsafe extern "aapcs" fn __aeabi_memset(
-        dst: *mut core::ffi::c_void,
-        n: usize,
-        c: i32
-    ) {
+    pub unsafe extern "aapcs" fn __aeabi_memset(dst: *mut u8, n: usize, c: i32) {
         // Note the different argument order
         // SAFETY: memset preconditions apply.
         unsafe { crate::mem::memset(dst, c, n) };
@@ -227,11 +199,7 @@ intrinsics! {
     /// Usual `memset` requirements apply. Additionally, `dest` and `src` must be aligned to
     /// four bytes.
     #[cfg(not(target_vendor = "apple"))]
-    pub unsafe extern "aapcs" fn __aeabi_memset4(
-        dst: *mut core::ffi::c_void,
-        n: usize,
-        c: i32
-    ) {
+    pub unsafe extern "aapcs" fn __aeabi_memset4(dst: *mut u8, n: usize, c: i32) {
         let mut dst = dst.cast::<u32>();
         debug_assert!(dst.is_aligned());
         let mut n = n;
@@ -254,7 +222,7 @@ intrinsics! {
         }
 
         // SAFETY: `dst` will still be valid for `n` bytes
-        unsafe { __aeabi_memset(dst.cast::<core::ffi::c_void>(), n, byte as i32) };
+        unsafe { __aeabi_memset(dst.cast::<u8>(), n, byte as i32) };
     }
 
     /// `memset` for 8-byte alignment.
@@ -264,11 +232,7 @@ intrinsics! {
     /// Usual `memset` requirements apply. Additionally, `dst` and `src` must be aligned to
     /// eight bytes.
     #[cfg(not(target_vendor = "apple"))]
-    pub unsafe extern "aapcs" fn __aeabi_memset8(
-        dst: *mut core::ffi::c_void,
-        n: usize,
-        c: i32
-    ) {
+    pub unsafe extern "aapcs" fn __aeabi_memset8(dst: *mut u8, n: usize, c: i32) {
         debug_assert!(dst.addr().is_multiple_of(8));
 
         // SAFETY: memset preconditions apply, less strict alignment.
@@ -281,7 +245,7 @@ intrinsics! {
     ///
     /// Usual `memclr` requirements apply.
     #[cfg(not(target_vendor = "apple"))]
-    pub unsafe extern "aapcs" fn __aeabi_memclr(dst: *mut core::ffi::c_void, n: usize) {
+    pub unsafe extern "aapcs" fn __aeabi_memclr(dst: *mut u8, n: usize) {
         // SAFETY: memclr preconditions apply, less strict alignment.
         unsafe { __aeabi_memset(dst, n, 0) };
     }
@@ -293,7 +257,7 @@ intrinsics! {
     /// Usual `memclr` requirements apply. Additionally, `dest` and `src` must be aligned to
     /// four bytes.
     #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
-    pub unsafe extern "aapcs" fn __aeabi_memclr4(dst: *mut core::ffi::c_void, n: usize) {
+    pub unsafe extern "aapcs" fn __aeabi_memclr4(dst: *mut u8, n: usize) {
         debug_assert!(dst.addr().is_multiple_of(4));
 
         // SAFETY: memclr preconditions apply, less strict alignment.
@@ -307,7 +271,7 @@ intrinsics! {
     /// Usual `memclr` requirements apply. Additionally, `dst` and `src` must be aligned to
     /// eight bytes.
     #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
-    pub unsafe extern "aapcs" fn __aeabi_memclr8(dst: *mut core::ffi::c_void, n: usize) {
+    pub unsafe extern "aapcs" fn __aeabi_memclr8(dst: *mut u8, n: usize) {
         debug_assert!(dst.addr().is_multiple_of(8));
 
         // SAFETY: memclr preconditions apply, less strict alignment.

@@ -1,4 +1,5 @@
 //@ no-prefer-dynamic
+//@[dylib-impl] compile-flags: --crate-type=dylib -Cprefer-dynamic
 //@ aux-build: decl_with_default.rs
 #![crate_type = "rlib"]
 #![feature(extern_item_impls)]

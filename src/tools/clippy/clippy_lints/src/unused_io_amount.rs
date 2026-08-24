@@ -5,8 +5,7 @@ use clippy_utils::{paths, peel_blocks, sym};
 use hir::{ExprKind, HirId, PatKind};
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -157,10 +156,7 @@ fn non_consuming_ok_arm<'a>(cx: &LateContext<'a>, arm: &hir::Arm<'a>) -> bool {
         return false;
     }
 
-    if is_ok_wild_or_dotdot_pattern(cx, arm.pat) {
-        return true;
-    }
-    false
+    is_ok_wild_or_dotdot_pattern(cx, arm.pat)
 }
 
 fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {

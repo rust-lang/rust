@@ -131,6 +131,7 @@ expression: test --skip=coverage
     - Set({compiler/rustc_serialize})
     - Set({compiler/rustc_session})
     - Set({compiler/rustc_span})
+    - Set({compiler/rustc_structures})
     - Set({compiler/rustc_symbol_mangling})
     - Set({compiler/rustc_target})
     - Set({compiler/rustc_thread_pool})

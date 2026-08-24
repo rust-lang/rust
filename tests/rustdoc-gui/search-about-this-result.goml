@@ -1,13 +1,15 @@
 // Check the "About this Result" popover.
 // Try a complex result.
+
+include: "utils.goml"
+
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=scroll_traits::Iterator<T>,(T->bool)->(Extend<T>,Extend<T>)"
 
 // These two commands are used to be sure the search will be run.
 focus: ".search-input"
 press-key: "Enter"
 
-wait-for: "#search-tabs"
-wait-for-false: "#search-tabs .count.loading"
+call-function: ("wait-for-search-results", {})
 assert-count: ("#search-tabs button", 1)
 assert-count: (".search-results > a", 1)
 
@@ -32,8 +34,7 @@ go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=F->lib2::WhereWhitespac
 focus: ".search-input"
 press-key: "Enter"
 
-wait-for: "#search-tabs"
-wait-for-false: "#search-tabs .count.loading"
+call-function: ("wait-for-search-results", {})
 assert-text: ("//div[@class='type-signature']", "F -> WhereWhitespace<T>")
 assert-count: ("#search-tabs button", 1)
 assert-count: (".search-results > a", 1)

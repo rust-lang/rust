@@ -1,14 +1,12 @@
 use libc::{c_int, renameat, unlinkat};
 
 cfg_select! {
-    not(
-        any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "l4re",
-            target_os = "android",
-            target_os = "hurd",
-        )
-    ) => {
+    not(any(
+        all(target_os = "linux", not(target_env = "musl")),
+        target_os = "l4re",
+        target_os = "android",
+        target_os = "hurd",
+    )) => {
         use libc::{open as open64, openat as openat64};
     }
     _ => {
@@ -38,7 +36,7 @@ impl Dir {
     }
 
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        run_path_with_cstr(path.as_ref(), &|path| self.open_file_c(path, &opts))
+        run_path_with_cstr(path.as_ref(), &|path| self.open_file_c(path, opts))
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {

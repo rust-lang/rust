@@ -411,7 +411,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_mir,
     sym::custom_mir,
     sym::rustc_dump_item_bounds,
-    sym::rustc_dump_predicates,
+    sym::rustc_dump_clauses,
     sym::rustc_dump_def_parents,
     sym::rustc_dump_object_lifetime_defaults,
     sym::rustc_dump_vtable,

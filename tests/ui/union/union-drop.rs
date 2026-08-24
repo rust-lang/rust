@@ -1,4 +1,6 @@
 //@ run-pass
+//@ reference: destructors.manually-suppressing
+//@ reference: items.union.drop
 
 #![allow(dead_code)]
 #![allow(unused_variables)]

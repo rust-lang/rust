@@ -48,6 +48,8 @@ But avoid using LLM tools that generate long, complex words.
 In daily teamwork, **simple and clear words** are best for easy understanding.
 Even small typos or grammar mistakes can make you seem more human, and people connect better with humans.
 
+See also [our LLM policy](https://forge.rust-lang.org/policies/llm-usage.html).
+
 ### Experts
 
 Not all `t-compiler` members are experts on all parts of `rustc`;
@@ -184,7 +186,7 @@ The following tasks are doable without much background knowledge but are incredi
 - Answer questions on [users.rust-lang.org][users], or on [Stack Overflow][so].
 - Participate in the [RFC process](https://github.com/rust-lang/rfcs).
 - Find a [requested community library][community-library], build it, and publish
-  it to [Crates.io](http://crates.io).
+  it to [Crates.io](https://crates.io).
   Easier said than done, but very, very valuable!
 
 [users]: https://users.rust-lang.org/

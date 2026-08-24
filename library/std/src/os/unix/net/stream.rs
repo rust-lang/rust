@@ -1,12 +1,18 @@
 cfg_select! {
     any(
-        target_os = "linux", target_os = "android",
+        target_os = "linux",
+        target_os = "android",
         target_os = "hurd",
-        target_os = "dragonfly", target_os = "freebsd",
-        target_os = "openbsd", target_os = "netbsd",
-        target_os = "solaris", target_os = "illumos",
-        target_os = "haiku", target_os = "nto",
-        target_os = "qnx", target_os = "cygwin",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "haiku",
+        target_os = "nto",
+        target_os = "qnx",
+        target_os = "cygwin",
     ) => {
         use libc::MSG_NOSIGNAL;
     }
@@ -642,7 +648,7 @@ impl io::Read for UnixStream {
 
     #[inline]
     fn is_read_vectored(&self) -> bool {
-        io::Read::is_read_vectored(&&*self)
+        io::Read::is_read_vectored(&self)
     }
 }
 
@@ -678,7 +684,7 @@ impl io::Write for UnixStream {
 
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        io::Write::is_write_vectored(&&*self)
+        io::Write::is_write_vectored(&self)
     }
 
     fn flush(&mut self) -> io::Result<()> {

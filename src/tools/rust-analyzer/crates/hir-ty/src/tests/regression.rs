@@ -2397,12 +2397,13 @@ fn test() {
 }
 "#,
         expect![[r#"
+            46..49 'Foo': Foo<_>
             93..97 'self': Foo<N>
             108..125 '{     ...     }': usize
             118..119 'N': usize
             139..157 '{     ...= N; }': ()
-            149..150 '_': Foo<N>
-            153..154 'N': Foo<N>
+            149..150 '_': Foo<_>
+            153..154 'N': Foo<_>
         "#]],
     );
 }
@@ -3124,6 +3125,38 @@ fn main() {
 }
 
 #[test]
+fn regression_23065() {
+    check_no_mismatches(
+        r#"
+trait Trait {
+    type Assoc<const N: usize>;
+}
+
+struct Struct;
+struct GenericStruct<'a>(&'a ());
+
+impl<const X: usize> Trait for Struct {
+    type Assoc<'a, const N: usize> = GenericStruct<'a>;
+
+    fn g(&self) -> Self::Assoc<{ X }> {
+        loop {}
+    }
+}
+
+struct OtherStruct;
+
+impl Trait for OtherStruct {
+    type Assoc<'a> = &'a ();
+}
+
+fn other() -> <OtherStruct as Trait>::Assoc<0> {
+    loop {}
+}
+    "#,
+    );
+}
+
+#[test]
 fn regression_23083() {
     check_no_mismatches(
         r#"
@@ -3134,6 +3167,28 @@ fn main() {
         }
         _ => {}
     }
+}
+    "#,
+    );
+}
+
+#[test]
+fn dyn_trait_binder_inside_fn_ptr() {
+    check_no_mismatches(
+        r#"
+trait Trait<'a> {}
+fn f<'a>(_: fn() -> &'a dyn Trait<'a>) {}
+    "#,
+    );
+}
+
+#[test]
+fn regression_23113() {
+    check_no_mismatches(
+        r#"
+//- minicore: range
+fn main() {
+    0..loop {};
 }
     "#,
     );

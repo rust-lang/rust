@@ -1,0 +1,62 @@
+error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
+  --> tests/ui/double_must_use_proc_macro.rs:56:1
+   |
+LL | #[must_use]
+   | ----------- help: remove the attribute
+LL | fn returns_must_use_struct() -> MustUseStruct {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: alternatively, you may add an explicit reason to the `must_use` attribute
+   = note: `-D clippy::double-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
+
+error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
+  --> tests/ui/double_must_use_proc_macro.rs:62:1
+   |
+LL | #[must_use]
+   | ----------- help: remove the attribute
+LL | fn returns_must_use_union() -> MustUseUnion {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: alternatively, you may add an explicit reason to the `must_use` attribute
+
+error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
+  --> tests/ui/double_must_use_proc_macro.rs:68:1
+   |
+LL | #[must_use]
+   | ----------- help: remove the attribute
+LL | fn returns_must_use_enum() -> MustUseEnum {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: alternatively, you may add an explicit reason to the `must_use` attribute
+
+error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
+  --> tests/ui/double_must_use_proc_macro.rs:74:1
+   |
+LL | #[must_use]
+   | ----------- help: remove the attribute
+LL | fn returns_must_use_trait() -> impl MustUseTrait {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the return type is implementer of `MustUseTrait`
+  --> tests/ui/double_must_use_proc_macro.rs:74:32
+   |
+LL | fn returns_must_use_trait() -> impl MustUseTrait {
+   |                                ^^^^^^^^^^^^^^^^^
+   = note: alternatively, you may add an explicit reason to the `must_use` attribute
+
+error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
+  --> tests/ui/double_must_use_proc_macro.rs:82:1
+   |
+LL | fn user_must_use() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove `must_use`
+  --> tests/ui/double_must_use_proc_macro.rs:80:1
+   |
+LL | #[must_use]
+   | ^^^^^^^^^^^
+   = note: alternatively, you may add an explicit reason to the `must_use` attribute
+
+error: aborting due to 5 previous errors
+

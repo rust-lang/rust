@@ -262,7 +262,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
 
             self.clauses.push(
                 ty::Binder::bind_with_vars(
-                    ty::ProjectionPredicate {
+                    ty::ProjectionClause {
                         projection_term: shifted_alias_ty.projection_to_alias_ty().into(),
                         term: default_ty.into(),
                     },

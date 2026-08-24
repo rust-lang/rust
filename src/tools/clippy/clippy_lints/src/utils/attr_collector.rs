@@ -2,8 +2,7 @@ use std::mem;
 use std::sync::{Arc, OnceLock};
 
 use rustc_ast::{Attribute, Crate};
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, impl_lint_pass};
 use rustc_span::Span;
 
 #[derive(Clone, Default)]

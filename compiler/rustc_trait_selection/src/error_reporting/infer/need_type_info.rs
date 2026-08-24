@@ -678,7 +678,7 @@ impl<'tcx> InferSourceKind<'tcx> {
                     || matches!(
                         ty.kind(),
                         ty::Adt(_, args)
-                        if args.types().count() == 0 && args.consts().count() == 0
+                        if args.terms().next().is_none()
                     )
                 {
                     // `ty` is either `_`, a primitive type like `u32` or a type with no type or

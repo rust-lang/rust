@@ -199,4 +199,72 @@ fn wrongly_unmangled_macros() {
     //~^ unnecessary_fold
 }
 
+/// Folding over an `Option`'s iterator is `map_or` in disguise (issue #1658)
+fn option_fold() {
+    let opt: Option<i32> = Some(2);
+
+    // `.iter()`: suggest `opt.as_ref().map_or(...)`
+    let _ = opt.iter().fold(10, |acc, x| acc + x);
+    //~^ unnecessary_fold
+
+    // `.into_iter()`: `Option` is consumed, suggest plain `map_or`
+    let _ = opt.into_iter().fold(10, |acc, x| acc * x);
+    //~^ unnecessary_fold
+
+    // `.iter_mut()`: suggest `opt.as_mut().map_or(...)`
+    let mut opt_mut: Option<i32> = Some(3);
+    let _ = opt_mut.iter_mut().fold(10, |acc, x| acc + *x);
+    //~^ unnecessary_fold
+
+    // accumulator unused in the closure body
+    let _ = opt.iter().fold(10, |_, x| *x);
+    //~^ unnecessary_fold
+
+    // accumulator used more than once: a literal can be duplicated freely
+    let _ = opt.iter().fold(2, |acc, x| acc * acc + x);
+    //~^ unnecessary_fold
+
+    // a binding of a `Copy` type can also be duplicated freely
+    let init = 10;
+    let _ = opt.iter().fold(init, |acc, x| acc + x);
+    //~^ unnecessary_fold
+
+    // `Option` expression receiver (not a binding)
+    let _ = Some(1).into_iter().fold(5, |acc, x| acc - x);
+    //~^ unnecessary_fold
+
+    // should NOT lint: `acc` is bound by the enclosing fold's closure, and
+    // substituting a closure parameter is not safe when folds are nested
+    let _ = (0..3).fold(0, |acc, x| opt.iter().fold(acc, |a, b| a + b) + x);
+
+    // an option fold nested in a standard fold is still linted when its init
+    // is a literal
+    let _ = (0..3).fold(0, |acc, x| opt.iter().fold(1, |a, b| a + b) + x);
+    //~^ unnecessary_fold
+
+    // should NOT lint: a `mut` accumulator is likely reassigned in the body,
+    // and substituting into the assignment would not compile
+    let _ = opt.iter().fold(0, |mut acc, x| {
+        acc += x;
+        acc
+    });
+
+    // should NOT lint: substituting a call would re-evaluate it
+    fn compute() -> i32 {
+        42
+    }
+    let _ = opt.iter().fold(compute(), |acc, x| acc + x);
+
+    // should NOT lint: substituting a non-`Copy` binding would move it twice
+    let owned = String::from("a");
+    let _ = opt.iter().fold(owned, |acc, x| acc + &x.to_string());
+
+    // should NOT lint: fold over a general iterator with non-literal init
+    let _ = (0..3).fold(init, |acc, x| acc + x);
+
+    // should NOT lint: `Result` iterators are out of scope here
+    let res: Result<i32, ()> = Ok(1);
+    let _ = res.iter().fold(init, |acc, x| acc + x);
+}
+
 fn main() {}

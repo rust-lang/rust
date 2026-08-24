@@ -295,9 +295,10 @@ pub fn sleep(dur: Duration) {
 
 /// Puts the current thread to sleep until the specified deadline has passed.
 ///
-/// The thread may still be asleep after the deadline specified due to
-/// scheduling specifics or platform-dependent functionality. It will never
-/// wake before.
+/// If the deadline has already passed at the time this function is called, it
+/// will return immediately. Note that the thread may still be asleep after the
+/// deadline specified due to scheduling specifics or platform-dependent
+/// functionality. It will never wake before.
 ///
 /// This function is blocking, and should not be used in `async` functions.
 ///
@@ -313,19 +314,21 @@ pub fn sleep(dur: Duration) {
 ///
 /// |  Platform |               System call                                            |
 /// |-----------|----------------------------------------------------------------------|
-/// | Linux     | [clock_nanosleep] (Monotonic Clock)                                  |
-/// | BSD except OpenBSD | [clock_nanosleep] (Monotonic Clock)                         |
-/// | Android   | [clock_nanosleep] (Monotonic Clock)                                  |
-/// | Solaris   | [clock_nanosleep] (Monotonic Clock)                                  |
-/// | Illumos   | [clock_nanosleep] (Monotonic Clock)                                  |
-/// | Dragonfly | [clock_nanosleep] (Monotonic Clock)                                  |
-/// | Hurd      | [clock_nanosleep] (Monotonic Clock)                                  |
-/// | Vxworks   | [clock_nanosleep] (Monotonic Clock)                                  |
+/// | Linux     | [`clock_nanosleep`] (Monotonic Clock)                                |
+/// | BSD except OpenBSD | [`clock_nanosleep`] (Monotonic Clock)                       |
+/// | Android   | [`clock_nanosleep`] (Monotonic Clock)                                |
+/// | Solaris   | [`clock_nanosleep`] (Monotonic Clock)                                |
+/// | Illumos   | [`clock_nanosleep`] (Monotonic Clock)                                |
+/// | Dragonfly | [`clock_nanosleep`] (Monotonic Clock)                                |
+/// | Hurd      | [`clock_nanosleep`] (Monotonic Clock)                                |
+/// | Vxworks   | [`clock_nanosleep`] (Monotonic Clock)                                |
 /// | Apple     | `mach_wait_until`                                                    |
+/// | Fuchsia   | [`zx_nanosleep`]                                                     |
 /// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |
 ///
 /// [currently]: crate::io#platform-specific-behavior
-/// [clock_nanosleep]: https://linux.die.net/man/3/clock_nanosleep
+/// [`clock_nanosleep`]: https://linux.die.net/man/3/clock_nanosleep
+/// [`zx_nanosleep`]: https://fuchsia.dev/reference/syscalls/nanosleep
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///

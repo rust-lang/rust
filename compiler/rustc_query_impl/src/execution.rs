@@ -3,7 +3,7 @@ use std::mem::ManuallyDrop;
 use std::num::NonZero;
 
 use rustc_data_structures::hash_table::Entry;
-use rustc_data_structures::{Limit, defer, outline, sharded, sync};
+use rustc_data_structures::{defer, outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{
     DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
@@ -17,6 +17,7 @@ use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span};
+use rustc_structures::Limit;
 
 use crate::diagnostics::{QueryOverflow, QueryOverflowNote};
 use crate::handle_cycle_error;

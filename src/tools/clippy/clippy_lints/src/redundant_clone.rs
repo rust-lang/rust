@@ -8,21 +8,11 @@ use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, def_id};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Span};
-
-macro_rules! unwrap_or_continue {
-    ($x:expr) => {
-        match $x {
-            Some(x) => x,
-            None => continue,
-        }
-    };
-}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -95,8 +85,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 continue;
             }
 
-            let (fn_def_id, arg, arg_ty, clone_ret) =
-                unwrap_or_continue!(is_call_with_ref_arg(cx, mir, &terminator.kind));
+            let Some((fn_def_id, arg, arg_ty, clone_ret)) = is_call_with_ref_arg(cx, mir, &terminator.kind) else {
+                continue;
+            };
 
             let fn_name = cx.tcx.get_diagnostic_name(fn_def_id);
 
@@ -117,7 +108,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             }
 
             // `{ arg = &cloned; clone(move arg); }` or `{ arg = &cloned; to_path_buf(arg); }`
-            let (cloned, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(cx, mir, arg, from_borrow, bb));
+            let Some((cloned, cannot_move_out)) = find_stmt_assigns_to(cx, mir, arg, from_borrow, bb) else {
+                continue;
+            };
 
             let loc = mir::Location {
                 block: bb,
@@ -158,8 +151,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     continue;
                 };
 
-                let (local, cannot_move_out) =
-                    unwrap_or_continue!(find_stmt_assigns_to(cx, mir, pred_arg, true, ps[0]));
+                let Some((local, cannot_move_out)) = find_stmt_assigns_to(cx, mir, pred_arg, true, ps[0]) else {
+                    continue;
+                };
                 let loc = mir::Location {
                     block: bb,
                     statement_index: mir.basic_blocks[bb].statements.len(),
@@ -286,7 +280,7 @@ fn find_stmt_assigns_to<'tcx>(
     bb: mir::BasicBlock,
 ) -> Option<(mir::Local, CannotMoveOut)> {
     let rvalue = mir.basic_blocks[bb].statements.iter().rev().find_map(|stmt| {
-        if let mir::StatementKind::Assign(box (mir::Place { local, .. }, v)) = &stmt.kind {
+        if let mir::StatementKind::Assign((mir::Place { local, .. }, v)) = &stmt.kind {
             return if *local == to_local { Some(v) } else { None };
         }
 

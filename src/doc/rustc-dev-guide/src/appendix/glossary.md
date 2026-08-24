@@ -3,6 +3,7 @@
 Term                                           | Meaning
 -----------------------------------------------|--------
 <span id="1zst">1-ZST</span>                   |  A *one-aligned [zero-sized type](#zst)*. A type of size zero with an [alignment][size-align] of one.
+<span id="abby">abby</span>                    | Short for [_assumptions on binders_](https://github.com/rust-lang/project-assumptions-on-binders). Alternatively: `a-bi`, though this is very close to ABI.
 <span id="arena">arena, arena allocation</span> |  An _arena_ is a large memory buffer from which other memory allocations are made. This style of allocation is called _arena allocation_. See [this chapter](../memory.md) for more info.
 <span id="afidt">AFIDT</span>                  |  Short for _async function in `dyn Trait`_. See also [AFIT](#afit).
 <span id="afit">AFIT</span>                    |  Short for _async function in trait_. They desugar to [RPITITs](#rpitit).
@@ -91,7 +92,7 @@ Term                                           | Meaning
 <span id="span">span</span>                    |  A location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the [`Span`] datatype for more.
 <span id="subst">subst 👎</span>               |  The act of _substituting_ the generic parameters inside of a type, constant expression, etc. with concrete generic arguments by supplying [substs](#substs). Nowadays referred to as _instantiating_ in the compiler.
 <span id="substs">substs 👎</span>             |  The _substitutions_ for a given generic item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`). Nowadays referred to as the list of _generic arguments_ in the compiler (but note that strictly speaking these two concepts differ, see the literature).
-<span id="sysroot">sysroot</span>              |  The directory for build artifacts that are loaded by the compiler at runtime. ([see more](../building/bootstrapping/what-bootstrapping-does.html#what-is-a-sysroot))
+<span id="sysroot">sysroot</span>              |  The directory for build artifacts that are loaded by the compiler at runtime. ([see more](../building/bootstrapping/what-bootstrapping-does.md#what-is-a-sysroot))
 <span id="tag">tag</span>                      |  The "tag" of an enum/generator encodes the [discriminant](#discriminant) of the active variant/state.  Tags can either be "direct" (simply storing the discriminant in a field) or use a ["niche"](#niche).
 <span id="tait">TAIT</span>                    |  Short for _type-alias `impl Trait`_. Introduced in [RFC 2515].
 <span id="tcx">`tcx`</span>                    |  Standard variable name for the "typing context" (`TyCtxt`), main data structure of the compiler. ([see more](../ty.md))

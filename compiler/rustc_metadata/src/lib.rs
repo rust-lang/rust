@@ -1,11 +1,11 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(error_iter)]
 #![feature(file_buffered)]
 #![feature(gen_blocks)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
-#![feature(never_type)]
 #![feature(option_into_flat_iter)]
 #![feature(proc_macro_internals)]
 #![feature(trusted_len)]

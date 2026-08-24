@@ -9,11 +9,11 @@ use rustc_feature::GateIssue;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
+use rustc_lint_defs::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
+use rustc_lint_defs::{DeprecatedSinceKind, Lint};
 use rustc_macros::{Decodable, Encodable, StableHash, Subdiagnostic};
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err_issue;
-use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
-use rustc_session::lint::{DeprecatedSinceKind, Lint};
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 

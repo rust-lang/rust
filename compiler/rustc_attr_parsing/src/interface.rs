@@ -11,9 +11,8 @@ use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, Hash
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_MAP, Features};
-use rustc_lint_defs::RegisteredTools;
+use rustc_lint_defs::{LintId, RegisteredTools};
 use rustc_session::Session;
-use rustc_session::lint::LintId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;

@@ -5,9 +5,9 @@ use rustc_data_structures::graph::iterate::{
 };
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
+use rustc_lint_defs::builtin::UNCONDITIONAL_RECURSION;
 use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, GenericArg, GenericArgs, Instance, Ty, TyCtxt, Unnormalized};
-use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 
 use crate::diagnostics::UnconditionalRecursion;

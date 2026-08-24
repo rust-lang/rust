@@ -51,12 +51,14 @@ LL |     reuse <F as Trait>::Type;
 error[E0576]: cannot find method or associated constant `baz` in trait `Trait`
   --> $DIR/bad-resolve.rs:29:25
    |
-LL |     fn bar() {}
-   |     -------- similarly named associated function `bar` defined here
-...
 LL |     reuse <F as Trait>::baz;
-   |                         ^^^
+   |                         ^^^ not found in `Trait`
    |
+note: similarly named associated function `bar` defined here
+  --> $DIR/bad-resolve.rs:6:5
+   |
+LL |     fn bar() {}
+   |     ^^^^^^^^
 help: an associated function with a similar name exists
    |
 LL -     reuse <F as Trait>::baz;
@@ -72,12 +74,14 @@ LL |     reuse foo { &self.0 }
 error[E0425]: cannot find function `foo2` in trait `Trait`
   --> $DIR/bad-resolve.rs:37:18
    |
-LL |     fn foo(&self, x: i32) -> i32 { x }
-   |     ---------------------------- similarly named associated function `foo` defined here
-...
 LL |     reuse Trait::foo2 { self.0 }
-   |                  ^^^^
+   |                  ^^^^ not found in `Trait`
    |
+note: similarly named associated function `foo` defined here
+  --> $DIR/bad-resolve.rs:7:5
+   |
+LL |     fn foo(&self, x: i32) -> i32 { x }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: an associated function with a similar name exists
    |
 LL -     reuse Trait::foo2 { self.0 }

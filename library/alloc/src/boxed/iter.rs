@@ -196,20 +196,20 @@ impl<'a> FromIterator<Cow<'a, str>> for Box<str> {
 
 /// This implementation is required to make sure that the `Box<[I; N]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<I, const N: usize, A: Allocator> !Iterator for Box<[I; N], A> {}
 
 /// This implementation is required to make sure that the `&Box<[I; N]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a Box<[I; N], A> {}
 
 /// This implementation is required to make sure that the `&mut Box<[I; N]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a mut Box<[I; N], A> {}
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a Box<[T; N], A> {
     type IntoIter = slice::Iter<'a, T>;
     type Item = &'a T;
@@ -218,7 +218,7 @@ impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a Box<[T; N], A> {
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a mut Box<[T; N], A> {
     type IntoIter = slice::IterMut<'a, T>;
     type Item = &'a mut T;
@@ -228,7 +228,7 @@ impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a mut Box<[T; N], A
 }
 
 /// A by-value `Box<[T; N]>` iterator.
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 #[rustc_insignificant_dtor]
 pub struct BoxedArrayIntoIter<T, const N: usize, A: Allocator = Global> {
     // FIXME: make a more efficient implementation (without the need to store capacity)
@@ -238,19 +238,19 @@ pub struct BoxedArrayIntoIter<T, const N: usize, A: Allocator = Global> {
 impl<T, const N: usize, A: Allocator> BoxedArrayIntoIter<T, N, A> {
     /// Returns an immutable slice of all elements that have not been yielded
     /// yet.
-    #[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
     pub fn as_slice(&self) -> &[T] {
         self.inner.as_slice()
     }
 
     /// Returns a mutable slice of all elements that have not been yielded yet.
-    #[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.inner.as_mut_slice()
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> Iterator for BoxedArrayIntoIter<T, N, A> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
@@ -283,7 +283,7 @@ impl<T, const N: usize, A: Allocator> Iterator for BoxedArrayIntoIter<T, N, A> {
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> DoubleEndedIterator for BoxedArrayIntoIter<T, N, A> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back()
@@ -302,7 +302,7 @@ impl<T, const N: usize, A: Allocator> DoubleEndedIterator for BoxedArrayIntoIter
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> ExactSizeIterator for BoxedArrayIntoIter<T, N, A> {
     fn len(&self) -> usize {
         self.inner.len()
@@ -313,21 +313,21 @@ impl<T, const N: usize, A: Allocator> ExactSizeIterator for BoxedArrayIntoIter<T
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> FusedIterator for BoxedArrayIntoIter<T, N, A> {}
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 unsafe impl<T, const N: usize, A: Allocator> TrustedLen for BoxedArrayIntoIter<T, N, A> {}
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T: Clone, const N: usize, A: Clone + Allocator> Clone for BoxedArrayIntoIter<T, N, A> {
     fn clone(&self) -> Self {
         Self { inner: self.inner.clone() }
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T: fmt::Debug, const N: usize, A: Allocator> fmt::Debug for BoxedArrayIntoIter<T, N, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Only print the elements that were not yielded yet: we cannot
@@ -336,7 +336,7 @@ impl<T: fmt::Debug, const N: usize, A: Allocator> fmt::Debug for BoxedArrayIntoI
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> IntoIterator for Box<[T; N], A> {
     type IntoIter = BoxedArrayIntoIter<T, N, A>;
     type Item = T;

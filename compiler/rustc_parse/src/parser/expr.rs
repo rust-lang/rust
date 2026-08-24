@@ -5,7 +5,7 @@ use core::ops::{Bound, ControlFlow};
 
 use ast::mut_visit::{self, MutVisitor};
 use ast::token::IdentIsRaw;
-use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
+use ast::{ForLoopKind, MatchKind, Pat, Path, PathSegment, Recovered};
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
@@ -13,15 +13,15 @@ use rustc_ast::util::parser::{AssocOp, ExprPrecedence, Fixity, prec_let_scrutine
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
-    BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
-    FnRetTy, ForLoop, Guard, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits, StmtKind,
-    Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
+    BlockCheckMode, CaptureBy, ClosureBinder, CoroutineKind, DUMMY_NODE_ID, Expr, ExprField,
+    ExprKind, FnDecl, FnRetTy, ForLoop, Guard, Label, MacCall, MetaItemLit, Movability, Param,
+    RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
+use rustc_lint_defs::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_literal_escaper::unescape_char;
 use rustc_session::diagnostics::report_lit_error;
-use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -2479,14 +2479,14 @@ impl<'a> Parser<'a> {
             Movability::Movable
         };
 
-        let coroutine_kind = if self.token_uninterpolated_span().at_least_rust_2018() {
-            self.parse_coroutine_kind(Case::Sensitive)
+        let coroutine_marker = if self.token_uninterpolated_span().at_least_rust_2018() {
+            self.parse_coroutine_marker(Case::Sensitive)
         } else {
             None
         };
 
         if let ClosureBinder::NotPresent = binder
-            && coroutine_kind.is_some()
+            && coroutine_marker.is_some()
         {
             // coroutine closures and generators can have the same qualifiers, so we might end up
             // in here if there is a missing `|` but also no `{`. Adjust the expectations in that case.
@@ -2512,14 +2512,12 @@ impl<'a> Parser<'a> {
             FnRetTy::Ty(ty) => self.parse_closure_block_body(ty.span)?,
         };
 
-        match coroutine_kind {
-            Some(CoroutineKind::Async { .. }) => {}
-            Some(CoroutineKind::Gen { span, .. }) | Some(CoroutineKind::AsyncGen { span, .. }) => {
-                // Feature-gate `gen ||` and `async gen ||` closures.
-                // FIXME(gen_blocks): This perhaps should be a different gate.
-                self.psess.gated_spans.gate(sym::gen_blocks, span);
-            }
-            None => {}
+        if let Some(coroutine_marker) = coroutine_marker
+            && coroutine_marker.kind.is_gen()
+        {
+            // Feature-gate `gen ||` and `async gen ||` closures.
+            // FIXME(gen_blocks): This perhaps should be a different gate.
+            self.psess.gated_spans.gate(sym::gen_blocks, coroutine_marker.span);
         }
 
         if self.token == TokenKind::Semi
@@ -2543,7 +2541,7 @@ impl<'a> Parser<'a> {
                 binder,
                 capture_clause,
                 constness,
-                coroutine_kind,
+                coroutine_marker,
                 movability,
                 fn_decl,
                 body,
@@ -3738,18 +3736,13 @@ impl<'a> Parser<'a> {
     fn parse_gen_block(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
         let kind = if self.eat_keyword(exp!(Async)) {
-            if self.eat_keyword(exp!(Gen)) { GenBlockKind::AsyncGen } else { GenBlockKind::Async }
+            if self.eat_keyword(exp!(Gen)) { CoroutineKind::AsyncGen } else { CoroutineKind::Async }
         } else {
             assert!(self.eat_keyword(exp!(Gen)));
-            GenBlockKind::Gen
+            CoroutineKind::Gen
         };
-        match kind {
-            GenBlockKind::Async => {
-                // `async` blocks are stable
-            }
-            GenBlockKind::Gen | GenBlockKind::AsyncGen => {
-                self.psess.gated_spans.gate(sym::gen_blocks, lo.to(self.prev_token.span));
-            }
+        if kind.is_gen() {
+            self.psess.gated_spans.gate(sym::gen_blocks, lo.to(self.prev_token.span));
         }
         let capture_clause = self.parse_capture_clause()?;
         let decl_span = lo.to(self.prev_token.span);
@@ -4262,7 +4255,7 @@ impl<'a> Parser<'a> {
                 constness: rustc_ast::Const::No,
                 movability: rustc_ast::Movability::Movable,
                 capture_clause: rustc_ast::CaptureBy::Ref,
-                coroutine_kind: None,
+                coroutine_marker: None,
                 fn_decl: Box::new(rustc_ast::FnDecl {
                     inputs: Default::default(),
                     output: rustc_ast::FnRetTy::Default(span),

@@ -258,7 +258,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         // * the closure was not called, but a previous call initialized `value`.
         // * the closure was not called because the Once is poisoned, which we handled above.
         // So `value` has definitely been initialized and will not be modified again.
-        unsafe { &*(*this.data.get()).value }
+        unsafe { &(*this.data.get()).value }
     }
 }
 

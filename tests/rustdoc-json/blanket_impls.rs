@@ -3,5 +3,5 @@
 #![no_std]
 
 //@ jq_is '[.index[] | select(.name == "Error").inner | has("assoc_type")]' '[true, true]'
-//@ jq_has '.index[] | select(.name == "Error").inner.assoc_type.type.resolved_path.path' '"Infallible"'
+//@ jq_has '.index[] | select(.name == "Error").inner.assoc_type.type.primitive' '"never"'
 pub struct ForBlanketTryFromImpl;

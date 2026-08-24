@@ -370,11 +370,6 @@ pub enum Expr {
         target: PatId,
         value: ExprId,
     },
-    Range {
-        lhs: Option<ExprId>,
-        rhs: Option<ExprId>,
-        range_type: RangeOp,
-    },
     Index {
         base: ExprId,
         index: ExprId,
@@ -459,8 +454,6 @@ impl Expr {
             | Expr::Yield { .. } => ExprPrecedence::Jump,
 
             Expr::Continue { .. } => ExprPrecedence::Unambiguous,
-
-            Expr::Range { .. } => ExprPrecedence::Range,
         }
     }
 }

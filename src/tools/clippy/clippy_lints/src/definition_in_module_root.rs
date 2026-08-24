@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{self, Inline, ItemKind, ModKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::{FileName, SourceFile, sym};
 
 declare_clippy_lint! {

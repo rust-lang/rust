@@ -101,7 +101,7 @@ impl CommandLineStep for Vendor {
             // These submodules must be present for `x vendor` to work.
             for (_, submodules) in &to_vendor {
                 for submodule in submodules {
-                    builder.build.require_submodule(submodule, None);
+                    builder.sess.require_submodule(submodule, None);
                 }
             }
 

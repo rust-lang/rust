@@ -51,7 +51,7 @@ Directives can generally be found by browsing the
 
 ### Auxiliary builds
 
-See [Building auxiliary crates](compiletest.html#building-auxiliary-crates)
+See [Building auxiliary crates](compiletest.md#building-auxiliary-crates)
 
 | Directive             | Explanation                                                                                           | Supported test suites                  | Possible values                                                    |
 |-----------------------|-------------------------------------------------------------------------------------------------------|----------------------------------------|--------------------------------------------------------------------|
@@ -62,7 +62,7 @@ See [Building auxiliary crates](compiletest.html#building-auxiliary-crates)
 | `proc-macro`          | Similar to `aux-build`, but for aux forces host and don't use `-Cprefer-dynamic`[^pm].                | All except `run-make`/`run-make-cargo` | Path to auxiliary proc-macro `.rs` file                            |
 | `build-aux-docs`      | Build docs for auxiliaries as well.  Note that this only works with `aux-build`, not `aux-crate`.     | All except `run-make`/`run-make-cargo` | N/A                                                                |
 
-[^pm]: please see the [Auxiliary proc-macro section](compiletest.html#auxiliary-proc-macro) in the compiletest chapter for specifics.
+[^pm]: please see the [Auxiliary proc-macro section](compiletest.md#auxiliary-proc-macro) in the compiletest chapter for specifics.
 
 ### Controlling outcome expectations
 
@@ -309,7 +309,7 @@ separate tools.
 For more information, please read their respective chapters as linked above.
 
 [rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md
-[rustdoc-js-tests]: ../rustdoc-internals/search.html#testing-the-search-engine
+[rustdoc-js-tests]: ../rustdoc-internals/search.md#testing-the-search-engine
 [rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md
 
 ### Pretty printing

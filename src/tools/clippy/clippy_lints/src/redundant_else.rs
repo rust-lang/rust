@@ -3,9 +3,8 @@ use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::{SpanExt as _, indent_of, reindent_multiline};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, MatchSource, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::TypeckResults;
-use rustc_session::declare_lint_pass;
 use rustc_span::{ExpnKind, SyntaxContext};
 
 declare_clippy_lint! {

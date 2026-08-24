@@ -172,7 +172,7 @@ impl_erasable_for_types_with_no_type_params! {
     // tidy-alphabetical-start
     (&'_ ty::CrateInherentImpls, Result<(), ErrorGuaranteed>),
     (),
-    (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>),
+    (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>, ty::RequiredDepth),
     Option<&'_ OsStr>,
     Option<&'_ [rustc_hir::PreciseCapturingArgKind<rustc_span::Symbol, rustc_span::Symbol>]>,
     Option<(mir::ConstValue, Ty<'_>)>,

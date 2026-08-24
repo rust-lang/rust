@@ -623,8 +623,9 @@ impl<'a> ArArchiveBuilder<'a> {
                             io::Error::new(
                                 io::ErrorKind::InvalidData,
                                 format!(
-                                    "archive member at offset {start} with size {} \
+                                    "archive member of {} at offset {start} with size {} \
                                          exceeds archive size {} in `{}`",
+                                    src_archive.0.display(),
                                     file_range.1,
                                     archive_data.len(),
                                     src_archive.0.display(),
@@ -642,11 +643,18 @@ impl<'a> ArArchiveBuilder<'a> {
                     }
                 }
                 ArchiveEntrySource::File(file) => unsafe {
-                    let mmap = Mmap::map(
-                        File::open(file)
-                            .map_err(|err| io_error_context("failed to open object file", err))?,
-                    )
-                    .map_err(|err| io_error_context("failed to map object file", err))?;
+                    let mmap = Mmap::map(File::open(&file).map_err(|err| {
+                        io_error_context(
+                            &format!("failed to open object file {}", file.display()),
+                            err,
+                        )
+                    })?)
+                    .map_err(|err| {
+                        io_error_context(
+                            &format!("failed to map object file {}", file.display()),
+                            err,
+                        )
+                    })?;
                     if entry.kind == ArchiveEntryKind::RustObj
                         && let Some(sym) = &symbols
                     {

@@ -2,12 +2,13 @@
 //@ only-aarch64
 #![allow(internal_features)]
 #![feature(extern_types)]
-#![feature(never_type)]
 #![feature(rustc_attrs)]
 
 struct Foo;
 enum Bar {}
-union Baz { x: u16 }
+union Baz {
+    x: u16,
+}
 extern "C" {
     type Qux;
 }

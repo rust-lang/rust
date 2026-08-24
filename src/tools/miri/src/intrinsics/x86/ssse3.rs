@@ -1,7 +1,6 @@
-use rustc_middle::mir;
 use rustc_span::Symbol;
 
-use super::{horizontal_bin_op, pmaddbw, pmulhrsw, pshufb, psign};
+use super::{pmaddbw, pmulhrsw, pshufb, psign};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -25,20 +24,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
 
                 pshufb(this, left, right, dest)?;
-            }
-            // Used to implement the _mm_h{adds,subs}_epi16 functions.
-            // Horizontally add / subtract with saturation adjacent 16-bit
-            // integer values in `left` and `right`.
-            "phadd.sw.128" | "phsub.sw.128" => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
-
-                let which = match unprefixed_name {
-                    "phadd.sw.128" => mir::BinOp::Add,
-                    "phsub.sw.128" => mir::BinOp::Sub,
-                    _ => unreachable!(),
-                };
-
-                horizontal_bin_op(this, which, /*saturating*/ true, left, right, dest)?;
             }
             // Used to implement the _mm_maddubs_epi16 function.
             "pmadd.ub.sw.128" => {

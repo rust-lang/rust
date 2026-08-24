@@ -70,8 +70,8 @@ fn get_rpath_relative_to_output(config: &RPathConfig<'_>, lib: &Path) -> OsStrin
     let output = config.out_filename.parent().unwrap();
 
     // If output or lib is empty, just assume it locates in current path
-    let lib = if lib == Path::new("") { Path::new(".") } else { lib };
-    let output = if output == Path::new("") { Path::new(".") } else { output };
+    let lib = if lib.is_empty() { Path::new(".") } else { lib };
+    let output = if output.is_empty() { Path::new(".") } else { output };
 
     let lib = try_canonicalize(lib).unwrap();
     let output = try_canonicalize(output).unwrap();

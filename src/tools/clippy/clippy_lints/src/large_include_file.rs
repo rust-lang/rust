@@ -5,8 +5,7 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::sym;
 use rustc_ast::{AttrArgs, AttrKind, Attribute, LitKind};
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does

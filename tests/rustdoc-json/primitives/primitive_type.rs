@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 //@ is "$.index[?(@.name=='PrimNever')].visibility" \"public\"
 //@ is "$.index[?(@.name=='PrimNever')].inner.type_alias.type.primitive" \"never\"
 pub type PrimNever = !;

@@ -1,3 +1,4 @@
+//@ reference: items.union.pattern.safety
 union U {
     a: &'static i32,
     b: usize,

@@ -337,7 +337,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
                     // fallback to procfs as last resort
                     let mut p = PathBuf::from("/proc/self/fd");
                     p.push(&fd.to_string());
-                    return run_path_with_cstr(&p, &readlink).ok()
+                    return run_path_with_cstr(&p, &readlink).ok();
                 }
                 _ => {
                     return None;
@@ -832,7 +832,8 @@ impl Iterator for ReadDir {
 
                         let mut entry = MaybeUninit::uninit();
                         let mut entry_ptr: *mut dirent64 = ptr::null_mut();
-                        let err = libc::readdir_r(self.inner.dirp.0, entry.as_mut_ptr(), &mut entry_ptr);
+                        let err =
+                            libc::readdir_r(self.inner.dirp.0, entry.as_mut_ptr(), &mut entry_ptr);
                         if err != 0 {
                             if entry_ptr.is_null() {
                                 // We encountered an error (which will be returned in this iteration), but
@@ -862,6 +863,7 @@ impl Iterator for ReadDir {
                             target_os = "l4re"
                         ))]
                         use libc::readdir64;
+
                         use crate::sys::io::{errno, set_errno};
 
                         set_errno(0);
@@ -1191,7 +1193,7 @@ impl OpenOptions {
                 if self.truncate && !self.create_new {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
-                        "creating or truncating a file requires write or append access",
+                        "append and truncate cannot both be enabled",
                     ));
                 }
             }
@@ -1336,9 +1338,7 @@ impl File {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX) })?;
                 Ok(())
             }
-            _ => {
-                Err(io::const_error!(io::ErrorKind::Unsupported, "lock() not supported"))
-            }
+            _ => Err(io::const_error!(io::ErrorKind::Unsupported, "lock() not supported")),
         }
     }
 
@@ -1360,9 +1360,7 @@ impl File {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH) })?;
                 Ok(())
             }
-            _ => {
-                Err(io::const_error!(io::ErrorKind::Unsupported, "lock_shared() not supported"))
-            }
+            _ => Err(io::const_error!(io::ErrorKind::Unsupported, "lock_shared() not supported")),
         }
     }
 
@@ -1381,7 +1379,8 @@ impl File {
                 target_os = "android",
                 target_vendor = "apple",
             ) => {
-                let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) });
+                let result =
+                    cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) });
                 if let Err(err) = result {
                     if err.kind() == io::ErrorKind::WouldBlock {
                         Err(TryLockError::WouldBlock)
@@ -1392,18 +1391,16 @@ impl File {
                     Ok(())
                 }
             }
-            _ => {
-                Err(TryLockError::Error(io::const_error!(
-                    io::ErrorKind::Unsupported,
-                    "try_lock() not supported"
-                )))
-            }
+            _ => Err(TryLockError::Error(io::const_error!(
+                io::ErrorKind::Unsupported,
+                "try_lock() not supported"
+            ))),
         }
     }
 
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
         cfg_select! {
-                any(
+            any(
                 target_os = "freebsd",
                 target_os = "fuchsia",
                 target_os = "hurd",
@@ -1416,7 +1413,8 @@ impl File {
                 target_os = "android",
                 target_vendor = "apple",
             ) => {
-                let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) });
+                let result =
+                    cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) });
                 if let Err(err) = result {
                     if err.kind() == io::ErrorKind::WouldBlock {
                         Err(TryLockError::WouldBlock)
@@ -1427,12 +1425,10 @@ impl File {
                     Ok(())
                 }
             }
-            _ => {
-                Err(TryLockError::Error(io::const_error!(
-                    io::ErrorKind::Unsupported,
-                    "try_lock_shared() not supported"
-                )))
-            }
+            _ => Err(TryLockError::Error(io::const_error!(
+                io::ErrorKind::Unsupported,
+                "try_lock_shared() not supported"
+            ))),
         }
     }
 
@@ -1454,9 +1450,7 @@ impl File {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_UN) })?;
                 Ok(())
             }
-            _ => {
-                Err(io::const_error!(io::ErrorKind::Unsupported, "unlock() not supported"))
-            }
+            _ => Err(io::const_error!(io::ErrorKind::Unsupported, "unlock() not supported")),
         }
     }
 
@@ -1557,7 +1551,13 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         cfg_select! {
-            any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "l4re") => {
+            any(
+                target_os = "redox",
+                target_os = "espidf",
+                target_os = "horizon",
+                target_os = "nuttx",
+                target_os = "l4re"
+            ) => {
                 // Redox doesn't appear to support `UTIME_OMIT`.
                 // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
@@ -1569,17 +1569,22 @@ impl File {
             }
             target_vendor = "apple" => {
                 let ta = TimesAttrlist::from_times(&times)?;
-                cvt(unsafe { libc::fsetattrlist(
-                    self.as_raw_fd(),
-                    ta.attrlist(),
-                    ta.times_buf(),
-                    ta.times_buf_size(),
-                    0
-                ) })?;
+                cvt(unsafe {
+                    libc::fsetattrlist(
+                        self.as_raw_fd(),
+                        ta.attrlist(),
+                        ta.times_buf(),
+                        ta.times_buf_size(),
+                        0,
+                    )
+                })?;
                 Ok(())
             }
             target_os = "android" => {
-                let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+                let times = [
+                    file_time_to_timespec(times.accessed)?,
+                    file_time_to_timespec(times.modified)?,
+                ];
                 // futimens requires Android API level 19
                 cvt(unsafe {
                     weak!(
@@ -1587,18 +1592,26 @@ impl File {
                     );
                     match futimens.get() {
                         Some(futimens) => futimens(self.as_raw_fd(), times.as_ptr()),
-                        None => return Err(io::const_error!(
-                            io::ErrorKind::Unsupported,
-                            "setting file times requires Android API level >= 19",
-                        )),
+                        None => {
+                            return Err(io::const_error!(
+                                io::ErrorKind::Unsupported,
+                                "setting file times requires Android API level >= 19",
+                            ));
+                        }
                     }
                 })?;
                 Ok(())
             }
             _ => {
-                #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
+                #[cfg(all(
+                    target_os = "linux",
+                    target_env = "gnu",
+                    target_pointer_width = "32",
+                    not(target_arch = "riscv32")
+                ))]
                 {
-                    use crate::sys::pal::{time::__timespec64, weak::weak};
+                    use crate::sys::pal::time::__timespec64;
+                    use crate::sys::pal::weak::weak;
 
                     // Added in glibc 2.34
                     weak!(
@@ -1606,14 +1619,19 @@ impl File {
                     );
 
                     if let Some(futimens64) = __futimens64.get() {
-                        let to_timespec = |time: Option<SystemTime>| time.map(|time| time.t.to_timespec64())
-                            .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _));
+                        let to_timespec = |time: Option<SystemTime>| {
+                            time.map(|time| time.t.to_timespec64())
+                                .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _))
+                        };
                         let times = [to_timespec(times.accessed), to_timespec(times.modified)];
                         cvt(unsafe { futimens64(self.as_raw_fd(), times.as_ptr()) })?;
                         return Ok(());
                     }
                 }
-                let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+                let times = [
+                    file_time_to_timespec(times.accessed)?,
+                    file_time_to_timespec(times.modified)?,
+                ];
                 cvt(unsafe { libc::futimens(self.as_raw_fd(), times.as_ptr()) })?;
                 Ok(())
             }
@@ -1873,8 +1891,7 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
         // wasm32-wasip1 targets do not support fchmodat, so we fall down to
         // open + fchmod
         target_os = "wasi" => {
-            use crate::fs::OpenOptions;
-            use crate::fs::Permissions;
+            use crate::fs::{OpenOptions, Permissions};
             use crate::os::wasi::ffi::OsStrExt;
             use crate::os::wasi::fs::OpenOptionsExt;
 
@@ -1890,13 +1907,8 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
                 libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
             })
             .map(|_| ())
-        },
-        _ => {
-            cvt_r(|| unsafe {
-                libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, 0)
-            })
-            .map(|_| ())
         }
+        _ => cvt_r(|| unsafe { libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, 0) }).map(|_| ()),
     }
 }
 
@@ -1955,7 +1967,9 @@ pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
         _ => {
             // Where we can, use `linkat` instead of `link`; see the comment above
             // this one for details on why.
-            cvt(unsafe { libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;
+            cvt(unsafe {
+                libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0)
+            })?;
         }
     }
     Ok(())
@@ -2021,72 +2035,96 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
 
 fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Result<()> {
     cfg_select! {
-       any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "vita", target_os = "rtems") => {
+        any(
+            target_os = "redox",
+            target_os = "espidf",
+            target_os = "horizon",
+            target_os = "nuttx",
+            target_os = "vita",
+            target_os = "rtems"
+        ) => {
             let _ = (p, times, follow_symlinks);
-            Err(io::const_error!(
-                io::ErrorKind::Unsupported,
-                "setting file times not supported",
-            ))
-       }
-       target_vendor = "apple" => {
+            Err(io::const_error!(io::ErrorKind::Unsupported, "setting file times not supported"))
+        }
+        target_vendor = "apple" => {
             // Apple platforms use setattrlist which supports setting times on symlinks
             let ta = TimesAttrlist::from_times(&times)?;
-            let options = if follow_symlinks {
-                0
-            } else {
-                libc::FSOPT_NOFOLLOW
-            };
+            let options = if follow_symlinks { 0 } else { libc::FSOPT_NOFOLLOW };
 
-            cvt(unsafe { libc::setattrlist(
-                p.as_ptr(),
-                ta.attrlist(),
-                ta.times_buf(),
-                ta.times_buf_size(),
-                options as u32
-            ) })?;
+            cvt(unsafe {
+                libc::setattrlist(
+                    p.as_ptr(),
+                    ta.attrlist(),
+                    ta.times_buf(),
+                    ta.times_buf_size(),
+                    options as u32,
+                )
+            })?;
             Ok(())
-       }
-       target_os = "android" => {
-            let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+        }
+        target_os = "android" => {
+            let times =
+                [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
             let flags = if follow_symlinks { 0 } else { libc::AT_SYMLINK_NOFOLLOW };
             // utimensat requires Android API level 19
             cvt(unsafe {
                 weak!(
-                    fn utimensat(dirfd: c_int, path: *const libc::c_char, times: *const libc::timespec, flags: c_int) -> c_int;
+                    fn utimensat(
+                        dirfd: c_int,
+                        path: *const libc::c_char,
+                        times: *const libc::timespec,
+                        flags: c_int,
+                    ) -> c_int;
                 );
                 match utimensat.get() {
                     Some(utimensat) => utimensat(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags),
-                    None => return Err(io::const_error!(
-                        io::ErrorKind::Unsupported,
-                        "setting file times requires Android API level >= 19",
-                    )),
+                    None => {
+                        return Err(io::const_error!(
+                            io::ErrorKind::Unsupported,
+                            "setting file times requires Android API level >= 19",
+                        ));
+                    }
                 }
             })?;
             Ok(())
-       }
-       _ => {
+        }
+        _ => {
             let flags = if follow_symlinks { 0 } else { libc::AT_SYMLINK_NOFOLLOW };
-            #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
+            #[cfg(all(
+                target_os = "linux",
+                target_env = "gnu",
+                target_pointer_width = "32",
+                not(target_arch = "riscv32")
+            ))]
             {
-                use crate::sys::pal::{time::__timespec64, weak::weak};
+                use crate::sys::pal::time::__timespec64;
+                use crate::sys::pal::weak::weak;
 
                 // Added in glibc 2.34
                 weak!(
-                    fn __utimensat64(dirfd: c_int, path: *const c_char, times: *const __timespec64, flags: c_int) -> c_int;
+                    fn __utimensat64(
+                        dirfd: c_int,
+                        path: *const c_char,
+                        times: *const __timespec64,
+                        flags: c_int,
+                    ) -> c_int;
                 );
 
                 if let Some(utimensat64) = __utimensat64.get() {
-                    let to_timespec = |time: Option<SystemTime>| time.map(|time| time.t.to_timespec64())
-                        .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _));
+                    let to_timespec = |time: Option<SystemTime>| {
+                        time.map(|time| time.t.to_timespec64())
+                            .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _))
+                    };
                     let times = [to_timespec(times.accessed), to_timespec(times.modified)];
                     cvt(unsafe { utimensat64(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags) })?;
                     return Ok(());
                 }
             }
-            let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+            let times =
+                [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
             cvt(unsafe { libc::utimensat(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags) })?;
             Ok(())
-         }
+        }
     }
 }
 
@@ -2415,7 +2453,7 @@ mod remove_dir_impl {
 
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
-        let fd = match openat_nofollow_dironly(parent_fd, &path) {
+        let fd = match openat_nofollow_dironly(parent_fd, path) {
             Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
                 // not a directory - don't traverse further
                 // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
@@ -2485,7 +2523,7 @@ mod remove_dir_impl {
         if attr.file_type().is_symlink() {
             super::unlink(p)
         } else {
-            remove_dir_all_recursive(None, &p)
+            remove_dir_all_recursive(None, p)
         }
     }
 
