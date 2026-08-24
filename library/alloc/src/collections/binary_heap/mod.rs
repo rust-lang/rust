@@ -145,7 +145,7 @@
 
 use core::alloc::Allocator;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
-use core::mem::{self, ManuallyDrop, swap};
+use core::mem::{DropGuard, ManuallyDrop, swap};
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
@@ -1907,18 +1907,10 @@ impl<'a, T: Ord, A: Allocator> DrainSorted<'a, T, A> {
 impl<'a, T: Ord, A: Allocator> Drop for DrainSorted<'a, T, A> {
     /// Removes heap elements in heap order.
     fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T: Ord, A: Allocator>(&'r mut DrainSorted<'a, T, A>);
-
-        impl<'r, 'a, T: Ord, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
-            fn drop(&mut self) {
-                while self.0.inner.pop().is_some() {}
-            }
-        }
-
         while let Some(item) = self.inner.pop() {
-            let guard = DropGuard(self);
+            let guard = DropGuard::new(&mut *self, |this| while this.inner.pop().is_some() {});
             drop(item);
-            mem::forget(guard);
+            DropGuard::dismiss(guard);
         }
     }
 }

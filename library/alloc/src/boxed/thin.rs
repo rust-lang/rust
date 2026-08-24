@@ -11,7 +11,7 @@ use core::marker::PhantomData;
 use core::marker::Unsize;
 #[cfg(not(no_global_oom_handling))]
 use core::mem;
-use core::mem::SizedTypeProperties;
+use core::mem::{DropGuard, SizedTypeProperties};
 use core::ops::{Deref, DerefMut};
 use core::ptr::{self, NonNull, Pointee};
 
@@ -360,38 +360,23 @@ impl<H> WithHeader<H> {
     // - Assumes that either `value` can be dereferenced, or is the
     //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
-        struct DropGuard<H> {
-            ptr: NonNull<u8>,
-            value_layout: Layout,
-            _marker: PhantomData<H>,
-        }
-
-        impl<H> Drop for DropGuard<H> {
-            fn drop(&mut self) {
-                // All ZST are allocated statically.
-                if self.value_layout.size() == 0 {
-                    return;
-                }
-
-                unsafe {
-                    // SAFETY: Layout must have been computable if we're in drop
-                    let (layout, value_offset) =
-                        WithHeader::<H>::alloc_layout(self.value_layout).unwrap_unchecked();
-
-                    // Since we only allocate for non-ZSTs, the layout size cannot be zero.
-                    debug_assert!(layout.size() != 0);
-                    alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout);
-                }
-            }
-        }
-
         unsafe {
             // `_guard` will deallocate the memory when dropped, even if `drop_in_place` unwinds.
-            let _guard = DropGuard {
-                ptr: self.0,
-                value_layout: Layout::for_value_raw(value),
-                _marker: PhantomData::<H>,
-            };
+            let _guard =
+                DropGuard::new((self.0, Layout::for_value_raw(value)), |(ptr, value_layout)| {
+                    // All ZST are allocated statically.
+                    if value_layout.size() == 0 {
+                        return;
+                    }
+
+                    // SAFETY: Layout must have been computable if we're in drop
+                    let (layout, value_offset) =
+                        WithHeader::<H>::alloc_layout(value_layout).unwrap_unchecked();
+
+                    // Since we only allocate for non-ZSTs, the layout size cannot be zero.
+                    debug_assert_ne!(layout.size(), 0);
+                    alloc::dealloc(ptr.as_ptr().sub(value_offset), layout);
+                });
 
             // We only drop the value because the Pointee trait requires that the metadata is copy
             // aka trivially droppable.

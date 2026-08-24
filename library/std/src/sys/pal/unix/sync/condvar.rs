@@ -150,23 +150,16 @@ impl Condvar {
     /// # Safety
     /// May only be called once per instance of `Self`.
     pub unsafe fn init(self: Pin<&mut Self>) {
-        use crate::mem::MaybeUninit;
-
-        struct AttrGuard<'a>(pub &'a mut MaybeUninit<libc::pthread_condattr_t>);
-        impl Drop for AttrGuard<'_> {
-            fn drop(&mut self) {
-                unsafe {
-                    let result = libc::pthread_condattr_destroy(self.0.as_mut_ptr());
-                    assert_eq!(result, 0);
-                }
-            }
-        }
+        use crate::mem::{DropGuard, MaybeUninit};
 
         unsafe {
             let mut attr = MaybeUninit::<libc::pthread_condattr_t>::uninit();
             let r = libc::pthread_condattr_init(attr.as_mut_ptr());
             assert_eq!(r, 0);
-            let attr = AttrGuard(&mut attr);
+            let mut attr = DropGuard::new(&mut attr, |attr| unsafe {
+                let result = libc::pthread_condattr_destroy(self.0.as_mut_ptr());
+                assert_eq!(result, 0);
+            });
             let r = libc::pthread_condattr_setclock(attr.0.as_mut_ptr(), Self::CLOCK);
             assert_eq!(r, 0);
             let r = libc::pthread_cond_init(self.raw(), attr.0.as_ptr());

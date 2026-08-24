@@ -17,6 +17,7 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::iter::{FusedIterator, TrustedLen};
 use core::marker::PhantomData;
+use core::mem::DropGuard;
 use core::ptr::NonNull;
 use core::{fmt, mem};
 
@@ -1177,20 +1178,15 @@ impl<T, A: Allocator> LinkedList<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for LinkedList<T, A> {
     fn drop(&mut self) {
-        struct DropGuard<'a, T, A: Allocator>(&'a mut LinkedList<T, A>);
-
-        impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
-            fn drop(&mut self) {
-                // Continue the same loop we do below. This only runs when a destructor has
-                // panicked. If another one panics this will abort.
-                while self.0.pop_front_node().is_some() {}
-            }
-        }
-
         // Wrap self so that if a destructor panics, we can try to keep looping
-        let guard = DropGuard(self);
-        while guard.0.pop_front_node().is_some() {}
-        mem::forget(guard);
+        let mut guard = DropGuard::new(self, |this| {
+            // Continue the same loop we do below. This only runs when a destructor has
+            // panicked. If another one panics this will abort.
+            while this.pop_front_node().is_some() {}
+        });
+
+        while guard.pop_front_node().is_some() {}
+        DropGuard::dismiss(guard);
     }
 }
 
