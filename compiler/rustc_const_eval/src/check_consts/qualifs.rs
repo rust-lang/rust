@@ -45,10 +45,10 @@ pub trait Qualif {
     const ANALYSIS_NAME: &'static str;
 
     /// Whether this `Qualif` is cleared when a local is moved from.
-    const IS_CLEARED_ON_MOVE: bool = false;
+    const IS_CLEARED_ON_MOVE: bool;
 
     /// Whether this `Qualif` might be evaluated after the promotion and can encounter a promoted.
-    const ALLOW_PROMOTED: bool = false;
+    const ALLOW_PROMOTED: bool;
 
     /// Extracts the field of `ConstQualifs` that corresponds to this `Qualif`.
     fn in_qualifs(qualifs: &ConstQualifs) -> bool;
@@ -79,6 +79,8 @@ pub struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
     const ANALYSIS_NAME: &'static str = "flow_has_mut_interior";
+    const IS_CLEARED_ON_MOVE: bool = false;
+    const ALLOW_PROMOTED: bool = false;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
         qualifs.has_mut_interior

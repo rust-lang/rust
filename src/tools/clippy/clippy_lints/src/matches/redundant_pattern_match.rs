@@ -4,7 +4,7 @@ use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::sugg::{Sugg, make_unop};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_without_closures};
-use clippy_utils::{get_parent_expr, higher, is_expn_of, sym};
+use clippy_utils::{get_parent_expr, is_expn_of, sym};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem::{
@@ -18,17 +18,15 @@ use rustc_span::{Span, Symbol, kw};
 use std::fmt::Write as _;
 use std::ops::ControlFlow;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let Some(higher::WhileLet {
-        let_pat,
-        let_expr,
-        let_span,
-        ..
-    }) = higher::WhileLet::hir(expr)
-    {
-        find_method_sugg_for_if_let(cx, expr, let_pat, let_expr, kw::While, false, let_span);
-        find_if_let_true(cx, let_pat, let_expr, let_span);
-    }
+pub(super) fn check_while_let<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    pat: &'tcx Pat<'_>,
+    scrutinee: &'tcx Expr<'_>,
+    let_span: Span,
+) {
+    find_method_sugg_for_if_let(cx, expr, pat, scrutinee, kw::While, false, let_span);
+    find_if_let_true(cx, pat, scrutinee, let_span);
 }
 
 pub(super) fn check_if_let<'tcx>(

@@ -1,5 +1,4 @@
 #![feature(rustc_attrs)]
-#![feature(never_type)]
 #![crate_type = "lib"]
 
 // Regression test for https://github.com/rust-lang/rust/issues/159438

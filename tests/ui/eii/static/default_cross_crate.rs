@@ -1,3 +1,5 @@
+//@ revisions: rlib dylib
+//@[dylib] needs-crate-type: dylib
 //@ aux-build: decl_with_default.rs
 //@ run-pass
 //@ check-run-results

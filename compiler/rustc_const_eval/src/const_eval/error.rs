@@ -240,7 +240,7 @@ pub(super) fn report<'tcx>(
 pub(super) fn lint<'tcx, L>(
     tcx: TyCtxtAt<'tcx>,
     machine: &CompileTimeMachine<'tcx>,
-    lint: &'static rustc_session::lint::Lint,
+    lint: &'static rustc_lint_defs::Lint,
     decorator: impl FnOnce(Vec<diagnostics::FrameNote>) -> L,
 ) where
     L: for<'a> rustc_errors::Diagnostic<'a, ()>,

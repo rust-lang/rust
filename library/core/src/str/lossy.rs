@@ -98,7 +98,7 @@ impl<'a> Utf8Chunk<'a> {
     /// CHARACTER`].
     ///
     /// [`valid`]: Self::valid
-    /// [`U+FFFD REPLACEMENT CHARACTER`]: crate::char::REPLACEMENT_CHARACTER
+    /// [`U+FFFD REPLACEMENT CHARACTER`]: char::REPLACEMENT_CHARACTER
     #[must_use]
     #[stable(feature = "utf8_chunks", since = "1.79.0")]
     pub fn invalid(&self) -> &'a [u8] {

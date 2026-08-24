@@ -1,8 +1,4 @@
 error: mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `defaults_check`
-  --> $DIR/defaults_check.rs:16:1
-   |
-LL | #![feature(no_core)]
-   | ^
    |
    = help: the `-Zreg-struct-return` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
    = note: `-Zreg-struct-return=true` in this crate is incompatible with `-Zreg-struct-return` being unset in dependency `default_reg_struct_return`

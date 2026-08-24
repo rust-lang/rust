@@ -193,21 +193,21 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct TraitPredicate<I: Interner> {
+pub struct TraitClause<I: Interner> {
     pub trait_ref: TraitRef<I>,
 
     /// If polarity is Positive: we are proving that the trait is implemented.
     ///
     /// If polarity is Negative: we are proving that a negative impl of this trait
     /// exists. (Note that coherence also checks whether negative impls of supertraits
-    /// exist via a series of predicates.)
+    /// exist via a series of clauses.)
     #[lift(identity)]
-    pub polarity: PredicatePolarity,
+    pub polarity: ClausePolarity,
 }
 
-impl<I: Interner> Eq for TraitPredicate<I> {}
+impl<I: Interner> Eq for TraitClause<I> {}
 
-impl<I: Interner> TraitPredicate<I> {
+impl<I: Interner> TraitClause<I> {
     pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
         Self {
             trait_ref: self.trait_ref.with_replaced_self_ty(interner, self_ty),
@@ -224,7 +224,7 @@ impl<I: Interner> TraitPredicate<I> {
     }
 }
 
-impl<I: Interner> ty::Binder<I, TraitPredicate<I>> {
+impl<I: Interner> ty::Binder<I, TraitClause<I>> {
     pub fn def_id(self) -> I::TraitId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
@@ -235,29 +235,26 @@ impl<I: Interner> ty::Binder<I, TraitPredicate<I>> {
     }
 
     #[inline]
-    pub fn polarity(self) -> PredicatePolarity {
+    pub fn polarity(self) -> ClausePolarity {
         self.skip_binder().polarity
     }
 }
 
-impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitPredicate<I> {
+impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitClause<I> {
     fn upcast_from(from: TraitRef<I>, _tcx: I) -> Self {
-        TraitPredicate { trait_ref: from, polarity: PredicatePolarity::Positive }
+        TraitClause { trait_ref: from, polarity: ClausePolarity::Positive }
     }
 }
 
-impl<I: Interner> UpcastFrom<I, ty::Binder<I, TraitRef<I>>> for ty::Binder<I, TraitPredicate<I>> {
+impl<I: Interner> UpcastFrom<I, ty::Binder<I, TraitRef<I>>> for ty::Binder<I, TraitClause<I>> {
     fn upcast_from(from: ty::Binder<I, TraitRef<I>>, _tcx: I) -> Self {
-        from.map_bound(|trait_ref| TraitPredicate {
-            trait_ref,
-            polarity: PredicatePolarity::Positive,
-        })
+        from.map_bound(|trait_ref| TraitClause { trait_ref, polarity: ClausePolarity::Positive })
     }
 }
 
-impl<I: Interner> fmt::Debug for TraitPredicate<I> {
+impl<I: Interner> fmt::Debug for TraitClause<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
+        write!(f, "TraitClause({:?}, polarity:{:?})", self.trait_ref, self.polarity)
     }
 }
 
@@ -296,31 +293,31 @@ impl ImplPolarity {
     }
 }
 
-/// Polarity for a trait predicate.
+/// Polarity for a trait clause.
 ///
 /// May either be negative or positive.
 /// Distinguished from [`ImplPolarity`] since we never compute goals with
 /// "reservation" level.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext, StableHash))]
-pub enum PredicatePolarity {
+pub enum ClausePolarity {
     /// `Type: Trait`
     Positive,
     /// `Type: !Trait`
     Negative,
 }
 
-impl PredicatePolarity {
+impl ClausePolarity {
     /// Flips polarity by turning `Positive` into `Negative` and `Negative` into `Positive`.
-    pub fn flip(&self) -> PredicatePolarity {
+    pub fn flip(&self) -> ClausePolarity {
         match self {
-            PredicatePolarity::Positive => PredicatePolarity::Negative,
-            PredicatePolarity::Negative => PredicatePolarity::Positive,
+            ClausePolarity::Positive => ClausePolarity::Negative,
+            ClausePolarity::Negative => ClausePolarity::Positive,
         }
     }
 }
 
-impl fmt::Display for PredicatePolarity {
+impl fmt::Display for ClausePolarity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Positive => f.write_str("positive"),
@@ -452,7 +449,7 @@ impl<I: Interner> ty::Binder<I, ExistentialTraitRef<I>> {
     }
 }
 
-/// A `ProjectionPredicate` for an `ExistentialTraitRef`.
+/// A `ProjectionClause` for an `ExistentialTraitRef`.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
@@ -505,11 +502,11 @@ impl<I: Interner> ExistentialProjection<I> {
         ExistentialTraitRef::new_from_args(interner, def_id, args)
     }
 
-    pub fn with_self_ty(&self, interner: I, self_ty: I::Ty) -> ProjectionPredicate<I> {
+    pub fn with_self_ty(&self, interner: I, self_ty: I::Ty) -> ProjectionClause<I> {
         // otherwise the escaping regions would be captured by the binders
         debug_assert!(!self_ty.has_escaping_bound_vars());
 
-        ProjectionPredicate {
+        ProjectionClause {
             projection_term: ty::AliasTerm::new(
                 interner,
                 interner.alias_term_kind_from_def_id(self.def_id.into()),
@@ -519,7 +516,7 @@ impl<I: Interner> ExistentialProjection<I> {
         }
     }
 
-    pub fn erase_self_ty(interner: I, projection_predicate: ProjectionPredicate<I>) -> Self {
+    pub fn erase_self_ty(interner: I, projection_predicate: ProjectionClause<I>) -> Self {
         // Assert there is a Self.
         projection_predicate.projection_term.args.type_at(0);
 
@@ -533,7 +530,7 @@ impl<I: Interner> ExistentialProjection<I> {
 }
 
 impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
-    pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> ty::Binder<I, ProjectionPredicate<I>> {
+    pub fn with_self_ty(&self, cx: I, self_ty: I::Ty) -> ty::Binder<I, ProjectionClause<I>> {
         self.map_bound(|p| p.with_self_ty(cx, self_ty))
     }
 
@@ -552,7 +549,7 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
 /// normal trait predicate (`T: TraitRef<...>`) and one of these
 /// predicates. Form #2 is a broader form in that it also permits
 /// equality between arbitrary types. Processing an instance of
-/// Form #2 eventually yields one of these `ProjectionPredicate`
+/// Form #2 eventually yields one of these `ProjectionClause`
 /// instances to normalize the LHS.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
@@ -560,19 +557,19 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct ProjectionPredicate<I: Interner> {
+pub struct ProjectionClause<I: Interner> {
     pub projection_term: ty::AliasTerm<I>,
     pub term: I::Term,
 }
 
-impl<I: Interner> Eq for ProjectionPredicate<I> {}
+impl<I: Interner> Eq for ProjectionClause<I> {}
 
-impl<I: Interner> ProjectionPredicate<I> {
+impl<I: Interner> ProjectionClause<I> {
     pub fn self_ty(self) -> I::Ty {
         self.projection_term.self_ty()
     }
 
-    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> ProjectionPredicate<I> {
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> ProjectionClause<I> {
         Self {
             projection_term: self.projection_term.with_replaced_self_ty(interner, self_ty),
             ..self
@@ -588,7 +585,7 @@ impl<I: Interner> ProjectionPredicate<I> {
     }
 }
 
-impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
+impl<I: Interner> ty::Binder<I, ProjectionClause<I>> {
     /// Returns the `DefId` of the trait of the associated item being projected.
     #[inline]
     pub fn trait_def_id(&self, cx: I) -> I::TraitId {
@@ -609,9 +606,9 @@ impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
     }
 }
 
-impl<I: Interner> fmt::Debug for ProjectionPredicate<I> {
+impl<I: Interner> fmt::Debug for ProjectionClause<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_term, self.term)
+        write!(f, "ProjectionClause({:?}, {:?})", self.projection_term, self.term)
     }
 }
 

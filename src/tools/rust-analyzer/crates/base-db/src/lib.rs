@@ -7,7 +7,6 @@
 extern crate rustc_driver as _;
 
 pub use salsa;
-pub use salsa_macros;
 use span::TextSize;
 
 mod change;

@@ -456,3 +456,31 @@ note: the lint level is defined here
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: Remove explicit link instead
 ```
+
+## `invalid_markdown_table`
+
+This lint is **warn-by-default**. It detects unescaped pipes (`|`) in table rows which
+lead to some row cells being ignored. For example:
+
+```rust
+//! | col1 |
+//! | ---- |
+//! | `code_with(|arg| arg)` |
+```
+
+Which will give:
+
+```text
+error: table row has too many columns
+  --> $DIR/foo.rs:5:18
+   |
+5  | //! | `code_with(|arg| arg)` |
+   |                  ^ help: any content after this column divider is discarded
+   |
+   = help: to escape `|` characters in tables, add a `\` before them like `\|`
+note: the lint level is defined here
+  --> $DIR/foo.rs:1:9
+   |
+1  | #![deny(rustdoc::invalid_markdown_table)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```

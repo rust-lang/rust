@@ -14,8 +14,8 @@
 cfg_select! {
     target_has_atomic = "64" => {
         use super::id::ThreadId;
-        use crate::sync::atomic::{Atomic, AtomicU64};
         use crate::sync::atomic::Ordering::Relaxed;
+        use crate::sync::atomic::{Atomic, AtomicU64};
 
         static MAIN: Atomic<u64> = AtomicU64::new(0);
 
@@ -32,18 +32,14 @@ cfg_select! {
     _ => {
         use super::id::ThreadId;
         use crate::mem::MaybeUninit;
-        use crate::sync::atomic::{Atomic, AtomicBool};
         use crate::sync::atomic::Ordering::{Acquire, Release};
+        use crate::sync::atomic::{Atomic, AtomicBool};
 
         static INIT: Atomic<bool> = AtomicBool::new(false);
         static mut MAIN: MaybeUninit<ThreadId> = MaybeUninit::uninit();
 
         pub(super) fn get() -> Option<ThreadId> {
-            if INIT.load(Acquire) {
-                Some(unsafe { MAIN.assume_init() })
-            } else {
-                None
-            }
+            if INIT.load(Acquire) { Some(unsafe { MAIN.assume_init() }) } else { None }
         }
 
         /// # Safety

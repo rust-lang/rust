@@ -33,11 +33,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     pub fn on_unimplemented_note(
         &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
     ) -> CustomDiagnostic {
-        if trait_pred.polarity() != ty::PredicatePolarity::Positive {
+        if trait_pred.polarity() != ty::ClausePolarity::Positive {
             return CustomDiagnostic::default();
         }
         // This is needed as `on_unimplemented` is currently not allowed on trait aliases,
@@ -59,7 +59,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     pub(crate) fn on_unimplemented_components(
         &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
         print_infer_ty_var: bool,

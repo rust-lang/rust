@@ -525,6 +525,15 @@ an optional argument which is the path to a directory into which the
 instrumented binary will emit the collected data. See the chapter on
 [profile-guided optimization] for more information.
 
+## profile-sample-use
+
+This flag specifies the profiling data file to be used for sample-based
+profile-guided optimization (SPGO). The flag takes a mandatory argument which
+is the path to a valid `.prof` file. See the chapter on
+[profile-guided optimization] for more information.
+The `-Zdebuginfo-for-profiling` can be used to improve the quality of the
+profiling data.
+
 ## profile-use
 
 This flag specifies the profiling data file to be used for profile-guided

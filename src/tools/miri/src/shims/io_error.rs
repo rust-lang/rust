@@ -79,7 +79,6 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ENOENT", NotFound),
         ("ENOMEM", OutOfMemory),
         ("ENOSPC", StorageFull),
-        ("ENOSYS", Unsupported),
         ("EMLINK", TooManyLinks),
         ("ENAMETOOLONG", InvalidFilename),
         ("ENETDOWN", NetworkDown),
@@ -95,15 +94,17 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ETXTBSY", ExecutableFileBusy),
         ("EXDEV", CrossesDevices),
         ("EINPROGRESS", InProgress),
+        ("EIO", InputOutputError),
         // The following have two valid options. We have both for the forwards mapping; only the
         // first one will be used for the backwards mapping.
         ("EPERM", PermissionDenied),
         ("EACCES", PermissionDenied),
         ("EWOULDBLOCK", WouldBlock),
         ("EAGAIN", WouldBlock),
-        #[cfg(not(bootstrap))]
+        ("ENOSYS", Unsupported),
+        ("EOPNOTSUPP", Unsupported),
+        ("ENOTSUP", Unsupported),
         ("EMFILE", TooManyOpenFiles),
-        #[cfg(not(bootstrap))]
         ("ENFILE", TooManyOpenFiles),
     ]
 };
@@ -258,10 +259,10 @@ const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ERROR_RUNLEVEL_SWITCH_TIMEOUT", TimedOut),
         ("ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT", TimedOut),
         ("ERROR_TOO_MANY_LINKS", TooManyLinks),
-        #[cfg(not(bootstrap))]
-        ("ERROR_TOO_MANY_OPEN_FILES", TooManyOpenFiles),
         ("ERROR_CALL_NOT_IMPLEMENTED", Unsupported),
         ("WSAEWOULDBLOCK", WouldBlock),
+        ("ERROR_TOO_MANY_OPEN_FILES", TooManyOpenFiles),
+        ("ERROR_IO_DEVICE", InputOutputError),
     ]
 };
 
@@ -347,6 +348,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let target = &this.tcx.sess.target;
 
         if target.families.iter().any(|f| f == "unix") {
+            // If the host is also Unix, we can use the raw OS error and avoid a potentially lossy
+            // trip through `ErrorKind`.
+            #[cfg(unix)]
+            if let Some(host_errno) = err.raw_os_error() {
+                for &(name, errno) in UNIX_ERRNO_TABLE {
+                    if host_errno == errno {
+                        return interp_ok(this.eval_libc(name));
+                    }
+                }
+            }
+            // For other hosts or other constants, we fall back to translating via `ErrorKind`.
             for &(name, kind) in UNIX_IO_ERROR_TABLE {
                 if err.kind() == kind {
                     return interp_ok(this.eval_libc(name));
@@ -369,6 +381,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// The inverse of `io_error_to_errnum`: it converts target errors to host errors.
+    /// This is used to render such errors as user-visible strings.
     /// This is done in a best-effort way.
     #[expect(clippy::needless_return)]
     fn try_errnum_to_io_error(

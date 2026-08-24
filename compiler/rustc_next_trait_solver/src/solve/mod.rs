@@ -120,7 +120,7 @@ where
 
         if self.cx().assumptions_on_binders() {
             let constraint =
-                rustc_type_ir::region_constraint::RegionConstraint::RegionOutlives(a, b);
+                rustc_type_ir::region_constraint::RegionConstraint::RegionOutlives(a, b, ());
             self.register_solver_region_constraint(constraint);
         } else {
             self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);
@@ -394,7 +394,7 @@ where
             let projection_goal = Goal::new(
                 self.cx(),
                 param_env,
-                ty::ProjectionPredicate { projection_term: alias, term: normalized_term },
+                ty::ProjectionClause { projection_term: alias, term: normalized_term },
             );
             // We normalize the self type to be able to relate it with
             // types from candidates.

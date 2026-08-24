@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![warn(clippy::unnested_or_patterns)]
 #![allow(clippy::manual_range_patterns)]
 
@@ -15,8 +15,8 @@ fn main() {
     //~^ unnested_or_patterns
     if let 0 | 1 | 2 = 0 {}
     //~^ unnested_or_patterns
-    if let box (0 | 1 | 2 | 3 | 4) = Box::new(0) {}
+    if let deref!(0 | 1 | 2 | 3 | 4) = Box::new(0) {}
     //~^ unnested_or_patterns
-    if let box (box (0 | 2 | 4)) = Box::new(Box::new(0)) {}
+    if let deref!(deref!(0 | 2 | 4)) = Box::new(Box::new(0)) {}
     //~^ unnested_or_patterns
 }

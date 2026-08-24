@@ -10,4 +10,4 @@
 #[doc(keyword = "trait")]
 //
 /// [`Send`] and [Sync]
-mod bar {}
+const _: () = ();

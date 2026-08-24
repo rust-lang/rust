@@ -12,7 +12,7 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
-use rustc_lint_defs::builtin::UNSUPPORTED_CALLING_CONVENTIONS;
+use rustc_lint_defs::builtin::{DEAD_CODE, UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
@@ -21,10 +21,9 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
-    AdtDef, BottomUpFolder, FnSig, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
+    AdtDef, BottomUpFolder, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
 };
-use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_span::sym;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -89,18 +88,6 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
                 span,
                 UnsupportedCallingConventions { abi },
             );
-        }
-    }
-}
-
-pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
-    if fn_sig.abi() == ExternAbi::Custom {
-        // Function definitions that use `extern "custom"` must be naked functions.
-        if !find_attr!(tcx, def_id, Naked(_)) {
-            tcx.dcx().emit_err(crate::diagnostics::AbiCustomClothedFunction {
-                span: fn_sig_span,
-                naked_span: tcx.def_span(def_id).shrink_to_lo(),
-            });
         }
     }
 }
@@ -415,6 +402,12 @@ fn check_opaque_meets_bounds<'tcx>(
         return Err(guar);
     }
 
+    // FIXME(impl_trait_in_assoc_type): This computes the implied bounds
+    // while being able to normalize opaque types. This is unsound if checking that the
+    // opaque type is well-formed relies on an implied bound mentioning that opaque type.
+    // This should only affect TAIT as this function is not soundness critical for RPITs.
+    //
+    // cc trait-system-refactor-initiative#159
     let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, defining_use_anchor)?;
     ocx.resolve_regions_and_report_errors(defining_use_anchor, param_env, wf_tys)?;
 
@@ -1327,7 +1320,7 @@ fn check_impl_items_against_trait<'tcx>(
 
         if self_is_guaranteed_unsize_self && tcx.generics_require_sized_self(ty_trait_item.def_id) {
             tcx.emit_node_span_lint(
-                rustc_lint_defs::builtin::DEAD_CODE,
+                DEAD_CODE,
                 tcx.local_def_id_to_hir_id(ty_impl_item.def_id.expect_local()),
                 tcx.def_span(ty_impl_item.def_id),
                 diagnostics::UselessImplItem,

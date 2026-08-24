@@ -2,7 +2,7 @@
 #[doc(hidden)]
 pub(super) use rustc_attr_ir::AttributeKind;
 #[doc(hidden)]
-pub(super) use rustc_attr_ir::target::{MethodKind, Target};
+pub(super) use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 #[doc(hidden)]
 pub(super) use rustc_span::{Ident, Span, Symbol, sym};
 #[doc(hidden)]

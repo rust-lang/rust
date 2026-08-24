@@ -9,7 +9,7 @@ use syntax::ast::{ArithOp, BinaryOp, UnaryOp};
 use tracing::debug;
 
 use crate::{
-    Adjust, Adjustment, AutoBorrow,
+    Adjust, Adjustment, AutoBorrow, InferenceDiagnostic,
     infer::{AllowTwoPhase, AutoBorrowMutability, Expectation, InferenceContext, expr::ExprIsRead},
     method_resolution::{MethodCallee, TreatNotYetDefinedOpaques},
     next_solver::{
@@ -271,7 +271,11 @@ impl<'db> InferenceContext<'db> {
                 method.sig.output()
             }
             Err(_errors) => {
-                // FIXME: Report diagnostic.
+                self.push_diagnostic(InferenceDiagnostic::UnaryOperatorCannotBeApplied {
+                    expr: ex,
+                    op,
+                    found: operand_ty.store(),
+                });
                 self.types.types.error
             }
         }

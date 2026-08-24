@@ -1,9 +1,9 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_lint_defs::builtin::UNFULFILLED_LINT_EXPECTATIONS;
+use rustc_lint_defs::{LintExpectationId, StableLintExpectationId};
 use rustc_middle::lint::LintExpectation;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
-use rustc_session::lint::{LintExpectationId, StableLintExpectationId};
 use rustc_span::Symbol;
 
 use crate::diagnostics::{Expectation, ExpectationNote};

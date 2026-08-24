@@ -1,0 +1,123 @@
+error[E0425]: cannot find function `foo_static` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:14:10
+   |
+LL | reuse E::foo_static as e;
+   |          ^^^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_self` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:17:10
+   |
+LL | reuse E::foo_self as e1;
+   |          ^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_static` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:20:10
+   |
+LL | reuse E::foo_static::<'static, (), true> as e2;
+   |          ^^^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_self` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:23:10
+   |
+LL | reuse E::foo_self::<'static, (), true> as e3;
+   |          ^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_static` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:26:30
+   |
+LL | reuse E::<'static, (), 123>::foo_static as e4;
+   |                              ^^^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_self` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:28:30
+   |
+LL | reuse E::<'static, (), 123>::foo_self as e5;
+   |                              ^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_static` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:31:30
+   |
+LL | reuse E::<'static, (), 123>::foo_static::<'static, (), true> as e6;
+   |                              ^^^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_self` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:33:30
+   |
+LL | reuse E::<'static, (), 123>::foo_self::<'static, (), true> as e7;
+   |                              ^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_static` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:36:23
+   |
+LL | reuse E::<'_, (), _>::foo_static as e8;
+   |                       ^^^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_self` in enum `E`
+  --> $DIR/inherent-impls-parent-generics.rs:39:22
+   |
+LL | reuse E::<'_, _, _>::foo_self as e9;
+   |                      ^^^^^^^^ not found in `E`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:51:10
+   |
+LL | reuse S::foo_static as s;
+   |          ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:54:10
+   |
+LL | reuse S::foo_self as s1;
+   |          ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:57:10
+   |
+LL | reuse S::foo_static::<'static, (), true> as s2;
+   |          ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:60:10
+   |
+LL | reuse S::foo_self::<'static, (), true> as s3;
+   |          ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:63:21
+   |
+LL | reuse S::<(), 123>::foo_static as s4;
+   |                     ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:65:21
+   |
+LL | reuse S::<(), 123>::foo_self as s5;
+   |                     ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:68:21
+   |
+LL | reuse S::<(), 123>::foo_static::<'static, (), true> as s6;
+   |                     ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:70:21
+   |
+LL | reuse S::<(), 123>::foo_self::<'static, (), true> as s7;
+   |                     ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:73:19
+   |
+LL | reuse S::<(), _>::foo_static as s8;
+   |                   ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:76:20
+   |
+LL | reuse S::<_, 123>::foo_self as s9;
+   |                    ^^^^^^^^ not found in `S`
+
+error: aborting due to 20 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

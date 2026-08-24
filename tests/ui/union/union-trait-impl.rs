@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: items.union.ref.use
 
 use std::fmt;
 

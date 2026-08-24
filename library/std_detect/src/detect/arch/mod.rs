@@ -67,7 +67,7 @@ cfg_select! {
         // Unimplemented architecture:
         #[doc(hidden)]
         pub(crate) enum Feature {
-            Null
+            Null,
         }
         #[doc(hidden)]
         #[unstable(feature = "stdarch_internal", issue = "none")]
@@ -75,9 +75,13 @@ cfg_select! {
 
         impl Feature {
             #[doc(hidden)]
-            pub(crate) fn from_str(_s: &str) -> Result<Feature, ()> { Err(()) }
+            pub(crate) fn from_str(_s: &str) -> Result<Feature, ()> {
+                Err(())
+            }
             #[doc(hidden)]
-            pub(crate) fn to_str(self) -> &'static str { "" }
+            pub(crate) fn to_str(self) -> &'static str {
+                ""
+            }
         }
     }
 }

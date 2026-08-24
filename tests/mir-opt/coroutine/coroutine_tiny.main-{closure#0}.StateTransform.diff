@@ -1,10 +1,10 @@
 - // MIR for `main::{closure#0}` before StateTransform
 + // MIR for `main::{closure#0}` after StateTransform
   
-- fn main::{closure#0}(_1: {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13}, _2: u8) -> ()
+- fn main::{closure#0}(_1: {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13}, _2: u8) -> !
 - yields ()
 -  {
-+ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13}>, _2: u8) -> CoroutineState<(), ()> {
++ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13}>, _2: u8) -> CoroutineState<(), !> {
 +     coroutine layout {
 +         field _s0: HasDrop;
 +         variant_fields = {
@@ -16,68 +16,63 @@
 +         storage_conflicts = BitMatrix(1x1) {(_s0, _s0)}
 +     }
       debug _x => _2;
--     let mut _0: ();
+-     let mut _0: !;
 +     coroutine debug _d => _s0;
-+     let mut _0: std::ops::CoroutineState<(), ()>;
++     let mut _0: std::ops::CoroutineState<(), !>;
       let _3: HasDrop;
-      let mut _4: !;
-      let mut _5: ();
-      let _6: u8;
-      let mut _7: ();
-      let _8: ();
-+     let mut _9: ();
-+     let mut _10: u32;
-+     let mut _11: &mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13};
+      let mut _4: ();
+      let _5: u8;
+      let mut _6: ();
+      let _7: ();
++     let mut _8: !;
++     let mut _9: u32;
++     let mut _10: &mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13};
       scope 1 {
 -         debug _d => _3;
-+         debug _d => (((*_11) as variant#3).0: HasDrop);
++         debug _d => (((*_10) as variant#3).0: HasDrop);
       }
   
       bb0: {
 -         StorageLive(_3);
 -         _3 = HasDrop;
--         StorageLive(_4);
 -         goto -> bb1;
-+         _11 = copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13});
-+         _10 = discriminant((*_11));
-+         switchInt(move _10) -> [0: bb6, 3: bb4, otherwise: bb5];
++         _10 = copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:5: 20:13});
++         _9 = discriminant((*_10));
++         switchInt(move _9) -> [0: bb6, 3: bb4, otherwise: bb5];
       }
   
       bb1: {
+          StorageLive(_5);
           StorageLive(_6);
-          StorageLive(_7);
-          _7 = ();
--         _6 = yield(move _7) -> [resume: bb2, drop: bb4];
-+         _0 = CoroutineState::<(), ()>::Yielded(move _7);
-+         StorageDead(_4);
+          _6 = ();
+-         _5 = yield(move _6) -> [resume: bb2, drop: bb4];
++         _0 = CoroutineState::<(), !>::Yielded(move _6);
++         StorageDead(_5);
 +         StorageDead(_6);
-+         StorageDead(_7);
-+         discriminant((*_11)) = 3;
++         discriminant((*_10)) = 3;
 +         return;
       }
   
       bb2: {
-          StorageDead(_7);
           StorageDead(_6);
-          StorageLive(_8);
-          _8 = callee() -> [return: bb3, unwind unreachable];
+          StorageDead(_5);
+          StorageLive(_7);
+          _7 = callee() -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
-          StorageDead(_8);
-          _5 = const ();
+          StorageDead(_7);
+          _4 = const ();
           goto -> bb1;
       }
   
       bb4: {
--         StorageDead(_7);
 -         StorageDead(_6);
--         StorageDead(_4);
+-         StorageDead(_5);
 -         drop(_3) -> [return: bb5, unwind unreachable];
-+         StorageLive(_4);
++         StorageLive(_5);
 +         StorageLive(_6);
-+         StorageLive(_7);
-+         _6 = move _2;
++         _5 = move _2;
 +         goto -> bb2;
       }
   
@@ -90,8 +85,7 @@
       bb6: {
 -         coroutine_drop;
 +         nop;
-+         (((*_11) as variant#3).0: HasDrop) = HasDrop;
-+         StorageLive(_4);
++         (((*_10) as variant#3).0: HasDrop) = HasDrop;
 +         goto -> bb1;
       }
   }

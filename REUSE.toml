@@ -19,8 +19,10 @@ path = [
     "tests/**",
     "src/**",
     ".github/**",
+    "AGENTS.md",
     "Cargo.lock",
     "Cargo.toml",
+    "CLAUDE.md",
     "CODE_OF_CONDUCT.md",
     "bootstrap.example.toml",
     "configure",
@@ -206,3 +208,12 @@ SPDX-FileCopyrightText = [
     "Copyright (C) 2000-2024 Free Software Foundation, Inc.",
 ]
 SPDX-License-Identifier = "GCC-exception-3.1"
+
+ [[annotations]]
+ path = "compiler/rustc_middle/src/ptrauth/llvm_siphash/tests.rs"
+ precedence = "override"
+ SPDX-FileCopyrightText = [
+     "2003-2019 University of Illinois at Urbana-Champaign.",
+     "The Rust Project Developers (see https://thanks.rust-lang.org)",
+ ]
+ SPDX-License-Identifier = "Apache-2.0 WITH LLVM-exception AND (Apache-2.0 OR MIT)"

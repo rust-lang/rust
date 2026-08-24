@@ -4,9 +4,8 @@ use clippy_utils::{is_lint_allowed, sym};
 use core::ptr;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

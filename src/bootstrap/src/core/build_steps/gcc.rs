@@ -290,7 +290,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair)
     // Target on which libgccjit.so will be executed. Here we will generate a dylib with
     // instructions for that target.
     let host = target_pair.host;
-    if builder.build.cc_tool(host).is_like_clang() || builder.build.cxx_tool(host).is_like_clang() {
+    if builder.sess.cc_tool(host).is_like_clang() || builder.sess.cxx_tool(host).is_like_clang() {
         panic!(
             "Attempting to build GCC using Clang, which is known to misbehave. Please use GCC as the host C/C++ compiler. "
         );
@@ -327,19 +327,19 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target_pair: GccTargetPair)
         .arg("--with-bugurl=https://github.com/rust-lang/gcc/")
         .arg(format!("--prefix={}", install_dir.display()));
 
-    let cc = builder.build.cc(host).display().to_string();
+    let cc = builder.sess.cc(host).display().to_string();
     let cc = builder
-        .build
+        .sess
         .config
         .ccache
         .as_ref()
         .map_or_else(|| cc.clone(), |ccache| format!("{ccache} {cc}"));
     configure_cmd.env("CC", cc);
 
-    if let Ok(ref cxx) = builder.build.cxx(host) {
+    if let Ok(ref cxx) = builder.sess.cxx(host) {
         let cxx = cxx.display().to_string();
         let cxx = builder
-            .build
+            .sess
             .config
             .ccache
             .as_ref()

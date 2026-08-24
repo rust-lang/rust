@@ -5,9 +5,6 @@ mod proc_macros;
 use rustc_codegen_ssa::back::metadata::DefaultMetadataLoader;
 use rustc_interface::util::rustc_version_str;
 use rustc_proc_macro::bridge;
-use rustc_session::config::host_tuple;
-use rustc_target::spec::{Target, TargetTuple};
-use std::path::Path;
 use std::{fs, io, time::SystemTime};
 use temp_dir::TempDir;
 
@@ -78,11 +75,7 @@ struct ProcMacroLibrary {
 impl ProcMacroLibrary {
     fn open(path: &Utf8Path) -> io::Result<Self> {
         let proc_macros = rustc_span::create_default_session_globals_then(|| {
-            let (target, _) =
-                Target::search(&TargetTuple::from_tuple(host_tuple()), Path::new(""), false)
-                    .unwrap();
             rustc_metadata::locator::get_proc_macros(
-                &target,
                 path.as_ref(),
                 &DefaultMetadataLoader,
                 rustc_version_str().unwrap_or("unknown"),

@@ -46,7 +46,7 @@ jobs:
           printf "This is an experimental post-merge analysis report that shows differences in test outcomes between the merged PR and its parent PR.\n" >> output.log
           printf "</details>\n\n" >> output.log
 
-          cargo run --release post-merge-report ${PARENT_COMMIT} ${{ github.sha }} >> output.log
+          cargo run --locked --release post-merge-report ${PARENT_COMMIT} ${{ github.sha }} >> output.log
 
           cat output.log
 

@@ -245,7 +245,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 Fn {
                     sig: FnSig { header, decl, span: _ }, ident, generics, contract, body, ..
                 },
-            ) if let Some(coroutine_kind) = header.coroutine_kind
+            ) if let Some(coroutine_marker) = header.coroutine_marker
                 // Foreign ones are denied, so don't create them here.
                 && ctxt != visit::FnCtxt::Foreign =>
             {
@@ -264,9 +264,14 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     self.visit_param(param);
                 }
 
-                let (return_id, return_span) = coroutine_kind.return_id();
-                let return_def =
-                    self.create_def(return_id, None, DefKind::OpaqueTy, return_span).def_id();
+                let return_def = self
+                    .create_def(
+                        coroutine_marker.return_impl_trait_id,
+                        None,
+                        DefKind::OpaqueTy,
+                        coroutine_marker.span,
+                    )
+                    .def_id();
                 self.with_parent(return_def, |this| this.visit_fn_ret_ty(output));
 
                 // If this async fn has no body (i.e. it's an async fn signature in a trait)
@@ -274,19 +279,19 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // def-id for it.
                 if let Some(body) = body {
                     let closure_def = self
-                        .create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span)
+                        .create_def(coroutine_marker.closure_id, None, DefKind::Closure, span)
                         .def_id();
                     self.with_parent(closure_def, |this| this.visit_block(body));
                 }
             }
-            FnKind::Closure(binder, Some(coroutine_kind), decl, body) => {
+            FnKind::Closure(binder, Some(coroutine_marker), decl, body) => {
                 self.visit_closure_binder(binder);
                 visit::walk_fn_decl(self, decl);
 
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
                 let coroutine_def = self
-                    .create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span)
+                    .create_def(coroutine_marker.closure_id, None, DefKind::Closure, span)
                     .def_id();
                 self.with_parent(coroutine_def, |this| this.visit_expr(body));
             }

@@ -6,54 +6,54 @@
       let mut _0: std::result::Result<Big, ()>;
       let mut _2: Big;
       let mut _3: std::string::String;
-      let mut _4: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+      let mut _4: std::ops::ControlFlow<std::result::Result<!, ()>, std::string::String>;
       let mut _5: std::result::Result<std::string::String, ()>;
       let mut _6: u64;
       let mut _7: u64;
       let mut _8: isize;
-      let _9: std::result::Result<std::convert::Infallible, ()>;
+      let _9: std::result::Result<!, ()>;
       let mut _10: !;
-      let mut _11: std::result::Result<std::convert::Infallible, ()>;
+      let mut _11: std::result::Result<!, ()>;
       let _12: std::string::String;
       let mut _13: std::string::String;
-      let mut _14: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+      let mut _14: std::ops::ControlFlow<std::result::Result<!, ()>, std::string::String>;
       let mut _15: std::result::Result<std::string::String, ()>;
       let mut _16: u64;
       let mut _17: u64;
       let mut _18: isize;
-      let _19: std::result::Result<std::convert::Infallible, ()>;
+      let _19: std::result::Result<!, ()>;
       let mut _20: !;
-      let mut _21: std::result::Result<std::convert::Infallible, ()>;
+      let mut _21: std::result::Result<!, ()>;
       let _22: std::string::String;
       let mut _23: std::string::String;
-      let mut _24: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+      let mut _24: std::ops::ControlFlow<std::result::Result<!, ()>, std::string::String>;
       let mut _25: std::result::Result<std::string::String, ()>;
       let mut _26: u64;
       let mut _27: u64;
       let mut _28: isize;
-      let _29: std::result::Result<std::convert::Infallible, ()>;
+      let _29: std::result::Result<!, ()>;
       let mut _30: !;
-      let mut _31: std::result::Result<std::convert::Infallible, ()>;
+      let mut _31: std::result::Result<!, ()>;
       let _32: std::string::String;
       let mut _33: std::string::String;
-      let mut _34: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+      let mut _34: std::ops::ControlFlow<std::result::Result<!, ()>, std::string::String>;
       let mut _35: std::result::Result<std::string::String, ()>;
       let mut _36: u64;
       let mut _37: u64;
       let mut _38: isize;
-      let _39: std::result::Result<std::convert::Infallible, ()>;
+      let _39: std::result::Result<!, ()>;
       let mut _40: !;
-      let mut _41: std::result::Result<std::convert::Infallible, ()>;
+      let mut _41: std::result::Result<!, ()>;
       let _42: std::string::String;
       let mut _43: std::string::String;
-      let mut _44: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, ()>, std::string::String>;
+      let mut _44: std::ops::ControlFlow<std::result::Result<!, ()>, std::string::String>;
       let mut _45: std::result::Result<std::string::String, ()>;
       let mut _46: u64;
       let mut _47: u64;
       let mut _48: isize;
-      let _49: std::result::Result<std::convert::Infallible, ()>;
+      let _49: std::result::Result<!, ()>;
       let mut _50: !;
-      let mut _51: std::result::Result<std::convert::Infallible, ()>;
+      let mut _51: std::result::Result<!, ()>;
       let _52: std::string::String;
 +     let mut _53: bool;
 +     let mut _54: bool;
@@ -154,10 +154,10 @@
   
       bb5: {
           StorageLive(_9);
-          _9 = copy ((_4 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+          _9 = copy ((_4 as Break).0: std::result::Result<!, ()>);
           StorageLive(_11);
           _11 = copy _9;
-          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _11) -> [return: bb6, unwind: bb90];
+          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _11) -> [return: bb6, unwind: bb90];
       }
   
       bb6: {
@@ -204,10 +204,10 @@
   
       bb11: {
           StorageLive(_19);
-          _19 = copy ((_14 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+          _19 = copy ((_14 as Break).0: std::result::Result<!, ()>);
           StorageLive(_21);
           _21 = copy _19;
-          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _21) -> [return: bb12, unwind: bb86];
+          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _21) -> [return: bb12, unwind: bb86];
       }
   
       bb12: {
@@ -253,10 +253,10 @@
   
       bb17: {
           StorageLive(_29);
-          _29 = copy ((_24 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+          _29 = copy ((_24 as Break).0: std::result::Result<!, ()>);
           StorageLive(_31);
           _31 = copy _29;
-          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _31) -> [return: bb18, unwind: bb81];
+          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _31) -> [return: bb18, unwind: bb81];
       }
   
       bb18: {
@@ -302,10 +302,10 @@
   
       bb23: {
           StorageLive(_39);
-          _39 = copy ((_34 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+          _39 = copy ((_34 as Break).0: std::result::Result<!, ()>);
           StorageLive(_41);
           _41 = copy _39;
-          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _41) -> [return: bb24, unwind: bb75];
+          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _41) -> [return: bb24, unwind: bb75];
       }
   
       bb24: {
@@ -350,10 +350,10 @@
   
       bb29: {
           StorageLive(_49);
-          _49 = copy ((_44 as Break).0: std::result::Result<std::convert::Infallible, ()>);
+          _49 = copy ((_44 as Break).0: std::result::Result<!, ()>);
           StorageLive(_51);
           _51 = copy _49;
-          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _51) -> [return: bb30, unwind: bb68];
+          _0 = <Result<Big, ()> as FromResidual<Result<!, ()>>>::from_residual(move _51) -> [return: bb30, unwind: bb68];
       }
   
       bb30: {

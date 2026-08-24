@@ -6,9 +6,8 @@
 use std::env;
 use std::env::VarError;
 
-use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{ExprKind, GenericArg, Mutability};
+use rustc_ast::{GenericArg, Mutability};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_span::edit_distance::edit_distance;
@@ -69,14 +68,8 @@ pub(crate) fn expand_option_env<'cx>(
             ))
         }
         Err(VarError::NotUnicode(_)) => {
-            let ExprKind::Lit(token::Lit {
-                kind: LitKind::Str | LitKind::StrRaw(..), symbol, ..
-            }) = &var_expr.kind
-            else {
-                unreachable!("`expr_to_string` ensures this is a string lit")
-            };
-
-            let guar = cx.dcx().emit_err(diagnostics::EnvNotUnicode { span: sp, var: *symbol });
+            let escaped_var = var.as_str().escape_debug().to_string();
+            let guar = cx.dcx().emit_err(diagnostics::EnvNotUnicode { span: sp, var: escaped_var });
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
         Ok(value) => cx.expr_call_global(
@@ -106,6 +99,7 @@ pub(crate) fn expand_env<'cx>(
     };
 
     let var_expr = exprs.next().unwrap();
+    // FIXME: `get_exprs_from_tts()` already performed macro expansion...
     let ExpandResult::Ready(mac) = expr_to_string(cx, var_expr.clone(), "expected string literal")
     else {
         return ExpandResult::Retry(());
@@ -133,49 +127,37 @@ pub(crate) fn expand_env<'cx>(
     let value = lookup_env(cx, var);
     cx.sess.env_depinfo.borrow_mut().insert((var, value.as_ref().ok().copied()));
     let e = match value {
-        Err(err) => {
-            let ExprKind::Lit(token::Lit {
-                kind: LitKind::Str | LitKind::StrRaw(..), symbol, ..
-            }) = &var_expr.kind
-            else {
-                unreachable!("`expr_to_string` ensures this is a string lit")
+        Err(VarError::NotPresent) => {
+            let var_str = var.as_str();
+            let escaped_var = var_str.escape_debug().to_string();
+            let guar = if let Some(msg_from_user) = custom_msg {
+                cx.dcx().emit_err(diagnostics::EnvNotDefinedWithUserMessage { span, msg_from_user })
+            } else if let Some(suggested_var) = find_similar_cargo_var(var_str)
+                && suggested_var != var_str
+            {
+                cx.dcx().emit_err(diagnostics::EnvNotDefined::CargoEnvVarTypo {
+                    span,
+                    var: escaped_var,
+                    suggested_var: Symbol::intern(suggested_var),
+                })
+            } else if is_cargo_env_var(var_str) {
+                cx.dcx().emit_err(diagnostics::EnvNotDefined::CargoEnvVar {
+                    span,
+                    var: escaped_var,
+                    var_expr: pprust::expr_to_string(&var_expr),
+                })
+            } else {
+                cx.dcx().emit_err(diagnostics::EnvNotDefined::CustomEnvVar {
+                    span,
+                    var: escaped_var,
+                    var_expr: pprust::expr_to_string(&var_expr),
+                })
             };
-
-            let var = var.as_str();
-            let guar = match err {
-                VarError::NotPresent => {
-                    if let Some(msg_from_user) = custom_msg {
-                        cx.dcx().emit_err(diagnostics::EnvNotDefinedWithUserMessage {
-                            span,
-                            msg_from_user,
-                        })
-                    } else if let Some(suggested_var) = find_similar_cargo_var(var)
-                        && suggested_var != var
-                    {
-                        cx.dcx().emit_err(diagnostics::EnvNotDefined::CargoEnvVarTypo {
-                            span,
-                            var: *symbol,
-                            suggested_var: Symbol::intern(suggested_var),
-                        })
-                    } else if is_cargo_env_var(var) {
-                        cx.dcx().emit_err(diagnostics::EnvNotDefined::CargoEnvVar {
-                            span,
-                            var: *symbol,
-                            var_expr: pprust::expr_to_string(&var_expr),
-                        })
-                    } else {
-                        cx.dcx().emit_err(diagnostics::EnvNotDefined::CustomEnvVar {
-                            span,
-                            var: *symbol,
-                            var_expr: pprust::expr_to_string(&var_expr),
-                        })
-                    }
-                }
-                VarError::NotUnicode(_) => {
-                    cx.dcx().emit_err(diagnostics::EnvNotUnicode { span, var: *symbol })
-                }
-            };
-
+            return ExpandResult::Ready(DummyResult::any(sp, guar));
+        }
+        Err(VarError::NotUnicode(_)) => {
+            let escaped_var = var.as_str().escape_debug().to_string();
+            let guar = cx.dcx().emit_err(diagnostics::EnvNotUnicode { span, var: escaped_var });
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
         Ok(value) => cx.expr_str(span, value),

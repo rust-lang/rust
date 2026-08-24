@@ -27,6 +27,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match intrinsic_name {
             sym::atomic_load => {
                 let ord = get_ord_at(1);
+                let _volatile = generic_args.const_at(2).to_value(); // makes no difference for us
                 let [ptr] = args else { span_bug!(self.cur_span(), "invalid `atomic_load` call") };
 
                 let place = self.deref_pointer(ptr)?;
@@ -35,6 +36,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::atomic_store => {
                 let ord = get_ord_at(1);
+                let _volatile = generic_args.const_at(2).to_value(); // makes no difference for us
                 let [ptr, val] = args else {
                     span_bug!(self.cur_span(), "invalid `atomic_store` call")
                 };

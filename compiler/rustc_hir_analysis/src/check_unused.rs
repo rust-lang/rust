@@ -2,8 +2,8 @@ use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_lint_defs::builtin::UNUSED_IMPORTS;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint;
 use rustc_span::Span;
 use tracing::debug;
 
@@ -50,7 +50,7 @@ pub(super) fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
         }
         let (path, _) = item.expect_use();
         tcx.emit_node_span_lint(
-            lint::builtin::UNUSED_IMPORTS,
+            UNUSED_IMPORTS,
             item.hir_id(),
             path.span,
             UnusedImport { tcx, span: path.span },

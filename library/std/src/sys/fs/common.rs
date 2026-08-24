@@ -72,7 +72,7 @@ impl Dir {
     }
 
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        File::open(&self.path.join(path), &opts)
+        File::open(&self.path.join(path), opts)
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {

@@ -75,20 +75,15 @@ fn check_transmute<'tcx>(
     hir_id: HirId,
 ) -> Result<(), ErrorGuaranteed> {
     let span = tcx.hir_span(hir_id);
-    let normalize = |ty| {
-        if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) {
-            ty
-        } else {
-            Ty::new_error_with_message(
-                tcx,
-                span,
-                format!("tried to normalize non-wf type {ty:#?} in check_transmute"),
-            )
-        }
+    let normalize = |ty: Unnormalized<'tcx, Ty<'tcx>>| -> Result<Ty<'tcx>, ErrorGuaranteed> {
+        tcx.try_normalize_erasing_regions(typing_env, ty).map_err(|err| {
+            let err = LayoutError::NormalizationFailure(ty.skip_normalization(), err);
+            tcx.dcx().struct_span_err(span, err.to_string()).emit()
+        })
     };
 
-    let from = normalize(from);
-    let to = normalize(to);
+    let from = normalize(from)?;
+    let to = normalize(to)?;
     trace!(?from, ?to);
 
     // Transmutes that are only changing lifetimes are always ok.

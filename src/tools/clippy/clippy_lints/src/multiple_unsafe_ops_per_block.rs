@@ -6,10 +6,9 @@ use rustc_ast::{BorrowKind, Mutability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt, TypeckResults};
-use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {

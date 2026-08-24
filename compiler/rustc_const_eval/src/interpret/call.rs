@@ -671,7 +671,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, Option<&FnAbi<'tcx, Ty<'tcx>>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
@@ -685,6 +685,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,
             FnVal::Other(extra) => {
+                let caller_fn_abi =
+                    caller_fn_abi.expect("FnAbi should have been computed for this call");
                 return M::call_extra_fn(
                     self,
                     extra,
@@ -741,7 +743,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(..))
             | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
             | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
-            | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(..))
             | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))
             | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(..))
             | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..))
@@ -749,6 +752,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::Item(_) => {
                 // We need MIR for this fn.
                 // Note that this can be an intrinsic, if we are executing its fallback body.
+                let caller_fn_abi =
+                    caller_fn_abi.expect("FnAbi should have been computed for this call");
                 let Some((body, instance)) = M::find_mir_or_eval_fn(
                     self,
                     instance,
@@ -800,6 +805,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // `InstanceKind::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
             // codegen'd / interpreted as virtual calls through the vtable.
             ty::InstanceKind::Virtual(def_id, idx) => {
+                let caller_fn_abi =
+                    caller_fn_abi.expect("FnAbi should have been computed for this call");
                 let mut args = args.to_vec();
                 // We have to implement all "dyn-compatible receivers". So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
@@ -842,7 +849,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 assert!(receiver_place.layout.is_unsized());
 
                 // Get the required information from the vtable.
-                let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
+                let vptr = receiver_place.meta().unwrap_meta().to_pointer(self);
                 let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
                 let adjusted_recv = receiver_place.ptr();
 
@@ -878,7 +885,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // recurse with concrete function
                 self.init_fn_call(
                     FnVal::Instance(fn_inst),
-                    (caller_abi, &caller_fn_abi),
+                    (caller_abi, Some(&caller_fn_abi)),
                     &args,
                     with_caller_location,
                     destination,
@@ -921,7 +928,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_tail_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, Option<&FnAbi<'tcx, Ty<'tcx>>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
     ) -> InterpResult<'tcx> {
@@ -1018,7 +1025,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         self.init_fn_call(
             FnVal::Instance(instance),
-            (ExternAbi::Rust, fn_abi),
+            (ExternAbi::Rust, Some(fn_abi)),
             &[FnArg::Copy(arg.into())],
             false,
             &ret.into(),

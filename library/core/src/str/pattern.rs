@@ -1051,7 +1051,7 @@ impl<'b> Pattern for &'b str {
 
     #[inline]
     fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
-        Some(Utf8Pattern::StringPattern(*self))
+        Some(Utf8Pattern::StringPattern(self))
     }
 }
 
@@ -1071,6 +1071,7 @@ pub struct StrSearcher<'a, 'b> {
 #[derive(Clone, Debug)]
 enum StrSearcherImpl {
     Empty(EmptyNeedle),
+    Byte(ByteNeedle),
     TwoWay(TwoWaySearcher),
 }
 
@@ -1082,6 +1083,16 @@ struct EmptyNeedle {
     is_match_bw: bool,
     // Needed in case of an empty haystack, see #85462
     is_finished: bool,
+}
+
+/// Fast searcher for a single-byte needle using `memchr`/`memrchr`.
+#[derive(Clone, Debug)]
+struct ByteNeedle {
+    b: u8,
+    /// Forward cursor: `haystack[..position]` has already been reported.
+    position: usize,
+    /// Backward cursor: `haystack[end..]` has already been reported.
+    end: usize,
 }
 
 impl<'a, 'b> StrSearcher<'a, 'b> {
@@ -1097,6 +1108,12 @@ impl<'a, 'b> StrSearcher<'a, 'b> {
                     is_match_bw: true,
                     is_finished: false,
                 }),
+            }
+        } else if let &[b] = needle.as_bytes() {
+            StrSearcher {
+                haystack,
+                needle,
+                searcher: StrSearcherImpl::Byte(ByteNeedle { b, position: 0, end: haystack.len() }),
             }
         } else {
             StrSearcher {
@@ -1140,6 +1157,23 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
                     }
                 }
             }
+            StrSearcherImpl::Byte(ref mut searcher) => {
+                let bytes = self.haystack.as_bytes();
+                let pos = searcher.position;
+                if pos >= bytes.len() {
+                    return SearchStep::Done;
+                }
+                if bytes[pos] == searcher.b {
+                    searcher.position = pos + 1;
+                    SearchStep::Match(pos, pos + 1)
+                } else {
+                    // `pos` is always on a char boundary, so this rejects
+                    // exactly the char starting at `pos`.
+                    let end = self.haystack.ceil_char_boundary(pos + 1);
+                    searcher.position = end;
+                    SearchStep::Reject(pos, end)
+                }
+            }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 // TwoWaySearcher produces valid *Match* indices that split at char boundaries
                 // as long as it does correct matching and that haystack and needle are
@@ -1155,11 +1189,9 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
                     self.needle.as_bytes(),
                     is_long,
                 ) {
-                    SearchStep::Reject(a, mut b) => {
+                    SearchStep::Reject(a, b) => {
                         // skip to next char boundary
-                        while !self.haystack.is_char_boundary(b) {
-                            b += 1;
-                        }
+                        let b = self.haystack.ceil_char_boundary(b);
                         searcher.position = cmp::max(b, searcher.position);
                         SearchStep::Reject(a, b)
                     }
@@ -1179,6 +1211,23 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
                     SearchStep::Reject(..) => {}
                 }
             },
+            StrSearcherImpl::Byte(ref mut searcher) => {
+                let bytes = self.haystack.as_bytes();
+                if searcher.position >= bytes.len() {
+                    return None;
+                }
+                match memchr::memchr(searcher.b, &bytes[searcher.position..]) {
+                    Some(i) => {
+                        let pos = searcher.position + i;
+                        searcher.position = pos + 1;
+                        Some((pos, pos + 1))
+                    }
+                    None => {
+                        searcher.position = bytes.len();
+                        None
+                    }
+                }
+            }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
                 // write out `true` and `false` cases to encourage the compiler
@@ -1224,6 +1273,21 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
                     }
                 }
             }
+            StrSearcherImpl::Byte(ref mut searcher) => {
+                let end = searcher.end;
+                if end == 0 {
+                    return SearchStep::Done;
+                }
+                let bytes = self.haystack.as_bytes();
+                if bytes[end - 1] == searcher.b {
+                    searcher.end = end - 1;
+                    SearchStep::Match(end - 1, end)
+                } else {
+                    let start = self.haystack.floor_char_boundary(end - 1);
+                    searcher.end = start;
+                    SearchStep::Reject(start, end)
+                }
+            }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 if searcher.end == 0 {
                     return SearchStep::Done;
@@ -1234,11 +1298,9 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
                     self.needle.as_bytes(),
                     is_long,
                 ) {
-                    SearchStep::Reject(mut a, b) => {
-                        // skip to next char boundary
-                        while !self.haystack.is_char_boundary(a) {
-                            a -= 1;
-                        }
+                    SearchStep::Reject(a, b) => {
+                        // skip to previous char boundary
+                        let a = self.haystack.floor_char_boundary(a);
                         searcher.end = cmp::min(a, searcher.end);
                         SearchStep::Reject(a, b)
                     }
@@ -1258,6 +1320,22 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
                     SearchStep::Reject(..) => {}
                 }
             },
+            StrSearcherImpl::Byte(ref mut searcher) => {
+                if searcher.end == 0 {
+                    return None;
+                }
+                let bytes = self.haystack.as_bytes();
+                match memchr::memrchr(searcher.b, &bytes[..searcher.end]) {
+                    Some(i) => {
+                        searcher.end = i;
+                        Some((i, i + 1))
+                    }
+                    None => {
+                        searcher.end = 0;
+                        None
+                    }
+                }
+            }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
                 // write out `true` and `false`, like `next_match`

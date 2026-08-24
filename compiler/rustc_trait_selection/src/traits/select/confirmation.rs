@@ -385,7 +385,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        assert_eq!(obligation.predicate.polarity(), ty::PredicatePolarity::Positive);
+        assert_eq!(obligation.predicate.polarity(), ty::ClausePolarity::Positive);
 
         let self_ty = obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
         let self_ty = self.infcx.enter_forall_and_leak_universe(self_ty);
@@ -454,7 +454,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         cause: &ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
-        parent_trait_pred: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
+        parent_trait_pred: ty::Binder<'tcx, ty::TraitClause<'tcx>>,
     ) -> ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>> {
         debug!(?impl_def_id, ?args, ?recursion_depth, "vtable_impl");
 

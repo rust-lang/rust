@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(RustOffload LANGUAGES CXX)
 
-find_package(LLVM CONFIG REQUIRED)
+# If we don't prohibit the default path, CMake will find an incompatible system LLVM installation instead of the one we built.
+find_package(LLVM CONFIG REQUIRED NO_DEFAULT_PATH PATHS "${LLVM_DIR}")
 
 add_library(RustOffload-${LLVM_VERSION_MAJOR} SHARED
     OffloadWrapper.cpp

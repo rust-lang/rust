@@ -87,8 +87,8 @@ impl<T: Hash> Hash for Obligation<'_, T> {
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
-pub type TraitObligation<'tcx> = Obligation<'tcx, ty::TraitPredicate<'tcx>>;
-pub type PolyTraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
+pub type TraitObligation<'tcx> = Obligation<'tcx, ty::TraitClause<'tcx>>;
+pub type PolyTraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitClause<'tcx>>;
 
 pub type PredicateObligations<'tcx> = ThinVec<PredicateObligation<'tcx>>;
 
@@ -175,7 +175,7 @@ impl<'tcx, O> Obligation<'tcx, O> {
 }
 
 impl<'tcx> PolyTraitObligation<'tcx> {
-    pub fn polarity(&self) -> ty::PredicatePolarity {
+    pub fn polarity(&self) -> ty::ClausePolarity {
         self.predicate.skip_binder().polarity
     }
 

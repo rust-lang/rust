@@ -256,11 +256,11 @@ fn enable_verifier(sess: &Session) -> bool {
         || env::var("CG_CLIF_ENABLE_VERIFIER").as_deref() == Ok("1")
 }
 
-fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    // Use versioned target triple to make `OperatingSystem::MacOSX(...)`
+fn target_tuple(sess: &Session) -> target_lexicon::Triple {
+    // Use versioned target tuple to make `OperatingSystem::MacOSX(...)`
     // contain a value, which we use when emitting `LC_BUILD_VERSION`.
     match back::versioned_llvm_target(sess).parse() {
-        Ok(triple) => triple,
+        Ok(tuple) => tuple,
         Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }
 }
@@ -268,7 +268,7 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
 fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
-    let target_triple = crate::target_triple(sess);
+    let target_tuple = crate::target_tuple(sess);
 
     let mut flags_builder = settings::builder();
     flags_builder.set("is_pic", if jit { "false" } else { "true" }).unwrap();
@@ -283,7 +283,7 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
         .set("preserve_frame_pointers", if preserve_frame_pointer { "true" } else { "false" })
         .unwrap();
 
-    let tls_model = match target_triple.binary_format {
+    let tls_model = match target_tuple.binary_format {
         BinaryFormat::Elf => "elf_gd",
         BinaryFormat::Macho => "macho",
         BinaryFormat::Coff => "coff",
@@ -313,19 +313,19 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
         }
     }
 
-    if let target_lexicon::OperatingSystem::Windows = target_triple.operating_system {
+    if let target_lexicon::OperatingSystem::Windows = target_tuple.operating_system {
         // FIXME remove dependency on this from the Rust ABI. cc bytecodealliance/wasmtime#9510
         flags_builder.enable("enable_multi_ret_implicit_sret").unwrap();
     }
 
-    if let target_lexicon::Architecture::S390x = target_triple.architecture {
+    if let target_lexicon::Architecture::S390x = target_tuple.architecture {
         // FIXME remove dependency on this from the Rust ABI. cc bytecodealliance/wasmtime#9510
         flags_builder.enable("enable_multi_ret_implicit_sret").unwrap();
     }
 
     if let target_lexicon::Architecture::Aarch64(_)
     | target_lexicon::Architecture::Riscv64(_)
-    | target_lexicon::Architecture::X86_64 = target_triple.architecture
+    | target_lexicon::Architecture::X86_64 = target_tuple.architecture
     {
         // Windows depends on stack probes to grow the committed part of the stack.
         // On other platforms it helps prevents stack smashing.
@@ -343,8 +343,8 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
         Some(NATIVE_CPU) => cranelift_native::builder_with_options(true).unwrap(),
         Some(value) => {
             let mut builder =
-                cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
-                    sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
+                cranelift_codegen::isa::lookup(target_tuple.clone()).unwrap_or_else(|err| {
+                    sess.dcx().fatal(format!("can't compile for {}: {}", target_tuple, err));
                 });
             if builder.enable(value).is_err() {
                 sess.dcx()
@@ -354,10 +354,10 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
         }
         None => {
             let mut builder =
-                cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
-                    sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
+                cranelift_codegen::isa::lookup(target_tuple.clone()).unwrap_or_else(|err| {
+                    sess.dcx().fatal(format!("can't compile for {}: {}", target_tuple, err));
                 });
-            if target_triple.architecture == target_lexicon::Architecture::X86_64 {
+            if target_tuple.architecture == target_lexicon::Architecture::X86_64 {
                 // Only set the target cpu on x86_64 as Cranelift is missing
                 // the target cpu list for most other targets.
                 builder.enable(sess.target.cpu.as_ref()).unwrap();

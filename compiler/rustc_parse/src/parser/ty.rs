@@ -112,7 +112,6 @@ impl<'a> Parser<'a> {
             let kind = TyKind::Err(self.dcx().emit_err(InvalidCVariadicType { span }));
             return Ok(self.mk_ty(span, kind));
         }
-        // Make sure deeply nested types don't overflow the stack.
         self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::No,

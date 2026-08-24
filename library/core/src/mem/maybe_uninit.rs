@@ -1639,7 +1639,7 @@ impl<T, const N: usize> AsRef<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
 impl<T, const N: usize> AsRef<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[MaybeUninit<T>] {
-        &*AsRef::<[MaybeUninit<T>; N]>::as_ref(self)
+        AsRef::<[MaybeUninit<T>; N]>::as_ref(self)
     }
 }
 

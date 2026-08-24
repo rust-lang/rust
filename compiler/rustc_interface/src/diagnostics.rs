@@ -1,9 +1,9 @@
 use std::io;
 use std::path::Path;
 
-use rustc_hir::attrs::CrateType;
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
+use rustc_structures::CrateType;
 use rustc_target::spec::TargetTuple;
 
 #[derive(Diagnostic)]

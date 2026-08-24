@@ -19,7 +19,7 @@ pub struct ADecoder<'a> {
 }
 fn make_a_decoder<'a>() -> ADecoder<'a> {
     //~^ ERROR the trait bound
-    //[nll]~| ERROR the trait bound
+    //~| ERROR the trait bound
     panic!()
 }
 

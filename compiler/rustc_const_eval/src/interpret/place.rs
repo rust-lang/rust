@@ -435,7 +435,7 @@ where
 
         // `imm_ptr_to_mplace` is called on raw pointers even if they don't actually get dereferenced;
         // we hence can't call `size_and_align_of` since that asserts more validity than we want.
-        let ptr = ptr.to_pointer(self)?;
+        let ptr = ptr.to_pointer(self);
         interp_ok(self.ptr_with_meta_to_mplace(ptr, meta, layout, /*unaligned*/ false))
     }
 
@@ -522,7 +522,7 @@ where
                     let tail = self.tcx.struct_tail_for_codegen(mplace.layout.ty, self.typing_env);
                     match tail.kind() {
                         ty::Dynamic(data, _) => {
-                            let vtable = mplace.meta().unwrap_meta().to_pointer(self)?;
+                            let vtable = mplace.meta().unwrap_meta().to_pointer(self);
                             self.get_ptr_vtable_ty(vtable, Some(data))?;
                         }
                         ty::Slice(..) | ty::Str | ty::Foreign(..) => {

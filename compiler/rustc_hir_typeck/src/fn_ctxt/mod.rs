@@ -387,7 +387,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         &self,
         span: Span,
         item_def_id: DefId,
-        item_segment: &rustc_hir::PathSegment<'tcx>,
+        item_segment: &rustc_hir::PathSegment<'_>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<(DefId, ty::GenericArgsRef<'tcx>), ErrorGuaranteed> {
         let trait_ref = self.instantiate_binder_with_fresh_vars(
@@ -452,7 +452,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
     fn lower_fn_sig(
         &self,
-        decl: &rustc_hir::FnDecl<'tcx>,
+        decl: &rustc_hir::FnDecl<'_>,
         _generics: Option<&rustc_hir::Generics<'_>>,
         _hir_id: rustc_hir::HirId,
         _hir_ty: Option<&hir::Ty<'_>>,
@@ -493,22 +493,12 @@ impl<'tcx> LoweredTy<'tcx> {
 }
 
 fn never_type_behavior(tcx: TyCtxt<'_>) -> (DivergingFallbackBehavior, DivergingBlockBehavior) {
+    // FIXME(waffle): rip out the whole system which allows you to choose never type fallback
     let (fallback, block) = parse_never_type_options_attr(tcx);
-    let fallback = fallback.unwrap_or_else(|| default_fallback(tcx));
+    let fallback = fallback.unwrap_or_else(|| DivergingFallbackBehavior::ToNever);
     let block = block.unwrap_or_default();
 
     (fallback, block)
-}
-
-/// Returns the default fallback which is used when there is no explicit override via `#![never_type_options(...)]`.
-fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
-    // Edition 2024: fallback to `!`
-    if tcx.sess.edition().at_least_rust_2024() {
-        return DivergingFallbackBehavior::ToNever;
-    }
-
-    // Otherwise: fallback to `()`
-    DivergingFallbackBehavior::ToUnit
 }
 
 fn parse_never_type_options_attr(

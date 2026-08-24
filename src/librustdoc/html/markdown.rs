@@ -527,7 +527,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for TableWrapper<'a, I> {
         Some(match event {
             Event::Start(Tag::Table(t)) => {
                 self.stored_events.push_back(Event::Start(Tag::Table(t)));
-                Event::Html(CowStr::Borrowed("<div>"))
+                Event::Html(CowStr::Borrowed(r#"<div class="table">"#))
             }
             Event::End(TagEnd::Table) => {
                 self.stored_events.push_back(Event::Html(CowStr::Borrowed("</div>")));
@@ -1595,8 +1595,8 @@ impl MarkdownSummaryLine<'_> {
 
         html::push_html(&mut s, without_paragraphs);
 
-        let has_more_content =
-            matches!(summary.inner.peek(), Some(Event::Start(_))) || summary.skipped_tags > 0;
+        let has_more_content = matches!(summary.inner.peek(), Some(Event::Start(_) | Event::Rule))
+            || summary.skipped_tags > 0;
 
         (s, has_more_content)
     }

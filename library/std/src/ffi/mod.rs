@@ -166,7 +166,7 @@ pub mod c_str;
 
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 pub use core::ffi::{VaArgSafe, VaList};
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
 pub use core::ffi::{

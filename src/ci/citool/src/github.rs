@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::time::Duration;
 
 use anyhow::Context;
 use build_helper::metrics::{CiMetadata, JsonRoot};
@@ -60,6 +62,8 @@ struct WorkflowRunJobsResponse {
 struct GitHubJob {
     name: String,
     id: u64,
+    started_at: Option<jiff::Timestamp>,
+    completed_at: Option<jiff::Timestamp>,
 }
 
 /// Can be used to resolve information about GitHub Actions jobs.
@@ -78,32 +82,43 @@ impl JobInfoResolver {
     /// Get a link to a job summary for the given job name and bootstrap execution.
     pub fn get_job_summary_link(&mut self, job_name: &str, metrics: &JsonRoot) -> Option<String> {
         metrics.ci_metadata.as_ref().and_then(|metadata| {
-            self.get_job_id(metadata, job_name).map(|job_id| {
+            self.get_job_data(metadata, job_name).map(|job| {
                 format!(
-                    "https://github.com/{}/actions/runs/{}#summary-{job_id}",
-                    metadata.repository, metadata.workflow_run_id
+                    "https://github.com/{}/actions/runs/{}#summary-{}",
+                    metadata.repository, metadata.workflow_run_id, job.id
                 )
             })
         })
     }
 
-    fn get_job_id(&mut self, ci_metadata: &CiMetadata, job_name: &str) -> Option<u64> {
-        if let Some(job) = self
-            .workflow_job_cache
-            .get(&ci_metadata.workflow_run_id)
-            .and_then(|jobs| jobs.iter().find(|j| j.name == job_name))
-        {
-            return Some(job.id);
-        }
+    /// Get duration of the given job.
+    pub fn get_job_duration(&mut self, job_name: &str, metrics: &JsonRoot) -> Option<Duration> {
+        metrics.ci_metadata.as_ref().and_then(|metadata| {
+            self.get_job_data(metadata, job_name).and_then(|job| {
+                let start = job.started_at?;
+                let end = job.completed_at?;
 
-        let jobs = self
-            .client
-            .get_workflow_run_jobs(&ci_metadata.repository, ci_metadata.workflow_run_id)
-            .inspect_err(|e| eprintln!("Cannot download workflow jobs: {e:?}"))
-            .ok()?;
-        let job_id = jobs.iter().find(|j| j.name == job_name).map(|j| j.id);
-        // Save the cache even if the job name was not found, it could be useful for further lookups
-        self.workflow_job_cache.insert(ci_metadata.workflow_run_id, jobs);
-        job_id
+                // If `end` is for whatever reason earlier than `start`, then we assume that the
+                // duration is zero, because we do not want negative durations.
+                let duration = Duration::try_from(end - start).unwrap_or(Duration::ZERO);
+                Some(duration)
+            })
+        })
+    }
+
+    fn get_job_data(&mut self, ci_metadata: &CiMetadata, job_name: &str) -> Option<&GitHubJob> {
+        match self.workflow_job_cache.entry(ci_metadata.workflow_run_id) {
+            Entry::Occupied(jobs) => jobs.into_mut().iter().find(|j| j.name == job_name),
+            Entry::Vacant(entry) => {
+                let jobs = self
+                    .client
+                    .get_workflow_run_jobs(&ci_metadata.repository, ci_metadata.workflow_run_id)
+                    .inspect_err(|e| eprintln!("Cannot download workflow jobs: {e:?}"))
+                    .ok()?;
+                // Save the cache even if the job name was not found, it could be useful for further lookups
+                let jobs = entry.insert(jobs);
+                jobs.iter().find(|j| j.name == job_name)
+            }
+        }
     }
 }

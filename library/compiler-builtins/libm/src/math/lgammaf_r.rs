@@ -178,7 +178,7 @@ pub fn lgammaf_r(mut x: f32) -> (f32, i32) {
                 /* [1.7316,2] */
                 y = 2.0 - x;
                 i = 0;
-            } else if ix >= 0x3F9da620 {
+            } else if ix >= 0x3f9da620 {
                 /* [1.23,1.73] */
                 y = x - TC;
                 i = 1;

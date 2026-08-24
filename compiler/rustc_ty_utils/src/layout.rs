@@ -9,7 +9,6 @@ use rustc_abi::{
     LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
     VariantIdx, Variants, WrappingRange,
 };
-use rustc_data_structures::Limit;
 use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::find_attr;
@@ -27,6 +26,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
+use rustc_structures::Limit;
 use tracing::{debug, instrument};
 
 use crate::diagnostics::NonPrimitiveSimdType;

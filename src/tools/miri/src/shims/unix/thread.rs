@@ -106,7 +106,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Ok(thread) = this.thread_id_try_from(thread) else {
             return interp_ok(ThreadNameResult::ThreadNotFound);
         };
-        let name = name.to_pointer(this)?;
+        let name = name.to_pointer(this);
         let mut name = this.read_c_str(name)?.to_owned();
 
         // Comparing with `>=` to account for null terminator.
@@ -140,7 +140,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Ok(thread) = this.thread_id_try_from(thread) else {
             return interp_ok(ThreadNameResult::ThreadNotFound);
         };
-        let name_out = name_out.to_pointer(this)?;
+        let name_out = name_out.to_pointer(this);
         let len = len.to_target_usize(this)?;
 
         // FIXME: we should use the program name if the thread name is not set

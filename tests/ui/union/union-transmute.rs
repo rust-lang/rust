@@ -1,4 +1,6 @@
 //@ run-pass
+//@ reference: items.union.common-storage
+//@ reference: type.union.access
 
 union U {
     a: (u8, u8),

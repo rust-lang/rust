@@ -337,31 +337,34 @@ macro_rules! float_impl {
                 Self::from_bits(a)
             }
             fn abs(self) -> Self {
-                cfg_if! {
+                cfg_select_nofmt! {
                     // FIXME(msrv): `abs` is available in `core` starting with 1.85.
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         self.abs()
-                    } else {
+                    }
+                    _ => {
                         super::super::generic::fabs(self)
                     }
                 }
             }
             fn copysign(self, other: Self) -> Self {
-                cfg_if! {
+                cfg_select_nofmt! {
                     // FIXME(msrv): `copysign` is available in `core` starting with 1.85.
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         self.copysign(other)
-                    } else {
+                    }
+                    _ => {
                         super::super::generic::copysign(self, other)
                     }
                 }
             }
             fn fma(self, y: Self, z: Self) -> Self {
-                cfg_if! {
+                cfg_select_nofmt! {
                     // fma is not yet available in `core`
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         core::intrinsics::$fma_intrinsic(self, y, z)
-                    } else {
+                    }
+                    _ => {
                         super::super::$fma_fn(self, y, z)
                     }
                 }
@@ -453,28 +456,28 @@ pub const fn f64_to_bits(x: f64) -> u64 {
     unsafe { mem::transmute::<f64, u64>(x) }
 }
 
-/// Trait for floats twice the bit width of another integer.
-pub trait DFloat: Float {
+/// Trait for floats that are wider than a `NFloat` type.
+pub trait WideFloat: Float {
     /// Float that is half the bit width of the floatthis trait is implemented for.
-    type H: HFloat<D = Self>;
+    type H: NarrowFloat<D = Self>;
 
     /// Narrow the float type.
     fn narrow(self) -> Self::H;
 }
 
-/// Trait for floats half the bit width of another float.
-pub trait HFloat: Float {
+/// Trait for floats narrower than a `WFloat` type.
+pub trait NarrowFloat: Float {
     /// Float that is double the bit width of the float this trait is implemented for.
-    type D: DFloat<H = Self>;
+    type D: WideFloat<H = Self>;
 
     /// Widen the float type.
     fn widen(self) -> Self::D;
 }
 
-macro_rules! impl_d_float {
+macro_rules! impl_wide_float {
     ($($X:ident $D:ident),*) => {
         $(
-            impl DFloat for $D {
+            impl WideFloat for $D {
                 type H = $X;
 
                 fn narrow(self) -> Self::H {
@@ -485,10 +488,10 @@ macro_rules! impl_d_float {
     };
 }
 
-macro_rules! impl_h_float {
+macro_rules! impl_narrow_float {
     ($($H:ident $X:ident),*) => {
         $(
-            impl HFloat for $H {
+            impl NarrowFloat for $H {
                 type D = $X;
 
                 fn widen(self) -> Self::D {
@@ -499,17 +502,17 @@ macro_rules! impl_h_float {
     };
 }
 
-impl_d_float!(f32 f64);
+impl_wide_float!(f32 f64);
 #[cfg(f16_enabled)]
-impl_d_float!(f16 f32);
+impl_wide_float!(f16 f32);
 #[cfg(f128_enabled)]
-impl_d_float!(f64 f128);
+impl_wide_float!(f64 f128);
 
-impl_h_float!(f32 f64);
+impl_narrow_float!(f32 f64);
 #[cfg(f16_enabled)]
-impl_h_float!(f16 f32);
+impl_narrow_float!(f16 f32);
 #[cfg(f128_enabled)]
-impl_h_float!(f64 f128);
+impl_narrow_float!(f64 f128);
 
 #[cfg(test)]
 mod tests {

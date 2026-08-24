@@ -13,9 +13,8 @@ use itertools::Itertools as _;
 use rustc_ast::{BinOpKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, PatExprKind, PatKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {

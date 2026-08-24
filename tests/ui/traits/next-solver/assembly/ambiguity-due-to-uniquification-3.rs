@@ -1,7 +1,7 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@[current] check-pass
+//@ check-pass
 
 // Regression test from trait-system-refactor-initiative#27.
 //
@@ -20,13 +20,14 @@ trait Object<T, U>: Trait<T> + Trait<U> {}
 
 #[derive(Clone, Copy)]
 struct Inv<T>(*mut T);
-fn foo<T: Sized, U: Sized>() -> (Inv<dyn Object<T, U>>, Inv<T>) { todo!() }
+fn foo<T: Sized, U: Sized>() -> (Inv<dyn Object<T, U>>, Inv<T>) {
+    todo!()
+}
 fn impls_trait<T: Trait<U>, U>(_: Inv<T>, _: Inv<U>) {}
 
 fn bar() {
     let (obj, t) = foo();
     impls_trait(obj, t);
-    //[next]~^ ERROR type annotations needed
     let _: Inv<dyn Object<&(), &()>> = obj;
 }
 

@@ -318,13 +318,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let coroutine_kind = header.coroutine_kind;
+                    let coroutine_marker = header.coroutine_marker;
                     let body_id = this.lower_maybe_coroutine_body(
                         *fn_sig_span,
                         span,
                         hir_id,
                         decl,
-                        coroutine_kind,
+                        coroutine_marker,
                         body.as_deref(),
                         attrs,
                         contract.as_deref(),
@@ -332,7 +332,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, itctx, |this| {
-                        this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, coroutine_kind)
+                        this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, coroutine_marker)
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -964,7 +964,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    sig.header.coroutine_kind,
+                    sig.header.coroutine_marker,
                     attrs,
                 );
                 if define_opaque.is_some() {
@@ -994,7 +994,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.span,
                     hir_id,
                     &sig.decl,
-                    sig.header.coroutine_kind,
+                    sig.header.coroutine_marker,
                     Some(body),
                     attrs,
                     contract.as_deref(),
@@ -1004,7 +1004,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     FnDeclKind::Trait,
-                    sig.header.coroutine_kind,
+                    sig.header.coroutine_marker,
                     attrs,
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
@@ -1210,7 +1210,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.span,
                     hir_id,
                     &sig.decl,
-                    sig.header.coroutine_kind,
+                    sig.header.coroutine_marker,
                     body.as_deref(),
                     attrs,
                     contract.as_deref(),
@@ -1220,7 +1220,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig,
                     i.id,
                     if is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
-                    sig.header.coroutine_kind,
+                    sig.header.coroutine_marker,
                     attrs,
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
@@ -1404,7 +1404,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         fn_id: hir::HirId,
         decl: &FnDecl,
-        coroutine_kind: Option<CoroutineKind>,
+        coroutine_marker: Option<CoroutineMarker>,
         body: Option<&Block>,
         attrs: &'hir [hir::Attribute],
         contract: Option<&FnContract>,
@@ -1436,7 +1436,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             });
         };
-        let Some(coroutine_kind) = coroutine_kind else {
+        let Some(coroutine_marker) = coroutine_marker else {
             // Typical case: not a coroutine.
             return self.lower_fn_body_block(decl, body, contract);
         };
@@ -1447,7 +1447,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 |this| this.lower_block_expr(body),
                 fn_decl_span,
                 body.span,
-                coroutine_kind,
+                coroutine_marker,
                 hir::CoroutineSource::Fn,
             );
 
@@ -1469,7 +1469,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::Expr<'hir>,
         fn_decl_span: Span,
         body_span: Span,
-        coroutine_kind: CoroutineKind,
+        coroutine_marker: CoroutineMarker,
         coroutine_source: hir::CoroutineSource,
     ) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>) {
         let mut parameters: Vec<hir::Param<'_>> = Vec::new();
@@ -1629,12 +1629,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             this.expr_block(body)
         };
-        let desugaring_kind = match coroutine_kind {
-            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async,
-            CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
-            CoroutineKind::AsyncGen { .. } => hir::CoroutineDesugaring::AsyncGen,
+        let desugaring_kind = match coroutine_marker.kind {
+            CoroutineKind::Async => hir::CoroutineDesugaring::Async,
+            CoroutineKind::Gen => hir::CoroutineDesugaring::Gen,
+            CoroutineKind::AsyncGen => hir::CoroutineDesugaring::AsyncGen,
         };
-        let closure_id = coroutine_kind.closure_id();
+        let closure_id = coroutine_marker.closure_id;
 
         let coroutine_expr = self.make_desugared_coroutine_expr(
             // The default capture mode here is by-ref. Later on during upvar analysis,
@@ -1666,13 +1666,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         sig: &FnSig,
         id: NodeId,
         kind: FnDeclKind,
-        coroutine_kind: Option<CoroutineKind>,
+        coroutine_marker: Option<CoroutineMarker>,
         attrs: &[hir::Attribute],
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
+            this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_marker)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
@@ -1683,8 +1683,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         default_safety: hir::Safety,
         attrs: &[hir::Attribute],
     ) -> hir::FnHeader {
-        let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coroutine_kind {
-            hir::IsAsync::Async(self.lower_span(span))
+        let asyncness = if let Some(coroutine_marker) = h.coroutine_marker
+            && let CoroutineKind::Async = coroutine_marker.kind
+        {
+            hir::IsAsync::Async(self.lower_span(coroutine_marker.span))
         } else {
             hir::IsAsync::NotAsync
         };

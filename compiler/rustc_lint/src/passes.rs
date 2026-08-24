@@ -1,4 +1,4 @@
-use rustc_session::lint::LintPass;
+use rustc_lint_defs::LintPass;
 
 use crate::context::{EarlyContext, LateContext};
 

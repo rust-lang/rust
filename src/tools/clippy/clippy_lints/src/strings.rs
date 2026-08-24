@@ -7,9 +7,8 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, Node};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -321,11 +320,11 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             );
         }
 
-        if !e.span.in_external_macro(cx.sess().source_map())
-            && let ExprKind::MethodCall(path, receiver, ..) = &e.kind
+        if let ExprKind::MethodCall(path, receiver, ..) = &e.kind
             && path.ident.name == sym::as_bytes
             && let ExprKind::Lit(lit) = &receiver.kind
             && let LitKind::Str(lit_content, _) = &lit.node
+            && !e.span.in_external_macro(cx.sess().source_map())
         {
             let callsite = snippet(cx, receiver.span.source_callsite(), r#""foo""#);
             let mut applicability = Applicability::MachineApplicable;

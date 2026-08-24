@@ -4163,6 +4163,27 @@ extern "C" fn foo() -> ! {
 }
 
 #[test]
+fn asm_label_can_diverge() {
+    check_no_mismatches(
+        r#"
+//- minicore: asm
+fn foo() {
+    loop {
+        unsafe {
+            core::arch::asm!(
+                "/* {} */",
+                label {
+                    break;
+                }
+            );
+        }
+    }
+}
+    "#,
+    );
+}
+
+#[test]
 fn regression_21478() {
     check_infer(
         r#"

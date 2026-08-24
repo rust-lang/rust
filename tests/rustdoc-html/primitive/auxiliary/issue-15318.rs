@@ -14,4 +14,4 @@ fn bar(_: &core::panic::PanicInfo) -> ! { loop {} }
 
 /// dox
 #[rustc_doc_primitive = "pointer"]
-pub mod ptr {}
+const _: () = ();

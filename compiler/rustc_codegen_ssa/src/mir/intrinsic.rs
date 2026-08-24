@@ -135,6 +135,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::atomic_fence
                 | sym::atomic_singlethreadfence
                 | sym::caller_location
+                | sym::offload_get_num_devices
                 | sym::return_address => {}
                 _ => {
                     span_bug!(
@@ -164,13 +165,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::size_of_val => {
                 let tp_ty = fn_args.type_at(0);
                 let (_, meta) = args[0].val.pointer_parts();
-                let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llsize)
             }
             sym::align_of_val => {
                 let tp_ty = fn_args.type_at(0);
                 let (_, meta) = args[0].val.pointer_parts();
-                let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llalign)
             }
             sym::vtable_size | sym::vtable_align => {
@@ -381,12 +382,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
                 let ordering = fn_args.const_at(1).to_value();
+                let volatile = fn_args.const_at(2).to_value();
                 let layout = bx.layout_of(ty);
                 let source = args[0].immediate();
                 OperandValue::Immediate(bx.atomic_load(
                     bx.backend_type(layout),
                     source,
                     parse_atomic_ordering(ordering),
+                    volatile.to_leaf().try_to_bool().unwrap(),
                     layout.size,
                 ))
             }
@@ -397,10 +400,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
                 let ordering = fn_args.const_at(1).to_value();
+                let volatile = fn_args.const_at(2).to_value();
                 let size = bx.layout_of(ty).size;
                 let val = args[1].immediate();
                 let ptr = args[0].immediate();
-                bx.atomic_store(val, ptr, parse_atomic_ordering(ordering), size);
+                bx.atomic_store(
+                    val,
+                    ptr,
+                    parse_atomic_ordering(ordering),
+                    volatile.to_leaf().try_to_bool().unwrap(),
+                    size,
+                );
                 OperandValue::ZeroSized
             }
             // These are all AtomicRMW ops
@@ -424,8 +434,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     parse_atomic_ordering(fail_ordering),
                     weak,
                 );
-                let val = bx.from_immediate(val);
-                let success = bx.from_immediate(success);
 
                 let mut builder = OperandRefBuilder::new(result_layout);
                 builder.insert_imm(FieldIdx::from_u32(0), val);

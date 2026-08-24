@@ -32,8 +32,7 @@
     abi_riscv_interrupt,
     abi_cmse_nonsecure_call,
     abi_vectorcall,
-    cmse_nonsecure_entry,
-    abi_custom
+    cmse_nonsecure_entry
 )]
 
 extern crate minicore;

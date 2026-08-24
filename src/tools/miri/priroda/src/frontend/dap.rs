@@ -1,4 +1,5 @@
-use std::io::{self, BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter, Read, Write};
+use std::net::{TcpListener, TcpStream};
 
 use emmy_dap_types::errors::ServerError;
 use emmy_dap_types::prelude::events::{ExitedEventBody, StoppedEventBody};
@@ -12,9 +13,9 @@ use emmy_dap_types::prelude::types::{
     StoppedEventReason, Thread, Variable,
 };
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
-use miri::{InterpErrorInfo, InterpErrorKind, InterpResult, TerminationInfo, bug, interp_ok};
+use miri::{InterpErrorInfo, InterpErrorKind, InterpResult, TerminationInfo, bug};
 
-use crate::debugger::{LocalDesc, PrirodaContext, StepResult};
+use crate::debugger::{ExecutionResult, LocalDesc, PrirodaContext, StepResult};
 
 // Priroda still exposes one interpreted thread and one selected frame to DAP.
 // Keep the ids stable so editor follow-up requests can address the stopped state.
@@ -52,35 +53,49 @@ enum DapState {
 enum ExecutionOutcome {
     Stopped(StepResult),
     Terminated { code: i32 },
+    Rejected(String),
     Failed(String),
 }
 
+#[derive(Clone, Copy)]
+enum StepKind {
+    In,
+    Over,
+    Out,
+}
+
 /// Debug Adapter Protocol frontend.
-pub(crate) struct Dap;
+pub(crate) struct Dap {
+    pub(crate) port: Option<u16>,
+}
 
 impl Dap {
-    /// Serve DAP requests on stdin/stdout.
+    /// Serve DAP requests on stdin/stdout, or on a TCP socket if `port` is set.
     pub(crate) fn run_dap_loop<'tcx>(
         &self,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx> {
-        if let Err(err) = DapSession::stdio().run_requests(session) {
+        let result = if let Some(port) = self.port {
+            DapSession::tcp(port).run_requests(session)
+        } else {
+            DapSession::stdio().run_requests(session)
+        };
+
+        if let Err(err) = result {
             eprintln!("priroda dap error: {err:?}");
         }
 
-        interp_ok(())
+        session.finish_session()
     }
 }
 
-type DapServer = Server<io::StdinLock<'static>, io::StdoutLock<'static>>;
-
-/// Owns the DAP stdio transport and dispatches requests into Priroda handlers.
-struct DapSession {
-    server: DapServer,
+/// Owns a DAP transport and dispatches requests into Priroda handlers.
+struct DapSession<R: Read, W: Write> {
+    server: Server<R, W>,
     state: DapState,
 }
 
-impl DapSession {
+impl DapSession<io::StdinLock<'static>, io::StdoutLock<'static>> {
     fn stdio() -> Self {
         Self {
             server: Server::new(
@@ -90,7 +105,37 @@ impl DapSession {
             state: DapState::Fresh,
         }
     }
+}
 
+impl DapSession<TcpStream, TcpStream> {
+    fn tcp(port: u16) -> Self {
+        let listener = match TcpListener::bind(("127.0.0.1", port)) {
+            Ok(listener) => listener,
+            Err(err) => fatal(&format!("failed to listen on DAP TCP socket: {err}")),
+        };
+        eprintln!("priroda dap listening on 127.0.0.1:{port}");
+        let (stream, _) = match listener.accept() {
+            Ok(conn) => conn,
+            Err(err) => fatal(&format!("failed to accept DAP TCP connection: {err}")),
+        };
+        let reader = match stream.try_clone() {
+            Ok(clone) => clone,
+            Err(err) => fatal(&format!("failed to clone DAP TCP stream: {err}")),
+        };
+
+        Self {
+            server: Server::new(BufReader::new(reader), BufWriter::new(stream)),
+            state: DapState::Fresh,
+        }
+    }
+}
+
+fn fatal(message: &str) -> ! {
+    eprintln!("priroda dap: {message}");
+    std::process::exit(1);
+}
+
+impl<R: Read, W: Write> DapSession<R, W> {
     fn run_requests<'tcx>(
         &mut self,
         session: &mut PrirodaContext<'tcx>,
@@ -99,6 +144,15 @@ impl DapSession {
             let request = match self.server.poll_request() {
                 Ok(Some(request)) => request,
                 Ok(None) => return Ok(()),
+                // The message body has already been consumed. js-debug can send
+                // commands like `enableNetworking`, which `emmy_dap_types` reports
+                // as parse errors because it has no unknown-command variant.
+                // FIXME: send a DAP error response once unknown commands are
+                // representable.
+                Err(ServerError::ParseError(_)) => {
+                    eprintln!("priroda dap: skipping request that could not be deserialized");
+                    continue;
+                }
                 Err(err) => return Err(err),
             };
 
@@ -138,6 +192,7 @@ impl DapSession {
         match &request.command {
             Command::Initialize(_) => self.handle_initialize(),
             Command::Launch(_) => self.handle_launch(),
+            Command::Attach(_) => self.handle_attach(),
             Command::ConfigurationDone => self.handle_configuration_done(session),
             Command::Threads => self.handle_threads(),
             Command::StackTrace(args) => self.handle_stack_trace(args.thread_id, session),
@@ -145,12 +200,14 @@ impl DapSession {
             Command::Variables(args) => self.handle_variables(args.variables_reference, session),
             Command::Continue(args) => self.handle_continue(args.thread_id, session),
             Command::SetBreakpoints(args) => self.handle_set_breakpoints(args, session),
-            Command::Next(args) => self.handle_step(ResponseBody::Next, args.thread_id, session),
+            Command::Next(args) =>
+                self.handle_step(ResponseBody::Next, args.thread_id, session, StepKind::Over),
             Command::StepIn(args) =>
-                self.handle_step(ResponseBody::StepIn, args.thread_id, session),
+                self.handle_step(ResponseBody::StepIn, args.thread_id, session, StepKind::In),
+            Command::StepOut(args) =>
+                self.handle_step(ResponseBody::StepOut, args.thread_id, session, StepKind::Out),
             Command::Disconnect(_) => self.handle_disconnect(),
-            Command::Attach(_)
-            | Command::BreakpointLocations(_)
+            Command::BreakpointLocations(_)
             | Command::Cancel(_)
             | Command::Completions(_)
             | Command::DataBreakpointInfo(_)
@@ -175,7 +232,6 @@ impl DapSession {
             | Command::Source(_)
             | Command::StepBack(_)
             | Command::StepInTargets(_)
-            | Command::StepOut(_)
             | Command::Terminate(_)
             | Command::TerminateThreads(_)
             | Command::WriteMemory(_) => self.handle_unsupported_request(&request.command),
@@ -188,6 +244,19 @@ impl DapSession {
 
         Ok(HandlerSuccess {
             response: HandlerResponse::Success(ResponseBody::Launch),
+            state: Some(DapState::Launched),
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
+    }
+
+    fn handle_attach(&self) -> Result<HandlerSuccess, &'static str> {
+        self.require_state(DapState::Initialized)?;
+
+        // VS Code's extension-free `debugServer` template uses `attach`.
+        // Priroda still starts the same single interpreted session as `launch`.
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::Attach),
             state: Some(DapState::Launched),
             events: Vec::new(),
             outcome: HandlerOutcome::Continue,
@@ -278,15 +347,20 @@ impl DapSession {
         self.require_state(DapState::Launched)?;
 
         match Self::execution_outcome(session.stop_at_first_user_location()) {
-            ExecutionOutcome::Stopped(_) =>
+            ExecutionOutcome::Stopped(result) => {
+                // A normal startup stop is an entry event, but an interpreter
+                // error before the first user location is an exception stop.
+                let stopped = match result {
+                    StepResult::Step => Self::stopped_event_body(StoppedEventReason::Entry),
+                    result => Self::stopped_event_for(result),
+                };
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Success(ResponseBody::ConfigurationDone),
                     state: Some(DapState::Stopped),
-                    events: vec![Event::Stopped(Self::stopped_event_body(
-                        StoppedEventReason::Entry,
-                    ))],
+                    events: vec![Event::Stopped(stopped)],
                     outcome: HandlerOutcome::Continue,
-                }),
+                })
+            }
             ExecutionOutcome::Terminated { code } =>
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Success(ResponseBody::ConfigurationDone),
@@ -296,6 +370,13 @@ impl DapSession {
                         Event::Terminated(None),
                     ],
                     outcome: HandlerOutcome::Exit,
+                }),
+            ExecutionOutcome::Rejected(message) =>
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Error(message),
+                    state: None,
+                    events: Vec::new(),
+                    outcome: HandlerOutcome::Continue,
                 }),
             ExecutionOutcome::Failed(message) =>
                 Ok(HandlerSuccess {
@@ -397,24 +478,28 @@ impl DapSession {
         })
     }
 
-    /// FIXME: distinguish step-over from step-in once Priroda has call-aware stepping.
     fn handle_step<'tcx>(
         &self,
         body: ResponseBody,
         thread_id: i64,
         session: &mut PrirodaContext<'tcx>,
+        step: StepKind,
     ) -> Result<HandlerSuccess, &'static str> {
         self.require_stopped()?;
         Self::require_thread_id(thread_id)?;
 
-        match Self::execution_outcome(session.step()) {
+        let result = match step {
+            StepKind::In => session.step_in_source(),
+            StepKind::Over => session.step_over_source(),
+            StepKind::Out => session.step_out_source(),
+        };
+
+        match Self::execution_outcome(result) {
             ExecutionOutcome::Stopped(result) =>
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Success(body),
                     state: Some(DapState::Stopped),
-                    events: vec![Event::Stopped(Self::stopped_event_body(Self::stopped_reason(
-                        result,
-                    )))],
+                    events: vec![Event::Stopped(Self::stopped_event_for(result))],
                     outcome: HandlerOutcome::Continue,
                 }),
             ExecutionOutcome::Terminated { code } =>
@@ -426,6 +511,13 @@ impl DapSession {
                         Event::Terminated(None),
                     ],
                     outcome: HandlerOutcome::Exit,
+                }),
+            ExecutionOutcome::Rejected(message) =>
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Error(message),
+                    state: None,
+                    events: Vec::new(),
+                    outcome: HandlerOutcome::Continue,
                 }),
             ExecutionOutcome::Failed(message) =>
                 Ok(HandlerSuccess {
@@ -452,9 +544,7 @@ impl DapSession {
                 Ok(HandlerSuccess {
                     response: HandlerResponse::Success(body),
                     state: Some(DapState::Stopped),
-                    events: vec![Event::Stopped(Self::stopped_event_body(Self::stopped_reason(
-                        result,
-                    )))],
+                    events: vec![Event::Stopped(Self::stopped_event_for(result))],
                     outcome: HandlerOutcome::Continue,
                 }),
             ExecutionOutcome::Terminated { code } =>
@@ -466,6 +556,13 @@ impl DapSession {
                         Event::Terminated(None),
                     ],
                     outcome: HandlerOutcome::Exit,
+                }),
+            ExecutionOutcome::Rejected(message) =>
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Error(message),
+                    state: None,
+                    events: Vec::new(),
+                    outcome: HandlerOutcome::Continue,
                 }),
             ExecutionOutcome::Failed(message) =>
                 Ok(HandlerSuccess {
@@ -555,8 +652,8 @@ impl DapSession {
     fn require_state(&self, expected: DapState) -> Result<(), &'static str> {
         if self.state != expected {
             return Err(match expected {
-                DapState::Initialized => "launch requires initialize",
-                DapState::Launched => "configurationDone requires launch",
+                DapState::Initialized => "launch or attach requires initialize",
+                DapState::Launched => "configurationDone requires launch or attach",
                 _ => "invalid session state for request",
             });
         }
@@ -591,9 +688,12 @@ impl DapSession {
         Ok(())
     }
 
-    fn execution_outcome<'tcx>(result: InterpResult<'tcx, StepResult>) -> ExecutionOutcome {
+    fn execution_outcome<'tcx>(result: InterpResult<'tcx, ExecutionResult>) -> ExecutionOutcome {
         match result.report_err() {
-            Ok(step) => ExecutionOutcome::Stopped(step),
+            Ok(ExecutionResult::Stopped(step)) => ExecutionOutcome::Stopped(step),
+            Ok(ExecutionResult::ProgramExited { code }) => ExecutionOutcome::Terminated { code },
+            Ok(ExecutionResult::Rejected { message }) =>
+                ExecutionOutcome::Rejected(message.to_string()),
             Err(err) => Self::interp_error_outcome(err),
         }
     }
@@ -609,6 +709,23 @@ impl DapSession {
         ExecutionOutcome::Failed(kind.to_string())
     }
 
+    fn stopped_event_for(result: StepResult) -> StoppedEventBody {
+        let (reason, text) = match result {
+            StepResult::Step => (StoppedEventReason::Step, None),
+            StepResult::Breakpoint => (StoppedEventReason::Breakpoint, None),
+            StepResult::Exception { message } => (StoppedEventReason::Exception, Some(message)),
+        };
+        StoppedEventBody {
+            reason,
+            description: None,
+            thread_id: Some(THREAD_ID),
+            preserve_focus_hint: None,
+            text,
+            all_threads_stopped: Some(true),
+            hit_breakpoint_ids: None,
+        }
+    }
+
     fn stopped_event_body(reason: StoppedEventReason) -> StoppedEventBody {
         StoppedEventBody {
             reason,
@@ -618,13 +735,6 @@ impl DapSession {
             text: None,
             all_threads_stopped: Some(true),
             hit_breakpoint_ids: None,
-        }
-    }
-
-    fn stopped_reason(result: StepResult) -> StoppedEventReason {
-        match result {
-            StepResult::Step => StoppedEventReason::Step,
-            StepResult::Breakpoint => StoppedEventReason::Breakpoint,
         }
     }
 

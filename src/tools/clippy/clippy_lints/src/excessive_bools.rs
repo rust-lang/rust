@@ -4,8 +4,7 @@ use clippy_utils::{get_parent_as_impl, has_repr_attr, is_bool};
 use rustc_abi::ExternAbi;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, Item, ItemKind, TraitFn, TraitItem, TraitItemKind, Ty};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 

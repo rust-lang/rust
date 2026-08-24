@@ -6,11 +6,7 @@
 
 use std::path::PathBuf;
 
-use serde::{Deserialize, Deserializer};
-
-use crate::core::config::Merge;
-use crate::core::config::toml::ReplaceOpt;
-use crate::define_config;
+use crate::core::config::macros::define_config;
 
 #[derive(Clone, Default, Debug, serde_derive::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -30,6 +26,7 @@ define_config! {
         rustc: Option<PgoConfig> = "rustc",
         rustdoc: Option<PgoConfig> = "rustdoc",
         cargo: Option<PgoConfig> = "cargo",
+        clippy: Option<PgoConfig> = "clippy",
         llvm: Option<PgoConfig> = "llvm",
     }
 }

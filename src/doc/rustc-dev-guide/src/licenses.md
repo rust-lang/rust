@@ -25,8 +25,8 @@ that is compatible with Rust’s license.
 
 Examples
 
-- Porting C code from a GPL project, like GNU binutils, is not allowed. That would require Rust
-itself to be licensed under the GPL.
+- Porting C code from a GPL project, like GNU binutils, is not allowed.
+  That would require Rust itself to be licensed under the GPL.
 - Copying code from an algorithms text book may be allowed, but some algorithms are patented.
 
 ## Porting

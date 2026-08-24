@@ -2,7 +2,6 @@
 
 // Regression test for #66975
 #![warn(unconditional_panic)]
-#![feature(never_type)]
 
 struct PrintName<T>(T);
 

@@ -3,8 +3,7 @@ use clippy_utils::res::MaybeDef as _;
 use clippy_utils::{is_none_expr, peel_hir_expr_refs, peel_ref_operators, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::sym;
 
 declare_clippy_lint! {

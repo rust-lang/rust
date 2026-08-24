@@ -2,7 +2,7 @@ error[E0425]: cannot find type `usize8` in this scope
   --> $DIR/align-on-fields-143987.rs:17:8
    |
 LL |     x: usize8,
-   |        ^^^^^^
+   |        ^^^^^^ not found in this scope
    |
 help: a builtin type with a similar name exists
    |

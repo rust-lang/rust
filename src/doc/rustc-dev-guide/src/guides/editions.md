@@ -23,8 +23,8 @@ supports comparisons for doing range checks, such as `span.edition() >= Edition:
 ### Adding a new edition
 
 Adding a new edition mainly involves adding a variant to the [`Edition`] enum and then fixing
-everything that is broken. See [#94461](https://github.com/rust-lang/rust/pull/94461) for an
-example.
+everything that is broken.
+See [#94461](https://github.com/rust-lang/rust/pull/94461) for an example.
 
 ### Features and Edition stability
 
@@ -35,7 +35,8 @@ When adding a new feature, there are two options you can choose for how to handl
 future edition:
 
 - Just check the edition of the span like `span.at_least_rust_20xx()` (see [Edition hygiene]) or the
-  [`Session::edition`]. This will implicitly depend on the stability of the edition itself to
+  [`Session::edition`].
+  This will implicitly depend on the stability of the edition itself to
   indicate that your feature is available.
 - Place your new behavior behind a [feature gate].
 
@@ -71,7 +72,8 @@ There are a few different options for doing feature checks:
   or just remove the feature check altogether and just check `span.at_least_rust_20xx()`.
 
 If you need to do the feature gating in multiple places, consider placing the check in a single
-function so that there will only be a single place to update. For example:
+function so that there will only be a single place to update.
+For example:
 
 ```rust,ignore
 // An example from Edition 2021 disjoint closure captures.
@@ -93,7 +95,8 @@ Within [`Lexer`], tokens can be modified based on edition-specific behavior.
 For example, C-String literals like `c"foo"` are split into multiple tokens in editions before 2021.
 This is also where things like reserved prefixes are handled for the 2021 edition.
 
-Edition-specific parsing is relatively rare. One example is `async fn` which checks the span of the
+Edition-specific parsing is relatively rare.
+One example is `async fn` which checks the span of the
 token to determine if it is the 2015 edition, and emits an error in that case.
 This can only be done if the syntax was already invalid.
 
@@ -190,7 +193,9 @@ When a user runs `cargo fix --edition`, cargo will pass the `--force-warn rust-2
 flag to force all of these lints to appear during the edition migration.
 Cargo also passes `--cap-lints=allow` so that no other lints interfere with the edition migration.
 
-Make sure that the example code sets the correct edition. The example should illustrate the previous edition, and show what the migration warning would look like. For example, this lint for a 2024 migration shows an example in 2021:
+Make sure that the example code sets the correct edition.
+The example should illustrate the previous edition, and show what the migration warning would look like.
+For example, this lint for a 2024 migration shows an example in 2021:
 
 ```rust,ignore
 declare_lint! {
@@ -245,14 +250,16 @@ afterwards.
 This should generally be used sparingly, as there are other options:
 
 - Small impact stylistic changes unrelated to an edition can just make the lint `Warn` on all
-  editions. If you want people to adopt a different way to write things, then go ahead and commit to
+  editions.
+  If you want people to adopt a different way to write things, then go ahead and commit to
   having it show up for all projects.
 
   Beware that if a new warn-by-default lint hits many projects, it can be very disruptive and
   frustrating for users.
 
 - Change the new style to be a hard error in the new edition, and use a [migration lint] to
-  automatically convert projects to the new style. For example,
+  automatically convert projects to the new style.
+  For example,
   [`ellipsis_inclusive_range_patterns`] is a hard error in 2021, and warns in all previous editions.
 
   Beware that these cannot be added after the edition stabilizes.
@@ -354,11 +361,22 @@ In general it is recommended to avoid these special cases except for very high v
 Updating the edition of the standard library itself roughly involves the following process:
 
 - Wait until the newly stabilized edition has reached beta and the bootstrap compiler has been updated.
-- Apply migration lints. This can be an involved process since some code is in external submodules[^std-submodules], and the standard library makes heavy use of conditional compilation. Also, running `cargo fix --edition` can be impractical on the standard library itself. One approach is to individually add `#![warn(...)]` at the top of each crate for each lint, run `./x check library`, apply the migrations, remove the `#![warn(...)]` and commit each migration separately. You'll likely need to run `./x check` with `--target` for many different targets to get full coverage (otherwise you'll likely spend days or weeks getting CI to pass)[^ed-docker]. See also the [advanced migration guide] for more tips.
-    - Apply migrations to [`backtrace-rs`]. [Example for 2024](https://github.com/rust-lang/backtrace-rs/pull/700). Note that this doesn't update the edition of the crate itself because that is published independently on crates.io, and that would otherwise restrict the minimum Rust version. Consider adding some `#![deny()]` attributes to avoid regressions until its edition gets updated.
-    - Apply migrations to [`stdarch`], and update its edition, and formatting. [Example for 2024](https://github.com/rust-lang/stdarch/pull/1710).
+- Apply migration lints.
+  This can be an involved process since some code is in external submodules[^std-submodules], and the standard library makes heavy use of conditional compilation.
+  Also, running `cargo fix --edition` can be impractical on the standard library itself.
+  One approach is to individually add `#![warn(...)]` at the top of each crate for each lint, run `./x check library`, apply the migrations, remove the `#![warn(...)]` and commit each migration separately.
+  You'll likely need to run `./x check` with `--target` for many different targets to get full coverage (otherwise you'll likely spend days or weeks getting CI to pass)[^ed-docker].
+  See also the [advanced migration guide] for more tips.
+    - Apply migrations to [`backtrace-rs`].
+      [Example for 2024](https://github.com/rust-lang/backtrace-rs/pull/700).
+      Note that this doesn't update the edition of the crate itself because that is published independently on crates.io, and that would otherwise restrict the minimum Rust version.
+      Consider adding some `#![deny()]` attributes to avoid regressions until its edition gets updated.
+    - Apply migrations to [`stdarch`], and update its edition, and formatting.
+      [Example for 2024](https://github.com/rust-lang/stdarch/pull/1710).
     - Post PRs to update the backtrace and stdarch submodules, and wait for those to land.
-    - Apply migration lints to the standard library crates, and update their edition. I recommend working one crate at a time starting with `core`. [Example for 2024](https://github.com/rust-lang/rust/pull/138162).
+    - Apply migration lints to the standard library crates, and update their edition.
+      It is recommended to work one crate at a time, starting with `core`.
+      [Example for 2024](https://github.com/rust-lang/rust/pull/138162).
 
 [^std-submodules]: This will hopefully change in the future to pull these submodules into `rust-lang/rust`.
 [^ed-docker]: You'll also likely need to do a lot of testing for different targets, and this is where [docker testing](../tests/docker.md) comes in handy.
@@ -376,7 +394,8 @@ After the edition team has given the go-ahead, the process for stabilizing an ed
 - Hunt and find any document that refers to edition by number, and update it:
     - [`--edition` flag](https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/command-line-arguments.md#--edition-specify-the-edition-to-use)
     - [Rustdoc attributes](https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustdoc/src/write-documentation/documentation-tests.md#attributes)
-- Clean up any tests that use the `//@ edition` header to remove the `-Zunstable-options` flag to ensure they are indeed stable. Note: Ideally this should be automated, see [#133582].
+- Clean up any tests that use the `//@ edition` header to remove the `-Zunstable-options` flag to ensure they are indeed stable.
+  Note: Ideally this should be automated, see [#133582].
 - Bless any tests that change.
 - Update `lint-docs` to default to the new edition.
 

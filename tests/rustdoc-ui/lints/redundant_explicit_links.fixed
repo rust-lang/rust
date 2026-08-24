@@ -156,3 +156,10 @@ pub fn should_warn_reference() {}
 /// [`Vec<T>`]: Vec
 /// [`Vec<T>`]: std::vec::Vec
 pub fn should_not_warn_reference() {}
+
+// Regression test for https://github.com/rust-lang/rust/issues/155458.
+/// [Issue155458B]
+//~^ ERROR redundant explicit link target
+pub struct Issue155458A;
+
+pub struct Issue155458B;

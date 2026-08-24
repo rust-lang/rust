@@ -1,7 +1,7 @@
 # The MIR (Mid-level IR)
 
 MIR is Rust's _Mid-level Intermediate Representation_.
-It is constructed from [HIR](../hir.html).
+It is constructed from [HIR](../hir.md).
 MIR was introduced in [RFC 1211].
 It is a radically simplified form of Rust that is used for
 certain flow-sensitive safety checks – notably the borrow checker!
@@ -28,7 +28,7 @@ Some of the key characteristics of MIR are:
 - It does not have nested expressions.
 - All types in MIR are fully explicit.
 
-[cfg]: ../appendix/background.html#cfg
+[cfg]: ../appendix/background.md#cfg
 
 ## Key MIR vocabulary
 
@@ -334,7 +334,7 @@ See the const-eval WG's [docs on promotion](https://github.com/rust-lang/const-e
 [mirmanip_transform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html
 [mirmanip_dataflow]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/index.html
 [`Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Body.html
-[newtype'd]: ../appendix/glossary.html#newtype
+[newtype'd]: ../appendix/glossary.md#newtype
 [basicblocks]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Body.html#structfield.basic_blocks
 [`BasicBlock`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html
 [`BasicBlockData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlockData.html

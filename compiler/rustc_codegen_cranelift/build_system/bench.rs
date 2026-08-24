@@ -67,7 +67,7 @@ pub(crate) fn benchmark(dirs: &Dirs, compiler: &Compiler) {
         target_dir = target_dir.display(),
     );
     let llvm_build_cmd = format!(
-        "RUSTC=rustc cargo build --manifest-path {manifest_path} --target-dir {target_dir} && (rm {raytracer_cg_llvm} || true) && ln {target_dir}/debug/main {raytracer_cg_llvm}",
+        "RUSTC=rustc CARGO_ENCODED_RUSTFLAGS=\"\" cargo build --manifest-path {manifest_path} --target-dir {target_dir} && (rm {raytracer_cg_llvm} || true) && ln {target_dir}/debug/main {raytracer_cg_llvm}",
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );

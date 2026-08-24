@@ -12,7 +12,7 @@
 ///
 /// We need to put this in here, because notable traits
 /// that are implemented on foreign types don't show up.
-mod reference {}
+const _: () = ();
 
 //@ has doc_notable_trait_mut_t_is_not_ref_t/fn.fn_no_matches.html
 //@ !has - '//code[@class="content"]' "impl<'_, I> Iterator for &'_ mut I"

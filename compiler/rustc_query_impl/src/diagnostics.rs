@@ -1,7 +1,7 @@
-use rustc_data_structures::Limit;
 use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
+use rustc_structures::Limit;
 
 #[derive(Diagnostic)]
 #[help(

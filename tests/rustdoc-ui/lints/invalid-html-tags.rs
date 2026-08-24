@@ -1,5 +1,6 @@
 #![deny(rustdoc::invalid_html_tags)]
 //~^ NOTE the lint level is defined here
+#![allow(rustdoc::invalid_markdown_table)]
 
 //! <p>💩<p>
 //~^ ERROR unclosed HTML tag `p`

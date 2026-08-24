@@ -91,35 +91,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Download build metrics
+      - name: Download metrics
         uses: actions/download-artifact@v8
         with:
-          name: build-${{ github.sha }}
-
-      - name: Download self metrics
-        uses: actions/download-artifact@v8
-        with:
-          name: self-${{ github.sha }}
-
-      - name: Download ripgrep-13.0.0 metrics
-        uses: actions/download-artifact@v8
-        with:
-          name: ripgrep-13.0.0-${{ github.sha }}
-
-      - name: Download webrender-2022 metrics
-        uses: actions/download-artifact@v8
-        with:
-          name: webrender-2022-${{ github.sha }}
-
-      - name: Download diesel-1.4.8 metrics
-        uses: actions/download-artifact@v8
-        with:
-          name: diesel-1.4.8-${{ github.sha }}
-
-      - name: Download hyper-0.14.18 metrics
-        uses: actions/download-artifact@v8
-        with:
-          name: hyper-0.14.18-${{ github.sha }}
+          pattern: '*-${{ github.sha }}'
+          merge-multiple: true
 
       - name: Combine json
         run: |

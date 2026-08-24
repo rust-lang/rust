@@ -1,5 +1,7 @@
 //@ edition:2015
 //@ run-rustfix
+//@ reference: ident.raw.allowed
+//@ reference: lex.keywords.strict.edition2018
 
 #![allow(unused_variables)]
 #![deny(keyword_idents)]
