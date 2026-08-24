@@ -140,8 +140,6 @@ fn rustfmt_usage_text() {
                             input file path
             --edition [2015|2018|2021|2024]
                             Rust edition to use
-            --style-edition [2015|2018|2021|2024]
-                            The edition of the Style Guide (unstable).
             --color [always|never|auto]
                             Use colored output (if supported)
             --print-config [default|minimal|current] PATH
@@ -190,8 +188,6 @@ fn rustfmt_nightly_usage_text() {
                             input file path
             --edition [2015|2018|2021|2024]
                             Rust edition to use
-            --style-edition [2015|2018|2021|2024]
-                            The edition of the Style Guide (unstable).
             --color [always|never|auto]
                             Use colored output (if supported)
             --print-config [default|minimal|current] PATH
