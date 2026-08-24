@@ -1167,7 +1167,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "_Unwind_RaiseException" => {
-                // FIXME: This does not have a direct test (#3179).
                 // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
                 // It was originally specified as part of the Itanium C++ ABI:
                 // https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html#base-throw.
