@@ -60,7 +60,7 @@ pub(crate) enum MinMax {
 
 /// Whether two types `T` and `U` are compatible when a value of type `T` is passed as a c-variadic
 /// argument and read as a value of type `U`.
-enum VarArgCompatible {
+pub enum VarArgCompatible {
     /// `T` and `U` are compatible, e.g.
     ///
     /// - They're the same type.
@@ -829,15 +829,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return interp_ok(());
         }
 
-        // Types of different sizes can never be compatible.
-        if arg_mplace.layout.size != callee_type.size {
-            throw_ub_format!(
-                "va_arg type mismatch: requested `{}` is incompatible with next argument of type `{}`",
-                callee_ty,
-                caller_ty,
-            )
-        }
-
         match self.validate_c_variadic_compatible_ty(arg_mplace.layout.ty, callee_type.ty)? {
             VarArgCompatible::Compatible => interp_ok(()),
             VarArgCompatible::Incompatible => throw_ub_format!(
@@ -875,7 +866,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// - `T` and `U` are both pointers, and their target types are compatible.
     /// - `T` is a pointer to [`std::ffi::c_void`] and `U` is a pointer to [`i8`] or [`u8`],
     /// or vice versa.
-    fn validate_c_variadic_compatible_ty(
+    pub fn validate_c_variadic_compatible_ty(
         &mut self,
         caller_type: Ty<'tcx>,
         callee_type: Ty<'tcx>,
