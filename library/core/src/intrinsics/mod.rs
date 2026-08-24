@@ -3130,7 +3130,10 @@ pub fn type_id<T: ?Sized>() -> crate::any::TypeId;
 pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
     // SAFETY: we know `TypeId` is 16 bytes of initialized data.
     // This is runtime-only code so we do not have to worry about provenance.
-    unsafe { crate::mem::transmute::<crate::any::TypeId, u128>(a) == crate::mem::transmute::<crate::any::TypeId, u128>(b) }
+    unsafe {
+        crate::mem::transmute::<crate::any::TypeId, u128>(a)
+            == crate::mem::transmute::<crate::any::TypeId, u128>(b)
+    }
 }
 
 /// Returns whether the type represented by this `TypeId` is a signed integer.

@@ -731,7 +731,12 @@ impl<'a> Arguments<'a> {
         args: &'a [rt::Argument<'a>; M],
     ) -> Arguments<'a> {
         // SAFETY: Responsibility of the caller.
-        unsafe { Arguments { template: mem::transmute::<&[u8; N], NonNull<u8>>(template), args: mem::transmute::<&[rt::Argument<'_>; M], NonNull<rt::Argument<'_>>>(args) } }
+        unsafe {
+            Arguments {
+                template: mem::transmute::<&[u8; N], NonNull<u8>>(template),
+                args: mem::transmute::<&[rt::Argument<'_>; M], NonNull<rt::Argument<'_>>>(args),
+            }
+        }
     }
 
     // Same as `from_str`, but not const.
