@@ -54,7 +54,7 @@ fn load_metadata_with(
 }
 
 impl MetadataLoader for DefaultMetadataLoader {
-    fn get_rlib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
+    fn get_rlib_metadata(&self, _target: &Target, path: &Path) -> Result<OwnedSlice, String> {
         debug!("getting rlib metadata for {}", path.display());
         load_metadata_with(path, |data| {
             let archive = object::read::archive::ArchiveFile::parse(&*data)
@@ -67,7 +67,9 @@ impl MetadataLoader for DefaultMetadataLoader {
                     let data = entry
                         .data(data)
                         .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
-                    if target.is_like_aix {
+                    let is_xcoff = object::File::parse(data)
+                        .is_ok_and(|file| file.format() == BinaryFormat::Xcoff);
+                    if is_xcoff {
                         return get_metadata_xcoff(path, data);
                     } else {
                         return search_for_section(path, data, ".rmeta");
@@ -81,6 +83,9 @@ impl MetadataLoader for DefaultMetadataLoader {
 
     fn get_dylib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
         debug!("getting dylib metadata for {}", path.display());
+        // FIXME: the following still checks the target instead of the file format unlike the
+        // readers above. On AIX platform a dylib is an archive with just one member so the
+        // difference is the container and not the section itself.
         if target.is_like_aix {
             load_metadata_with(path, |data| {
                 let archive = object::read::archive::ArchiveFile::parse(&*data).map_err(|e| {
