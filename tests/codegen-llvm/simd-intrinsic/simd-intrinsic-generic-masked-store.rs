@@ -1,7 +1,7 @@
 //@ compile-flags: -C no-prepopulate-passes
 //@ revisions: LLVM21 LLVM22
-//@ [LLVM22] min-llvm-version: 22
-//@ [LLVM21] max-llvm-major-version: 21
+//@ [LLVM22] llvm-version: >=22
+//@ [LLVM21] llvm-version: <=21
 // ignore-tidy-linelength
 
 #![crate_type = "lib"]
@@ -10,9 +10,9 @@
 
 #[path = "../../auxiliary/minisimd.rs"]
 mod minisimd;
-use minisimd::*;
-
 use std::intrinsics::simd::{SimdAlign, simd_masked_store};
+
+use minisimd::*;
 
 pub type Vec2<T> = Simd<T, 2>;
 pub type Vec4<T> = Simd<T, 4>;

@@ -3,8 +3,8 @@
 //@ only-linux
 //@ compile-flags: -Cdebuginfo=2 -Copt-level=0
 //@ revisions: POST-LLVM-22 PRE-LLVM-22
-//@ [PRE-LLVM-22] max-llvm-major-version: 21
-//@ [POST-LLVM-22] min-llvm-version: 22
+//@ [PRE-LLVM-22] llvm-version: <=21
+//@ [POST-LLVM-22] llvm-version: >=22
 
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features)]

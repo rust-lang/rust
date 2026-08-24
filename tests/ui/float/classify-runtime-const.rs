@@ -2,7 +2,7 @@
 //@ revisions: opt noopt ctfe
 //@[opt] compile-flags: -O
 //@[noopt] compile-flags: -Zmir-opt-level=0
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //@ compile-flags: --check-cfg=cfg(target_has_reliable_f16)
 // ignore-tidy-file-linelength
 #![feature(cfg_target_has_reliable_f16_f128)]

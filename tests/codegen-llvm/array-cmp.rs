@@ -3,8 +3,8 @@
 //@ compile-flags: -C opt-level=2
 //@ needs-deterministic-layouts (checks depend on tuple layout)
 //@ revisions: LLVM22 LLVM23
-//@ [LLVM22] max-llvm-major-version: 22
-//@ [LLVM23] min-llvm-version: 23
+//@ [LLVM22] llvm-version: <=22
+//@ [LLVM23] llvm-version: >=23
 
 #![crate_type = "lib"]
 

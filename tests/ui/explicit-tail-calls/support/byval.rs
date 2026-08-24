@@ -1,7 +1,7 @@
 //@ build-pass
 //@ ignore-backends: gcc
 //@ add-minicore
-//@ min-llvm-version: 22
+//@ llvm-version: >=22
 //
 //@ revisions: i686
 //@[i686] compile-flags: --target i686-unknown-linux-gnu
@@ -36,11 +36,11 @@
 //@ revisions: loongarch32
 //@[loongarch32] compile-flags: --target loongarch32-unknown-none
 //@[loongarch32] needs-llvm-components: loongarch
-//@[loongarch32] max-llvm-major-version: 21
+//@[loongarch32] llvm-version: <=21
 //@ revisions: loongarch64
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64] needs-llvm-components: loongarch
-//@[loongarch64] max-llvm-major-version: 21
+//@[loongarch64] llvm-version: <=21
 //@ revisions: bpf
 //@[bpf] compile-flags: --target bpfeb-unknown-none
 //@[bpf] needs-llvm-components: bpf
