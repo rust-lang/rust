@@ -255,12 +255,6 @@ There is intentionally no ignore attribute. The traversal must visit every
 field. This is a soundness requirement for rust-analyzer's use of the traversal
 when tracing and garbage-collecting interned types.
 
-When the macro crate's `nightly` feature is enabled, the derive macro remains
-registered but emits no tokens. The `GenericTypeVisitable` trait and its
-traversal module are also excluded from the nightly configuration of
-`rustc_type_ir`; they exist only in its non-nightly configuration.
-
-
 ## Long-term plans for supporting rust-analyzer
 
 In general, we aim to support rust-analyzer just as well as rustc in these shared crates—provided
