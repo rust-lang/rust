@@ -788,7 +788,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         )
     }
 
-    /// This is only for `generic_predicates_for_param`, where we can't just
+    /// This is only for [`resolve_type_param_assoc_type_shorthand`], where we can't just
     /// lower the self types of the predicates since that could lead to cycles.
     /// So we just check here if the `type_ref` resolves to a generic param, and which.
     fn lower_ty_only_param(&self, type_ref: TypeRefId) -> Option<TypeOrConstParamId> {
