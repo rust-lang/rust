@@ -17,8 +17,6 @@ async fn func() -> Result<(), Drop> {
 async fn retry_db() -> Result<(), Drop> {
     loop {
         match func().await {
-            //~^ ERROR relative drop order changing in Rust 2024
-            //~| WARNING this changes meaning in Rust 2024
             Ok(()) => return Ok(()),
             Err(e) => {}
         }

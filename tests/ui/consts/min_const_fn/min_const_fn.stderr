@@ -1,27 +1,3 @@
-error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:37:25
-   |
-LL |     const fn into_inner(self) -> T { self.0 }
-   |                         ^^^^                - value is dropped here
-   |                         |
-   |                         the destructor for this type cannot be evaluated in constant functions
-
-error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:43:28
-   |
-LL |     const fn into_inner_lt(self) -> T { self.0 }
-   |                            ^^^^                - value is dropped here
-   |                            |
-   |                            the destructor for this type cannot be evaluated in constant functions
-
-error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
-  --> $DIR/min_const_fn.rs:49:27
-   |
-LL |     const fn into_inner_s(self) -> T { self.0 }
-   |                           ^^^^                - value is dropped here
-   |                           |
-   |                           the destructor for this type cannot be evaluated in constant functions
-
 error: pointers cannot be cast to integers during const eval
   --> $DIR/min_const_fn.rs:79:42
    |
@@ -79,6 +55,6 @@ help: consider restricting opaque type `impl std::fmt::Debug` with unstable trai
 LL | const fn no_apit(_x: impl std::fmt::Debug + [const] Destruct) {}
    |                                           ++++++++++++++++++
 
-error: aborting due to 9 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0493`.

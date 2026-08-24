@@ -3,7 +3,6 @@
 
 static A: () = {
     let a: [String; 1];
-    //~^ ERROR destructor of
     a[0] = String::new();
     //~^ ERROR destructor of
 };
