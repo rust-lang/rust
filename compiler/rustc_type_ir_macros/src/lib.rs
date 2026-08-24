@@ -48,11 +48,15 @@ decl_derive!(
         /// struct Foo {
         ///     #[generic_type_visitable(bounds())]
         ///     just_self: Box<Self>,
-        ///     #[generic_type_visitable(bounds(Bar: GenericTypeVisitable))]
+        ///     #[generic_type_visitable(bounds(Bar: GenericTypeVisitable<__V>))]
         ///     contains_self: (Box<Self>, Bar),
         /// }
         /// struct Bar;
         /// ```
+        ///
+        /// Note: the `__V` lifetime is an implementation detail of the derive macro.
+        /// We could probably handle this in a nicer way, but we don't expect this form
+        /// to really be necessary any time soon, so for now we don't.
         customizable_type_visitable_derive
 );
 
@@ -461,7 +465,7 @@ mod kw {
 /// Parses a bound like:
 ///
 /// ```ignore (would need to import GenericTypeVisitable to get this to compile)
-/// #[generic_type_visitable(bounds(Foo: GenericTypeVisitable, Bar: GenericTypeVisitable))]
+/// #[generic_type_visitable(bounds(Foo: GenericTypeVisitable<__V>, Bar: GenericTypeVisitable<__V>))]
 /// ```
 fn parse_generic_type_visitable_bound(
     attr: &Attribute,
