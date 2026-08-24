@@ -756,9 +756,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Uint(t) => write!(self, "{}", t.name_str())?,
             ty::Float(t) => write!(self, "{}", t.name_str())?,
             ty::Pat(ty, pat) => {
-                write!(self, "(")?;
+                write!(self, "pattern_type!(")?;
                 ty.print(self)?;
-                write!(self, ") is {pat:?}")?;
+                write!(self, " is {pat:?})")?;
             }
             ty::RawPtr(ty, mutbl) => {
                 write!(self, "*{} ", mutbl.ptr_str())?;
