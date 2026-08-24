@@ -5,6 +5,9 @@
 
 //@ run-pass
 
+// `Some(0 | _)` is deliberate: this tests the runtime behavior of exactly that mix.
+#![allow(unreachable_patterns)]
+
 pub fn test(x: Option<usize>) -> bool {
     match x {
         Some(0 | _) => true,

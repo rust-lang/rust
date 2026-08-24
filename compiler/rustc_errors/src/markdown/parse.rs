@@ -136,7 +136,7 @@ fn parse_recursive<'a>(buf: &'a [u8], ctx: Context) -> MdStream<'a> {
             _ if loop_buf.starts_with(LNK_S) => {
                 parse_any_link(loop_buf, top_blk && prev == Prev::Newline)
             }
-            (_, Escape | _) => None,
+            _ => None,
         };
 
         if let Some((tree, rest)) = res {

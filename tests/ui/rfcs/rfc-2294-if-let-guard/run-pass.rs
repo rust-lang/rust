@@ -1,5 +1,8 @@
 //@ run-pass
 
+// `() | ()` is deliberate: this tests if-let guards on or-patterns.
+#![allow(unreachable_patterns)]
+
 enum Foo {
     Bar,
     Baz,

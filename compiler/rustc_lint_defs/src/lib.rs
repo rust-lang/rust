@@ -205,7 +205,7 @@ impl Level {
             "warn" => Some(Level::Warn),
             "deny" => Some(Level::Deny),
             "forbid" => Some(Level::Forbid),
-            "expect" | _ => None,
+            _ => None,
         }
     }
 

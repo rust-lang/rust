@@ -1,0 +1,111 @@
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:9:9
+   |
+LL |         0 | _ => {}
+   |         ^   - matches any value
+   |         |
+   |         all the values this pattern matches are already matched by the rest of the or-pattern
+   |
+note: the lint level is defined here
+  --> $DIR/useless-or-pattern.rs:4:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:14:9
+   |
+LL |         0 | 0..=255 => {}
+   |         ^   ------- matches all the values this pattern does
+   |         |
+   |         all the values this pattern matches are already matched by the rest of the or-pattern
+
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:20:17
+   |
+LL |         0..=1 | 1..=2 | 2..=3 => {}
+   |                 ^^^^^ all the values this pattern matches are already matched by the rest of the or-pattern
+   |
+note: multiple other patterns match some of the same values
+  --> $DIR/useless-or-pattern.rs:20:17
+   |
+LL |         0..=1 | 1..=2 | 2..=3 => {}
+   |         -----   ^^^^^   ----- matches some of the same values
+   |         |       |
+   |         |       collectively making this pattern useless
+   |         matches some of the same values
+
+error: unreachable pattern
+  --> $DIR/useless-or-pattern.rs:27:17
+   |
+LL |         0..=1 | 1 => {}
+   |         -----   ^ no value can reach this
+   |         |
+   |         matches all the relevant values
+
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:27:9
+   |
+LL |         0..=1 | 1 => {}
+   |         ^^^^^ all the values this pattern matches are already matched by the rest of the or-pattern
+   |
+note: multiple other patterns match some of the same values
+  --> $DIR/useless-or-pattern.rs:27:9
+   |
+LL |         0 => {}
+   |         - matches some of the same values
+LL |         0..=1 | 1 => {}
+   |         ^^^^^   - matches some of the same values
+   |         |
+   |         collectively making this pattern useless
+
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:34:9
+   |
+LL |         0 | _ if false => {}
+   |         ^   - matches any value
+   |         |
+   |         all the values this pattern matches are already matched by the rest of the or-pattern
+
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:41:9
+   |
+LL |         0 | _ => {}
+   |         ^   - matches any value
+   |         |
+   |         all the values this pattern matches are already matched by the rest of the or-pattern
+
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:46:14
+   |
+LL |         Some(0 | _) => {}
+   |              ^   - matches any value
+   |              |
+   |              all the values this pattern matches are already matched by the rest of the or-pattern
+
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:60:14
+   |
+LL |         x @ (0 | _) => {
+   |              ^   - matches any value
+   |              |
+   |              all the values this pattern matches are already matched by the rest of the or-pattern
+
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:67:9
+   |
+LL |         0 | 0 if false => {}
+   |         ^   - matches all the values this pattern does
+   |         |
+   |         all the values this pattern matches are already matched by the rest of the or-pattern
+
+error: useless pattern
+  --> $DIR/useless-or-pattern.rs:67:13
+   |
+LL |         0 | 0 if false => {}
+   |         -   ^ all the values this pattern matches are already matched by the rest of the or-pattern
+   |         |
+   |         matches all the values this pattern does
+
+error: aborting due to 11 previous errors
+

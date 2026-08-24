@@ -777,6 +777,38 @@ pub(crate) struct UnreachablePatternInner<'tcx> {
     pub(crate) suggest_remove: Option<Span>,
 }
 
+pub(crate) struct UselessPatternOuter {
+    pub(crate) covered_by_many_n_more_count: Option<usize>,
+    pub(crate) inner: UselessPattern,
+}
+
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UselessPatternOuter {
+    #[track_caller]
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+        let mut diag = self.inner.into_diag(dcx, level);
+        if let Some(covered_by_many_n_more_count) = self.covered_by_many_n_more_count {
+            diag.arg("covered_by_many_n_more_count", covered_by_many_n_more_count);
+        }
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag("useless pattern")]
+pub(crate) struct UselessPattern {
+    #[primary_span]
+    #[label(
+        "all the values this pattern matches are already matched by the rest of the or-pattern"
+    )]
+    pub(crate) span: Span,
+    #[label("matches any value")]
+    pub(crate) covered_by_catchall: Option<Span>,
+    #[label("matches all the values this pattern does")]
+    pub(crate) covered_by_one: Option<Span>,
+    #[note("multiple other patterns match some of the same values")]
+    pub(crate) covered_by_many: Option<MultiSpan>,
+}
+
 #[derive(Subdiagnostic)]
 #[suggestion(
     "you might have meant to pattern match against the value of {$is_typo ->

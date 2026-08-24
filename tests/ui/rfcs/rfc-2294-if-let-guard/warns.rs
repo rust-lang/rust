@@ -29,6 +29,7 @@ fn unreachable_pattern() {
     match Some(()) {
         x if let None | None = x => {}
         //~^ ERROR unreachable pattern
+        //~| ERROR useless pattern
         _ => {}
     }
 }

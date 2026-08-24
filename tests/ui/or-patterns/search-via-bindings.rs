@@ -2,6 +2,9 @@
 
 //@ run-pass
 
+// The dummy `_ | _` patterns are deliberate, so allow the "useless pattern" lint.
+#![allow(unreachable_patterns)]
+
 fn search(target: (bool, bool, bool)) -> u32 {
     let x = ((false, true), (false, true), (false, true));
     let mut guard_count = 0;

@@ -896,6 +896,10 @@ declare_lint! {
     /// ordered. In this example, the `y` pattern will always match, so the
     /// five is impossible to reach. Remember, match arms match in order, you
     /// probably wanted to put the `5` case above the `y` case.
+    ///
+    /// This lint also detects or-pattern alternatives that are reachable but "useless": removing
+    /// them doesn't change the result of the match, e.g. the `0` in `0 | _` (everything the `0`
+    /// matches is also matched by the `_`, with the same outcome).
     pub UNREACHABLE_PATTERNS,
     Warn,
     "detects unreachable patterns"
