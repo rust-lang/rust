@@ -45,7 +45,11 @@ struct LtoData {
     tmp_path: TempDir,
 }
 
-fn prepare_lto(each_linked_rlib_for_lto: &[PathBuf], dcx: DiagCtxtHandle<'_>) -> LtoData {
+fn prepare_lto(
+    each_linked_rlib_for_lto: &[PathBuf],
+    dcx: DiagCtxtHandle<'_>,
+    is_like_aix: bool,
+) -> LtoData {
     let tmp_path = match tempdir() {
         Ok(tmp_path) => tmp_path,
         Err(error) => {
@@ -64,7 +68,7 @@ fn prepare_lto(each_linked_rlib_for_lto: &[PathBuf], dcx: DiagCtxtHandle<'_>) ->
         let archive_data = unsafe {
             Mmap::map(File::open(path).expect("couldn't open rlib")).expect("couldn't map rlib")
         };
-        let metadata_link = rmeta_link::read_from_data(&archive_data, path).unwrap();
+        let metadata_link = rmeta_link::read_from_data(&archive_data, path, is_like_aix).unwrap();
         let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
         let obj_files = archive
             .members()
@@ -110,7 +114,7 @@ pub(crate) fn run_fat(
 ) -> CompiledModule {
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
-    let lto_data = prepare_lto(each_linked_rlib_for_lto, dcx);
+    let lto_data = prepare_lto(each_linked_rlib_for_lto, dcx, cgcx.target_is_like_aix);
     /*let symbols_below_threshold =
     lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     fat_lto(
