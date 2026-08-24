@@ -15,18 +15,6 @@ runners:
     free_disk: true
     <<: *base-job
 
-  - &job-linux-4c-largedisk
-    os: ubuntu-24.04-4core-16gb
-    <<: *base-job
-
-  - &job-linux-8c
-    os: ubuntu-24.04-8core-32gb
-    <<: *base-job
-
-  - &job-linux-16c
-    os: ubuntu-24.04-16core-64gb
-    <<: *base-job
-
   - &job-macos-15
     os: macos-15 # macOS 15 Arm64
     <<: *base-job
@@ -65,14 +53,12 @@ runners:
     os: codebuild-ubuntu-22-36c-$github.run_id-$github.run_attempt
     <<: *base-job
 
-  - &job-linux-8c-codebuild
-    free_disk: true
-    codebuild: true
-    os: codebuild-ubuntu-22-8c-$github.run_id-$github.run_attempt
+  - &job-linux-x86-32c-ec2
+    os: ec2-x86_64ami-c8a.8xlarge-x64-linux-$github.run_id-$github.run_attempt
     <<: *base-job
 
-  - &job-linux-32c-ec2
-    os: ec2-x86_64ami-c8a.8xlarge-x64-linux-$github.run_id-$github.run_attempt
+  - &job-linux-x86-8c-ec2
+    os: ec2-x86_64ami-m8a.2xlarge-x64-linux-$github.run_id-$github.run_attempt
     <<: *base-job
 
 envs:
@@ -179,7 +165,7 @@ pr:
 # These jobs automatically inherit envs.try, to avoid repeating
 # it in each job definition.
 try:
-  - <<: [*job-dist-x86_64-linux, *job-linux-32c-ec2]
+  - <<: [*job-dist-x86_64-linux, *job-linux-x86-32c-ec2]
     name: dist-x86_64-linux-quick
 
 # Jobs that only run when explicitly invoked in one of the following ways:
@@ -203,7 +189,7 @@ optional:
       DIST_TRY_BUILD: 1
   # We repeat the try job here so that it can be explicitly executed using `@bors try jobs`, to test
   # full x64 Linux dist try builds on EC2.
-  - <<: [*job-dist-x86_64-linux, *job-linux-32c-ec2]
+  - <<: [*job-dist-x86_64-linux, *job-linux-x86-32c-ec2]
     name: dist-x86_64-linux-quick
 
 # Main CI jobs that have to be green to merge a commit into the default branch.
@@ -312,14 +298,14 @@ auto:
   - name: dist-x86_64-illumos
     <<: *job-linux-4c
 
-  - <<: [*job-dist-x86_64-linux, *job-linux-32c-ec2]
+  - <<: [*job-dist-x86_64-linux, *job-linux-x86-32c-ec2]
 
   - name: dist-x86_64-linux-alt
     env:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist-alt.sh
-    <<: *job-linux-8c
+    <<: *job-linux-x86-8c-ec2
 
   - name: dist-x86_64-musl
     env:
