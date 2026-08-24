@@ -452,15 +452,13 @@ impl Config {
             .or_else(|| compute_src_directory_via_git(&exec_ctx))
             .unwrap_or_else(|| default_src_dir.clone());
 
-        #[cfg(test)]
-        {
-            if let Some(config_path) = flags_config.as_ref() {
-                assert!(
+        if cfg!(test) {
+            match flags_config.as_deref() {
+                Some(config_path) => assert!(
                     !config_path.starts_with(&src),
                     "Path {config_path:?} should not be inside or equal to src dir {src:?}"
-                );
-            } else {
-                panic!("During test the config should be explicitly added");
+                ),
+                None => panic!("During test the config should be explicitly added"),
             }
         }
 
