@@ -27,7 +27,7 @@ pub struct ExtractIf<
     'a,
     T,
     F,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     vec: &'a mut VecDeque<T, A>,
     /// The index of the item that will be inspected by the next call to `next`.
@@ -57,7 +57,7 @@ impl<'a, T, F, A: Allocator> ExtractIf<'a, T, F, A> {
     }
 
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")]
     #[inline]
     pub fn allocator(&self) -> &A {
         self.vec.allocator()

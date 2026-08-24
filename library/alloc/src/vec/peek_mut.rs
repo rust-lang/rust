@@ -15,7 +15,7 @@ use crate::fmt;
 pub struct PeekMut<
     'a,
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "32838", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     vec: &'a mut Vec<T, A>,
 }

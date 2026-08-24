@@ -5,7 +5,6 @@
 //! accept such code.
 
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-relax-custom-allocator-uniqueness -Zmiri-tree-borrows-implicit-writes
-#![feature(allocator_api)]
 
 use std::alloc::{AllocError, Allocator, Layout};
 use std::cell::{Cell, UnsafeCell};

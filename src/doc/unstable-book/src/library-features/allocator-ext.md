@@ -1,4 +1,4 @@
-# `allocator_api`
+# `allocator_ext`
 
 The tracking issue for this feature is [#32838]
 
