@@ -814,10 +814,10 @@ impl Config {
 
         if !flags_skip_stage0_validation {
             if let Some(rustc) = &build_rustc {
-                check_stage0_version(rustc, "rustc", &src, &exec_ctx);
+                check_external_binary_version(rustc, "rustc", &src, &exec_ctx);
             }
             if let Some(cargo) = &build_cargo {
-                check_stage0_version(cargo, "cargo", &src, &exec_ctx);
+                check_external_binary_version(cargo, "cargo", &src, &exec_ctx);
             }
         }
 
@@ -2250,8 +2250,9 @@ fn postprocess_toml(
     toml.merge(None, &mut Default::default(), override_toml, ReplaceOpt::Override);
 }
 
-/// check rustc/cargo version is same or lower with 1 apart from the building one
-pub fn check_stage0_version(
+/// Check that the version of an externally provided rustc/cargo is either the same or 1 version
+/// older than the in-tree version.
+fn check_external_binary_version(
     program_path: &Path,
     component_name: &'static str,
     src_dir: &Path,
@@ -2261,32 +2262,30 @@ pub fn check_stage0_version(
         return;
     }
 
-    let stage0_output =
-        command(program_path).arg("--version").run_capture_stdout(exec_ctx).stdout();
-    let mut stage0_output = stage0_output.lines().next().unwrap().split(' ');
+    let output = command(program_path).arg("--version").run_capture_stdout(exec_ctx).stdout();
+    let mut output = output.lines().next().unwrap().split(' ');
 
-    let stage0_name = stage0_output.next().unwrap();
-    if stage0_name != component_name {
+    let name = output.next().unwrap();
+    if name != component_name {
         fail(&format!(
-            "Expected to find {component_name} at {} but it claims to be {stage0_name}",
+            "Expected to find {component_name} at {} but it claims to be {name}",
             program_path.display()
         ));
     }
 
-    let stage0_version =
-        semver::Version::parse(stage0_output.next().unwrap().split('-').next().unwrap().trim())
-            .unwrap();
+    let binary_version =
+        semver::Version::parse(output.next().unwrap().split('-').next().unwrap().trim()).unwrap();
     let source_version =
         semver::Version::parse(fs::read_to_string(src_dir.join("src/version")).unwrap().trim())
             .unwrap();
-    if !(source_version == stage0_version
-        || (source_version.major == stage0_version.major
-            && (source_version.minor == stage0_version.minor
-                || source_version.minor == stage0_version.minor + 1)))
+    if !(source_version == binary_version
+        || (source_version.major == binary_version.major
+            && (source_version.minor == binary_version.minor
+                || source_version.minor == binary_version.minor + 1)))
     {
         let prev_version = format!("{}.{}.x", source_version.major, source_version.minor - 1);
         fail(&format!(
-            "Unexpected {component_name} version: {stage0_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
+            "Unexpected {component_name} version: {binary_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
         ));
     }
 }
