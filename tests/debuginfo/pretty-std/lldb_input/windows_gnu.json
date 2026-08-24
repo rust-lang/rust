@@ -91,7 +91,7 @@
    "some": {
     "type": "core::option::Option<i16>",
     "pretty_print": "Some(8)",
-    "synthetic": "lldb_lookup.synthetic_lookup",
+    "synthetic": "lldb_lookup.ClangEncodedEnumProvider",
     "summary": "lldb_lookup.ClangEncodedEnumSummaryProvider",
     "children": [
      {
@@ -104,13 +104,12 @@
    "none": {
     "type": "core::option::Option<i64>",
     "pretty_print": "None",
-    "synthetic": "lldb_lookup.synthetic_lookup",
+    "synthetic": "lldb_lookup.ClangEncodedEnumProvider",
     "summary": "lldb_lookup.ClangEncodedEnumSummaryProvider"
    },
    "os_string": {
     "type": "std::ffi::os_str::OsString",
     "pretty_print": "\"IAMA OS string \ud83d\ude03\"",
-    "synthetic": "lldb_lookup.synthetic_lookup",
     "summary": "lldb_lookup.StdOsStringSummaryProvider",
     "children": [
      {

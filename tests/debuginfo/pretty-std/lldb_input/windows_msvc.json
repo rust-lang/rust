@@ -114,7 +114,6 @@
    "os_string": {
     "type": "std::ffi::os_str::OsString",
     "pretty_print": "\"IAMA OS string \ud83d\ude03\"",
-    "synthetic": "lldb_lookup.synthetic_lookup",
     "summary": "lldb_lookup.StdOsStringSummaryProvider",
     "children": [
      {
