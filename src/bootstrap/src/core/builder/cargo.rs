@@ -464,6 +464,13 @@ impl Cargo {
             let lto_cflag = if matches!(self.mode, Mode::Rustc | Mode::ToolRustcPrivate)
                 && is_lto_stage(&self.compiler)
                 && builder.cc_tool(target).is_like_clang()
+                // Exclude aarch64-linux as we can't assume the user has an LTO-capable linker
+                // (and these files get distributed in the rustc-dev component).
+                // FIXME: this means the argument above about doing this for rustc but not std makes
+                // no sense. We distribute rlibs for both, so both need to be linkable by users. I
+                // guess we just don't want to risk this for std, but are less worried about
+                // breaking rustc-dev.
+                && !target.starts_with("aarch64-unknown-linux")
             {
                 match builder.config.rust_lto {
                     RustcLto::Thin => Some("-flto=thin"),
@@ -474,7 +481,7 @@ impl Cargo {
                 None
             };
 
-            // Extend `CXXFLAGS_$TARGET` with our extra flags.
+            // Extend `CFLAGS_$TARGET` with our extra flags.
             let env = format!("CFLAGS_{triple_underscored}");
             let mut cflags =
                 builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
