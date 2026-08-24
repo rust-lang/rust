@@ -115,7 +115,7 @@ For rust-analyzer, the corresponding implementations are located across several 
 These two traits correspond to the role of [`InferCtxt`][rustc inferctxt] in rustc.
 
 [`InferCtxtLike`][ir inferctxtlike] must be defined in `rustc_infer` due to coherence
-constraints(orphan rules).
+constraints (orphan rules).
 As a result, it cannot provide functionality that lives in `rustc_trait_selection`.
 Instead, behavior that depends on trait-solving logic is abstracted into a separate trait,
 [`SolverDelegate`][ir solverdelegate].
@@ -214,9 +214,9 @@ non-obvious considerations:
 
 1. The generic parameters `I` and `J` are reserved for `I: Interner` and `J`
    being the interner it is being lifted to.
-2. `PhantomData` is handled automatically, creating a new `PhantomData` but
-   _has_ to be included in the file through; `use std::marker::PhantomData;`
-   you cannot use `std::marker::PhantomData` directly on the field of a struct.
+2. `PhantomData` is handled automatically, creating a new `PhantomData`. But it
+   _has_ to be used in the fully unqualified form -- you cannot use
+   `std::marker::PhantomData` directly in the field.
 3. The bounds are deliberately written as associated type bounds on the `Interner`
    trait rather than as `where` clauses on `LiftInto`. Given only `I: LiftInto<J>`,
    Rust can then treat bounds such as the following as implied:
