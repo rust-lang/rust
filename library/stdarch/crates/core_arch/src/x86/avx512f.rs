@@ -20028,7 +20028,7 @@ pub const fn _mm512_slli_epi32<const IMM8: u32>(a: __m512i) -> __m512i {
         if IMM8 >= 32 {
             _mm512_setzero_si512()
         } else {
-            transmute::<core_arch::simd::Simd<u32, 16>, core_arch::x86::__m512i>(simd_shl(a.as_u32x16(), u32x16::splat(IMM8)))
+            transmute::<u32x16, __m512i>(simd_shl(a.as_u32x16(), u32x16::splat(IMM8)))
         }
     }
 }
@@ -20074,7 +20074,7 @@ pub const fn _mm512_maskz_slli_epi32<const IMM8: u32>(k: __mmask16, a: __m512i) 
             _mm512_setzero_si512()
         } else {
             let shf = simd_shl(a.as_u32x16(), u32x16::splat(IMM8));
-            transmute::<core_arch::simd::Simd<u32, 16>, core_arch::x86::__m512i>(simd_select_bitmask(k, shf, u32x16::ZERO))
+            transmute::<u32x16, __m512i>(simd_select_bitmask(k, shf, u32x16::ZERO))
         }
     }
 }
@@ -20120,7 +20120,7 @@ pub const fn _mm256_maskz_slli_epi32<const IMM8: u32>(k: __mmask8, a: __m256i) -
             _mm256_setzero_si256()
         } else {
             let r = simd_shl(a.as_u32x8(), u32x8::splat(IMM8));
-            transmute::<core_arch::simd::Simd<u32, 8>, core_arch::x86::__m256i>(simd_select_bitmask(k, r, u32x8::ZERO))
+            transmute::<u32x8, __m256i>(simd_select_bitmask(k, r, u32x8::ZERO))
         }
     }
 }
@@ -20166,7 +20166,7 @@ pub const fn _mm_maskz_slli_epi32<const IMM8: u32>(k: __mmask8, a: __m128i) -> _
             _mm_setzero_si128()
         } else {
             let r = simd_shl(a.as_u32x4(), u32x4::splat(IMM8));
-            transmute::<core_arch::simd::Simd<u32, 4>, core_arch::x86::__m128i>(simd_select_bitmask(k, r, u32x4::ZERO))
+            transmute::<u32x4, __m128i>(simd_select_bitmask(k, r, u32x4::ZERO))
         }
     }
 }
@@ -20186,7 +20186,7 @@ pub const fn _mm512_srli_epi32<const IMM8: u32>(a: __m512i) -> __m512i {
         if IMM8 >= 32 {
             _mm512_setzero_si512()
         } else {
-            transmute::<core_arch::simd::Simd<u32, 16>, core_arch::x86::__m512i>(simd_shr(a.as_u32x16(), u32x16::splat(IMM8)))
+            transmute::<u32x16, __m512i>(simd_shr(a.as_u32x16(), u32x16::splat(IMM8)))
         }
     }
 }
@@ -20232,7 +20232,7 @@ pub const fn _mm512_maskz_srli_epi32<const IMM8: u32>(k: __mmask16, a: __m512i) 
             _mm512_setzero_si512()
         } else {
             let shf = simd_shr(a.as_u32x16(), u32x16::splat(IMM8));
-            transmute::<core_arch::simd::Simd<u32, 16>, core_arch::x86::__m512i>(simd_select_bitmask(k, shf, u32x16::ZERO))
+            transmute::<u32x16, __m512i>(simd_select_bitmask(k, shf, u32x16::ZERO))
         }
     }
 }
@@ -20278,7 +20278,7 @@ pub const fn _mm256_maskz_srli_epi32<const IMM8: u32>(k: __mmask8, a: __m256i) -
             _mm256_setzero_si256()
         } else {
             let r = simd_shr(a.as_u32x8(), u32x8::splat(IMM8));
-            transmute::<core_arch::simd::Simd<u32, 8>, core_arch::x86::__m256i>(simd_select_bitmask(k, r, u32x8::ZERO))
+            transmute::<u32x8, __m256i>(simd_select_bitmask(k, r, u32x8::ZERO))
         }
     }
 }
@@ -20324,7 +20324,7 @@ pub const fn _mm_maskz_srli_epi32<const IMM8: u32>(k: __mmask8, a: __m128i) -> _
             _mm_setzero_si128()
         } else {
             let r = simd_shr(a.as_u32x4(), u32x4::splat(IMM8));
-            transmute::<core_arch::simd::Simd<u32, 4>, core_arch::x86::__m128i>(simd_select_bitmask(k, r, u32x4::ZERO))
+            transmute::<u32x4, __m128i>(simd_select_bitmask(k, r, u32x4::ZERO))
         }
     }
 }
@@ -20344,7 +20344,7 @@ pub const fn _mm512_slli_epi64<const IMM8: u32>(a: __m512i) -> __m512i {
         if IMM8 >= 64 {
             _mm512_setzero_si512()
         } else {
-            transmute::<core_arch::simd::Simd<u64, 8>, core_arch::x86::__m512i>(simd_shl(a.as_u64x8(), u64x8::splat(IMM8 as u64)))
+            transmute::<u64x8, __m512i>(simd_shl(a.as_u64x8(), u64x8::splat(IMM8 as u64)))
         }
     }
 }
@@ -20390,7 +20390,7 @@ pub const fn _mm512_maskz_slli_epi64<const IMM8: u32>(k: __mmask8, a: __m512i) -
             _mm512_setzero_si512()
         } else {
             let shf = simd_shl(a.as_u64x8(), u64x8::splat(IMM8 as u64));
-            transmute::<core_arch::simd::Simd<u64, 8>, core_arch::x86::__m512i>(simd_select_bitmask(k, shf, u64x8::ZERO))
+            transmute::<u64x8, __m512i>(simd_select_bitmask(k, shf, u64x8::ZERO))
         }
     }
 }
@@ -20436,7 +20436,7 @@ pub const fn _mm256_maskz_slli_epi64<const IMM8: u32>(k: __mmask8, a: __m256i) -
             _mm256_setzero_si256()
         } else {
             let r = simd_shl(a.as_u64x4(), u64x4::splat(IMM8 as u64));
-            transmute::<core_arch::simd::Simd<u64, 4>, core_arch::x86::__m256i>(simd_select_bitmask(k, r, u64x4::ZERO))
+            transmute::<u64x4, __m256i>(simd_select_bitmask(k, r, u64x4::ZERO))
         }
     }
 }
@@ -20482,7 +20482,7 @@ pub const fn _mm_maskz_slli_epi64<const IMM8: u32>(k: __mmask8, a: __m128i) -> _
             _mm_setzero_si128()
         } else {
             let r = simd_shl(a.as_u64x2(), u64x2::splat(IMM8 as u64));
-            transmute::<core_arch::simd::Simd<u64, 2>, core_arch::x86::__m128i>(simd_select_bitmask(k, r, u64x2::ZERO))
+            transmute::<u64x2, __m128i>(simd_select_bitmask(k, r, u64x2::ZERO))
         }
     }
 }
@@ -20502,7 +20502,7 @@ pub const fn _mm512_srli_epi64<const IMM8: u32>(a: __m512i) -> __m512i {
         if IMM8 >= 64 {
             _mm512_setzero_si512()
         } else {
-            transmute::<core_arch::simd::Simd<u64, 8>, core_arch::x86::__m512i>(simd_shr(a.as_u64x8(), u64x8::splat(IMM8 as u64)))
+            transmute::<u64x8, __m512i>(simd_shr(a.as_u64x8(), u64x8::splat(IMM8 as u64)))
         }
     }
 }
@@ -20548,7 +20548,7 @@ pub const fn _mm512_maskz_srli_epi64<const IMM8: u32>(k: __mmask8, a: __m512i) -
             _mm512_setzero_si512()
         } else {
             let shf = simd_shr(a.as_u64x8(), u64x8::splat(IMM8 as u64));
-            transmute::<core_arch::simd::Simd<u64, 8>, core_arch::x86::__m512i>(simd_select_bitmask(k, shf, u64x8::ZERO))
+            transmute::<u64x8, __m512i>(simd_select_bitmask(k, shf, u64x8::ZERO))
         }
     }
 }
@@ -20594,7 +20594,7 @@ pub const fn _mm256_maskz_srli_epi64<const IMM8: u32>(k: __mmask8, a: __m256i) -
             _mm256_setzero_si256()
         } else {
             let r = simd_shr(a.as_u64x4(), u64x4::splat(IMM8 as u64));
-            transmute::<core_arch::simd::Simd<u64, 4>, core_arch::x86::__m256i>(simd_select_bitmask(k, r, u64x4::ZERO))
+            transmute::<u64x4, __m256i>(simd_select_bitmask(k, r, u64x4::ZERO))
         }
     }
 }
@@ -20640,7 +20640,7 @@ pub const fn _mm_maskz_srli_epi64<const IMM8: u32>(k: __mmask8, a: __m128i) -> _
             _mm_setzero_si128()
         } else {
             let r = simd_shr(a.as_u64x2(), u64x2::splat(IMM8 as u64));
-            transmute::<core_arch::simd::Simd<u64, 2>, core_arch::x86::__m128i>(simd_select_bitmask(k, r, u64x2::ZERO))
+            transmute::<u64x2, __m128i>(simd_select_bitmask(k, r, u64x2::ZERO))
         }
     }
 }
@@ -21537,7 +21537,7 @@ pub const fn _mm512_srav_epi32(a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let count = count.as_u32x16();
         let no_overflow: u32x16 = simd_lt(count, u32x16::splat(u32::BITS));
-        let count = simd_select(no_overflow, transmute::<core_arch::simd::Simd<u32, 16>, core_arch::simd::Simd<i32, 16>>(count), i32x16::splat(31));
+        let count = simd_select(no_overflow, transmute::<u32x16, i32x16>(count), i32x16::splat(31));
         simd_shr(a.as_i32x16(), count).as_m512i()
     }
 }
@@ -21654,7 +21654,7 @@ pub const fn _mm512_srav_epi64(a: __m512i, count: __m512i) -> __m512i {
     unsafe {
         let count = count.as_u64x8();
         let no_overflow: u64x8 = simd_lt(count, u64x8::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, transmute::<core_arch::simd::Simd<u64, 8>, core_arch::simd::Simd<i64, 8>>(count), i64x8::splat(63));
+        let count = simd_select(no_overflow, transmute::<u64x8, i64x8>(count), i64x8::splat(63));
         simd_shr(a.as_i64x8(), count).as_m512i()
     }
 }
@@ -21706,7 +21706,7 @@ pub const fn _mm256_srav_epi64(a: __m256i, count: __m256i) -> __m256i {
     unsafe {
         let count = count.as_u64x4();
         let no_overflow: u64x4 = simd_lt(count, u64x4::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, transmute::<core_arch::simd::Simd<u64, 4>, core_arch::simd::Simd<i64, 4>>(count), i64x4::splat(63));
+        let count = simd_select(no_overflow, transmute::<u64x4, i64x4>(count), i64x4::splat(63));
         simd_shr(a.as_i64x4(), count).as_m256i()
     }
 }
@@ -21758,7 +21758,7 @@ pub const fn _mm_srav_epi64(a: __m128i, count: __m128i) -> __m128i {
     unsafe {
         let count = count.as_u64x2();
         let no_overflow: u64x2 = simd_lt(count, u64x2::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, transmute::<core_arch::simd::Simd<u64, 2>, core_arch::simd::Simd<i64, 2>>(count), i64x2::splat(63));
+        let count = simd_select(no_overflow, transmute::<u64x2, i64x2>(count), i64x2::splat(63));
         simd_shr(a.as_i64x2(), count).as_m128i()
     }
 }

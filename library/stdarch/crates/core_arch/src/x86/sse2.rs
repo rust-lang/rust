@@ -570,7 +570,7 @@ pub const fn _mm_slli_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
         if IMM8 >= 16 {
             _mm_setzero_si128()
         } else {
-            transmute::<core_arch::simd::Simd<u16, 8>, core_arch::x86::__m128i>(simd_shl(a.as_u16x8(), u16x8::splat(IMM8 as u16)))
+            transmute::<u16x8, __m128i>(simd_shl(a.as_u16x8(), u16x8::splat(IMM8 as u16)))
         }
     }
 }
@@ -602,7 +602,7 @@ pub const fn _mm_slli_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
         if IMM8 >= 32 {
             _mm_setzero_si128()
         } else {
-            transmute::<core_arch::simd::Simd<u32, 4>, core_arch::x86::__m128i>(simd_shl(a.as_u32x4(), u32x4::splat(IMM8 as u32)))
+            transmute::<u32x4, __m128i>(simd_shl(a.as_u32x4(), u32x4::splat(IMM8 as u32)))
         }
     }
 }
@@ -634,7 +634,7 @@ pub const fn _mm_slli_epi64<const IMM8: i32>(a: __m128i) -> __m128i {
         if IMM8 >= 64 {
             _mm_setzero_si128()
         } else {
-            transmute::<core_arch::simd::Simd<u64, 2>, core_arch::x86::__m128i>(simd_shl(a.as_u64x2(), u64x2::splat(IMM8 as u64)))
+            transmute::<u64x2, __m128i>(simd_shl(a.as_u64x2(), u64x2::splat(IMM8 as u64)))
         }
     }
 }
@@ -773,7 +773,7 @@ pub const fn _mm_srli_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
         if IMM8 >= 16 {
             _mm_setzero_si128()
         } else {
-            transmute::<core_arch::simd::Simd<u16, 8>, core_arch::x86::__m128i>(simd_shr(a.as_u16x8(), u16x8::splat(IMM8 as u16)))
+            transmute::<u16x8, __m128i>(simd_shr(a.as_u16x8(), u16x8::splat(IMM8 as u16)))
         }
     }
 }
@@ -806,7 +806,7 @@ pub const fn _mm_srli_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
         if IMM8 >= 32 {
             _mm_setzero_si128()
         } else {
-            transmute::<core_arch::simd::Simd<u32, 4>, core_arch::x86::__m128i>(simd_shr(a.as_u32x4(), u32x4::splat(IMM8 as u32)))
+            transmute::<u32x4, __m128i>(simd_shr(a.as_u32x4(), u32x4::splat(IMM8 as u32)))
         }
     }
 }
@@ -839,7 +839,7 @@ pub const fn _mm_srli_epi64<const IMM8: i32>(a: __m128i) -> __m128i {
         if IMM8 >= 64 {
             _mm_setzero_si128()
         } else {
-            transmute::<core_arch::simd::Simd<u64, 2>, core_arch::x86::__m128i>(simd_shr(a.as_u64x2(), u64x2::splat(IMM8 as u64)))
+            transmute::<u64x2, __m128i>(simd_shr(a.as_u64x2(), u64x2::splat(IMM8 as u64)))
         }
     }
 }
@@ -2659,7 +2659,7 @@ pub const fn _mm_movemask_pd(a: __m128d) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
     unsafe {
-        let mask: i64x2 = simd_lt(transmute::<core_arch::x86::__m128d, core_arch::simd::Simd<i64, 2>>(a), i64x2::ZERO);
+        let mask: i64x2 = simd_lt(transmute::<__m128d, i64x2>(a), i64x2::ZERO);
         simd_bitmask::<i64x2, u8>(mask) as i32
     }
 }

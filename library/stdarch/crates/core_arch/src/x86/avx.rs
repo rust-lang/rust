@@ -565,7 +565,7 @@ pub const fn _mm256_blend_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     unsafe {
-        let mask: i64x4 = simd_lt(transmute::<core_arch::x86::__m256d, core_arch::simd::Simd<i64, 4>>(c), i64x4::ZERO);
+        let mask: i64x4 = simd_lt(transmute::<__m256d, i64x4>(c), i64x4::ZERO);
         transmute(simd_select(mask, b.as_f64x4(), a.as_f64x4()))
     }
 }
@@ -581,7 +581,7 @@ pub const fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     unsafe {
-        let mask: i32x8 = simd_lt(transmute::<core_arch::x86::__m256, core_arch::simd::Simd<i32, 8>>(c), i32x8::ZERO);
+        let mask: i32x8 = simd_lt(transmute::<__m256, i32x8>(c), i32x8::ZERO);
         transmute(simd_select(mask, b.as_f32x8(), a.as_f32x8()))
     }
 }
@@ -2195,7 +2195,7 @@ pub fn _mm256_testnzc_pd(a: __m256d, b: __m256d) -> i32 {
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
     unsafe {
-        let r: i64x2 = simd_lt(transmute::<core_arch::x86::__m128d, core_arch::simd::Simd<i64, 2>>(_mm_and_pd(a, b)), i64x2::ZERO);
+        let r: i64x2 = simd_lt(transmute::<__m128d, i64x2>(_mm_and_pd(a, b)), i64x2::ZERO);
         (0i64 == simd_reduce_or(r)) as i32
     }
 }
@@ -2216,7 +2216,7 @@ pub const fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_testc_pd(a: __m128d, b: __m128d) -> i32 {
     unsafe {
-        let r: i64x2 = simd_lt(transmute::<core_arch::x86::__m128d, core_arch::simd::Simd<i64, 2>>(_mm_andnot_pd(a, b)), i64x2::ZERO);
+        let r: i64x2 = simd_lt(transmute::<__m128d, i64x2>(_mm_andnot_pd(a, b)), i64x2::ZERO);
         (0i64 == simd_reduce_or(r)) as i32
     }
 }
@@ -2307,7 +2307,7 @@ pub fn _mm256_testnzc_ps(a: __m256, b: __m256) -> i32 {
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
     unsafe {
-        let r: i32x4 = simd_lt(transmute::<core_arch::x86::__m128, core_arch::simd::Simd<i32, 4>>(_mm_and_ps(a, b)), i32x4::ZERO);
+        let r: i32x4 = simd_lt(transmute::<__m128, i32x4>(_mm_and_ps(a, b)), i32x4::ZERO);
         (0i32 == simd_reduce_or(r)) as i32
     }
 }
@@ -2328,7 +2328,7 @@ pub const fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
 #[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
 pub const fn _mm_testc_ps(a: __m128, b: __m128) -> i32 {
     unsafe {
-        let r: i32x4 = simd_lt(transmute::<core_arch::x86::__m128, core_arch::simd::Simd<i32, 4>>(_mm_andnot_ps(a, b)), i32x4::ZERO);
+        let r: i32x4 = simd_lt(transmute::<__m128, i32x4>(_mm_andnot_ps(a, b)), i32x4::ZERO);
         (0i32 == simd_reduce_or(r)) as i32
     }
 }
@@ -2365,7 +2365,7 @@ pub const fn _mm256_movemask_pd(a: __m256d) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
     unsafe {
-        let mask: i64x4 = simd_lt(transmute::<core_arch::x86::__m256d, core_arch::simd::Simd<i64, 4>>(a), i64x4::ZERO);
+        let mask: i64x4 = simd_lt(transmute::<__m256d, i64x4>(a), i64x4::ZERO);
         simd_bitmask::<i64x4, u8>(mask) as i32
     }
 }
@@ -2384,7 +2384,7 @@ pub const fn _mm256_movemask_ps(a: __m256) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
     unsafe {
-        let mask: i32x8 = simd_lt(transmute::<core_arch::x86::__m256, core_arch::simd::Simd<i32, 8>>(a), i32x8::ZERO);
+        let mask: i32x8 = simd_lt(transmute::<__m256, i32x8>(a), i32x8::ZERO);
         simd_bitmask::<i32x8, u8>(mask) as i32
     }
 }

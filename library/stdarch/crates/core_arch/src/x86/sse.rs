@@ -1126,7 +1126,7 @@ pub const fn _mm_movemask_ps(a: __m128) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
     unsafe {
-        let mask: i32x4 = simd_lt(transmute::<core_arch::x86::__m128, core_arch::simd::Simd<i32, 4>>(a), i32x4::ZERO);
+        let mask: i32x4 = simd_lt(transmute::<__m128, i32x4>(a), i32x4::ZERO);
         simd_bitmask::<i32x4, u8>(mask) as i32
     }
 }
