@@ -1213,62 +1213,56 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut is_c = false;
         let mut is_simd = false;
         let mut is_transparent = false;
-        let mut is_align = false;
-        let mut is_packed = false;
-        let mut repeated_repr = false;
-        let mut maybe_last_int_type = None;
 
         for (repr, _repr_span) in reprs {
             match repr {
                 ReprAttr::ReprRust => {
-                    if is_explicit_rust {
-                        repeated_repr = true;
-                    }
                     is_explicit_rust = true;
                 }
                 ReprAttr::ReprC => {
-                    if is_c {
-                        repeated_repr = true;
-                    }
                     is_c = true;
                 }
-                ReprAttr::ReprAlign(..) => {
-                    if is_align {
-                        repeated_repr = true;
-                    }
-                    is_align = true;
-                }
-                ReprAttr::ReprPacked(..) => {
-                    if is_packed {
-                        repeated_repr = true;
-                    }
-                    is_packed = true;
-                }
+                ReprAttr::ReprAlign(..) => (),
+                ReprAttr::ReprPacked(..) => (),
                 ReprAttr::ReprSimd => {
-                    if is_simd {
-                        repeated_repr = true;
-                    }
                     is_simd = true;
                 }
                 ReprAttr::ReprTransparent => {
-                    // No need to check for repeated transparent because that is already checked
-                    // when checking for any other attribute together with transparent.
                     is_transparent = true;
                 }
-                ReprAttr::ReprInt(int_type) => {
-                    if let Some(last_int_type) = maybe_last_int_type
-                        && last_int_type == int_type
-                    {
-                        // We'll "miss" detecting repeated int reprs if the user specifies
-                        // #[repr(u8, u64, u8)] for example. But that's okay because we've got
-                        // conflicting reprs anyway so it's not worth the effort to do more precise
-                        // tracking.
-                        repeated_repr = true;
-                    }
-                    maybe_last_int_type = Some(int_type);
+                ReprAttr::ReprInt(..) => {
                     int_reprs += 1;
                 }
             };
+        }
+
+        if !reprs.is_empty() {
+            let sorted_reprs = {
+                let mut to_sort = reprs.to_owned();
+                to_sort.sort_unstable();
+                to_sort
+            };
+
+            // To collect all duplicates, get subslices where all of the elements of the subslice
+            // are equal, then filter out all those whose length is not 1. We could return warnings
+            // for each of them, but that's annoyingly excessive. So we instead collect all spans in
+            // one big Vec.
+            let spans: Vec<Span> = sorted_reprs
+                .chunk_by(|(a, _), (b, _)| a == b)
+                .map(ToOwned::to_owned)
+                .filter(|slice| slice.len() != 1)
+                .flatten()
+                .map(|(_, span)| span)
+                .collect();
+
+            if !spans.is_empty() {
+                self.tcx.emit_node_span_lint(
+                    REPEATED_REPRS,
+                    hir_id,
+                    spans,
+                    diagnostics::RepeatedRepr,
+                );
+            }
         }
 
         // Just point at all repr hints if there are any incompatibilities.
@@ -1306,17 +1300,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.tcx.emit_node_span_lint(
                 CONFLICTING_REPR_HINTS,
                 hir_id,
-                hint_spans.clone().collect::<Vec<Span>>(),
-                diagnostics::ReprConflictingLint,
-            );
-        }
-
-        if repeated_repr {
-            self.tcx.emit_node_span_lint(
-                REPEATED_REPRS,
-                hir_id,
                 hint_spans.collect::<Vec<Span>>(),
-                diagnostics::RepeatedRepr,
+                diagnostics::ReprConflictingLint,
             );
         }
     }

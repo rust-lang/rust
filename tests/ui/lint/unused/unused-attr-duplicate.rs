@@ -64,7 +64,7 @@ fn t1() {}
 #[must_use = "some message"]
 //~^ ERROR unused attribute
 //~| WARN this was previously accepted
-#[repr(C)] //~ WARN representation attribute is specified more than once
+#[repr(C)] //~ WARN `#[repr(..)]` attribute is specified more than once [repeated_reprs]
 #[repr(C)]
 #[non_exhaustive]
 #[non_exhaustive] //~ ERROR unused attribute
