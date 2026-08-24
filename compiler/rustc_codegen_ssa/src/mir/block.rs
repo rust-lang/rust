@@ -588,7 +588,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            PassMode::Cast { cast: cast_ty, pad_i32: _ } => {
+            PassMode::Cast { cast: cast_ty, pad_i32_count: _ } => {
                 let op = match self.locals[mir::RETURN_PLACE] {
                     LocalRef::Operand(op) => op,
                     LocalRef::PendingOperand => bug!("use of return before def"),
@@ -1936,9 +1936,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         match arg.mode {
             PassMode::Ignore => return,
-            PassMode::Cast { pad_i32: true, .. } => {
+            PassMode::Cast { pad_i32_count, .. } => {
                 // Fill padding with undef value, where applicable.
-                llargs.push(bx.const_undef(bx.reg_backend_type(&Reg::i32())));
+                let undef = bx.const_undef(bx.reg_backend_type(&Reg::i32()));
+                llargs.extend(std::iter::repeat_n(undef, usize::from(pad_i32_count)));
             }
             PassMode::Pair(..) => match op.val {
                 Pair(a, b) => {
@@ -2025,7 +2026,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if let PassMode::Cast { cast, pad_i32: _ } = &arg.mode {
+            if let PassMode::Cast { cast, pad_i32_count: _ } = &arg.mode {
                 // The ABI mandates that the value is passed as a different struct representation.
                 // Spill and reload it from the stack to convert from the Rust representation to
                 // the ABI representation.
