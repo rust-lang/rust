@@ -923,6 +923,8 @@ marker_impls! {
 ///
 /// This is part of [RFC 3467](https://rust-lang.github.io/rfcs/3467-unsafe-pinned.html), and is
 /// tracked by [#125735](https://github.com/rust-lang/rust/issues/125735).
+// FIXME: Eventually this trait should become `#[rustc_deny_explicit_impl]`.
+// That requires porting the impls below to native internal impls.
 #[lang = "unsafe_unpin"]
 #[unstable(feature = "unsafe_unpin", issue = "125735")]
 pub unsafe auto trait UnsafeUnpin {}
