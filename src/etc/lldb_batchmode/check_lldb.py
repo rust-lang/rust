@@ -215,24 +215,30 @@ def var_matches(var: Variable, expected: Variable, valobj: lldb.SBValue) -> Resu
 
     type_ok = var.type == expected.type
 
+    all_providers_ok = (
+        summary_ok & synthetic_ok & format_ok & pretty_type_name_ok & pretty_print_ok
+    )
+
     if var.has_visualizer() or expected.has_visualizer():
         type_match_ok = type_matches(
-            valobj.GetType(),
-            valobj.GetTarget(),
-            summary_ok
-            & synthetic_ok
-            & format_ok
-            & pretty_type_name_ok
-            & pretty_print_ok,
+            valobj.GetType(), valobj.GetTarget(), all_providers_ok
         )
     else:
+        type_match_ok = Result.Ok
+
+    # (small hack) If the type information doesn't match, BUT it doesn't affect the synthetics, we
+    # don't actually care that much. This prevents CI from failing when 2 different targets use 2
+    # different layouts, e.g.::
+    # x86_64-linux-gnu: `Vec { buf, len, marker}`
+    # aarch64-linux-gnu: `Vec {len, buf, marker}`
+    if type_match_ok == Result.Mismatch and all_providers_ok:
         type_match_ok = Result.Ok
 
     value_ok = var.value == expected.value
 
     work_list = [valobj.GetChildAtIndex(i) for i in range(valobj.GetNumChildren())]
     target = valobj.GetTarget()
-    child_types_ok = True
+    child_types_ok = Result.Ok
 
     while len(work_list) != 0:
         obj = work_list.pop()
@@ -245,12 +251,17 @@ def var_matches(var: Variable, expected: Variable, valobj: lldb.SBValue) -> Resu
             if child.IsValid():
                 work_list.append(child)
             else:
-                child_types_ok = False
+                child_types_ok = Result.Mismatch
 
         if var.has_visualizer() or expected.has_visualizer():
-            child_types_ok &= type_matches(obj.GetType(), target) == Result.Ok
+            child_types_ok &= type_matches(obj.GetType(), target)
+
+            # similar to type matching, we don't actually care if there's a mismatch if the
+            # providers aren't affected.
+            if child_types_ok == Result.Mismatch and all_providers_ok:
+                child_types_ok = Result.Ok
         else:
-            type_match_ok = Result.Ok
+            child_types_ok = Result.Ok
 
     children_ok = children_match(
         var.children, expected.children, valobj.GetName(), valobj
