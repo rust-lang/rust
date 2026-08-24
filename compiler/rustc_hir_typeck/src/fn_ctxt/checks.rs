@@ -24,7 +24,9 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{
+    self, IsSuggestable, SizedTraitKind, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
@@ -1170,6 +1172,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn constrain_directly_returned_local(&self, decl: &Declaration<'tcx>) {
+        let Some((returned_hir_id, declaration_hir_id)) = self.directly_returned_local else {
+            return;
+        };
+        if declaration_hir_id != decl.hir_id {
+            return;
+        }
+
+        let local_ty = self.resolve_vars_if_possible(self.local_ty(decl.span, returned_hir_id));
+        if !local_ty.has_non_region_infer() {
+            return;
+        }
+        let Some(ret_coercion) = &self.ret_coercion else { return };
+        let return_ty = self.resolve_vars_if_possible(ret_coercion.borrow().expected_ty());
+        let ty::Adt(..) = return_ty.kind() else { return };
+
+        // An unsizing coercion can change the local's type at the return site.
+        // It must ultimately target a nested type that is not trivially `Sized`
+        let contains_maybe_unsized_ty = return_ty
+            .walk()
+            .filter_map(|arg| arg.as_type())
+            .any(|ty| !ty.has_trivial_sizedness(self.tcx, SizedTraitKind::Sized));
+        let is_coerce_unsized_target = contains_maybe_unsized_ty
+            && self.tcx.lang_items().coerce_unsized_trait().is_some_and(|trait_def_id| {
+                self.tcx.non_blanket_impls_for_ty(trait_def_id, return_ty).next().is_some()
+            });
+        if is_coerce_unsized_target {
+            return;
+        }
+
+        let cause = self.misc(decl.span);
+        if let Ok(ok) = self.commit_if_ok(|_| {
+            self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, return_ty, local_ty)
+        }) {
+            self.register_infer_ok_obligations(ok);
+        }
+    }
+
     pub(in super::super) fn check_decl(&self, decl: Declaration<'tcx>) -> Ty<'tcx> {
         // Determine and write the type which we'll check the pattern against.
         let decl_ty = self.local_ty(decl.span, decl.hir_id);
@@ -1214,6 +1254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             self.diverges.set(previous_diverges);
         }
+        self.constrain_directly_returned_local(&decl);
         decl_ty
     }
 

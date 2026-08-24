@@ -66,6 +66,9 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// any).
     pub(super) ret_coercion: Option<RefCell<CoerceMany<'tcx>>>,
 
+    /// The binding and declaration IDs of the local used as the function's direct tail expression.
+    pub(super) directly_returned_local: Option<(HirId, HirId)>,
+
     /// First span of a return site that we find. Used in error messages.
     pub(super) ret_coercion_span: Cell<Option<Span>>,
 
@@ -147,6 +150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             body_def_id,
             param_env,
             ret_coercion: None,
+            directly_returned_local: None,
             ret_coercion_span: Cell::new(None),
             coroutine_types: None,
             diverges: Cell::new(Diverges::Maybe),

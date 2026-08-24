@@ -45,6 +45,18 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fcx.coroutine_types = coroutine_types;
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
+    if matches!(tcx.def_kind(fn_def_id), DefKind::Fn | DefKind::AssocFn) {
+        let tail = body.value.peel_drop_temps().peel_blocks().peel_drop_temps();
+        if let hir::ExprKind::Path(hir::QPath::Resolved(
+            None,
+            hir::Path { res: hir::def::Res::Local(hir_id), .. },
+        )) = tail.kind
+            && let Some((_, hir::Node::LetStmt(local))) =
+                tcx.hir_parent_iter(*hir_id).find(|(_, node)| matches!(node, hir::Node::LetStmt(_)))
+        {
+            fcx.directly_returned_local = Some((*hir_id, local.hir_id));
+        }
+    }
 
     let span = body.value.span;
 
