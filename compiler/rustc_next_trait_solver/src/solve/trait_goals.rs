@@ -257,8 +257,7 @@ where
         {
             debug_assert!(is_rigid == ty::IsRigid::Yes);
             if ecx.opaque_accesses.might_rerun() {
-                ecx.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)?;
-                return Err(NoSolution.into());
+                match ecx.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)? {}
             }
 
             for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {

@@ -1,8 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
 
-#![feature(never_type)]
-
 trait Mirror {
     type Assoc;
 }

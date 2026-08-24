@@ -126,3 +126,10 @@ fn issue_15824() {
         _ => {},
     }
 }
+
+#[allow(clippy::diverging_sub_expression)] // only fires *before* the fix
+fn diverging() {
+    // Used to not be fixable when `!` wasn't stable yet and thus not nameable
+    let _data = [panic!(); 0];
+    //~^ zero_repeat_side_effects
+}
