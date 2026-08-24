@@ -841,12 +841,6 @@ impl Build {
         self.out.join(target).join("native")
     }
 
-    /// Root output directory for rust_test_helpers library compiled for
-    /// `target`
-    pub(crate) fn test_helpers_out(&self, target: TargetSelection) -> PathBuf {
-        self.native_dir(target).join("rust-test-helpers")
-    }
-
     /// Adds the `RUST_TEST_THREADS` env var if necessary
     pub(crate) fn add_rust_test_threads(&self, cmd: &mut BootstrapCommand) {
         if env::var_os("RUST_TEST_THREADS").is_none() {

@@ -2620,13 +2620,9 @@ Please disable assertions with `rust.debug-assertions = false`.
 
         // Provide `rust_test_helpers` for both host and target.
         if suite == "ui" || suite == "incremental" {
-            builder.ensure(TestHelpers { target: test_compiler.host });
-            builder.ensure(TestHelpers { target });
-            hostflags.push(format!(
-                "-Lnative={}",
-                builder.test_helpers_out(test_compiler.host).display()
-            ));
-            let target_helpers = builder.test_helpers_out(target);
+            let host_test_helpers = builder.ensure(TestHelpers { target: test_compiler.host });
+            let target_helpers = builder.ensure(TestHelpers { target });
+            hostflags.push(format!("-Lnative={}", host_test_helpers.display()));
             targetflags.push(format!("-Lnative={}", target_helpers.display()));
             if target.is_pauthtest() {
                 // For the pauthtest target, embed an rpath to the directory containing the helper
@@ -4250,28 +4246,28 @@ impl CommandLineStep for RustInstaller {
     }
 }
 
+/// Compiles native (C/C++) code that is used as helper code for tests.
+///
+/// Returns a path to the directory where the native test helpers have been built into.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestHelpers {
     pub target: TargetSelection,
 }
 
 impl CommandLineStep for TestHelpers {
-    type Output = ();
+    type Output = PathBuf;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("tests/auxiliary/rust_test_helpers.c")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(TestHelpers { target: run.target })
+        run.builder.ensure(TestHelpers { target: run.target });
     }
 
     /// Compiles the `rust_test_helpers.c` library which we used in various
     /// `run-pass` tests for ABI testing.
-    fn run(self, builder: &Builder<'_>) {
-        if builder.config.dry_run() {
-            return;
-        }
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         // The x86_64-fortanix-unknown-sgx target doesn't have a working C
         // toolchain. However, some x86_64 ELF objects can be linked
         // without issues. Use this hack to compile the test helpers.
@@ -4280,7 +4276,11 @@ impl CommandLineStep for TestHelpers {
         } else {
             self.target
         };
-        let dst = builder.test_helpers_out(target);
+        let dst = builder.native_dir(target).join("rust-test-helpers");
+        if builder.config.dry_run() {
+            return dst;
+        }
+
         let src = builder.src.join("tests/auxiliary/rust_test_helpers.c");
         let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
         t!(fs::create_dir_all(&dst));
@@ -4310,7 +4310,7 @@ impl CommandLineStep for TestHelpers {
         if target.is_pauthtest() {
             let so = dst.join("librust_test_helpers.so");
             if up_to_date(&src, &so) {
-                return;
+                return dst;
             }
 
             let status = Command::new(builder.cc(target))
@@ -4330,6 +4330,7 @@ impl CommandLineStep for TestHelpers {
                 panic!("Linking of librust_test_helpers.so failed (target: {})", target.triple);
             }
         }
+        dst
     }
 }
 
