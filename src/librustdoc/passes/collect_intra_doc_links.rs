@@ -1,6 +1,6 @@
-//! This module implements [RFC 1946]: Intra-rustdoc-links
+//! Resolves intra-doc links ([RFC 1946]).
 //!
-//! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
+//! [RFC 1946]: https://rust-lang.github.io/rfcs/1946-intra-rustdoc-links.html
 
 use std::borrow::Cow;
 use std::fmt::Display;
@@ -36,23 +36,19 @@ use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType, reexport_
 use crate::core::DocContext;
 use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
-use crate::passes::Pass;
 use crate::visit::DocVisitor;
 
-pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass =
-    Pass { name: "collect-intra-doc-links", run: None, description: "resolves intra-doc links" };
-
-pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
+pub(super) fn collect_intra_doc_links(
     krate: Crate,
-    cx: &'a mut DocContext<'tcx>,
-) -> (Crate, LinkCollector<'a, 'tcx>) {
-    let mut collector = LinkCollector {
-        cx,
-        visited_links: FxHashMap::default(),
-        ambiguous_links: FxIndexMap::default(),
-    };
+    cx: &mut DocContext<'_>,
+) -> (Crate, LinkCollection) {
+    let mut collector = LinkCollector { cx, links: LinkCollection::default() };
     collector.visit_crate(&krate);
-    (krate, collector)
+    (krate, collector.links)
+}
+
+pub(super) fn resolve_ambiguous_links(links: LinkCollection, cx: &mut DocContext<'_>) {
+    LinkCollector { cx, links }.resolve_ambiguities();
 }
 
 fn filter_assoc_items_by_name_and_namespace(
@@ -252,11 +248,16 @@ impl OwnedDiagnosticInfo {
     }
 }
 
-pub(crate) struct LinkCollector<'a, 'tcx> {
-    pub(crate) cx: &'a mut DocContext<'tcx>,
+struct LinkCollector<'a, 'tcx> {
+    cx: &'a mut DocContext<'tcx>,
+    links: LinkCollection,
+}
+
+#[derive(Default)]
+pub(super) struct LinkCollection {
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
-    pub(crate) visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
+    visited: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
     /// According to `rustc_resolve`, these links are ambiguous.
     ///
     /// However, we cannot link to an item that has been stripped from the documentation. If all
@@ -267,7 +268,7 @@ pub(crate) struct LinkCollector<'a, 'tcx> {
     /// We could get correct results by simply delaying everything. This would have fewer happy
     /// codepaths, but we want to distinguish different kinds of error conditions, and this is easy
     /// to do by resolving links as soon as possible.
-    pub(crate) ambiguous_links: FxIndexMap<(ItemId, String), Vec<AmbiguousLinks>>,
+    ambiguous: FxIndexMap<(ItemId, String), Vec<AmbiguousLinks>>,
 }
 
 pub(crate) struct AmbiguousLinks {
@@ -1216,7 +1217,8 @@ impl LinkCollector<'_, '_> {
                 resolved,
             };
 
-            self.ambiguous_links
+            self.links
+                .ambiguous
                 .entry((item.item_id, path_str.to_string()))
                 .or_default()
                 .push(links);
@@ -1272,8 +1274,8 @@ impl LinkCollector<'_, '_> {
             || !did.is_local()
     }
 
-    pub(crate) fn resolve_ambiguities(&mut self) {
-        let mut ambiguous_links = mem::take(&mut self.ambiguous_links);
+    fn resolve_ambiguities(&mut self) {
+        let mut ambiguous_links = mem::take(&mut self.links.ambiguous);
         for ((item_id, path_str), info_items) in ambiguous_links.iter_mut() {
             for info in info_items {
                 info.resolved.retain(|(res, _)| match res {
@@ -1523,7 +1525,7 @@ impl LinkCollector<'_, '_> {
         // which we want in some cases but not in others.
         cache_errors: bool,
     ) -> Option<Vec<(Res, Option<UrlFragment>)>> {
-        if let Some(res) = self.visited_links.get(&key)
+        if let Some(res) = self.links.visited.get(&key)
             && (res.is_some() || cache_errors)
         {
             return res.clone().map(|r| vec![r]);
@@ -1570,9 +1572,9 @@ impl LinkCollector<'_, '_> {
             out.push((res, fragment));
         }
         if let [r] = out.as_slice() {
-            self.visited_links.insert(key, Some(r.clone()));
+            self.links.visited.insert(key, Some(r.clone()));
         } else if cache_errors {
-            self.visited_links.insert(key, None);
+            self.links.visited.insert(key, None);
         }
         Some(out)
     }
