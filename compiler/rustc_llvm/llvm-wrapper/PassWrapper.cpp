@@ -580,6 +580,7 @@ void LLVMSelfProfileInitializeCallbacks(
        AfterPassCallback](StringRef Pass, const PreservedAnalyses &Preserved) {
         AfterPassCallback(LlvmSelfProfiler);
       });
+
 #if LLVM_VERSION_GE(24, 0)
   PIC.registerBeforeAnalysisCallback([LlvmSelfProfiler, BeforePassCallback](
                                          StringRef Pass, llvm::IRUnitRef Ir) {
