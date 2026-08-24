@@ -13,11 +13,11 @@ LL | trait Qiz {
 LL |   fn qiz();
    |      ^^^ ...because associated function `qiz` has no `self` parameter
    = help: only type `Foo` implements `Qiz`; consider using it directly instead.
-help: consider turning `qiz` into a method by giving it a `&self` argument
+help: consider turning `qiz` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |   fn qiz(&self);
    |          +++++
-help: alternatively, consider constraining `qiz` so it does not apply to trait objects
+help: alternatively, consider constraining `qiz` so it is explicitly marked as not applying to trait objects
    |
 LL |   fn qiz() where Self: Sized;
    |            +++++++++++++++++
@@ -37,11 +37,11 @@ LL | trait Qiz {
 LL |   fn qiz();
    |      ^^^ ...because associated function `qiz` has no `self` parameter
    = help: only type `Foo` implements `Qiz`; consider using it directly instead.
-help: consider turning `qiz` into a method by giving it a `&self` argument
+help: consider turning `qiz` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |   fn qiz(&self);
    |          +++++
-help: alternatively, consider constraining `qiz` so it does not apply to trait objects
+help: alternatively, consider constraining `qiz` so it is explicitly marked as not applying to trait objects
    |
 LL |   fn qiz() where Self: Sized;
    |            +++++++++++++++++
