@@ -760,7 +760,6 @@ fn pat_is_not_exhaustive_heuristic(pat: &hir::Pat<'_>) -> Option<(Span, &'static
         hir::PatKind::Or(..) => None,
         hir::PatKind::Never => None,
         hir::PatKind::Tuple(..) => None,
-        hir::PatKind::Box(pat) => pat_is_not_exhaustive_heuristic(&*pat),
         hir::PatKind::Deref(pat) => pat_is_not_exhaustive_heuristic(&*pat),
         hir::PatKind::Ref(pat, _, _) => pat_is_not_exhaustive_heuristic(&*pat),
         hir::PatKind::Expr(..) => None,
