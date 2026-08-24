@@ -25,7 +25,8 @@ use crate::utils::build_stamp::BuildStamp;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir, t,
+    self, dir_is_empty, exe, is_symlink_dir, libdir, set_file_times, split_debuginfo, symlink_dir,
+    t,
 };
 use crate::{debug, trace};
 
@@ -1606,7 +1607,11 @@ impl Build {
                 metadata = t!(fs::metadata(&src), format!("target = {}", src.display()));
             } else {
                 let link = t!(fs::read_link(src));
-                t!(self.symlink_file(link, dst));
+                if is_symlink_dir(&metadata) {
+                    t!(symlink_dir(&self.config, &link, dst));
+                } else {
+                    t!(self.symlink_file(link, dst));
+                }
                 return;
             }
         }
