@@ -1,6 +1,6 @@
 //! This test used to ICE #124004
 
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 use std::ops::{ Deref };
 
@@ -11,7 +11,7 @@ impl Deref for X {
     type Target = isize;
 
     fn deref(&self) -> &isize {
-        let &X(box ref x) = self;
+        let &X(ref x) = self;
         x
     }
 }
