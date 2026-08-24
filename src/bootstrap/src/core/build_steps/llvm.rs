@@ -1337,7 +1337,7 @@ impl CommandLineStep for OmpOffload {
         // alternative is that the user sets the offload_clang_dir path, in which case they hopefully point
         // to a suitable clang, otherwise the build will fail.
         let clang_bin_dir = if builder.config.llvm_clang {
-            llvm_output.host_llvm_config.parent().map(Path::to_path_buf)
+            llvm_output.llvm_config().parent().map(Path::to_path_buf)
         } else {
             // We expect the following (default) structure of the offload_clang_dir:
             // <prefix>/lib/cmake/clang, with a ClangConfig.cmake inside.
