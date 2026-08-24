@@ -14,9 +14,10 @@ mod virtual_socket;
 
 mod android;
 mod freebsd;
-pub mod linux;
+mod linux;
 mod linux_like;
 mod macos;
+mod netbsd;
 mod solarish;
 
 // All the Unix-specific extension traits

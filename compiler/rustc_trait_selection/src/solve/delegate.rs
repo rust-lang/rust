@@ -544,8 +544,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     pred_str(goal.predicate),
                 ));
                 for p in visitor.predicates.into_iter().skip(1) {
-                    diag.note(format!("which requires {}", pred_str(p)));
+                    diag.note(format!("which requires `{}`", pred_str(p)));
                 }
+                diag.note("and so on...");
                 diag.help(
                     "consider adding a manual `impl` of auto traits like `Send` for intermediate types, if auto traits are involved",
                 );
