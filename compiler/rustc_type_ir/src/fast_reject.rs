@@ -230,34 +230,30 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         impl_args: I::GenericArgs,
         depth: usize,
     ) -> bool {
-        // No need to decrement the depth here as this function is only
-        // recursively reachable via `types_may_unify_inner` which already
-        // increments the depth for us.
-        let may_unify = |(obl, imp): (I::GenericArg, I::GenericArg)| {
-            match obl.kind() {
-                // We don't fast reject based on regions.
-                ty::GenericArgKind::Lifetime(_) => {
-                    debug_assert!(matches!(imp.kind(), ty::GenericArgKind::Lifetime(_)));
-                    true
+        // No need to decrement the depth here as this function is only recursively reachable via
+        // `types_may_unify_inner` which already increments the depth for us.
+        iter::zip(obligation_args.iter(), impl_args.iter()).all(
+            |(obl, imp): (I::GenericArg, I::GenericArg)| {
+                match obl.kind() {
+                    // We don't fast reject based on regions.
+                    ty::GenericArgKind::Lifetime(_) => {
+                        debug_assert!(matches!(imp.kind(), ty::GenericArgKind::Lifetime(_)));
+                        true
+                    }
+                    ty::GenericArgKind::Type(obl)
+                        if let ty::GenericArgKind::Type(imp) = imp.kind() =>
+                    {
+                        self.types_may_unify_inner(obl, imp, depth)
+                    }
+                    ty::GenericArgKind::Const(obl)
+                        if let ty::GenericArgKind::Const(imp) = imp.kind() =>
+                    {
+                        self.consts_may_unify_inner(obl, imp)
+                    }
+                    _ => panic!("kind mismatch: {obl:?} {imp:?}"),
                 }
-                ty::GenericArgKind::Type(obl) if let ty::GenericArgKind::Type(imp) = imp.kind() => {
-                    self.types_may_unify_inner(obl, imp, depth)
-                }
-                ty::GenericArgKind::Const(obl)
-                    if let ty::GenericArgKind::Const(imp) = imp.kind() =>
-                {
-                    self.consts_may_unify_inner(obl, imp)
-                }
-                _ => panic!("kind mismatch: {obl:?} {imp:?}"),
-            }
-        };
-
-        // Specialize the common `(1, 1)` case to avoid iterator machinery.
-        if let ([obl], [imp]) = (obligation_args.as_slice(), impl_args.as_slice()) {
-            return may_unify((*obl, *imp));
-        }
-
-        iter::zip(obligation_args.iter(), impl_args.iter()).all(may_unify)
+            },
+        )
     }
 
     fn types_may_unify_inner(self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
