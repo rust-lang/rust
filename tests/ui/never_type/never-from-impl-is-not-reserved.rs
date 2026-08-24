@@ -6,8 +6,6 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver=coherence
 
-#![feature(never_type)]
-
 pub struct MyFoo;
 pub trait MyTrait {}
 

@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 
