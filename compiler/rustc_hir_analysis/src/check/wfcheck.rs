@@ -24,9 +24,9 @@ use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::region_constraint::{And, LeafRegionConstraint, Or};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
-    Upcast,
+    self, CallerBoundsIterator, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt,
+    TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode, Unnormalized, Upcast,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{DUMMY_SP, Span, bug, span_bug, sym};
@@ -575,7 +575,7 @@ fn augment_param_env<'tcx>(
         return param_env;
     }
 
-    let bounds = param_env.caller_bounds().chain(new_clauses.iter().copied());
+    let bounds = param_env.caller_bounds().all_clauses().iter().chain(new_clauses.iter().copied());
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
     ty::ParamEnv::new(tcx, bounds)

@@ -18,7 +18,8 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{
-    self as ir, BoundVar, CollectAndApply, MayBeErased, TypeVisitableExt, elaborate,
+    self as ir, BoundVar, CallerBoundsIterator, CollectAndApply, MayBeErased, TypeVisitableExt,
+    elaborate,
 };
 use tracing::instrument;
 use ty::util::IntTypeExt;
@@ -328,7 +329,7 @@ impl ParamConst {
 
     #[instrument(level = "debug")]
     pub fn find_const_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
-        let mut candidates = env.caller_bounds().filter_map(|clause| {
+        let mut candidates = env.caller_bounds().non_trait_clauses().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
                 ty::ClauseKind::ConstArgHasType(param_ct, ty) => {

@@ -14,9 +14,9 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
 };
 use rustc_type_ir::{
-    self as ty, AliasTy, Const, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode, Unnormalized, Upcast, elaborate,
+    self as ty, AliasTy, CallerBoundsIterator, Const, Interner, MayBeErased, Region, TypeFlags,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized, Upcast, elaborate,
 };
 use tracing::{debug, instrument};
 
@@ -740,7 +740,7 @@ where
         candidates: &mut Vec<Candidate<I>>,
         failed_candidate_info: &mut FailedCandidateInfo,
     ) -> Result<(), RerunNonErased> {
-        for assumption in goal.param_env.caller_bounds() {
+        for assumption in goal.param_env.caller_bounds().all_clauses().iter() {
             match G::probe_and_consider_param_env_candidate(self, goal, assumption)? {
                 Ok(candidate) => candidates.push(candidate),
                 Err(head_usages) => {
