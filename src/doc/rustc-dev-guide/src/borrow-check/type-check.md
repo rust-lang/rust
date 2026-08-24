@@ -1,17 +1,29 @@
 # The MIR type-check
 
-A key component of the borrow check is the
-[MIR type-check](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/type_check/index.html).
-This check walks the MIR and does a complete "type check" -- the same
-kind you might find in any other language. In the process of doing
-this type-check, we also uncover the region constraints that apply to
-the program.
+<!-- TODO: Move this to the analysis folder. -->
 
-TODO -- elaborate further? Maybe? :)
+"Canonical" type checking (ignoring lifetimes) for Rust happens in the HIR. Despite this, we also do a [type checking pass in MIR][type_check].
+
+The MIR is our fully-typed intermediate representation, the types of all items and the contents of their bodies are known by this point and by constructing the MIR we know its types are correct. The reason to do a type checking pass on this already-typed, already-checked IR is to accumulate information about lifetimes[^lifetimes] for borrow checking. See: [`borrowck_collect_region_constraints`][borrowck_collect_region_constraints].
+
+[^lifetimes]: AKA regions AKA loans.
+
+Doing this additional type checking pass on it also allows us to check our working: If something fails in MIR type checking that passed in HIR type checking, something has gone wrong.  
+
+Maintaining "MIR type checking should succeed if HIR type checking succeeds" is nontrivial. One major reason for this is that type checking MIR involves erasing the existing lifetimes and replacing them with new unconstrained lifetime variables, while in HIR lifetimes get inferred but not checked. In this way, HIR type checking and MIR type checking each work with subtly different information.
+
+The erase-and-re-infer strategy in MIR is called [Region Uniquification](#region-uniquification).
+
+## Region Uniquification
+
+TODO: Talk more about Region Uniquification and any still-existing use of it.
+
+[borrowck_collect_region_constraints]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_borrowck/fn.borrowck_collect_region_constraints.html
+[type_check]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_borrowck/type_check/fn.type_check.html
 
 ## User types
 
-At the start of MIR type-check, we replace all regions in the body with new unconstrained regions.
+At the start of MIR type checking, we replace all regions in the body with new unconstrained regions.
 However, this would cause us to accept the following program:
 ```rust
 fn foo<'a>(x: &'a u32) {
