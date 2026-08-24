@@ -1033,7 +1033,7 @@ impl<'a> ControlFlow<'a> {
         };
 
         // 1 = space after keyword.
-        let offset = keyword.len() + label_string.len() + 1;
+        let offset = last_line_width(&keyword) + label_string.len() + 1;
 
         let pat_expr_string = match self.cond {
             Some(cond) => self.rewrite_pat_expr(context, cond, constr_shape, offset)?,
@@ -1106,7 +1106,7 @@ impl<'a> ControlFlow<'a> {
             last_line_width(&pat_expr_string)
         } else {
             // 2 = spaces after keyword and condition.
-            label_string.len() + keyword.len() + pat_expr_string.len() + 2
+            label_string.len() + last_line_width(&keyword) + pat_expr_string.len() + 2
         };
 
         Ok((
