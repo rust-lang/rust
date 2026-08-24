@@ -212,7 +212,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // the second loop):
         for &i in m.item_ids {
             let item = self.cx.tcx.hir_item(i);
-            if !matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+            if !matches!(
+                item.kind,
+                hir::ItemKind::Use(hir::UseTree { kind: hir::UseKind::Glob, .. })
+            ) {
                 self.visit_item(item);
             }
         }
@@ -221,7 +224,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // To match the way import precedence works, visit glob imports last.
             // Later passes in rustdoc will de-duplicate by name and kind, so if glob-
             // imported items appear last, then they'll be the ones that get discarded.
-            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+            if matches!(
+                item.kind,
+                hir::ItemKind::Use(hir::UseTree { kind: hir::UseKind::Glob, .. })
+            ) {
                 self.visit_item(item);
             }
         }
@@ -486,9 +492,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // If we're inlining, skip private items.
             _ if self.inlining && !is_pub => {}
             hir::ItemKind::GlobalAsm { .. } => {}
-            hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
-            hir::ItemKind::Use(path, kind) => {
-                for res in path.res.present_items() {
+            hir::ItemKind::Use(tree) => {
+                for res in tree.prefix.res.present_items() {
                     // Struct and variant constructors and proc macro stubs always show up alongside
                     // their definitions, we've already processed them so just discard these.
                     if should_ignore_res(res) {
@@ -515,10 +520,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                                 if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
                             )
                         };
-                        let ident = match kind {
+                        let ident = match tree.kind {
                             hir::UseKind::Single(ident) => Some(ident.name),
                             hir::UseKind::Glob => None,
-                            hir::UseKind::ListStem => unreachable!(),
+                            hir::UseKind::Nested { .. } => None,
                         };
                         if self.maybe_inline_local(
                             item.owner_id.def_id,
@@ -645,7 +650,7 @@ impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
         // Handled in `visit_item_inner`
     }
 
-    fn visit_use(&mut self, _: &hir::UsePath<'tcx>, _: hir::HirId) {
+    fn visit_use(&mut self, _: &hir::UseTree<'tcx>, _: hir::HirId) {
         // Handled in `visit_item_inner`
     }
 

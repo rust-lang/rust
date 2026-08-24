@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Namespace::{MacroNS, TypeNS, ValueNS};
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{ItemKind, Node, UseKind};
+use rustc_hir::{ItemKind, Node, UseKind, UseTree};
 use rustc_lint::LateContext;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -310,13 +310,17 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
     match item_kind {
         ItemKind::Mod(_, r#mod) => r#mod.item_ids.iter().find_map(|&item_id| {
             let item = tcx.hir_item(item_id);
-            if let ItemKind::Use(path, UseKind::Single(ident)) = item.kind {
+            if let ItemKind::Use(UseTree {
+                prefix,
+                kind: UseKind::Single(ident),
+            }) = item.kind
+            {
                 if ident.name == name {
                     let opt_def_id = |ns: Option<Res>| ns.and_then(|res| res.opt_def_id());
                     match ns {
-                        PathNS::Type => opt_def_id(path.res.type_ns),
-                        PathNS::Value => opt_def_id(path.res.value_ns),
-                        PathNS::Macro => opt_def_id(path.res.macro_ns),
+                        PathNS::Type => opt_def_id(prefix.res.type_ns),
+                        PathNS::Value => opt_def_id(prefix.res.value_ns),
+                        PathNS::Macro => opt_def_id(prefix.res.macro_ns),
                         PathNS::Field => None,
                         PathNS::Arbitrary => unreachable!(),
                     }

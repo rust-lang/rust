@@ -29,7 +29,6 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHashe
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::{
     ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
     sym,
@@ -4410,9 +4409,6 @@ pub type ForeignItem = Item<ForeignItemKind>;
 pub enum AstOwner {
     /// This definition does not correspond to a HIR owner.
     NonOwner,
-    /// This definition corresponds to a nested `use` tree.
-    /// The `LocalDefId` points to its HIR owner.
-    NestedUseTree(LocalDefId),
     Crate(Box<Crate>),
     Item(Box<Item>),
     TraitItem(Box<AssocItem>),

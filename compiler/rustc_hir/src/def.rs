@@ -574,6 +574,25 @@ pub enum Res<Id = HirId> {
     Err,
 }
 
+impl Res {
+    pub fn in_namespace(self) -> PerNS<Option<Res>> {
+        match self {
+            Res::Def(DefKind::Mod | DefKind::Trait, _) => {
+                PerNS { type_ns: Some(self), value_ns: None, macro_ns: None }
+            }
+            Res::Def(DefKind::Enum, _) => {
+                PerNS { type_ns: None, value_ns: Some(self), macro_ns: None }
+            }
+            Res::Err => {
+                // Propagate the error to all namespaces, just to be sure.
+                let err = Some(Res::Err);
+                PerNS { type_ns: err, value_ns: err, macro_ns: err }
+            }
+            _ => panic!("bad path segment res {self:?}"),
+        }
+    }
+}
+
 impl<Id> IntoDiagArg for Res<Id> {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.descr()))

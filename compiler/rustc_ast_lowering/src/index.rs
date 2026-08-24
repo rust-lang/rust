@@ -152,6 +152,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.visit_body(body);
     }
 
+    fn visit_use(&mut self, tree: &'hir UseTree<'hir>, hir_id: HirId) {
+        if !hir_id.is_owner() {
+            self.insert(tree.prefix.span, hir_id, Node::NestedUseTree(tree));
+        }
+        intravisit::walk_use(self, tree, hir_id);
+    }
+
     fn visit_param(&mut self, param: &'hir Param<'hir>) {
         let node = Node::Param(param);
         self.insert(param.pat.span, param.hir_id, node);

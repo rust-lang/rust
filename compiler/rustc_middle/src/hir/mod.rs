@@ -343,6 +343,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | Node::Synthetic
             | Node::Err(_)
             | Node::Ctor(_)
+            | Node::NestedUseTree(_)
             | Node::Lifetime(_)
             | Node::GenericParam(_)
             | Node::Crate(_)
