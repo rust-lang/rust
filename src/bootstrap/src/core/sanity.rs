@@ -314,7 +314,7 @@ than building it.
         }
     }
 
-    for target in &sess.targets {
+    for target in &sess.config.targets {
         sess.config
             .target_config
             .entry(*target)

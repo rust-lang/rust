@@ -151,8 +151,8 @@ fn test_find() {
     let mut sess = Session::new(config);
     let target1 = TargetSelection::from_user("x86_64-unknown-linux-gnu");
     let target2 = TargetSelection::from_user("x86_64-unknown-openbsd");
-    sess.targets.push(target1.clone());
-    sess.hosts.push(target2.clone());
+    sess.config.targets.push(target1.clone());
+    sess.config.hosts.push(target2.clone());
     fill_compilers(&mut sess);
     for t in sess.hosts.iter().chain(sess.targets.iter()).chain(iter::once(&sess.host_target)) {
         assert!(sess.cc.contains_key(t), "CC not set for target {}", t.triple);

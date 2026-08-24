@@ -1,6 +1,7 @@
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::{Instant, SystemTime};
@@ -48,28 +49,10 @@ pub(crate) struct Session {
     pub(crate) version: String,
 
     // Properties derived from the above configuration
-    pub(crate) src: PathBuf,
-    pub(crate) out: PathBuf,
     pub(crate) bootstrap_out: PathBuf,
-    pub(crate) cargo_info: GitInfo,
-    pub(crate) rust_analyzer_info: GitInfo,
-    pub(crate) clippy_info: GitInfo,
-    pub(crate) miri_info: GitInfo,
-    pub(crate) rustfmt_info: GitInfo,
-    pub(crate) enzyme_info: GitInfo,
-    pub(crate) in_tree_llvm_info: GitInfo,
-    pub(crate) in_tree_gcc_info: GitInfo,
-    pub(crate) local_rebuild: bool,
     pub(crate) fail_fast: bool,
     pub(crate) test_target: TestTarget,
     pub(crate) verbosity: usize,
-
-    /// Build triple for the pre-compiled snapshot compiler.
-    pub(crate) host_target: TargetSelection,
-    /// Which triples to produce a compiler toolchain for.
-    pub(crate) hosts: Vec<TargetSelection>,
-    /// Which triples to build libraries (core/alloc/std/test/proc_macro) for.
-    pub(crate) targets: Vec<TargetSelection>,
 
     pub(crate) initial_rustc: PathBuf,
     pub(crate) initial_rustdoc: PathBuf,
@@ -98,6 +81,14 @@ pub(crate) struct Session {
 
     #[cfg(feature = "tracing")]
     pub(crate) step_graph: std::cell::RefCell<crate::utils::step_graph::StepGraph>,
+}
+
+impl Deref for Session {
+    type Target = Config;
+
+    fn deref(&self) -> &Self::Target {
+        &self.config
+    }
 }
 
 /// When building Rust various objects are handled differently.
@@ -268,9 +259,6 @@ impl Session {
     ///
     /// By default all build output will be placed in the current directory.
     pub(crate) fn new(mut config: Config) -> Session {
-        let src = config.src.clone();
-        let out = config.out.clone();
-
         #[cfg(unix)]
         // keep this consistent with the equivalent check in x.py:
         // https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/bootstrap.py#L796-L797
@@ -287,16 +275,6 @@ impl Session {
         };
         #[cfg(not(unix))]
         let is_sudo = false;
-
-        let rust_info = config.rust_info.clone();
-        let cargo_info = config.cargo_info.clone();
-        let rust_analyzer_info = config.rust_analyzer_info.clone();
-        let clippy_info = config.clippy_info.clone();
-        let miri_info = config.miri_info.clone();
-        let rustfmt_info = config.rustfmt_info.clone();
-        let enzyme_info = config.enzyme_info.clone();
-        let in_tree_llvm_info = config.in_tree_llvm_info.clone();
-        let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
         let initial_target_libdir = command(&config.initial_rustc)
             .run_in_dry_run()
@@ -331,7 +309,7 @@ impl Session {
                 .to_path_buf()
         };
 
-        let version = std::fs::read_to_string(src.join("src").join("version"))
+        let version = std::fs::read_to_string(config.src.join("src").join("version"))
             .expect("failed to read src/version");
         let version = version.trim();
 
@@ -353,7 +331,7 @@ impl Session {
             )
         }
 
-        if rust_info.is_from_tarball() && config.description.is_none() {
+        if config.rust_info.is_from_tarball() && config.description.is_none() {
             config.description = Some("built from a source tarball".to_owned());
         }
 
@@ -364,29 +342,13 @@ impl Session {
             initial_rustdoc: config.initial_rustdoc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             initial_sysroot: config.initial_sysroot.clone(),
-            local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             test_target: config.cmd.test_target(),
             verbosity: config.exec_ctx.verbosity as usize,
-
-            host_target: config.host_target,
-            hosts: config.hosts.clone(),
-            targets: config.targets.clone(),
-
             config,
             version: version.to_string(),
-            src,
-            out,
             bootstrap_out,
 
-            cargo_info,
-            rust_analyzer_info,
-            clippy_info,
-            miri_info,
-            rustfmt_info,
-            enzyme_info,
-            in_tree_llvm_info,
-            in_tree_gcc_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             ar: HashMap::new(),
@@ -419,7 +381,7 @@ impl Session {
             .trim();
         if local_release.split('.').take(2).eq(version.split('.').take(2)) {
             sess.do_if_verbose(|| println!("auto-detected local-rebuild {local_release}"));
-            sess.local_rebuild = true;
+            sess.config.local_rebuild = true;
         }
 
         sess.do_if_verbose(|| println!("finding compilers"));
