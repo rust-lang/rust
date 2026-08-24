@@ -459,6 +459,7 @@ conf_enum! {
         TraitAlias("trait_alias"),
         Impl("impl"),
         Fn("fn"),
+        TestBinderConstraints("test_binder_constraints"),
     }
 }
 
@@ -483,6 +484,7 @@ impl SourceItemOrderingModuleItemKind {
             TraitAlias,
             Impl,
             Fn,
+            TestBinderConstraints,
         ]
     }
 }
@@ -648,6 +650,7 @@ impl FromDefault<()> for SourceItemOrderingModuleItemGroupings {
                         SourceItemOrderingModuleItemKind::Trait,
                         SourceItemOrderingModuleItemKind::TraitAlias,
                         SourceItemOrderingModuleItemKind::Impl,
+                        SourceItemOrderingModuleItemKind::TestBinderConstraints,
                     ],
                 ),
                 ("lower_snake_case".into(), vec![SourceItemOrderingModuleItemKind::Fn]),
@@ -668,6 +671,7 @@ impl FromDefault<()> for SourceItemOrderingModuleItemGroupings {
                 (SourceItemOrderingModuleItemKind::Trait, 5),
                 (SourceItemOrderingModuleItemKind::TraitAlias, 5),
                 (SourceItemOrderingModuleItemKind::Impl, 5),
+                (SourceItemOrderingModuleItemKind::TestBinderConstraints, 5),
                 (SourceItemOrderingModuleItemKind::Fn, 6),
             ]),
             back_lut: HashMap::from_iter([
@@ -686,12 +690,16 @@ impl FromDefault<()> for SourceItemOrderingModuleItemGroupings {
                 (SourceItemOrderingModuleItemKind::Trait, "PascalCase".into()),
                 (SourceItemOrderingModuleItemKind::TraitAlias, "PascalCase".into()),
                 (SourceItemOrderingModuleItemKind::Impl, "PascalCase".into()),
+                (
+                    SourceItemOrderingModuleItemKind::TestBinderConstraints,
+                    "PascalCase".into(),
+                ),
                 (SourceItemOrderingModuleItemKind::Fn, "lower_snake_case".into()),
             ]),
         }
     }
     fn display_default((): ()) -> impl Display {
-        r#"[["modules", ["extern_crate", "mod", "foreign_mod"]], ["use", ["use"]], ["macros", ["macro"]], ["global_asm", ["global_asm"]], ["UPPER_SNAKE_CASE", ["static", "const"]], ["PascalCase", ["ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl"]], ["lower_snake_case", ["fn"]]]"#
+        r#"[["modules", ["extern_crate", "mod", "foreign_mod"]], ["use", ["use"]], ["macros", ["macro"]], ["global_asm", ["global_asm"]], ["UPPER_SNAKE_CASE", ["static", "const"]], ["PascalCase", ["ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl", "test_binder_constraints"]], ["lower_snake_case", ["fn"]]]"#
     }
 }
 impl DeserializeOrDefault<()> for SourceItemOrderingModuleItemGroupings {

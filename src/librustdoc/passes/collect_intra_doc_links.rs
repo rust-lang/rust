@@ -2223,7 +2223,10 @@ fn resolution_failure(
                             | TraitAlias
                             | TyParam
                             | Static { .. } => "associated item",
-                            Impl { .. } | GlobalAsm | SyntheticCoroutineBody => {
+                            Impl { .. }
+                            | GlobalAsm
+                            | SyntheticCoroutineBody
+                            | TestBinderConstraints => {
                                 unreachable!("not a path")
                             }
                         }

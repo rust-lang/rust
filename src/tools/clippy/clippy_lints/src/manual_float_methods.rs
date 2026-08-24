@@ -118,7 +118,8 @@ fn is_not_const(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | DefKind::Impl { .. }
         | DefKind::OpaqueTy
         | DefKind::SyntheticCoroutineBody
-        | DefKind::TyParam => true,
+        | DefKind::TyParam
+        | DefKind::TestBinderConstraints => true,
 
         DefKind::AnonConst
         | DefKind::Const { .. }

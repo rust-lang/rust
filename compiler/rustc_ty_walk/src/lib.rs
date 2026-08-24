@@ -153,7 +153,8 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         | DefKind::Macro(_)
         | DefKind::GlobalAsm
         | DefKind::Mod
-        | DefKind::Use => {}
+        | DefKind::Use
+        | DefKind::TestBinderConstraints => {}
     }
     V::Result::output()
 }

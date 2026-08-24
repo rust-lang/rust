@@ -497,6 +497,21 @@ pub trait Visitor<'v>: Sized {
     fn visit_inline_asm(&mut self, asm: &'v InlineAsm<'v>, id: HirId) -> Self::Result {
         walk_inline_asm(self, asm, id)
     }
+    fn visit_test_binder_body(&mut self, body: &'v TestBinderBody<'v>) -> Self::Result {
+        walk_test_binder_body(self, body)
+    }
+    fn visit_test_binder_forall(&mut self, forall: &'v TestBinderForall<'v>) -> Self::Result {
+        walk_test_binder_forall(self, forall)
+    }
+    fn visit_test_binder_exists(&mut self, exists: &'v TestBinderExists<'v>) -> Self::Result {
+        walk_test_binder_exists(self, exists)
+    }
+    fn visit_test_binder_constraint(
+        &mut self,
+        constraint: &'v TestBinderConstraint<'v>,
+    ) -> Self::Result {
+        walk_test_binder_constraint(self, constraint)
+    }
 }
 
 pub trait VisitorExt<'v>: Visitor<'v> {
@@ -631,6 +646,10 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             walk_list!(visitor, visit_param_bound, bounds);
+        }
+        ItemKind::TestBinderConstraints { generics, body } => {
+            try_visit!(visitor.visit_generics(generics));
+            try_visit!(visitor.visit_test_binder_body(body));
         }
     }
     V::Result::output()
@@ -1555,6 +1574,62 @@ pub fn walk_inline_asm<'v, V: Visitor<'v>>(
                 try_visit!(visitor.visit_qpath(path, id, *op_sp));
             }
             InlineAsmOperand::Label { block } => try_visit!(visitor.visit_block(block)),
+        }
+    }
+    V::Result::output()
+}
+
+pub fn walk_test_binder_body<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    body: &'v TestBinderBody<'v>,
+) -> V::Result {
+    walk_list!(visitor, visit_test_binder_forall, body.foralls);
+    walk_list!(visitor, visit_test_binder_exists, body.exists);
+    try_visit!(visitor.visit_test_binder_constraint(&body.constraints));
+    V::Result::output()
+}
+
+pub fn walk_test_binder_forall<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    forall: &'v TestBinderForall<'v>,
+) -> V::Result {
+    try_visit!(visitor.visit_id(forall.hir_id));
+    try_visit!(visitor.visit_generics(forall.generics));
+    try_visit!(visitor.visit_test_binder_body(forall.body));
+    if let Some(assert_on_exit) = &forall.assert_on_exit {
+        try_visit!(visitor.visit_test_binder_constraint(assert_on_exit));
+    }
+    V::Result::output()
+}
+
+pub fn walk_test_binder_exists<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    exists: &'v TestBinderExists<'v>,
+) -> V::Result {
+    try_visit!(visitor.visit_id(exists.hir_id));
+    walk_list!(visitor, visit_generic_param, exists.params);
+    try_visit!(visitor.visit_test_binder_body(exists.body));
+    V::Result::output()
+}
+
+pub fn walk_test_binder_constraint<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    constraint: &'v TestBinderConstraint<'v>,
+) -> V::Result {
+    match constraint {
+        TestBinderConstraint::And { items } => {
+            walk_list!(visitor, visit_test_binder_constraint, *items)
+        }
+        TestBinderConstraint::Or { items } => {
+            walk_list!(visitor, visit_test_binder_constraint, *items)
+        }
+        TestBinderConstraint::Lifetime { lhs, rhs } => {
+            try_visit!(visitor.visit_lifetime(lhs));
+            try_visit!(visitor.visit_lifetime(rhs));
+        }
+        TestBinderConstraint::Type { lhs, rhs } => {
+            try_visit!(visitor.visit_ty_unambig(lhs));
+            try_visit!(visitor.visit_lifetime(rhs));
         }
     }
     V::Result::output()

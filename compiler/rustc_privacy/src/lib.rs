@@ -581,7 +581,10 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         let def_kind = self.tcx.def_kind(def_id);
         match def_kind {
             // The interface is empty, and no nested items.
-            DefKind::Use | DefKind::ExternCrate | DefKind::GlobalAsm => {}
+            DefKind::Use
+            | DefKind::ExternCrate
+            | DefKind::GlobalAsm
+            | DefKind::TestBinderConstraints => {}
             // The interface is empty, and all nested items are processed by `check_def_id`.
             DefKind::Mod => {}
             // Effective visibilities for macros are processed earlier.
@@ -822,7 +825,8 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
             | DefKind::ExternCrate
             | DefKind::GlobalAsm
             | DefKind::ForeignMod
-            | DefKind::Const { .. } => {
+            | DefKind::Const { .. }
+            | DefKind::TestBinderConstraints => {
                 span_bug!(
                     self.tcx().def_span(def_id),
                     "{def_kind:?} unexpectedly reached by `ReachEverythingInTheInterfaceVisitor`"
