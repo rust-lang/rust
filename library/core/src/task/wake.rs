@@ -318,7 +318,7 @@ impl<'a> ContextBuilder<'a> {
     #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn from_waker(waker: &'a Waker) -> Self {
         // SAFETY: LocalWaker is just Waker without thread safety
-        let local_waker = unsafe { transmute::<&task::wake::Waker, &task::wake::LocalWaker>(waker) };
+        let local_waker = unsafe { transmute::<&Waker, &LocalWaker>(waker) };
         Self {
             waker,
             local_waker,
