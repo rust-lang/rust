@@ -4,13 +4,13 @@
 
 use std::ops::Try;
 
-fn monad_unit<T: Try>(x: <T as Try>::Output) -> T {
+fn monad_unit<T: Try>(x: T::Output) -> T {
     T::from_output(x)
 }
 
 fn monad_bind<T1: Try<Residual = R>, T2: Try<Residual = R>, R>(
     mx: T1,
-    f: impl FnOnce(<T1 as Try>::Output) -> T2)
+    f: impl FnOnce(T1::Output) -> T2)
 -> T2 {
     let x = mx?;
     f(x)

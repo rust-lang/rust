@@ -1,6 +1,6 @@
 use crate::iter::InPlaceIterable;
 use crate::num::NonZero;
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
+use crate::ops::{Branch, ChangeOutputType, ControlFlow, FromOutput, FromResidual, Residual, Try};
 
 mod array_chunks;
 mod by_ref_sized;
@@ -163,7 +163,7 @@ where
     let value = f(shunt);
     match residual {
         Some(r) => FromResidual::from_residual(r),
-        None => Try::from_output(value),
+        None => FromOutput::from_output(value),
     }
 }
 
@@ -171,7 +171,7 @@ impl<I, R> Iterator for GenericShunt<'_, I, R>
 where
     I: Iterator<Item: Try<Residual = R>>,
 {
-    type Item = <I::Item as Try>::Output;
+    type Item = <I::Item as Branch>::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.try_for_each(ControlFlow::Break).break_value()
@@ -192,7 +192,7 @@ where
         T: Try<Output = B>,
     {
         self.iter
-            .try_fold(init, |acc, x| match Try::branch(x) {
+            .try_fold(init, |acc, x| match x.branch() {
                 ControlFlow::Continue(x) => ControlFlow::from_try(f(acc, x)),
                 ControlFlow::Break(r) => {
                     *self.residual = Some(r);
