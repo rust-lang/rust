@@ -16,7 +16,7 @@ pub fn prctl<'tcx>(
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let ([op], varargs) = ecx.check_shim_sig_variadic(
-        shim_sig_variadic!(extern "C" fn(i32) -> i32),
+        shim_sig!(extern "C" fn(i32, ...) -> i32),
         (link_name, abi, args),
     )?;
 

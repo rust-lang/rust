@@ -30,26 +30,15 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
 #[macro_export]
 macro_rules! shim_sig {
     (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
-        |this| $crate::shims::sig::ShimSig {
-            abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
-            args: shim_sig_args_sep!(this, [$($args)*]),
-            ret: shim_sig_arg!(this, $($ret)*),
-            nounwind: false,
-            c_variadic: false,
-        }
-    };
-}
-
-/// Same as `shim_sig!` but declares a variadic function. The signature is for the fixed part.
-#[macro_export]
-macro_rules! shim_sig_variadic {
-    (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
-        |this| $crate::shims::sig::ShimSig {
-            abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
-            args: shim_sig_args_sep!(this, [$($args)*]),
-            ret: shim_sig_arg!(this, $($ret)*),
-            nounwind: true,
-            c_variadic: true,
+        |this| {
+            let (args, c_variadic) = shim_sig_args_sep!(this, [$($args)*]);
+            $crate::shims::sig::ShimSig {
+                abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
+                args,
+                ret: shim_sig_arg!(this, $($ret)*),
+                nounwind: false,
+                c_variadic,
+            }
         }
     };
 }
@@ -58,12 +47,15 @@ macro_rules! shim_sig_variadic {
 #[macro_export]
 macro_rules! shim_sig_nounwind {
     (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
-        |this| $crate::shims::sig::ShimSig {
-            abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
-            args: shim_sig_args_sep!(this, [$($args)*]),
-            ret: shim_sig_arg!(this, $($ret)*),
-            nounwind: true,
-            c_variadic: false,
+        |this| {
+            let (args, c_variadic) = shim_sig_args_sep!(this, [$($args)*]);
+            $crate::shims::sig::ShimSig {
+                abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
+                args,
+                ret: shim_sig_arg!(this, $($ret)*),
+                nounwind: true,
+                c_variadic,
+            }
         }
     };
 }
@@ -72,13 +64,18 @@ macro_rules! shim_sig_nounwind {
 #[macro_export]
 macro_rules! shim_varargs {
     ($($args:tt)*) => {
-        |this| shim_sig_args_sep!(this, [$($args)*])
+        |this| {
+            let (args, c_variadic) = shim_sig_args_sep!(this, [$($args)*]);
+            assert!(!c_variadic); // don't accept `...` here
+            args
+        }
     };
 }
 
 /// Helper for `shim_sig!`.
 ///
 /// Groups tokens into comma-separated chunks and calls the provided macro on them.
+/// Returns a list of types and a boolean indicating whether there was a trailing `...`.
 ///
 /// # Examples
 ///
@@ -107,13 +104,17 @@ macro_rules! shim_sig_args_sep {
     (@ $this:ident [$($final:tt)*] [$($collected:tt)*] $first:tt $($tt:tt)*) => {
         shim_sig_args_sep!(@ $this [$($final)*] [$($collected)* $first] $($tt)*)
     };
+    // No more tokens, trailing `...` - emit final output, indicate this is variadic.
+    (@ $this:ident [$($final:tt)*] [...] ) => {
+        ([$($final)*], true)
+    };
     // No more tokens - emit final output, including final non-comma type.
     (@ $this:ident [$($final:tt)*] [$($collected:tt)+] ) => {
-        [$($final)* shim_sig_arg!($this, $($collected)*)]
+        ([$($final)* shim_sig_arg!($this, $($collected)*)], false)
     };
     // No more tokens, empty collector - emit final output.
     (@ $this:ident [$($final:tt)*] [] ) => {
-        [$($final)*]
+        ([$($final)*], false)
     };
 }
 

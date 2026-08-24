@@ -41,7 +41,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `open64` is variadic, the third argument is only present when the second argument
                 // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
                 let ([path_raw, flag], varargs) = this.check_shim_sig_variadic(
-                    shim_sig_variadic!(extern "C" fn(*_, i32) -> i32),
+                    shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.open(path_raw, flag, varargs)?;
@@ -242,7 +242,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "mremap" => {
                 let ([old_address, old_size, new_size, flags], _) = this.check_shim_sig_variadic(
-                    shim_sig_variadic!(extern "C" fn(*_, usize, usize, i32) -> *_),
+                    shim_sig!(extern "C" fn(*_, usize, usize, i32, ...) -> *_),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.mremap(old_address, old_size, new_size, flags)?;

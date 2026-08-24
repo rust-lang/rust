@@ -286,7 +286,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "fcntl" => {
                 let ([fd_num, cmd], varargs) = this.check_shim_sig_variadic(
-                    shim_sig_variadic!(extern "C" fn(i32, i32) -> i32),
+                    shim_sig!(extern "C" fn(i32, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.fcntl(fd_num, cmd, varargs)?;
@@ -335,9 +335,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 let ([fd, op], varargs) = this.check_shim_sig_variadic(
                     if op_is_ulong {
-                        shim_sig_variadic!(extern "C" fn(i32, usize) -> i32)
+                        shim_sig!(extern "C" fn(i32, usize, ...) -> i32)
                     } else {
-                        shim_sig_variadic!(extern "C" fn(i32, i32) -> i32)
+                        shim_sig!(extern "C" fn(i32, i32, ...) -> i32)
                     },
                     (link_name, abi, args),
                 )?;
@@ -350,7 +350,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `open` is variadic, the third argument is only present when the second argument
                 // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
                 let ([path_raw, flag], varargs) = this.check_shim_sig_variadic(
-                    shim_sig_variadic!(extern "C" fn(*_, i32) -> i32),
+                    shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.open(path_raw, flag, varargs)?;
