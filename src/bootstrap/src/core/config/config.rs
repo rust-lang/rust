@@ -53,7 +53,7 @@ use crate::core::config::{
     GccCiMode, LlvmCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo,
     StringOrBool, TargetSelection, threads_from_config,
 };
-use crate::core::download::{DownloadContext, download_beta_toolchain, is_download_ci_available};
+use crate::core::download::{DownloadContext, is_download_ci_available};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{self, exe, fail, get_host_target, t};
@@ -305,12 +305,13 @@ pub(crate) struct Config {
     pub in_tree_llvm_info: channel::GitInfo,
     pub in_tree_gcc_info: channel::GitInfo,
 
-    // These are either the stage0 downloaded binaries or the locally installed ones.
-    pub initial_cargo: PathBuf,
-    pub initial_rustc: PathBuf,
-    pub initial_rustdoc: PathBuf,
-    pub initial_cargo_clippy: Option<PathBuf>,
-    pub initial_sysroot: PathBuf,
+    /// rustc/cargo/rustdoc/clippy paths specified in the config file
+    /// Access the `initial_` fields from `Session` to use either the externally configured
+    /// or downloaded (stage0) binaries.
+    pub external_cargo: Option<PathBuf>,
+    pub external_rustc: Option<PathBuf>,
+    pub external_rustdoc: Option<PathBuf>,
+    pub external_cargo_clippy: Option<PathBuf>,
 
     /// Externally configured `rustfmt` binary for formatting in-tree source code.
     /// If you want to use rustfmt for formatting, use the `InternalRustfmt` step, instead of
@@ -503,7 +504,6 @@ impl Config {
             gdb: build_gdb,
             lldb: build_lldb,
             nodejs: build_nodejs,
-
             yarn: build_yarn,
             npm: build_npm,
             python: build_python,
@@ -775,7 +775,7 @@ impl Config {
 
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
-        let mut out = if !out.is_absolute() {
+        let out = if !out.is_absolute() {
             // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
             absolute(&out).expect("can't make empty path absolute")
         } else {
@@ -844,34 +844,6 @@ impl Config {
             bootstrap_cache_path: &build_bootstrap_cache_path,
             ci_env,
         };
-
-        let initial_rustc = build_rustc.unwrap_or_else(|| {
-            download_beta_toolchain(&dwn_ctx, &out);
-            default_stage0_rustc_path(&out)
-        });
-
-        let initial_rustdoc = build_rustdoc
-            .unwrap_or_else(|| initial_rustc.with_file_name(exe("rustdoc", host_target)));
-
-        let initial_sysroot = t!(PathBuf::from_str(
-            command(&initial_rustc)
-                .args(["--print", "sysroot"])
-                .run_in_dry_run()
-                .run_capture_stdout(&exec_ctx)
-                .stdout()
-                .trim()
-        ));
-
-        let initial_cargo = build_cargo.unwrap_or_else(|| {
-            download_beta_toolchain(&dwn_ctx, &out);
-            initial_sysroot.join("bin").join(exe("cargo", host_target))
-        });
-
-        // NOTE: it's important this comes *after* we set `initial_rustc` just above.
-        if exec_ctx.dry_run() {
-            out = out.join("tmp-dry-run");
-            fs::create_dir_all(&out).expect("Failed to create dry-run directory");
-        }
 
         let file_content = t!(fs::read_to_string(src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
@@ -1468,6 +1440,10 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             explicit_stage_from_cli: flags_stage.is_some(),
             explicit_stage_from_config,
             extended: build_extended.unwrap_or(false),
+            external_cargo: build_cargo,
+            external_cargo_clippy: build_cargo_clippy,
+            external_rustc: build_rustc,
+            external_rustdoc: build_rustdoc,
             external_rustfmt: build_rustfmt,
             free_args: flags_free_args,
             full_bootstrap: build_full_bootstrap.unwrap_or(false),
@@ -1479,11 +1455,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             in_tree_llvm_info,
             include_default_paths: flags_include_default_paths,
             incremental: flags_incremental || rust_incremental == Some(true),
-            initial_cargo,
-            initial_cargo_clippy: build_cargo_clippy,
-            initial_rustc,
-            initial_rustdoc,
-            initial_sysroot,
             jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
             json_output: flags_json_output,
             keep_stage: flags_keep_stage,

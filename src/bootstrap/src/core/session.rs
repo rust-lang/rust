@@ -3,6 +3,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::OnceLock;
 use std::time::{Instant, SystemTime};
 use std::{env, fs, io, str};
@@ -19,6 +20,7 @@ use crate::core::builder::{Builder, Kind};
 use crate::core::compiler::Compiler;
 use crate::core::config::flags::{self, Subcommand};
 use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
+use crate::core::download::{DownloadContext, download_beta_toolchain};
 use crate::core::metadata::Crate;
 #[cfg(feature = "tracing")]
 use crate::trace_io;
@@ -276,7 +278,45 @@ impl Session {
         #[cfg(not(unix))]
         let is_sudo = false;
 
-        let initial_target_libdir = command(&config.initial_rustc)
+        let dwn_ctx = DownloadContext::from(&config);
+
+        let initial_rustc = config.external_rustc.clone().unwrap_or_else(|| {
+            download_beta_toolchain(&dwn_ctx, &config.out);
+            config
+                .out
+                .join(config.host_target)
+                .join("stage0")
+                .join("bin")
+                .join(exe("rustc", config.host_target))
+        });
+
+        let initial_rustdoc = config
+            .external_rustdoc
+            .clone()
+            .unwrap_or_else(|| initial_rustc.with_file_name(exe("rustdoc", config.host_target)));
+
+        let initial_sysroot = t!(PathBuf::from_str(
+            command(&initial_rustc)
+                .args(["--print", "sysroot"])
+                .run_in_dry_run()
+                .run_capture_stdout(&config.exec_ctx)
+                .stdout()
+                .trim()
+        ));
+
+        let initial_cargo = config.external_cargo.clone().unwrap_or_else(|| {
+            download_beta_toolchain(&dwn_ctx, &config.out);
+            initial_sysroot.join("bin").join(exe("cargo", config.host_target))
+        });
+
+        // NOTE: it's important this comes *after* we potentially download the binaries above,
+        // in order to not redownload them into a temporary directory.
+        if config.exec_ctx.dry_run() {
+            config.out = config.out.join("tmp-dry-run");
+            fs::create_dir_all(&config.out).expect("Failed to create dry-run directory");
+        }
+
+        let initial_target_libdir = command(&initial_rustc)
             .run_in_dry_run()
             .args(["--print", "target-libdir"])
             .run_capture_stdout(&config)
@@ -299,7 +339,7 @@ impl Session {
             });
 
             ancestor
-                .strip_prefix(&config.initial_sysroot)
+                .strip_prefix(&initial_sysroot)
                 .unwrap_or_else(|_| {
                     panic!(
                         "Couldn’t resolve the initial relative libdir from {}",
@@ -338,10 +378,10 @@ impl Session {
         let mut sess = Session {
             initial_lld,
             initial_relative_libdir,
-            initial_rustc: config.initial_rustc.clone(),
-            initial_rustdoc: config.initial_rustdoc.clone(),
-            initial_cargo: config.initial_cargo.clone(),
-            initial_sysroot: config.initial_sysroot.clone(),
+            initial_rustc,
+            initial_rustdoc,
+            initial_cargo,
+            initial_sysroot,
             fail_fast: config.cmd.fail_fast(),
             test_target: config.cmd.test_target(),
             verbosity: config.exec_ctx.verbosity as usize,
