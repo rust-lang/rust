@@ -8,9 +8,10 @@ use rustc_metadata::creader::MetadataLoaderDyn;
 use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
-use rustc_session::config::{CrateType, OutputFilenames, PrintRequest};
+use rustc_session::config::{OutputFilenames, PrintRequest};
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::Symbol;
+use rustc_structures::CrateType;
 
 use super::CodegenObject;
 use crate::back::archive::ArArchiveBuilderBuilder;

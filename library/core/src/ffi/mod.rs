@@ -24,7 +24,7 @@ use crate::fmt;
 pub mod c_str;
 
 mod va_list;
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_variadic", since = "1.99.0")]
 pub use self::va_list::{VaArgSafe, VaList};
 
 mod primitives;

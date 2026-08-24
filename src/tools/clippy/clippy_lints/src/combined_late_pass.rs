@@ -5,26 +5,11 @@
 //! concrete types and `#[inline(always)]`, unoverridden methods are DCE'd and the
 //! rest become direct calls, so there is no vtable or per-node dynamic dispatch.
 //!
-//! Mirrors rustc's `declare_combined_late_lint_pass!`, but wraps each field in
-//! [`Gated`] with a precomputed `active` flag (the same "lint still needs to run"
-//! predicate `rustc_lint::late` uses). Disabled passes are skipped by a branch
-//! rather than dropped from a `Vec`, keeping clippy's allow-by-default fast path.
-
-use rustc_lint::{LintPass, LintVec};
-
-/// A pass paired with its precomputed "still needs to run" flag.
-pub struct Gated<P> {
-    pub(crate) active: bool,
-    pub(crate) pass: P,
-}
-
-impl<P: LintPass> Gated<P> {
-    #[inline]
-    pub fn new<F: Fn(&LintVec) -> bool>(is_active: &F, pass: P) -> Self {
-        let active = is_active(&pass.get_lints());
-        Gated { active, pass }
-    }
-}
+//! Mirrors rustc's `declare_combined_late_lint_pass!`, but wraps each field in an
+//! `Option` that is set to `None` if a pass can be skipped (determined by the same
+//! "lint still needs to run" predicate `rustc_lint::late` uses). Disabled passes
+//! are skipped by a branch rather than dropped from a `Vec`, keeping clippy's
+//! allow-by-default fast path.
 
 /// Run one field's `check_*`, if that field is active.
 ///
@@ -36,8 +21,8 @@ impl<P: LintPass> Gated<P> {
 #[macro_export]
 macro_rules! run_combined_late_lint_pass_field {
     ($self:ident, $field:ident, $name:ident, ($($arg:expr),* $(,)?)) => {
-        if $self.$field.active {
-            rustc_lint::LateLintPass::$name(&mut $self.$field.pass, $($arg),*);
+        if let Some(pass) = &mut $self.$field {
+            rustc_lint::LateLintPass::$name(pass, $($arg),*);
         }
     };
 }
@@ -61,7 +46,7 @@ macro_rules! expand_combined_late_lint_pass_methods {
     )
 }
 
-/// Declare the combined struct (one [`Gated`] field per pass) plus its
+/// Declare the combined struct (one optional field per pass) plus its
 /// `LintPass`/`LateLintPass` impls. The method list comes from
 /// `rustc_lint::late_lint_methods!` so it can't drift from rustc's.
 ///
@@ -75,13 +60,13 @@ macro_rules! combined_late_lint_pass {
     ) => {
         #[allow(non_snake_case)]
         pub struct $name<'tcx> {
-            $($field: $crate::combined_late_pass::Gated<$fty>,)*
+            $($field: Option<$fty>,)*
         }
 
         impl<'tcx> $name<'tcx> {
             pub fn new<F: Fn(&rustc_lint::LintVec) -> bool>($($pname: $pty,)* is_active: &F) -> Self {
                 Self {
-                    $($field: $crate::combined_late_pass::Gated::new(is_active, $ctor),)*
+                    $($field: is_active(&<$fty>::lint_vec()).then(|| $ctor),)*
                 }
             }
         }
@@ -93,8 +78,8 @@ macro_rules! combined_late_lint_pass {
             }
             fn get_lints(&self) -> rustc_lint::LintVec {
                 // Reserve at least one slot per pass up front to skip the early reallocations.
-                let mut lints = Vec::with_capacity([$(stringify!($field)),*].len());
-                $(lints.extend(self.$field.pass.get_lints());)*
+                let mut lints = Vec::with_capacity(${count($field)});
+                $(lints.extend(<$fty>::lint_vec());)*
                 lints
             }
         }

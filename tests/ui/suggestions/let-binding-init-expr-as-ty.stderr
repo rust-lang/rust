@@ -1,5 +1,5 @@
 error: expected type, found `42`
-  --> $DIR/let-binding-init-expr-as-ty.rs:32:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:43:12
    |
 LL |     let x: 42;
    |          - ^^ expected type
@@ -13,7 +13,7 @@ LL +     let x = 42;
    |
 
 error: expected type, found `""`
-  --> $DIR/let-binding-init-expr-as-ty.rs:33:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:44:12
    |
 LL |     let x: "";
    |          - ^^ expected type
@@ -40,7 +40,7 @@ LL +     let foo = i32::from_be(num);
    |
 
 error[E0573]: cannot find type `bar` in this scope
-  --> $DIR/let-binding-init-expr-as-ty.rs:36:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:47:12
    |
 LL |     let x: bar();
    |            ^^^ not found in this scope
@@ -53,7 +53,7 @@ LL +     let x = bar();
    |
 
 error[E0573]: cannot find type `bar` in this scope
-  --> $DIR/let-binding-init-expr-as-ty.rs:37:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:48:12
    |
 LL |     let x: bar;
    |            ^^^ not found in this scope
@@ -61,19 +61,26 @@ LL |     let x: bar;
    = note: a function named `bar` exists in another namespace
 
 error[E0573]: cannot find type `x` in this scope
-  --> $DIR/let-binding-init-expr-as-ty.rs:40:12
+  --> $DIR/let-binding-init-expr-as-ty.rs:51:12
    |
-LL | struct K(S::new(()));
-   | --------------------- similarly named struct `K` defined here
-...
 LL |     let x: x;
-   |            ^
+   |            ^ not found in this scope
    |
    = note: a local variable named `x` exists in another namespace
+note: similarly named struct `K` defined here
+  --> $DIR/let-binding-init-expr-as-ty.rs:18:1
+   |
+LL | struct K(S::new(()));
+   | ^^^^^^^^^^^^^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL -     let x: x;
 LL +     let x: K;
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: x;
+LL +     let x = x;
    |
 
 error[E0658]: return type notation is experimental
@@ -158,7 +165,30 @@ LL -     let x: S::new(());
 LL +     let x = S::new(());
    |
 
-error: aborting due to 13 previous errors
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:32:12
+   |
+LL |     let x: vec![];
+   |            ^^^^^^
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: vec![];
+LL +     let x = vec![];
+   |
+
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:37:23
+   |
+LL |             let $pat: Vec::new();
+   |                       ^^^^^^^^^^
+...
+LL |     make!(_);
+   |     -------- in this macro invocation
+   |
+   = note: this error originates in the macro `make` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 15 previous errors
 
 Some errors have detailed explanations: E0573, E0658.
 For more information about an error, try `rustc --explain E0573`.

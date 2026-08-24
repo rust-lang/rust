@@ -252,8 +252,8 @@ impl Layout {
     ///
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
-    #[stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "layout_for_ptr", since = "1.99.0")]
+    #[rustc_const_stable(feature = "layout_for_ptr", since = "1.99.0")]
     #[must_use]
     #[inline]
     pub const unsafe fn for_value_raw<T: ?Sized>(val: *const T) -> Self {

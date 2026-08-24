@@ -473,6 +473,9 @@ impl<'a> LintExtractor<'a> {
         cmd.arg(format!("--edition={edition}"));
         // Just in case this is an unstable edition.
         cmd.arg("-Zunstable-options");
+        // FIXME(#160895): While the new solver is enabled by default on nightly,
+        // we don't want to use it in our tests for now.
+        cmd.arg("-Znext-solver=coherence");
         cmd.arg("--error-format=json");
         cmd.arg("--target").arg(self.rustc_target);
         if let Some(target_linker) = self.rustc_linker {

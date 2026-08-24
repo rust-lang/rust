@@ -1,11 +1,11 @@
-//! Implementation of [the WTF-8 encoding](https://simonsapin.github.io/wtf-8/).
+//! Implementation of [the WTF-8 encoding](https://wtf-8.codeberg.page/).
 //!
 //! This library uses Rust’s type system to maintain
-//! [well-formedness](https://simonsapin.github.io/wtf-8/#well-formed),
+//! [well-formedness](https://wtf-8.codeberg.page/#well-formed),
 //! like the `String` and `&str` types do for UTF-8.
 //!
 //! Since [WTF-8 must not be used
-//! for interchange](https://simonsapin.github.io/wtf-8/#intended-audience),
+//! for interchange](https://wtf-8.codeberg.page/#intended-audience),
 //! this library deliberately does not provide access to the underlying bytes
 //! of WTF-8 strings,
 //! nor can it decode WTF-8 from arbitrary bytes.
@@ -49,7 +49,9 @@ impl fmt::Debug for CodePoint {
 impl CodePoint {
     /// Unsafely creates a new `CodePoint` without checking the value.
     ///
-    /// Only use when `value` is known to be less than or equal to 0x10FFFF.
+    /// # Safety
+    ///
+    /// `value` must be less than or equal to 0x10FFFF.
     #[inline]
     pub unsafe fn from_u32_unchecked(value: u32) -> CodePoint {
         // SAFETY: Guaranteed by caller.
@@ -210,8 +212,9 @@ impl Wtf8 {
 
     /// Creates a WTF-8 slice from a WTF-8 byte slice.
     ///
-    /// Since the byte slice is not checked for valid WTF-8, this functions is
-    /// marked unsafe.
+    /// # Safety
+    ///
+    /// `value` must contain well-formed WTF-8.
     #[inline]
     pub unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
         // SAFETY: start with &[u8], end with fancy &[u8]
@@ -220,8 +223,9 @@ impl Wtf8 {
 
     /// Creates a mutable WTF-8 slice from a mutable WTF-8 byte slice.
     ///
-    /// Since the byte slice is not checked for valid WTF-8, this functions is
-    /// marked unsafe.
+    /// # Safety
+    ///
+    /// `value` must contain well-formed WTF-8.
     #[inline]
     pub unsafe fn from_mut_bytes_unchecked(value: &mut [u8]) -> &mut Wtf8 {
         // SAFETY: start with &mut [u8], end with fancy &mut [u8]

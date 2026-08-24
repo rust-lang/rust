@@ -26,7 +26,7 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::{
-    PrintPolyTraitPredicateExt, PrintPolyTraitRefExt as _, PrintTraitPredicateExt as _,
+    PrintPolyTraitClauseExt, PrintPolyTraitRefExt as _, PrintTraitClauseExt as _,
     PrintTraitRefExt as _, with_forced_trimmed_paths,
 };
 use rustc_middle::ty::{
@@ -865,9 +865,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // FIXME(const_trait_impl): We should recompute the clause with `[const]`
         // if it's `const`, and if it holds, explain that this bound only
         // *conditionally* holds.
-        let trait_ref = clause.map_bound(|clause| ty::TraitPredicate {
+        let trait_ref = clause.map_bound(|clause| ty::TraitClause {
             trait_ref: clause.trait_ref,
-            polarity: ty::PredicatePolarity::Positive,
+            polarity: ty::ClausePolarity::Positive,
         });
         let mut file = None;
 
@@ -980,7 +980,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn emit_specialized_closure_kind_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        mut trait_pred: ty::PolyTraitPredicate<'tcx>,
+        mut trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> Option<ErrorGuaranteed> {
         // If we end up on an `AsyncFnKindHelper` goal, try to unwrap the parent
         // `AsyncFn*` goal.
@@ -1097,7 +1097,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn detect_negative_literal(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         err: &mut Diag<'_>,
     ) -> bool {
         if let ObligationCauseCode::UnOp { hir_id, .. } = obligation.cause.code()
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn try_conversion_context(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         err: &mut Diag<'_>,
     ) -> (bool, bool) {
         let span = obligation.cause.span;
@@ -1343,7 +1343,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         self_ty: Ty<'_>,
         found_ty: Option<Ty<'_>>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         match (self_ty.kind(), found_ty) {
             (ty::Adt(def, _), Some(ty))
@@ -1492,8 +1492,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_trait(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        goal: ty::TraitPredicate<'tcx>,
-        assumption: ty::PolyTraitPredicate<'tcx>,
+        goal: ty::TraitClause<'tcx>,
+        assumption: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         // Fast path
         if goal.polarity != assumption.polarity() {
@@ -1537,8 +1537,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_projection(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        goal: ty::ProjectionPredicate<'tcx>,
-        assumption: ty::PolyProjectionPredicate<'tcx>,
+        goal: ty::ProjectionClause<'tcx>,
+        assumption: ty::PolyProjectionClause<'tcx>,
     ) -> bool {
         let assumption = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
@@ -1591,6 +1591,45 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         } else {
             false
         }
+    }
+
+    /// Whether `error`, a projection goal, only failed because the trait goal it rests on
+    /// did: `<T as Trait>::Assoc == U` cannot hold when `T: Trait` doesn't, so an error on
+    /// the latter says everything the former would.
+    pub(super) fn trait_error_implies_projection_error(
+        &self,
+        cond: Goal<'tcx, ty::Predicate<'tcx>>,
+        error: Goal<'tcx, ty::Predicate<'tcx>>,
+    ) -> bool {
+        if cond.param_env != error.param_env {
+            return false;
+        }
+        let Some(error) = error.predicate.as_projection_clause() else {
+            return false;
+        };
+
+        self.enter_forall(error, |error| {
+            if !error.projection_term.kind.is_trait_projection() {
+                return false;
+            }
+            let trait_pred = ty::TraitClause {
+                trait_ref: error.projection_term.trait_ref(self.tcx),
+                polarity: ty::ClausePolarity::Positive,
+            };
+            // Elaborating is what pairs a failing `C: FnMut(..)` with the
+            // `<C as FnOnce<..>>::Output` projection resting on it. A supertrait can hold
+            // while `cond` fails though, so the projection is only covered if its own trait
+            // goal is unproven too, otherwise it failed for its own reasons.
+            elaborate(self.tcx, std::iter::once(cond.predicate))
+                .filter_map(|implied| implied.as_trait_clause())
+                .any(|implied| self.can_match_trait(cond.param_env, trait_pred, implied))
+                && !self.predicate_must_hold_modulo_regions(&Obligation::new(
+                    self.tcx,
+                    ObligationCause::dummy(),
+                    cond.param_env,
+                    trait_pred,
+                ))
+        })
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2048,7 +2087,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub(super) fn find_similar_impl_candidates(
         &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>> {
         let mut candidates: Vec<_> = self
             .tcx
@@ -2080,7 +2119,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         impl_candidates: &[ImplCandidate<'tcx>],
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         body_def_id: LocalDefId,
         err: &mut Diag<'_>,
         other: bool,
@@ -2665,7 +2704,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_similar_impl_candidates_for_root_obligation(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        trait_predicate: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
+        trait_predicate: ty::Binder<'tcx, ty::TraitClause<'tcx>>,
         body_def_id: LocalDefId,
         err: &mut Diag<'_>,
     ) {
@@ -2733,7 +2772,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn check_same_trait_different_version(
         &self,
         err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         let get_trait_impls = |trait_def_id| {
             let mut trait_impls = vec![];
@@ -2770,11 +2809,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err.span_note(sp, crate_msg);
     }
 
-    fn note_adt_version_mismatch(
-        &self,
-        err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
-    ) {
+    fn note_adt_version_mismatch(&self, err: &mut Diag<'_>, trait_pred: ty::PolyTraitClause<'tcx>) {
         let ty::Adt(impl_self_def, _) = trait_pred.self_ty().skip_binder().peel_refs().kind()
         else {
             return;
@@ -2836,7 +2871,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         let mut suggested = false;
         let trait_def_id = trait_pred.def_id();
@@ -2873,7 +2908,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.tcx,
                     obligation.cause.clone(),
                     obligation.param_env,
-                    trait_pred.map_bound(|tr| ty::TraitPredicate {
+                    trait_pred.map_bound(|tr| ty::TraitClause {
                         trait_ref: ty::TraitRef::new(self.tcx, def_id, tr.trait_ref.args),
                         ..tr
                     }),
@@ -2898,7 +2933,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         if self.check_same_trait_different_version(err, trait_pred) {
             return true;
@@ -2919,7 +2954,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn mk_trait_obligation_with_new_self_ty(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitPredicate<'tcx>, Ty<'tcx>)>,
+        trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitClause<'tcx>, Ty<'tcx>)>,
     ) -> PredicateObligation<'tcx> {
         let trait_pred = trait_ref_and_ty
             .map_bound(|(tr, new_self_ty)| tr.with_replaced_self_ty(self.tcx, new_self_ty));
@@ -3050,7 +3085,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn get_standard_error_message(
         &self,
-        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        trait_predicate: ty::PolyTraitClause<'tcx>,
         predicate_constness: Option<ty::BoundConstness>,
         post_message: String,
         long_ty_path: &mut Option<PathBuf>,
@@ -3067,9 +3102,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn select_transmute_obligation_for_reporting(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        trait_predicate: ty::PolyTraitClause<'tcx>,
         root_obligation: &PredicateObligation<'tcx>,
-    ) -> (PredicateObligation<'tcx>, ty::PolyTraitPredicate<'tcx>) {
+    ) -> (PredicateObligation<'tcx>, ty::PolyTraitClause<'tcx>) {
         if obligation.predicate.has_non_region_param() || obligation.has_non_region_infer() {
             return (obligation.clone(), trait_predicate);
         }
@@ -3114,7 +3149,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn get_safe_transmute_error_and_reason(
         &self,
         obligation: PredicateObligation<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         span: Span,
     ) -> GetSafeTransmuteErrorAndReason {
         use rustc_transmute::Answer;
@@ -3299,7 +3334,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.tcx,
             ObligationCause::dummy(),
             param_env,
-            ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Positive },
+            ty::TraitClause { trait_ref, polarity: ty::ClausePolarity::Positive },
         );
 
         self.predicate_must_hold_modulo_regions(&obligation)
@@ -3329,7 +3364,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         root_obligation: &PredicateObligation<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        trait_predicate: ty::PolyTraitClause<'tcx>,
         err: &mut Diag<'_>,
         span: Span,
         is_fn_trait: bool,
@@ -3372,13 +3407,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && self.tcx.trait_impls_of(trait_def_id).is_empty()
             && !self.tcx.trait_is_auto(trait_def_id)
             && !self.tcx.trait_is_alias(trait_def_id)
-            && trait_predicate.polarity() == ty::PredicatePolarity::Positive
+            && trait_predicate.polarity() == ty::ClausePolarity::Positive
         {
             err.span_help(
                 self.tcx.def_span(trait_def_id),
                 msg!("this trait has no implementations, consider adding one"),
             );
-        } else if !suggested && trait_predicate.polarity() == ty::PredicatePolarity::Positive {
+        } else if !suggested && trait_predicate.polarity() == ty::ClausePolarity::Positive {
             // Can't show anything else useful, try to find similar impls.
             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
             if !self.report_similar_impl_candidates(
@@ -3413,7 +3448,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn add_help_message_for_fn_trait(
         &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         err: &mut Diag<'_>,
         implemented_kind: ty::ClosureKind,
         params: ty::Binder<'tcx, Ty<'tcx>>,
@@ -3845,7 +3880,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: ty::Binder<'tcx, Ty<'tcx>>,
-        polarity: ty::PredicatePolarity,
+        polarity: ty::ClausePolarity,
     ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
         self.commit_if_ok(|_| {
             for trait_def_id in [
@@ -3863,7 +3898,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.tcx,
                     ObligationCause::dummy(),
                     param_env,
-                    ty.rebind(ty::TraitPredicate { trait_ref, polarity }),
+                    ty.rebind(ty::TraitClause { trait_ref, polarity }),
                 );
                 let ocx = ObligationCtxt::new(self);
                 ocx.register_obligation(obligation);

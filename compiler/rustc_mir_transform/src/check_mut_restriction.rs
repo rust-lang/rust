@@ -1,3 +1,4 @@
+use rustc_hir::def::{CtorOf, DefKind};
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
@@ -32,6 +33,40 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         self.mutating_span = statement.source_info.span;
         self.super_statement(statement, location);
+    }
+
+    // Tuple constructors used as values can bypass field mut restrictions if not checked here.
+    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
+        if let ty::FnDef(def_id, _) = *constant.const_.ty().kind()
+            && let DefKind::Ctor(ctor_of, _) = self.tcx.def_kind(def_id)
+        {
+            let body_did = self.body.source.instance.def_id();
+            let adt_did = match ctor_of {
+                CtorOf::Struct => self.tcx.parent(def_id),
+                CtorOf::Variant => self.tcx.parent(self.tcx.parent(def_id)),
+            };
+            let adt = self.tcx.adt_def(adt_did);
+            let variant = match ctor_of {
+                CtorOf::Struct => adt.non_enum_variant(),
+                CtorOf::Variant => adt.variant_with_ctor_id(def_id),
+            };
+
+            let mut_restriction =
+                variant.fields.iter().fold(ty::RestrictionKind::Unrestricted, |acc, field| {
+                    acc.stricter_of(field.mut_restriction, self.tcx)
+                });
+            if !mut_restriction.is_allowed_in(body_did, self.tcx) {
+                self.tcx.dcx().emit_err(diagnostics::ConstructionOfTyWithMutRestrictedField {
+                    construction_span: constant.span,
+                    restriction_span: mut_restriction.expect_span(),
+                    name: variant.name,
+                    descr: adt.variant_descr(),
+                    restriction_path: mut_restriction.restriction_path(self.tcx),
+                });
+            }
+        }
+
+        self.super_const_operand(constant, location);
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {

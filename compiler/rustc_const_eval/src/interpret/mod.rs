@@ -29,6 +29,7 @@ pub use self::intern::{
     HasStaticRootDefId, InternError, InternKind, intern_const_alloc_for_constprop,
     intern_const_alloc_recursive,
 };
+pub use self::intrinsics::VarArgCompatible;
 pub use self::machine::{
     AllocMap, Machine, MayLeak, RetagMode, ReturnAction, compile_time_machine,
 };

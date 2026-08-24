@@ -5,7 +5,7 @@ mod opaque_types;
 
 use rustc_type_ir::search_graph::LowerAvailableDepth;
 use rustc_type_ir::solve::QueryResultOrRerunNonErased;
-use rustc_type_ir::{self as ty, Interner, ProjectionPredicate};
+use rustc_type_ir::{self as ty, Interner, ProjectionClause};
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -21,7 +21,7 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn compute_projection_goal(
         &mut self,
-        goal: Goal<I, ProjectionPredicate<I>>,
+        goal: Goal<I, ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         match goal.predicate.projection_term.kind {
             ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
@@ -42,9 +42,9 @@ where
 
     fn normalize_associated_term(
         &mut self,
-        goal: Goal<I, ProjectionPredicate<I>>,
+        goal: Goal<I, ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let ty::ProjectionPredicate { projection_term: alias, term } = goal.predicate;
+        let ty::ProjectionClause { projection_term: alias, term } = goal.predicate;
         let unconstrained_term = self.next_term_infer_of_alias_kind(alias);
         let normalizes_to =
             goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });

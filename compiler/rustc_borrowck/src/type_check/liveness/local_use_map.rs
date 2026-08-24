@@ -1,4 +1,5 @@
 use rustc_index::IndexVec;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
@@ -97,9 +98,11 @@ impl LocalUseMap {
             return local_use_map;
         }
 
-        let mut locals_with_use_data: IndexVec<Local, bool> =
-            IndexVec::from_elem(false, &body.local_decls);
-        live_locals.iter().for_each(|&local| locals_with_use_data[local] = true);
+        let mut locals_with_use_data: DenseBitSet<Local> =
+            DenseBitSet::new_empty(body.local_decls.len());
+        live_locals.iter().for_each(|&local| {
+            locals_with_use_data.insert(local);
+        });
 
         LocalUseMapBuild { local_use_map: &mut local_use_map, location_map, locals_with_use_data }
             .visit_body(body);
@@ -134,12 +137,12 @@ struct LocalUseMapBuild<'me> {
     // obtained the same information from `live_locals` but we want to
     // avoid repeatedly calling `Vec::contains()` (see `LocalUseMap` for
     // the rationale on the time-memory trade-off we're favoring here).
-    locals_with_use_data: IndexVec<Local, bool>,
+    locals_with_use_data: DenseBitSet<Local>,
 }
 
 impl Visitor<'_> for LocalUseMapBuild<'_> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
-        if self.locals_with_use_data[local]
+        if self.locals_with_use_data.contains(local)
             && let Some(def_use) = def_use::categorize(context)
         {
             let first_appearance = match def_use {

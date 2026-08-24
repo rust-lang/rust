@@ -8,10 +8,9 @@ use rustc_errors::Applicability;
 use rustc_hir::ExprKind::{Binary, Lit, MethodCall};
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{BinOpKind, Expr};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
 use rustc_middle::ty::{Ty, UintTy};
-use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {

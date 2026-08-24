@@ -1,0 +1,24 @@
+error: cannot use `Self` in const parameter type
+  --> $DIR/ban-self-when-feature-not-enabled.rs:8:21
+   |
+LL |     fn foo<const N: Self>() {}
+   |                     ^^^^
+   |
+   = help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable `Self` as a const parameter type
+
+error[E0053]: associated function `foo` has an incompatible generic parameter for trait `MyTrait`
+  --> $DIR/ban-self-when-feature-not-enabled.rs:8:12
+   |
+LL | trait MyTrait {
+   |       -------
+LL |     fn foo<const N: i32>();
+   |            ------------ expected const parameter of type `i32`
+...
+LL | impl MyTrait for i32 {
+   | --------------------
+LL |     fn foo<const N: Self>() {}
+   |            ^^^^^^^^^^^^^ found const parameter of type `{type error}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

@@ -488,6 +488,7 @@ fn main() {
     fn legacy_const_generics() {
         check_diagnostics(
             r#"
+//- minicore: unary_ops, builtin_impls
 #[rustc_legacy_const_generics(1, 3)]
 fn mixed<const N1: &'static str, const N2: bool>(
     _a: u8,

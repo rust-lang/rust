@@ -1,6 +1,6 @@
 use rustc_ast::BorrowKind;
 use rustc_hir::{Expr, ExprKind, TyKind};
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 
 use crate::diagnostics::{RawBorrowViaReference, RawBorrowViaReferenceSuggestion};
 use crate::{LateContext, LateLintPass, LintContext};

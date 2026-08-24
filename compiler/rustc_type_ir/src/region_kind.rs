@@ -8,7 +8,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use rustc_type_ir_macros::GenericTypeVisitable;
 
 use self::RegionKind::*;
-use crate::{BoundRegion, BoundVarIndexKind, Interner, PlaceholderRegion};
+use crate::{BoundRegion, BoundVarIndexKind, Interner, LateParamRegion, PlaceholderRegion};
 
 rustc_index::newtype_index! {
     /// A **region** **v**ariable **ID**.
@@ -164,7 +164,7 @@ pub enum RegionKind<I: Interner> {
     ///
     /// See <https://rustc-dev-guide.rust-lang.org/early_late_parameters.html> for
     /// more info about early and late bound lifetime parameters.
-    ReLateParam(I::LateParamRegion),
+    ReLateParam(LateParamRegion<I>),
 
     /// Static data that has an "infinite" lifetime. Bottom in the region lattice.
     ReStatic,
@@ -221,7 +221,6 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 impl<I: Interner> StableHash for RegionKind<I>
 where
     I::EarlyParamRegion: StableHash,
-    I::LateParamRegion: StableHash,
     I::DefId: StableHash,
     I::Symbol: StableHash,
 {

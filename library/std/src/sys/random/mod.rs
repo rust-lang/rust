@@ -11,7 +11,7 @@ cfg_select! {
     target_vendor = "apple" => {
         mod apple;
         pub use apple::fill_bytes;
-    // Others, in alphabetical ordering.
+        // Others, in alphabetical ordering.
     }
     any(
         target_os = "dragonfly",
@@ -49,12 +49,7 @@ cfg_select! {
         mod getrandom;
         pub use getrandom::fill_bytes;
     }
-    any(
-        target_os = "aix",
-        target_os = "hurd",
-        target_os = "nto",
-        target_os = "qnx",
-    ) => {
+    any(target_os = "aix", target_os = "hurd", target_os = "nto", target_os = "qnx") => {
         mod unix_legacy;
         pub use unix_legacy::fill_bytes;
     }

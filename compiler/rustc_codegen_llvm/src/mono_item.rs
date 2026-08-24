@@ -11,7 +11,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
-use rustc_session::config::CrateType;
+use rustc_structures::CrateType;
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{Arch, RelocModel};
 use tracing::debug;

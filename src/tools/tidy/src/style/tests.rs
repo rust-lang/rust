@@ -17,7 +17,7 @@ fn tidy_style_check(contents: &str) -> Vec<String> {
     let path = Path::new("/");
     let tidy_ctx = TidyCtx::new(path, false, None, TidyFlags::new(true));
     let mut check = tidy_ctx.start_check(CheckId::new("style").path(path));
-    check_file_style(&mut check, &path.join("test.rs"), contents);
+    check_file_style(path, &mut check, &path.join("test.rs"), contents);
 
     check.get_errors()
 }

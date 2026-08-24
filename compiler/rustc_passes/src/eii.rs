@@ -8,7 +8,7 @@ use rustc_hir::attrs::{EiiDecl, EiiImpl};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::diagnostics::DuplicateEiiImpls;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::CrateType;
+use rustc_structures::CrateType;
 
 use crate::diagnostics::EiiWithoutImpl;
 

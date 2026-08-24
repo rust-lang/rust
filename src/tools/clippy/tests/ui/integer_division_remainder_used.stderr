@@ -55,5 +55,17 @@ error: use of `/` has been disallowed in this context
 LL |     let i = a / &4;
    |             ^^^^^^
 
-error: aborting due to 9 previous errors
+error: use of `/` has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:43:5
+   |
+LL |     j /= 2;
+   |     ^^^^^^
+
+error: use of `%` has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:45:5
+   |
+LL |     j %= 3;
+   |     ^^^^^^
+
+error: aborting due to 11 previous errors
 

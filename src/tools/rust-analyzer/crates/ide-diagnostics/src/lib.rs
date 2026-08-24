@@ -85,6 +85,7 @@ mod handlers {
     pub(crate) mod type_mismatch;
     pub(crate) mod type_must_be_known;
     pub(crate) mod typed_hole;
+    pub(crate) mod unary_operator_cannot_be_applied;
     pub(crate) mod undeclared_label;
     pub(crate) mod unimplemented_builtin_macro;
     pub(crate) mod unimplemented_trait;
@@ -437,6 +438,7 @@ pub fn semantic_diagnostics(
         let d = match diag {
             AnyDiagnostic::AwaitOutsideOfAsync(d) => handlers::await_outside_of_async::await_outside_of_async(&ctx, &d),
             AnyDiagnostic::CannotBeDereferenced(d) => handlers::cannot_be_dereferenced::cannot_be_dereferenced(&ctx, &d),
+            AnyDiagnostic::UnaryOperatorCannotBeApplied(d) => handlers::unary_operator_cannot_be_applied::unary_operator_cannot_be_applied(&ctx, &d),
             AnyDiagnostic::CannotImplicitlyDerefTraitObject(d) => handlers::cannot_implicitly_deref_trait_object::cannot_implicitly_deref_trait_object(&ctx, &d),
             AnyDiagnostic::CannotIndexInto(d) => handlers::cannot_index_into::cannot_index_into(&ctx, &d),
             AnyDiagnostic::CastToUnsized(d) => handlers::invalid_cast::cast_to_unsized(&ctx, &d),

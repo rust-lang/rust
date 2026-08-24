@@ -1,3 +1,14 @@
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unreachable,
+    clippy::unimplemented,
+    reason = "TLS accesses must not call the global allocator, including via panic (#160930)"
+)]
+
 mod sync_bitset;
 
 use self::sync_bitset::*;
@@ -31,11 +42,11 @@ pub struct Key(NonZero<usize>);
 
 impl Key {
     fn to_index(self) -> usize {
-        self.0.get() - 1
+        self.0.get().wrapping_sub(1)
     }
 
     fn from_index(index: usize) -> Self {
-        Key(NonZero::new(index + 1).unwrap())
+        Key(rtunwrap!(Some, NonZero::new(index.wrapping_add(1))))
     }
 
     pub fn as_usize(self) -> usize {
@@ -43,7 +54,7 @@ impl Key {
     }
 
     pub fn from_usize(index: usize) -> Self {
-        Key(NonZero::new(index).unwrap())
+        Key(rtunwrap!(Some, NonZero::new(index)))
     }
 }
 
@@ -61,7 +72,7 @@ impl<'a> Drop for ActiveTls<'a> {
         let value_with_destructor = |key: usize| {
             let ptr = TLS_DESTRUCTOR[key].load(Ordering::Relaxed);
             unsafe { mem::transmute::<_, Option<unsafe extern "C" fn(*mut u8)>>(ptr) }
-                .map(|dtor| (&self.tls.data[key], dtor))
+                .map(|dtor| (self.tls.data_index(key), dtor))
         };
 
         let mut any_non_null_dtor = true;
@@ -94,27 +105,32 @@ impl Tls {
         unsafe { &*(get_tls_ptr() as *const Tls) }
     }
 
+    fn data_index(&self, idx: usize) -> &Cell<*mut u8> {
+        rtunwrap!(Some, self.data.get(idx))
+    }
+
     pub fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
         let index = if let Some(index) = TLS_KEY_IN_USE.set() {
             index
         } else {
             rtabort!("TLS limit exceeded")
         };
-        TLS_DESTRUCTOR[index].store(dtor.map_or(0, |f| f as usize), Ordering::Relaxed);
-        unsafe { Self::current() }.data[index].set(ptr::null_mut());
+        rtunwrap!(Some, TLS_DESTRUCTOR.get(index))
+            .store(dtor.map_or(0, |f| f as usize), Ordering::Relaxed);
+        unsafe { Self::current() }.data_index(index).set(ptr::null_mut());
         Key::from_index(index)
     }
 
     pub fn set(key: Key, value: *mut u8) {
         let index = key.to_index();
         rtassert!(TLS_KEY_IN_USE.get(index));
-        unsafe { Self::current() }.data[index].set(value);
+        unsafe { Self::current() }.data_index(index).set(value);
     }
 
     pub fn get(key: Key) -> *mut u8 {
         let index = key.to_index();
         rtassert!(TLS_KEY_IN_USE.get(index));
-        unsafe { Self::current() }.data[index].get()
+        unsafe { Self::current() }.data_index(index).get()
     }
 
     pub fn destroy(key: Key) {

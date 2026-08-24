@@ -70,6 +70,12 @@ rustc_arena::declare_arena! {
                 Vec<rustc_middle::traits::query::OutlivesBound<'tcx>>
             >
         >,
+    mir_borrowck_implied_outlives_bounds:
+        rustc_middle::infer::canonical::Canonical<'tcx,
+            rustc_middle::infer::canonical::QueryResponse<'tcx,
+                rustc_middle::traits::query::MirBorrowckImpliedOutlivesBounds<'tcx>
+            >
+        >,
     dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
     candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
     autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,

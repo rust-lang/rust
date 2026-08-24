@@ -8,9 +8,8 @@ use rustc_hir::{
     Block, Body, ConstContext, Expr, ExprKind, FnRetTy, HirId, Lit, Pat, PatExpr, PatExprKind, PatKind, Stmt, StmtKind,
     StructTailExpr,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
-use rustc_session::declare_lint_pass;
 use std::iter;
 
 declare_clippy_lint! {

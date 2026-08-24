@@ -1,12 +1,12 @@
 use std::collections::hash_map::Entry;
+use std::mem;
 
-use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalVarKind, Flags, InferCtxtLike,
-    Interner, PlaceholderConst, PlaceholderType, Region, TypeFlags, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt,
+    self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalVarKind, CanonicalizerState,
+    Flags, InferCtxtLike, Interner, PlaceholderConst, PlaceholderType, Region, TypeFlags,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use thin_vec::ThinVec;
 
@@ -68,33 +68,12 @@ pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner
     canonicalize_mode: CanonicalizeMode,
 
     // Mutable fields.
-    variables: ThinVec<I::GenericArg>,
-    var_kinds: Vec<CanonicalVarKind<I>>,
-    variable_lookup_table: HashMap<I::GenericArg, usize>,
-    /// Maps each `sub_unification_table_root_var` to the index of the first
-    /// variable which used it.
-    ///
-    /// This means in case two type variables have the same sub relations root,
-    /// we set the `sub_root` of the second variable to the position of the first.
-    /// Otherwise the `sub_root` of each type variable is just its own position.
-    sub_root_lookup_table: HashMap<ty::TyVid, usize>,
-
-    /// We can simply cache based on the ty itself, because we use
-    /// `ty::BoundVarIndexKind::Canonical`.
-    cache: HashMap<I::Ty, I::Ty>,
+    state: CanonicalizerState<I>,
 }
 
 impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     fn new(delegate: &'a D, canonicalize_mode: CanonicalizeMode) -> Self {
-        Canonicalizer {
-            delegate,
-            canonicalize_mode,
-            variables: Default::default(),
-            variable_lookup_table: Default::default(),
-            sub_root_lookup_table: Default::default(),
-            var_kinds: Default::default(),
-            cache: Default::default(),
-        }
+        Canonicalizer { delegate, canonicalize_mode, state: delegate.obtain_canonicalizer_state() }
     }
 
     pub(super) fn canonicalize_response<T: TypeFoldable<I>>(
@@ -112,6 +91,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, _variables, var_kinds) = canonicalizer.finalize();
+
         Canonical { max_universe, var_kinds, value }
     }
 
@@ -137,17 +117,23 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             );
             let param_env = param_env.fold_with(&mut env_canonicalizer);
 
+            debug_assert!(env_canonicalizer.state.sub_root_lookup_table.is_empty());
+
+            // Transform the `env_canonicalizer` into the `rest_canonicalizer`, keeping some things
+            // and replacing others.
+            //
             // We do not reuse the cache as it may contain entries whose canonicalized
             // value contains `'static`. While we could alternatively handle this by
             // checking for `'static` when using cached entries, this does not
             // feel worth the effort. I do not expect that a `ParamEnv` will ever
             // contain large enough types for caching to be necessary.
-            debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
-            let rest_canonicalizer = Canonicalizer {
-                canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
-                cache: Default::default(),
-                ..env_canonicalizer
-            };
+            //
+            // We clear the cache rather than deleting it or replacing it with an empty cache. This
+            // lets the allocated capacity be reused later.
+            let mut rest_canonicalizer = env_canonicalizer;
+            rest_canonicalizer.canonicalize_mode =
+                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate);
+            rest_canonicalizer.state.cache.clear();
 
             (param_env, rest_canonicalizer)
         };
@@ -167,9 +153,16 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     let (param_env, rest_canonicalizer) = do_env_and_make_rest();
                     e.insert(CanonicalParamEnvCacheEntry {
                         param_env,
-                        variables: rest_canonicalizer.variables.clone(),
-                        var_kinds: rest_canonicalizer.var_kinds.clone(),
-                        variable_lookup_table: rest_canonicalizer.variable_lookup_table.clone(),
+                        variables: rest_canonicalizer.state.variables.clone(),
+                        var_kinds: rest_canonicalizer.state.var_kinds.clone(),
+                        // SAFETY: The iterated elements go straight back into a hashmap.
+                        #[allow(rustc::potential_query_instability)]
+                        variable_lookup_table: rest_canonicalizer
+                            .state
+                            .variable_lookup_table
+                            .iter()
+                            .map(|(&arg, &idx)| (arg, idx))
+                            .collect(),
                     });
                     (param_env, rest_canonicalizer)
                 }
@@ -180,9 +173,14 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         delegate,
                         CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
                     );
-                    rest_canonicalizer.variables.extend(e.variables.iter().copied());
-                    rest_canonicalizer.var_kinds.clone_from(&e.var_kinds);
-                    rest_canonicalizer.variable_lookup_table.clone_from(&e.variable_lookup_table);
+                    rest_canonicalizer.state.variables.extend(e.variables.iter().copied());
+                    rest_canonicalizer.state.var_kinds.extend(e.var_kinds.iter().copied());
+                    // SAFETY: The iterated elements go straight back into a hashmap.
+                    #[allow(rustc::potential_query_instability)]
+                    rest_canonicalizer
+                        .state
+                        .variable_lookup_table
+                        .extend(e.variable_lookup_table.iter().map(|(&arg, &idx)| (arg, idx)));
                     (e.param_env, rest_canonicalizer)
                 }
             })
@@ -238,22 +236,24 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         // results). So long as we have protection against the rare cases where the length reaches
         // 1000+ (e.g. `wg-grammar`).
         let arg = arg.into();
-        let idx = if self.variables.len() > 16 {
-            if self.variable_lookup_table.is_empty() {
-                self.variable_lookup_table.extend(self.variables.iter().copied().zip(0..));
+        let idx = if self.state.variables.len() > 16 {
+            if self.state.variable_lookup_table.is_empty() {
+                self.state
+                    .variable_lookup_table
+                    .extend(self.state.variables.iter().copied().zip(0..));
             }
 
-            *self.variable_lookup_table.entry(arg).or_insert_with(|| {
-                let var = self.variables.len();
-                self.variables.push(arg);
-                self.var_kinds.push(kind);
+            *self.state.variable_lookup_table.entry(arg).or_insert_with(|| {
+                let var = self.state.variables.len();
+                self.state.variables.push(arg);
+                self.state.var_kinds.push(kind);
                 var
             })
         } else {
-            self.variables.iter().position(|&v| v == arg).unwrap_or_else(|| {
-                let var = self.variables.len();
-                self.variables.push(arg);
-                self.var_kinds.push(kind);
+            self.state.variables.iter().position(|&v| v == arg).unwrap_or_else(|| {
+                let var = self.state.variables.len();
+                self.state.variables.push(arg);
+                self.state.var_kinds.push(kind);
                 var
             })
         };
@@ -263,21 +263,27 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
     fn get_or_insert_sub_root(&mut self, vid: ty::TyVid) -> ty::BoundVar {
         let root_vid = self.delegate.sub_unification_table_root_var(vid);
-        let idx =
-            *self.sub_root_lookup_table.entry(root_vid).or_insert_with(|| self.variables.len());
+        let idx = *self
+            .state
+            .sub_root_lookup_table
+            .entry(root_vid)
+            .or_insert_with(|| self.state.variables.len());
         ty::BoundVar::from(idx)
     }
 
-    fn finalize(self) -> (ty::UniverseIndex, ThinVec<I::GenericArg>, I::CanonicalVarKinds) {
-        let mut var_kinds = self.var_kinds;
+    fn finalize(mut self) -> (ty::UniverseIndex, ThinVec<I::GenericArg>, I::CanonicalVarKinds) {
         // See the rustc-dev-guide section about how we deal with universes
         // during canonicalization in the new solver.
         let max_universe = match self.canonicalize_mode {
             // All placeholders and vars are canonicalized in the root universe.
             CanonicalizeMode::Input { .. } => {
                 debug_assert!(
-                    var_kinds.iter().all(|var| var.universe() == ty::UniverseIndex::ROOT),
-                    "expected all vars to be canonicalized in root universe: {var_kinds:#?}"
+                    self.state
+                        .var_kinds
+                        .iter()
+                        .all(|var| var.universe() == ty::UniverseIndex::ROOT),
+                    "expected all vars to be canonicalized in root universe: {:#?}",
+                    self.state.var_kinds,
                 );
                 ty::UniverseIndex::ROOT
             }
@@ -286,22 +292,29 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             // information for placeholders and inference variables created inside
             // of the query.
             CanonicalizeMode::Response { max_input_universe } => {
-                for var in var_kinds.iter_mut() {
+                for var in self.state.var_kinds.iter_mut() {
                     let uv = var.universe();
                     let new_uv = ty::UniverseIndex::from(
                         uv.index().saturating_sub(max_input_universe.index()),
                     );
                     *var = var.with_updated_universe(new_uv);
                 }
-                var_kinds
+                self.state
+                    .var_kinds
                     .iter()
                     .map(|kind| kind.universe())
                     .max()
                     .unwrap_or(ty::UniverseIndex::ROOT)
             }
         };
-        let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&var_kinds);
-        (max_universe, self.variables, var_kinds)
+        let variables = mem::take(&mut self.state.variables);
+        let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&self.state.var_kinds);
+
+        // We have finished with this canonicalizer and can return its state to the delegate for
+        // later reuse.
+        self.delegate.release_canonicalizer_state(self.state);
+
+        (max_universe, variables, var_kinds)
     }
 
     fn inner_fold_ty(&mut self, t: I::Ty) -> I::Ty {
@@ -345,15 +358,21 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 }
             },
             ty::Placeholder(placeholder) => match self.canonicalize_mode {
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderTy(
-                    PlaceholderType::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
-                ),
+                CanonicalizeMode::Input { .. } => {
+                    CanonicalVarKind::PlaceholderTy(PlaceholderType::new_anon(
+                        ty::UniverseIndex::ROOT,
+                        self.state.variables.len().into(),
+                    ))
+                }
                 CanonicalizeMode::Response { .. } => CanonicalVarKind::PlaceholderTy(placeholder),
             },
             ty::Param(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input { .. } => CanonicalVarKind::PlaceholderTy(
-                    PlaceholderType::new_anon(ty::UniverseIndex::ROOT, self.variables.len().into()),
-                ),
+                CanonicalizeMode::Input { .. } => {
+                    CanonicalVarKind::PlaceholderTy(PlaceholderType::new_anon(
+                        ty::UniverseIndex::ROOT,
+                        self.state.variables.len().into(),
+                    ))
+                }
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {t:?}"),
             },
             ty::Bool
@@ -412,7 +431,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 CanonicalizeMode::Input(CanonicalizeInputKind::Predicate) => {
                     CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
                         ty::UniverseIndex::ROOT,
-                        self.variables.len().into(),
+                        self.state.variables.len().into(),
                     ))
                 }
                 CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
@@ -430,7 +449,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 CanonicalizeMode::Input(_) => {
                     CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
                         ty::UniverseIndex::ROOT,
-                        self.variables.len().into(),
+                        self.state.variables.len().into(),
                     ))
                 }
                 CanonicalizeMode::Response { .. } => return r,
@@ -440,7 +459,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 CanonicalizeMode::Input(_) => {
                     CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
                         ty::UniverseIndex::ROOT,
-                        self.variables.len().into(),
+                        self.state.variables.len().into(),
                     ))
                 }
                 CanonicalizeMode::Response { .. } => {
@@ -452,7 +471,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 CanonicalizeMode::Input(_) => {
                     CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
                         ty::UniverseIndex::ROOT,
-                        self.variables.len().into(),
+                        self.state.variables.len().into(),
                     ))
                 }
                 CanonicalizeMode::Response { max_input_universe } => {
@@ -478,7 +497,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                     CanonicalizeMode::Input(_) => {
                         CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
                             ty::UniverseIndex::ROOT,
-                            self.variables.len().into(),
+                            self.state.variables.len().into(),
                         ))
                     }
                     CanonicalizeMode::Response { .. } => {
@@ -496,12 +515,12 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         if !t.flags().intersects(NEEDS_CANONICAL) {
             t
-        } else if let Some(&ty) = self.cache.get(&t) {
+        } else if let Some(&ty) = self.state.cache.get(&t) {
             ty
         } else {
             let res = self.inner_fold_ty(t);
-            let old = self.cache.insert(t, res);
-            assert_eq!(old, None);
+            let is_unseen = self.state.cache.insert(t, res);
+            assert!(is_unseen);
             res
         }
     }
@@ -535,7 +554,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 CanonicalizeMode::Input { .. } => {
                     CanonicalVarKind::PlaceholderConst(PlaceholderConst::new_anon(
                         ty::UniverseIndex::ROOT,
-                        self.variables.len().into(),
+                        self.state.variables.len().into(),
                     ))
                 }
                 CanonicalizeMode::Response { .. } => {
@@ -546,7 +565,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 CanonicalizeMode::Input { .. } => {
                     CanonicalVarKind::PlaceholderConst(PlaceholderConst::new_anon(
                         ty::UniverseIndex::ROOT,
-                        self.variables.len().into(),
+                        self.state.variables.len().into(),
                     ))
                 }
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {c:?}"),

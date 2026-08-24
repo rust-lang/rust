@@ -1572,7 +1572,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
         let right_root = left_root.split_off(key, (*self.alloc).clone());
 
-        let (new_left_len, right_len) = Root::calc_split_length(total_num, &left_root, &right_root);
+        let (new_left_len, right_len) = Root::calc_split_length(total_num, left_root, &right_root);
         self.length = new_left_len;
 
         BTreeMap {
@@ -2208,8 +2208,8 @@ impl<'a, K, V, R> ExtractIfInner<'a, K, V, R> {
             // On creation, we navigated directly to the left bound, so we need only check the
             // right bound here to decide whether to stop.
             match self.range.end_bound() {
-                Bound::Included(ref end) if (*k).le(end) => (),
-                Bound::Excluded(ref end) if (*k).lt(end) => (),
+                Bound::Included(end) if (*k).le(end) => (),
+                Bound::Excluded(end) if (*k).lt(end) => (),
                 Bound::Unbounded => (),
                 _ => return None,
             }

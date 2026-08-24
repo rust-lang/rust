@@ -1,10 +1,10 @@
 #[doc(keyword = "match")] //~ ERROR: `#[doc(keyword)]` is meant for internal use only
 /// wonderful
-mod foo {}
+const _: () = ();
 
 #[doc(attribute = "repr")] //~ ERROR: `#[doc(attribute)]` is meant for internal use only
 /// wonderful
-mod foo2 {}
+const _: () = ();
 
 trait Mine {}
 

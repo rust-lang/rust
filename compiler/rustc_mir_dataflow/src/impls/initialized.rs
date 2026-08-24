@@ -154,7 +154,9 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
             skip_unreachable_unwind: false,
         }
     }
+}
 
+impl<'tcx> MaybeInitializedPlaces<'_, 'tcx> {
     /// Ensures definitely inactive variants are excluded from the set of initialized places for
     /// blocks reached through an `otherwise` edge.
     pub fn exclude_inactive_in_otherwise(mut self) -> Self {
@@ -182,143 +184,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
             false
         }
     }
-}
 
-impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
-    fn move_data(&self) -> &MoveData<'tcx> {
-        self.move_data
-    }
-}
-
-/// `MaybeUninitializedPlaces` tracks all places that might be
-/// uninitialized upon reaching a particular point in the control flow
-/// for a function.
-///
-/// For example, in code like the following, we have corresponding
-/// dataflow information shown in the right-hand comments.
-///
-/// ```rust
-/// struct S;
-/// #[rustfmt::skip]
-/// fn foo(p: bool) {                           // maybe-uninit:
-///                                             // {a, b, c, d}
-///     let a = S; let mut b = S; let c; let d; // {      c, d}
-///
-///     if p {
-///         drop(a);                            // {a,    c, d}
-///         b = S;                              // {a,    c, d}
-///
-///     } else {
-///         drop(b);                            // {   b, c, d}
-///         d = S;                              // {   b, c   }
-///
-///     }                                       // {a, b, c, d}
-///
-///     c = S;                                  // {a, b,    d}
-/// }
-/// ```
-///
-/// To determine whether a place is *definitely* uninitialized at a
-/// particular control-flow point, one can take the set-complement
-/// of the data from `MaybeInitializedPlaces` at the corresponding
-/// control-flow point.
-///
-/// Similarly, at a given `drop` statement, the set-intersection
-/// between this data and `MaybeInitializedPlaces` yields the set of
-/// places that would require a dynamic drop-flag at that statement.
-pub struct MaybeUninitializedPlaces<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
-    move_data: &'a MoveData<'tcx>,
-
-    mark_inactive_variants_as_uninit: bool,
-    skip_unreachable_unwind: DenseBitSet<mir::BasicBlock>,
-}
-
-impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, move_data: &'a MoveData<'tcx>) -> Self {
-        MaybeUninitializedPlaces {
-            tcx,
-            body,
-            move_data,
-            mark_inactive_variants_as_uninit: false,
-            skip_unreachable_unwind: DenseBitSet::new_empty(body.basic_blocks.len()),
-        }
-    }
-
-    /// Causes inactive enum variants to be marked as "maybe uninitialized" after a switch on an
-    /// enum discriminant.
-    ///
-    /// This is correct in a vacuum but is not the default because it causes problems in the borrow
-    /// checker, where this information gets propagated along `FakeEdge`s.
-    pub fn mark_inactive_variants_as_uninit(mut self) -> Self {
-        self.mark_inactive_variants_as_uninit = true;
-        self
-    }
-
-    pub fn skipping_unreachable_unwind(
-        mut self,
-        unreachable_unwind: DenseBitSet<mir::BasicBlock>,
-    ) -> Self {
-        self.skip_unreachable_unwind = unreachable_unwind;
-        self
-    }
-}
-
-impl<'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
-    fn move_data(&self) -> &MoveData<'tcx> {
-        self.move_data
-    }
-}
-
-/// `EverInitializedPlaces` tracks all initializations of locals that may have
-/// occurred upon reaching a particular point in the control flow for a
-/// function, without an intervening `StorageDead`.
-///
-/// This dataflow is used to determine if an immutable local variable may
-/// be assigned to.
-///
-/// For example, in code like the following, we have corresponding
-/// dataflow information shown in the right-hand comments.
-///
-/// ```rust
-/// struct S;
-/// #[rustfmt::skip]
-/// fn foo(p: bool) {                           // ever-init:
-///                                             // {p,           }
-///     let a = S; let mut b = S; let c; let d; // {p, a, b,     }
-///
-///     if p {
-///         drop(a);                            // {p, a, b,     }
-///         b = S;                              // {p, a, b,     }
-///
-///     } else {
-///         drop(b);                            // {p, a, b,     }
-///         d = S;                              // {p, a, b,    d}
-///
-///     }                                       // {p, a, b,    d}
-///
-///     c = S;                                  // {p, a, b, c, d}
-/// }
-/// ```
-pub struct EverInitializedPlaces<'a, 'tcx> {
-    body: &'a Body<'tcx>,
-    move_data: &'a MoveData<'tcx>,
-}
-
-impl<'a, 'tcx> EverInitializedPlaces<'a, 'tcx> {
-    pub fn new(body: &'a Body<'tcx>, move_data: &'a MoveData<'tcx>) -> Self {
-        EverInitializedPlaces { body, move_data }
-    }
-}
-
-impl<'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'_, 'tcx> {
-    fn move_data(&self) -> &MoveData<'tcx> {
-        self.move_data
-    }
-}
-
-impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     fn update_bits(
         state: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
@@ -331,16 +197,9 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
-    fn update_bits(
-        state: &mut <Self as Analysis<'tcx>>::Domain,
-        path: MovePathIndex,
-        dfstate: DropFlagState,
-    ) {
-        match dfstate {
-            DropFlagState::Absent => state.gen_(path),
-            DropFlagState::Present => state.kill(path),
-        }
+impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
+    fn move_data(&self) -> &MoveData<'tcx> {
+        self.move_data
     }
 }
 
@@ -362,7 +221,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         *state =
             MaybeReachable::Reachable(MixedBitSet::new_empty(self.move_data().move_paths.len()));
         drop_flag_effects_for_function_entry(self.body, self.move_data, |path, s| {
-            assert!(s == DropFlagState::Present);
+            debug_assert!(s == DropFlagState::Present);
             state.gen_(path);
         });
     }
@@ -458,7 +317,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     fn apply_switch_int_edge_effect(
         &self,
         state: &mut Self::Domain,
-        data: &mut Self::SwitchIntData,
+        data: &Self::SwitchIntData,
         target_idx: SwitchTargetIndex,
     ) {
         let inactive_variants = match target_idx {
@@ -479,6 +338,100 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             &inactive_variants,
             |mpi| state.kill(mpi),
         );
+    }
+}
+
+/// `MaybeUninitializedPlaces` tracks all places that might be
+/// uninitialized upon reaching a particular point in the control flow
+/// for a function.
+///
+/// For example, in code like the following, we have corresponding
+/// dataflow information shown in the right-hand comments.
+///
+/// ```rust
+/// struct S;
+/// #[rustfmt::skip]
+/// fn foo(p: bool) {                           // maybe-uninit:
+///                                             // {a, b, c, d}
+///     let a = S; let mut b = S; let c; let d; // {      c, d}
+///
+///     if p {
+///         drop(a);                            // {a,    c, d}
+///         b = S;                              // {a,    c, d}
+///
+///     } else {
+///         drop(b);                            // {   b, c, d}
+///         d = S;                              // {   b, c   }
+///
+///     }                                       // {a, b, c, d}
+///
+///     c = S;                                  // {a, b,    d}
+/// }
+/// ```
+///
+/// To determine whether a place is *definitely* uninitialized at a
+/// particular control-flow point, one can take the set-complement
+/// of the data from `MaybeInitializedPlaces` at the corresponding
+/// control-flow point.
+///
+/// Similarly, at a given `drop` statement, the set-intersection
+/// between this data and `MaybeInitializedPlaces` yields the set of
+/// places that would require a dynamic drop-flag at that statement.
+pub struct MaybeUninitializedPlaces<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    body: &'a Body<'tcx>,
+    move_data: &'a MoveData<'tcx>,
+
+    mark_inactive_variants_as_uninit: bool,
+    skip_unreachable_unwind: DenseBitSet<mir::BasicBlock>,
+}
+
+impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, move_data: &'a MoveData<'tcx>) -> Self {
+        MaybeUninitializedPlaces {
+            tcx,
+            body,
+            move_data,
+            mark_inactive_variants_as_uninit: false,
+            skip_unreachable_unwind: DenseBitSet::new_empty(body.basic_blocks.len()),
+        }
+    }
+}
+
+impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
+    /// Causes inactive enum variants to be marked as "maybe uninitialized" after a switch on an
+    /// enum discriminant.
+    ///
+    /// This is correct in a vacuum but is not the default because it causes problems in the borrow
+    /// checker, where this information gets propagated along `FakeEdge`s.
+    pub fn mark_inactive_variants_as_uninit(mut self) -> Self {
+        self.mark_inactive_variants_as_uninit = true;
+        self
+    }
+
+    pub fn skipping_unreachable_unwind(
+        mut self,
+        unreachable_unwind: DenseBitSet<mir::BasicBlock>,
+    ) -> Self {
+        self.skip_unreachable_unwind = unreachable_unwind;
+        self
+    }
+
+    fn update_bits(
+        state: &mut <Self as Analysis<'tcx>>::Domain,
+        path: MovePathIndex,
+        dfstate: DropFlagState,
+    ) {
+        match dfstate {
+            DropFlagState::Absent => state.gen_(path),
+            DropFlagState::Present => state.kill(path),
+        }
+    }
+}
+
+impl<'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
+    fn move_data(&self) -> &MoveData<'tcx> {
+        self.move_data
     }
 }
 
@@ -504,7 +457,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         state.insert_all();
 
         drop_flag_effects_for_function_entry(self.body, self.move_data, |path, s| {
-            assert!(s == DropFlagState::Present);
+            debug_assert!(s == DropFlagState::Present);
             state.remove(path);
         });
     }
@@ -588,7 +541,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     fn apply_switch_int_edge_effect(
         &self,
         state: &mut Self::Domain,
-        data: &mut Self::SwitchIntData,
+        data: &Self::SwitchIntData,
         target_idx: SwitchTargetIndex,
     ) {
         let inactive_variants = match target_idx {
@@ -606,6 +559,115 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             &inactive_variants,
             |mpi| state.gen_(mpi),
         );
+    }
+}
+
+/// `EverInitializedPlaces` tracks all initializations of locals that may have
+/// occurred upon reaching a particular point in the control flow for a
+/// function, without an intervening `StorageDead`.
+///
+/// This dataflow is used to determine if an immutable local variable may
+/// be assigned to.
+///
+/// For example, in code like the following, we have corresponding
+/// dataflow information shown in the right-hand comments.
+///
+/// ```rust
+/// struct S;
+/// #[rustfmt::skip]
+/// fn foo(p: bool) {                           // ever-init:
+///                                             // {p,           }
+///     let a = S; let mut b = S; let c; let d; // {p, a, b,     }
+///
+///     if p {
+///         drop(a);                            // {p, a, b,     }
+///         b = S;                              // {p, a, b,     }
+///
+///     } else {
+///         drop(b);                            // {p, a, b,     }
+///         d = S;                              // {p, a, b,    d}
+///
+///     }                                       // {p, a, b,    d}
+///
+///     c = S;                                  // {p, a, b, c, d}
+/// }
+/// ```
+pub struct EverInitializedPlaces<'a, 'tcx> {
+    body: &'a Body<'tcx>,
+    move_data: &'a MoveData<'tcx>,
+}
+
+impl<'a, 'tcx> EverInitializedPlaces<'a, 'tcx> {
+    pub fn new(body: &'a Body<'tcx>, move_data: &'a MoveData<'tcx>) -> Self {
+        EverInitializedPlaces { body, move_data }
+    }
+}
+
+impl EverInitializedPlaces<'_, '_> {
+    /// Whether the init of `local` at `init` can reach `target` via a path that doesn't pass
+    /// through a `StorageDead(local)`. Mirrors the gen/kill structure of `EverInitializedPlaces`.
+    pub fn init_reaches_location(
+        body: &Body<'_>,
+        local: Local,
+        init: Init,
+        target: Location,
+    ) -> bool {
+        let init_loc = match init.location {
+            // Arguments are initialized on entry, and `StorageDead` is never emitted for them, so
+            // they reach every location.
+            InitLocation::Argument(_) => return true,
+            InitLocation::Statement(init_loc) => init_loc,
+        };
+
+        // Worklist of locations to walk forward from, seeded with the location(s) following `init`.
+        let mut queue = vec![];
+
+        let basic_blocks = &body.basic_blocks;
+        let init_block_data = &basic_blocks[init_loc.block];
+        if init_loc.statement_index < init_block_data.statements.len() {
+            // This case mirrors `apply_primary_statement_effect`.
+            queue.push(init_loc.successor_within_block());
+        } else if init.kind == InitKind::NonPanicPathOnly {
+            // This case mirrors `apply_call_return_effect`.
+            let TerminatorEdges::AssignOnReturn { return_, .. } =
+                init_block_data.terminator().edges()
+            else {
+                bug!("`NonPanicPathOnly` should only be seen on terminators with return edges");
+            };
+            queue.extend(return_.into_iter().map(BasicBlock::start_location));
+        } else {
+            // This case mirrors `apply_primary_terminator_effect`.
+            queue.extend(init_block_data.terminator().successors().map(BasicBlock::start_location));
+        }
+
+        let mut visited = FxIndexSet::default();
+        'outer: while let Some(loc) = queue.pop() {
+            if !visited.insert(loc) {
+                continue;
+            }
+            // Walk from `loc` to the end of its block, looking for `target` or a kill.
+            let block_data = &basic_blocks[loc.block];
+            for statement_index in loc.statement_index..=block_data.statements.len() {
+                if target == (Location { block: loc.block, statement_index }) {
+                    return true;
+                }
+                if let Some(stmt) = block_data.statements.get(statement_index)
+                    && let StatementKind::StorageDead(dead) = stmt.kind
+                    && dead == local
+                {
+                    continue 'outer;
+                }
+            }
+
+            queue.extend(block_data.terminator().successors().map(BasicBlock::start_location));
+        }
+        false
+    }
+}
+
+impl<'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'_, 'tcx> {
+    fn move_data(&self) -> &MoveData<'tcx> {
+        self.move_data
     }
 }
 
@@ -690,67 +752,5 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
                 None
             }
         }));
-    }
-}
-
-impl EverInitializedPlaces<'_, '_> {
-    /// Whether the init of `local` at `init` can reach `target` via a path that doesn't pass
-    /// through a `StorageDead(local)`. Mirrors the gen/kill structure of `EverInitializedPlaces`.
-    pub fn init_reaches_location(
-        body: &Body<'_>,
-        local: Local,
-        init: Init,
-        target: Location,
-    ) -> bool {
-        let init_loc = match init.location {
-            // Arguments are initialized on entry, and `StorageDead` is never emitted for them, so
-            // they reach every location.
-            InitLocation::Argument(_) => return true,
-            InitLocation::Statement(init_loc) => init_loc,
-        };
-
-        // Worklist of locations to walk forward from, seeded with the location(s) following `init`.
-        let mut queue = vec![];
-
-        let basic_blocks = &body.basic_blocks;
-        let init_block_data = &basic_blocks[init_loc.block];
-        if init_loc.statement_index < init_block_data.statements.len() {
-            // This case mirrors `apply_primary_statement_effect`.
-            queue.push(init_loc.successor_within_block());
-        } else if init.kind == InitKind::NonPanicPathOnly {
-            // This case mirrors `apply_call_return_effect`.
-            let TerminatorEdges::AssignOnReturn { return_, .. } =
-                init_block_data.terminator().edges()
-            else {
-                bug!("`NonPanicPathOnly` should only be seen on terminators with return edges");
-            };
-            queue.extend(return_.into_iter().map(BasicBlock::start_location));
-        } else {
-            // This case mirrors `apply_primary_terminator_effect`.
-            queue.extend(init_block_data.terminator().successors().map(BasicBlock::start_location));
-        }
-
-        let mut visited = FxIndexSet::default();
-        'outer: while let Some(loc) = queue.pop() {
-            if !visited.insert(loc) {
-                continue;
-            }
-            // Walk from `loc` to the end of its block, looking for `target` or a kill.
-            let block_data = &basic_blocks[loc.block];
-            for statement_index in loc.statement_index..=block_data.statements.len() {
-                if target == (Location { block: loc.block, statement_index }) {
-                    return true;
-                }
-                if let Some(stmt) = block_data.statements.get(statement_index)
-                    && let StatementKind::StorageDead(dead) = stmt.kind
-                    && dead == local
-                {
-                    continue 'outer;
-                }
-            }
-
-            queue.extend(block_data.terminator().successors().map(BasicBlock::start_location));
-        }
-        false
     }
 }

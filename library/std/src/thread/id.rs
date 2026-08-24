@@ -50,7 +50,12 @@ impl ThreadId {
                         exhausted();
                     };
 
-                    match COUNTER.compare_exchange_weak(last, id, Ordering::Relaxed, Ordering::Relaxed) {
+                    match COUNTER.compare_exchange_weak(
+                        last,
+                        id,
+                        Ordering::Relaxed,
+                        Ordering::Relaxed,
+                    ) {
                         Ok(_) => return ThreadId(NonZero::new(id).unwrap()),
                         Err(id) => last = id,
                     }

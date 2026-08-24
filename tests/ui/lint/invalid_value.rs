@@ -2,20 +2,24 @@
 // in a lint.
 #![allow(deprecated)]
 #![deny(invalid_value)]
-#![feature(never_type, rustc_attrs, pattern_types, pattern_type_macro)]
+#![feature(rustc_attrs, pattern_types, pattern_type_macro)]
 
 use std::mem::{self, MaybeUninit};
-use std::ptr::NonNull;
 use std::num::NonZero;
 use std::pat::pattern_type;
+use std::ptr::NonNull;
 
 enum Void {}
 
 struct Ref(&'static i32);
 struct RefPair((&'static i32, i32));
 
-struct Wrap<T> { wrapped: T }
-enum WrapEnum<T> { Wrapped(T) }
+struct Wrap<T> {
+    wrapped: T,
+}
+enum WrapEnum<T> {
+    Wrapped(T),
+}
 
 #[repr(transparent)]
 pub(crate) struct NonBig(pattern_type!(u64 is 0..=128));

@@ -92,10 +92,8 @@ fn main() {
     // Get the name of the crate we're compiling, if any.
     let crate_name = parse_value_from_args(&orig_args, "--crate-name");
 
-    // When statically linking `std` into `rustc_driver`, remove `-C prefer-dynamic`
-    if env::var("RUSTC_LINK_STD_INTO_RUSTC_DRIVER").unwrap() == "1"
-        && crate_name == Some("rustc_driver")
-    {
+    // When compiling `rustc_driver` remove `-C prefer-dynamic` to allow statically linking `std` into it
+    if crate_name == Some("rustc_driver") {
         if let Some(pos) = args.iter().enumerate().position(|(i, a)| {
             a == "-C" && args.get(i + 1).map(|a| a == "prefer-dynamic").unwrap_or(false)
         }) {

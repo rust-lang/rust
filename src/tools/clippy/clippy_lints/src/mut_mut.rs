@@ -2,9 +2,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::walk_span_to_context;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, AmbigArg, BorrowKind, Expr, ExprKind, HirId, Mutability, TyKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
 use rustc_span::ExpnKind;
 
 declare_clippy_lint! {

@@ -628,7 +628,7 @@ impl<'a> ExtCtxt<'a> {
                 binder: ast::ClosureBinder::NotPresent,
                 capture_clause: ast::CaptureBy::Ref,
                 constness: ast::Const::No,
-                coroutine_kind: None,
+                coroutine_marker: None,
                 movability: ast::Movability::Movable,
                 fn_decl,
                 body,

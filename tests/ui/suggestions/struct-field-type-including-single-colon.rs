@@ -18,9 +18,7 @@ struct Bar {
 // Issue #92685.
 struct Qux {
     c: Vec<foo:A>,
-    //~^ ERROR: struct takes at least 1 generic argument but 0 generic arguments were supplied
-    //~| ERROR: associated item constraints are not allowed here
-    //~| ERROR: cannot find trait `A` in this scope
+    //~^ ERROR: cannot find trait `A` in this scope
 }
 
 fn main() {}

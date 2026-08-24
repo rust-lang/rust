@@ -50,7 +50,7 @@ pub(crate) fn build_backend(
 
     CG_CLIF
         .target_dir(dirs)
-        .join(&bootstrap_host_compiler.triple)
+        .join(&bootstrap_host_compiler.target)
         .join("release")
         .join(get_file_name(&bootstrap_host_compiler.rustc, "rustc_codegen_cranelift", "dylib"))
 }

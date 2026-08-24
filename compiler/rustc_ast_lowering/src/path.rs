@@ -338,12 +338,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         } else {
                             None
                         };
-                        self.dcx().emit_err(GenericTypeWithParentheses { span: data.span, sub });
+                        let guar = self
+                            .dcx()
+                            .emit_err(GenericTypeWithParentheses { span: data.span, sub });
                         (
                             self.lower_angle_bracketed_parameter_data(
                                 &data.as_angle_bracketed_args(),
                                 param_mode,
-                                itctx,
+                                ImplTraitContext::AlreadyErrored(guar),
                             )
                             .0,
                             false,

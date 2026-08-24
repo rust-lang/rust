@@ -21,7 +21,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{
-    InterpErrorKind, InvalidMetaKind, Misalignment, Provenance, alloc_range, interp_ok,
+    InterpErrorKind, InvalidMetaKind, Misalignment, PointerArithmetic, Provenance, alloc_range,
+    interp_ok,
 };
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
@@ -529,7 +530,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         let tail = self.ecx.tcx.struct_tail_for_codegen(pointee.ty, self.ecx.typing_env);
         match tail.kind() {
             ty::Dynamic(data, _) => {
-                let vtable = meta.unwrap_meta().to_pointer(self.ecx)?;
+                let vtable = meta.unwrap_meta().to_pointer(self.ecx);
                 // Make sure it is a genuine vtable pointer for the right trait.
                 try_validation!(
                     self.ecx.get_ptr_vtable_ty(vtable, Some(data)),
@@ -653,9 +654,13 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             let scalar = Scalar::from_maybe_pointer(place.ptr(), self.ecx);
             // Skip this if we don't know the absolute address (during CTFE).
             if let Ok(addr) = scalar.try_to_scalar_int() {
-                // Try to compute the end address.
-                let addr = Size::from_bytes(addr.to_target_usize(*self.ecx.tcx));
-                if addr.checked_add(size, self.ecx).is_none() {
+                // Try to compute the end address. Cannot use `Size` addition as that also applies
+                // the "max obj size" bound.
+                let addr = Size::from_bytes(addr.to_target_usize(*self.ecx.tcx)).bytes();
+                if addr
+                    .checked_add(size.bytes())
+                    .is_none_or(|result| result >= self.ecx.target_usize_max())
+                {
                     throw_validation_failure!(
                         self.path,
                         format!(
@@ -925,7 +930,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
 
                 // If we check references recursively, also check that this points to a function.
                 if let Some(_) = self.ref_tracking {
-                    let ptr = scalar.to_pointer(self.ecx)?;
+                    let ptr = scalar.to_pointer(self.ecx);
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,

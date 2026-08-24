@@ -4,8 +4,7 @@ use clippy_utils::{is_expn_of, peel_blocks, sym};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::{Span, Spanned};
 
 declare_clippy_lint! {

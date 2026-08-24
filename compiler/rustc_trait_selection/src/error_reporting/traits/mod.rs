@@ -11,6 +11,7 @@ use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
@@ -21,6 +22,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
+use rustc_next_trait_solver::solve::TyOrConstInferVar;
 use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use thin_vec::ThinVec;
 use tracing::{info, instrument};
@@ -222,6 +224,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // We do this in 2 passes because we want to display errors in order, though
         // maybe it *is* better to sort errors by span or something.
         let mut is_suppressed = vec![false; errors.len()];
+        // A failing trait goal also fails every projection goal resting on it. Ambiguity
+        // errors are exempt: they get merged into a single diagnostic whose notes list all
+        // the constraints the annotation has to satisfy, so their projections still say
+        // something the trait error doesn't.
+        let covered_by_trait_error =
+            |cond: &ErrorDescriptor<'tcx>, error: &ErrorDescriptor<'tcx>| {
+                let is_definite = |error: &ErrorDescriptor<'tcx>| {
+                    error.index.is_some_and(|index| {
+                        !matches!(errors[index].code, FulfillmentErrorCode::Ambiguity { .. })
+                    })
+                };
+                is_definite(cond)
+                    && is_definite(error)
+                    && self.trait_error_implies_projection_error(cond.goal, error.goal)
+            };
         for (_, error_set) in error_map.iter() {
             // We want to suppress "duplicate" errors with the same span.
             for error in error_set {
@@ -237,9 +254,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             continue;
                         }
 
-                        if self.error_implies(error2.goal, error.goal)
+                        if (self.error_implies(error2.goal, error.goal)
                             && !(error2.index >= error.index
-                                && self.error_implies(error.goal, error2.goal))
+                                && self.error_implies(error.goal, error2.goal)))
+                            || covered_by_trait_error(error2, error)
                         {
                             info!("skipping {:?} (implied by {:?})", error, error2);
                             is_suppressed[index] = true;
@@ -250,12 +268,99 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
+        // Ambiguity errors blaming the same inference variable describe a single problem:
+        // annotating that one variable has to satisfy all of them at once. Reporting them
+        // separately loses all but the first, as the rest get canceled as duplicates once
+        // the `infcx` is tainted (see `maybe_report_ambiguity`), hiding their requirements
+        // from the user. Instead, report the first one (the sort above placed the most
+        // informative obligation first) and mention the requirements of the others in it.
+        //
+        // Type variables that are only related through a pending `Coerce` or `Subtype`
+        // obligation still concern the same annotation, so compare their sub-unification
+        // roots, like `need_type_info` does when looking for the annotation source.
+        let ambiguity_infer_var = |error: &FulfillmentError<'tcx>| match error.code {
+            FulfillmentErrorCode::Ambiguity { overflow: None } => self
+                .ambiguity_term(self.resolve_vars_if_possible(error.obligation.predicate))
+                .and_then(|term| {
+                    ty::GenericArg::from(term)
+                        .walk()
+                        .find_map(TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>)
+                })
+                .map(|var| match var {
+                    TyOrConstInferVar::Ty(vid) => {
+                        TyOrConstInferVar::Ty(self.sub_unification_table_root_var(vid))
+                    }
+                    other => other,
+                }),
+            _ => None,
+        };
+        let infer_vars: Vec<_> = errors.iter().map(ambiguity_infer_var).collect();
+
         let mut reported = None;
+        let mut merged = vec![None; errors.len()];
+        let mut reported_as_primary = vec![false; errors.len()];
         for from_expansion in [false, true] {
-            for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
+            for (index, (error, suppressed)) in iter::zip(&errors, &is_suppressed).enumerate() {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     if !error.references_error() {
-                        let guar = self.report_fulfillment_error(error);
+                        let guar = if let Some(guar) = merged[index] {
+                            guar
+                        } else {
+                            let group: Vec<usize> = match infer_vars[index] {
+                                Some(var) => (0..errors.len())
+                                    .filter(|&other| {
+                                        other != index && infer_vars[other] == Some(var)
+                                    })
+                                    .collect(),
+                                None => vec![],
+                            };
+                            // Only merge errors that a note on this diagnostic can fully
+                            // represent. An error blaming a different expression labels that
+                            // expression and suggests how to annotate it, and one whose
+                            // predicate we can't phrase as a note (e.g. const evaluatability)
+                            // says nothing here, so both keep their own error.
+                            let merges = |other: usize| {
+                                errors[other].obligation.cause.span == error.obligation.cause.span
+                                    && match errors[other].obligation.predicate.kind().skip_binder()
+                                    {
+                                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                                            !matches!(
+                                                self.tcx.as_lang_item(data.def_id()),
+                                                Some(
+                                                    LangItem::Sized
+                                                        | LangItem::MetaSized
+                                                        | LangItem::PointeeSized
+                                                )
+                                            )
+                                        }
+                                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
+                                            _,
+                                        )) => true,
+                                        _ => false,
+                                    }
+                            };
+                            let related: Vec<_> = group
+                                .iter()
+                                .filter(|&&other| {
+                                    // Exclude already-reported primaries: they were their own
+                                    // canonical error and adding them as notes here would
+                                    // produce duplicate information.
+                                    merges(other)
+                                        && !is_suppressed[other]
+                                        && !errors[other].references_error()
+                                        && !reported_as_primary[other]
+                                })
+                                .map(|&other| &errors[other])
+                                .collect();
+                            let guar = self.report_fulfillment_error(error, &related);
+                            for &other in &group {
+                                if merges(other) {
+                                    merged[other] = Some(guar);
+                                }
+                            }
+                            reported_as_primary[index] = true;
+                            guar
+                        };
                         self.infcx.set_tainted_by_errors(guar);
                         reported = Some(guar);
                         // We want to ignore desugarings here: spans are equivalent even
@@ -286,7 +391,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) -> ErrorGuaranteed {
+    fn report_fulfillment_error(
+        &self,
+        error: &FulfillmentError<'tcx>,
+        related: &[&FulfillmentError<'tcx>],
+    ) -> ErrorGuaranteed {
         let mut error = FulfillmentError {
             obligation: error.obligation.clone(),
             code: error.code.clone(),
@@ -310,8 +419,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             FulfillmentErrorCode::Project(ref e) => {
                 self.report_projection_error(&error.obligation, e)
             }
+            FulfillmentErrorCode::Outlives => self
+                .dcx()
+                .struct_span_err(
+                    error.obligation.cause.span,
+                    "higher-ranked lifetime bound could not be satisfied",
+                )
+                .emit(),
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
-                self.maybe_report_ambiguity(&error.obligation)
+                self.maybe_report_ambiguity(&error.obligation, related)
             }
             FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
                 self.report_overflow_no_abort(error.obligation.clone(), suggest_increasing_limit)

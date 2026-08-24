@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
-  --> $DIR/slice_of_empty.rs:9:11
+  --> $DIR/slice_of_empty.rs:8:11
    |
 LL |     match nevers {
    |           ^^^^^^ pattern `&[_, ..]` not covered
@@ -13,7 +13,7 @@ LL ~         &[_, ..] => todo!(),
    |
 
 error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
-  --> $DIR/slice_of_empty.rs:20:11
+  --> $DIR/slice_of_empty.rs:19:11
    |
 LL |     match nevers {
    |           ^^^^^^ patterns `&[]` and `&[_, _, ..]` not covered

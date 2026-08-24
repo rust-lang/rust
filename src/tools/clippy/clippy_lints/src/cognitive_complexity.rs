@@ -7,8 +7,7 @@ use clippy_utils::{LimitStack, get_async_fn_body, sym};
 use core::ops::ControlFlow;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Attribute, Body, Expr, ExprKind, FnDecl};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 

@@ -1,3 +1,5 @@
+//@ revisions: rlib dylib
+//@[dylib] needs-crate-type: dylib
 //@ aux-build: impl1.rs
 //@ aux-build: impl2.rs
 //@ ignore-backends: gcc

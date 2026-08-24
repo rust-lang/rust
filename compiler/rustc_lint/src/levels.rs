@@ -11,6 +11,13 @@ use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
+use rustc_lint_defs::builtin::{
+    self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
+    UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
+};
+use rustc_lint_defs::{
+    Level, Lint, LintExpectationId, LintId, StableLintExpectationId, UnstableLintExpectationId,
+};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
     LevelSpec, LintExpectation, LintLevelSource, ShallowLintLevelMap, StableLevelSpec,
@@ -19,13 +26,6 @@ use rustc_middle::lint::{
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
-use rustc_session::lint::builtin::{
-    self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
-    UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
-};
-use rustc_session::lint::{
-    Level, Lint, LintExpectationId, LintId, StableLintExpectationId, UnstableLintExpectationId,
-};
 use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 

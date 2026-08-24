@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::sym;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
 use rustc_span::Symbol;
 
 declare_clippy_lint! {
@@ -43,7 +42,11 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: 
                     Some(sym::mem_size_of | sym::mem_size_of_val)
                 )
             {
-                cx.typeck_results().node_args(count_func.hir_id).types().next()
+                cx.typeck_results()
+                    .node_args(count_func.hir_id)
+                    .iter()
+                    .next()
+                    .and_then(ty::GenericArg::as_type)
             } else {
                 None
             }

@@ -8,8 +8,8 @@ use rustc_infer::traits::PolyTraitObligation;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, PolyTraitPredicate, PredicatePolarity, SizedTraitKind, TraitPredicate, TraitRef, Ty,
-    TyCtxt, TypeFoldable, TypeVisitableExt, Unnormalized,
+    self, ClausePolarity, PolyTraitClause, SizedTraitKind, TraitClause, TraitRef, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, Unnormalized,
 };
 pub use rustc_next_trait_solver::placeholder::{BoundVarReplacer, PlaceholderReplacer};
 use rustc_span::Span;
@@ -35,8 +35,8 @@ pub fn expand_trait_aliases<'tcx>(
     tcx: TyCtxt<'tcx>,
     clauses: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
 ) -> (
-    Vec<(ty::PolyTraitPredicate<'tcx>, SmallVec<[Span; 1]>)>,
-    Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
+    Vec<(ty::PolyTraitClause<'tcx>, SmallVec<[Span; 1]>)>,
+    Vec<(ty::PolyProjectionClause<'tcx>, Span)>,
 ) {
     let mut trait_preds = vec![];
     let mut projection_preds = vec![];
@@ -227,7 +227,7 @@ pub fn sizedness_fast_path<'tcx>(
     // canonicalize and all that for such cases.
     if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) =
         predicate.kind().skip_binder()
-        && trait_pred.polarity == ty::PredicatePolarity::Positive
+        && trait_pred.polarity == ty::ClausePolarity::Positive
     {
         let sizedness = match tcx.as_lang_item(trait_pred.def_id()) {
             Some(LangItem::Sized) => SizedTraitKind::Sized,
@@ -243,7 +243,7 @@ pub fn sizedness_fast_path<'tcx>(
         if matches!(trait_pred.self_ty().kind(), ty::Param(_) | ty::Placeholder(_)) {
             for clause in param_env.caller_bounds() {
                 if let ty::ClauseKind::Trait(clause_pred) = clause.kind().skip_binder()
-                    && clause_pred.polarity == ty::PredicatePolarity::Positive
+                    && clause_pred.polarity == ty::ClausePolarity::Positive
                     && clause_pred.self_ty() == trait_pred.self_ty()
                     && (clause_pred.def_id() == trait_pred.def_id()
                         || (sizedness == SizedTraitKind::MetaSized
@@ -264,16 +264,16 @@ pub fn sizedness_fast_path<'tcx>(
 pub(crate) fn lazily_elaborate_sizedness_candidate<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: &PolyTraitObligation<'tcx>,
-    candidate: PolyTraitPredicate<'tcx>,
-) -> PolyTraitPredicate<'tcx> {
+    candidate: PolyTraitClause<'tcx>,
+) -> PolyTraitClause<'tcx> {
     if !infcx.tcx.is_lang_item(obligation.predicate.def_id(), LangItem::MetaSized)
         || !infcx.tcx.is_lang_item(candidate.def_id(), LangItem::Sized)
     {
         return candidate;
     }
 
-    if obligation.predicate.polarity() != PredicatePolarity::Positive
-        || candidate.polarity() != PredicatePolarity::Positive
+    if obligation.predicate.polarity() != ClausePolarity::Positive
+        || candidate.polarity() != ClausePolarity::Positive
     {
         return candidate;
     }
@@ -286,7 +286,7 @@ pub(crate) fn lazily_elaborate_sizedness_candidate<'tcx>(
         return candidate;
     }
 
-    candidate.map_bound(|c| TraitPredicate {
+    candidate.map_bound(|c| TraitClause {
         trait_ref: TraitRef::new_from_args(
             infcx.tcx,
             obligation.predicate.def_id(),

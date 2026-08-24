@@ -188,7 +188,6 @@ pub(crate) fn type_check<'tcx>(
             &mut converter,
             typeck.known_type_outlives_obligations,
             universal_region_relations.outlives.clone(),
-            infcx.tcx.def_span(infcx.root_def_id),
         );
     }
 
@@ -1850,7 +1849,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_clauses(
-                    args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),
+                    args.terms().map(|t| ty::ClauseKind::WellFormed(t.into())),
                     locations,
                     ConstraintCategory::Boring,
                 );

@@ -3,9 +3,9 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::find_attr;
+use rustc_lint_defs::declare_lint;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, TyCtxt};
-use rustc_session::declare_lint;
 use rustc_span::{Span, Symbol};
 use tracing::{debug, instrument};
 

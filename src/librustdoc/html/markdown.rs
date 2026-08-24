@@ -527,7 +527,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for TableWrapper<'a, I> {
         Some(match event {
             Event::Start(Tag::Table(t)) => {
                 self.stored_events.push_back(Event::Start(Tag::Table(t)));
-                Event::Html(CowStr::Borrowed("<div>"))
+                Event::Html(CowStr::Borrowed(r#"<div class="table">"#))
             }
             Event::End(TagEnd::Table) => {
                 self.stored_events.push_back(Event::Html(CowStr::Borrowed("</div>")));

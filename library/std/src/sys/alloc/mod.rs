@@ -64,12 +64,7 @@ unsafe fn realloc_fallback(ptr: *mut u8, old_layout: Layout, new_size: usize) ->
 }
 
 cfg_select! {
-    any(
-        target_family = "unix",
-        target_os = "wasi",
-        target_os = "teeos",
-        target_os = "trusty",
-    ) => {
+    any(target_family = "unix", target_os = "wasi", target_os = "teeos", target_os = "trusty") => {
         mod unix;
         use unix as imp;
     }
@@ -118,12 +113,7 @@ cfg_select! {
 pub use imp::{alloc, dealloc, realloc};
 
 cfg_select! {
-    any(
-        target_os = "hermit",
-        target_os = "solid_asp3",
-        target_os = "uefi",
-        target_os = "zkvm",
-    ) => {
+    any(target_os = "hermit", target_os = "solid_asp3", target_os = "uefi", target_os = "zkvm") => {
         #[inline]
         pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
             let ptr = unsafe { alloc(layout) };

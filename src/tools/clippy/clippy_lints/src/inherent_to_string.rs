@@ -5,8 +5,7 @@ use clippy_utils::{return_ty, trait_ref_of_method};
 use rustc_abi::ExternAbi;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::sym;
 
 declare_clippy_lint! {

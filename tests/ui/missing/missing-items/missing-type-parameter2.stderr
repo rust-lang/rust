@@ -29,12 +29,14 @@ LL | impl<T, const A: u8 = 2, const N: u8> X<N> {}
 error[E0425]: cannot find type `T` in this scope
   --> $DIR/missing-type-parameter2.rs:11:20
    |
-LL | struct X<const N: u8>();
-   | ------------------------ similarly named struct `X` defined here
-...
 LL | fn foo(_: T) where T: Send {}
-   |                    ^
+   |                    ^ not found in this scope
    |
+note: similarly named struct `X` defined here
+  --> $DIR/missing-type-parameter2.rs:1:1
+   |
+LL | struct X<const N: u8>();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL - fn foo(_: T) where T: Send {}
@@ -48,12 +50,14 @@ LL | fn foo<T>(_: T) where T: Send {}
 error[E0425]: cannot find type `T` in this scope
   --> $DIR/missing-type-parameter2.rs:11:11
    |
-LL | struct X<const N: u8>();
-   | ------------------------ similarly named struct `X` defined here
-...
 LL | fn foo(_: T) where T: Send {}
-   |           ^
+   |           ^ not found in this scope
    |
+note: similarly named struct `X` defined here
+  --> $DIR/missing-type-parameter2.rs:1:1
+   |
+LL | struct X<const N: u8>();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL - fn foo(_: T) where T: Send {}
@@ -67,12 +71,14 @@ LL | fn foo<T>(_: T) where T: Send {}
 error[E0425]: cannot find type `A` in this scope
   --> $DIR/missing-type-parameter2.rs:15:24
    |
-LL | struct X<const N: u8>();
-   | ------------------------ similarly named struct `X` defined here
-...
 LL | fn bar<const N: u8>(_: A) {}
-   |                        ^
+   |                        ^ not found in this scope
    |
+note: similarly named struct `X` defined here
+  --> $DIR/missing-type-parameter2.rs:1:1
+   |
+LL | struct X<const N: u8>();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL - fn bar<const N: u8>(_: A) {}

@@ -149,7 +149,7 @@ LL ~             ({ true } || { false } && { 2 <= 3 })
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:290:5
+  --> tests/ui/let_and_return.rs:308:5
    |
 LL |     let y = plus_one!(x);
    |     --------------------- unnecessary `let` binding

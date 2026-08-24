@@ -4,8 +4,7 @@ use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::adjust_derefs_manually_drop;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, Node, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does

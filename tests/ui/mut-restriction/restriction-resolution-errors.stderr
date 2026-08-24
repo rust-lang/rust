@@ -41,12 +41,14 @@ LL |             pub mut(in super::E) i6: i32,
 error[E0577]: expected module, found enum `crate::a::E`
   --> $DIR/restriction-resolution-errors.rs:33:16
    |
-LL |     pub mod b {
-   |     --------- similarly named module `b` defined here
-...
 LL |         mut(in crate::a::E) e2: i32,
-   |                ^^^^^^^^^^^
+   |                ^^^^^^^^^^^ not a module
    |
+note: similarly named module `b` defined here
+  --> $DIR/restriction-resolution-errors.rs:7:5
+   |
+LL |     pub mod b {
+   |     ^^^^^^^^^
 help: a module with a similar name exists
    |
 LL -         mut(in crate::a::E) e2: i32,

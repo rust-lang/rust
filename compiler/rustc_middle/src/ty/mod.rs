@@ -45,13 +45,13 @@ use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::{self as hir, MissingLifetimeKind, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
+pub use rustc_lint_defs::RegisteredTools;
 use rustc_macros::{
     BlobDecodable, Decodable, Encodable, StableHash, TyDecodable, TyEncodable, TypeFoldable,
     TypeVisitable, extension,
 };
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::OptLevel;
-pub use rustc_session::lint::RegisteredTools;
 use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
@@ -59,6 +59,7 @@ use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
+pub use rustc_type_ir::search_graph::RequiredDepth;
 pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind, VisibleForLeakCheck};
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
@@ -89,9 +90,9 @@ pub use self::predicate::{
     ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
     ExistentialTraitRef, HostEffectClause, NormalizesTo, OutlivesClause, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
-    PolyProjectionPredicate, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitPredicate,
-    PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionPredicate,
-    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SubtypePredicate, TraitPredicate,
+    PolyProjectionClause, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitClause,
+    PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionClause,
+    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SubtypePredicate, TraitClause,
     TraitRef, TypeOutlivesClause,
 };
 pub use self::region::{
@@ -1259,7 +1260,14 @@ impl<'tcx> TypingEnv<'tcx> {
         Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis())
     }
 
-    /// Ideally we just use `TypingMode::PostTypeckUntilBorrowck`.
+    /// The `TypingEnv` which should be for everything happens after HIR typeck
+    /// up-to and including borrowck itself.
+    pub fn post_typeck_until_borrowck(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> TypingEnv<'tcx> {
+        let param_env = tcx.param_env(def_id.to_def_id());
+        TypingEnv::new(param_env, ty::TypingMode::borrowck(tcx, def_id))
+    }
+
+    /// Ideally we just use `TypingMode::post_typeck_until_borrowck`.
     /// But that's not compatible with the old solver yet.
     ///
     /// FIXME: this should not be needed in the long term.

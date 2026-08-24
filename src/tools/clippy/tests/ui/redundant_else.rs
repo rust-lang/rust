@@ -1,6 +1,5 @@
 //@aux-build:proc_macros.rs
 
-#![feature(never_type)]
 #![warn(clippy::redundant_else)]
 #![expect(clippy::unnecessary_operation)]
 

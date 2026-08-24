@@ -365,7 +365,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
 
+#if LLVM_VERSION_LT(24, 0)
   Options.FloatABIType = FloatABIType;
+#endif
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
   Options.UniqueSectionNames = UniqueSectionNames;
@@ -439,7 +441,11 @@ extern "C" void LLVMRustAddLibraryInfo(LLVMTargetMachineRef T,
   if (DisableSimplifyLibCalls)
     TLII.disableAllFunctions();
   unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
-#if LLVM_VERSION_GE(22, 0)
+#if LLVM_VERSION_GE(24, 0)
+  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
+      Options->ExceptionModel, Options->EABIVersion, Options->MCOptions.ABIName,
+      Options->VecLib));
+#elif LLVM_VERSION_GE(22, 0)
   unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
       TargetTriple, Options->ExceptionModel, Options->FloatABIType,
       Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));

@@ -3,10 +3,9 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc_session;
+extern crate rustc_lint;
 
-use rustc_session::lint::{LintPass, LintVec};
-use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
+use rustc_lint::{LintPass, LintVec, declare_lint, declare_lint_pass, impl_lint_pass};
 
 declare_lint! {
     pub TEST_LINT,

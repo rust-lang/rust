@@ -501,8 +501,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 for i in 0..tupled_arg_tys.len() {
                     let arg = &fx.fn_abi.args[idx];
                     idx += 1;
-                    if let PassMode::Cast { pad_i32: true, .. } = arg.mode {
-                        llarg_idx += 1;
+                    if let PassMode::Cast { pad_i32_count, .. } = arg.mode {
+                        llarg_idx += usize::from(pad_i32_count);
                     }
                     let pr_field = place.project_field(bx, i);
                     bx.store_fn_arg(arg, &mut llarg_idx, pr_field);
@@ -529,8 +529,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let arg = &fx.fn_abi.args[idx];
             idx += 1;
-            if let PassMode::Cast { pad_i32: true, .. } = arg.mode {
-                llarg_idx += 1;
+            if let PassMode::Cast { pad_i32_count, .. } = arg.mode {
+                llarg_idx += usize::from(pad_i32_count);
             }
 
             if !memory_locals.contains(local) {

@@ -1,17 +1,17 @@
 error[E0080]: evaluation panicked: explicit panic
-  --> $DIR/panic-assoc-never-type.rs:10:21
+  --> $DIR/panic-assoc-never-type.rs:9:21
    |
 LL |     const VOID: ! = panic!();
    |                     ^^^^^^^^ evaluation of `PrintName::VOID` failed here
 
 note: erroneous constant encountered
-  --> $DIR/panic-assoc-never-type.rs:15:13
+  --> $DIR/panic-assoc-never-type.rs:14:13
    |
 LL |     let _ = PrintName::VOID;
    |             ^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/panic-assoc-never-type.rs:15:13
+  --> $DIR/panic-assoc-never-type.rs:14:13
    |
 LL |     let _ = PrintName::VOID;
    |             ^^^^^^^^^^^^^^^

@@ -6,8 +6,8 @@ use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, span_contains_non_whitespace};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, PatKind, StmtKind};
-use rustc_lint::{LateContext, LintContext as _};
+use rustc_hir::{Block, Expr, PatKind, Stmt, StmtKind};
+use rustc_lint::{LateContext, Level, LintContext as _};
 use rustc_middle::ty::GenericArgKind;
 use rustc_span::edition::Edition;
 
@@ -28,7 +28,7 @@ pub(super) fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>) 
         && !initexpr.span.in_external_macro(cx.sess().source_map())
         && !retexpr.span.in_external_macro(cx.sess().source_map())
         && !local.span.from_expansion()
-        && !span_contains_non_whitespace(cx, stmt.span.between(retexpr.span), false)
+        && has_lint_attrs_or_only_whitespace_between(cx, retexpr, stmt)
     {
         span_lint_hir_and_then(
             cx,
@@ -85,4 +85,17 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
         }
     })
     .is_some()
+}
+
+/// Returns true if the return expression has lint-level attributes,
+/// or if there is only whitespace between `let` and return expression.
+/// Non-lint attrs like `#[cfg]` should still block.
+fn has_lint_attrs_or_only_whitespace_between(cx: &LateContext<'_>, retexpr: &Expr<'_>, stmt: &Stmt<'_>) -> bool {
+    // TODO: Turn into find_attr! when lint level attr parsing is done.
+    let retexpr_attrs = cx.tcx.hir_attrs(retexpr.hir_id);
+
+    retexpr_attrs
+        .iter()
+        .any(|a| a.name().is_some_and(|name| Level::from_symbol(name).is_some()))
+        || !span_contains_non_whitespace(cx, stmt.span.between(retexpr.span), false)
 }

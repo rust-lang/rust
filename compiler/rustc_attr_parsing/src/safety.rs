@@ -1,9 +1,8 @@
 use rustc_ast::Safety;
 use rustc_attr_ir::AttrPath;
 use rustc_errors::{Diagnostic, MultiSpan};
-use rustc_lint_defs::builtin::UNSAFE_CODE;
-use rustc_session::lint::LintId;
-use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
+use rustc_lint_defs::LintId;
+use rustc_lint_defs::builtin::{UNSAFE_ATTR_OUTSIDE_UNSAFE, UNSAFE_CODE};
 use rustc_span::Span;
 
 use crate::attributes::AttributeSafety;

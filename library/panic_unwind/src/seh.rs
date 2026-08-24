@@ -47,6 +47,7 @@
 #![allow(nonstandard_style)]
 
 use alloc::boxed::Box;
+use alloc::panicking::PanicPayload;
 use core::any::Any;
 use core::ffi::{c_int, c_uint, c_void};
 use core::mem::ManuallyDrop;
@@ -290,16 +291,16 @@ macro_rules! define_cleanup {
     }
 }
 cfg_select! {
-   target_arch = "x86" => {
-       define_cleanup!("thiscall" "thiscall-unwind");
-   }
-   _ => {
-       define_cleanup!("C" "C-unwind");
-   }
+    target_arch = "x86" => {
+        define_cleanup!("thiscall" "thiscall-unwind");
+    }
+    _ => {
+        define_cleanup!("C" "C-unwind");
+    }
 }
 
-pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
-    unsafe { throw_exception(Some(data)) }
+pub(crate) fn panic(data: &mut dyn PanicPayload) -> u32 {
+    unsafe { throw_exception(Some(data.take_box())) }
 }
 
 unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
@@ -337,24 +338,24 @@ unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
     // express more operations in statics (and we may never be able to).
     unsafe {
         #[allow(function_casts_as_integer)]
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut THROW_INFO.pmfnUnwind).cast(),
             ptr_t::new(exception_cleanup as *mut u8).raw(),
         );
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut THROW_INFO.pCatchableTypeArray).cast(),
             ptr_t::new((&raw mut CATCHABLE_TYPE_ARRAY).cast()).raw(),
         );
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
             ptr_t::new((&raw mut CATCHABLE_TYPE).cast()).raw(),
         );
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut CATCHABLE_TYPE.pType).cast(),
             ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
         );
         #[allow(function_casts_as_integer)]
-        atomic_store::<_, { AtomicOrdering::SeqCst }>(
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ false>(
             (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
             ptr_t::new(exception_copy as *mut u8).raw(),
         );
@@ -370,13 +371,13 @@ unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
 }
 
 pub(crate) unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
+    // A null payload here means that we got here from the catch (...) of
+    // __rust_try. This happens when a non-Rust foreign exception is caught.
+    if payload.is_null() {
+        super::__rust_foreign_exception();
+    }
+    let exception = payload as *mut Exception;
     unsafe {
-        // A null payload here means that we got here from the catch (...) of
-        // __rust_try. This happens when a non-Rust foreign exception is caught.
-        if payload.is_null() {
-            super::__rust_foreign_exception();
-        }
-        let exception = payload as *mut Exception;
         let canary = (&raw const (*exception).canary).read();
         if !core::ptr::eq(canary, &raw const TYPE_DESCRIPTOR) {
             // A foreign Rust exception.

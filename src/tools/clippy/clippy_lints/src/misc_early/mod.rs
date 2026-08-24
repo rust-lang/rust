@@ -10,8 +10,7 @@ mod zero_prefixed_literal;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, Pat};
 use rustc_ast::token;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, declare_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {

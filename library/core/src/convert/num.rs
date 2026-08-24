@@ -7,6 +7,14 @@ pub impl(self) trait FloatToInt<Int>: Sized {
     #[unstable(feature = "convert_float_to_int", issue = "67057")]
     #[doc(hidden)]
     unsafe fn to_int_unchecked(self) -> Int;
+
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[doc(hidden)]
+    fn to_int_saturating(self) -> Int;
+
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[doc(hidden)]
+    fn to_int_checked(self) -> Option<Int>;
 }
 
 macro_rules! impl_float_to_int {
@@ -19,6 +27,24 @@ macro_rules! impl_float_to_int {
                     // SAFETY: the safety contract must be upheld by the caller.
                     unsafe { crate::intrinsics::float_to_int_unchecked(self) }
                 }
+                #[inline]
+                fn to_int_saturating(self) -> $Int {
+                    // `as` already saturates and maps `NaN` to zero.
+                    self as $Int
+                }
+                #[inline]
+                fn to_int_checked(self) -> Option<$Int> {
+                    // `as` truncates toward zero and these bounds are exact for
+                    // that: `MAX + 1` rounds up to the first out-of-range value,
+                    // and the `- MIN` offset keeps the low comparison exact even
+                    // when `MIN - 1` is not representable. `NaN` and infinities
+                    // fail both comparisons.
+                    if self - (<$Int>::MIN as $Float) > -1.0 && self < <$Int>::MAX as $Float + 1.0 {
+                        Some(self as $Int)
+                    } else {
+                        None
+                    }
+                }
             }
         )+
     }
@@ -28,6 +54,34 @@ impl_float_to_int!(f16 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i12
 impl_float_to_int!(f32 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 impl_float_to_int!(f64 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 impl_float_to_int!(f128 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+
+/// Supporting trait for the inherent `cast` method converting between float types.
+/// Typically doesn’t need to be used directly.
+#[unstable(feature = "float_conversions", issue = "159913")]
+pub impl(self) trait FloatToFloat<Flt>: Sized {
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[doc(hidden)]
+    fn cast(self) -> Flt;
+}
+
+macro_rules! impl_float_to_float {
+    ($Float:ty => $($Flt:ty),+) => {
+        $(
+            #[unstable(feature = "float_conversions", issue = "159913")]
+            impl FloatToFloat<$Flt> for $Float {
+                #[inline]
+                fn cast(self) -> $Flt {
+                    self as $Flt
+                }
+            }
+        )+
+    }
+}
+
+impl_float_to_float!(f16 => f16, f32, f64, f128);
+impl_float_to_float!(f32 => f16, f32, f64, f128);
+impl_float_to_float!(f64 => f16, f32, f64, f128);
+impl_float_to_float!(f128 => f16, f32, f64, f128);
 
 /// Implement `From<bool>` for integers
 macro_rules! impl_from_bool {

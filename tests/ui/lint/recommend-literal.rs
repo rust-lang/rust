@@ -1,5 +1,3 @@
-//~vv HELP consider importing this struct
-
 type Real = double;
 //~^ ERROR cannot find type `double` in this scope
 //~| HELP perhaps you intended to use this type
@@ -16,6 +14,7 @@ fn main() {
     //~^ ERROR: cannot find type `Bool` in this scope [E0425]
     //~| HELP a builtin type with a similar name exists
     //~| HELP perhaps you intended to use this type
+    //~| HELP: there is an enum variant `std::mem::type_info::TypeKind::Bool`; try using the variant's enum
 }
 
 fn z(a: boolean) {

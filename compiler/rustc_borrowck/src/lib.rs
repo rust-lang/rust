@@ -2,11 +2,11 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
@@ -35,6 +35,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
+use rustc_lint_defs::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
@@ -47,7 +48,6 @@ use rustc_mir_dataflow::move_paths::{
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
-use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_trait_selection::traits::query::type_op::{QueryTypeOp, TypeOp, TypeOpOutput};
 use smallvec::SmallVec;
@@ -59,6 +59,7 @@ use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
 };
+use crate::implied_bounds::mir_borrowck_implied_outlives_bounds;
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
@@ -81,6 +82,7 @@ mod dataflow;
 mod def_use;
 mod diagnostics;
 mod handle_placeholders;
+mod implied_bounds;
 mod nll;
 mod path_utils;
 mod place_ext;
@@ -106,7 +108,7 @@ impl<'tcx> TyCtxtConsts<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { mir_borrowck, ..*providers };
+    *providers = Providers { mir_borrowck, mir_borrowck_implied_outlives_bounds, ..*providers };
 }
 
 /// Provider for `query mir_borrowck`. Unlike `typeck`, this must

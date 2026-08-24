@@ -1194,6 +1194,12 @@ pub(crate) struct XcrunSdkPathWarning {
 pub(crate) struct Aarch64SoftfloatNeon;
 
 #[derive(Diagnostic)]
+#[diag(
+    "enabling the `sse` target feature on the current target is unsupported due to LLVM backend issues"
+)]
+pub(crate) struct X86SoftfloatSse;
+
+#[derive(Diagnostic)]
 #[diag("ignoring feature with missing prefix in `-Ctarget-feature`: `{$feature}`")]
 #[note("features must begin with a `+` to enable or `-` to disable it")]
 pub(crate) struct UnknownCTargetFeaturePrefix<'a> {

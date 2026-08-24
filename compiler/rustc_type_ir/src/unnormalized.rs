@@ -9,8 +9,8 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::inherent::*;
 use crate::upcast::Upcast;
 use crate::{
-    Binder, BoundConstness, ClauseKind, HostEffectClause, Interner, PredicatePolarity,
-    TraitPredicate, TraitRef,
+    Binder, BoundConstness, ClauseKind, ClausePolarity, HostEffectClause, Interner, TraitClause,
+    TraitRef,
 };
 
 /// A wrapper for values that need normalization.
@@ -114,7 +114,7 @@ impl<I: Interner, T> Unnormalized<I, Binder<I, T>> {
 }
 
 impl<I: Interner> Unnormalized<I, I::Clause> {
-    pub fn as_trait_clause(self) -> Option<Unnormalized<I, Binder<I, TraitPredicate<I>>>> {
+    pub fn as_trait_clause(self) -> Option<Unnormalized<I, Binder<I, TraitClause<I>>>> {
         self.value.as_trait_clause().map(|v| Unnormalized::new(v))
     }
 
@@ -123,7 +123,7 @@ impl<I: Interner> Unnormalized<I, I::Clause> {
     }
 }
 
-impl<I: Interner> Unnormalized<I, Binder<I, TraitPredicate<I>>> {
+impl<I: Interner> Unnormalized<I, Binder<I, TraitClause<I>>> {
     pub fn self_ty(self) -> Unnormalized<I, Binder<I, I::Ty>> {
         self.map(|pred| pred.self_ty())
     }
@@ -133,7 +133,7 @@ impl<I: Interner> Unnormalized<I, Binder<I, TraitPredicate<I>>> {
     }
 
     #[inline]
-    pub fn polarity(self) -> PredicatePolarity {
+    pub fn polarity(self) -> ClausePolarity {
         self.value.skip_binder().polarity
     }
 }

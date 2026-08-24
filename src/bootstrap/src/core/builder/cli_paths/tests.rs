@@ -2,8 +2,8 @@ use std::collections::{BTreeSet, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use crate::Build;
 use crate::core::builder::{Builder, CommandLineStepDescription};
+use crate::core::session::Session;
 use crate::utils::tests::TestCtx;
 
 fn render_steps_for_cli_args(args_str: &str) -> String {
@@ -25,11 +25,11 @@ fn render_steps_for_cli_args(args_str: &str) -> String {
         .hosts(hosts)
         .targets(targets)
         .create_config();
-    let mut build = Build::new(config);
+    let mut sess = Session::new(config);
     // Some rustdoc test steps are only run by default if nodejs is
     // configured/discovered, causing inconsistency.
-    build.config.nodejs = Some(PathBuf::from("node"));
-    let mut builder = Builder::new(&build);
+    sess.config.nodejs = Some(PathBuf::from("node"));
+    let mut builder = Builder::new(&sess);
 
     // Tell the builder to log steps that it would run, instead of running them.
     let buf = Arc::new(Mutex::new(String::new()));
@@ -197,6 +197,11 @@ declare_tests!(
     (x_test_src_tools_miri, "test src/tools/miri"),
     (x_test_src_tools_miri_and_cargo_miri, "test src/tools/miri src/tools/miri/cargo-miri"),
     (x_test_tests, "test tests"),
+    (x_test_tests_coverage_trivial_rs, "test tests/coverage/trivial.rs"),
+    (
+        x_test_tests_coverage_trivial_rs_and_attr_impl_rs,
+        "test tests/coverage/trivial.rs tests/coverage/attr/impl.rs"
+    ),
     (x_test_tests_skip_coverage, "test tests --skip=coverage"),
     (x_test_tests_ui, "test tests/ui"),
     (x_test_tests_ui_dot_prefix, "test ./tests/ui"),

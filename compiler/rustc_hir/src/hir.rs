@@ -547,11 +547,23 @@ pub struct ConstArgArrayExpr<'hir> {
     pub elems: &'hir [&'hir ConstArg<'hir>],
 }
 
+/// Tracks what a [GenericArg::Infer] can be inferred to based on its syntax.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, StableHash)]
+pub enum InferArgKind {
+    /// A bare _, e.g. S<_>. Whether it is a type or const argument is
+    /// determined during HIR ty lowering.
+    TypeOrConst,
+    /// An infer argument with unambiguous const syntax, e.g. S<{ _ }> or
+    /// S<direct_const_arg!(_)>. It can only be inferred to a const.
+    Const,
+}
+
 #[derive(Clone, Copy, Debug, StableHash)]
 pub struct InferArg {
     #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
+    pub kind: InferArgKind,
 }
 
 impl InferArg {
@@ -574,7 +586,7 @@ pub enum GenericArg<'hir> {
     /// without a [`GenericArg`], instead directly storing a [`Ty`] or [`ConstArg`]. In
     /// such cases they *are* represented by the `Infer` variants on [`TyKind`] and
     /// [`ConstArgKind`] as it is not ambiguous whether the argument is a type or const.
-    Infer(InferArg),
+    Infer(&'hir InferArg),
 }
 
 impl GenericArg<'_> {
@@ -601,7 +613,8 @@ impl GenericArg<'_> {
             GenericArg::Lifetime(_) => "lifetime",
             GenericArg::Type(_) => "type",
             GenericArg::Const(_) => "constant",
-            GenericArg::Infer(_) => "placeholder",
+            GenericArg::Infer(InferArg { kind: InferArgKind::TypeOrConst, .. }) => "placeholder",
+            GenericArg::Infer(InferArg { kind: InferArgKind::Const, .. }) => "constant",
         }
     }
 

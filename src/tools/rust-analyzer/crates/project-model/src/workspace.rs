@@ -881,10 +881,25 @@ impl ProjectWorkspace {
                     })
                     .chain(mk_sysroot())
                     .chain(rustc.iter().map(|a| a.as_ref()).flat_map(|(rustc, _)| {
-                        rustc.packages().map(move |krate| PackageRoot {
-                            is_local: false,
-                            include: vec![rustc[krate].manifest.parent().to_path_buf()],
-                            exclude: Vec::new(),
+                        rustc.packages().map(move |krate| {
+                            let krate = &rustc[krate];
+                            let include = if krate.name == "rustc_proc_macro" {
+                                // rustc_proc_macro sets its root to ../../library/proc_macro, so we need to include both the manifest
+                                // and the root separately.
+                                vec![
+                                    krate.manifest.parent().to_path_buf(),
+                                    rustc[krate.targets[0]]
+                                        .root
+                                        .parent()
+                                        .unwrap()
+                                        .parent()
+                                        .unwrap()
+                                        .to_path_buf(),
+                                ]
+                            } else {
+                                vec![krate.manifest.parent().to_path_buf()]
+                            };
+                            PackageRoot { is_local: false, include, exclude: Vec::new() }
                         })
                     }))
                     .collect()

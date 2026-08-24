@@ -7,16 +7,17 @@ use std::{fmt, io};
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
+use rustc_lint::Level;
 use rustc_session::config::{
-    self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
+    self, CodegenOptions, ErrorOutputType, Externs, Input, JsonUnusedExterns,
     OptionsTargetModifiers, OutFileName, Sysroot, UnstableOptions, get_cmd_lint_options,
     nightly_options, parse_crate_types_from_list, parse_externs, parse_target_triple,
 };
-use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::{EarlyDiagCtxt, getopts};
 use rustc_span::edition::Edition;
 use rustc_span::{FileName, RemapPathScopeComponents};
+use rustc_structures::CrateType;
 use rustc_target::spec::TargetTuple;
 use smallvec::SmallVec;
 

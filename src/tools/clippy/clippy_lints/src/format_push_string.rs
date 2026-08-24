@@ -6,8 +6,7 @@ use clippy_utils::{std_or_core, sym};
 use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{AssignOpKind, Expr, ExprKind, MatchSource};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {

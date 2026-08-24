@@ -495,7 +495,9 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if !self.functions.borrow().contains_key(entry_name) {
             let conv = cfg_select! {
-                feature = "master" => conv_to_fn_attribute(self.sess(), self.sess().target.entry_abi),
+                feature = "master" => {
+                    conv_to_fn_attribute(self.sess(), self.sess().target.entry_abi)
+                }
                 _ => None,
             };
             Some(self.declare_entry_fn(entry_name, fn_type, conv))

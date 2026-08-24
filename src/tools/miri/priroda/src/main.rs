@@ -7,6 +7,7 @@ extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_structures;
 
 mod debugger;
 mod frontend;
@@ -14,11 +15,11 @@ mod frontend;
 use debugger::PrirodaContext;
 use miri::*;
 use rustc_driver::Compilation;
-use rustc_hir::attrs::CrateType;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
+use rustc_structures::CrateType;
 
 fn find_sysroot() -> String {
     std::env::var("MIRI_SYSROOT")
@@ -47,7 +48,7 @@ fn main() {
 #[derive(Clone, Copy)]
 enum Frontend {
     Cli,
-    Dap,
+    Dap { port: Option<u16> },
 }
 
 impl Frontend {
@@ -57,14 +58,36 @@ impl Frontend {
         let mut rustc_args = Vec::with_capacity(args.len());
         let mut parsing_priroda_args = true;
 
-        for (idx, arg) in args.drain(..).enumerate() {
-            if idx != 0 && parsing_priroda_args && arg == "--dap" {
-                frontend = Frontend::Dap;
-                continue;
-            }
+        let mut arg_iter = std::mem::take(args).into_iter();
+        if let Some(program) = arg_iter.next() {
+            rustc_args.push(program);
+        }
 
-            if arg == "--" {
-                parsing_priroda_args = false;
+        while let Some(arg) = arg_iter.next() {
+            if parsing_priroda_args {
+                if arg == "--dap" {
+                    if matches!(frontend, Frontend::Cli) {
+                        frontend = Frontend::Dap { port: None };
+                    }
+                    continue;
+                }
+
+                if arg == "--port" {
+                    let port_str = arg_iter
+                        .next()
+                        .unwrap_or_else(|| Self::fatal_arg_error("--port requires a value"));
+                    frontend = Frontend::Dap { port: Some(Self::parse_port(&port_str)) };
+                    continue;
+                }
+
+                if let Some(port_str) = arg.strip_prefix("--port=") {
+                    frontend = Frontend::Dap { port: Some(Self::parse_port(port_str)) };
+                    continue;
+                }
+
+                if arg == "--" {
+                    parsing_priroda_args = false;
+                }
             }
 
             rustc_args.push(arg);
@@ -72,6 +95,16 @@ impl Frontend {
 
         *args = rustc_args;
         frontend
+    }
+
+    fn parse_port(port: &str) -> u16 {
+        port.parse()
+            .unwrap_or_else(|_| Self::fatal_arg_error("--port requires a valid u16 port number"))
+    }
+
+    fn fatal_arg_error(message: &str) -> ! {
+        eprintln!("priroda: {message}");
+        std::process::exit(1);
     }
 }
 
@@ -100,21 +133,14 @@ impl rustc_driver::Callbacks for PrirodaCompilerCalls {
         let mut session = PrirodaContext::new(ecx);
         let result = match self.frontend {
             Frontend::Cli => frontend::Cli {}.run_cli_loop(&mut session),
-            Frontend::Dap => frontend::Dap {}.run_dap_loop(&mut session),
+            Frontend::Dap { port } => frontend::Dap { port }.run_dap_loop(&mut session),
         };
 
         match result.report_err() {
             Ok(()) => {}
             Err(err) =>
                 if let Some((return_code, _leak_check)) = report_result(&session.ecx, err) {
-                    // FIXME: translate Miri termination into a Priroda execution-state enum so
-                    // the CLI loop can distinguish whole-program exit from individual thread
-                    // completion, run Miri-equivalent leak checks, print the exit code, and
-                    // return to the debugger prompt.
-                    println!("program finished with exit code {return_code}");
-                    if return_code != 0 {
-                        std::process::exit(return_code);
-                    }
+                    std::process::exit(return_code);
                 },
         }
 

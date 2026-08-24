@@ -18,13 +18,16 @@ use crate::core::build_steps::check::{CompilerForCheck, prepare_compiler_for_che
 use crate::core::build_steps::compile::{
     ArtifactKeepMode, run_cargo, rustc_cargo, std_cargo, std_crates_for_make_run,
 };
-use crate::core::builder;
 use crate::core::builder::{
-    Alias, Builder, CommandLineStep, Kind, RunConfig, ShouldRun, StepMetadata, crate_description,
+    self, Alias, Builder, CommandLineStep, Kind, RunConfig, ShouldRun, StepMetadata,
+    crate_description,
 };
-use crate::core::config::{Subcommand, TargetSelection};
+use crate::core::compiler::Compiler;
+use crate::core::config::TargetSelection;
+use crate::core::config::flags::Subcommand;
+use crate::core::session::Mode;
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{Compiler, Mode, exit};
+use crate::utils::helpers;
 
 /// Disable the most spammy clippy lints
 const IGNORED_RULES_FOR_STD_AND_RUSTC: &[&str] = &[
@@ -543,7 +546,7 @@ impl CommandLineStep for CI {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         if builder.top_stage != 2 {
             eprintln!("ERROR: `x clippy ci` should always be executed with --stage 2");
-            exit!(1);
+            helpers::exit_process(1);
         }
 
         // We want to check in-tree source using in-tree clippy. However, if we naively did
@@ -588,6 +591,10 @@ impl CommandLineStep for CI {
                 "clippy::ptr_offset_with_cast".into(),
                 "clippy::let_and_return".into(),
                 "clippy::needless_return".into(),
+                "clippy::needless_borrow".into(),
+                "clippy::op_ref".into(),
+                "clippy::borrow_deref_ref".into(),
+                "clippy::explicit_auto_deref".into(),
             ],
             forbid: vec![],
         };

@@ -50,6 +50,15 @@ fn should_lint() {
     let values = &vec[..];
     let _ = values.iter().any(|&v| v == 4 + 1);
     //~^ manual_contains
+
+    // Eager bitwise expressions still lint when they do not mention the element.
+    let mask = 0x0f_u8;
+    let other = 0x03_u8;
+    let values: [u8; 6] = [3, 14, 15, 92, 6, 5];
+    let _ = values.iter().any(|&v| v == mask & other);
+    //~^ manual_contains
+    let _ = values.iter().any(|&v| mask | other == v);
+    //~^ manual_contains
 }
 
 fn should_not_lint() {
@@ -85,6 +94,14 @@ fn should_not_lint() {
     };
     let _ = values.iter().any(|&v| v == count());
     let _ = values.iter().any(|&v| v == v * 2);
+
+    // Don't fire when both sides use the slice element. #17563
+    let mask = 0x0f_u8;
+    let values: &[u8] = &[1, 2, 3];
+    let _ = values.iter().any(|&i| i & mask == i);
+    let _ = values.iter().any(|&i| i == i & mask);
+    let _ = values.iter().any(|&i| i == !i);
+    let _ = values.iter().any(|i| *i == *i & mask);
 }
 
 fn foo(values: &[u8]) -> bool {

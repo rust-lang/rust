@@ -1,11 +1,12 @@
-use crate::sym;
+use crate::{is_in_const_context, sym};
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
 use rustc_hir::attrs::RustcVersion;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, StabilityLevel, StableSince};
+use rustc_hir::{Constness, HirId, StabilityLevel, StableSince};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -137,7 +138,7 @@ impl Msrv {
     fn for_attrs(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
         once(node)
             .chain(tcx.hir_parent_id_iter(node))
-            .find_map(|id| parse_attrs(tcx.sess, tcx.hir_attrs(id)))
+            .find_map(|id| parse_attrs(tcx.hir_attrs(id)))
             .or(self.0)
     }
 
@@ -157,8 +158,46 @@ impl Msrv {
     }
 
     pub fn is_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
-        cx.tcx.lookup_stability(def_id).is_none_or(|stability| {
-            if let StabilityLevel::Stable { since, .. } = stability.level {
+        self.stability_met(cx, cx.tcx.lookup_stability(def_id).map(|stability| stability.level))
+    }
+
+    /// Checks whether `def_id` is `const` and const-stable since a version met by the MSRV.
+    ///
+    /// `def_id` must identify a function-like definition or an impl.
+    ///
+    /// Nothing in the crate being linted carries a const-stability attribute, so `const` fns and
+    /// impls defined there are treated as meeting any MSRV, mirroring
+    /// [`is_stable`](Self::is_stable).
+    pub fn is_const_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        let constness = match cx.tcx.def_kind(def_id) {
+            // The constness of a trait impl is not encoded in crate metadata, where `constness`
+            // would decode as its default of `Const`. It is only available from the impl header.
+            DefKind::Impl { of_trait: true } => cx.tcx.impl_trait_header(def_id).constness,
+            _ => cx.tcx.constness(def_id),
+        };
+
+        matches!(constness, Constness::Const { .. })
+            && self.stability_met(
+                cx,
+                cx.tcx.lookup_const_stability(def_id).map(|stability| stability.level),
+            )
+    }
+
+    /// Checks the stability relevant to where we are: const-stability inside a `const` context,
+    /// regular stability everywhere else.
+    ///
+    /// Like [`is_in_const_context`], this requires the `LateContext` to have an enclosing body.
+    pub fn is_stable_or_const_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        if is_in_const_context(cx) {
+            self.is_const_stable(cx, def_id)
+        } else {
+            self.is_stable(cx, def_id)
+        }
+    }
+
+    fn stability_met(self, cx: &LateContext<'_>, level: Option<StabilityLevel>) -> bool {
+        level.is_none_or(|level| {
+            if let StabilityLevel::Stable { since, .. } = level {
                 let version = match since {
                     StableSince::Version(version) => version,
                     StableSince::Current => RustcVersion::CURRENT,
@@ -201,24 +240,34 @@ impl MsrvStack {
         self.current().is_none_or(|msrv| msrv >= required)
     }
 
-    pub fn check_attributes(&mut self, sess: &Session, attrs: &[Attribute]) {
-        if let Some(version) = parse_attrs(sess, attrs) {
+    pub fn check_attributes(&mut self, attrs: &[Attribute]) {
+        if let Some(version) = parse_attrs(attrs) {
             SEEN_MSRV_ATTR.store(true, Ordering::Relaxed);
             self.stack.push(version);
         }
     }
 
-    pub fn check_attributes_post(&mut self, sess: &Session, attrs: &[Attribute]) {
-        if parse_attrs(sess, attrs).is_some() {
+    pub fn check_attributes_post(&mut self, attrs: &[Attribute]) {
+        if parse_attrs(attrs).is_some() {
             self.stack.pop();
         }
     }
 }
 
-fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
+fn parse_attrs(attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
+    let msrv_attr = attrs.iter().find(|attr| attr.path_matches(&[sym::clippy, sym::msrv]))?;
+
+    let msrv = msrv_attr.value_str()?;
+
+    parse_version(msrv)
+}
+
+pub fn check_attrs(sess: &Session, attrs: &[impl AttributeExt]) {
     let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym::msrv]));
 
-    let msrv_attr = msrv_attrs.next()?;
+    let Some(msrv_attr) = msrv_attrs.next() else {
+        return;
+    };
 
     if let Some(duplicate) = msrv_attrs.next_back() {
         sess.dcx()
@@ -229,14 +278,11 @@ fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersi
 
     let Some(msrv) = msrv_attr.value_str() else {
         sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
-        return None;
+        return;
     };
 
-    let Some(version) = parse_version(msrv) else {
+    if parse_version(msrv).is_none() {
         sess.dcx()
             .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
-        return None;
-    };
-
-    Some(version)
+    }
 }

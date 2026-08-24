@@ -6,9 +6,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
 use rustc_span::BytePos;
 use rustc_span::symbol::kw;
 

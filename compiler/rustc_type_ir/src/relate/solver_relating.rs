@@ -199,7 +199,7 @@ where
                 self.goals.push(Goal::new(
                     self.cx(),
                     self.param_env,
-                    ty::ProjectionPredicate { projection_term: alias.into(), term: new_var.into() },
+                    ty::ProjectionClause { projection_term: alias.into(), term: new_var.into() },
                 ));
                 self.tys(new_var, b)?;
             }
@@ -208,7 +208,7 @@ where
                 self.goals.push(Goal::new(
                     self.cx(),
                     self.param_env,
-                    ty::ProjectionPredicate { projection_term: alias.into(), term: new_var.into() },
+                    ty::ProjectionClause { projection_term: alias.into(), term: new_var.into() },
                 ));
                 self.tys(a, new_var)?;
             }
