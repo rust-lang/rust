@@ -10,7 +10,7 @@ use std::path::Path;
 
 use super::exec::ExecutionContext;
 use super::helpers;
-use crate::core::session::Build;
+use crate::core::session::Session;
 use crate::utils::helpers::t;
 
 #[derive(Clone, Default)]
@@ -111,8 +111,8 @@ impl GitInfo {
         self.info().map(|s| &s.commit_date[..])
     }
 
-    pub fn version(&self, build: &Build, num: &str) -> String {
-        let mut version = build.release(num);
+    pub fn version(&self, sess: &Session, num: &str) -> String {
+        let mut version = sess.release(num);
         if let Some(inner) = self.info() {
             version.push_str(" (");
             version.push_str(&inner.short_sha);

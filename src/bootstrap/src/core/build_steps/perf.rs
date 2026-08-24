@@ -140,7 +140,7 @@ pub fn perf(builder: &Builder<'_>, args: &PerfArgs) {
         target: builder.config.host_target,
     });
 
-    let rustc_perf_dir = builder.build.tempdir().join("rustc-perf");
+    let rustc_perf_dir = builder.sess.tempdir().join("rustc-perf");
     let results_dir = rustc_perf_dir.join("results");
     builder.create_dir(&results_dir);
 
@@ -158,7 +158,7 @@ pub fn perf(builder: &Builder<'_>, args: &PerfArgs) {
         | PerfCommand::Cachegrind { .. } => true,
         PerfCommand::Benchmark { .. } | PerfCommand::Compare { .. } => false,
     };
-    if is_profiling && builder.build.config.rust_debuginfo_level_rustc == DebuginfoLevel::None {
+    if is_profiling && builder.sess.config.rust_debuginfo_level_rustc == DebuginfoLevel::None {
         builder.info(r#"WARNING: You are compiling rustc without debuginfo, this will make profiling less useful.
 Consider setting `rust.debuginfo-level = 1` in `bootstrap.toml`."#);
     }

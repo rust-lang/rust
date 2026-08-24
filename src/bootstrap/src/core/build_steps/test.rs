@@ -719,7 +719,7 @@ impl CommandLineStep for Miri {
 
     /// Runs `cargo test` for miri.
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.host_target;
+        let host = builder.sess.host_target;
         let target = self.target;
         let stage = builder.top_stage;
         if stage == 0 {
@@ -813,7 +813,7 @@ impl CommandLineStep for CargoMiri {
 
     /// Tests `cargo miri test`.
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.host_target;
+        let host = builder.sess.host_target;
         let target = self.target;
         let stage = builder.top_stage;
         if stage == 0 {
@@ -897,7 +897,7 @@ impl CommandLineStep for Priroda {
 
     /// Runs `cargo test` for priroda, reusing the Miri sysroot and binary.
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.host_target;
+        let host = builder.sess.host_target;
         let target = self.target;
         let stage = builder.top_stage;
 
@@ -1509,7 +1509,7 @@ fn get_browser_ui_test_version_inner(
     let mut command = command(yarn);
     command
         .arg("--cwd")
-        .arg(&builder.build.out)
+        .arg(&builder.sess.out)
         .arg("list")
         .arg("--parseable")
         .arg("--long")
@@ -2285,7 +2285,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // At stage 0 (stage - 1) we are using the stage0 compiler. Using `self.target` can lead
             // finding an incorrect compiler path on cross-targets, as the stage 0 is always equal to
             // `build.build` in the configuration.
-            let build = builder.build.host_target;
+            let build = builder.sess.host_target;
             test_compiler = builder.compiler(test_compiler.stage - 1, build);
             let test_stage = test_compiler.stage + 1;
             (test_stage, format!("stage{test_stage}-{build}"))
@@ -2522,11 +2522,11 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--bypass-ignore-backends");
         }
 
-        if builder.build.config.llvm_enzyme {
+        if builder.sess.config.llvm_enzyme {
             cmd.arg("--has-enzyme");
         }
 
-        if builder.build.config.llvm_offload {
+        if builder.sess.config.llvm_offload {
             cmd.arg("--has-offload");
         }
 
@@ -4016,7 +4016,7 @@ impl CommandLineStep for BootstrapPy {
             // Forward command-line args after `--` to unittest, for filtering etc.
             .args(builder.config.test_args())
             .env("BUILD_DIR", &builder.out)
-            .env("BUILD_PLATFORM", builder.build.host_target.triple)
+            .env("BUILD_PLATFORM", builder.sess.host_target.triple)
             .env("BOOTSTRAP_TEST_RUSTC_BIN", &builder.initial_rustc)
             .env("BOOTSTRAP_TEST_CARGO_BIN", &builder.initial_cargo)
             .current_dir(builder.src.join("src/bootstrap/"));
@@ -4049,7 +4049,7 @@ impl CommandLineStep for Bootstrap {
         let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // Some tests require cargo submodule to be present.
-        builder.build.require_submodule("src/tools/cargo", None);
+        builder.sess.require_submodule("src/tools/cargo", None);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
