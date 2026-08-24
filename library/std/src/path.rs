@@ -3795,7 +3795,26 @@ impl cmp::PartialEq<Path> for String {
 impl Hash for Path {
     fn hash<H: Hasher>(&self, h: &mut H) {
         let bytes = self.as_u8_slice();
-        let (prefix_len, verbatim) = match parse_prefix(&self.inner) {
+        let prefix = parse_prefix(&self.inner);
+
+        // Determine whether the path has a root component, matching what Eq does.
+        //
+        // Eq checks that self.components() == other.components(). The components iterator returns a
+        // RootDir under one of the following two conditions:
+        //
+        // 1. has_physical_root() is true.
+        // 2. There's a prefix `p` present, and `p.has_implicit_root() && !p.is_verbatim()` is true.
+        //
+        // So we check for exactly those conditions here.
+        //
+        // Note that the definition of "is a separator byte" used for is_sep below is slightly
+        // different from what has_physical_root uses: the latter does not account for verbatim
+        // paths. This should likely be fixed in has_physical_root. See
+        // https://github.com/rust-lang/rust/issues/161651.
+        let has_root = has_physical_root(bytes, prefix)
+            || prefix.is_some_and(|p| p.has_implicit_root() && !p.is_verbatim());
+
+        let (prefix_len, verbatim) = match prefix {
             Some(prefix) => {
                 prefix.hash(h);
                 (prefix.len(), prefix.is_verbatim())
@@ -3803,6 +3822,8 @@ impl Hash for Path {
             None => (0, false),
         };
         let bytes = &bytes[prefix_len..];
+
+        h.write_u8(has_root as u8);
 
         let mut component_start = 0;
         // track some extra state to avoid prefix collisions.
