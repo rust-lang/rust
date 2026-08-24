@@ -822,11 +822,6 @@ impl Build {
         self.out.join(target).join("compiler-doc")
     }
 
-    /// Output directory for some generated md crate documentation for a target (temporary)
-    pub(crate) fn md_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(target).join("md-doc")
-    }
-
     /// Path to the vendored Rust crates.
     pub(crate) fn vendored_crates_path(&self) -> Option<PathBuf> {
         if self.config.vendor { Some(self.src.join(VENDOR_DIR)) } else { None }
