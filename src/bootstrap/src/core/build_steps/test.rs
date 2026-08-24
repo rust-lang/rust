@@ -38,6 +38,7 @@ use crate::core::builder::{
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
+use crate::core::session::{CLang, GitRepo, Mode};
 use crate::core::{android, debuggers};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -47,7 +48,6 @@ use crate::utils::helpers::{
     target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, GitRepo, Mode};
 
 mod compiletest;
 pub mod failed_tests;
@@ -2277,6 +2277,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // running compiler in stage 2 when plugins run.
         let query_compiler;
         let (stage, stage_id) = if suite == "ui-fulldeps" && test_compiler.stage == 1 {
+            builder.info("Warning: running ui-fulldeps tests in stage 1 might cause failures");
+
             // Even when using the stage 0 compiler, we also need to provide the stage 1 compiler
             // so that compiletest can query it for target information.
             query_compiler = Some(test_compiler);
@@ -2372,6 +2374,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--rustc-path").arg(builder.rustc(test_compiler));
         if let Some(query_compiler) = query_compiler {
             cmd.arg("--query-rustc-path").arg(builder.rustc(query_compiler));
+            cmd.arg("--query-rustc-lib-path").arg(builder.rustc_libdir(query_compiler));
         }
 
         // Minicore auxiliary lib for `no_core` tests that need `core` stubs in cross-compilation
@@ -2561,6 +2564,9 @@ Please disable assertions with `rust.debug-assertions = false`.
         }
         if builder.config.rust_optimize_tests {
             cmd.arg("--optimize-tests");
+        }
+        if !builder.config.docs_minification {
+            cmd.arg("--disable-minification");
         }
         if builder.config.rust_randomize_layout {
             cmd.arg("--rust-randomized-layout");
@@ -3066,8 +3072,14 @@ impl BookTest {
                 let stamp = BuildStamp::new(&builder.cargo_out(test_compiler, mode, target))
                     .with_prefix(PathBuf::from(dep).file_name().and_then(|v| v.to_str()).unwrap());
 
-                let output_paths =
-                    run_cargo(builder, cargo, vec![], &stamp, vec![], ArtifactKeepMode::OnlyRlib);
+                let output_paths = run_cargo(
+                    builder,
+                    cargo,
+                    vec![],
+                    &stamp,
+                    vec![],
+                    ArtifactKeepMode::BothRlibAndRmeta,
+                );
                 let directories = output_paths
                     .into_iter()
                     .filter_map(|p| p.parent().map(ToOwned::to_owned))
@@ -3287,6 +3299,9 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     builder.do_if_verbose(|| println!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
+    // FIXME(#160895): While the new solver is enabled by default on nightly,
+    // we don't want to use it in our tests for now.
+    cmd.arg("-Znext-solver=coherence");
     // allow for unstable options such as new editions
     cmd.arg("-Z");
     cmd.arg("unstable-options");
@@ -3359,7 +3374,7 @@ impl CommandLineStep for CrateLibrustc {
 ///
 /// Returns whether the test succeeded.
 fn run_cargo_test<'a>(
-    cargo: builder::Cargo,
+    mut cargo: builder::Cargo,
     libtest_args: &[&str],
     crates: &[String],
     description: impl Into<Option<&'a str>>,
@@ -3372,6 +3387,10 @@ fn run_cargo_test<'a>(
         Mode::Std => compiler.stage,
         _ => compiler.stage + 1,
     };
+
+    // FIXME(#160895): While the new solver is enabled by default on nightly,
+    // we don't want to use it in our tests for now.
+    cargo.rustdocflag("-Znext-solver=coherence");
 
     let mut cargo = prepare_cargo_test(cargo, libtest_args, crates, target, builder);
     let _time = helpers::timeit(builder);

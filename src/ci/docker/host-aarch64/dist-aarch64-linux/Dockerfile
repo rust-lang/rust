@@ -101,3 +101,7 @@ ENV SCRIPT="python3 ../x.py build --set rust.debug=true opt-dist && \
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=clang
 ENV LIBCURL_NO_PKG_CONFIG="1"
 ENV DIST_REQUIRE_ALL_TOOLS="1"
+
+# FIXME: Without this, LLVMgold.so incorrectly resolves to the system
+# libstdc++, instead of the one we build.
+ENV LD_PRELOAD=/rustroot/lib64/libstdc++.so.6

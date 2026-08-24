@@ -34,7 +34,12 @@ cfg_select! {
             // async-signal-safe, so this function is available in all imaginable
             // circumstances.
             let this_thread_id = crate::sys::io::errno_location();
-            match EXITING_THREAD_ID.compare_exchange(ptr::null_mut(), this_thread_id, Acquire, Relaxed) {
+            match EXITING_THREAD_ID.compare_exchange(
+                ptr::null_mut(),
+                this_thread_id,
+                Acquire,
+                Relaxed,
+            ) {
                 Ok(_) => {
                     // This is the first thread to call `unique_thread_exit`,
                     // and this is the first time it is called. Continue exiting.
@@ -50,7 +55,9 @@ cfg_select! {
                     // Pause until the process exits.
                     loop {
                         // Safety: libc::pause is safe to call.
-                        unsafe { libc::pause(); }
+                        unsafe {
+                            libc::pause();
+                        }
                     }
                 }
             }
@@ -70,10 +77,7 @@ cfg_select! {
 
 #[cfg(not(test))]
 cfg_select! {
-    any(
-        target_family = "unix",
-        target_os = "wasi",
-    ) => {
+    any(target_family = "unix", target_os = "wasi") => {
         // Used by rustc for checking the definitions of other function with the same symbol names
         //
         // See the `invalid_runtime_symbols_definitions` lint.
@@ -89,18 +93,12 @@ cfg_select! {
 
 pub fn exit(code: i32) -> ! {
     cfg_select! {
-        target_os = "hermit" => {
-            unsafe { hermit_abi::exit(code) }
-        }
-        target_os = "linux" => {
-            unsafe {
-                unique_thread_exit();
-                libc::exit(code)
-            }
-        }
-        target_os = "motor" => {
-            moto_rt::process::exit(code)
-        }
+        target_os = "hermit" => unsafe { hermit_abi::exit(code) },
+        target_os = "linux" => unsafe {
+            unique_thread_exit();
+            libc::exit(code)
+        },
+        target_os = "motor" => moto_rt::process::exit(code),
         all(target_vendor = "fortanix", target_env = "sgx") => {
             crate::sys::pal::abi::exit_with_code(code as _)
         }
@@ -131,12 +129,9 @@ pub fn exit(code: i32) -> ! {
             }
             crate::intrinsics::abort()
         }
-        any(
-            target_family = "unix",
-            target_os = "wasi",
-        ) => {
-            unsafe { libc::exit(code as crate::ffi::c_int) }
-        }
+        any(target_family = "unix", target_os = "wasi") => unsafe {
+            libc::exit(code as crate::ffi::c_int)
+        },
         target_os = "vexos" => {
             let _ = code;
 
@@ -148,12 +143,8 @@ pub fn exit(code: i32) -> ! {
                 }
             }
         }
-        target_os = "windows" => {
-            unsafe { crate::sys::pal::c::ExitProcess(code as u32) }
-        }
-        target_os = "xous" => {
-            crate::os::xous::ffi::exit(code as u32)
-        }
+        target_os = "windows" => unsafe { crate::sys::pal::c::ExitProcess(code as u32) },
+        target_os = "xous" => crate::os::xous::ffi::exit(code as u32),
         _ => {
             let _ = code;
             crate::intrinsics::abort()

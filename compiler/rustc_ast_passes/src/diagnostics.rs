@@ -39,6 +39,17 @@ pub(crate) struct ImplFnConst {
 }
 
 #[derive(Diagnostic)]
+#[diag("`feature(generic_const_exprs)` is not supported with the next-generation trait solver")]
+#[note("`-Znext-solver=globally` is currently enabled by default for testing")]
+#[note("reverted the setting to `-Znext-solver=coherence` for this crate")]
+#[note("the currently stable trait solver will be used for this crate")]
+#[note("see issues #160895 <https://github.com/rust-lang/rust/issues/160895> for more information")]
+pub(crate) struct NextSolverDisabledForGenericConstExprs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("functions in {$in_impl ->
         [true] trait impls
         *[false] traits

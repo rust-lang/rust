@@ -126,6 +126,9 @@ struct Args {
     /// Path to rustc to use for querying target information.
     #[arg(long)]
     query_rustc_path: Option<Utf8PathBuf>,
+    /// Path to shared libraries for querying target information.
+    #[arg(long)]
+    query_rustc_lib_path: Option<Utf8PathBuf>,
     /// Path to rustdoc to use for compiling.
     #[arg(long)]
     rustdoc_path: Option<Utf8PathBuf>,
@@ -254,6 +257,9 @@ struct Args {
     /// Run tests with optimizations enabled.
     #[arg(long)]
     optimize_tests: bool,
+    /// Pass `--disable-minification` to rustdoc when generating docs for tests.
+    #[arg(long)]
+    disable_minification: bool,
     /// Run tests verbosely, showing all output.
     #[arg(long)]
     verbose: bool,
@@ -438,6 +444,7 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         cxxflags: args.cxxflags,
         default_codegen_backend,
         diff_command: args.compiletest_diff_tool,
+        disable_minification: args.disable_minification,
 
         edition: args.edition,
 
@@ -486,6 +493,7 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         profiler_runtime: args.profiler_runtime,
 
         python: args.python,
+        query_rustc_lib_path: args.query_rustc_lib_path,
         query_rustc_path: args.query_rustc_path,
         remote_test_client: args.remote_test_client,
         run,

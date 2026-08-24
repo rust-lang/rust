@@ -5,9 +5,9 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
+use rustc_lint_defs::builtin::BAD_ASM_STYLE;
 use rustc_parse::parser::asm::*;
 use rustc_parse_format as parse;
-use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, sym};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
@@ -351,7 +351,7 @@ fn expand_preparsed_asm(
 
             if template_str.contains(".intel_syntax") {
                 ecx.psess().buffer_lint(
-                    lint::builtin::BAD_ASM_STYLE,
+                    BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
                     diagnostics::AvoidIntelSyntax,
@@ -359,7 +359,7 @@ fn expand_preparsed_asm(
             }
             if template_str.contains(".att_syntax") {
                 ecx.psess().buffer_lint(
-                    lint::builtin::BAD_ASM_STYLE,
+                    BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
                     diagnostics::AvoidAttSyntax,

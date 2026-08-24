@@ -40,19 +40,14 @@ cfg_select! {
             -1
         }
     }
-    any(
-        all(target_os = "linux", not(target_env = "musl")),
-        target_os = "android",
-        target_os = "hurd",
-    ) => {
+    any(all(target_os = "linux", not(target_env = "musl")), target_os = "android", target_os = "hurd") =>
+    {
         // Prefer explicit pread64 for 64-bit offset independently of libc
         // #[cfg(gnu_file_offset_bits64)].
-        use libc::pread64;
-        use libc::pwrite64;
+        use libc::{pread64, pwrite64};
     }
     _ => {
-        use libc::pread as pread64;
-        use libc::pwrite as pwrite64;
+        use libc::{pread as pread64, pwrite as pwrite64};
     }
 }
 

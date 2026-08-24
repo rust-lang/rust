@@ -6,7 +6,7 @@ use rustc_errors::msg;
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::diagnostics::{feature_err, feature_warn};
-use rustc_span::{Span, Spanned, Symbol, sym};
+use rustc_span::{Span, Spanned, sym};
 
 use crate::diagnostics;
 
@@ -436,7 +436,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     maybe_stage_features(sess, features, krate);
     check_incompatible_features(sess, features);
     check_dependent_features(sess, features);
-    check_new_solver_banned_features(sess, features);
+    warn_next_solver_and_gce(sess, features);
     check_features_requiring_new_solver(sess, features);
 
     let mut visitor = PostExpansionVisitor { sess, features };
@@ -722,26 +722,21 @@ fn check_dependent_features(sess: &Session, features: &Features) {
     }
 }
 
-fn check_new_solver_banned_features(sess: &Session, features: &Features) {
+fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
     if !sess.opts.unstable_opts.next_solver.globally {
         return;
     }
 
-    // Ban GCE with the new solver, because it does not implement GCE correctly.
+    // Warn people who uses GCE and -Znext-solver=globally
+    // that their trait solver was downgraded to -Znext-solver=no
     if let Some(gce_span) = features
         .enabled_lang_features()
         .iter()
         .find(|feat| feat.gate_name == sym::generic_const_exprs)
         .map(|feat| feat.attr_sp)
     {
-        // Abort immediately, otherwise GCE can lower to `ConstKind::Expr`,
-        // which the new solver intentionally does not support.
-        #[allow(rustc::symbol_intern_string_literal)]
-        sess.dcx().emit_fatal(diagnostics::IncompatibleFeatures {
-            spans: vec![gce_span],
-            f1: Symbol::intern("-Znext-solver=globally"),
-            f2: sym::generic_const_exprs,
-        });
+        sess.dcx()
+            .emit_warn(diagnostics::NextSolverDisabledForGenericConstExprs { span: gce_span });
     }
 }
 

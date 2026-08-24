@@ -307,6 +307,54 @@ impl SocketAddr {
     pub const fn is_ipv6(&self) -> bool {
         matches!(*self, SocketAddr::V6(_))
     }
+
+    /// Returns the unspecified socket address for the same IP version.
+    ///
+    /// Returns `0.0.0.0:0` for IPv4 and `[::]:0` for IPv6. For IPv6, this
+    /// method preserves the flow information and scope ID.
+    ///
+    /// Use this method when you must bind a socket to an unspecified local
+    /// address that uses the same IP version as a remote address.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(addr_unspecified_from)]
+    /// use std::net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr};
+    ///
+    /// let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 3000));
+    /// assert_eq!(
+    ///     SocketAddr::unspecified_from(addr),
+    ///     SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0))
+    /// );
+    ///
+    /// let addr = SocketAddr::V6(SocketAddrV6::new(
+    ///     Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1),
+    ///     443,
+    ///     0x1234,
+    ///     5,
+    /// ));
+    ///
+    /// let unspecified = SocketAddr::unspecified_from(addr);
+    /// assert_eq!(unspecified.ip(), Ipv6Addr::UNSPECIFIED);
+    /// if let SocketAddr::V6(v6) = unspecified {
+    ///     assert_eq!(v6.flowinfo(), 0x1234);
+    ///     assert_eq!(v6.scope_id(), 5);
+    /// }
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "addr_unspecified_from", issue = "158975")]
+    pub const fn unspecified_from(this: Self) -> Self {
+        match this {
+            Self::V4(_) => Self::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0)),
+            Self::V6(addr) => Self::V6(SocketAddrV6::new(
+                Ipv6Addr::UNSPECIFIED,
+                0,
+                addr.flowinfo(),
+                addr.scope_id(),
+            )),
+        }
+    }
 }
 
 impl SocketAddrV4 {

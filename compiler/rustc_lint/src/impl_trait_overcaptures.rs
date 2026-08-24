@@ -9,6 +9,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty::relate::{
@@ -20,8 +21,6 @@ use rustc_middle::ty::{
     Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint::fcw;
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::diagnostics::{
     AddPreciseCapturingForOvercapture, impl_trait_overcapture_suggestion,

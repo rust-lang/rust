@@ -6,10 +6,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
+use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{AppendOnlyVec, DynSend, DynSync, Lock};
-use rustc_data_structures::{Limit, flock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
@@ -25,6 +25,7 @@ pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
+use rustc_structures::{CrateType, Limit};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
     Arch, CfgAbi, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel,
@@ -35,7 +36,7 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
+    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, DebugInfo,
     ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
     OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
@@ -327,6 +328,8 @@ impl PointerAuthConfig {
 pub struct Session {
     pub target: Target,
     pub host: Target,
+    pub wasm_proc_macro_tuple: TargetTuple,
+    pub wasm_proc_macro_target: Target,
     pub opts: config::Options,
     pub target_tlib_path: SearchPath,
     pub psess: ParseSess,
@@ -395,6 +398,7 @@ pub struct Session {
 
     target_filesearch: Arc<FileSearch>,
     host_filesearch: Arc<FileSearch>,
+    wasm_proc_macro_filesearch: Option<Arc<FileSearch>>,
 
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
@@ -411,11 +415,6 @@ pub struct Session {
     /// Used by `-Zmir-opt-bisect-limit` to assign an index to each
     /// optimization-pass execution candidate during this compilation.
     pub mir_opt_bisect_eval_count: AtomicUsize,
-
-    /// Enabled features that are used in the current compilation.
-    ///
-    /// The value is the `DepNodeIndex` of the node encodes the used feature.
-    pub used_features: Lock<FxHashMap<Symbol, u32>>,
 
     /// Whether the test harness removed a user-written `#[rustc_main]` attribute
     /// while generating the synthetic test entry point.
@@ -663,6 +662,9 @@ impl Session {
     }
     pub fn host_filesearch(&self) -> &filesearch::FileSearch {
         &self.host_filesearch
+    }
+    pub fn wasm_proc_macro_filesearch(&self) -> &filesearch::FileSearch {
+        self.wasm_proc_macro_filesearch.as_ref().expect("wasm_filesearch not set")
     }
 
     /// Returns a list of directories where target-specific tool binaries are located. Some fallback
@@ -1295,6 +1297,19 @@ pub fn build_session(
         dcx.handle().warn(warning)
     }
 
+    let wasm_proc_macro_tuple = TargetTuple::from_tuple("wasm32-wasip2");
+    let (wasm_proc_macro_target, target_warnings) = Target::search(
+        &wasm_proc_macro_tuple,
+        sopts.sysroot.path(),
+        sopts.unstable_opts.unstable_options,
+    )
+    .unwrap_or_else(|e| {
+        dcx.handle().fatal(format!("Error loading wasm proc-macro target specification: {e}"))
+    });
+    for warning in target_warnings.warning_messages() {
+        dcx.handle().warn(warning)
+    }
+
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {
         let directory = if let Some(directory) = d { directory } else { std::path::Path::new(".") };
@@ -1323,6 +1338,8 @@ pub fn build_session(
     // FIXME use host sysroot?
     let host_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple);
     let target_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple);
+    let wasm_proc_macro_tlib_path =
+        SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), wasm_proc_macro_tuple.tuple());
 
     let prof = SelfProfilerRef::new(
         self_profiler,
@@ -1352,6 +1369,16 @@ pub fn build_session(
             sopts.unstable_opts.implicit_sysroot_deps,
         ))
     };
+    let wasm_proc_macro_filesearch = if sopts.unstable_opts.wasm_proc_macros {
+        Some(Arc::new(FileSearch::new(
+            &sopts.search_paths,
+            &wasm_proc_macro_tlib_path,
+            &wasm_proc_macro_target,
+            sopts.unstable_opts.implicit_sysroot_deps,
+        )))
+    } else {
+        None
+    };
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
@@ -1361,6 +1388,8 @@ pub fn build_session(
     let sess = Session {
         target,
         host,
+        wasm_proc_macro_tuple,
+        wasm_proc_macro_target,
         opts: sopts,
         target_tlib_path,
         psess,
@@ -1384,11 +1413,11 @@ pub fn build_session(
         file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
+        wasm_proc_macro_filesearch,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
-        used_features: Lock::default(),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
     };
@@ -1453,7 +1482,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Do the same for sample profile data.
-    if let Some(ref path) = sess.opts.unstable_opts.profile_sample_use {
+    if let Some(ref path) = sess.opts.cg.profile_sample_use {
         if !path.exists() {
             sess.dcx().emit_err(diagnostics::ProfileSampleUseFileDoesNotExist { path });
         }

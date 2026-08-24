@@ -98,6 +98,7 @@ impl<'tcx> FulfillmentError<'tcx> {
         match self.code {
             FulfillmentErrorCode::Select(_)
             | FulfillmentErrorCode::Project(_)
+            | FulfillmentErrorCode::Outlives
             | FulfillmentErrorCode::Subtype(_, _)
             | FulfillmentErrorCode::ConstEquate(_, _) => true,
             FulfillmentErrorCode::Cycle(_) | FulfillmentErrorCode::Ambiguity { overflow: _ } => {
@@ -114,6 +115,8 @@ pub enum FulfillmentErrorCode<'tcx> {
     Cycle(PredicateObligations<'tcx>),
     Select(SelectionError<'tcx>),
     Project(MismatchedProjectionTypes<'tcx>),
+    /// An outlives constraint emitted for `-Zassumptions-on-binders` was unsatisfiable.
+    Outlives,
     Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
     ConstEquate(ExpectedFound<ty::Const<'tcx>>, TypeError<'tcx>),
     Ambiguity {
@@ -129,6 +132,7 @@ impl<'tcx> Debug for FulfillmentErrorCode<'tcx> {
         match *self {
             FulfillmentErrorCode::Select(ref e) => write!(f, "{e:?}"),
             FulfillmentErrorCode::Project(ref e) => write!(f, "{e:?}"),
+            FulfillmentErrorCode::Outlives => write!(f, "CodeOutlivesError"),
             FulfillmentErrorCode::Subtype(ref a, ref b) => {
                 write!(f, "CodeSubtypeError({a:?}, {b:?})")
             }
@@ -257,7 +261,7 @@ fn set_projection_term_to_non_rigid<'tcx>(
         if let ty::ClauseKind::Projection(projection_pred) = clause.kind().skip_binder() {
             clause
                 .kind()
-                .rebind(ty::ProjectionPredicate {
+                .rebind(ty::ProjectionClause {
                     projection_term: projection_pred.projection_term,
                     term: ty::set_aliases_to_non_rigid(tcx, projection_pred.term).skip_norm_wip(),
                 })
@@ -573,7 +577,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 }
 
 #[derive(Debug)]
-pub enum EvaluateConstErr {
+pub enum EvaluateConstErr<E> {
     /// The constant being evaluated was either a generic parameter or inference variable, *or*,
     /// some alias const with either generic parameters or inference variables in its
     /// generic arguments.
@@ -585,6 +589,7 @@ pub enum EvaluateConstErr {
     /// CTFE failed to evaluate the constant in some unrecoverable way (e.g. encountered a `panic!`).
     /// This is also used when the constant was already tainted by error.
     EvaluationFailure(ErrorGuaranteed),
+    FailedNormalization(E),
 }
 
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
@@ -601,7 +606,7 @@ pub fn evaluate_const<'tcx>(
     ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> ty::Const<'tcx> {
-    match try_evaluate_const(infcx, ct, param_env) {
+    match try_evaluate_const(infcx, ct, param_env, |v| Ok::<_, !>(v.skip_norm_wip())) {
         Ok(ct) => ct,
         Err(EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e)) => {
             ty::Const::new_error(infcx.tcx, e)
@@ -618,12 +623,13 @@ pub fn evaluate_const<'tcx>(
 ///
 /// You should not call this function unless you are implementing normalization itself. Prefer to use
 /// `normalize_erasing_regions` or the `normalize` functions on `ObligationCtxt`/`FnCtxt`/`InferCtxt`.
-#[instrument(level = "debug", skip(infcx), ret)]
-pub fn try_evaluate_const<'tcx>(
+#[instrument(level = "debug", skip(infcx, normalize_ty), ret)]
+pub fn try_evaluate_const<'tcx, E: Debug>(
     infcx: &InferCtxt<'tcx>,
     ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Result<ty::Const<'tcx>, EvaluateConstErr> {
+    normalize_ty: impl FnOnce(Unnormalized<'tcx, Ty<'tcx>>) -> Result<Ty<'tcx>, E>,
+) -> Result<ty::Const<'tcx>, EvaluateConstErr<E>> {
     let tcx = infcx.tcx;
     let ct = infcx.resolve_vars_if_possible(ct);
     debug!(?ct);
@@ -762,7 +768,9 @@ pub fn try_evaluate_const<'tcx>(
             let span = alias_const.kind.def_span(tcx);
             match tcx.const_eval_resolve_for_typeck(typing_env, erased_alias_const, span) {
                 Ok(Ok(val)) => {
-                    Ok(ty::Const::new_value(tcx, val, alias_const.type_of(tcx).skip_norm_wip()))
+                    let ty = normalize_ty(alias_const.type_of(tcx))
+                        .map_err(EvaluateConstErr::FailedNormalization)?;
+                    Ok(ty::Const::new_value(tcx, val, ty))
                 }
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(
@@ -855,12 +863,7 @@ pub fn impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, clauses: Vec<ty::Clause<'tcx>
     // vs user-written impls to AMBIGUOUS, this may return ambiguity even
     // with no infer vars. There may also be ways to encounter ambiguity due
     // to post-mono overflow.
-    let true_errors = ocx.try_evaluate_obligations();
-    if !true_errors.no_errors() {
-        return true;
-    }
-
-    false
+    !ocx.try_evaluate_obligations().no_errors()
 }
 
 fn instantiate_and_check_impossible_clauses<'tcx>(

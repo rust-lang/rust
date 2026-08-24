@@ -2726,7 +2726,7 @@ fn param_env_with_gat_bounds<'tcx>(
             }
             _ => clauses.push(
                 ty::Binder::bind_with_vars(
-                    ty::ProjectionPredicate {
+                    ty::ProjectionClause {
                         projection_term: ty::AliasTerm::new_from_def_id(
                             tcx,
                             trait_ty.def_id,

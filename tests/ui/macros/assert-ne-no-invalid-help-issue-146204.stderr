@@ -6,15 +6,15 @@ LL |     assert_ne!(buf, b"----");
    |
    = help: the trait `PartialEq<&[u8; 4]>` is not implemented for `[u8; 4]`
    = help: the following other types implement trait `PartialEq<Rhs>`:
+             `&[T]` implements `PartialEq<Cow<'_, [U]>>`
              `&[T]` implements `PartialEq<Vec<U, A>>`
              `&[T]` implements `PartialEq<[U; N]>`
              `&[u8; N]` implements `PartialEq<ByteStr>`
              `&[u8; N]` implements `PartialEq<ByteString>`
              `&[u8]` implements `PartialEq<ByteStr>`
              `&[u8]` implements `PartialEq<ByteString>`
-             `&mut [T]` implements `PartialEq<Vec<U, A>>`
-             `&mut [T]` implements `PartialEq<[U; N]>`
-           and 11 others
+             `&mut [T]` implements `PartialEq<Cow<'_, [U]>>`
+           and 13 others
 
 error[E0277]: can't compare `[u8; 4]` with `&[u8; 4]`
   --> $DIR/assert-ne-no-invalid-help-issue-146204.rs:19:5
@@ -24,15 +24,15 @@ LL |     assert_eq!(buf, b"----");
    |
    = help: the trait `PartialEq<&[u8; 4]>` is not implemented for `[u8; 4]`
    = help: the following other types implement trait `PartialEq<Rhs>`:
+             `&[T]` implements `PartialEq<Cow<'_, [U]>>`
              `&[T]` implements `PartialEq<Vec<U, A>>`
              `&[T]` implements `PartialEq<[U; N]>`
              `&[u8; N]` implements `PartialEq<ByteStr>`
              `&[u8; N]` implements `PartialEq<ByteString>`
              `&[u8]` implements `PartialEq<ByteStr>`
              `&[u8]` implements `PartialEq<ByteString>`
-             `&mut [T]` implements `PartialEq<Vec<U, A>>`
-             `&mut [T]` implements `PartialEq<[U; N]>`
-           and 11 others
+             `&mut [T]` implements `PartialEq<Cow<'_, [U]>>`
+           and 13 others
 
 error[E0277]: can't compare `[u8; 4]` with `&[u8; 4]`
   --> $DIR/assert-ne-no-invalid-help-issue-146204.rs:5:30

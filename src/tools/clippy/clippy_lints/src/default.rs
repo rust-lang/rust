@@ -5,10 +5,9 @@ use clippy_utils::{contains_name, get_parent_expr, in_automatically_derived, is_
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind, StructTailExpr};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, sym};
 
@@ -102,7 +101,8 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 format!("calling `{replacement}` is more clear than this expression"),
                 "try",
                 replacement,
-                Applicability::Unspecified, // First resolve the TODO above
+                // The trimmed path may not be in scope, so the suggestion cannot be machine-applicable.
+                Applicability::Unspecified,
             );
         }
     }

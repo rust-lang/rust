@@ -1,7 +1,7 @@
 cfg_select! {
     target_os = "hermit" => {
         mod hermit;
-        pub use hermit::{Thread, available_parallelism, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use hermit::{DEFAULT_MIN_STACK_SIZE, Thread, available_parallelism, sleep, yield_now};
         #[expect(dead_code)]
         mod unsupported;
         pub use unsupported::{current_os_id, set_name};
@@ -12,7 +12,7 @@ cfg_select! {
     }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
-        pub use sgx::{Thread, current_os_id, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use sgx::{DEFAULT_MIN_STACK_SIZE, Thread, current_os_id, sleep, yield_now};
 
         // SGX should protect in-enclave data from outside attackers, so there
         // must not be any data leakage to the OS, particularly no 1-1 mapping
@@ -29,14 +29,14 @@ cfg_select! {
     }
     target_os = "solid_asp3" => {
         mod solid;
-        pub use solid::{Thread, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use solid::{DEFAULT_MIN_STACK_SIZE, Thread, sleep, yield_now};
         #[expect(dead_code)]
         mod unsupported;
         pub use unsupported::{available_parallelism, current_os_id, set_name};
     }
     target_os = "teeos" => {
         mod teeos;
-        pub use teeos::{Thread, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use teeos::{DEFAULT_MIN_STACK_SIZE, Thread, sleep, yield_now};
         #[expect(dead_code)]
         mod unsupported;
         pub use unsupported::{available_parallelism, current_os_id, set_name};
@@ -46,11 +46,10 @@ cfg_select! {
         pub use uefi::{available_parallelism, sleep};
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{Thread, current_os_id, set_name, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use unsupported::{DEFAULT_MIN_STACK_SIZE, Thread, current_os_id, set_name, yield_now};
     }
     any(target_family = "unix", target_os = "wasi") => {
         mod unix;
-        pub use unix::{Thread, available_parallelism, current_os_id, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
         #[cfg(not(any(
             target_env = "newlib",
             target_os = "l4re",
@@ -73,8 +72,12 @@ cfg_select! {
             target_os = "vxworks",
             target_os = "wasi",
             target_vendor = "apple",
+            target_os = "fuchsia",
         ))]
         pub use unix::sleep_until;
+        pub use unix::{
+            DEFAULT_MIN_STACK_SIZE, Thread, available_parallelism, current_os_id, sleep, yield_now,
+        };
         #[expect(dead_code)]
         mod unsupported;
         #[cfg(any(
@@ -93,7 +96,9 @@ cfg_select! {
         pub use vexos::{sleep, sleep_until, yield_now};
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, DEFAULT_MIN_STACK_SIZE};
+        pub use unsupported::{
+            DEFAULT_MIN_STACK_SIZE, Thread, available_parallelism, current_os_id, set_name,
+        };
     }
     all(target_family = "wasm", target_feature = "atomics") => {
         mod wasm;
@@ -101,15 +106,21 @@ cfg_select! {
 
         #[expect(dead_code)]
         mod unsupported;
-        pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use unsupported::{
+            DEFAULT_MIN_STACK_SIZE, Thread, available_parallelism, current_os_id, set_name,
+            yield_now,
+        };
     }
     target_os = "windows" => {
         mod windows;
-        pub use windows::{Thread, available_parallelism, current_os_id, set_name, set_name_wide, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use windows::{
+            DEFAULT_MIN_STACK_SIZE, Thread, available_parallelism, current_os_id, set_name,
+            set_name_wide, sleep, yield_now,
+        };
     }
     target_os = "xous" => {
         mod xous;
-        pub use xous::{Thread, available_parallelism, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use xous::{DEFAULT_MIN_STACK_SIZE, Thread, available_parallelism, sleep, yield_now};
 
         #[expect(dead_code)]
         mod unsupported;
@@ -117,7 +128,10 @@ cfg_select! {
     }
     _ => {
         mod unsupported;
-        pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
+        pub use unsupported::{
+            DEFAULT_MIN_STACK_SIZE, Thread, available_parallelism, current_os_id, set_name, sleep,
+            yield_now,
+        };
     }
 }
 
@@ -134,7 +148,8 @@ cfg_select! {
     target_os = "wasi",
     target_vendor = "apple",
     target_os = "motor",
-    target_os = "vexos"
+    target_os = "vexos",
+    target_os = "fuchsia",
 )))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;

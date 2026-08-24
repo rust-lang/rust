@@ -5,8 +5,7 @@ use clippy_utils::res::MaybeDef as _;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{SpanlessEq, higher, peel_hir_expr_while, sym};
 use rustc_hir::{Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, SyntaxContext};
 

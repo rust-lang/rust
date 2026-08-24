@@ -8,9 +8,9 @@ use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, AttrVec, HasAttrs};
 use rustc_errors::{BufferedEarlyLint, LintBuffer};
 use rustc_feature::Features;
+use rustc_lint_defs::LintPass;
 use rustc_middle::ty::RegisteredTools;
 use rustc_session::Session;
-use rustc_session::lint::LintPass;
 use rustc_span::{Ident, Span};
 use tracing::debug;
 

@@ -960,6 +960,8 @@ const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("leoncasa", Unstable(sym::sparc_target_feature), &[]),
     ("v8plus", Unstable(sym::sparc_target_feature), &[]),
+    // FIXME: It's unclear what this feature means when `v8plus` is disabled on 32-bit SPARC. See
+    // the discussion around https://github.com/rust-lang/rust/pull/160949#discussion_r3806194355.
     ("v9", Unstable(sym::sparc_target_feature), &[]),
     // tidy-alphabetical-end
 ];
@@ -1099,7 +1101,8 @@ pub fn feature_to_arch_names(feature: &str) -> Vec<&'static str> {
 }
 
 // These arrays represent the least-constraining feature that is required for vector types up to a
-// certain size to have their "proper" ABI on each architecture.
+// certain size to have their "proper" ABI on each architecture. An empty feature name means
+// that the given length is unconditionally available.
 // Note that they must be kept sorted by vector size.
 const X86_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[(128, "sse"), (256, "avx"), (512, "avx512f")]; // FIXME: might need changes for AVX10.
@@ -1290,7 +1293,9 @@ impl Target {
                         // `x87` and all other FPU features so those do not matter.
                         // Note that this one requirement is the entire implementation of the ABI!
                         // LLVM handles the rest.
-                        FeatureConstraints { required: &["soft-float"], incompatible: &[] }
+                        // We mark "sse" as incompatible since LLVM likes to crash when both
+                        // "soft-float" and "sse" are enabled.
+                        FeatureConstraints { required: &["soft-float"], incompatible: &["sse"] }
                     }
                     _ => unreachable!(),
                 }
@@ -1311,7 +1316,9 @@ impl Target {
                         // `x87` and all other FPU features so those do not matter.
                         // Note that this one requirement is the entire implementation of the ABI!
                         // LLVM handles the rest.
-                        FeatureConstraints { required: &["soft-float"], incompatible: &[] }
+                        // We mark "sse" as incompatible since LLVM likes to crash when both
+                        // "soft-float" and "sse" are enabled.
+                        FeatureConstraints { required: &["soft-float"], incompatible: &["sse"] }
                     }
                     _ => unreachable!(),
                 }
@@ -1465,6 +1472,17 @@ impl Target {
                 // We only support one ABI on wasm at the moment.
                 // No ABI-relevant target features have been identified thus far.
                 NOTHING
+            }
+            Arch::Xtensa => {
+                // All Rust-supported Xtensa targets use the windowed register ABI
+                // (esp32 and later). Non-windowed (historical esp8266 / CALL0) is not
+                // a supported Rust ABI. Requiring `windowed` here means selecting a
+                // -Ctarget-cpu that does not provide windowed produces an ABI mismatch
+                // warning rather than silent UB when mixed with windowed code.
+                //
+                // `windowed` implies `exception` in XTENSA_FEATURES, so exception is
+                // always enabled for this ABI; list it explicitly for complete constraints.
+                FeatureConstraints { required: &["windowed", "exception"], incompatible: &[] }
             }
             _ => NOTHING,
         }

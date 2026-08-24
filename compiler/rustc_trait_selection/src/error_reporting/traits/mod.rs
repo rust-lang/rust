@@ -224,6 +224,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // We do this in 2 passes because we want to display errors in order, though
         // maybe it *is* better to sort errors by span or something.
         let mut is_suppressed = vec![false; errors.len()];
+        // A failing trait goal also fails every projection goal resting on it. Ambiguity
+        // errors are exempt: they get merged into a single diagnostic whose notes list all
+        // the constraints the annotation has to satisfy, so their projections still say
+        // something the trait error doesn't.
+        let covered_by_trait_error =
+            |cond: &ErrorDescriptor<'tcx>, error: &ErrorDescriptor<'tcx>| {
+                let is_definite = |error: &ErrorDescriptor<'tcx>| {
+                    error.index.is_some_and(|index| {
+                        !matches!(errors[index].code, FulfillmentErrorCode::Ambiguity { .. })
+                    })
+                };
+                is_definite(cond)
+                    && is_definite(error)
+                    && self.trait_error_implies_projection_error(cond.goal, error.goal)
+            };
         for (_, error_set) in error_map.iter() {
             // We want to suppress "duplicate" errors with the same span.
             for error in error_set {
@@ -239,9 +254,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             continue;
                         }
 
-                        if self.error_implies(error2.goal, error.goal)
+                        if (self.error_implies(error2.goal, error.goal)
                             && !(error2.index >= error.index
-                                && self.error_implies(error.goal, error2.goal))
+                                && self.error_implies(error.goal, error2.goal)))
+                            || covered_by_trait_error(error2, error)
                         {
                             info!("skipping {:?} (implied by {:?})", error, error2);
                             is_suppressed[index] = true;
@@ -403,6 +419,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             FulfillmentErrorCode::Project(ref e) => {
                 self.report_projection_error(&error.obligation, e)
             }
+            FulfillmentErrorCode::Outlives => self
+                .dcx()
+                .struct_span_err(
+                    error.obligation.cause.span,
+                    "higher-ranked lifetime bound could not be satisfied",
+                )
+                .emit(),
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
                 self.maybe_report_ambiguity(&error.obligation, related)
             }

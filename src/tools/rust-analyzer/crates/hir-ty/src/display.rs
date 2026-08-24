@@ -56,7 +56,7 @@ use crate::{
     generics::{ProvenanceSplit, generics},
     layout::Layout,
     lower::GenericPredicates,
-    mir::pad16,
+    mir::{IsSigned, pad16},
     next_solver::{
         AliasTy, Allocation, Clause, ClauseKind, Const, ConstKind, DbInterner,
         ExistentialPredicate, FnSig, GenericArg, GenericArgKind, GenericArgs, ParamEnv, PolyFnSig,
@@ -824,18 +824,18 @@ fn render_const_scalar_inner<'db>(
     match ty.kind() {
         TyKind::Bool => write!(f, "{}", b[0] != 0),
         TyKind::Char => {
-            let it = u128::from_le_bytes(pad16(b, false)) as u32;
+            let it = u128::from_le_bytes(pad16(b, IsSigned::No)) as u32;
             let Ok(c) = char::try_from(it) else {
                 return f.write_str("<unicode-error>");
             };
             write!(f, "{c:?}")
         }
         TyKind::Int(_) => {
-            let it = i128::from_le_bytes(pad16(b, true));
+            let it = i128::from_le_bytes(pad16(b, IsSigned::Yes));
             write!(f, "{it}")
         }
         TyKind::Uint(_) => {
-            let it = u128::from_le_bytes(pad16(b, false));
+            let it = u128::from_le_bytes(pad16(b, IsSigned::No));
             write!(f, "{it}")
         }
         TyKind::Float(fl) => match fl {
@@ -1031,7 +1031,7 @@ fn render_const_scalar_inner<'db>(
         }
         TyKind::FnDef(..) => ty.hir_fmt(f),
         TyKind::FnPtr(_, _) | TyKind::RawPtr(_, _) => {
-            let it = u128::from_le_bytes(pad16(b, false));
+            let it = u128::from_le_bytes(pad16(b, IsSigned::No));
             write!(f, "{it:#X} as ")?;
             ty.hir_fmt(f)
         }

@@ -684,8 +684,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "memchr" => {
-                let [ptr, val, num] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [ptr, val, num] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*const _, i32, usize) -> *const _),
+                    link_name,
+                    abi,
+                    args,
+                )?;
                 let ptr = this.read_pointer(ptr)?;
                 let val = this.read_scalar(val)?.to_i32()?;
                 let num = this.read_target_usize(num)?;
@@ -709,8 +713,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "memrchr" => {
                 this.check_target_os(&[Os::Linux, Os::Android, Os::FreeBsd], link_name)?;
 
-                let [ptr, val, num] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [ptr, val, num] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*const _, i32, usize) -> *const _),
+                    link_name,
+                    abi,
+                    args,
+                )?;
                 let ptr = this.read_pointer(ptr)?;
                 let val = this.read_scalar(val)?.to_i32()?;
                 let num = this.read_target_usize(num)?;

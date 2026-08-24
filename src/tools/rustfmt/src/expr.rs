@@ -271,7 +271,7 @@ pub(crate) fn format_expr(
             &cl.binder,
             cl.constness,
             cl.capture_clause,
-            &cl.coroutine_kind,
+            &cl.coroutine_marker,
             cl.movability,
             &cl.fn_decl,
             &cl.body,

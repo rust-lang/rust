@@ -10,14 +10,13 @@ use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::TypeTree;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, Path, ast};
-use rustc_data_structures::Limit;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
-pub use rustc_target::spec::SanitizerSet;
+use rustc_structures::{CollapseMacroDebuginfo, CrateType, Limit, NativeLibKind, SanitizerSet};
 use thin_vec::ThinVec;
 
 pub use crate::canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
@@ -372,76 +371,6 @@ pub enum PeImportNameType {
     Undecorated,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Encodable, Decodable, PrintAttribute)]
-#[derive(StableHash)]
-pub enum NativeLibKind {
-    /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC)
-    Static {
-        /// Whether to bundle objects from static library into produced rlib
-        bundle: Option<bool>,
-        /// Whether to link static library without throwing any object files away
-        whole_archive: Option<bool>,
-        /// Whether to export c static library symbols
-        export_symbols: Option<bool>,
-    },
-    /// Dynamic library (e.g. `libfoo.so` on Linux)
-    /// or an import library corresponding to a dynamic library (e.g. `foo.lib` on Windows/MSVC).
-    Dylib {
-        /// Whether the dynamic library will be linked only if it satisfies some undefined symbols
-        as_needed: Option<bool>,
-    },
-    /// Dynamic library (e.g. `foo.dll` on Windows) without a corresponding import library.
-    /// On Linux, it refers to a generated shared library stub.
-    RawDylib {
-        /// Whether the dynamic library will be linked only if it satisfies some undefined symbols
-        as_needed: Option<bool>,
-    },
-    /// A macOS-specific kind of dynamic libraries.
-    Framework {
-        /// Whether the framework will be linked only if it satisfies some undefined symbols
-        as_needed: Option<bool>,
-    },
-    /// Argument which is passed to linker, relative order with libraries and other arguments
-    /// is preserved
-    LinkArg,
-
-    /// Module imported from WebAssembly
-    WasmImportModule,
-
-    /// The library kind wasn't specified, `Dylib` is currently used as a default.
-    Unspecified,
-}
-
-impl NativeLibKind {
-    pub fn has_modifiers(&self) -> bool {
-        match self {
-            NativeLibKind::Static { bundle, whole_archive, export_symbols } => {
-                bundle.is_some() || whole_archive.is_some() || export_symbols.is_some()
-            }
-            NativeLibKind::Dylib { as_needed }
-            | NativeLibKind::Framework { as_needed }
-            | NativeLibKind::RawDylib { as_needed } => as_needed.is_some(),
-            NativeLibKind::Unspecified
-            | NativeLibKind::LinkArg
-            | NativeLibKind::WasmImportModule => false,
-        }
-    }
-
-    pub fn is_statically_included(&self) -> bool {
-        matches!(self, NativeLibKind::Static { .. })
-    }
-
-    pub fn is_dllimport(&self) -> bool {
-        matches!(
-            self,
-            NativeLibKind::Dylib { .. }
-                | NativeLibKind::RawDylib { .. }
-                | NativeLibKind::Unspecified
-        )
-    }
-}
-
 #[derive(Debug, Encodable, Decodable, Clone, StableHash, PrintAttribute)]
 pub struct LinkEntry {
     pub span: Span,
@@ -669,128 +598,6 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
         rustc_serialize::Encodable::<E>::encode(rust_logo, encoder);
         rustc_serialize::Encodable::<E>::encode(test_attrs, encoder);
         rustc_serialize::Encodable::<E>::encode(no_crate_inject, encoder);
-    }
-}
-
-/// How to perform collapse macros debug info
-/// if-ext - if macro from different crate (related to callsite code)
-/// | cmd \ attr    | no  | (unspecified) | external | yes |
-/// | no            | no  | no            | no       | no  |
-/// | (unspecified) | no  | no            | if-ext   | yes |
-/// | external      | no  | if-ext        | if-ext   | yes |
-/// | yes           | yes | yes           | yes      | yes |
-#[derive(Copy, Clone, Debug, Hash, PartialEq)]
-#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
-pub enum CollapseMacroDebuginfo {
-    /// Don't collapse debuginfo for the macro
-    No = 0,
-    /// Unspecified value
-    Unspecified = 1,
-    /// Collapse debuginfo if the macro comes from a different crate
-    External = 2,
-    /// Collapse debuginfo for the macro
-    Yes = 3,
-}
-
-/// Crate type, as specified by `#![crate_type]`
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Default, PartialOrd, Eq, Ord)]
-#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
-pub enum CrateType {
-    /// `#![crate_type = "bin"]`
-    Executable,
-    /// `#![crate_type = "dylib"]`
-    Dylib,
-    /// `#![crate_type = "rlib"]` or `#![crate_type = "lib"]`
-    #[default]
-    Rlib,
-    /// `#![crate_type = "staticlib"]`
-    StaticLib,
-    /// `#![crate_type = "cdylib"]`
-    Cdylib,
-    /// `#![crate_type = "proc-macro"]`
-    ProcMacro,
-    /// `#![crate_type = "sdylib"]`
-    // Unstable; feature(export_stable)
-    Sdylib,
-}
-
-impl CrateType {
-    /// Pairs of each `#[crate_type] = "..."` value and the crate type it resolves to
-    pub fn all() -> &'static [(Symbol, Self)] {
-        debug_assert_eq!(CrateType::default(), CrateType::Rlib);
-        &[
-            (rustc_span::sym::lib, CrateType::Rlib),
-            (rustc_span::sym::rlib, CrateType::Rlib),
-            (rustc_span::sym::dylib, CrateType::Dylib),
-            (rustc_span::sym::cdylib, CrateType::Cdylib),
-            (rustc_span::sym::staticlib, CrateType::StaticLib),
-            (rustc_span::sym::proc_dash_macro, CrateType::ProcMacro),
-            (rustc_span::sym::bin, CrateType::Executable),
-            (rustc_span::sym::sdylib, CrateType::Sdylib),
-        ]
-    }
-
-    /// Same as [`CrateType::all`], but does not include unstable options.
-    /// Used for diagnostics.
-    pub fn all_stable() -> &'static [(Symbol, Self)] {
-        debug_assert_eq!(CrateType::default(), CrateType::Rlib);
-        &[
-            (rustc_span::sym::lib, CrateType::Rlib),
-            (rustc_span::sym::rlib, CrateType::Rlib),
-            (rustc_span::sym::dylib, CrateType::Dylib),
-            (rustc_span::sym::cdylib, CrateType::Cdylib),
-            (rustc_span::sym::staticlib, CrateType::StaticLib),
-            (rustc_span::sym::proc_dash_macro, CrateType::ProcMacro),
-            (rustc_span::sym::bin, CrateType::Executable),
-        ]
-    }
-
-    pub fn has_metadata(self) -> bool {
-        match self {
-            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
-            CrateType::Executable
-            | CrateType::Cdylib
-            | CrateType::StaticLib
-            | CrateType::Sdylib => false,
-        }
-    }
-}
-
-impl TryFrom<Symbol> for CrateType {
-    type Error = ();
-
-    fn try_from(value: Symbol) -> Result<Self, Self::Error> {
-        Ok(match value {
-            rustc_span::sym::bin => CrateType::Executable,
-            rustc_span::sym::dylib => CrateType::Dylib,
-            rustc_span::sym::staticlib => CrateType::StaticLib,
-            rustc_span::sym::cdylib => CrateType::Cdylib,
-            rustc_span::sym::rlib => CrateType::Rlib,
-            rustc_span::sym::lib => CrateType::default(),
-            rustc_span::sym::proc_dash_macro => CrateType::ProcMacro,
-            rustc_span::sym::sdylib => CrateType::Sdylib,
-            _ => return Err(()),
-        })
-    }
-}
-
-impl std::fmt::Display for CrateType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            CrateType::Executable => "bin".fmt(f),
-            CrateType::Dylib => "dylib".fmt(f),
-            CrateType::Rlib => "rlib".fmt(f),
-            CrateType::StaticLib => "staticlib".fmt(f),
-            CrateType::Cdylib => "cdylib".fmt(f),
-            CrateType::ProcMacro => "proc-macro".fmt(f),
-            CrateType::Sdylib => "sdylib".fmt(f),
-        }
-    }
-}
-
-impl IntoDiagArg for CrateType {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        self.to_string().into_diag_arg(&mut None)
     }
 }
 
@@ -1436,6 +1243,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dummy]`.
     RustcDummy,
 
+    /// Represents `#[rustc_dump_clauses]`
+    RustcDumpClauses,
+
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
 
@@ -1459,9 +1269,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_dump_object_lifetime_defaults]`.
     RustcDumpObjectLifetimeDefaults,
-
-    /// Represents `#[rustc_dump_predicates]`
-    RustcDumpPredicates,
 
     /// Represents `#[rustc_dump_symbol_name]`
     RustcDumpSymbolName(Span),

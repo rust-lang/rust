@@ -339,7 +339,6 @@ mod bool;
 mod escape;
 mod tuple;
 mod unit;
-#[cfg_attr(feature = "nightly", not(bootstrap))]
 #[unstable(feature = "view_type_macro", issue = "155938")]
 pub mod view;
 

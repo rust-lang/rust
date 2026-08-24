@@ -16,7 +16,7 @@ use rustc_hir::{AmbigArg, ItemKind, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::traits::{PredicateObligations, TraitErrors};
-use rustc_lint_defs::builtin::SHADOWING_SUPERTRAIT_ITEMS;
+use rustc_lint_defs::builtin::{REDUNDANT_LIFETIMES, SHADOWING_SUPERTRAIT_ITEMS};
 use rustc_macros::Diagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
@@ -1323,7 +1323,7 @@ fn check_impl<'tcx>(
                     trait_ref,
                 );
                 let trait_pred =
-                    ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Positive };
+                    ty::TraitClause { trait_ref, polarity: ty::ClausePolarity::Positive };
                 let mut obligations = traits::wf::trait_obligations(
                     wfcx.infcx,
                     wfcx.param_env,
@@ -1800,14 +1800,22 @@ fn check_method_receiver<'tcx>(
             {
                 match receiver_validity_err {
                     ReceiverValidityError::DoesNotDeref if arbitrary_self_types_level.is_some() => {
-                        let hint = match receiver_ty
-                            .builtin_deref(false)
-                            .unwrap_or(receiver_ty)
-                            .ty_adt_def()
-                            .and_then(|adt_def| tcx.get_diagnostic_name(adt_def.did()))
-                        {
-                            Some(sym::RcWeak | sym::ArcWeak) => Some(InvalidReceiverTyHint::Weak),
-                            Some(sym::NonNull) => Some(InvalidReceiverTyHint::NonNull),
+                        let adt_def =
+                            receiver_ty.builtin_deref(false).unwrap_or(receiver_ty).ty_adt_def();
+
+                        let hint = match adt_def {
+                            Some(adt) => {
+                                if tcx.is_lang_item(adt.did(), LangItem::NonNull) {
+                                    Some(InvalidReceiverTyHint::NonNull)
+                                } else {
+                                    match tcx.get_diagnostic_name(adt.did()) {
+                                        Some(sym::RcWeak | sym::ArcWeak) => {
+                                            Some(InvalidReceiverTyHint::Weak)
+                                        }
+                                        _ => None,
+                                    }
+                                }
+                            }
                             _ => None,
                         };
 
@@ -2469,7 +2477,7 @@ fn lint_redundant_lifetimes<'tcx>(
             {
                 shadowed.insert(victim);
                 tcx.emit_node_span_lint(
-                    rustc_lint_defs::builtin::REDUNDANT_LIFETIMES,
+                    REDUNDANT_LIFETIMES,
                     tcx.local_def_id_to_hir_id(def_id.expect_local()),
                     tcx.def_span(def_id),
                     RedundantLifetimeArgsLint { candidate, victim },

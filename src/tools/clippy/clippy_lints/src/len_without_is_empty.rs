@@ -8,9 +8,8 @@ use rustc_hir::{
     FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind, ImplicitSelfKind, Item, ItemKind, Mutability,
     Node, OpaqueTyOrigin, PathSegment, PrimTy, QPath, TraitItemId, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{self, FnSig, Ty};
-use rustc_session::declare_lint_pass;
 use rustc_span::symbol::kw;
 use rustc_span::{Ident, Span, Symbol};
 use rustc_trait_selection::traits::supertrait_def_ids;

@@ -448,11 +448,12 @@ mod hex_fmt {
     // Not really a meaningful impl, but makes some generics easier.
     impl DisplayHex for bool {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_if! {
-                if #[cfg(feature = "compiler-builtins")] {
+            cfg_select_nofmt! {
+                feature = "compiler-builtins" => {
                     let _ = f;
                     unimplemented!()
-                } else {
+                }
+                _ => {
                     write!(f, "{self}")
                 }
             }
@@ -585,6 +586,7 @@ mod parse_tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)] // This test is very slow when using Miri
     fn test_parse_any() {
         for k in -149..=127 {
             let s = format!("0x1p{k}");
@@ -676,6 +678,7 @@ mod parse_tests {
         }
     }
     #[test]
+    #[cfg_attr(miri, ignore)] // This test is very slow when using Miri
     fn long_tail() {
         for k in 1..1000 {
             let s = format!("0x1.{}p0", "0".repeat(k));

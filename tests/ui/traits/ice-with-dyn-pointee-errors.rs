@@ -9,6 +9,7 @@ fn raw_pointer_in(x: &dyn Pointee<Metadata = ()>) {
     //~^ ERROR the trait `Pointee` is not dyn compatible
     unknown_sized_object_ptr_in(x)
     //~^ ERROR the trait `Pointee` is not dyn compatible
+    //~| ERROR the trait `Pointee` is not dyn compatible
 }
 
 fn main() {

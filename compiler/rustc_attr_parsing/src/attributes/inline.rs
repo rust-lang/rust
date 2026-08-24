@@ -1,6 +1,6 @@
 use rustc_attr_ir::{AttributeKind, InlineAttr, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;
 use crate::diagnostics::InlineForceInlineConflict;
@@ -22,7 +22,9 @@ impl SingleAttributeParser for InlineParser {
         Warn(Target::Field),
         Warn(Target::MacroDef),
         Warn(Target::Arm),
-        Warn(Target::AssocConst),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
         Warn(Target::MacroCall),
     ]);
     const TEMPLATE: AttributeTemplate = template!(

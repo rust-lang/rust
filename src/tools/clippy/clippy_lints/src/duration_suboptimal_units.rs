@@ -9,9 +9,8 @@ use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::RustcVersion;
 use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::{self, TyCtxt, UintTy};
-use rustc_session::impl_lint_pass;
 use rustc_span::Symbol;
 
 declare_clippy_lint! {

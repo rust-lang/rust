@@ -530,7 +530,6 @@ generate! {
     rsplitn_mut,
     rustc_errors,
     rustc_lint,
-    rustc_lint_defs,
     rustc_middle,
     rustc_span,
     rustfmt_skip,

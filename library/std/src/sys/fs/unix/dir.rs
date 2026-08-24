@@ -1,14 +1,12 @@
 use libc::{c_int, renameat, unlinkat};
 
 cfg_select! {
-    not(
-        any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "l4re",
-            target_os = "android",
-            target_os = "hurd",
-        )
-    ) => {
+    not(any(
+        all(target_os = "linux", not(target_env = "musl")),
+        target_os = "l4re",
+        target_os = "android",
+        target_os = "hurd",
+    )) => {
         use libc::{open as open64, openat as openat64};
     }
     _ => {

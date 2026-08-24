@@ -746,18 +746,6 @@ impl Printer<'_> {
                 self.whitespace();
                 self.print_expr_in(prec, *rhs);
             }
-            Expr::Range { lhs, rhs, range_type } => {
-                if let Some(lhs) = lhs {
-                    self.print_expr_in(prec, *lhs);
-                }
-                match range_type {
-                    RangeOp::Exclusive => w!(self, ".."),
-                    RangeOp::Inclusive => w!(self, "..="),
-                };
-                if let Some(rhs) = rhs {
-                    self.print_expr_in(prec, *rhs);
-                }
-            }
             Expr::Index { base, index } => {
                 self.print_expr_in(prec, *base);
                 w!(self, "[");

@@ -519,7 +519,6 @@ fn lintcheck_test() {
         .args(args)
         .current_dir("..") // repo root
         .status();
-    //.output();
 
     assert!(status.unwrap().success());
 }

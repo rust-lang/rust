@@ -38,5 +38,33 @@ help: use `std::mem::ManuallyDrop::into_inner` to get the inner value
 LL |     drop(std::mem::ManuallyDrop::into_inner({ manual3 }));
    |          +++++++++++++++++++++++++++++++++++           +
 
-error: aborting due to 3 previous errors
+error: calls to `drop_in_place` with a pointer to a `std::mem::ManuallyDrop` instead of the inner value does nothing
+  --> $DIR/undropped_manually_drops.rs:18:9
+   |
+LL |         std::ptr::drop_in_place(&raw mut manual4);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^----------------^
+   |                                 |
+   |                                 argument has type `*mut ManuallyDrop<S>`
+   |
+help: use `std::mem::ManuallyDrop::drop` to drop the inner value
+   |
+LL -         std::ptr::drop_in_place(&raw mut manual4);
+LL +         std::mem::ManuallyDrop::drop(&mut *&raw mut manual4);
+   |
+
+error: calls to `drop_in_place` with a pointer to a `std::mem::ManuallyDrop` instead of the inner value does nothing
+  --> $DIR/undropped_manually_drops.rs:19:9
+   |
+LL |         (&raw mut manual5).drop_in_place();
+   |         ------------------^^^^^^^^^^^^^^^^
+   |         |
+   |         argument has type `*mut ManuallyDrop<S>`
+   |
+help: use `std::mem::ManuallyDrop::drop` to drop the inner value
+   |
+LL -         (&raw mut manual5).drop_in_place();
+LL +         std::mem::ManuallyDrop::drop(&mut *(&raw mut manual5));
+   |
+
+error: aborting due to 5 previous errors
 

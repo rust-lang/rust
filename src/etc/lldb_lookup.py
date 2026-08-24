@@ -211,14 +211,28 @@ def register_providers_compatibility():
     register(
         StdSliceSyntheticProvider,
         SizeSummaryProvider,
-        r"^&(mut )?\[.+\]$",
+        r"^((&(mut )?)|(\*(const|mut) ))\[.+\]$",
+    )
+
+    # Box<[T]> GNU
+    register(
+        StdSliceSyntheticProvider,
+        SizeSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<\[.+\],.*>$",
     )
 
     # slice MSVC
     register(
         MSVCStdSliceSyntheticProvider,
         StdSliceSummaryProvider,
-        r"^ref(_mut)?\$<slice2\$<.+> >",
+        r"^((ref(_mut)?)|(ptr_(const|mut)))\$<slice2\$<.+> >$",
+    )
+
+    # Box<[T]> MSVC
+    register(
+        MSVCStdSliceSyntheticProvider,
+        StdSliceSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<slice2\$<.+>,.*>$",
     )
 
     # OsString

@@ -92,7 +92,7 @@ to be run inside the `rust` directory):
    accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
    ask them in the [Zulip] stream.)
 
-[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-clippy
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
 
 ## Performing the sync from Clippy to [`rust-lang/rust`]

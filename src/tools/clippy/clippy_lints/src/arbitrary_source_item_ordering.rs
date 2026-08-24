@@ -11,9 +11,8 @@ use rustc_hir::{
     Attribute, FieldDef, HirId, ImplItemId, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind, Variant,
     VariantData,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext, impl_lint_pass};
 use rustc_middle::ty::{AssocKind, TyCtxt};
-use rustc_session::impl_lint_pass;
 use rustc_span::{Ident, Symbol};
 
 declare_clippy_lint! {

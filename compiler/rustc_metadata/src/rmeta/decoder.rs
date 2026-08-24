@@ -411,12 +411,12 @@ impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
 
         let key = ty::CReaderCacheKey { cnum: Some(self.cdata.cnum), pos: shorthand };
 
-        if let Some(&ty) = tcx.ty_rcache.borrow().get(&key) {
+        if let Some(&ty) = tcx.caches.ty_rcache.borrow().get(&key) {
             return ty;
         }
 
         let ty = or_insert_with(self);
-        tcx.ty_rcache.borrow_mut().insert(key, ty);
+        tcx.caches.ty_rcache.borrow_mut().insert(key, ty);
         ty
     }
 

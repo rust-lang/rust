@@ -10,8 +10,8 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, DelayedSet, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -77,6 +77,7 @@ pub fn obligations<'tcx>(
         out: PredicateObligations::new(),
         recursion_depth,
         item: None,
+        visited_tys: Default::default(),
     };
     wf.add_wf_preds_for_term(term);
     debug!("wf::obligations({:?}, body_def_id={:?}) = {:?}", term, body_def_id, wf.out);
@@ -114,6 +115,7 @@ pub fn unnormalized_obligations<'tcx>(
         out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
+        visited_tys: Default::default(),
     };
     wf.add_wf_preds_for_term(term);
     Some(wf.out)
@@ -127,7 +129,7 @@ pub fn trait_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_def_id: LocalDefId,
-    trait_pred: ty::TraitPredicate<'tcx>,
+    trait_pred: ty::TraitClause<'tcx>,
     span: Span,
     item: &'tcx hir::Item<'tcx>,
 ) -> PredicateObligations<'tcx> {
@@ -139,6 +141,7 @@ pub fn trait_obligations<'tcx>(
         out: PredicateObligations::new(),
         recursion_depth: 0,
         item: Some(item),
+        visited_tys: Default::default(),
     };
     wf.add_wf_preds_for_trait_pred(trait_pred, Elaborate::All);
     debug!(obligations = ?wf.out);
@@ -166,6 +169,7 @@ pub fn clause_obligations<'tcx>(
         out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
+        visited_tys: Default::default(),
     };
 
     // It's ok to skip the binder here because wf code is prepared for it
@@ -210,6 +214,7 @@ struct WfPredicates<'a, 'tcx> {
     out: PredicateObligations<'tcx>,
     recursion_depth: usize,
     item: Option<&'tcx hir::Item<'tcx>>,
+    visited_tys: DelayedSet<Ty<'tcx>>,
 }
 
 /// Controls whether we "elaborate" supertraits and so forth on the WF
@@ -374,7 +379,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
     fn add_wf_preds_for_trait_pred(
         &mut self,
-        trait_pred: ty::TraitPredicate<'tcx>,
+        trait_pred: ty::TraitClause<'tcx>,
         elaborate: Elaborate,
     ) {
         let tcx = self.tcx();
@@ -382,7 +387,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         // Negative trait predicates don't require supertraits to hold, just
         // that their args are WF.
-        if trait_pred.polarity == ty::PredicatePolarity::Negative {
+        if trait_pred.polarity == ty::ClausePolarity::Negative {
             self.add_wf_preds_for_negative_trait_pred(trait_ref);
             return;
         }
@@ -721,6 +726,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
         debug!("wf bounds for t={:?} t.kind={:#?}", t, t.kind());
+
+        if !self.visited_tys.insert(t) {
+            return;
+        }
 
         let tcx = self.tcx();
 

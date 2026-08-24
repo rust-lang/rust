@@ -59,8 +59,8 @@ use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::CrateType;
 use rustc_span::sym;
+use rustc_structures::CrateType;
 use rustc_target::spec::PanicStrategy;
 use tracing::info;
 

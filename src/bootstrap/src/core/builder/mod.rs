@@ -13,7 +13,7 @@ use clap::ValueEnum;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
-pub use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
+pub(crate) use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
 use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
@@ -25,12 +25,13 @@ use crate::core::compiler::Compiler;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
 use crate::core::metadata::Crate;
+use crate::core::session::Build;
+use crate::trace;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::utils::tracing::format_location;
-use crate::{Build, trace};
 
 mod cargo;
 mod cli_paths;
@@ -40,7 +41,7 @@ mod tests;
 
 /// Builds and performs different [`Self::kind`]s of stuff and actions, taking
 /// into account build configuration from e.g. bootstrap.toml.
-pub struct Builder<'a> {
+pub(crate) struct Builder<'a> {
     /// Build configuration from e.g. bootstrap.toml.
     pub build: &'a Build,
 
@@ -108,7 +109,7 @@ impl dyn AnyDebug {
 /// Historically, steps also participated in command-line processing.
 /// That responsibility has been split off into the larger [`CommandLineStep`] trait,
 /// which helper steps don't need to implement.
-pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
+pub(crate) trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Result type of [`Step::run`]. Stored in the step cache for later lookup.
     type Output: Clone;
 
@@ -118,6 +119,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     fn run(self, builder: &Builder<'_>) -> Self::Output;
 
     /// Returns metadata of the step, for tests.
+    #[cfg_attr(not(any(test, feature = "tracing")), expect(dead_code))]
     fn metadata(&self) -> Option<StepMetadata> {
         None
     }
@@ -141,7 +143,7 @@ impl<S: CommandLineStep> Step for S {
 /// A blanket impl allows every [`CommandLineStep`] to be used as a [`Step`].
 /// This is arguably nicer than having it be a subtrait, because it avoids the
 /// need for two separate `impl` blocks per command-line-step type.
-pub trait CommandLineStep: 'static + Clone + Debug + PartialEq + Eq + Hash {
+pub(crate) trait CommandLineStep: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Result type of [`Step::run`].
     type Output: Clone;
 
@@ -190,7 +192,7 @@ pub trait CommandLineStep: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
 /// Metadata that describes an executed step, mostly for testing and tracing.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct StepMetadata {
+pub(crate) struct StepMetadata {
     name: String,
     kind: Kind,
     target: TargetSelection,
@@ -248,7 +250,8 @@ impl StepMetadata {
         self
     }
 
-    pub fn get_stage(&self) -> Option<u32> {
+    #[cfg_attr(not(any(test, feature = "tracing")), expect(dead_code))]
+    pub(crate) fn get_stage(&self) -> Option<u32> {
         self.stage.or(self
             .built_by
             // For std, its stage corresponds to the stage of the compiler that builds it.
@@ -256,11 +259,13 @@ impl StepMetadata {
             .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
     }
 
-    pub fn get_name(&self) -> &str {
+    #[cfg_attr(not(feature = "tracing"), expect(dead_code))]
+    pub(crate) fn get_name(&self) -> &str {
         &self.name
     }
 
-    pub fn get_target(&self) -> TargetSelection {
+    #[cfg_attr(not(feature = "tracing"), expect(dead_code))]
+    pub(crate) fn get_target(&self) -> TargetSelection {
         self.target
     }
 }
@@ -1077,7 +1082,7 @@ impl<'a> Builder<'a> {
             Subcommand::Build { .. } => (Kind::Build, &paths[..]),
             Subcommand::Check { .. } => (Kind::Check, &paths[..]),
             Subcommand::Clippy { .. } => (Kind::Clippy, &paths[..]),
-            Subcommand::Fix => (Kind::Fix, &paths[..]),
+            Subcommand::Fix { .. } => (Kind::Fix, &paths[..]),
             Subcommand::Doc { .. } => (Kind::Doc, &paths[..]),
             Subcommand::Test { .. } => (Kind::Test, &paths[..]),
             Subcommand::Miri { .. } => (Kind::Miri, &paths[..]),
@@ -1143,12 +1148,6 @@ impl<'a> Builder<'a> {
 
     fn run_step_descriptions(&self, v: &[CommandLineStepDescription], paths: &[PathBuf]) {
         cli_paths::match_paths_to_steps_and_run(self, v, paths);
-    }
-
-    /// Returns if `std` should be statically linked into `rustc_driver`.
-    /// It's currently not done on `windows-gnu` due to linker bugs.
-    pub fn link_std_into_rustc_driver(&self, target: TargetSelection) -> bool {
-        !target.triple.ends_with("-windows-gnu")
     }
 
     /// Obtain a compiler at a given stage and for a given host (i.e., this is the target that the
@@ -1565,7 +1564,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     /// cache the step, so it is safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are built.
     #[track_caller]
-    pub fn ensure<S: Step>(&'a self, step: S) -> S::Output {
+    pub(crate) fn ensure<S: Step>(&'a self, step: S) -> S::Output {
         {
             let mut stack = self.stack.borrow_mut();
             for stack_step in stack.iter() {

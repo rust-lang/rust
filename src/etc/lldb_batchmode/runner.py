@@ -13,21 +13,15 @@
 # Most of the time the `print` command will be executed while the program is still running will thus
 # fail. Using this Python script, the above will work as expected.
 
-from __future__ import print_function
-import lldb
+import _thread as thread
 import os
+import re
 import sys
 import threading
-import re
 import time
 import traceback
 
-
-try:
-    import thread
-except ModuleNotFoundError:
-    # The `thread` module was renamed to `_thread` in Python 3.
-    import _thread as thread
+import lldb
 
 # Set this to True for additional output
 DEBUG_OUTPUT = True
@@ -50,7 +44,7 @@ def breakpoint_callback(frame, bp_loc, dict):
     frame containing the breakpoint location is selected"""
 
     # HACK(eddyb) print a newline to avoid continuing an unfinished line.
-    print("")
+    print()
     print("Hit breakpoint " + str(bp_loc))
 
     # Select the frame and the thread containing it
@@ -92,14 +86,13 @@ def execute_command(command_interpreter: lldb.SBCommandInterpreter, command: str
 
             if breakpoint_id in registered_breakpoints:
                 print_debug(
-                    "breakpoint with id %s is already registered. Ignoring."
-                    % str(breakpoint_id)
+                    f"breakpoint with id {breakpoint_id!s} is already registered. Ignoring."
                 )
             else:
                 print_debug(
                     "registering breakpoint callback, id = " + str(breakpoint_id)
                 )
-                callback_command = f"breakpoint command add -s python {str(breakpoint_id)} -o \
+                callback_command = f"breakpoint command add -s python {breakpoint_id!s} -o \
 'import lldb_batchmode; lldb_batchmode.runner.breakpoint_callback'"
 
                 command_interpreter.HandleCommand(callback_command, res)
@@ -130,16 +123,15 @@ def start_breakpoint_listener(target):
         event = lldb.SBEvent()
         try:
             while True:
-                if listener.WaitForEvent(120, event):
-                    if (
-                        lldb.SBBreakpoint.EventIsBreakpointEvent(event)
-                        and lldb.SBBreakpoint.GetBreakpointEventTypeFromEvent(event)
-                        == lldb.eBreakpointEventTypeAdded
-                    ):
-                        global new_breakpoints
-                        breakpoint = lldb.SBBreakpoint.GetBreakpointFromEvent(event)
-                        print_debug("breakpoint added, id = " + str(breakpoint.id))
-                        new_breakpoints.append(breakpoint.id)
+                if listener.WaitForEvent(120, event) and (
+                    lldb.SBBreakpoint.EventIsBreakpointEvent(event)
+                    and lldb.SBBreakpoint.GetBreakpointEventTypeFromEvent(event)
+                    == lldb.eBreakpointEventTypeAdded
+                ):
+                    global new_breakpoints
+                    breakpoint = lldb.SBBreakpoint.GetBreakpointFromEvent(event)
+                    print_debug("breakpoint added, id = " + str(breakpoint.id))
+                    new_breakpoints.append(breakpoint.id)
         except BaseException:  # explicitly catch ctrl+c/sysexit
             print_debug("breakpoint listener shutting down")
 
@@ -158,10 +150,7 @@ def start_watchdog():
     """Starts a watchdog thread that will terminate the process after a certain
     period of time"""
 
-    try:
-        from time import clock
-    except ImportError:
-        from time import perf_counter as clock
+    from time import perf_counter as clock
 
     watchdog_start_time = clock()
     watchdog_max_time = watchdog_start_time + 30
@@ -181,7 +170,7 @@ def start_watchdog():
 def get_env_arg(name):
     value = os.environ.get(name)
     if value is None:
-        print("must set %s" % name)
+        print(f"must set {name}")
         sys.exit(1)
     return value
 
@@ -207,9 +196,9 @@ def main():
     print("LLDB batch-mode script")
     print("----------------------")
     print(f"Python version: {sys.version}")
-    print("Debugger commands script is '%s'." % script_path)
-    print("Target executable is '%s'." % target_path)
-    print("Current working directory is '%s'" % os.getcwd())
+    print(f"Debugger commands script is '{script_path}'.")
+    print(f"Target executable is '{target_path}'.")
+    print(f"Current working directory is '{os.getcwd()}'")
 
     # Start the timeout watchdog
     start_watchdog()
@@ -226,7 +215,7 @@ def main():
     debugger.SetAsync(False)
 
     # Create a target from a file and arch
-    print("Creating a target for '%s'" % target_path)
+    print(f"Creating a target for '{target_path}'")
 
     target: lldb.SBTarget = debugger.CreateTargetWithFileAndTargetTriple(
         target_path, lldb.SBPlatform.GetHostPlatform().GetTriple()
@@ -291,7 +280,7 @@ def main():
                 execute_command(command_interpreter, command)
 
     except IOError as e:
-        print("Could not read debugging script '%s'." % script_path)
+        print(f"Could not read debugging script '{script_path}'.")
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stdout)
         print("Aborting.")
         # Returning status codes using `sys.exit` doesn't work since we're in an LLDB managed python
@@ -306,7 +295,7 @@ def main():
             # We save importing these until we actually see a repr command. This prevents us
             # from trying to load input data from tests that don't use `repr` commands.
             from .check_lldb import tested_all_types, tested_all_variables
-            from .common import BLESS, BlessMetadata, INPUT_DATA
+            from .common import BLESS, INPUT_DATA, BlessMetadata
 
             # `bless` should resolve any errors from mismatched test data, so any errors that reach
             # this point are either from the `bless` not working properly, or some other issue with

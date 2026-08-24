@@ -21,7 +21,8 @@ fn kernel(x: *mut [f64; 256]) {
 ```
 
 To launch an offloaded kernel, use the `offload!` macro. It lets you specify the kernel, the
-workgroup and thread dimensions, and the arguments to forward to the device.
+workgroup and thread dimensions, the device to offload to, and the arguments to forward to the
+device.
 
 ```rust,ignore (optional component)
 let mut x = [0.0f64; 256];
