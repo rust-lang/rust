@@ -1535,9 +1535,7 @@ impl<'hir> Pat<'hir> {
         match self.kind {
             Missing => unreachable!(),
             Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Err(_) => true,
-            Box(s) | Deref(s) | Ref(s, _, _) | Binding(.., Some(s)) | Guard(s, _) => {
-                s.walk_short_(it)
-            }
+            Deref(s) | Ref(s, _, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
             Slice(before, slice, after) => {
@@ -1564,7 +1562,7 @@ impl<'hir> Pat<'hir> {
         use PatKind::*;
         match self.kind {
             Missing | Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Err(_) => {}
-            Box(s) | Deref(s) | Ref(s, _, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_(it),
+            Deref(s) | Ref(s, _, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
             Slice(before, slice, after) => {
@@ -1646,7 +1644,6 @@ impl<'hir> Pat<'hir> {
             | PatKind::Struct(_, _, _)
             | PatKind::TupleStruct(_, _, _)
             | PatKind::Tuple(_, _)
-            | PatKind::Box(_)
             | PatKind::Ref(_, _, _)
             | PatKind::Deref(_)
             | PatKind::Expr(_)
@@ -1791,9 +1788,6 @@ pub enum PatKind<'hir> {
     /// If the `..` pattern fragment is present, then `DotDotPos` denotes its position.
     /// `0 <= position <= subpats.len()`
     Tuple(&'hir [Pat<'hir>], DotDotPos),
-
-    /// A `box` pattern.
-    Box(&'hir Pat<'hir>),
 
     /// A `deref` pattern (currently `deref!()` macro-based syntax).
     Deref(&'hir Pat<'hir>),
