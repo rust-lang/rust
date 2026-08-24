@@ -8,7 +8,7 @@ approach.
 
 ## A rough walkthrough
 
-The entry-point of the solver is `InferCtxtEvalExt::evaluate_root_goal`. This
+The entry-point of the solver is `SolverDelegateEvalExt::evaluate_root_goal`. This
 function sets up the root `EvalCtxt` and then calls `EvalCtxt::evaluate_goal`,
 to actually enter the trait solver.
 
