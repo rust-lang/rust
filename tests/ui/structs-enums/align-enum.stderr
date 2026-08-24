@@ -1,4 +1,4 @@
-warning: attribute is specified more than once
+warning: representation attribute is specified more than once
   --> $DIR/align-enum.rs:14:8
    |
 LL | #[repr(align(1), align(16))]
@@ -8,7 +8,7 @@ LL | #[repr(align(32))]
 LL | #[repr(align(4))]
    |        ^^^^^^^^
    |
-   = note: will become a hard error soon. todo: wording
+   = note: for consistency, only specify the representation once
    = note: `#[warn(repeated_reprs)]` on by default
 
 warning: 1 warning emitted
