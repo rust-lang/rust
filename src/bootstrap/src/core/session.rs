@@ -1307,11 +1307,6 @@ impl Build {
         self.config.target_config.get(&target).and_then(|t| t.qemu_rootfs.as_ref()).map(|p| &**p)
     }
 
-    /// Temporary directory that extended error information is emitted to.
-    pub(crate) fn extended_error_dir(&self) -> PathBuf {
-        self.out.join("tmp/extended-error-metadata")
-    }
-
     /// Tests whether the `compiler` compiling for `target` should be forced to
     /// use a stage1 compiler instead.
     ///
