@@ -212,7 +212,7 @@ pub fn prepare_tool_cargo(
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     let mut features = extra_features.to_vec();
-    if builder.build.config.cargo_native_static {
+    if builder.sess.config.cargo_native_static {
         if path.ends_with("cargo")
             || path.ends_with("clippy")
             || path.ends_with("miri")
@@ -865,7 +865,7 @@ impl CommandLineStep for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        builder.build.require_submodule("src/tools/cargo", None);
+        builder.sess.require_submodule("src/tools/cargo", None);
 
         builder.std(self.build_compiler, builder.host_target);
         builder.std(self.build_compiler, self.target);
@@ -1523,7 +1523,7 @@ fn extended_rustc_tool_is_default_step(
         && builder.config.tools.as_ref().map_or(
             // By default, on nightly/dev enable all tools, else only
             // build stable tools.
-            stable || builder.build.unstable_features(),
+            stable || builder.sess.unstable_features(),
             // If `tools` is set, search list for this tool.
             |tools| {
                 tools.iter().any(|tool| match tool.as_ref() {

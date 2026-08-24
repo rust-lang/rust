@@ -25,7 +25,7 @@ use crate::core::compiler::Compiler;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
 use crate::core::metadata::Crate;
-use crate::core::session::Build;
+use crate::core::session::Session;
 use crate::trace;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::cache::Cache;
@@ -43,7 +43,7 @@ mod tests;
 /// into account build configuration from e.g. bootstrap.toml.
 pub(crate) struct Builder<'a> {
     /// Build configuration from e.g. bootstrap.toml.
-    pub build: &'a Build,
+    pub sess: &'a Session,
 
     /// The stage to use. Either implicitly determined based on subcommand, or
     /// explicitly specified with `--stage N`. Normally this is the stage we
@@ -69,7 +69,7 @@ pub(crate) struct Builder<'a> {
     /// "bar"]`.
     pub paths: Vec<PathBuf>,
 
-    /// Cached list of submodules from self.build.src.
+    /// Cached list of submodules from self.sess.src.
     submodule_paths_cache: OnceLock<Vec<String>>,
 
     /// When enabled by tests, this causes the top-level steps that _would_ be
@@ -81,10 +81,10 @@ pub(crate) struct Builder<'a> {
 }
 
 impl Deref for Builder<'_> {
-    type Target = Build;
+    type Target = Session;
 
     fn deref(&self) -> &Self::Target {
-        self.build
+        self.sess
     }
 }
 
@@ -278,7 +278,7 @@ pub struct RunConfig<'a> {
 
 impl RunConfig<'_> {
     pub fn build_triple(&self) -> TargetSelection {
-        self.builder.build.host_target
+        self.builder.sess.host_target
     }
 
     /// Return a list of crate names selected by `run.paths`.
@@ -1024,19 +1024,19 @@ impl<'a> Builder<'a> {
             }
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             Kind::Vendor => describe!(vendor::Vendor),
-            // special-cased in Build::build()
+            // special-cased in Session::build()
             Kind::Format | Kind::Perf => vec![],
             Kind::MiriTest | Kind::MiriSetup => unreachable!(),
         }
     }
 
-    pub fn get_help(build: &Build, kind: Kind) -> Option<String> {
+    pub fn get_help(sess: &Session, kind: Kind) -> Option<String> {
         let step_descriptions = Builder::get_step_descriptions(kind);
         if step_descriptions.is_empty() {
             return None;
         }
 
-        let builder = Self::new_internal(build, kind, vec![]);
+        let builder = Self::new_internal(sess, kind, vec![]);
         let builder = &builder;
 
         let mut should_run = ShouldRun::new(builder);
@@ -1062,10 +1062,10 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
-    fn new_internal(build: &Build, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
+    fn new_internal(sess: &Session, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
         Builder {
-            build,
-            top_stage: build.config.stage,
+            sess,
+            top_stage: sess.config.stage,
             kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
@@ -1076,9 +1076,9 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn new(build: &Build) -> Builder<'_> {
-        let paths = &build.config.paths;
-        let (kind, paths) = match build.config.cmd {
+    pub fn new(sess: &Session) -> Builder<'_> {
+        let paths = &sess.config.paths;
+        let (kind, paths) = match sess.config.cmd {
             Subcommand::Build { .. } => (Kind::Build, &paths[..]),
             Subcommand::Check { .. } => (Kind::Check, &paths[..]),
             Subcommand::Clippy { .. } => (Kind::Clippy, &paths[..]),
@@ -1101,7 +1101,7 @@ impl<'a> Builder<'a> {
         };
 
         StepStack::with_current(|stack| stack.clear());
-        Self::new_internal(build, kind, paths.to_owned())
+        Self::new_internal(sess, kind, paths.to_owned())
     }
 
     pub fn execute_cli(&self) {
@@ -1231,10 +1231,10 @@ impl<'a> Builder<'a> {
         host: TargetSelection,
         target: TargetSelection,
     ) -> Compiler {
-        let mut resolved_compiler = if self.build.force_use_stage2(stage) {
+        let mut resolved_compiler = if self.sess.force_use_stage2(stage) {
             trace!(target: "COMPILER_FOR", ?stage, "force_use_stage2");
             self.compiler(2, self.config.host_target)
-        } else if self.build.force_use_stage1(stage, target) {
+        } else if self.sess.force_use_stage1(stage, target) {
             trace!(target: "COMPILER_FOR", ?stage, "force_use_stage1");
             self.compiler(1, self.config.host_target)
         } else {
@@ -1368,7 +1368,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     pub fn sysroot_libdir_relative(&self, compiler: Compiler) -> &Path {
         match self.config.libdir_relative() {
             Some(relative_libdir) if compiler.stage >= 1 => relative_libdir,
-            _ if compiler.stage == 0 => &self.build.initial_relative_libdir,
+            _ if compiler.stage == 0 => &self.sess.initial_relative_libdir,
             _ => Path::new("lib"),
         }
     }
@@ -1436,8 +1436,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
     pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
 
-        let compilers =
-            RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
+        let compilers = RustcPrivateCompilers::new(self, run_compiler.stage, self.sess.host_target);
         assert_eq!(run_compiler, compilers.target_compiler());
 
         // Prepare the tools
@@ -1467,7 +1466,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
                 .config
                 .initial_cargo_clippy
                 .clone()
-                .unwrap_or_else(|| self.build.config.download_clippy());
+                .unwrap_or_else(|| self.sess.config.download_clippy());
 
             let mut cmd = command(cargo_clippy);
             cmd.env("CARGO", &self.initial_cargo);
@@ -1583,7 +1582,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
                 #[cfg(feature = "tracing")]
                 {
                     if let Some(parent) = stack.last() {
-                        let mut graph = self.build.step_graph.borrow_mut();
+                        let mut graph = self.sess.step_graph.borrow_mut();
                         graph.register_cached_step(&step, parent, self.config.dry_run());
                     }
                 }
@@ -1593,7 +1592,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
             #[cfg(feature = "tracing")]
             {
                 let parent = stack.last();
-                let mut graph = self.build.step_graph.borrow_mut();
+                let mut graph = self.sess.step_graph.borrow_mut();
                 graph.register_step_execution(&step, parent, self.config.dry_run());
             }
 
