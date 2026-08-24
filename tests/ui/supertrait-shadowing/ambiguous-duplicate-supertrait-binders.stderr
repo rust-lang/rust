@@ -1,0 +1,32 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/ambiguous-duplicate-supertrait-binders.rs:8:17
+   |
+LL | trait F: for<F> E + for<'e> E<'e> {}
+   |                 ^ expected named lifetime parameter
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'a` lifetime
+   |
+LL | trait F: for<'a, F> E<'a> + for<'e> E<'e> {}
+   |              +++     ++++
+help: consider introducing a named lifetime parameter
+   |
+LL | trait F<'a>: for<F> E<'a> + for<'e> E<'e> {}
+   |        ++++          ++++
+
+error[E0221]: ambiguous associated type `As` in bounds of `F`
+  --> $DIR/ambiguous-duplicate-supertrait-binders.rs:12:10
+   |
+LL |     type As;
+   |     -------
+   |     |
+   |     ambiguous `As` from `for<'e> E<'e>`
+   |     ambiguous `As` from `E<'_>`
+...
+LL |     T: F<As: E<'static>>,
+   |          ^^^^^^^^^^^^^^ ambiguous associated type `As`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0106, E0221.
+For more information about an error, try `rustc --explain E0106`.
