@@ -170,7 +170,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     /// without having a layout or `TyCtxt` available, and we want to keep the `Operand` type
     /// private. Does not count as a read of the local for the AM! It's a "ghost" read, like for
     /// validation or similar purposes.
-    pub fn as_mplace_or_imm_for_validation(
+    pub fn as_mplace_or_imm_ghost(
         &self,
     ) -> Option<Either<(Pointer<Option<Prov>>, MemPlaceMeta<Prov>), Immediate<Prov>>> {
         match self.value {

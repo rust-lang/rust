@@ -357,7 +357,7 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
         // Locals.
         for local in locals.iter() {
             // We only need the provenance so it's good for this to not be a real read.
-            match local.as_mplace_or_imm_for_validation() {
+            match local.as_mplace_or_imm_ghost() {
                 None => {}
                 Some(Either::Left((ptr, meta))) => {
                     ptr.visit_provenance(visit);

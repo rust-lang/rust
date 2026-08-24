@@ -890,13 +890,14 @@ impl<'tcx> PrirodaContext<'tcx> {
             value: "<unsupported>".to_string(),
         };
 
-        match &frame.locals()[local].as_mplace_or_imm_for_validation() {
+        match &frame.locals()[local].as_mplace_or_imm_ghost() {
             None => {
                 local_desc.value = "<dead>".to_string();
             }
             Some(Either::Right(Uninit)) => local_desc.value = "<uninit>".to_string(),
 
             Some(Either::Left(_) | Either::Right(_)) => {
+                // FIXME: This seems wrong, it ignore the frame.
                 let op = self
                     .ecx
                     .local_to_op(local, None)
