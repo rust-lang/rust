@@ -8,6 +8,6 @@ fn main() {
     let mut func = |increment: usize| value += increment;
     //~^ ERROR expected a closure that implements the `Fn` trait
 
-    (0..100).for_each(&func);
+    (0..100).for_each(&mut func);
     //~^ HELP consider changing this borrow's mutability
 }

@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
-  --> $DIR/fnmut-shared-reference-suggestion-issue-118843.rs:6:20
+  --> $DIR/fnmut-shared-reference-suggestion-issue-118843.rs:8:20
    |
 LL |     let mut func = |increment: usize| value += increment;
    |                    ^^^^^^^^^^^^^^^^^^ ----- closure is `FnMut` because it mutates the variable `value` here
@@ -11,9 +11,13 @@ LL |     (0..100).for_each(&func);
    |              |
    |              required by a bound introduced by this call
    |
-   = note: required for `&{closure@$DIR/fnmut-shared-reference-suggestion-issue-118843.rs:6:20: 6:38}` to implement `FnMut(usize)`
+   = note: required for `&{closure@$DIR/fnmut-shared-reference-suggestion-issue-118843.rs:8:20: 8:38}` to implement `FnMut(usize)`
 note: required by a bound in `for_each`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider changing this borrow's mutability
+   |
+LL |     (0..100).for_each(&mut func);
+   |                        +++
 
 error: aborting due to 1 previous error
 
