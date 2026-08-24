@@ -133,8 +133,8 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
             ClauseKind::UnstableFeature(feature_name) => {
                 write!(f, "UnstableFeature({feature_name:?})")
             }
-            ClauseKind::CompressedTrait(_) => {
-                todo!()
+            ClauseKind::CompressedTrait(c) => {
+                write!(f, "CompressedTrait({c:?})")
             }
         }
     }
