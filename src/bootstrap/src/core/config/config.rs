@@ -443,11 +443,14 @@ impl Config {
             // Undo `src/bootstrap`
             manifest_dir.parent().unwrap().parent().unwrap().to_owned()
         };
-        let src = if let Some(s) = compute_src_directory(flags_src, &exec_ctx) {
-            s
-        } else {
-            default_src_dir.clone()
-        };
+
+        // Determine the root of the `rust-lang/rust` source directory from one of:
+        // - An explicit command-line argument `--src=PATH`.
+        // - Running git to find a checkout directory from the current working directory.
+        // - The source directory that this bootstrap executable was built from.
+        let src = flags_src
+            .or_else(|| compute_src_directory_via_git(&exec_ctx))
+            .unwrap_or_else(|| default_src_dir.clone());
 
         #[cfg(test)]
         {
@@ -2063,54 +2066,49 @@ fn reconcile_jemalloc(
     }
 }
 
-fn compute_src_directory(src_dir: Option<PathBuf>, exec_ctx: &ExecutionContext) -> Option<PathBuf> {
-    if let Some(src) = src_dir {
-        return Some(src);
-    } else {
-        // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
-        // running on a completely different machine from where it was compiled.
-        let mut cmd = helpers::git(None);
-        // NOTE: we cannot support running from outside the repository because the only other path we have available
-        // is set at compile time, which can be wrong if bootstrap was downloaded rather than compiled locally.
-        // We still support running outside the repository if we find we aren't in a git directory.
+fn compute_src_directory_via_git(exec_ctx: &ExecutionContext) -> Option<PathBuf> {
+    // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
+    // running on a completely different machine from where it was compiled.
+    // NOTE: we cannot support running from outside the repository because the only other path we have available
+    // is set at compile time, which can be wrong if bootstrap was downloaded rather than compiled locally.
+    // We still support running outside the repository if we find we aren't in a git directory.
 
-        // NOTE: We get a relative path from git to work around an issue on MSYS/mingw. If we used an absolute path,
-        // and end up using MSYS's git rather than git-for-windows, we would get a unix-y MSYS path. But as bootstrap
-        // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
-        cmd.arg("rev-parse").arg("--show-cdup");
-        // Discard stderr because we expect this to fail when building from a tarball.
-        let output = cmd.allow_failure().run_capture_stdout(exec_ctx);
-        if output.is_success() {
-            let git_root_relative = output.stdout();
-            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
-            // and to resolve any relative components.
-            let git_root = env::current_dir()
-                .unwrap()
-                .join(PathBuf::from(git_root_relative.trim()))
-                .canonicalize()
-                .unwrap();
-            let s = git_root.to_str().unwrap();
+    // NOTE: We get a relative path from git (`--show-cdup`) to work around an issue on MSYS/mingw.
+    // If we used an absolute path, and end up using MSYS's git rather than git-for-windows, we would
+    // get a unix-y MSYS path. But as bootstrap has already been (kinda-cross-)compiled to Windows land,
+    // we require a normal Windows path.
 
-            // Bootstrap is quite bad at handling /? in front of paths
-            let git_root = match s.strip_prefix("\\\\?\\") {
-                Some(p) => PathBuf::from(p),
-                None => git_root,
-            };
-            // If this doesn't have at least `stage0`, we guessed wrong. This can happen when,
-            // for example, the build directory is inside of another unrelated git directory.
-            // In that case keep the original `CARGO_MANIFEST_DIR` handling.
-            //
-            // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
-            // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
-            if git_root.join("src").join("stage0").exists() {
-                return Some(git_root);
-            }
-        } else {
-            // We're building from a tarball, not git sources.
-            // We don't support pre-downloaded bootstrap in this case.
-        }
+    // Ask git to print the path of the repository root, relative to the working directory.
+    // If the working directory is the repo root, the output will be empty, which is fine.
+    let mut cmd = helpers::git(None);
+    cmd.arg("rev-parse").arg("--show-cdup");
+    // Discard stderr because we expect this to fail when building from a tarball.
+    let output = cmd.allow_failure().run_capture_stdout(exec_ctx);
+    if output.is_failure() {
+        // We're building from a tarball, not git sources.
+        // We don't support pre-downloaded bootstrap in this case.
+        return None;
+    }
+
+    // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
+    // and to resolve any relative components.
+    let stdout = output.stdout();
+    let relative_root = stdout.trim();
+    let git_root = env::current_dir().unwrap().join(relative_root).canonicalize().unwrap();
+
+    // Bootstrap is quite bad at handling /? in front of paths
+    let git_root = match git_root.to_str().unwrap().strip_prefix("\\\\?\\") {
+        Some(p) => PathBuf::from(p),
+        None => git_root,
     };
-    None
+
+    // If this doesn't have at least `./src/stage0`, we guessed wrong. This can happen when,
+    // for example, the build directory is inside of another unrelated git directory.
+    // In that case keep the original `CARGO_MANIFEST_DIR` handling.
+    //
+    // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
+    // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
+    if git_root.join("src").join("stage0").exists() { Some(git_root) } else { None }
 }
 
 #[derive(Clone)]
