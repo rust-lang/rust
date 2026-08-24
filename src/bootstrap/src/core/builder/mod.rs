@@ -1527,7 +1527,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
 
     /// Root output directory of the OpenMP/Offload runtimes for `target`
     ///
-    /// Deliberately not below [`Self::llvm_out`], since running cmake twice in the same folder is
+    /// Deliberately not under `llvm_output_dir`, since running cmake twice in the same folder is
     /// known to cause issues, like deleting existing binaries.
     pub fn offload_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("offload")
