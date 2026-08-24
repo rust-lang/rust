@@ -1,4 +1,4 @@
-#![feature(staged_api, never_type, rust_cold_cc)]
+#![feature(staged_api, rust_cold_cc)]
 //~^ ERROR module has missing stability attribute
 
 #[stable(feature = "a", since = "3.3.3")]
