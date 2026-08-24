@@ -145,17 +145,6 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
     }
 }
 
-pub(super) fn fulfillment_error_for_overflow<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    root_obligation: PredicateObligation<'tcx>,
-) -> FulfillmentError<'tcx> {
-    FulfillmentError {
-        obligation: find_best_leaf_obligation(infcx, &root_obligation, true),
-        code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
-        root_obligation,
-    }
-}
-
 #[instrument(level = "debug", skip(infcx), ret)]
 fn find_best_leaf_obligation<'tcx>(
     infcx: &InferCtxt<'tcx>,

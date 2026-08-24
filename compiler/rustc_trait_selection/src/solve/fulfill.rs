@@ -17,6 +17,7 @@ use tracing::instrument;
 use self::derive_errors::*;
 use super::Certainty;
 use super::delegate::SolverDelegate;
+use crate::error_reporting::InferCtxtErrorExt;
 use crate::traits::{FulfillmentError, ScrubbedTraitError};
 
 mod derive_errors;
@@ -49,12 +50,6 @@ pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
 
 #[derive(Default, Debug)]
 struct ObligationStorage<'tcx> {
-    /// Obligations which resulted in an overflow in fulfillment itself.
-    ///
-    /// We cannot eagerly return these as error so we instead store them here
-    /// to avoid recomputing them each time `try_evaluate_obligations` is called.
-    /// This also allows us to return the correct `FulfillmentError` for them.
-    overflowed: Vec<PredicateObligation<'tcx>>,
     pending: PendingObligations<'tcx>,
 }
 
@@ -68,24 +63,18 @@ impl<'tcx> ObligationStorage<'tcx> {
     }
 
     fn has_pending_obligations(&self) -> bool {
-        !self.pending.is_empty() || !self.overflowed.is_empty()
+        !self.pending.is_empty()
     }
 
     fn clone_pending(&self) -> PredicateObligations<'tcx> {
-        let mut obligations: PredicateObligations<'tcx> =
-            self.pending.iter().map(|(o, _)| o.clone()).collect();
-        obligations.extend(self.overflowed.iter().cloned());
-        obligations
+        self.pending.iter().map(|(o, _)| o.clone()).collect()
     }
 
     fn clone_pending_filtered<F>(&self, f: F) -> PredicateObligations<'tcx>
     where
         F: FnMut(&&(PredicateObligation<'tcx>, Option<GoalStalledOn<TyCtxt<'tcx>>>)) -> bool,
     {
-        let mut obligations: PredicateObligations<'tcx> =
-            self.pending.iter().filter(f).map(|(o, _)| o.clone()).collect();
-        obligations.extend(self.overflowed.iter().cloned());
-        obligations
+        self.pending.iter().filter(f).map(|(o, _)| o.clone()).collect()
     }
 
     fn drain_pending(
@@ -96,29 +85,6 @@ impl<'tcx> ObligationStorage<'tcx> {
             mem::take(&mut self.pending).into_iter().partition(|(o, s)| cond(o, s));
         self.pending = pending;
         unstalled
-    }
-
-    fn on_fulfillment_overflow(&mut self, infcx: &InferCtxt<'tcx>) {
-        infcx.probe(|_| {
-            // IMPORTANT: we must not use solve any inference variables in the obligations
-            // as this is all happening inside of a probe. We use a probe to make sure
-            // we get all obligations involved in the overflow. We pretty much check: if
-            // we were to do another step of `try_evaluate_obligations`, which goals would
-            // change.
-            self.overflowed.extend(
-                self.pending
-                    .extract_if(.., |(o, stalled_on)| {
-                        let goal = o.as_goal();
-                        let result = <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
-                            goal,
-                            o.cause.span,
-                            stalled_on.take(),
-                        );
-                        matches!(result, Ok(GoalEvaluation { has_changed: HasChanged::Yes, .. }))
-                    })
-                    .map(|(o, _)| o),
-            );
-        })
     }
 }
 
@@ -182,7 +148,7 @@ where
 
     #[inline]
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
-        if self.obligations.pending.is_empty() && self.obligations.overflowed.is_empty() {
+        if self.obligations.pending.is_empty() {
             // Typically in more than 99.9% of cases this condition is true, therefore we outline
             // the other case.
             TraitErrors::NoErrors
@@ -197,13 +163,8 @@ where
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
         loop {
             let mut any_changed = false;
-            let mut overflowed = false;
 
             self.obligations.pending.retain_mut(|(obligation, opt_stalled_on)| {
-                if overflowed {
-                    return false;
-                }
-
                 // Common case: still stalled; keep the obligation. This path is extremely hot in
                 // some cases; there can be thousands of pending obligations.
                 if let Some(stalled_on) = opt_stalled_on
@@ -234,21 +195,26 @@ where
                 // constrained by evaluating the goal.
                 obligation.predicate = goal.predicate;
                 if has_changed == HasChanged::Yes {
-                    // We increment the recursion depth here to track the number of times
-                    // this goal has resulted in inference progress. This doesn't precisely
-                    // model the way that we track recursion depth in the old solver due
-                    // to the fact that we only process root obligations, but it is a good
-                    // approximation and should only result in fulfillment overflow in
-                    // pathological cases.
-                    obligation.recursion_depth += 1;
-
                     if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
-                        // At this point we want to stop evaluating goals. We can't break out of
-                        // `retain_mut`, so instead we set this flag which causes all other
-                        // elements to be skipped.
-                        overflowed = true;
-                        return false;
+                        // We limit the total count of inference progress to avoid hang so we don't
+                        // try to recover from this.
+                        // It's more complicated to collect all overflows thus we stopped doing that.
+                        // Eager aborting is also what the old solver does.
+                        //
+                        // Note: it's incredibly rare to actually encounter fulfillment overflow
+                        // as a single obligation would have to result in different inference progress
+                        // a `recursion_depth` number of times. This mostly happens in bugs or with
+                        // `Subtype` obligations because we no longer use the `sub_unification_table`
+                        // in generalization.
+                        infcx.err_ctxt().report_overflow_obligation(obligation, true);
                     } else {
+                        // We increment the recursion depth here to track the number of times
+                        // this goal has resulted in inference progress. This doesn't precisely
+                        // model the way that we track recursion depth in the old solver due
+                        // to the fact that we only process root obligations, but it is a good
+                        // approximation and should only result in fulfillment overflow in
+                        // pathological cases.
+                        obligation.recursion_depth += 1;
                         any_changed = true;
                     }
                 }
@@ -283,11 +249,6 @@ where
                     }
                 }
             });
-            if overflowed {
-                self.obligations.on_fulfillment_overflow(infcx);
-                // Only return true errors that we have accumulated while processing.
-                return errors;
-            }
 
             if !any_changed {
                 break;
@@ -402,12 +363,6 @@ where
         .pending
         .drain(..)
         .map(|(obligation, _)| NextSolverError::Ambiguity(obligation))
-        .chain(
-            cx.obligations
-                .overflowed
-                .drain(..)
-                .map(|obligation| NextSolverError::Overflow(obligation)),
-        )
         .map(|e| E::from_solver_error(infcx, e))
         .collect()
 }
@@ -415,7 +370,6 @@ where
 pub enum NextSolverError<'tcx> {
     TrueError(PredicateObligation<'tcx>),
     Ambiguity(PredicateObligation<'tcx>),
-    Overflow(PredicateObligation<'tcx>),
 }
 
 impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tcx> {
@@ -427,9 +381,6 @@ impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for FulfillmentError<'tc
             NextSolverError::Ambiguity(obligation) => {
                 fulfillment_error_for_stalled(infcx, obligation)
             }
-            NextSolverError::Overflow(obligation) => {
-                fulfillment_error_for_overflow(infcx, obligation)
-            }
         }
     }
 }
@@ -438,9 +389,7 @@ impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for ScrubbedTraitError<'
     fn from_solver_error(_infcx: &InferCtxt<'tcx>, error: NextSolverError<'tcx>) -> Self {
         match error {
             NextSolverError::TrueError(_) => ScrubbedTraitError::TrueError,
-            NextSolverError::Ambiguity(_) | NextSolverError::Overflow(_) => {
-                ScrubbedTraitError::Ambiguity
-            }
+            NextSolverError::Ambiguity(_) => ScrubbedTraitError::Ambiguity,
         }
     }
 }
