@@ -1711,13 +1711,13 @@ pub(crate) fn rewrite_type_alias<'a>(
     match (visitor_kind, &op_ty) {
         (Item | AssocTraitItem | ForeignItem, Some(op_bounds)) => {
             let op = OpaqueType { bounds: op_bounds };
-            rewrite_ty(rw_info, Some(bounds), Some(&op), rhs_hi, vis)
+            rewrite_ty(rw_info, Some(bounds), Some(&op), rhs_hi, vis, defaultness)
         }
         (Item | AssocTraitItem | ForeignItem, None) => {
-            rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis)
+            rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis, defaultness)
         }
         (AssocImplItem, _) => {
-            let result = if let Some(op_bounds) = op_ty {
+            if let Some(op_bounds) = op_ty {
                 let op = OpaqueType { bounds: op_bounds };
                 rewrite_ty(
                     rw_info,
@@ -1725,13 +1725,10 @@ pub(crate) fn rewrite_type_alias<'a>(
                     Some(&op),
                     rhs_hi,
                     &DEFAULT_VISIBILITY,
+                    defaultness,
                 )
             } else {
-                rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis)
-            }?;
-            match defaultness {
-                ast::Defaultness::Default(..) => Ok(format!("default {result}")),
-                _ => Ok(result),
+                rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis, defaultness)
             }
         }
     }
@@ -1744,10 +1741,15 @@ fn rewrite_ty<R: Rewrite>(
     // the span of the end of the RHS (or the end of the generics, if there is no RHS)
     rhs_hi: BytePos,
     vis: &ast::Visibility,
+    defaultness: ast::Defaultness,
 ) -> RewriteResult {
     let mut result = String::with_capacity(128);
     let TyAliasRewriteInfo(context, indent, generics, after_where_clause, ident, span) = *rw_info;
-    result.push_str(&format!("{}type ", format_visibility(context, vis)));
+    result.push_str(&format!(
+        "{}{}type ",
+        format_visibility(context, vis),
+        format_defaultness(defaultness)
+    ));
     let ident_str = rewrite_ident(context, ident);
 
     if generics.params.is_empty() {
