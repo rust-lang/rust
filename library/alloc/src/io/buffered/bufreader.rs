@@ -153,7 +153,7 @@ impl<R: Read + ?Sized> BufReader<R> {
             let new = self.buf.read_more(&mut self.inner)?;
             if new == 0 {
                 // end of file, no more bytes to read
-                return Ok(&self.buf.buffer()[..]);
+                return Ok(self.buf.buffer());
             }
             debug_assert_eq!(self.buf.pos(), 0);
         }
