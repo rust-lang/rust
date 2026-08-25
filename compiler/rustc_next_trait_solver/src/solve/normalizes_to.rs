@@ -267,6 +267,13 @@ where
             return Err(NoSolution.into());
         }
 
+        // For every `default impl`, there's always a non-default `impl` that will *also* apply.
+        // There's no reason to register a candidate for this impl, since it is *not* proof that
+        // the trait goal holds.
+        if cx.impl_is_default(impl_def_id) {
+            return Err(NoSolution.into());
+        }
+
         // We have to ignore negative impls when projecting.
         let impl_polarity = cx.impl_polarity(impl_def_id);
         match impl_polarity {
@@ -358,8 +365,9 @@ where
                     }
                     FetchEligibleAssocItemResponse::Err(guar) => return error_response(ecx, guar),
                     FetchEligibleAssocItemResponse::NotFoundBecauseErased => {
-                        ecx.opaque_accesses.rerun_always(RerunReason::FetchEligibleAssocItem)?;
-                        return Err(NoSolution.into());
+                        match ecx
+                            .opaque_accesses
+                            .rerun_always(RerunReason::FetchEligibleAssocItem)? {}
                     }
                 };
 

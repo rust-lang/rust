@@ -11,7 +11,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::convert::FloatToInt;
+use crate::convert::{FloatToFloat, FloatToInt};
 use crate::num::FpCategory;
 use crate::panic::const_assert;
 use crate::{intrinsics, mem};
@@ -1202,6 +1202,95 @@ impl f64 {
         // SAFETY: the caller must uphold the safety contract for
         // `FloatToInt::to_int_unchecked`.
         unsafe { FloatToInt::<Int>::to_int_unchecked(self) }
+    }
+
+    /// Converts to the target float type, rounding as defined in IEEE 754.
+    ///
+    /// This is equivalent to `self as Flt`. Narrowing to a smaller type can
+    /// produce an infinity.
+    ///
+    /// ```
+    /// #![feature(float_conversions)]
+    ///
+    /// let x = 1.5_f64;
+    /// assert_eq!(x.cast::<f32>(), 1.5_f32);
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    pub fn cast<Flt>(self) -> Flt
+    where
+        Self: FloatToFloat<Flt>,
+    {
+        FloatToFloat::<Flt>::cast(self)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type, saturating
+    /// at the type's boundaries and mapping `NaN` to zero.
+    ///
+    /// This is equivalent to `self as Int`.
+    ///
+    /// ```
+    /// #![feature(float_conversions)]
+    ///
+    /// assert_eq!(255.5_f64.to_int_saturating::<u8>(), 255);
+    /// assert_eq!(300.0_f64.to_int_saturating::<u8>(), 255);
+    /// assert_eq!((-1.0_f64).to_int_saturating::<u8>(), 0);
+    /// assert_eq!(f64::NAN.to_int_saturating::<u8>(), 0);
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    pub fn to_int_saturating<Int>(self) -> Int
+    where
+        Self: FloatToInt<Int>,
+    {
+        FloatToInt::<Int>::to_int_saturating(self)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type, returning
+    /// `None` if the value is `NaN`, infinite, or does not fit in the target type.
+    ///
+    /// ```
+    /// #![feature(float_conversions)]
+    ///
+    /// assert_eq!(255.5_f64.to_int_checked::<u8>(), Some(255));
+    /// assert_eq!(256.0_f64.to_int_checked::<u8>(), None);
+    /// assert_eq!(f64::NAN.to_int_checked::<u8>(), None);
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    pub fn to_int_checked<Int>(self) -> Option<Int>
+    where
+        Self: FloatToInt<Int>,
+    {
+        FloatToInt::<Int>::to_int_checked(self)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type.
+    ///
+    /// This is equivalent to `self.to_int_checked().unwrap()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is `NaN`, infinite, or does not fit in the target type.
+    ///
+    /// ```
+    /// #![feature(float_conversions)]
+    ///
+    /// assert_eq!(255.5_f64.to_int_strict::<u8>(), 255);
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    #[track_caller]
+    pub fn to_int_strict<Int>(self) -> Int
+    where
+        Self: FloatToInt<Int>,
+    {
+        self.to_int_checked::<Int>()
+            .expect("the value cannot be represented in the target integer type")
     }
 
     /// Raw transmutation to `u64`.

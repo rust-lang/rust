@@ -3,11 +3,11 @@
     rustc::default_hash_types,
     reason = "we like performance but can't use `rustc_data_structures`"
 )]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![deny(
     rustc::potential_query_instability,
     reason = "macros shall produce deterministic output/errors"
 )]
-#![feature(never_type)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_tracked_env)]
 // tidy-alphabetical-end

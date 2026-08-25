@@ -36,7 +36,6 @@ pub mod hardwired {
             CONST_ITEM_MUTATION,
             DEAD_CODE,
             DEAD_CODE_PUB_IN_BINARY,
-            DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
             DEPRECATED,
             DEPRECATED_IN_FUTURE,
             DEPRECATED_LLVM_INTRINSIC,
@@ -157,6 +156,7 @@ pub mod hardwired {
             USELESS_DEPRECATED,
             VARARGS_WITHOUT_PATTERN,
             WARNINGS,
+            X86_SOFTFLOAT_SSE,
             // tidy-alphabetical-end
         ]
     }
@@ -4175,9 +4175,9 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Due to historic reasons never type fallback was `()`, meaning that `!` got spontaneously
-    /// coerced to `()`. There are plans to change that, but they may make the code such as above
-    /// unsound. Instead of depending on the fallback, you should specify the type explicitly:
+    /// The never type fallback used to be `()`, meaning that `!` got spontaneously coerced to `()`.
+    /// Since then the never type fallback has been changed to `!`, making the above code undefined
+    /// behavior. Instead of depending on the fallback, you should specify the type explicitly:
     /// ```
     /// if true {
     ///     return
@@ -4194,64 +4194,6 @@ declare_lint! {
     pub NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
     Deny,
     "never type fallback affecting unsafe function calls",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionAndFutureReleaseSemanticsChange 2024 "never-type-fallback"),
-        report_in_deps: true,
-    };
-    @edition Edition2024 => Deny;
-    report_in_external_macro
-}
-
-declare_lint! {
-    /// The `dependency_on_unit_never_type_fallback` lint detects cases where code compiles with
-    /// [never type fallback] being [`()`], but will stop compiling with fallback being [`!`].
-    ///
-    /// [never type fallback]: https://doc.rust-lang.org/nightly/core/primitive.never.html#never-type-fallback
-    /// [`!`]: https://doc.rust-lang.org/core/primitive.never.html
-    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail,edition2021
-    /// # #![deny(dependency_on_unit_never_type_fallback)]
-    /// fn main() {
-    ///     if true {
-    ///         // return has type `!` which, is some cases, causes never type fallback
-    ///         return
-    ///     } else {
-    ///         // the type produced by this call is not specified explicitly,
-    ///         // so it will be inferred from the previous branch
-    ///         Default::default()
-    ///     };
-    ///     // depending on the fallback, this may compile (because `()` implements `Default`),
-    ///     // or it may not (because `!` does not implement `Default`)
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Due to historic reasons never type fallback was `()`, meaning that `!` got spontaneously
-    /// coerced to `()`. There are plans to change that, but they may make the code such as above
-    /// not compile. Instead of depending on the fallback, you should specify the type explicitly:
-    /// ```
-    /// if true {
-    ///     return
-    /// } else {
-    ///     // type is explicitly specified, fallback can't hurt us no more
-    ///     <() as Default>::default()
-    /// };
-    /// ```
-    ///
-    /// See [Tracking Issue for making `!` fall back to `!`](https://github.com/rust-lang/rust/issues/123748).
-    pub DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
-    Deny,
-    "never type fallback affecting unsafe function calls",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionAndFutureReleaseError 2024 "never-type-fallback"),
-        report_in_deps: true,
-    };
     report_in_external_macro
 }
 
@@ -5367,10 +5309,49 @@ declare_lint! {
     /// on this target due to this issue, but the problem was not known at the time of
     /// stabilization.
     pub AARCH64_SOFTFLOAT_NEON,
-    Warn,
+    Deny,
     "detects code that could be affected by ABI issues on aarch64 softfloat targets",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #134375),
+        report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `x86_softfloat_sse` lint detects usage of `#[target_feature(enable = "sse")]` or target
+    /// features that imply SSE on softfloat x86 and x86-64 targets. Enabling this target feature
+    /// in a soft-float configuration is not supported by LLVM and can lead to crashes.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs x86_64-unknown-none)
+    /// #[target_feature(enable = "avx")]
+    /// fn with_avx() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: enabling the `sse` target feature on the current target is unsupported due to LLVM backend issues
+    ///   --> $DIR/abi-incompatible-target-feature-attribute-fcw.rs:11:18
+    ///    |
+    ///    | #[target_feature(enable = "avx")]
+    ///    |                  ^^^^^^^^^^^^^^^
+    ///    |
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #117938 <https://github.com/rust-lang/rust/issues/117938>
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// LLVM does not support combining the `soft-float` target feature (which is implicitly enabled
+    /// on these targets) with `sse`. This can lead to crashes of the backend. To prevent that,
+    /// Rust is turning that combination into an error.
+    pub X86_SOFTFLOAT_SSE,
+    Deny,
+    "detects code that could be affected by LLVM backend issues on x86 softfloat targets",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #117938),
         report_in_deps: true,
     };
 }

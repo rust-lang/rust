@@ -292,7 +292,7 @@ For the sake of completeness, here are the corresponding steps using
 
 ```bash
 # Install if you haven't already
-cargo install cargo-pgo
+cargo install --locked cargo-pgo
 
 cargo pgo build
 cargo pgo optimize

@@ -12,11 +12,11 @@ LL | trait Qux {
    |       --- this trait is not dyn compatible...
 LL |     fn bar() -> i32;
    |        ^^^ ...because associated function `bar` has no `self` parameter
-help: consider turning `bar` into a method by giving it a `&self` argument
+help: consider turning `bar` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn bar(&self) -> i32;
    |            +++++
-help: alternatively, consider constraining `bar` so it does not apply to trait objects
+help: alternatively, consider constraining `bar` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn bar() -> i32 where Self: Sized;
    |                     +++++++++++++++++
@@ -51,11 +51,11 @@ LL | trait Qux {
    |       --- this trait is not dyn compatible...
 LL |     fn bar() -> i32;
    |        ^^^ ...because associated function `bar` has no `self` parameter
-help: consider turning `bar` into a method by giving it a `&self` argument
+help: consider turning `bar` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn bar(&self) -> i32;
    |            +++++
-help: alternatively, consider constraining `bar` so it does not apply to trait objects
+help: alternatively, consider constraining `bar` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn bar() -> i32 where Self: Sized;
    |                     +++++++++++++++++

@@ -1,13 +1,15 @@
 error[E0423]: cannot find value `S` in module `m1`
   --> $DIR/namespace-mix.rs:35:15
    |
-LL |     pub struct TS();
-   |     ---------------- similarly named tuple struct `TS` defined here
-...
 LL |     check(m1::S);
-   |               ^
+   |               ^ not found in `m1`
    |
    = note: a type alias named `m1::S` exists in another namespace
+note: similarly named tuple struct `TS` defined here
+  --> $DIR/namespace-mix.rs:9:5
+   |
+LL |     pub struct TS();
+   |     ^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL |     check(m1::TS);
@@ -28,14 +30,14 @@ error[E0423]: cannot find value `S` in module `xm1`
   --> $DIR/namespace-mix.rs:41:16
    |
 LL |     check(xm1::S);
-   |                ^
-   |
-  ::: $DIR/auxiliary/namespace-mix.rs:5:5
-   |
-LL |     pub struct TS();
-   |     ------------- similarly named tuple struct `TS` defined here
+   |                ^ not found in `xm1`
    |
    = note: a type alias named `xm1::S` exists in another namespace
+note: similarly named tuple struct `TS` defined here
+  --> $DIR/auxiliary/namespace-mix.rs:5:5
+   |
+LL |     pub struct TS();
+   |     ^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL |     check(xm1::TS);
@@ -55,13 +57,15 @@ LL +     check(S);
 error[E0423]: cannot find value `V` in module `m7`
   --> $DIR/namespace-mix.rs:101:15
    |
-LL |         TV(),
-   |         ---- similarly named tuple variant `TV` defined here
-...
 LL |     check(m7::V);
-   |               ^
+   |               ^ not found in `m7`
    |
    = note: a type alias named `m7::V` exists in another namespace
+note: similarly named tuple variant `TV` defined here
+  --> $DIR/namespace-mix.rs:13:9
+   |
+LL |         TV(),
+   |         ^^^^
 help: a tuple variant with a similar name exists
    |
 LL |     check(m7::TV);
@@ -82,14 +86,14 @@ error[E0423]: cannot find value `V` in module `xm7`
   --> $DIR/namespace-mix.rs:107:16
    |
 LL |     check(xm7::V);
-   |                ^
-   |
-  ::: $DIR/auxiliary/namespace-mix.rs:9:9
-   |
-LL |         TV(),
-   |         -- similarly named tuple variant `TV` defined here
+   |                ^ not found in `xm7`
    |
    = note: a type alias named `xm7::V` exists in another namespace
+note: similarly named tuple variant `TV` defined here
+  --> $DIR/auxiliary/namespace-mix.rs:9:9
+   |
+LL |         TV(),
+   |         ^^
 help: a tuple variant with a similar name exists
    |
 LL |     check(xm7::TV);

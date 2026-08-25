@@ -142,7 +142,7 @@ fn parse_drive(path: &OsStr) -> Option<u8> {
 // Parses a drive prefix exactly, e.g. "C:"
 fn parse_drive_exact(path: &OsStr) -> Option<u8> {
     // only parse two bytes: the drive letter and the drive separator
-    if path.as_encoded_bytes().get(2).map(|&x| is_sep_byte(x)).unwrap_or(true) {
+    if path.as_encoded_bytes().get(2).map(|&x| is_verbatim_sep(x)).unwrap_or(true) {
         parse_drive(path)
     } else {
         None

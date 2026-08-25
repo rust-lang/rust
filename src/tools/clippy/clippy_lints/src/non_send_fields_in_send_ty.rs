@@ -186,11 +186,7 @@ fn ty_allowed_without_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty
         return true;
     }
 
-    if is_copy(cx, ty) && !contains_pointer_like(cx, ty) {
-        return true;
-    }
-
-    false
+    is_copy(cx, ty) && !contains_pointer_like(cx, ty)
 }
 
 /// Heuristic to allow cases like `Vec<*const u8>`

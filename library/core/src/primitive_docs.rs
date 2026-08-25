@@ -73,7 +73,6 @@ const _: () = ();
 /// write:
 ///
 /// ```
-/// #![feature(never_type)]
 /// # fn foo() -> u32 {
 /// let x: ! = {
 ///     return 123
@@ -230,7 +229,6 @@ const _: () = ();
 /// for example:
 ///
 /// ```
-/// #![feature(never_type)]
 /// # use std::fmt;
 /// # trait Debug {
 /// #     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;
@@ -311,7 +309,7 @@ const _: () = ();
 /// [`()`]: prim@unit
 /// [2024 edition]: <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
 ///
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
 const _: () = ();
 
 // Required to make auto trait impls render.

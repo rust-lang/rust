@@ -73,6 +73,13 @@ where
             return Err(NoSolution.into());
         }
 
+        // For every `default impl`, there's always a non-default `impl` that will *also* apply.
+        // There's no reason to register a candidate for this impl, since it is *not* proof that
+        // the trait goal holds.
+        if cx.impl_is_default(impl_def_id) {
+            return Err(NoSolution.into());
+        }
+
         // An upper bound of the certainty of this goal, used to lower the certainty
         // of reservation impl to ambiguous during coherence.
         let impl_polarity = cx.impl_polarity(impl_def_id);
@@ -250,8 +257,7 @@ where
         {
             debug_assert!(is_rigid == ty::IsRigid::Yes);
             if ecx.opaque_accesses.might_rerun() {
-                ecx.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)?;
-                return Err(NoSolution.into());
+                match ecx.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)? {}
             }
 
             for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {

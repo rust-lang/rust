@@ -2,7 +2,6 @@
 //@ revisions: normal exhaustive_patterns
 //
 // This tests a match with no arms on various types, and checks NOTEs.
-#![feature(never_type)]
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![deny(unreachable_patterns)]
 //~^ NOTE the lint level is defined here

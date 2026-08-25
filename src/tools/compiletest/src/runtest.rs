@@ -1049,8 +1049,16 @@ impl<'test> TestCx<'test> {
         match kind {
             DocKind::Html => {}
             DocKind::Json => {
-                rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
+                rustdoc.arg("--output-format").arg("json");
             }
+        }
+
+        // Both JSON output and `--disable-minification` are unstable rustdoc options.
+        if matches!(kind, DocKind::Json) || self.config.disable_minification {
+            rustdoc.arg("-Zunstable-options");
+        }
+        if self.config.disable_minification {
+            rustdoc.arg("--disable-minification");
         }
 
         if let Some(ref linker) = self.config.target_linker {
@@ -1609,6 +1617,15 @@ impl<'test> TestCx<'test> {
         // Enable wasm proc macros.
         if self.config.wasm_proc_macros {
             compiler.arg("-Zwasm-proc-macros");
+        }
+
+        // `--disable-minification` is an unstable rustdoc option. Rustdoc UI tests intentionally
+        // exercise diagnostics for unstable options, so don't enable them for that suite.
+        if compiler_kind == CompilerKind::Rustdoc
+            && self.config.disable_minification
+            && self.config.mode != TestMode::Ui
+        {
+            compiler.arg("-Zunstable-options").arg("--disable-minification");
         }
 
         // Hide libstd sources from ui tests to make sure we generate the stderr

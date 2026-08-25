@@ -14,7 +14,7 @@
 #![feature(float_gamma)]
 #![feature(float_erf)]
 #![feature(map_try_insert)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
 #![feature(io_error_inprogress)]
@@ -201,7 +201,4 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     // Deduplicating diagnostics means we miss events when tracking what happens during an
     // execution. Let's not do that.
     "-Zdeduplicate-diagnostics=no",
-    // FIXME(#160895): the new solver is enabled by default on nightly, but we
-    // don't want to use it in Miri for now. Remove once that's reverted.
-    "-Znext-solver=coherence",
 ];

@@ -118,6 +118,9 @@ pub(crate) fn complete_dot(
                 ctx: dot_access.ctx,
             };
             complete_methods(ctx, &iter, &traits_in_scope, |func| {
+                if func.name(ctx.db) == hir::sym::into_iter {
+                    return;
+                }
                 acc.add_method(ctx, &dot_access, func, Some(iter_sym.clone()), None)
             });
         }
@@ -1681,7 +1684,6 @@ fn foo() {
             expect![[r#"
                 me into_iter() (as IntoIterator)                fn(self) -> <Self as IntoIterator>::IntoIter
                 me into_iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
-                me into_iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
                 me into_iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
                 me into_iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
             "#]],
@@ -1715,7 +1717,6 @@ fn foo() {
                 me into_iter() (as IntoIterator)           fn(self) -> <Self as IntoIterator>::IntoIter
                 me iter()                                                             fn(&self) -> Iter
                 me iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
-                me iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
                 me iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
                 me iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
             "#]],

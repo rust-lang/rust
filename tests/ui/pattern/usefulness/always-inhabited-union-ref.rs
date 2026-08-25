@@ -4,7 +4,6 @@
 // undecided. This test file currently checks a conservative choice.
 
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
-#![feature(never_type)]
 #![allow(dead_code)]
 #![allow(unreachable_code)]
 

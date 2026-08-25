@@ -2355,7 +2355,7 @@ mod impls {
 
     ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     const impl PartialEq for ! {
         #[inline]
@@ -2364,11 +2364,11 @@ mod impls {
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     const impl Eq for ! {}
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     const impl PartialOrd for ! {
         #[inline]
@@ -2377,7 +2377,7 @@ mod impls {
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     const impl Ord for ! {
         #[inline]

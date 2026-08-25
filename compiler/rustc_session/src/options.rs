@@ -2335,10 +2335,12 @@ options! {
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names ('legacy', 'v0' (default), or 'hashed')"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED] { TARGET_MODIFIER: TargetCpu },
-        "select target processor (`rustc --print target-cpus` for details)"),
+        "select target processor (`rustc --print target-cpus` for details) \
+        The resulting binary must only be executed on CPUs that have all the features \
+        of the given CPU."),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
-        "target specific attributes. (`rustc --print target-features` for details). \
-        This feature is unsafe."),
+        "target-specific attributes (`rustc --print target-features` for details). \
+        The resulting binary must only be executed on CPUs that have all the given features."),
     unsafe_allow_abi_mismatch: Vec<String> = (Vec::new(), parse_comma_list, [UNTRACKED],
         "Allow incompatible target modifiers in dependency crates (comma separated list)"),
     // tidy-alphabetical-end
@@ -2453,7 +2455,7 @@ options! {
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
-        "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv) \
+        "dump the dependency graph to `$RUST_DEP_GRAPH` as both a text file and a GraphViz dot file (default: ./dep_graph.{dot, txt}) \
         (default: no)"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "dump MIR state to file.

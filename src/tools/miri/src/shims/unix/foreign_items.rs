@@ -1358,7 +1358,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // This function looks and behaves exactly like miri_start_unwind.
                 let [payload] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_) -> unwind::_Unwind_Reason_Code),
+                    // Look up the return type via `panic_unwind::`, not via `unwind::`, as
+                    // the latter it not always unique.
+                    shim_sig!(extern "C" fn(*_) -> panic_unwind::imp::uw::_Unwind_Reason_Code),
                     (link_name, abi, args),
                 )?;
                 this.handle_miri_start_unwind(payload)?;

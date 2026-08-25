@@ -48,11 +48,11 @@ LL | trait Foo<T> {
    |       --- this trait is not dyn compatible...
 LL |     fn id(me: T) -> T;
    |        ^^ ...because associated function `id` has no `self` parameter
-help: consider turning `id` into a method by giving it a `&self` argument
+help: consider turning `id` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn id(&self, me: T) -> T;
    |           ++++++
-help: alternatively, consider constraining `id` so it does not apply to trait objects
+help: alternatively, consider constraining `id` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn id(me: T) -> T where Self: Sized;
    |                       +++++++++++++++++

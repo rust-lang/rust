@@ -249,14 +249,14 @@ impl LazyAttrTokenStreamInner {
                 break_last_token,
                 node_replacements,
             } => {
-                // The token produced by the final call to `{,inlined_}next` was not
+                // The token produced by the final call to `{,inlined_}next_and_bump` was not
                 // actually consumed by the callback. The combination of chaining the
                 // initial token and using `take` produces the desired result - we
                 // produce an empty `TokenStream` if no calls were made, and omit the
                 // final token otherwise.
                 let mut cursor_snapshot = cursor_snapshot.clone();
                 let tokens = iter::once(FlatToken::Token(*start_token))
-                    .chain(iter::repeat_with(|| FlatToken::Token(cursor_snapshot.next())))
+                    .chain(iter::repeat_with(|| FlatToken::Token(cursor_snapshot.next_and_bump())))
                     .take(*num_calls as usize);
 
                 if node_replacements.is_empty() {
@@ -883,36 +883,48 @@ impl<'t> Iterator for TokenStreamIter<'t> {
 #[derive(Clone, Debug)]
 struct TokenTreeCursor {
     stream: TokenStream,
-    /// Points to the current token tree in the stream. In `TokenCursor::curr`,
-    /// this can be any token tree. In `TokenCursor::stack`, this is always a
-    /// `TokenTree::Delimited`.
-    index: usize,
+    /// Points to the next token tree (or one past the end of the stream).
+    next_idx: usize,
 }
 
 impl TokenTreeCursor {
     #[inline]
     fn new(stream: TokenStream) -> Self {
-        TokenTreeCursor { stream, index: 0 }
+        TokenTreeCursor { stream, next_idx: 0 }
     }
 
+    /// Gets the current token tree within this cursor. In a debug build it panics on a cursor that
+    /// hasn't been bumped; in a release build it will return `None`.
     #[inline]
     fn curr(&self) -> Option<&TokenTree> {
-        self.stream.get(self.index)
+        debug_assert!(self.next_idx > 0);
+        self.stream.get(self.next_idx - 1)
     }
 
+    /// Gets the next token tree without advancing.
+    #[inline]
+    fn next(&self) -> Option<&TokenTree> {
+        self.stream.get(self.next_idx)
+    }
+
+    /// Gets the token tree `n` ahead. `look_ahead(1)` is equivalent to `next()`. `look_ahead(0)`
+    /// isn't allowed and will panic.
+    #[inline]
     fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
-        self.stream.get(self.index + n)
+        assert_ne!(n, 0);
+        self.stream.get(self.next_idx + (n - 1))
     }
 
+    /// Move the cursor to the next token tree.
     #[inline]
     fn bump(&mut self) {
-        self.index += 1;
+        self.next_idx += 1;
     }
 
-    // For skipping ahead in rare circumstances.
+    /// For skipping ahead in rare circumstances.
     #[inline]
     fn bump_to_end(&mut self) {
-        self.index = self.stream.len();
+        self.next_idx = self.stream.len();
     }
 }
 
@@ -922,15 +934,16 @@ impl TokenTreeCursor {
 /// what the parser expects, for the most part.
 #[derive(Clone, Debug)]
 pub struct TokenCursor {
-    // Cursor for the current (innermost) token stream. The index within the
+    // Cursor for the current (innermost) token stream. The `next_idx` within the
     // cursor can point to any token tree in the stream (or one past the end).
-    // The delimiters for this token stream are found in `self.stack.last()`;
-    // if that is `None` we are in the outermost token stream which never has
-    // delimiters.
+    // The delimiters for this token stream are found in the current token tree
+    // in `self.stack.last()`; if that is `None` we are in the outermost token
+    // stream which never has delimiters.
     curr: TokenTreeCursor,
 
-    // Token streams surrounding the current one. The index within each cursor
-    // always points to a `TokenTree::Delimited`.
+    // Token streams surrounding the current one. The `next_idx` within each cursor
+    // is always greater than zero and always points one past the current
+    // `TokenTree::Delimited`.
     stack: Vec<TokenTreeCursor>,
 }
 
@@ -940,12 +953,13 @@ impl TokenCursor {
         TokenCursor { curr: TokenTreeCursor::new(stream), stack: vec![] }
     }
 
-    pub fn next(&mut self) -> (Token, Spacing) {
-        self.inlined_next()
+    /// Gets the next token and advances the cursor by one.
+    pub fn next_and_bump(&mut self) -> (Token, Spacing) {
+        self.inlined_next_and_bump()
     }
 
-    /// An `n` of zero is the next token tree in the current token stream; won't look outside the
-    /// current token stream.
+    /// An `n` of 1 is the next token tree in the current token stream; won't look outside the
+    /// current token stream. `look_ahead(0)` isn't allowed and will panic.
     #[inline]
     pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
         self.curr.look_ahead(n)
@@ -955,7 +969,7 @@ impl TokenCursor {
     /// delimited sequence. Panics if we are not within a delimited sequence.
     #[inline]
     pub fn look_ahead_past_close_delim(&self) -> Option<&TokenTree> {
-        self.stack.last().unwrap().look_ahead(1)
+        self.stack.last().unwrap().next()
     }
 
     /// Clones the `TokenTree::Delimited` that we are currently within. Panics if we are not within
@@ -991,12 +1005,12 @@ impl TokenCursor {
 
     /// This always-inlined version should only be used on hot code paths.
     #[inline(always)]
-    pub fn inlined_next(&mut self) -> (Token, Spacing) {
+    pub fn inlined_next_and_bump(&mut self) -> (Token, Spacing) {
         loop {
             // FIXME: we currently don't return `Delimiter::Invisible` open/close delims. To fix
             // #67062 we will need to, whereupon the `delim != Delimiter::Invisible` conditions
             // below can be removed.
-            if let Some(tree) = self.curr.curr() {
+            if let Some(tree) = self.curr.next() {
                 match tree {
                     &TokenTree::Token(token, spacing) => {
                         debug_assert!(!token.kind.is_delim());
@@ -1006,6 +1020,7 @@ impl TokenCursor {
                     }
                     &TokenTree::Delimited(sp, spacing, delim, ref tts) => {
                         let trees = TokenTreeCursor::new(tts.clone());
+                        self.curr.bump(); // move past the `Delimited`
                         self.stack.push(mem::replace(&mut self.curr, trees));
                         if !delim.skip() {
                             return (Token::new(delim.as_open_token_kind(), sp.open), spacing.open);
@@ -1019,7 +1034,6 @@ impl TokenCursor {
                     panic!("parent should be Delimited")
                 };
                 self.curr = parent;
-                self.curr.bump(); // move past the `Delimited`
                 if !delim.skip() {
                     return (Token::new(delim.as_close_token_kind(), span.close), spacing.close);
                 }

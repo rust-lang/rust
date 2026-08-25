@@ -36,6 +36,7 @@ pub struct CargoWorkspace {
     targets: Arena<TargetData>,
     workspace_root: AbsPathBuf,
     target_directory: AbsPathBuf,
+    build_directory: Option<AbsPathBuf>,
     manifest_path: ManifestPath,
     is_virtual_workspace: bool,
     /// Whether this workspace represents the sysroot workspace.
@@ -359,6 +360,7 @@ impl CargoWorkspace {
 
         let workspace_root = AbsPathBuf::assert(meta.workspace_root);
         let target_directory = AbsPathBuf::assert(meta.target_directory);
+        let build_directory = meta.build_directory.map(AbsPathBuf::assert);
         let mut is_virtual_workspace = true;
         let mut requires_rustc_private = false;
 
@@ -517,6 +519,7 @@ impl CargoWorkspace {
             targets,
             workspace_root,
             target_directory,
+            build_directory,
             manifest_path: ws_manifest_path,
             is_virtual_workspace,
             requires_rustc_private,
@@ -546,6 +549,10 @@ impl CargoWorkspace {
 
     pub fn target_directory(&self) -> &AbsPath {
         &self.target_directory
+    }
+
+    pub fn build_directory(&self) -> Option<&AbsPath> {
+        self.build_directory.as_deref()
     }
 
     pub fn package_flag(&self, package: &PackageData) -> String {

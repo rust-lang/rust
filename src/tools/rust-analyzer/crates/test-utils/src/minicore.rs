@@ -34,9 +34,9 @@
 //!     discriminant:
 //!     drop: sized
 //!     env: option
-//!     eq: sized
+//!     eq: sized, unary_ops, builtin_impls
 //!     error: fmt
-//!     float_consts:
+//!     float_consts: unary_ops, builtin_impls
 //!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
 //!     fn: sized, tuple
 //!     from: sized, result
@@ -370,11 +370,13 @@ pub mod clone {
         }
     }
 
+    // region:index
     impl<T: Clone> Clone for [T; 1] {
         fn clone(&self) -> Self {
             [self[0].clone()]
         }
     }
+    // endregion:index
     // endregion:builtin_impls
 
     // region:derive
@@ -1213,6 +1215,30 @@ pub mod ops {
         #[must_use = "this returns the result of the operation, without modifying the original"]
         fn neg(self) -> Self::Output;
     }
+
+    // region:builtin_impls
+    macro_rules! not_impl {
+        ($($t:ty)*) => ($(
+            impl const Not for $t {
+                type Output = $t;
+                fn not(self) -> $t { !self }
+            }
+        )*)
+    }
+
+    not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+
+    macro_rules! neg_impl {
+        ($($t:ty)*) => ($(
+            impl const Neg for $t {
+                type Output = $t;
+                fn neg(self) -> $t { -self }
+            }
+        )*)
+    }
+
+    neg_impl! { isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
+    // endregion:builtin_impls
     // endregion:unary_ops
 
     // region:coroutine

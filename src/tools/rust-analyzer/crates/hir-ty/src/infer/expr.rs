@@ -821,7 +821,7 @@ impl<'db> InferenceContext<'db> {
                     }
                 };
 
-                let diverge = asm.options.contains(AsmOptions::NORETURN);
+                let mut diverge = asm.options.contains(AsmOptions::NORETURN);
                 asm.operands.iter().for_each(|(_, operand)| match *operand {
                     AsmOperand::In { expr, .. } => check_expr_asm_operand(self, expr, true),
                     AsmOperand::Out { expr: Some(expr), .. } | AsmOperand::InOut { expr, .. } => {
@@ -835,11 +835,19 @@ impl<'db> InferenceContext<'db> {
                         }
                     }
                     AsmOperand::Label(expr) => {
-                        self.infer_expr(
+                        let previous_diverges = self.diverges;
+                        // The label blocks should have unit return value or diverge.
+                        let ty = self.infer_expr_inner(
                             expr,
                             &Expectation::HasType(self.types.types.unit),
                             ExprIsRead::No,
                         );
+                        if !ty.is_never() {
+                            _ = self.demand_suptype(expr.into(), self.types.types.unit, ty);
+                            diverge = false;
+                        }
+                        // We need this to avoid false unreachable warning when a label diverges.
+                        self.diverges = previous_diverges;
                     }
                     AsmOperand::Const(expr) => {
                         self.infer_expr(expr, &Expectation::None, ExprIsRead::No);
