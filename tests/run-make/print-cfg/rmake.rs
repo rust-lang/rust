@@ -6,7 +6,7 @@
 //! It also checks that some targets have the correct set cfgs.
 
 // ignore-tidy-linelength
-//@ needs-llvm-components: arm x86
+//@ needs-llvm-components: arm x86 webassembly
 // Note: without the needs-llvm-components it will fail on LLVM built without the required
 // components listed above.
 
@@ -18,6 +18,7 @@ use run_make_support::{rfs, rustc};
 
 struct PrintCfg {
     target: &'static str,
+    args: &'static [&'static str],
     includes: &'static [&'static str],
     disallow: &'static [&'static str],
 }
@@ -25,38 +26,57 @@ struct PrintCfg {
 fn main() {
     check(PrintCfg {
         target: "x86_64-pc-windows-gnu",
+        args: &[],
         includes: &["windows", "target_arch=\"x86_64\""],
         disallow: &["unix"],
     });
     check(PrintCfg {
         target: "i686-pc-windows-msvc",
+        args: &[],
         includes: &["windows", "target_env=\"msvc\""],
         disallow: &["unix"],
     });
     check(PrintCfg {
         target: "i686-apple-darwin",
+        args: &[],
         includes: &["unix", "target_os=\"macos\"", "target_vendor=\"apple\""],
         disallow: &["windows"],
     });
     check(PrintCfg {
         target: "i686-unknown-linux-gnu",
+        args: &[],
         includes: &["unix", "target_env=\"gnu\""],
         disallow: &["windows"],
     });
     check(PrintCfg {
         target: "arm-unknown-linux-gnueabihf",
+        args: &[],
         includes: &["unix", "target_abi=\"eabihf\""],
         disallow: &["windows"],
     });
     // Regression test for #90834: Android must not have `target_env="gnu"`.
     check(PrintCfg {
         target: "i686-linux-android",
+        args: &[],
         includes: &["unix", "target_os=\"android\""],
         disallow: &["windows", "target_env=\"gnu\""],
     });
+    check(PrintCfg {
+        target: "wasm32-unknown-unknown",
+        args: &[],
+        includes: &[],
+        disallow: &["target_has_threads"],
+    });
+    // FIXME: `target_has_threads` is not set; it should be.
+    check(PrintCfg {
+        target: "wasm32-unknown-unknown",
+        args: &["-Ctarget-feature=+atomics"],
+        includes: &[],
+        disallow: &["target_has_threads"],
+    });
 }
 
-fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
+fn check(PrintCfg { target, args, includes, disallow }: PrintCfg) {
     fn check_(output: &str, includes: &[&str], disallow: &[&str]) {
         let mut found = HashSet::<String>::new();
         let mut recorded = HashSet::<String>::new();
@@ -92,7 +112,7 @@ fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
 
     // --print=cfg
     {
-        let output = rustc().target(target).print("cfg").run();
+        let output = rustc().target(target).args(args).print("cfg").run();
         let stdout = output.stdout_utf8();
 
         check_(&stdout, includes, disallow);
@@ -102,7 +122,7 @@ fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
     {
         let tmp_path = PathBuf::from(format!("{target}.cfg"));
 
-        rustc().target(target).print(&format!("cfg={}", tmp_path.display())).run();
+        rustc().target(target).args(args).print(&format!("cfg={}", tmp_path.display())).run();
 
         let output = rfs::read_to_string(&tmp_path);
 
