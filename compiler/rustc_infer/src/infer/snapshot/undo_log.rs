@@ -88,7 +88,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
                 );
             }
             UndoLog::OverwriteSolverRegionConstraint { old_constraint } => {
-                self.solver_region_constraint_storage.overwrite_spanned(old_constraint);
+                self.solver_region_constraint_storage.overwrite(old_constraint);
             }
             UndoLog::PushTypeOutlivesConstraint => {
                 let popped = self.region_obligations.pop();

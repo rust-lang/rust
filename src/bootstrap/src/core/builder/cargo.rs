@@ -399,7 +399,9 @@ impl Cargo {
                 // Do not enable Zlib compression on:
                 // - Windows, because MSVC/PDB doesn't support it
                 // - macOS, because its linker doesn't know the flag
-                if !self.target.is_windows() && !self.target.is_apple() {
+                // - Cygwin, because its linker may not support the flag
+                if !self.target.is_windows() && !self.target.is_apple() && !self.target.is_cygwin()
+                {
                     // If we link through cc, we need the -Wl prefix.
                     // If we don't, then we must not add it, because the linker wouldn't
                     // understand it.

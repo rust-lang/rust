@@ -135,7 +135,8 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
         | DefKind::Enum
         | DefKind::Trait
         | DefKind::TraitAlias
-        | DefKind::TyAlias => ty::List::empty(),
+        | DefKind::TyAlias
+        | DefKind::TestBinderConstraints => ty::List::empty(),
         DefKind::OpaqueTy
         | DefKind::Mod
         | DefKind::Variant

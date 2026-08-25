@@ -108,3 +108,13 @@ macro_rules! impl_fn_for_zst {
         )+
     }
 }
+
+/// Permanently unstable. Only used in internal rustc tests. Do not use.
+#[rustc_builtin_macro(test_binder_constraints)]
+#[unstable(feature = "test_binder_constraints", issue = "none")]
+#[macro_export]
+macro_rules! test_binder_constraints {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
+}

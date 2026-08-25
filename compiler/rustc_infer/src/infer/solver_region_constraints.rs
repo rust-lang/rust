@@ -1,11 +1,8 @@
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
-use rustc_type_ir::region_constraint::{
-    RegionConstraint as UnspannedRegionConstraint, SpannedRegionConstraint,
-};
+use rustc_type_ir::region_constraint::SpannedRegionConstraint;
 use tracing::instrument;
 
-pub(crate) type SolverRegionConstraint<'tcx> = SpannedRegionConstraint<TyCtxt<'tcx>>;
+pub type SolverRegionConstraint<'tcx> = SpannedRegionConstraint<TyCtxt<'tcx>>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct SolverRegionConstraintStorage<'tcx>(SolverRegionConstraint<'tcx>);
@@ -17,10 +14,6 @@ impl<'tcx> SolverRegionConstraintStorage<'tcx> {
 
     pub(crate) fn get_constraint(&self) -> SolverRegionConstraint<'tcx> {
         self.0.clone()
-    }
-
-    pub(crate) fn get_unspanned_constraint(&self) -> UnspannedRegionConstraint<TyCtxt<'tcx>> {
-        self.0.clone().without_spans()
     }
 
     pub(crate) fn is_and(&self) -> bool {
@@ -45,8 +38,7 @@ impl<'tcx> SolverRegionConstraintStorage<'tcx> {
     }
 
     #[instrument(level = "debug")]
-    pub(crate) fn push(&mut self, constraint: UnspannedRegionConstraint<TyCtxt<'tcx>>, span: Span) {
-        let constraint = constraint.with_span(span);
+    pub(crate) fn push(&mut self, constraint: SolverRegionConstraint<'tcx>) {
         match core::mem::replace(&mut self.0, SolverRegionConstraint::new_true()) {
             SolverRegionConstraint::And(and) => {
                 let and =
@@ -60,15 +52,7 @@ impl<'tcx> SolverRegionConstraintStorage<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn overwrite(
-        &mut self,
-        constraint: UnspannedRegionConstraint<TyCtxt<'tcx>>,
-        span: Span,
-    ) {
-        self.overwrite_spanned(constraint.with_span(span));
-    }
-
-    pub(crate) fn overwrite_spanned(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+    pub(crate) fn overwrite(&mut self, constraint: SolverRegionConstraint<'tcx>) {
         self.0 = constraint;
     }
 }
