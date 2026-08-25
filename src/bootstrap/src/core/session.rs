@@ -811,7 +811,7 @@ impl Session {
         self.out.join(target).join("json-doc")
     }
 
-    /// Output directory for all documentation for a target
+    /// Output directory for combined compiler + tools docs.
     pub(crate) fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("compiler-doc")
     }

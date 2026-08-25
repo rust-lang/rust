@@ -960,7 +960,7 @@ impl<'a> Builder<'a> {
                 doc::CargoBook,
                 doc::Clippy,
                 doc::ClippyBook,
-                doc::CompilerDoc,
+                doc::CompilerWithTools,
                 doc::Miri,
                 doc::EmbeddedBook,
                 doc::EditionGuide,

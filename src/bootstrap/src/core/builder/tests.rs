@@ -2442,6 +2442,31 @@ mod snapshot {
     }
 
     #[test]
+    fn doc_combined_compiler() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .arg("combined-compiler-doc")
+                .render_steps(), @"
+        [build] rustdoc 0 <host>
+        [build] llvm <host>
+        [doc] rustc 0 <host> -> rustc 1 <host>
+        [doc] rustc 0 <host> -> BuildHelper 1 <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [doc] rustc 0 <host> -> Rustdoc 1 <host>
+        [doc] rustc 0 <host> -> Rustfmt 1 <host>
+        [doc] rustc 0 <host> -> Clippy 1 <host>
+        [doc] rustc 0 <host> -> Miri 1 <host>
+        [doc] rustc 0 <host> -> Cargo 1 <host>
+        [doc] rustc 0 <host> -> Tidy 1 <host>
+        [doc] rustc 0 <host> -> Bootstrap 1 <host>
+        [doc] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [doc] rustc 0 <host> -> Compiletest 1 <host>
+        [doc] rustc 0 <host> -> compiler-doc 1 <host>
+        ");
+    }
+
+    #[test]
     fn doc_cargo_stage_1() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(

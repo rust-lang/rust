@@ -905,14 +905,24 @@ fn merge_rustdoc_cci_parts_from_fingerprints(
 }
 
 /// Generate the combined compiler docs for a given toolchain.
+/// This contains both the compiler docs, docs of rustc_private tools (miri, clippy, etc.), cargo
+/// and also some bootstrap related tools (bootstrap itself, compiletest, tidy, etc.).
+///
+/// It gets hosted at https://doc.rust-lang.org/nightly/nightly-rustc/index.html.
+///
+/// Compiler documentation is distributed separately, so we make sure
+/// we do not merge it with the other documentation from std, test and
+/// proc_macros. This is largely just a wrapper around `cargo doc`.
+///
+/// Returns a path to a directory with the generated documentation.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct CompilerDoc {
+pub struct CompilerWithTools {
     build_compiler: Compiler,
     target: TargetSelection,
     stage: u32,
 }
 
-impl CompilerDoc {
+impl CompilerWithTools {
     /// Document `stage` compiler for the given `target`.
     pub(crate) fn for_stage(builder: &Builder<'_>, stage: u32, target: TargetSelection) -> Self {
         let build_compiler = prepare_doc_compiler(builder, target, stage);
@@ -920,12 +930,12 @@ impl CompilerDoc {
     }
 }
 
-impl CommandLineStep for CompilerDoc {
-    type Output = ();
+impl CommandLineStep for CompilerWithTools {
+    type Output = PathBuf;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("compiler-doc")
+        run.alias("compiler-with-tools")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -933,19 +943,17 @@ impl CommandLineStep for CompilerDoc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CompilerDoc::for_stage(run.builder, run.builder.top_stage, run.target));
+        run.builder.ensure(CompilerWithTools::for_stage(
+            run.builder,
+            run.builder.top_stage,
+            run.target,
+        ));
     }
 
-    /// Generates compiler documentation.
-    ///
-    /// This will generate all documentation for compiler and dependencies.
-    /// Compiler documentation is distributed separately, so we make sure
-    /// we do not merge it with the other documentation from std, test and
-    /// proc_macros. This is largely just a wrapper around `cargo doc`.
-    fn run(self, builder: &Builder<'_>) {
-        let CompilerDoc { target, build_compiler, stage } = self;
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let CompilerWithTools { target, build_compiler, stage } = self;
 
-        // This is the intended out directory for compiler documentation.
+        // This is the intended out directory for combined compiler documentation.
         let out = builder.compiler_doc_out(target);
 
         let _guard = builder.msg(Kind::Doc, "compiler-doc", Mode::Rustc, build_compiler, target);
@@ -1030,6 +1038,7 @@ impl CommandLineStep for CompilerDoc {
 
         // Handle `--open`.
         builder.open_in_browser(out.join("index.html"));
+        out
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
