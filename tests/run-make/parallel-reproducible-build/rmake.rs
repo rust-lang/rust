@@ -10,6 +10,7 @@ fn main() {
     const TESTS: &[(&str, &[&str])] = &[
         ("static-muts-issue-140413", &["-Zthreads=50"]),
         ("derives-issue-129094", &["-Zthreads=16", "-Copt-level=3"]),
+        ("mir-alloc-ids-issue-154278", &["-Zthreads=60", "--emit=mir", "--crate-type=lib"]),
     ];
 
     for (file, args) in TESTS {

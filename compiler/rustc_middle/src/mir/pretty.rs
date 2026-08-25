@@ -1,5 +1,7 @@
+use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::fmt::{Display, Write as _};
+use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -10,10 +12,10 @@ use ty::print::PrettyPrinter;
 
 use super::graphviz::write_mir_fn_graphviz;
 use crate::mir::interpret::{
-    AllocBytes, AllocId, Allocation, ConstAllocation, GlobalAlloc, Pointer, Provenance,
-    alloc_range, read_target_uint,
+    AllocBytes, AllocId, Allocation, ConstAllocation, CtfeProvenance, GlobalAlloc, Pointer,
+    Provenance, alloc_range, read_target_uint,
 };
-use crate::mir::visit::Visitor;
+use crate::mir::visit::{MutVisitor, Visitor};
 use crate::mir::*;
 use crate::ty::CoroutineArgsExt;
 
@@ -318,6 +320,10 @@ pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::R
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
     writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
     writeln!(w, "// HINT: See also -Z dump-mir for MIR at specific points during compilation.")?;
+    writeln!(
+        w,
+        "// WARNING: Allocation ids were remapped for deterministic output, they may be differ from real ones."
+    )?;
 
     let mut first = true;
     for &def_id in tcx.mir_keys(()) {
@@ -330,7 +336,6 @@ pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::R
 
         let render_body = |w: &mut dyn io::Write, body| -> io::Result<()> {
             writer.write_mir_fn(body, w)?;
-
             for body in tcx.promoted_mir(def_id) {
                 writeln!(w)?;
                 writer.write_mir_fn(body, w)?;
@@ -367,15 +372,42 @@ pub struct MirWriter<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     extra_data: &'a dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
     options: PrettyPrintMirOptions,
+    alloc_map: RefCell<FxHashMap<AllocId, AllocId>>,
+    reverse_alloc_map: RefCell<FxHashMap<AllocId, AllocId>>,
 }
 
 impl<'a, 'tcx> MirWriter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-        MirWriter { tcx, extra_data: &|_, _| Ok(()), options: PrettyPrintMirOptions::from_cli(tcx) }
+        MirWriter {
+            tcx,
+            extra_data: &|_, _| Ok(()),
+            options: PrettyPrintMirOptions::from_cli(tcx),
+            alloc_map: Default::default(),
+            reverse_alloc_map: Default::default(),
+        }
+    }
+
+    fn remap_alloc_id(&self, alloc_id: AllocId) -> AllocId {
+        let next_remap_id = self.alloc_map.borrow().len() as u64 + 1;
+
+        *self.alloc_map.borrow_mut().entry(alloc_id).or_insert_with(|| {
+            let remapped_id = AllocId(NonZero::new(next_remap_id).expect("can't be zero"));
+
+            self.reverse_alloc_map.borrow_mut().insert(remapped_id, alloc_id);
+
+            remapped_id
+        })
     }
 
     /// Write out a human-readable textual representation for the given function.
     pub fn write_mir_fn(&self, body: &Body<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
+        let mut body = body.clone();
+
+        let mut visitor = AllocIdsRemapper { writer: self, ids: Default::default() };
+        visitor.visit_body(&mut body);
+
+        let body = &body;
+
         write_mir_intro(self.tcx, body, w, self.options)?;
         for block in body.basic_blocks.indices() {
             (self.extra_data)(PassWhere::BeforeBlock(block), w)?;
@@ -387,7 +419,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
 
         writeln!(w, "}}")?;
 
-        write_allocations(self.tcx, body, w)?;
+        write_allocations(self, body, w, visitor.ids)?;
 
         Ok(())
     }
@@ -1565,12 +1597,58 @@ fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
 ///////////////////////////////////////////////////////////////////////////
 // Allocations
 
+/// Remaps allocation ids for deterministic output. Despite the fact that allocation
+/// ids are not deterministic, we can remap them into deterministic output for serialization,
+/// as serialization order is deterministic.
+struct AllocIdsRemapper<'a, 'b, 'tcx> {
+    writer: &'a MirWriter<'b, 'tcx>,
+    ids: BTreeSet<AllocId>,
+}
+
+impl AllocIdsRemapper<'_, '_, '_> {
+    fn remap_alloc_id(&mut self, alloc_id: AllocId) -> AllocId {
+        let remapped_id = self.writer.remap_alloc_id(alloc_id);
+        self.ids.insert(remapped_id);
+
+        remapped_id
+    }
+}
+
+impl<'tcx> MutVisitor<'tcx> for AllocIdsRemapper<'_, '_, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+        self.writer.tcx
+    }
+
+    fn visit_const_operand(&mut self, constant: &mut ConstOperand<'tcx>, _: Location) {
+        match &mut constant.const_ {
+            Const::Val(const_value, _) => {
+                match const_value {
+                    ConstValue::Scalar(Scalar::Ptr(pointer, ..)) => {
+                        let mut parts = pointer.provenance.into_parts();
+                        parts.0 = self.remap_alloc_id(parts.0);
+
+                        pointer.provenance = CtfeProvenance::from_parts(parts);
+                    }
+                    ConstValue::Slice { alloc_id, .. } | ConstValue::Indirect { alloc_id, .. } => {
+                        // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
+                        // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
+                        *alloc_id = self.remap_alloc_id(*alloc_id);
+                    }
+                    ConstValue::Scalar(Scalar::Int { .. }) | ConstValue::ZeroSized => {}
+                };
+            }
+            Const::Ty(_, _) | Const::Unevaluated(..) => {}
+        }
+    }
+}
+
 /// Find all `AllocId`s mentioned (recursively) in the MIR body and print their corresponding
 /// allocations.
 pub fn write_allocations<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    mir_writer: &MirWriter<'_, 'tcx>,
     body: &Body<'_>,
     w: &mut dyn io::Write,
+    initial_alloc_ids: BTreeSet<AllocId>,
 ) -> io::Result<()> {
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
@@ -1578,53 +1656,34 @@ pub fn write_allocations<'tcx>(
         alloc.inner().provenance().ptrs().values().map(|p| p.alloc_id())
     }
 
-    fn alloc_id_from_const_val(val: ConstValue) -> Option<AllocId> {
-        match val {
-            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => Some(ptr.provenance.alloc_id()),
-            ConstValue::Scalar(interpret::Scalar::Int { .. }) => None,
-            ConstValue::ZeroSized => None,
-            ConstValue::Slice { alloc_id, .. } | ConstValue::Indirect { alloc_id, .. } => {
-                // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
-                // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
-                Some(alloc_id)
-            }
-        }
-    }
-    struct CollectAllocIds(BTreeSet<AllocId>);
-
-    impl<'tcx> Visitor<'tcx> for CollectAllocIds {
-        fn visit_const_operand(&mut self, c: &ConstOperand<'tcx>, _: Location) {
-            match c.const_ {
-                Const::Ty(_, _) | Const::Unevaluated(..) => {}
-                Const::Val(val, _) => {
-                    if let Some(id) = alloc_id_from_const_val(val) {
-                        self.0.insert(id);
-                    }
-                }
-            }
-        }
-    }
-
-    let mut visitor = CollectAllocIds(Default::default());
-    visitor.visit_body(body);
+    let tcx = mir_writer.tcx;
 
     // `seen` contains all seen allocations, including the ones we have *not* printed yet.
     // The protocol is to first `insert` into `seen`, and only if that returns `true`
     // then push to `todo`.
-    let mut seen = visitor.0;
+    let mut seen = initial_alloc_ids;
     let mut todo: Vec<_> = seen.iter().copied().collect();
+
+    // Invariant: all ids in this loop are remapped.
     while let Some(id) = todo.pop() {
-        let mut write_allocation_track_relocs =
-            |w: &mut dyn io::Write, alloc: ConstAllocation<'tcx>| -> io::Result<()> {
-                // `.rev()` because we are popping them from the back of the `todo` vector.
-                for id in alloc_ids_from_alloc(alloc).rev() {
-                    if seen.insert(id) {
-                        todo.push(id);
-                    }
+        let mut write_allocation_track_relocs = |mir_writer: &MirWriter<'_, 'tcx>,
+                                                 w: &mut dyn io::Write,
+                                                 alloc: ConstAllocation<'tcx>|
+         -> io::Result<()> {
+            // `.rev()` because we are popping them from the back of the `todo` vector.
+            for id in alloc_ids_from_alloc(alloc).rev() {
+                let mapped_id = mir_writer.remap_alloc_id(id);
+                if seen.insert(mapped_id) {
+                    todo.push(mapped_id);
                 }
-                write!(w, "{}", display_allocation(tcx, alloc.inner()))
-            };
+            }
+            write!(w, "{}", display_allocation(tcx, alloc.inner()))
+        };
+
         write!(w, "\n{id:?}")?;
+
+        let id = mir_writer.reverse_alloc_map.borrow()[&id];
+
         match tcx.try_get_global_alloc(id) {
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
@@ -1651,7 +1710,7 @@ pub fn write_allocations<'tcx>(
                     match tcx.eval_static_initializer(did) {
                         Ok(alloc) => {
                             write!(w, ", ")?;
-                            write_allocation_track_relocs(w, alloc)?;
+                            write_allocation_track_relocs(mir_writer, w, alloc)?;
                         }
                         Err(_) => write!(w, ", error during initializer evaluation)")?,
                     }
@@ -1662,7 +1721,7 @@ pub fn write_allocations<'tcx>(
             }
             Some(GlobalAlloc::Memory(alloc)) => {
                 write!(w, " (")?;
-                write_allocation_track_relocs(w, alloc)?
+                write_allocation_track_relocs(mir_writer, w, alloc)?
             }
         }
         writeln!(w)?;
