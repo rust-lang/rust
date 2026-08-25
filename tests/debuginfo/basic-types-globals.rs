@@ -1,11 +1,20 @@
-//@ revisions: lto no-lto
+//@ revisions: lto no-lto lto-apple no-lto-apple
 
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 
+// FIXME(f128): Merge `-apple` revisions once Apple releases Xcode with LLVM 22.
+//@ [lto] ignore-apple
+//@ [no-lto] ignore-apple
+//@ [lto-apple] only-apple
+//@ [no-lto-apple] only-apple
 //@ [lto] compile-flags:-C lto
 //@ [lto] no-prefer-dynamic
+//@ [lto-apple] compile-flags:-C lto
+//@ [lto-apple] no-prefer-dynamic
 //@ ignore-backends: gcc
+// `f128` support was added to `lldb` in version 22.
+//@ min-llvm-lldb-version: 22
 
 //@ lldb-command:run
 //@ lldb-command:v B
@@ -38,6 +47,9 @@
 //@ lldb-check: ::F32 = 2.5
 //@ lldb-command:v F64
 //@ lldb-check: ::F64 = 3.5
+//@ lldb-command:v F128
+//@[no-lto] lldb-check: ::F128 = 4.5
+//@[lto] lldb-check: ::F128 = 4.5
 
 //@ gdb-command:run
 //@ gdb-command:print B
@@ -70,10 +82,11 @@
 //@ gdb-check:$14 = 2.5
 //@ gdb-command:print F64
 //@ gdb-check:$15 = 3.5
+// FIXME(f128): gdb doesn't support Rust `f128` yet.
 //@ gdb-command:continue
 
 #![allow(unused_variables)]
-#![feature(f16)]
+#![feature(f16, f128)]
 
 // N.B. These are `mut` only so they don't constant fold away.
 static mut B: bool = false;
@@ -91,13 +104,14 @@ static mut U64: u64 = 64;
 static mut F16: f16 = 1.5;
 static mut F32: f32 = 2.5;
 static mut F64: f64 = 3.5;
+static mut F128: f128 = 4.5;
 
 fn main() {
     _zzz(); // #break
 
-    let a = unsafe { (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F32, F64) };
-    // FIXME: Including f16 and f32 in the same tuple emits `__gnu_h2f_ieee`, which
-    // does not exist on some targets like PowerPC.
+    let a = unsafe { (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F32, F64, F128) };
+    // FIXME(f16): Including f16 and f32 in the same tuple emits `__gnu_h2f_ieee`, which
+    // does not exist on some targets like PowerPC (fixed in llvm22).
     // See https://github.com/llvm/llvm-project/issues/97981 and
     // https://github.com/rust-lang/compiler-builtins/issues/655
     let b = unsafe { F16 };

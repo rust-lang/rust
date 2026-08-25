@@ -35,6 +35,8 @@
 //@ gdb-check:type = f32
 //@ gdb-command:whatis f64
 //@ gdb-check:type = f64
+//@ gdb-command:whatis f128
+//@ gdb-check:type = f128
 //@ gdb-command:whatis fnptr
 //@ gdb-check:type = *mut fn ()
 //@ gdb-command:info functions _yyy
@@ -54,7 +56,7 @@
 //@ gdb-command:continue
 
 #![allow(unused_variables)]
-#![feature(f16)]
+#![feature(f16, f128)]
 
 fn main() {
     let unit: () = ();
@@ -73,6 +75,7 @@ fn main() {
     let f16: f16 = 1.5;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
+    let f128: f128 = 4.5;
     let fnptr : fn() = _zzz;
     let closure_0 = || {};
     let closure_1 = || { b; };

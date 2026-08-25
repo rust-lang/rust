@@ -33,11 +33,13 @@
 //@ gdb-check:type = f32
 //@ gdb-command:whatis basic_types_globals_metadata::F64
 //@ gdb-check:type = f64
+//@ gdb-command:whatis basic_types_globals_metadata::F128
+//@ gdb-check:type = f128
 //@ gdb-command:continue
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(f16)]
+#![feature(f16, f128)]
 
 // N.B. These are `mut` only so they don't constant fold away.
 static mut B: bool = false;
@@ -55,13 +57,14 @@ static mut U64: u64 = 64;
 static mut F16: f16 = 1.5;
 static mut F32: f32 = 2.5;
 static mut F64: f64 = 3.5;
+static mut F128: f128 = 4.5;
 
 fn main() {
     _zzz(); // #break
 
-    let a = unsafe { (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F32, F64) };
-    // FIXME: Including f16 and f32 in the same tuple emits `__gnu_h2f_ieee`, which
-    // does not exist on some targets like PowerPC.
+    let a = unsafe { (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F32, F64, F128) };
+    // FIXME(f16): Including f16 and f32 in the same tuple emits `__gnu_h2f_ieee`, which
+    // does not exist on some targets like PowerPC (fixed in llvm22).
     // See https://github.com/llvm/llvm-project/issues/97981 and
     // https://github.com/rust-lang/compiler-builtins/issues/655
     let b = unsafe { F16 };
