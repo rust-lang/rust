@@ -452,6 +452,11 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             let target_config = codegen_backend.target_config(&sess);
 
+            // Store all of the target features in the session.
+            // Needs to be done before `parse_cfg` because it checks this list.
+            sess.internal_target_features
+                .extend(target_config.internal_target_features.to_sorted_stable_ord());
+
             sess.config = parse_cfg(&sess, config.crate_cfg);
             let is_nightly_build = sess.is_nightly_build();
             let is_crt_static = sess.crt_static(None);
@@ -462,10 +467,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 is_nightly_build,
                 is_crt_static,
             );
-
-            // Store all of the target features in the session.
-            sess.internal_target_features
-                .extend(target_config.internal_target_features.into_sorted_stable_ord());
 
             sess.check_config = parse_check_cfg(&sess, config.crate_check_cfg);
 

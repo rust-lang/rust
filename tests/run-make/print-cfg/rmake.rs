@@ -67,12 +67,11 @@ fn main() {
         includes: &[],
         disallow: &["target_has_threads"],
     });
-    // FIXME: `target_has_threads` is not set; it should be.
     check(PrintCfg {
         target: "wasm32-unknown-unknown",
         args: &["-Ctarget-feature=+atomics"],
-        includes: &[],
-        disallow: &["target_has_threads"],
+        includes: &["target_has_threads"],
+        disallow: &[],
     });
 }
 
