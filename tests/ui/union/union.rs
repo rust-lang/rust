@@ -4,6 +4,7 @@ union Foo {
     tuple: (i32,),
     pizza: Pizza,
     tuple_struct: TupleStruct,
+    array: [u32; 2],
 }
 
 #[derive(Clone, Copy)]
@@ -48,8 +49,11 @@ pub fn main() {
     match foo {
         Foo { tuple_struct: TupleStruct(_a) } => {} //~ ERROR access to union field is unsafe
     }
+    match foo {
+        Foo { array: [_a, _] } => {} //~ ERROR access to union field is unsafe
+    }
 
-    // binding to a struct pattern is okay if no fields are read
+    // binding to a tuple, struct, or array pattern is okay if no fields are read
     match foo {
         Foo { zst: () } => {}
     }
@@ -70,6 +74,12 @@ pub fn main() {
     }
     match foo {
         Foo { tuple_struct: TupleStruct(_) } => {}
+    }
+    match foo {
+        Foo { array: [..] } => {}
+    }
+    match foo {
+        Foo { array: [_, _] } => {}
     }
 
     // binding to wildcard is okay
