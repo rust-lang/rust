@@ -577,35 +577,32 @@ impl<'a> Parser<'a> {
                 let parser_snapshot_after_type = mem::replace(self, parser_snapshot_before_type);
 
                 // Check for typo of `'a: loop { break 'a }` with a missing `'`.
-                match (&lhs.kind, &self.token.kind) {
-                    (
-                        // `foo: `
-                        ExprKind::Path(None, ast::Path { segments, .. }),
-                        token::Ident(kw::For | kw::Loop | kw::While, IdentKind::Normal),
-                    ) if let [segment] = segments.as_slice() => {
-                        let snapshot = self.create_snapshot_for_diagnostic();
-                        let label = Label {
-                            ident: Ident::from_str_and_span(
-                                &format!("'{}", segment.ident),
-                                segment.ident.span,
-                            ),
-                        };
-                        match self.parse_expr_labeled(label, false) {
-                            Ok(expr) => {
-                                type_err.cancel();
-                                self.dcx().emit_err(crate::diagnostics::MalformedLoopLabel {
-                                    span: label.ident.span,
-                                    suggestion: label.ident.span.shrink_to_lo(),
-                                });
-                                return Ok(expr);
-                            }
-                            Err(err) => {
-                                err.cancel();
-                                self.restore_snapshot(snapshot);
-                            }
+                if let ExprKind::Path(None, ast::Path { segments, .. }) = &lhs.kind
+                    && let [segment] = segments.as_slice()
+                    && let Some(ident) = self.token.non_raw_ident()
+                    && let kw::For | kw::Loop | kw::While = ident.name
+                {
+                    let snapshot = self.create_snapshot_for_diagnostic();
+                    let label = Label {
+                        ident: Ident::from_str_and_span(
+                            &format!("'{}", segment.ident),
+                            segment.ident.span,
+                        ),
+                    };
+                    match self.parse_expr_labeled(label, false) {
+                        Ok(expr) => {
+                            type_err.cancel();
+                            self.dcx().emit_err(crate::diagnostics::MalformedLoopLabel {
+                                span: label.ident.span,
+                                suggestion: label.ident.span.shrink_to_lo(),
+                            });
+                            return Ok(expr);
+                        }
+                        Err(err) => {
+                            err.cancel();
+                            self.restore_snapshot(snapshot);
                         }
                     }
-                    _ => {}
                 }
 
                 match self.parse_path(PathStyle::Expr) {
