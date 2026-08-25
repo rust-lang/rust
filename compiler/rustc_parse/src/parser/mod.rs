@@ -552,7 +552,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentKind::Normal | IdentKind::ForcedKeyword)) = self.token.ident()
+            && let Some(ident) = self.token.non_raw_ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
@@ -584,7 +584,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentKind::Normal | IdentKind::ForcedKeyword)) = self.token.ident()
+            && let Some(ident) = self.token.non_raw_ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
