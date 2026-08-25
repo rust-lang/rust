@@ -234,11 +234,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
 
     /// The effect of a successful function call return should not be
     /// applied here, see [`Analysis::apply_primary_terminator_effect`].
-    fn handle_terminator<'mir>(
-        &self,
-        terminator: &'mir Terminator<'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
-    ) {
+    fn handle_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<FlatSet<Scalar>>) {
         match &terminator.kind {
             TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
                 // Effect is applied by `handle_call_return`.
