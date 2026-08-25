@@ -50,6 +50,7 @@ pub fn decode_error_kind(code: io::RawOsError) -> io::ErrorKind {
         moto_rt::Error::BadHandle => io::ErrorKind::InvalidInput,
         moto_rt::Error::FileTooLarge => io::ErrorKind::FileTooLarge,
         moto_rt::Error::NotConnected => io::ErrorKind::NotConnected,
+        moto_rt::Error::ConnectionReset => io::ErrorKind::ConnectionReset,
         moto_rt::Error::StorageFull => io::ErrorKind::StorageFull,
         moto_rt::Error::InvalidData => io::ErrorKind::InvalidData,
         _ => io::ErrorKind::Uncategorized,
