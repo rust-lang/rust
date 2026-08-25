@@ -291,3 +291,25 @@ mod issue13900 {
         }
     }
 }
+
+mod hir_prefilter {
+    fn nested_closure() {
+        let _ = || {
+            let value = String::from("closure");
+            let _: String = value.clone();
+            //~^ redundant_clone
+        };
+    }
+
+    macro_rules! identity {
+        ($expression:expr) => {
+            $expression
+        };
+    }
+
+    fn macro_expression() {
+        let value = String::from("macro");
+        let _ = identity!(value.clone());
+        //~^ redundant_clone
+    }
+}
