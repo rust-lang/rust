@@ -6,6 +6,7 @@
 //@ build-fail
 //@ needs-llvm-components: x86
 //@ ignore-backends: gcc
+//@ dont-require-annotations: NOTE
 #![feature(no_core)]
 #![no_core]
 #![allow(improper_ctypes_definitions)]
@@ -15,5 +16,6 @@ use minicore::simd::Simd;
 
 #[no_mangle]
 pub unsafe extern "C" fn f(_: Simd<i64, 2>) {
-    //~^ ERROR: this function definition uses SIMD vector type `Simd<i64, 2>` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
+    //~^ ERROR: requires the `sse` target feature
+    //~| NOTE: the function has type `Simd<i64, 2>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 }
