@@ -97,7 +97,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else if adt_def.repr().c() {
                     interp_ok(false)
                 } else {
-                    // Must be repr(Rust).
+                    // Can't be SIMD or Scalable (since this is a 1-ZST); only Rust is left.
+                    assert!(adt_def.repr().rust());
                     interp_ok(true)
                 }
             }
