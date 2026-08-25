@@ -505,6 +505,14 @@ def StdPathSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     return read_string(process, start, length)
 
 
+def f16SummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    return (
+        valobj.GetChildAtIndex(0)
+        .Cast(valobj.GetTarget().GetBasicType(eBasicTypeHalf))
+        .GetValue()
+    )
+
+
 def sequence_formatter(output: str, valobj: SBValue, _dict: LLDBOpaque):
     length: int = valobj.GetNumChildren()
 
