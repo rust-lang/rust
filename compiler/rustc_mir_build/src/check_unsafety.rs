@@ -263,7 +263,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
                 | PatKind::Array { .. }
-                | PatKind::Guard { .. }
                 // Never constitutes a witness of uninhabitedness.
                 | PatKind::Never => {
                     self.requires_unsafe(pat.span, AccessToUnionField);
@@ -271,9 +270,10 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
                 // wildcard doesn't read anything.
                 PatKind::Wild
-                // these two just wrap other patterns, which we recurse on below.
+                // these just wrap other patterns, which we recurse on below.
                 | PatKind::Or { .. }
                 | PatKind::Leaf { .. }
+                | PatKind::Guard { .. }
                 | PatKind::Error(_) => {}
             }
         };
