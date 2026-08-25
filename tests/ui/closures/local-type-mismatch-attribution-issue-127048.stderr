@@ -1,0 +1,57 @@
+error[E0308]: mismatched types
+  --> $DIR/local-type-mismatch-attribution-issue-127048.rs:9:22
+   |
+LL |         let _: i32 = false;
+   |                ---   ^^^^^ expected `i32`, found `bool`
+   |                |
+   |                expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/local-type-mismatch-attribution-issue-127048.rs:19:13
+   |
+LL |             false
+   |             ^^^^^ expected `i32`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/local-type-mismatch-attribution-issue-127048.rs:30:13
+   |
+LL |             false
+   |             ^^^^^ expected `i32`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/local-type-mismatch-attribution-issue-127048.rs:41:13
+   |
+LL |             false
+   |             ^^^^^ expected `i32`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/local-type-mismatch-attribution-issue-127048.rs:50:13
+   |
+LL |     let mut value: i32 = 0;
+   |                    --- expected due to this type
+LL |     value = false;
+   |             ^^^^^ expected `i32`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/local-type-mismatch-attribution-issue-127048.rs:54:9
+   |
+LL |         false
+   |         ^^^^^ expected `i32`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/local-type-mismatch-attribution-issue-127048.rs:60:21
+   |
+LL |     let _ = true && 1;
+   |             ----    ^ expected `bool`, found integer
+   |             |
+   |             expected because this is `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/local-type-mismatch-attribution-issue-127048.rs:64:9
+   |
+LL |         1
+   |         ^ expected `bool`, found integer
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
