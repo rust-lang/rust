@@ -817,7 +817,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// integers of the same size but different signedness, the passed value must be representable
     /// in both types.
     fn validate_c_variadic_argument(
-        &mut self,
+        &self,
         arg_mplace: &MPlaceTy<'tcx, M::Provenance>,
         callee_type: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx> {
@@ -867,7 +867,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// - `T` is a pointer to [`std::ffi::c_void`] and `U` is a pointer to [`i8`] or [`u8`],
     /// or vice versa.
     pub fn validate_c_variadic_compatible_ty(
-        &mut self,
+        &self,
         caller_type: Ty<'tcx>,
         callee_type: Ty<'tcx>,
     ) -> InterpResult<'tcx, VarArgCompatible> {
