@@ -13,6 +13,11 @@ LL |     if let Website { url, .. } = website {
    |            ------------------- this pattern doesn't include `title`, which is available in `Website`
 LL |         println!("[{}]({})", title, url);
    |                              ^^^^^ not found in this scope
+   |
+help: consider importing this similarly named unit variant
+   |
+LL + use std::char::CharCase::Title;
+   |
 
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/struct-pattern-with-missing-fields-resolve-error.rs:28:20

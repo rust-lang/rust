@@ -3,6 +3,13 @@ error[E0425]: cannot find value `error` in this scope
    |
 LL |     let error = error;
    |                 ^^^^^ not found in this scope
+   |
+help: consider importing one of these similarly named items
+   |
+LL + use std::fmt::Error;
+   |
+LL + use std::fs::TryLockError::Error;
+   |
 
 error: aborting due to 1 previous error
 
