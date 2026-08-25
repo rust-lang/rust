@@ -894,6 +894,8 @@ unsafe extern "C" {
         SLen: c_uint,
     ) -> MetadataKindId;
 
+    pub(crate) fn LLVMGetVersion(major: &mut c_uint, minor: &mut c_uint, patch: &mut c_uint);
+
     pub(crate) fn LLVMDisposeTargetMachine(T: ptr::NonNull<TargetMachine>);
 
     // Create modules.
