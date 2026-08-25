@@ -14,6 +14,7 @@ use rustc_lint_defs::builtin::{
 };
 use rustc_literal_escaper::{EscapeError, Mode, check_for_errors};
 use rustc_session::parse::ParseSess;
+use rustc_span::edition::Edition;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::debug;
 
@@ -276,21 +277,30 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 rustc_lexer::TokenKind::Literal {
                     kind: kind @ (LiteralKind::CStr { .. } | LiteralKind::RawCStr { .. }),
                     suffix_start: _,
-                } if !self.mk_sp(start, self.pos).edition().at_least_rust_2021() => {
-                    let prefix_len = match kind {
-                        LiteralKind::CStr { .. } => 1,
-                        LiteralKind::RawCStr { .. } => 2,
+                } if let span = self.mk_sp(start, self.pos) && !span.edition().at_least_rust_2021() => {
+                    let (prefix_len, kind) = match kind {
+                        LiteralKind::CStr { .. } => (1, "C string literal"),
+                        LiteralKind::RawCStr { .. } => (2, "raw C string literal"),
                         _ => unreachable!(),
                     };
 
-                    // reset the state so that only the prefix ("c" or "cr")
-                    // was consumed.
-                    let lit_start = start + BytePos(prefix_len);
-                    self.pos = lit_start;
+                    // reset the state so that only the prefix ("c" or "cr") was consumed.
+                    self.pos = start + BytePos(prefix_len);
                     self.cursor = Cursor::new(&str_before[prefix_len as usize..], FrontmatterAllowed::No);
-                    self.report_unknown_prefix(start);
-                    let prefix_span = self.mk_sp(start, lit_start);
-                    return (Token::new(self.ident(start), prefix_span), preceded_by_whitespace);
+
+                    self.psess.buffer_lint(
+                        RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
+                        span,
+                        ast::CRATE_NODE_ID,
+                        crate::diagnostics::ReservedPrefixLint {
+                            subject: "this".into(),
+                            kind,
+                            edition: Edition::Edition2021,
+                            sugg: self.mk_sp(start, self.pos).shrink_to_hi(),
+                        },
+                    );
+
+                    self.ident(start)
                 }
                 rustc_lexer::TokenKind::GuardedStrPrefix => {
                     self.maybe_report_guarded_str(start, str_before)
@@ -386,10 +396,13 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                             prefix_span,
                             ast::CRATE_NODE_ID,
-                            crate::diagnostics::RawPrefix {
-                                label: prefix_span,
-                                suggestion: prefix_span.shrink_to_hi()
-                            },
+                            crate::diagnostics::ReservedPrefixLint {
+                                subject: "`r`".into(),
+                                kind: "prefix",
+                                edition: Edition::Edition2021,
+                                // FIXME(fmease): Wrong!
+                                sugg: prefix_span.shrink_to_hi(),
+                            }
                         );
 
                         // Reset the state so we just lex the `'r`.
@@ -1089,10 +1102,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,
-                crate::diagnostics::ReservedPrefix {
-                    label: prefix_span,
-                    suggestion: prefix_span.shrink_to_hi(),
-                    prefix: prefix.to_string(),
+                crate::diagnostics::ReservedPrefixLint {
+                    subject: format!("`{prefix}`"),
+                    kind: "prefix",
+                    edition: Edition::Edition2021,
+                    sugg: prefix_span.shrink_to_hi(),
                 },
             );
         }
@@ -1167,18 +1181,15 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             })
         } else {
             // Before Rust 2024, only emit a lint for migration.
-            self.psess.dyn_buffer_lint(
+            self.psess.buffer_lint(
                 RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
                 span,
                 ast::CRATE_NODE_ID,
-                move |dcx, level| {
-                    if is_string {
-                        crate::diagnostics::ReservedStringLint { suggestion: space_span }
-                            .into_diag(dcx, level)
-                    } else {
-                        crate::diagnostics::ReservedMultihashLint { suggestion: space_span }
-                            .into_diag(dcx, level)
-                    }
+                crate::diagnostics::ReservedPrefixLint {
+                    subject: "this".into(),
+                    kind: if is_string { "guarded string literal" } else { "reserved token" },
+                    edition: Edition::Edition2024,
+                    sugg: space_span,
                 },
             );
 

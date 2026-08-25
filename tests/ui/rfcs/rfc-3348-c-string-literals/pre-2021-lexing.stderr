@@ -1,30 +1,30 @@
-warning: prefix `c` is unknown
+warning: this is parsed as a C string literal in Rust 2021 and onward
   --> $DIR/pre-2021-lexing.rs:26:34
    |
 LL |     let _: &'static str = parse!(c"hello");
-   |                                  ^ unknown prefix
+   |                                  ^^^^^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 note: the lint level is defined here
   --> $DIR/pre-2021-lexing.rs:7:9
    |
 LL | #![warn(rust_2021_prefixes_incompatible_syntax)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+help: consider inserting whitespace here to avoid this
    |
 LL |     let _: &'static str = parse!(c "hello");
    |                                   +
 
-warning: prefix `c` is unknown
+warning: this is parsed as a C string literal in Rust 2021 and onward
   --> $DIR/pre-2021-lexing.rs:35:18
    |
 LL |     indifferent!(c"...");
-   |                  ^ unknown prefix
+   |                  ^^^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
-help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+help: consider inserting whitespace here to avoid this
    |
 LL |     indifferent!(c "...");
    |                   +

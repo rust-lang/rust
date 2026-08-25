@@ -24,8 +24,8 @@ fn main() {
     }
 
     let _: &'static str = parse!(c"hello");
-    //~^ WARNING prefix `c` is unknown
-    //~| WARNING hard error in Rust 2021
+    //~^ WARNING parsed as a C string literal in Rust 2021 and onward
+    //~| WARNING this changes meaning in Rust 2021
 
     macro_rules! indifferent {
         ($e:expr) => {};
@@ -33,6 +33,6 @@ fn main() {
     }
 
     indifferent!(c"...");
-    //~^ WARNING prefix `c` is unknown
-    //~| WARNING hard error in Rust 2021
+    //~^ WARNING parsed as a C string literal in Rust 2021 and onward
+    //~| WARNING this changes meaning in Rust 2021
 }
