@@ -34,7 +34,7 @@ pub(super) fn check_item(
     };
 
     match (trait_def_safety, unsafe_attr, trait_header.safety, trait_header.polarity) {
-        (Safety::Safe, None, Safety::Unsafe, Positive | Reservation) => {
+        (Safety::Safe, None, Safety::Unsafe, Positive) => {
             let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
@@ -52,7 +52,7 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (Safety::Unsafe, _, Safety::Safe, Positive | Reservation) => {
+        (Safety::Unsafe, _, Safety::Safe, Positive) => {
             let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
@@ -86,7 +86,7 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (Safety::Safe, Some(attr_name), Safety::Safe, Positive | Reservation) => {
+        (Safety::Safe, Some(attr_name), Safety::Safe, Positive) => {
             let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
@@ -116,8 +116,8 @@ pub(super) fn check_item(
             Ok(())
         }
         (_, _, Safety::Safe, Negative)
-        | (Safety::Unsafe, _, Safety::Unsafe, Positive | Reservation)
-        | (Safety::Safe, Some(_), Safety::Unsafe, Positive | Reservation)
+        | (Safety::Unsafe, _, Safety::Unsafe, Positive)
+        | (Safety::Safe, Some(_), Safety::Unsafe, Positive)
         | (Safety::Safe, None, Safety::Safe, _) => Ok(()),
     }
 }

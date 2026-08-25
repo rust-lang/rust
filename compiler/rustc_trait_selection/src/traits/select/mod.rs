@@ -10,9 +10,9 @@ use std::ops::ControlFlow;
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::at::ToTrace;
@@ -31,7 +31,6 @@ use rustc_middle::ty::{
     Unnormalized, Upcast, elaborate, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::AliasBoundKind;
-use rustc_span::Symbol;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -59,7 +58,6 @@ mod confirmation;
 pub enum IntercrateAmbiguityCause<'tcx> {
     DownstreamCrate { trait_ref: ty::TraitRef<'tcx>, self_ty: Option<Ty<'tcx>> },
     UpstreamCrateUpdate { trait_ref: ty::TraitRef<'tcx>, self_ty: Option<Ty<'tcx>> },
-    ReservationImpl { message: Symbol },
 }
 
 impl<'tcx> IntercrateAmbiguityCause<'tcx> {
@@ -94,7 +92,6 @@ impl<'tcx> IntercrateAmbiguityCause<'tcx> {
                     }
                 )
             }
-            IntercrateAmbiguityCause::ReservationImpl { message } => message.to_string(),
         })
     }
 }
@@ -441,7 +438,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report "`Bar` does
         // not implement `Clone`".
         if candidates.len() == 1 {
-            return self.filter_reservation_impls(candidates.pop().unwrap());
+            return Ok(candidates.pop());
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -488,13 +485,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
             let candidate_preference_mode =
                 CandidatePreferenceMode::compute(self.tcx(), stack.obligation.predicate.def_id());
-            if let Some(candidate) =
-                self.winnow_candidates(has_non_region_infer, candidate_preference_mode, candidates)
-            {
-                self.filter_reservation_impls(candidate)
-            } else {
-                Ok(None)
-            }
+            Ok(self.winnow_candidates(has_non_region_infer, candidate_preference_mode, candidates))
         }
     }
 
@@ -1417,58 +1408,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self, candidates))]
     fn filter_impls(
         &mut self,
-        candidates: Vec<SelectionCandidate<'tcx>>,
+        mut candidates: Vec<SelectionCandidate<'tcx>>,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Vec<SelectionCandidate<'tcx>> {
         trace!("{candidates:#?}");
         let tcx = self.tcx();
-        let mut result = Vec::with_capacity(candidates.len());
 
-        for candidate in candidates {
-            if let ImplCandidate(def_id) = candidate {
+        candidates.retain(|candidate| {
+            if let &ImplCandidate(def_id) = candidate {
                 match (tcx.impl_polarity(def_id), obligation.polarity()) {
-                    (ty::ImplPolarity::Reservation, _)
-                    | (ty::ImplPolarity::Positive, ty::ClausePolarity::Positive)
-                    | (ty::ImplPolarity::Negative, ty::ClausePolarity::Negative) => {
-                        result.push(candidate);
-                    }
-                    _ => {}
+                    (ty::ImplPolarity::Positive, ty::ClausePolarity::Positive)
+                    | (ty::ImplPolarity::Negative, ty::ClausePolarity::Negative) => true,
+
+                    // remove impl candidates with mismatched polarity to the obligation
+                    _ => false,
                 }
             } else {
-                result.push(candidate);
+                true
             }
-        }
+        });
 
-        trace!("{result:#?}");
-        result
-    }
-
-    /// filter_reservation_impls filter reservation impl for any goal as ambiguous
-    #[instrument(level = "debug", skip(self))]
-    fn filter_reservation_impls(
-        &mut self,
-        candidate: SelectionCandidate<'tcx>,
-    ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        let tcx = self.tcx();
-        // Treat reservation impls as ambiguity.
-        if let ImplCandidate(def_id) = candidate
-            && let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id)
-        {
-            if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                let message = find_attr!(tcx, def_id, RustcReservationImpl(message) => *message);
-                if let Some(message) = message {
-                    debug!(
-                        "filter_reservation_impls: \
-                                 reservation impl ambiguity on {:?}",
-                        def_id
-                    );
-                    intercrate_ambiguity_clauses
-                        .insert(IntercrateAmbiguityCause::ReservationImpl { message });
-                }
-            }
-            return Ok(None);
-        }
-        Ok(Some(candidate))
+        trace!("{candidates:#?}");
+        candidates
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
@@ -2560,7 +2521,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         nested_obligations.extend(obligations);
 
         match self.typing_mode() {
-            TypingMode::Coherence => {}
             TypingMode::Reflection
                 if !self.tcx().impl_is_fully_generic_for_reflection(impl_def_id) =>
             {
@@ -2568,18 +2528,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 return Err(());
             }
 
-            TypingMode::Typeck { .. }
+            TypingMode::Coherence
+            | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::Codegen
             | TypingMode::ErasedNotCoherence(_)
             | TypingMode::Reflection
-            | TypingMode::PostAnalysis => {
-                if impl_trait_header.polarity == ty::ImplPolarity::Reservation {
-                    debug!("reservation impls only apply in intercrate mode");
-                    return Err(());
-                }
-            }
+            | TypingMode::PostAnalysis => {}
         }
 
         Ok(Normalized { value: impl_args, obligations: nested_obligations })

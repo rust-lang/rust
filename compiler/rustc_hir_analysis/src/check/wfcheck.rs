@@ -317,9 +317,6 @@ pub(super) fn check_item<'tcx>(
                             .emit());
                         }
                     }
-                    ty::ImplPolarity::Reservation => {
-                        // FIXME: what amount of WF checking do we need for reservation impls?
-                    }
                 }
             } else {
                 res = res.and(check_impl(tcx, item, impl_));
@@ -1310,9 +1307,6 @@ fn check_impl<'tcx>(
     enter_wf_checking_ctxt(tcx, item.owner_id.def_id, |wfcx| {
         match impl_.of_trait {
             Some(of_trait) => {
-                // `#[rustc_reservation_impl]` impls are not real impls and
-                // therefore don't need to be WF (the trait's `Self: Trait` predicate
-                // won't hold).
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).instantiate_identity();
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in
                 // case other `Foo` impls are incoherent.
