@@ -491,6 +491,12 @@ impl<'db> MirLowerCtx<'_, 'db> {
                 )?
             }
             Pat::Ref { pat, mutability: _ } => {
+                let ty = cond_place.ty(&self.result, &self.infcx, self.env).ty;
+                if !ty.is_ref() {
+                    return Err(MirLowerError::TypeError(
+                        "non reference type matched with reference pattern",
+                    ));
+                }
                 let cond_place = cond_place.project(ProjectionElem::Deref);
                 self.pattern_match_inner(current, current_else, cond_place, *pat, mode)?
             }
