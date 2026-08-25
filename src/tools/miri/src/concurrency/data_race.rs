@@ -779,7 +779,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // Only metadata on the location itself is used.
 
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let old_val = this.run_for_validation_ref(|this| this.read_scalar(place)).discard_err();
+            let old_val = this.ghost_run(|this| this.read_scalar(place)).discard_err();
             return genmc_ctx.atomic_load(
                 this,
                 place.ptr().addr(),
@@ -811,7 +811,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // Read the previous value so we can put it in the store buffer later.
         // Both GenMC and Miri need this. This value is nonsense if there are concurrent writes
         // but the code consuming the value is aware of that.
-        let old_val = this.run_for_validation_ref(|this| this.read_scalar(dest)).discard_err();
+        let old_val = this.ghost_run(|this| this.read_scalar(dest)).discard_err();
 
         // Inform GenMC about the atomic store.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
