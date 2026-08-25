@@ -4,7 +4,7 @@ use core::mem;
 use core::ops::{Bound, ControlFlow};
 
 use ast::mut_visit::{self, MutVisitor};
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use ast::{ForLoopKind, MatchKind, Pat, Path, PathSegment, Recovered};
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
@@ -503,7 +503,7 @@ impl<'a> Parser<'a> {
         let token_cannot_continue_expr = |t: &Token| match t.uninterpolate().kind {
             // These tokens can start an expression after `!`, but
             // can't continue an expression after an ident
-            token::Ident(name, is_raw) => token::ident_can_begin_expr(name, t.span, is_raw),
+            token::Ident(name, kind) => token::ident_can_begin_expr(name, t.span, kind),
             token::Literal(..) | token::Pound => true,
             _ => t.is_metavar_expr(),
         };
@@ -581,7 +581,7 @@ impl<'a> Parser<'a> {
                     (
                         // `foo: `
                         ExprKind::Path(None, ast::Path { segments, .. }),
-                        token::Ident(kw::For | kw::Loop | kw::While, IdentIsRaw::No),
+                        token::Ident(kw::For | kw::Loop | kw::While, IdentKind::Normal),
                     ) if let [segment] = segments.as_slice() => {
                         let snapshot = self.create_snapshot_for_diagnostic();
                         let label = Label {
@@ -788,7 +788,8 @@ impl<'a> Parser<'a> {
         lo: Span,
     ) -> PResult<'a, Box<Expr>> {
         let mut res = loop {
-            let has_question = if self.prev_token == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
+            let has_question = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal)
+            {
                 // We are using noexpect here because we don't expect a `?` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Question)
@@ -800,7 +801,7 @@ impl<'a> Parser<'a> {
                 e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
                 continue;
             }
-            let has_dot = if self.prev_token == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
+            let has_dot = if self.prev_token == TokenKind::Ident(kw::Return, IdentKind::Normal) {
                 // We are using noexpect here because we don't expect a `.` directly after
                 // a `return` which could be suggested otherwise.
                 self.eat_noexpect(&token::Dot)
@@ -870,7 +871,7 @@ impl<'a> Parser<'a> {
                         // We end up with the `sym` (`1`) token in `self.prev_token` and a dot in
                         // `self.token`.
                         assert!(suffix.is_none());
-                        self.token = Token::new(token::Ident(sym, IdentIsRaw::No), ident_span);
+                        self.token = Token::new(token::Ident(sym, IdentKind::Normal), ident_span);
                         self.bump_with((Token::new(token::Dot, dot_span), self.token_spacing));
                         self.mk_expr_tuple_field_access(lo, ident_span, base, sym, None)
                     }
@@ -886,7 +887,7 @@ impl<'a> Parser<'a> {
                         // the `sym2` (`2` or `2e3`) token in `self.prev_token` and the following
                         // token in `self.token`.
                         let next_token2 =
-                            Token::new(token::Ident(sym2, IdentIsRaw::No), ident2_span);
+                            Token::new(token::Ident(sym2, IdentKind::Normal), ident2_span);
                         self.bump_with((next_token2, self.token_spacing));
                         self.bump();
                         let base1 =
@@ -1946,7 +1947,7 @@ impl<'a> Parser<'a> {
         self.bump(); // `builtin`
         self.bump(); // `#`
 
-        let Some((ident, IdentIsRaw::No)) = self.token.ident() else {
+        let Some((ident, IdentKind::Normal)) = self.token.ident() else {
             let err = self
                 .dcx()
                 .create_err(crate::diagnostics::ExpectedBuiltinIdent { span: self.token.span });
@@ -2061,7 +2062,7 @@ impl<'a> Parser<'a> {
         };
         // On an error path, eagerly consider a lifetime to be an unclosed character lit, if that
         // makes sense.
-        if let Some((ident, IdentIsRaw::No)) = self.token.lifetime()
+        if let Some((ident, IdentKind::Normal)) = self.token.lifetime()
             && could_be_unclosed_char_literal(ident)
         {
             let lt = self.expect_lifetime();
@@ -2133,7 +2134,7 @@ impl<'a> Parser<'a> {
             }
         };
         match self.token.uninterpolate().kind {
-            token::Ident(name, IdentIsRaw::No) if name.is_bool_lit() => {
+            token::Ident(name, IdentKind::Normal) if name.is_bool_lit() => {
                 self.bump();
                 Some(token::Lit::new(token::Bool, name, None))
             }
@@ -3085,9 +3086,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
-        if let Some((ident, is_raw)) = self.token.lifetime() {
+        if let Some((ident, kind)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved() {
+            if kind == IdentKind::Normal && ident.without_first_quote().is_reserved() {
                 self.dcx().emit_err(crate::diagnostics::KeywordLabel { span: ident.span });
             }
 
