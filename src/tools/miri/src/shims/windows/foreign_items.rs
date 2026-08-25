@@ -151,9 +151,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [name, buf, size] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, *_, u32) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.GetEnvironmentVariableW(name, buf, size)?;
                 this.write_scalar(result, dest)?;
@@ -162,9 +160,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [name, value] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.SetEnvironmentVariableW(name, value)?;
                 this.write_scalar(result, dest)?;
@@ -173,9 +169,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> *_),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.GetEnvironmentStringsW()?;
                 this.write_pointer(result, dest)?;
@@ -184,9 +178,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [env_block] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.FreeEnvironmentStringsW(env_block)?;
                 this.write_scalar(result, dest)?;
@@ -195,9 +187,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [size, buf] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *_) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.GetCurrentDirectoryW(size, buf)?;
                 this.write_scalar(result, dest)?;
@@ -206,9 +196,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [path] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.SetCurrentDirectoryW(path)?;
                 this.write_scalar(result, dest)?;
@@ -217,9 +205,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [token, buf, size] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, *_, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.GetUserProfileDirectoryW(token, buf, size)?;
                 this.write_scalar(result, dest)?;
@@ -228,9 +214,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.GetCurrentProcessId()?;
                 this.write_scalar(result, dest)?;
@@ -239,9 +223,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [bufferlength, buffer] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *_) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.GetTempPathW(bufferlength, buffer)?;
                 this.write_scalar(result, dest)?;
@@ -273,9 +255,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             *_,
                         ) -> i32
                     ),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.NtWriteFile(
                     handle,
@@ -315,9 +295,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             *_,
                         ) -> i32
                     ),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.NtReadFile(
                     handle,
@@ -336,9 +314,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [filename, size, buffer, filepart] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, u32, *_, *_) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.check_no_isolation("`GetFullPathNameW`")?;
 
@@ -388,9 +364,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             winapi::HANDLE,
                         ) -> winapi::HANDLE
                     ),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let handle = this.CreateFileW(
                     file_name,
@@ -406,9 +380,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetFileInformationByHandle" => {
                 let [handle, info] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let res = this.GetFileInformationByHandle(handle, info)?;
                 this.write_scalar(res, dest)?;
@@ -423,9 +395,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             u32,
                         ) -> winapi::BOOL
                     ),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let res = this.SetFileInformationByHandle(handle, class, info, size)?;
                 this.write_scalar(res, dest)?;
@@ -433,9 +403,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "FlushFileBuffers" => {
                 let [handle] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let res = this.FlushFileBuffers(handle)?;
                 this.write_scalar(res, dest)?;
@@ -443,9 +411,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "DeleteFileW" => {
                 let [file_name] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let res = this.DeleteFileW(file_name)?;
                 this.write_scalar(res, dest)?;
@@ -454,9 +420,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [file, distance_to_move, new_file_pointer, move_method] = this.check_shim_sig(
                     // i64 is actually a LARGE_INTEGER union of {u32, i32} and {i64}
                     shim_sig!(extern "system" fn(winapi::HANDLE, i64, *_, u32) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let res =
                     this.SetFilePointerEx(file, distance_to_move, new_file_pointer, move_method)?;
@@ -465,9 +429,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "MoveFileExW" => {
                 let [existing_name, new_name, flags] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, *_, u32) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let res = this.MoveFileExW(existing_name, new_name, flags)?;
                 this.write_scalar(res, dest)?;
@@ -478,9 +440,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [handle, flags, size] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, u32, usize) -> *_),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.read_target_isize(handle)?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
@@ -506,9 +466,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [handle, flags, ptr] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, u32, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.read_target_isize(handle)?;
                 this.read_scalar(flags)?.to_u32()?;
@@ -524,9 +482,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [handle, flags, old_ptr, size] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, u32, *_, usize) -> *_),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.read_target_isize(handle)?;
                 this.read_scalar(flags)?.to_u32()?;
@@ -550,9 +506,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [ptr] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HLOCAL) -> winapi::HLOCAL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
                 // "If the hMem parameter is NULL, LocalFree ignores the parameter and returns NULL."
@@ -567,9 +521,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "SetLastError" => {
                 let [error] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> ()),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let error = this.read_scalar(error)?;
                 this.set_last_error(error)?;
@@ -577,9 +529,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetLastError" => {
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let last_error = this.get_last_error()?;
                 this.write_scalar(last_error, dest)?;
@@ -587,9 +537,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "RtlNtStatusToDosError" => {
                 let [status] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(i32) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let status = this.read_scalar(status)?.to_u32()?;
                 let err = match status {
@@ -615,9 +563,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Also called from `page_size` crate.
                 let [system_info] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> ()),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let system_info =
                     this.deref_pointer_as(system_info, this.windows_ty_layout("SYSTEM_INFO"))?;
@@ -644,9 +590,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Create key and return it.
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let key = this.machine.tls.create_tls_key(None, dest.layout.size)?;
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
@@ -655,9 +599,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *_),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
@@ -668,9 +610,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [key, new_ptr] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
@@ -684,9 +624,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 this.machine.tls.delete_tls_key(key)?;
@@ -701,9 +639,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Create key and return it.
                 let [dtor] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::PFLS_CALLBACK_FUNCTION) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let dtor = this.read_pointer(dtor)?;
 
@@ -724,9 +660,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *_),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
@@ -737,9 +671,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [key, new_ptr] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
@@ -753,9 +685,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [key] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let tls_entry = this.machine.tls.delete_tls_key(key)?;
@@ -774,9 +704,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 // Return FALSE, as Miri does not support fibers.
@@ -788,9 +716,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> *_),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.write_pointer(
                     this.machine.cmd_line.expect("machine must be initialized"),
@@ -803,9 +729,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [filetime] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> ()),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.GetSystemTimeAsFileTime(link_name.as_str(), filetime)?;
             }
@@ -813,9 +737,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [performance_count] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.QueryPerformanceCounter(performance_count)?;
                 this.write_scalar(result, dest)?;
@@ -824,9 +746,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [frequency] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.QueryPerformanceFrequency(frequency)?;
                 this.write_scalar(result, dest)?;
@@ -835,9 +755,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [timeout] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> ()),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 this.Sleep(timeout)?;
@@ -846,9 +764,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [attributes, name, flags, access] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, *_, u32, u32) -> winapi::HANDLE),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.read_pointer(attributes)?;
                 this.read_pointer(name)?;
@@ -864,18 +780,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "InitOnceBeginInitialize" => {
                 let [ptr, flags, pending, context] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, u32, *_, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.InitOnceBeginInitialize(ptr, flags, pending, context, dest)?;
             }
             "InitOnceComplete" => {
                 let [ptr, flags, context] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, u32, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let result = this.InitOnceComplete(ptr, flags, context)?;
                 this.write_scalar(result, dest)?;
@@ -885,9 +797,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [ptr_op, compare_op, size_op, timeout_op] = this.check_shim_sig(
                     // First pointer is volatile
                     shim_sig!(extern "system" fn(*_, *_, usize, u32) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 this.WaitOnAddress(ptr_op, compare_op, size_op, timeout_op, dest)?;
@@ -896,9 +806,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [ptr_op] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> ()),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 this.WakeByAddressSingle(ptr_op)?;
@@ -907,9 +815,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [ptr_op] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> ()),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 this.WakeByAddressAll(ptr_op)?;
@@ -920,9 +826,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [module, proc_name] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HMODULE, *_) -> winapi::FARPROC),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.read_target_isize(module)?;
                 let name = this.read_c_str(this.read_pointer(proc_name)?)?;
@@ -949,9 +853,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             *_,
                         ) -> winapi::HANDLE
                     ),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 let thread_id =
@@ -962,9 +864,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "WaitForSingleObject" => {
                 let [handle, timeout] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, u32) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 this.WaitForSingleObject(handle, timeout, dest)?;
@@ -972,9 +872,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetCurrentProcess" => {
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::HANDLE),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 this.write_scalar(
@@ -985,9 +883,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetCurrentThread" => {
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::HANDLE),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 this.write_scalar(
@@ -998,9 +894,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "SetThreadDescription" => {
                 let [handle, name] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, *_) -> i32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 let handle = this.read_handle(handle, "SetThreadDescription")?;
@@ -1018,9 +912,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetThreadDescription" => {
                 let [handle, name_ptr] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, *_) -> i32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 let handle = this.read_handle(handle, "GetThreadDescription")?;
@@ -1046,9 +938,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetThreadId" => {
                 let [handle] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let handle = this.read_handle(handle, "GetThreadId")?;
                 let thread = match handle {
@@ -1061,9 +951,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetCurrentThreadId" => {
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.write_scalar(Scalar::from_u32(this.active_thread().to_u32()), dest)?;
             }
@@ -1073,9 +961,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [code] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> ()),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 // Windows technically uses u32, but we unify everything to a Unix-style i32.
                 let code = this.read_scalar(code)?.to_i32()?;
@@ -1087,9 +973,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [ptr, len] = this.check_shim_sig(
                     // Returns winapi::BOOLEAN, which is a byte
                     shim_sig!(extern "system" fn(*_, u32) -> u8),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_scalar(len)?.to_u32()?;
@@ -1101,9 +985,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // used by `std`
                 let [ptr, len] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, usize) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_target_usize(len)?;
@@ -1114,9 +996,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // used by getrandom 0.2
                 let [algorithm, ptr, len, flags] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, *_, u32, u32) -> i32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let algorithm = this.read_scalar(algorithm)?;
                 let algorithm = algorithm.to_target_usize(this)?;
@@ -1154,9 +1034,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `term` needs this, so we fake it.
                 let [console, buffer_info] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.read_target_isize(console)?;
                 // FIXME: this should use deref_pointer_as, but CONSOLE_SCREEN_BUFFER_INFO is not in std
@@ -1169,9 +1047,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [which] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::HANDLE),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let res = this.GetStdHandle(which)?;
                 this.write_scalar(res, dest)?;
@@ -1190,9 +1066,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                 u32,
                             ) -> winapi::BOOL
                         ),
-                        link_name,
-                        abi,
-                        args,
+                        (link_name, abi, args),
                     )?;
                 let res = this.DuplicateHandle(
                     src_proc,
@@ -1208,9 +1082,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "CloseHandle" => {
                 let [handle] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 let ret = this.CloseHandle(handle)?;
@@ -1221,9 +1093,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [handle, filename, size] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HMODULE, *_, u32) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.check_no_isolation("`GetModuleFileNameW`")?;
 
@@ -1263,9 +1133,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         shim_sig!(
                             extern "system" fn(u32, *_, u32, u32, *_, u32, *_) -> u32
                         ),
-                        link_name,
-                        abi,
-                        args,
+                        (link_name, abi, args),
                     )?;
 
                 let flags = this.read_scalar(flags)?.to_u32()?;
@@ -1299,7 +1167,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "_Unwind_RaiseException" => {
-                // FIXME: This does not have a direct test (#3179).
                 // This is not formally part of POSIX, but it is very wide-spread on POSIX systems.
                 // It was originally specified as part of the Itanium C++ ABI:
                 // https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html#base-throw.
@@ -1314,9 +1181,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Look up the return type via `panic_unwind::`, not via `unwind::`, as
                     // the latter it not always unique.
                     shim_sig!(extern "C" fn(*_) -> panic_unwind::imp::uw::_Unwind_Reason_Code),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.handle_miri_start_unwind(payload)?;
                 return interp_ok(EmulateItemResult::NeedsUnwind);
@@ -1327,9 +1192,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetProcessHeap" if this.frame_in_std() => {
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::HANDLE),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 // Just fake a HANDLE
                 // It's fine to not use the Handle type here because its a stub
@@ -1338,9 +1201,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetModuleHandleA" if this.frame_in_std() => {
                 let [_module_name] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> winapi::HMODULE),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 // We need to return something non-null here to make `compat_fn!` work.
                 this.write_int(1, dest)?;
@@ -1348,9 +1209,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "SetConsoleTextAttribute" if this.frame_in_std() => {
                 let [_console_output, _attribute] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, u16) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 // Pretend these does not exist / nothing happened, by returning zero.
                 this.write_null(dest)?;
@@ -1358,9 +1217,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetConsoleMode" if this.frame_in_std() => {
                 let [console, mode] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, *_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 this.read_target_isize(console)?;
                 this.deref_pointer_as(mode, this.machine.layouts.u32)?;
@@ -1370,9 +1227,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetFileType" if this.frame_in_std() => {
                 let [_file] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE) -> u32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 // Return unknown file type.
                 this.write_null(dest)?;
@@ -1380,9 +1235,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "AddVectoredExceptionHandler" if this.frame_in_std() => {
                 let [_first, _handler] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *_) -> *_),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_int(1, dest)?;
@@ -1390,9 +1243,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "SetThreadStackGuarantee" if this.frame_in_std() => {
                 let [_stack_size_in_bytes] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_int(1, dest)?;
@@ -1401,9 +1252,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "SwitchToThread" if this.frame_in_std() => {
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 this.yield_active_thread();
