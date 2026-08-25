@@ -1,11 +1,11 @@
 error[E0277]: `main::Char<(), !, !>` cannot be safely transmuted into `char`
-  --> $DIR/char.rs:35:39
+  --> $DIR/char.rs:34:39
    |
 LL |     is_transmutable::<Char<(), !, !>, char>();
    |                                       ^^^^ at least one value of `main::Char<(), !, !>` isn't a bit-valid value of `char`
    |
 note: required by a bound in `is_transmutable`
-  --> $DIR/char.rs:8:10
+  --> $DIR/char.rs:7:10
    |
 LL | pub fn is_transmutable<Src, Dst>()
    |        --------------- required by a bound in this function
@@ -14,13 +14,13 @@ LL |     Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `main::Char<!, (), !>` cannot be safely transmuted into `char`
-  --> $DIR/char.rs:37:39
+  --> $DIR/char.rs:36:39
    |
 LL |     is_transmutable::<Char<!, (), !>, char>();
    |                                       ^^^^ at least one value of `main::Char<!, (), !>` isn't a bit-valid value of `char`
    |
 note: required by a bound in `is_transmutable`
-  --> $DIR/char.rs:8:10
+  --> $DIR/char.rs:7:10
    |
 LL | pub fn is_transmutable<Src, Dst>()
    |        --------------- required by a bound in this function
@@ -29,13 +29,13 @@ LL |     Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `main::Char<!, !, ()>` cannot be safely transmuted into `char`
-  --> $DIR/char.rs:39:39
+  --> $DIR/char.rs:38:39
    |
 LL |     is_transmutable::<Char<!, !, ()>, char>();
    |                                       ^^^^ at least one value of `main::Char<!, !, ()>` isn't a bit-valid value of `char`
    |
 note: required by a bound in `is_transmutable`
-  --> $DIR/char.rs:8:10
+  --> $DIR/char.rs:7:10
    |
 LL | pub fn is_transmutable<Src, Dst>()
    |        --------------- required by a bound in this function

@@ -8,7 +8,7 @@ something. We appreciate any sort of contributions, and don't want a wall of rul
 
 Clippy welcomes contributions from everyone. There are many ways to contribute to Clippy and the following document
 explains how you can contribute and how to get started.  If you have any questions about contributing or need help with
-anything, feel free to ask questions on issues or visit the `#clippy` on [Zulip].
+anything, feel free to ask questions on issues or visit the `#t-clippy` on [Zulip].
 
 All contributors are expected to follow the [Rust Code of Conduct].
 
@@ -24,7 +24,7 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [Contributions](#contributions)
   - [License](#license)
 
-[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-clippy
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
 ## The Clippy book

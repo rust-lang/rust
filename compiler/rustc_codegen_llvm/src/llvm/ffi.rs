@@ -2508,6 +2508,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustSetModulePICLevel(M: &Module);
     pub(crate) fn LLVMRustSetModulePIELevel(M: &Module);
     pub(crate) fn LLVMRustSetModuleCodeModel(M: &Module, Model: CodeModel);
+    pub(crate) fn LLVMRustSetModuleLargeDataThreshold(M: &Module, Threshold: u64);
     pub(crate) fn LLVMRustBufferPtr(p: &Buffer) -> *const u8;
     pub(crate) fn LLVMRustBufferLen(p: &Buffer) -> usize;
     pub(crate) fn LLVMRustBufferFree(p: &'static mut Buffer);

@@ -960,6 +960,8 @@ const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("leoncasa", Unstable(sym::sparc_target_feature), &[]),
     ("v8plus", Unstable(sym::sparc_target_feature), &[]),
+    // FIXME: It's unclear what this feature means when `v8plus` is disabled on 32-bit SPARC. See
+    // the discussion around https://github.com/rust-lang/rust/pull/160949#discussion_r3806194355.
     ("v9", Unstable(sym::sparc_target_feature), &[]),
     // tidy-alphabetical-end
 ];
@@ -1291,7 +1293,9 @@ impl Target {
                         // `x87` and all other FPU features so those do not matter.
                         // Note that this one requirement is the entire implementation of the ABI!
                         // LLVM handles the rest.
-                        FeatureConstraints { required: &["soft-float"], incompatible: &[] }
+                        // We mark "sse" as incompatible since LLVM likes to crash when both
+                        // "soft-float" and "sse" are enabled.
+                        FeatureConstraints { required: &["soft-float"], incompatible: &["sse"] }
                     }
                     _ => unreachable!(),
                 }
@@ -1312,7 +1316,9 @@ impl Target {
                         // `x87` and all other FPU features so those do not matter.
                         // Note that this one requirement is the entire implementation of the ABI!
                         // LLVM handles the rest.
-                        FeatureConstraints { required: &["soft-float"], incompatible: &[] }
+                        // We mark "sse" as incompatible since LLVM likes to crash when both
+                        // "soft-float" and "sse" are enabled.
+                        FeatureConstraints { required: &["soft-float"], incompatible: &["sse"] }
                     }
                     _ => unreachable!(),
                 }

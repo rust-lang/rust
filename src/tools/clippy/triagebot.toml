@@ -97,7 +97,6 @@ users_on_vacation = [
     "matthiaskrgr",
     "Alexendoo",
     "y21",
-    "blyxyas",
     "ada4a",
     "samueltardieu"
 ]
@@ -115,6 +114,7 @@ users_on_vacation = [
     "@y21",
     "@samueltardieu",
     "@ada4a",
+    "@blyxyas",
 ]
 
 # Require community reviews before automatic assignment

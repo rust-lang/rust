@@ -38,7 +38,7 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/name-resolution.rs:11:34
    |
 LL | fn bad_fn_item_1(x: bool, ((y if x) | y): bool) {}
-   |                                  ^
+   |                                  ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -50,7 +50,7 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/name-resolution.rs:13:25
    |
 LL | fn bad_fn_item_2(((x if y) | x): bool, y: bool) {}
-   |                         ^
+   |                         ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -62,7 +62,7 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/name-resolution.rs:21:18
    |
 LL |         (x, y if x) => x && y,
-   |                  ^
+   |                  ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -74,7 +74,7 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/name-resolution.rs:23:15
    |
 LL |         (x if y, y) => x && y,
-   |               ^
+   |               ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -86,7 +86,7 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/name-resolution.rs:30:20
    |
 LL |         (x @ (y if x),) => x && y,
-   |                    ^
+   |                    ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -98,7 +98,7 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/name-resolution.rs:38:20
    |
 LL |         ((Ok(x) if y) | (Err(y) if x),) => x && y,
-   |                    ^
+   |                    ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -110,7 +110,7 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/name-resolution.rs:38:36
    |
 LL |         ((Ok(x) if y) | (Err(y) if x),) => x && y,
-   |                                    ^
+   |                                    ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -128,7 +128,7 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/name-resolution.rs:47:22
    |
 LL |     if let ((x, y if x) | (x if y, y)) = (true, true) { x && y; }
-   |                      ^
+   |                      ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -140,7 +140,7 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/name-resolution.rs:47:33
    |
 LL |     if let ((x, y if x) | (x if y, y)) = (true, true) { x && y; }
-   |                                 ^
+   |                                 ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -152,7 +152,7 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/name-resolution.rs:50:25
    |
 LL |     while let ((x, y if x) | (x if y, y)) = (true, true) { x && y; }
-   |                         ^
+   |                         ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -164,7 +164,7 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/name-resolution.rs:50:36
    |
 LL |     while let ((x, y if x) | (x if y, y)) = (true, true) { x && y; }
-   |                                    ^
+   |                                    ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -176,7 +176,7 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/name-resolution.rs:53:19
    |
 LL |     for ((x, y if x) | (x if y, y)) in [(true, true)] { x && y; }
-   |                   ^
+   |                   ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -188,7 +188,7 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/name-resolution.rs:53:30
    |
 LL |     for ((x, y if x) | (x if y, y)) in [(true, true)] { x && y; }
-   |                              ^
+   |                              ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -200,7 +200,7 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/name-resolution.rs:58:13
    |
 LL |     (|(x if y), (y if x)| x && y)(true, true);
-   |             ^
+   |             ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -212,7 +212,7 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/name-resolution.rs:58:23
    |
 LL |     (|(x if y), (y if x)| x && y)(true, true);
-   |                       ^
+   |                       ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |

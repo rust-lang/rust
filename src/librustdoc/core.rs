@@ -26,7 +26,7 @@ pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_structures::CrateType;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::clean::inline::build_trait;
 use crate::clean::{self, ItemId};
@@ -34,8 +34,6 @@ use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::html::macro_expansion::{ExpandedCode, source_macro_expansion};
 use crate::passes;
-use crate::passes::Condition::*;
-use crate::passes::collect_intra_doc_links::LinkCollector;
 
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -428,31 +426,8 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    info!("Executing passes");
-
-    let mut visited = FxHashMap::default();
-    let mut ambiguous = FxIndexMap::default();
-
-    for p in passes::defaults(show_coverage) {
-        let run = match p.condition {
-            Always => true,
-            WhenDocumentPrivate => ctxt.document_private(),
-            WhenNotDocumentPrivate => !ctxt.document_private(),
-            WhenNotDocumentHidden => !ctxt.document_hidden(),
-        };
-        if run {
-            debug!("running pass {}", p.pass.name);
-            if let Some(run_fn) = p.pass.run {
-                krate = tcx.sess.time(p.pass.name, || run_fn(krate, &mut ctxt));
-            } else {
-                let (k, LinkCollector { visited_links, ambiguous_links, .. }) =
-                    passes::collect_intra_doc_links::collect_intra_doc_links(krate, &mut ctxt);
-                krate = k;
-                visited = visited_links;
-                ambiguous = ambiguous_links;
-            }
-        }
-    }
+    let store;
+    (krate, store) = passes::run(krate, &mut ctxt, show_coverage);
 
     if show_coverage
         && let Err(error) = crate::calculate_doc_coverage::run(&krate, &mut ctxt, &render_options)
@@ -466,9 +441,7 @@ pub(crate) fn run_global_ctxt(
     krate =
         tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate, &render_options));
 
-    let mut collector =
-        LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
-    collector.resolve_ambiguities();
+    passes::finalize(&mut ctxt, store);
 
     tcx.dcx().abort_if_errors();
 

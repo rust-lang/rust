@@ -275,12 +275,31 @@ fn recursive() {
         struct BoxLike<T: ?Sized>(*mut T);
         struct Goal(BoxLike<Goal>);
     }
+    size_and_align! {
+        struct Foo<T> {
+            x: *const Foo<[T; 1]>,
+            y: *const T,
+        }
+        struct Goal(Foo<Goal>);
+    }
     check_fail(r#"struct Goal(Goal);"#, LayoutError::RecursiveTypeWithoutIndirection);
     check_fail(
         r#"
         struct Foo<T>(Foo<T>);
         struct Goal(Foo<i32>);
         "#,
+        LayoutError::RecursiveTypeWithoutIndirection,
+    );
+    check_fail(
+        r#"
+struct Foo<T> {
+    x: Foo<[T; 1]>,
+    y: T,
+}
+struct Goal {
+    x: Foo<Goal>,
+}
+"#,
         LayoutError::RecursiveTypeWithoutIndirection,
     );
 }

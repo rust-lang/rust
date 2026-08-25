@@ -1457,7 +1457,7 @@ _x.py__miri_commands() {
 _x.py__perf_commands() {
     local commands; commands=(
 'eprintln:Run \`profile_local eprintln\`. This executes the compiler on the given benchmarks and stores its stderr output' \
-'samply:Run \`profile_local samply\` This executes the compiler on the given benchmarks and profiles it with \`samply\`. You need to install \`samply\`, e.g. using \`cargo install samply\`' \
+'samply:Run \`profile_local samply\` This executes the compiler on the given benchmarks and profiles it with \`samply\`. You need to install \`samply\`, e.g. using \`cargo install --locked samply\`' \
 'cachegrind:Run \`profile_local cachegrind\`. This executes the compiler on the given benchmarks under \`Cachegrind\`' \
 'benchmark:Run compile benchmarks with a locally built compiler' \
 'compare:Compare the results of two previously executed benchmark runs' \

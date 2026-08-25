@@ -61,8 +61,12 @@ pub mod region_constraints;
 pub mod relate;
 pub mod resolve;
 pub(crate) mod snapshot;
+mod solver_region_constraints;
 mod type_variable;
 mod unify_key;
+
+pub(crate) use solver_region_constraints::SolverRegionConstraint;
+use solver_region_constraints::SolverRegionConstraintStorage;
 
 /// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
 /// around `PredicateObligations<'tcx>`, but it has one important property:
@@ -341,7 +345,7 @@ pub struct InferCtxt<'tcx> {
     /// already used by default in some places so we know they won't have
     /// additional breakages. We also don't want spurious result in coherence
     /// checking so we disable the FCW there as well.
-    enable_next_solver_overflow_fcw: bool,
+    enable_next_solver_overflow_fcw: Cell<bool>,
 
     pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
 
@@ -687,7 +691,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             universe: Cell::new(ty::UniverseIndex::ROOT),
             placeholder_assumptions_for_next_solver: RefCell::new(Default::default()),
             next_trait_solver,
-            enable_next_solver_overflow_fcw,
+            enable_next_solver_overflow_fcw: Cell::new(enable_next_solver_overflow_fcw),
             obligation_inspector: Cell::new(None),
             canonicalizer_state: Default::default(),
         }
@@ -1552,6 +1556,18 @@ impl<'tcx> InferCtxt<'tcx> {
         u
     }
 
+    /// We need to disable the fcw if we're already in a fcw emitting to avoid
+    /// indefinite triggering.
+    pub fn with_disabled_next_solver_overflow_fcw<F, R>(&self, mut f: F) -> R
+    where
+        F: FnMut() -> R,
+    {
+        let prev = self.enable_next_solver_overflow_fcw.replace(false);
+        let ret = f();
+        self.enable_next_solver_overflow_fcw.set(prev);
+        ret
+    }
+
     /// Extract [`ty::TypingMode`] of this inference context to get a `TypingEnv`
     /// which contains the necessary information to use the trait system without
     /// using canonicalization or carrying this inference context around.
@@ -1806,62 +1822,6 @@ impl<'tcx> InferCtxt<'tcx> {
             hir::Node::Expr(e) => e.span,
             _ => DUMMY_SP,
         }
-    }
-}
-
-type SolverRegionConstraint<'tcx> =
-    rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>;
-
-#[derive(Clone, Debug)]
-struct SolverRegionConstraintStorage<'tcx>(SolverRegionConstraint<'tcx>);
-
-impl<'tcx> SolverRegionConstraintStorage<'tcx> {
-    fn new() -> Self {
-        SolverRegionConstraintStorage(SolverRegionConstraint::And(Box::new([])))
-    }
-
-    fn get_constraint(&self) -> SolverRegionConstraint<'tcx> {
-        self.0.clone()
-    }
-
-    fn is_and(&self) -> bool {
-        self.0.is_and()
-    }
-
-    fn pop(&mut self, previous_was_and: bool) -> Option<SolverRegionConstraint<'tcx>> {
-        match &mut self.0 {
-            SolverRegionConstraint::And(and) => {
-                let mut and = core::mem::take(and).into_iter().collect::<Vec<_>>();
-                let popped = and.pop()?;
-                if previous_was_and {
-                    self.0 = SolverRegionConstraint::And(and.into_boxed_slice());
-                } else {
-                    assert_eq!(and.len(), 1);
-                    self.0 = and.pop().unwrap();
-                }
-                Some(popped)
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[instrument(level = "debug")]
-    fn push(&mut self, constraint: SolverRegionConstraint<'tcx>) {
-        match core::mem::replace(&mut self.0, SolverRegionConstraint::new_true()) {
-            SolverRegionConstraint::And(and) => {
-                let and =
-                    and.into_iter().chain([constraint]).collect::<Vec<_>>().into_boxed_slice();
-                self.0 = SolverRegionConstraint::And(and);
-            }
-            previous => {
-                self.0 = SolverRegionConstraint::And(Box::new([previous, constraint]));
-            }
-        }
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn overwrite_solver_region_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
-        self.0 = constraint;
     }
 }
 

@@ -94,7 +94,7 @@ pub(crate) struct Config {
     pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
     pub sde: Option<PathBuf>,
-    /// Call Build::ninja() instead of this.
+    /// Call `Session::ninja` instead of this.
     pub ninja_in_file: bool,
     pub submodules: Option<bool>,
     pub compiler_docs: bool,
@@ -172,7 +172,7 @@ pub(crate) struct Config {
     pub llvm_link_jobs: Option<u32>,
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
-    pub llvm_clang_dir: Option<PathBuf>,
+    pub offload_clang_dir: Option<PathBuf>,
     pub llvm_allow_old_toolchain: bool,
     pub llvm_polly: bool,
     pub llvm_clang: bool,
@@ -644,7 +644,7 @@ impl Config {
             use_linker: llvm_use_linker,
             allow_old_toolchain: llvm_allow_old_toolchain,
             offload: llvm_offload,
-            offload_clang_dir: llvm_clang_dir,
+            offload_clang_dir,
             polly: llvm_polly,
             clang: llvm_clang,
             enable_warnings: llvm_enable_warnings,
@@ -1497,7 +1497,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             llvm_ci_mode,
             llvm_clang: llvm_clang.unwrap_or(false),
             llvm_clang_cl,
-            llvm_clang_dir: llvm_clang_dir.map(PathBuf::from),
             llvm_cxxflags,
             llvm_enable_warnings: llvm_enable_warnings.unwrap_or(false),
             llvm_enzyme: llvm_enzyme.unwrap_or(false),
@@ -1530,6 +1529,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             musl_root: rust_musl_root.map(PathBuf::from),
             ninja_in_file: llvm_ninja.unwrap_or(true),
             nodejs: build_nodejs.map(PathBuf::from),
+            offload_clang_dir: offload_clang_dir.map(PathBuf::from),
             omit_git_hash,
             on_fail: flags_on_fail,
             optimized_compiler_builtins,
@@ -1853,7 +1853,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
     ///
     /// This *does not* update the submodule if `bootstrap.toml` explicitly says
     /// not to, or if we're not in a git repository (like a plain source
-    /// tarball). Typically [`crate::core::session::Build::require_submodule`] should be
+    /// tarball). Typically [`crate::core::session::Session::require_submodule`] should be
     /// used instead to provide a nice error to the user if the submodule is
     /// missing.
     #[cfg_attr(

@@ -168,11 +168,13 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     ));
                     continue;
                 }
-                PassMode::Cast { ref cast, pad_i32 } => {
-                    // add padding
-                    if pad_i32 {
-                        argument_tys.push(Reg::i32().gcc_type(cx));
-                    }
+                PassMode::Cast { ref cast, pad_i32_count } => {
+                    // Add padding.
+                    argument_tys.extend(std::iter::repeat_n(
+                        Reg::i32().gcc_type(cx),
+                        usize::from(pad_i32_count),
+                    ));
+
                     let ty = cast.gcc_type(cx);
                     apply_attrs(ty, &cast.attrs, argument_tys.len())
                 }

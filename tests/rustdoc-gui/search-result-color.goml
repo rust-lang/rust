@@ -13,9 +13,7 @@ define-function: (
     block {
         call-function: ("switch-theme", {"theme": |theme|})
 
-        // Waiting for the search results to appear...
-        wait-for: "#search-tabs"
-        wait-for-false: "#search-tabs .count.loading"
+        call-function: ("wait-for-search-results", {})
         assert-css: (
             "#search-tabs > button > .count",
             {"color": |count_color|},

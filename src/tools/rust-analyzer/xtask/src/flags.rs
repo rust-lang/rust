@@ -76,8 +76,6 @@ xflags::xflags! {
             // **Warning:** This will produce a slower build of rust-analyzer, use only for profiling.
             optional --enable-profiling
             optional --client-patch-version version: String
-            /// Use cargo-zigbuild
-            optional --zig
             /// Apply PGO optimizations
             optional --pgo pgo: PgoTrainingCrate
         }
@@ -154,7 +152,6 @@ pub struct Dist {
     pub jemalloc: bool,
     pub enable_profiling: bool,
     pub client_patch_version: Option<String>,
-    pub zig: bool,
     pub pgo: Option<PgoTrainingCrate>,
 }
 

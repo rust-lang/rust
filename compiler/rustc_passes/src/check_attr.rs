@@ -813,7 +813,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     kind: hir::ItemKind::Struct(_, _, hir::VariantData::Struct { fields, .. }),
                     ..
                 } = item.unwrap()
-                    && !fields.is_empty()
                     && fields.iter().any(|f| f.default.is_some())
                 {
                     self.dcx().emit_err(diagnostics::NonExhaustiveWithDefaultFieldValues {

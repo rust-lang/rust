@@ -16,7 +16,7 @@ use std::{env, process};
 use crate::core::builder::StepStack;
 use crate::core::config::flags::{Flags, Subcommand};
 use crate::core::config::{ChangeId, Config};
-use crate::core::session::Build;
+use crate::core::session::Session;
 use crate::debug;
 use crate::utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
@@ -157,9 +157,9 @@ pub fn main() {
         t!(symlink_dir_inner(&tracing_dir, &latest_trace_dir));
     }
 
-    debug!("creating new build based on config");
-    let mut build = Build::new(config);
-    build.build();
+    debug!("creating new session based on config");
+    let mut sess = Session::new(config);
+    sess.build();
 
     if suggest_setup {
         println!("WARNING: you have not made a `bootstrap.toml`");
@@ -213,8 +213,8 @@ pub fn main() {
 
     #[cfg(feature = "tracing")]
     {
-        build.report_summary(&tracing_dir.join("command-stats.txt"), _start_time);
-        build.report_step_graph(&tracing_dir);
+        sess.report_summary(&tracing_dir.join("command-stats.txt"), _start_time);
+        sess.report_step_graph(&tracing_dir);
         guard.copy_to_dir(&tracing_dir);
         eprintln!("Tracing/profiling output has been written to {}", latest_trace_dir.display());
     }
