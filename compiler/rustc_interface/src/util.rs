@@ -136,16 +136,29 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
             .filter(|s| !s.trim().is_empty())
             // rustc is a batch program, so error early on inputs which are unlikely to be intended
             // so no one thinks we parsed them setting `RUST_MIN_STACK="64 megabytes"`
-            // FIXME: we could accept `RUST_MIN_STACK=64MB`, perhaps?
             .map(|s| {
                 let s = s.trim();
-                s.parse::<usize>().unwrap_or_else(|_| {
-                    let mut err = early_dcx.early_struct_fatal(format!(
-                        r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
-                    ));
-                    err.note("you can also unset `RUST_MIN_STACK` to use the default stack size");
-                    err.emit()
-                })
+                let pos = s.find(|c: char| !c.is_ascii_digit()).unwrap_or(s.len());
+                let (value, suffix) = s.split_at(pos);
+                if let Ok(value) = value.parse::<usize>() {
+                    let suffix = suffix.trim();
+                    if suffix.is_empty() {
+                        return value;
+                    } else if suffix.eq_ignore_ascii_case("MB")
+                        || suffix.eq_ignore_ascii_case("MiB")
+                    {
+                        if let Some(value) = value.checked_mul(1024 * 1024) {
+                            return value;
+                        }
+                    }
+                }
+                let mut err = early_dcx.early_struct_fatal(format!(
+                    r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
+                ));
+                // `MiB` is the technically correct suffix so use that in the note.
+                err.note("the `MiB` suffix can be used to provide the number in megabytes");
+                err.note("you can also unset `RUST_MIN_STACK` to use the default stack size");
+                err.emit()
             })
             // otherwise pick a consistent default
             .unwrap_or(DEFAULT_STACK_SIZE)
