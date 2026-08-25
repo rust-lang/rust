@@ -1,4 +1,4 @@
-use libc::{c_int, renameat, unlinkat};
+use libc::{c_int, mkdirat, renameat, unlinkat};
 
 cfg_select! {
     not(any(
@@ -28,6 +28,14 @@ use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt, cvt_r};
 use crate::{fmt, fs, io};
 
+const TRAVERSE_DIRECTORY: i32 =
+    cfg_select! {
+        any(target_os = "freebsd", target_os = "aix") => libc::O_EXEC,
+        any(target_os = "linux", target_os = "android", target_os = "l4re") => libc::O_PATH,
+        target_os = "illumos" => libc::O_SEARCH,
+        _ => libc::O_RDONLY,
+    };
+
 pub struct Dir(OwnedFd);
 
 impl Dir {
@@ -35,8 +43,14 @@ impl Dir {
         run_path_with_cstr(path, &|path| Self::open_with_c(path, opts))
     }
 
+    pub fn open_for_traversal(path: &Path) -> io::Result<Self> {
+        run_path_with_cstr(path, &|path| Self::open_traversal_c(path))
+    }
+
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        run_path_with_cstr(path.as_ref(), &|path| self.open_file_c(path, opts))
+        run_path_with_cstr(path.as_ref(), &|path| self.open_file_c(path, opts, 0))
+            .map(|fd| FileDesc::from_inner(fd))
+            .map(File)
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
@@ -59,7 +73,19 @@ impl Dir {
         })
     }
 
-    pub fn open_with_c(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
+    pub fn open_dir(&self, path: &Path, opts: &OpenOptions) -> io::Result<Self> {
+        run_path_with_cstr(path, &|path| self.open_file_c(path, opts, libc::O_DIRECTORY)).map(Self)
+    }
+
+    pub fn create_dir(&self, path: &Path) -> io::Result<()> {
+        run_path_with_cstr(path.as_ref(), &|path| self.create_dir_c(path))
+    }
+
+    pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
+        run_path_with_cstr(path, &|path| self.remove_c(path, true))
+    }
+
+    fn open_with_c(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
         let flags = libc::O_CLOEXEC
             | libc::O_DIRECTORY
             | opts.get_access_mode()?
@@ -69,15 +95,27 @@ impl Dir {
         Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
     }
 
-    fn open_file_c(&self, path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+    fn open_traversal_c(path: &CStr) -> io::Result<Self> {
+        let flags = libc::O_CLOEXEC | libc::O_DIRECTORY | TRAVERSE_DIRECTORY;
+        let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, 0) })?;
+        Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
+    }
+
+    fn open_file_c(
+        &self,
+        path: &CStr,
+        opts: &OpenOptions,
+        extra_flags: c_int,
+    ) -> io::Result<OwnedFd> {
         let flags = libc::O_CLOEXEC
             | opts.get_access_mode()?
             | opts.get_creation_mode()?
-            | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+            | (opts.custom_flags as c_int & !libc::O_ACCMODE)
+            | extra_flags;
         let fd = cvt_r(|| unsafe {
             openat64(self.0.as_raw_fd(), path.as_ptr(), flags, opts.mode as c_int)
         })?;
-        Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
+        Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 
     fn remove_c(&self, path: &CStr, remove_dir: bool) -> io::Result<()> {
@@ -96,6 +134,10 @@ impl Dir {
             renameat(self.0.as_raw_fd(), from.as_ptr(), to_dir.0.as_raw_fd(), to.as_ptr())
         })
         .map(|_| ())
+    }
+
+    fn create_dir_c(&self, path: &CStr) -> io::Result<()> {
+        cvt(unsafe { mkdirat(self.0.as_raw_fd(), path.as_ptr(), 0o777) }).map(|_| ())
     }
 }
 
