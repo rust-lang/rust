@@ -282,14 +282,10 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         state: &mut State<FlatSet<Scalar>>,
     ) {
         state.flood_discr(place.as_ref(), &self.map);
-        if self.map.find_discr(place.as_ref()).is_some() {
+        if let Some(target) = self.map.find_discr(place.as_ref()) {
             let enum_ty = place.ty(self.local_decls, self.tcx).ty;
             if let Some(discr) = self.eval_discriminant(enum_ty, variant_index) {
-                state.assign_discr(
-                    place.as_ref(),
-                    ValueOrPlace::Value(FlatSet::Elem(discr)),
-                    &self.map,
-                );
+                state.insert_value_idx(target, FlatSet::Elem(discr), &self.map);
             }
         }
     }
