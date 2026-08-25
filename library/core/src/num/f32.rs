@@ -10,6 +10,7 @@
 //! defined directly on the `f32` type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![expect(clippy::approx_constant, reason = "this module defines f32 constants")]
 
 use crate::convert::{FloatToFloat, FloatToInt};
 use crate::num::FpCategory;
@@ -438,7 +439,7 @@ impl f32 {
     /// [`MANTISSA_DIGITS`]: f32::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     #[rustc_diagnostic_item = "f32_epsilon"]
-    pub const EPSILON: f32 = 1.19209290e-07_f32;
+    pub const EPSILON: f32 = 1.1920929e-07_f32;
 
     /// Smallest finite `f32` value.
     ///
@@ -446,14 +447,14 @@ impl f32 {
     ///
     /// [`MAX`]: f32::MAX
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const MIN: f32 = -3.40282347e+38_f32;
+    pub const MIN: f32 = -3.4028235e+38_f32;
     /// Smallest positive normal `f32` value.
     ///
     /// Equal to 2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
     ///
     /// [`MIN_EXP`]: f32::MIN_EXP
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const MIN_POSITIVE: f32 = 1.17549435e-38_f32;
+    pub const MIN_POSITIVE: f32 = 1.1754944e-38_f32;
     /// Largest finite `f32` value.
     ///
     /// Equal to
@@ -462,7 +463,7 @@ impl f32 {
     /// [`MANTISSA_DIGITS`]: f32::MANTISSA_DIGITS
     /// [`MAX_EXP`]: f32::MAX_EXP
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const MAX: f32 = 3.40282347e+38_f32;
+    pub const MAX: f32 = 3.4028235e+38_f32;
 
     /// One greater than the minimum possible *normal* power of 2 exponent
     /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
@@ -1659,6 +1660,7 @@ impl f32 {
     #[stable(feature = "clamp", since = "1.50.0")]
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "Nan is also invalid")]
     pub const fn clamp(mut self, min: f32, max: f32) -> f32 {
         const_assert!(
             min <= max,
@@ -1700,8 +1702,9 @@ impl f32 {
     #[must_use = "this returns the clamped value and does not modify the original"]
     #[unstable(feature = "clamp_magnitude", issue = "148519")]
     #[inline]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
     pub fn clamp_magnitude(self, limit: f32) -> f32 {
-        assert!(limit >= 0.0, "limit must be non-negative");
+        assert!(limit >= 0.0, "limit must be non-negative and not NaN");
         let limit = limit.abs(); // Canonicalises -0.0 to 0.0
         self.clamp(-limit, limit)
     }

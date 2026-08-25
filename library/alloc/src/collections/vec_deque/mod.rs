@@ -2049,6 +2049,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(deque.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[expect(clippy::manual_clear, reason = "implements clear")]
     #[inline]
     pub fn clear(&mut self) {
         self.truncate(0);
@@ -3312,7 +3313,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         F: FnMut(&'a T) -> Ordering,
     {
         let (front, back) = self.as_slices();
-        let cmp_back = back.first().map(|elem| f(elem));
+        let cmp_back = back.first().map(&mut f);
 
         if let Some(Ordering::Equal) = cmp_back {
             Ok(front.len())
@@ -3423,7 +3424,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     {
         let (front, back) = self.as_slices();
 
-        if let Some(true) = back.first().map(|v| pred(v)) {
+        if let Some(true) = back.first().map(&mut pred) {
             back.partition_point(pred) + front.len()
         } else {
             front.partition_point(pred)

@@ -142,6 +142,7 @@ pub trait Seek {
     /// }
     /// ```
     #[stable(feature = "seek_convenience", since = "1.51.0")]
+    #[expect(clippy::seek_from_current, reason = "implements stream_position")]
     fn stream_position(&mut self) -> Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
