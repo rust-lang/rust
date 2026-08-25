@@ -9,7 +9,7 @@
 //@ [arm64ec] needs-llvm-components: aarch64
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, f16, f128, rustc_attrs)]
+#![feature(asm_experimental_reg, no_core, f16, f128, rustc_attrs)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]

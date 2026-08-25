@@ -1,7 +1,7 @@
 //@ only-aarch64
 //@ compile-flags: -C target-feature=+neon,+sve
 
-#![feature(repr_simd, stdarch_aarch64_sve)]
+#![feature(asm_experimental_reg, repr_simd, stdarch_aarch64_sve)]
 
 use std::arch::aarch64::{float64x2_t, svdup_n_f64, svdup_n_s16, svdup_n_s32, svptrue_b8};
 use std::arch::{asm, global_asm};
