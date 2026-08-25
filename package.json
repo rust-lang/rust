@@ -4,5 +4,8 @@
     "es-check": "^9.4.4",
     "eslint": "^8.57.1",
     "typescript": "^5.8.3"
+  },
+  "resolutions": {
+    "brace-expansion": "1.1.18"
   }
 }
