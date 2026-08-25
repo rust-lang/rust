@@ -628,17 +628,19 @@ impl<'a> Parser<'a> {
                         }
 
                         // help: extract the expr into a `const VAL: _ = expr`
-                        let ident = match self.field {
-                            Some(field) => field.ident.as_str().to_uppercase(),
-                            None => "VAL".to_owned(),
-                        };
-                        err.subdiagnostic(UnexpectedExpressionInPatternSugg::Const {
-                            stmt_lo: line_lo,
-                            ident_span: expr_span,
-                            expr,
-                            ident,
-                            indentation,
-                        });
+                        if !line_lo.overlaps(expr_span) {
+                            let ident = match self.field {
+                                Some(field) => field.ident.as_str().to_uppercase(),
+                                None => "VAL".to_owned(),
+                            };
+                            err.subdiagnostic(UnexpectedExpressionInPatternSugg::Const {
+                                stmt_lo: line_lo,
+                                ident_span: expr_span,
+                                expr,
+                                ident,
+                                indentation,
+                            });
+                        }
                     },
                 );
             }
