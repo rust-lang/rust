@@ -808,7 +808,6 @@ impl<T: ?Sized + CloneToUninit> Box<T> {
     /// ```
     #[unstable(feature = "clone_from_ref", issue = "149075")]
     //#[unstable(feature = "allocator_api", issue = "32838")]
-    #[must_use]
     #[inline]
     pub fn try_clone_from_ref(src: &T) -> Result<Box<T>, AllocError> {
         Box::try_clone_from_ref_in(src, Global)
@@ -860,7 +859,6 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
     /// ```
     #[unstable(feature = "clone_from_ref", issue = "149075")]
     //#[unstable(feature = "allocator_api", issue = "32838")]
-    #[must_use]
     #[inline]
     pub fn try_clone_from_ref_in(src: &T, alloc: A) -> Result<Box<T, A>, AllocError> {
         struct DeallocDropGuard<'a, A: Allocator>(Layout, &'a A, NonNull<u8>);
@@ -1156,7 +1154,6 @@ impl<T, A: Allocator> Box<[T], A> {
     /// ```
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
-    #[must_use]
     pub fn into_array<const N: usize>(self) -> Result<Box<[T; N], A>, Self> {
         if self.len() == N {
             let (ptr, alloc) = Self::into_raw_with_allocator(self);

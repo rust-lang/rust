@@ -901,7 +901,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     where
         T: Ord,
     {
-        self.map.insert(value, SetValZST::default()).is_none()
+        self.map.insert(value, SetValZST).is_none()
     }
 
     /// Adds a value to the set, replacing the existing element, if any, that is
@@ -1483,7 +1483,7 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
 
 impl<T: Ord, A: Allocator + Clone> BTreeSet<T, A> {
     fn from_sorted_iter<I: Iterator<Item = T>>(iter: I, alloc: A) -> BTreeSet<T, A> {
-        let iter = iter.map(|k| (k, SetValZST::default()));
+        let iter = iter.map(|k| (k, SetValZST));
         let map = BTreeMap::bulk_build_from_sorted_iter(iter, alloc);
         BTreeSet { map }
     }
