@@ -1022,7 +1022,7 @@ impl<'a> Parser<'a> {
                                         && self.look_ahead(1, |token| {
                                             token.is_metavar_block()
                                                 || token.kind == token::OpenBrace
-                                                || token.is_non_raw_ident_where(|id| {
+                                                || token.non_raw_ident().is_some_and(|id| {
                                                     matches!(
                                                         id.name,
                                                         kw::For | kw::Loop | kw::While

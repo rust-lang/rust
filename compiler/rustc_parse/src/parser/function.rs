@@ -1,4 +1,3 @@
-use ast::token::IdentKind;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, TokenKind};
@@ -330,13 +329,13 @@ impl<'a> Parser<'a> {
                     // Two qualifiers `$qual $qual` is enough, e.g. `async unsafe`.
                     || (
                         (
-                            t.is_non_raw_ident_where(|i|
+                            t.non_raw_ident().is_some_and(|i|
                                 quals.iter().any(|exp| exp.kw == i.name)
                                     // Rule out 2015 `const async: T = val`.
                                     && i.is_reserved()
                             )
                             || case == Case::Insensitive
-                                && t.is_non_raw_ident_where(|i| quals.iter().any(|exp| {
+                                && t.non_raw_ident().is_some_and(|i| quals.iter().any(|exp| {
                                     exp.kw.as_str() == i.name.as_str().to_lowercase()
                                 }))
                         )
@@ -837,12 +836,10 @@ impl<'a> Parser<'a> {
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
-        let expect_self_ident = |this: &mut Self| match this.token.ident() {
-            Some((ident, IdentKind::Normal | IdentKind::ForcedKeyword)) => {
-                this.bump();
-                ident
-            }
-            _ => unreachable!(),
+        let expect_self_ident = |this: &mut Self| {
+            let ident = this.token.non_raw_ident().unwrap();
+            this.bump();
+            ident
         };
         // is lifetime `n` tokens ahead?
         let is_lifetime = |this: &Self, n| this.look_ahead(n, |t| t.is_lifetime());

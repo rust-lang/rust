@@ -935,7 +935,7 @@ impl Token {
 
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: Symbol) -> bool {
-        self.is_non_raw_ident_where(|id| id.name == kw)
+        self.non_raw_ident().is_some_and(|id| id.name == kw)
     }
 
     /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this
@@ -943,35 +943,35 @@ impl Token {
     pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
         self.is_keyword(kw)
             || (case == Case::Insensitive
-                && self.is_non_raw_ident_where(|id| {
+                && self.non_raw_ident().is_some_and(|id| {
                     // Do an ASCII case-insensitive match, because all keywords are ASCII.
                     id.name.as_str().eq_ignore_ascii_case(kw.as_str())
                 }))
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(sp::Ident::is_path_segment_keyword)
+        self.non_raw_ident().is_some_and(sp::Ident::is_path_segment_keyword)
     }
 
     /// Returns true for reserved identifiers used internally for elided lifetimes,
     /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
-        self.is_non_raw_ident_where(sp::Ident::is_special)
+        self.non_raw_ident().is_some_and(sp::Ident::is_special)
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(sp::Ident::is_used_keyword)
+        self.non_raw_ident().is_some_and(sp::Ident::is_used_keyword)
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(sp::Ident::is_unused_keyword)
+        self.non_raw_ident().is_some_and(sp::Ident::is_unused_keyword)
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
-        self.is_non_raw_ident_where(sp::Ident::is_reserved)
+        self.non_raw_ident().is_some_and(sp::Ident::is_reserved)
     }
 
     pub fn is_non_reserved_ident(&self) -> bool {
@@ -990,7 +990,7 @@ impl Token {
 
     /// Returns `true` if the token is the identifier `true` or `false`.
     pub fn is_bool_lit(&self) -> bool {
-        self.is_non_raw_ident_where(|id| id.name.is_bool_lit())
+        self.non_raw_ident().is_some_and(|id| id.name.is_bool_lit())
     }
 
     pub fn is_numeric_lit(&self) -> bool {
@@ -1005,11 +1005,11 @@ impl Token {
         matches!(self.kind, Literal(Lit { kind: LitKind::Integer, .. }))
     }
 
-    /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
-    pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(sp::Ident) -> bool) -> bool {
+    /// Returns an identifier if this token is a non-raw identifier.
+    pub fn non_raw_ident(&self) -> Option<sp::Ident> {
         match self.ident() {
-            Some((id, IdentKind::Normal | IdentKind::ForcedKeyword)) => pred(id),
-            _ => false,
+            Some((id, IdentKind::Normal | IdentKind::ForcedKeyword)) => Some(id),
+            _ => None,
         }
     }
 
