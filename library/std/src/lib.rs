@@ -313,7 +313,6 @@
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
-#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 //
 // Library features (core):

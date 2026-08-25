@@ -12,6 +12,7 @@
 
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(never_type))]
+#![cfg_attr(bootstrap, feature(unwrap_infallible))]
 #![feature(associated_type_defaults)]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
@@ -20,7 +21,6 @@
 #![feature(iterator_try_reduce)]
 #![feature(option_into_flat_iter)]
 #![feature(try_blocks)]
-#![feature(unwrap_infallible)]
 #![feature(yeet_expr)]
 #![recursion_limit = "512"] // For rustdoc
 // tidy-alphabetical-end
