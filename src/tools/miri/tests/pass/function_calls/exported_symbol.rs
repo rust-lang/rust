@@ -24,6 +24,25 @@ impl AssocFn {
     }
 }
 
+mod somewhere_else {
+    #[repr(C)]
+    struct CType {
+        field: i32,
+    }
+
+    #[unsafe(no_mangle)]
+    extern "C" fn work_with_c_type(_x: CType) {}
+}
+
+// Imagine we import the function from above but we end up with a copy of the type declaration.
+#[repr(C)]
+struct CType {
+    field: i32,
+}
+extern "C" {
+    fn work_with_c_type(_x: CType);
+}
+
 fn main() {
     // Repeat calls to make sure the `Instance` cache is not broken.
     for _ in 0..3 {
@@ -77,5 +96,7 @@ fn main() {
                 assert_eq!(transmute(qux)(), -4);
             }
         }
+
+        unsafe { work_with_c_type(CType { field: 0 }) };
     }
 }
