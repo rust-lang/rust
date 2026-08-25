@@ -38,12 +38,15 @@ fn main() {
         asm!("", in("x19") foo);
         //~^ ERROR invalid register `x19`: x19 is used internally by LLVM and cannot be used as an operand for inline asm
 
-        asm!("", in("p0") foo);
-        //~^ ERROR type `i32` cannot be used with this register class
-        asm!("", out("p0") _);
-        asm!("{}", in(preg) foo);
-        //~^ ERROR type `i32` cannot be used with this register class
-        asm!("{}", out(preg) _);
+        asm!("", in("ffr") foo);
+        //~^ ERROR register class `ffr` can only be used as a clobber, not as an input or output
+        //~| ERROR type `i32` cannot be used with this register class
+        asm!("", out("ffr") _);
+        asm!("{}", in(ffr) foo);
+        //~^ ERROR register class `ffr` can only be used as a clobber, not as an input or output
+        //~| ERROR type `i32` cannot be used with this register class
+        asm!("{}", out(ffr) _);
+        //~^ ERROR register class `ffr` can only be used as a clobber, not as an input or output
 
         // Explicit register conflicts
         // (except in/lateout which don't conflict)

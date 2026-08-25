@@ -732,18 +732,25 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     format!("{{{}{}}}", class, idx)
                 }
             } else if let Some(idx) = a64_vreg_index(reg) {
-                let class = if let Some(layout) = layout {
-                    match layout.size.bytes() {
+                let class = match layout {
+                    Some(layout)
+                        if matches!(
+                            layout.backend_repr,
+                            BackendRepr::SimdScalableVector { .. }
+                        ) =>
+                    {
+                        'z'
+                    }
+                    Some(layout) => match layout.size.bytes() {
                         16 => 'q',
                         8 => 'd',
                         4 => 's',
                         2 => 'h',
                         1 => 'd', // We fixup i8 to i8x8
                         _ => unreachable!(),
-                    }
-                } else {
+                    },
                     // We use i64x2 as the type for discarded outputs
-                    'q'
+                    None => 'q',
                 };
                 format!("{{{}{}}}", class, idx)
             } else if let Some(idx) = hexagon_reg_pair_index(reg) {
@@ -773,13 +780,12 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
         // https://llvm.org/docs/LangRef.html#supported-constraint-code-list
         InlineAsmRegOrRegClass::RegClass(reg) => match reg {
             AArch64(AArch64InlineAsmRegClass::reg) => "r",
-            AArch64(AArch64InlineAsmRegClass::vreg) | AArch64(AArch64InlineAsmRegClass::zreg) => {
-                "w"
-            }
+            AArch64(AArch64InlineAsmRegClass::vreg) => "w",
             AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
             // Although the above link suggests its just 'Upa', llvm's own tests seem to suggest its
             // '@3Upa'. (see "src/llvm-project/clang/test/CodeGen/AArch64/sve-inline-asm-datatypes.c" line 139)
             AArch64(AArch64InlineAsmRegClass::preg) => "@3Upa",
+            AArch64(AArch64InlineAsmRegClass::ffr) => unreachable!("clobber-only"),
             Arm(ArmInlineAsmRegClass::reg) => "r",
             Arm(ArmInlineAsmRegClass::sreg)
             | Arm(ArmInlineAsmRegClass::dreg_low16)
@@ -889,8 +895,7 @@ fn modifier_to_llvm(
                 modifier
             }
         }
-        AArch64(AArch64InlineAsmRegClass::zreg) => modifier,
-        AArch64(AArch64InlineAsmRegClass::preg) => modifier,
+        AArch64(AArch64InlineAsmRegClass::preg | AArch64InlineAsmRegClass::ffr) => None,
         Arm(ArmInlineAsmRegClass::reg) => None,
         Arm(ArmInlineAsmRegClass::sreg) | Arm(ArmInlineAsmRegClass::sreg_low16) => None,
         Arm(ArmInlineAsmRegClass::dreg)
@@ -995,8 +1000,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         AArch64(AArch64InlineAsmRegClass::vreg) | AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             cx.type_vector(cx.type_i64(), 2)
         }
-        AArch64(AArch64InlineAsmRegClass::zreg) => cx.type_scalable_vector(cx.type_i64(), 2),
         AArch64(AArch64InlineAsmRegClass::preg) => cx.type_scalable_vector(cx.type_i1(), 16),
+        AArch64(AArch64InlineAsmRegClass::ffr) => unreachable!("clobber-only"),
         Arm(ArmInlineAsmRegClass::reg) => cx.type_i32(),
         Arm(ArmInlineAsmRegClass::sreg) | Arm(ArmInlineAsmRegClass::sreg_low16) => cx.type_f32(),
         Arm(ArmInlineAsmRegClass::dreg)

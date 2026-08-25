@@ -37,11 +37,12 @@ fn main() {
         asm!("{:d}", in(vreg) 0f64);
         asm!("{:q}", in(vreg) f64x2);
         asm!("{:v}", in(vreg) f64x2);
-        asm!("{:z}", in(zreg) svi32);
-        asm!("{:p}", in(preg) svb8);
+        asm!("{:z}", in(vreg) svi32);
+        asm!("{}", in(preg) svb8);
 
         // Should be the same as vreg
         asm!("{:q}", in(vreg_low16) f64x2);
+        asm!("{:z}", in(vreg_low16) svi32);
 
         // Template modifiers of a different size to the argument are fine
         asm!("{:w}", in(reg) 0u64);
@@ -68,11 +69,11 @@ fn main() {
         //~^ WARN formatting may not be suitable for sub-register argument
         asm!("{}", in(vreg_low16) 0f64);
         //~^ WARN formatting may not be suitable for sub-register argument
-        asm!("{}", in(zreg) svi16);
+        asm!("{}", in(vreg) svi16);
         //~^ WARN formatting may not be suitable for sub-register argument
-        asm!("{}", in(zreg) svi32);
+        asm!("{}", in(vreg) svi32);
         //~^ WARN formatting may not be suitable for sub-register argument
-        asm!("{}", in(zreg) svf64);
+        asm!("{}", in(vreg) svf64);
         //~^ WARN formatting may not be suitable for sub-register argument
 
         asm!("{0} {0}", in(reg) 0i16);
@@ -92,14 +93,10 @@ fn main() {
         //~^ ERROR type `svint32_t` cannot be used with this register class
         asm!("{}", in(reg) svb8);
         //~^ ERROR type `svbool_t` cannot be used with this register class
-        asm!("{}", in(vreg) svi32);
-        //~^ ERROR type `svint32_t` cannot be used with this register class
         asm!("{}", in(vreg) svb8);
         //~^ ERROR type `svbool_t` cannot be used with this register class
         asm!("{}", in(preg) svi32);
         //~^ ERROR type `svint32_t` cannot be used with this register class
-        asm!("{}", in(zreg) svb8);
-        //~^ ERROR type `svbool_t` cannot be used with this register class
 
         // Split inout operands must have compatible types
         let mut val_i16: i16;

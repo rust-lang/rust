@@ -132,16 +132,17 @@ macro_rules! check {
 
 macro_rules! check_sve {
     ($func:ident $ty:ident $class:ident $suffix:literal $zm:literal) => {
+        #[cfg(target_feature = "sve")]
         #[no_mangle]
         pub unsafe fn $func(inp: &$ty, pred: &svbool_t) -> $ty {
             let x = *inp;
             let z = *pred;
             let y;
             asm!(
-                concat!("mov {0}.", $suffix, ", {1}/", $zm, ", {2}.", $suffix),
+                concat!("mov {0}.", $suffix, ", p0/", $zm, ", {1}.", $suffix),
                 out($class) y,
-                in(preg) z,
-                in($class) x
+                in($class) x,
+                in("p0") z
             );
             y
         }
@@ -163,14 +164,15 @@ macro_rules! check_reg {
 
 macro_rules! check_reg_sve {
     ($func:ident $ty:ident $reg:tt $suffix:literal $zm:literal) => {
+        #[cfg(target_feature = "sve")]
         #[no_mangle]
         pub unsafe fn $func(inp: &$ty, pred: &svbool_t) -> $ty {
             let x = *inp;
             let z = *pred;
             let y;
             asm!(
-                concat!("mov ", $reg, ".", $suffix, ", {}/", $zm, ", ", $reg, ".", $suffix),
-                in(preg) z,
+                concat!("mov ", $reg, ".", $suffix, ", p0/", $zm, ", ", $reg, ".", $suffix),
+                in("p0") z,
                 lateout($reg) y,
                 in($reg) x
             );
@@ -497,61 +499,95 @@ check!(vreg_low16_f32x4 f32x4 vreg_low16 "fmov" "s");
 // CHECK: //NO_APP
 check!(vreg_low16_f64x2 f64x2 vreg_low16 "fmov" "s");
 
-#[cfg(target_feature = "sve")]
-// aarch64-LABEL: {{("#)?}}zreg_i8{{"?}}
+// aarch64-LABEL: {{("#)?}}vreg_sve_i8{{"?}}
 // aarch64: //APP
 // aarch64: mov z{{[0-9]+}}.b, p0/m, z{{[0-9]+}}.b
 // aarch64: //NO_APP
-check_sve!(zreg_i8 svint8_t zreg "b" "m");
+check_sve!(vreg_sve_i8 svint8_t vreg "b" "m");
 
-#[cfg(target_feature = "sve")]
-// aarch64-LABEL: {{("#)?}}zreg_i16{{"?}}
+// aarch64-LABEL: {{("#)?}}vreg_sve_i16{{"?}}
 // aarch64: //APP
 // aarch64: mov z{{[0-9]+}}.h, p0/m, z{{[0-9]+}}.h
 // aarch64: //NO_APP
-check_sve!(zreg_i16 svint16_t zreg "h" "m");
+check_sve!(vreg_sve_i16 svint16_t vreg "h" "m");
 
-#[cfg(target_feature = "sve")]
-// aarch64-LABEL: {{("#)?}}zreg_f16{{"?}}
+// aarch64-LABEL: {{("#)?}}vreg_sve_f16{{"?}}
 // aarch64: //APP
 // aarch64: mov z{{[0-9]+}}.h, p0/m, z{{[0-9]+}}.h
 // aarch64: //NO_APP
-check_sve!(zreg_f16 svfloat16_t zreg "h" "m");
+check_sve!(vreg_sve_f16 svfloat16_t vreg "h" "m");
 
-#[cfg(target_feature = "sve")]
-// aarch64-LABEL: {{("#)?}}zreg_i32{{"?}}
+// aarch64-LABEL: {{("#)?}}vreg_sve_i32{{"?}}
 // aarch64: //APP
 // aarch64: mov z{{[0-9]+}}.s, p0/m, z{{[0-9]+}}.s
 // aarch64: //NO_APP
-check_sve!(zreg_i32 svint32_t zreg "s" "m");
+check_sve!(vreg_sve_i32 svint32_t vreg "s" "m");
 
-#[cfg(target_feature = "sve")]
-// aarch64-LABEL: {{("#)?}}zreg_f32{{"?}}
+// aarch64-LABEL: {{("#)?}}vreg_sve_f32{{"?}}
 // aarch64: //APP
 // aarch64: mov z{{[0-9]+}}.s, p0/m, z{{[0-9]+}}.s
 // aarch64: //NO_APP
-check_sve!(zreg_f32 svfloat32_t zreg "s" "m");
+check_sve!(vreg_sve_f32 svfloat32_t vreg "s" "m");
 
-#[cfg(target_feature = "sve")]
-// aarch64-LABEL: {{("#)?}}zreg_i64{{"?}}
+// aarch64-LABEL: {{("#)?}}vreg_sve_i64{{"?}}
 // aarch64: //APP
 // aarch64: mov z{{[0-9]+}}.d, p0/m, z{{[0-9]+}}.d
 // aarch64: //NO_APP
-check_sve!(zreg_i64 svint64_t zreg "d" "m");
+check_sve!(vreg_sve_i64 svint64_t vreg "d" "m");
 
-#[cfg(target_feature = "sve")]
-// aarch64-LABEL: {{("#)?}}zreg_f64{{"?}}
+// aarch64-LABEL: {{("#)?}}vreg_sve_f64{{"?}}
 // aarch64: //APP
 // aarch64: mov z{{[0-9]+}}.d, p0/m, z{{[0-9]+}}.d
 // aarch64: //NO_APP
-check_sve!(zreg_f64 svfloat64_t zreg "d" "m");
+check_sve!(vreg_sve_f64 svfloat64_t vreg "d" "m");
 
-#[cfg(target_feature = "sve")]
-// aarch64-LABEL: {{("#)?}}zreg_bool{{"?}}
+// aarch64-LABEL: {{("#)?}}vreg_low16_sve_i8{{"?}}
 // aarch64: //APP
-// aarch64: mov p{{[0-9]+}}.b, p{{[0-9]+}}/z, p{{[0-9]+}}.b
+// aarch64: mov z{{[0-9]+}}.b, p0/m, z{{[0-9]+}}.b
 // aarch64: //NO_APP
-check_sve!(zreg_bool svbool_t preg "b" "z");
+check_sve!(vreg_low16_sve_i8 svint8_t vreg_low16 "b" "m");
+
+// aarch64-LABEL: {{("#)?}}vreg_low16_sve_i16{{"?}}
+// aarch64: //APP
+// aarch64: mov z{{[0-9]+}}.h, p0/m, z{{[0-9]+}}.h
+// aarch64: //NO_APP
+check_sve!(vreg_low16_sve_i16 svint16_t vreg_low16 "h" "m");
+
+// aarch64-LABEL: {{("#)?}}vreg_low16_sve_f16{{"?}}
+// aarch64: //APP
+// aarch64: mov z{{[0-9]+}}.h, p0/m, z{{[0-9]+}}.h
+// aarch64: //NO_APP
+check_sve!(vreg_low16_sve_f16 svfloat16_t vreg_low16 "h" "m");
+
+// aarch64-LABEL: {{("#)?}}vreg_low16_sve_i32{{"?}}
+// aarch64: //APP
+// aarch64: mov z{{[0-9]+}}.s, p0/m, z{{[0-9]+}}.s
+// aarch64: //NO_APP
+check_sve!(vreg_low16_sve_i32 svint32_t vreg_low16 "s" "m");
+
+// aarch64-LABEL: {{("#)?}}vreg_low16_sve_f32{{"?}}
+// aarch64: //APP
+// aarch64: mov z{{[0-9]+}}.s, p0/m, z{{[0-9]+}}.s
+// aarch64: //NO_APP
+check_sve!(vreg_low16_sve_f32 svfloat32_t vreg_low16 "s" "m");
+
+// aarch64-LABEL: {{("#)?}}vreg_low16_sve_i64{{"?}}
+// aarch64: //APP
+// aarch64: mov z{{[0-9]+}}.d, p0/m, z{{[0-9]+}}.d
+// aarch64: //NO_APP
+check_sve!(vreg_low16_sve_i64 svint64_t vreg_low16 "d" "m");
+
+// aarch64-LABEL: {{("#)?}}vreg_low16_sve_f64{{"?}}
+// aarch64: //APP
+// aarch64: mov z{{[0-9]+}}.d, p0/m, z{{[0-9]+}}.d
+// aarch64: //NO_APP
+check_sve!(vreg_low16_sve_f64 svfloat64_t vreg_low16 "d" "m");
+
+// aarch64-LABEL: {{("#)?}}preg_bool{{"?}}
+// aarch64: //APP
+// aarch64: mov p{{[0-9]+}}.b, p0/z, p{{[0-9]+}}.b
+// aarch64: //NO_APP
+check_sve!(preg_bool svbool_t preg "b" "z");
 
 // CHECK-LABEL: {{("#)?}}x0_i8{{"?}}
 // CHECK: //APP
@@ -649,61 +685,61 @@ check_reg!(v0_f64 f64 "s0" "fmov");
 // CHECK: //NO_APP
 check_reg!(v0_f128 f128 "s0" "fmov");
 
-#[cfg(target_feature = "sve")]
 // aarch64-LABEL: {{("#)?}}z0_i8{{"?}}
 // aarch64: //APP
 // aarch64: mov z0.b, p0/m, z0.b
 // aarch64: //NO_APP
 check_reg_sve!(z0_i8 svint8_t "z0" "b" "m");
 
-#[cfg(target_feature = "sve")]
 // aarch64-LABEL: {{("#)?}}z0_i16{{"?}}
 // aarch64: //APP
 // aarch64: mov z0.h, p0/m, z0.h
 // aarch64: //NO_APP
 check_reg_sve!(z0_i16 svint16_t "z0" "h" "m");
 
-#[cfg(target_feature = "sve")]
 // aarch64-LABEL: {{("#)?}}z0_f16{{"?}}
 // aarch64: //APP
 // aarch64: mov z0.h, p0/m, z0.h
 // aarch64: //NO_APP
 check_reg_sve!(z0_f16 svfloat16_t "z0" "h" "m");
 
-#[cfg(target_feature = "sve")]
 // aarch64-LABEL: {{("#)?}}z0_i32{{"?}}
 // aarch64: //APP
 // aarch64: mov z0.s, p0/m, z0.s
 // aarch64: //NO_APP
 check_reg_sve!(z0_i32 svint32_t "z0" "s" "m");
 
-#[cfg(target_feature = "sve")]
 // aarch64-LABEL: {{("#)?}}z0_f32{{"?}}
 // aarch64: //APP
 // aarch64: mov z0.s, p0/m, z0.s
 // aarch64: //NO_APP
 check_reg_sve!(z0_f32 svfloat32_t "z0" "s" "m");
 
-#[cfg(target_feature = "sve")]
 // aarch64-LABEL: {{("#)?}}z0_i64{{"?}}
 // aarch64: //APP
 // aarch64: mov z0.d, p0/m, z0.d
 // aarch64: //NO_APP
 check_reg_sve!(z0_i64 svint64_t "z0" "d" "m");
 
-#[cfg(target_feature = "sve")]
 // aarch64-LABEL: {{("#)?}}z0_f64{{"?}}
 // aarch64: //APP
 // aarch64: mov z0.d, p0/m, z0.d
 // aarch64: //NO_APP
 check_reg_sve!(z0_f64 svfloat64_t "z0" "d" "m");
 
-#[cfg(target_feature = "sve")]
 // aarch64-LABEL: {{("#)?}}p0_bool{{"?}}
 // aarch64: //APP
 // aarch64: mov p0.b, p1/z, p0.b
 // aarch64: //NO_APP
-check_reg_sve!(p0_bool svbool_t "p0" "b" "z");
+#[cfg(target_feature = "sve")]
+#[no_mangle]
+pub unsafe fn p0_bool(inp: &svbool_t, pred: &svbool_t) -> svbool_t {
+    let x = *inp;
+    let z = *pred;
+    let y;
+    asm!("mov p0.b, p1/z, p0.b", in("p1") z, lateout("p0") y, in("p0") x);
+    y
+}
 
 // CHECK-LABEL: {{("#)?}}v0_ptr{{"?}}
 // CHECK: //APP

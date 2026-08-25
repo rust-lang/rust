@@ -957,6 +957,7 @@ symbols! {
         ffi_const,
         ffi_pure,
         ffi_returns_twice,
+        ffr,
         field,
         field_base,
         field_init_shorthand,
@@ -2407,7 +2408,6 @@ symbols! {
         zfh,
         zfhmin,
         zmm_reg,
-        zreg,
         ztso,
         // tidy-alphabetical-end
     }
