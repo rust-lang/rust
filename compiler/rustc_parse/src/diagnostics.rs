@@ -257,7 +257,7 @@ pub(crate) enum InvalidComparisonOperatorSub {
 pub(crate) struct InvalidLogicalOperator {
     #[primary_span]
     pub span: Span,
-    pub incorrect: String,
+    pub incorrect: Symbol,
     #[subdiagnostic]
     pub sub: InvalidLogicalOperatorSub,
 }
