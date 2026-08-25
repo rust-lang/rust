@@ -1,0 +1,12 @@
+warning: unreachable pattern
+  --> $DIR/union.rs:15:9
+   |
+LL |         Foo { field: _ if false } => (),
+   |         ------------------------- matches all the relevant values
+LL |         _ => panic!(),
+   |         ^ no value can reach this
+   |
+   = note: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+
