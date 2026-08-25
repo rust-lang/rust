@@ -39,6 +39,7 @@ pub(crate) mod legacy;
 mod liveness_constraints;
 
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::SparseBitMatrix;
@@ -116,23 +117,47 @@ impl PoloniusContext {
             // From the outlives constraints, liveness, and variances, we can compute reachability
             // on the lazy localized constraint graph to trace the liveness of loans, for the next
             // step in the chain (the NLL loan scope and active loans computations).
-            let graph = LocalizedConstraintGraph::new(liveness, outlives_constraints);
+            let graph = LocalizedConstraintGraph::new(
+                Rc::clone(liveness.location_map()),
+                outlives_constraints,
+            );
 
             let mut live_loans = LiveLoans::new(borrow_set.len());
-            let mut visitor = LoanLivenessVisitor { liveness, live_loans: &mut live_loans };
-            graph.traverse(
-                body,
+            let mut traversal = LoanLivenessTraversal {
                 liveness,
-                &self.live_region_variances,
-                universal_regions,
-                borrow_set,
-                &mut visitor,
-            );
+                live_region_variances: &self.live_region_variances,
+                live_loans: &mut live_loans,
+            };
+            graph.traverse(body, universal_regions, borrow_set, &mut traversal);
             liveness.record_live_loans(live_loans);
 
             // The graph can be traversed again during MIR dumping, so we store it here.
             self.graph = Some(graph);
         }
+    }
+}
+
+struct LoanLivenessTraversal<'a> {
+    liveness: &'a LivenessValues,
+    live_region_variances: &'a BTreeMap<RegionVid, ConstraintDirection>,
+    live_loans: &'a mut LiveLoans,
+}
+
+impl LocalizedConstraintGraphTraversal for LoanLivenessTraversal<'_> {
+    type Visitor<'a>
+        = LoanLivenessVisitor<'a>
+    where
+        Self: 'a;
+
+    fn mk_visitor(
+        &mut self,
+        _region: RegionVid,
+    ) -> (&LivenessValues, &BTreeMap<RegionVid, ConstraintDirection>, Self::Visitor<'_>) {
+        (
+            self.liveness,
+            self.live_region_variances,
+            LoanLivenessVisitor { liveness: self.liveness, live_loans: self.live_loans },
+        )
     }
 }
 

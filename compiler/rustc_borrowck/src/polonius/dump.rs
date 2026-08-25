@@ -10,7 +10,10 @@ use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
-use crate::polonius::{LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext};
+use crate::polonius::{
+    LocalizedConstraintGraphTraversal, LocalizedConstraintGraphVisitor, LocalizedNode,
+    PoloniusContext,
+};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
@@ -36,16 +39,13 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     // If we have a polonius graph to dump along the rest of the MIR and NLL info, we extract its
     // constraints here.
-    let mut collector = LocalizedOutlivesConstraintCollector { constraints: Vec::new() };
+    let mut collector = LocalizedOutlivesConstraintCollectorTraversal {
+        liveness: regioncx.liveness_constraints(),
+        live_region_variances: &polonius_context.live_region_variances,
+        constraints: Vec::new(),
+    };
     if let Some(graph) = &polonius_context.graph {
-        graph.traverse(
-            body,
-            regioncx.liveness_constraints(),
-            &polonius_context.live_region_variances,
-            regioncx.universal_regions(),
-            borrow_set,
-            &mut collector,
-        );
+        graph.traverse(body, regioncx.universal_regions(), borrow_set, &mut collector);
     }
 
     let extra_data = &|pass_where, out: &mut dyn io::Write| {
@@ -84,12 +84,42 @@ struct LocalizedOutlivesConstraint {
     to: PointIndex,
 }
 
-/// Visitor to record constraints encountered when traversing the localized constraint graph.
-struct LocalizedOutlivesConstraintCollector {
+struct LocalizedOutlivesConstraintCollectorTraversal<'a> {
+    liveness: &'a LivenessValues,
+    live_region_variances: &'a std::collections::BTreeMap<RegionVid, super::ConstraintDirection>,
     constraints: Vec<LocalizedOutlivesConstraint>,
 }
 
-impl LocalizedConstraintGraphVisitor for LocalizedOutlivesConstraintCollector {
+impl<'outer> LocalizedConstraintGraphTraversal
+    for LocalizedOutlivesConstraintCollectorTraversal<'outer>
+{
+    type Visitor<'a>
+        = LocalizedOutlivesConstraintCollector<'a>
+    where
+        Self: 'a;
+
+    fn mk_visitor(
+        &mut self,
+        _region: RegionVid,
+    ) -> (
+        &LivenessValues,
+        &std::collections::BTreeMap<RegionVid, super::ConstraintDirection>,
+        Self::Visitor<'_>,
+    ) {
+        (
+            self.liveness,
+            self.live_region_variances,
+            LocalizedOutlivesConstraintCollector { constraints: &mut self.constraints },
+        )
+    }
+}
+
+/// Visitor to record constraints encountered when traversing the localized constraint graph.
+struct LocalizedOutlivesConstraintCollector<'a> {
+    constraints: &'a mut Vec<LocalizedOutlivesConstraint>,
+}
+
+impl LocalizedConstraintGraphVisitor for LocalizedOutlivesConstraintCollector<'_> {
     fn on_successor_discovered(&mut self, current_node: LocalizedNode, successor: LocalizedNode) {
         self.constraints.push(LocalizedOutlivesConstraint {
             source: current_node.region,
@@ -246,8 +276,8 @@ fn emit_polonius_mir<'tcx>(
 
                 for constraint in localized_outlives_constraints {
                     let LocalizedOutlivesConstraint { source, from, target, to } = constraint;
-                    let from = liveness.location_from_point(*from);
-                    let to = liveness.location_from_point(*to);
+                    let from = liveness.location_map().to_location(*from);
+                    let to = liveness.location_map().to_location(*to);
                     writeln!(out, "| {source:?} at {from:?} -> {target:?} at {to:?}")?;
                 }
                 writeln!(out, "|")?;
@@ -438,7 +468,7 @@ fn emit_mermaid_constraint_graph<'tcx>(
     };
     let region_name = |region: RegionVid| format!("'{}", region.index());
     let node_name = |region: RegionVid, point: PointIndex| {
-        let location = liveness.location_from_point(point);
+        let location = liveness.location_map().to_location(point);
         format!("{}_{}", region_name(region), location_name(location))
     };
 
