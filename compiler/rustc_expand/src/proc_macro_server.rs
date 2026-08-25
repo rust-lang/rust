@@ -2,6 +2,7 @@ use std::ops::{Bound, Range};
 
 use rustc_ast as ast;
 use rustc_ast::token as tk;
+use rustc_ast::tokenarena::TokenArena;
 use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
@@ -576,6 +577,7 @@ impl server::Server for Rustc<'_, '_> {
                 src.to_string(),
                 Some(self.call_site),
             )
+            .map(|arena| arena.to_token_stream())
         })
         .map_err(|_| String::from("failed to parse to tokenstream"))?
         .map_err(cancel_diags_into_string)
@@ -588,7 +590,11 @@ impl server::Server for Rustc<'_, '_> {
     fn ts_expand_expr(&mut self, stream: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
         // Parse the expression from our tokenstream.
         let expr = try {
-            let mut p = Parser::new(self.psess(), stream.clone(), Some("proc_macro expand expr"));
+            let mut p = Parser::new(
+                self.psess(),
+                TokenArena::from_stream(stream),
+                Some("proc_macro expand expr"),
+            );
             let expr = p.parse_expr()?;
             if p.token != tk::Eof {
                 p.unexpected()?;

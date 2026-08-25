@@ -2,7 +2,6 @@ use diagnostics::make_errors_for_mismatched_closing_delims;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenarena::TokenArena;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::{TEXT_FLOW_CONTROL_CHARS, contains_text_flow_control_chars};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, StashKey};
@@ -70,7 +69,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     mut start_pos: BytePos,
     override_span: Option<Span>,
     strip_tokens: StripTokens,
-) -> Result<TokenStream, Vec<Diag<'psess>>> {
+) -> Result<TokenArena, Vec<Diag<'psess>>> {
     match strip_tokens {
         StripTokens::Shebang | StripTokens::ShebangAndFrontmatter => {
             if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
@@ -108,7 +107,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     match res {
         Ok(_) => {
             if unmatched_closing_delims.is_empty() {
-                Ok(arena.to_token_stream())
+                Ok(arena)
             } else {
                 // Return error if there are unmatched delimiters or unclosed delimiters.
                 Err(unmatched_closing_delims)

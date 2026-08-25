@@ -7,6 +7,7 @@ use ast::token::IdentIsRaw;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
+use rustc_ast::tokenarena::TokenArena;
 use rustc_ast::tokenstream::{self, DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId, Safety};
 use rustc_ast_pretty::pprust;
@@ -132,7 +133,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
         matched_rule_bindings: &'b [MatcherLoc],
     ) -> Self {
         Self {
-            parser: Parser::new(&cx.sess.psess, tts, None),
+            parser: Parser::new(&cx.sess.psess, TokenArena::from_stream(&tts), None),
 
             // Pass along the original expansion site and the name of the macro
             // so we can print a useful error message if the parse of the expanded
@@ -796,7 +797,7 @@ pub fn compile_declarative_macro(
     let macro_rules = macro_def.macro_rules;
     let exp_sep = if macro_rules { exp!(Semi) } else { exp!(Comma) };
 
-    let body = macro_def.body.tokens.clone();
+    let body = TokenArena::from_stream(&macro_def.body.tokens);
     let mut p = Parser::new(&sess.psess, body, rustc_parse::MACRO_ARGUMENTS);
 
     // Don't abort iteration early, so that multiple errors can be reported. We only abort early on
@@ -1869,5 +1870,6 @@ pub(super) fn parser_from_cx(
     recovery: Recovery,
 ) -> Parser<'_> {
     tts.desugar_doc_comments();
-    Parser::new(psess, tts, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
+    Parser::new(psess, TokenArena::from_stream(&tts), rustc_parse::MACRO_ARGUMENTS)
+        .recovery(recovery)
 }

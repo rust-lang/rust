@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_ast::attr::MarkedAttrs;
+use rustc_ast::tokenarena::TokenArena;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind, Safety};
@@ -1258,7 +1259,7 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, true)
     }
     pub fn new_parser_from_tts(&self, stream: TokenStream) -> Parser<'a> {
-        Parser::new(&self.sess.psess, stream, MACRO_ARGUMENTS)
+        Parser::new(&self.sess.psess, TokenArena::from_stream(&stream), MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap {
         self.sess.psess.source_map()
