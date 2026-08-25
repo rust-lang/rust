@@ -741,6 +741,8 @@ declare_features! (
     (unstable, strict_provenance_lints, "1.61.0", Some(130351)),
     /// Allows `super let` statements.
     (unstable, super_let, "1.88.0", Some(139076)),
+    /// Allows `auto impl Supertrait for trait Subtrait { .. }`.
+    (unstable, supertrait_auto_impl, "CURRENT_RUSTC_VERSION", Some(149556)),
     /// Allows subtrait items to shadow supertrait items.
     (unstable, supertrait_item_shadowing, "1.86.0", Some(89151)),
     /// Allows using `#[thread_local]` on `static` items.

@@ -413,6 +413,7 @@ macro_rules! common_visitor_and_walkers {
             AsmMacro,
             AssignOpKind,
             AssocItemConstraintKind,
+            AutoImplTrait,
             AttrArgs,
             AttrItem,
             AttrKind,
@@ -856,6 +857,8 @@ macro_rules! common_visitor_and_walkers {
                         visit_visitable!($($mut)? vis, ident, generics, variant_data),
                     ItemKind::Impl(impl_) =>
                         visit_visitable!($($mut)? vis, impl_),
+                    ItemKind::AutoImplTrait(auto_impl) =>
+                        visit_visitable!($($mut)? vis, auto_impl),
                     ItemKind::Trait(trait_) =>
                         visit_visitable!($($mut)? vis, trait_),
                     ItemKind::TraitAlias(TraitAlias { constness, ident, generics, bounds}) => {
@@ -962,6 +965,13 @@ macro_rules! common_visitor_and_walkers {
             }
             try_visit!(vis.visit_ty(self_ty));
             visit_visitable_with!($($mut)? vis, items, AssocCtxt::Impl { of_trait: of_trait.is_some() });
+            V::Result::output()
+        });
+
+        impl_walkable!(|&$($mut)? $($lt)? self: AutoImplTrait, vis: &mut V| {
+            let AutoImplTrait { safety, generics, trait_ref, for_trait, items } = self;
+            visit_visitable!($($mut)? vis, safety, generics, trait_ref, for_trait);
+            visit_visitable_with!($($mut)? vis, items, AssocCtxt::Impl { of_trait: true });
             V::Result::output()
         });
 
