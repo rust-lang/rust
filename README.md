@@ -7,7 +7,7 @@
          width="50%">
   </picture>
 
-[Website][Rust] | [Getting started] | [Learn] | [Documentation] | [Contributing]
+[Website][Rust] | [Getting Started] | [Learn] | [Documentation] | [Contributing]
 </div>
 
 This is the main source code repository for [Rust]. It contains the compiler,
