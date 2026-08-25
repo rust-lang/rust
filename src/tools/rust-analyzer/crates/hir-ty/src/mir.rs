@@ -9,7 +9,6 @@ use hir_def::{
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use macros::{TypeFoldable, TypeVisitable};
 use rustc_ast_ir::Mutability;
-use rustc_hash::FxHashMap;
 use rustc_type_ir::{
     GenericTypeVisitable,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
@@ -19,7 +18,7 @@ use smallvec::{SmallVec, smallvec};
 use stdx::impl_from;
 
 use crate::{
-    CallableDefId, InferBodyId, InferenceResult, MemoryMap,
+    CallableDefId, InferBodyId, InferenceResult, MemoryMap, ThinFxHashMap,
     db::{HirDatabase, InternedClosureId},
     infer::PointerCast,
     next_solver::{
@@ -1019,7 +1018,7 @@ pub struct MirBody<'db> {
     pub start_block: BasicBlockId,
     pub owner: InferBodyId<'db>,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
-    pub upvar_locals: FxHashMap<BindingId, Vec<(LocalId, crate::closure_analysis::Place)>>,
+    pub upvar_locals: ThinFxHashMap<BindingId, Vec<(LocalId, crate::closure_analysis::Place)>>,
     pub param_locals: Vec<LocalId>,
     /// This field stores the closures directly owned by this body. It is used
     /// in traversing every mir body.

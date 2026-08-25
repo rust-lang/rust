@@ -72,12 +72,14 @@ use rustc_hash::FxHashMap;
 use span::{Edition, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{AstNode, SmolStr, SyntaxNode, ToSmolStr, ast};
+use thin_vec::ThinVec;
 use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
     AstId, BlockId, BlockIdLt, BuiltinDeriveImplId, ExternCrateId, FunctionId, FxIndexMap, Lookup,
-    MacroCallStyles, MacroExpander, MacroId, ModuleId, ModuleIdLt, ProcMacroId, UseId,
+    MacroCallStyles, MacroExpander, MacroId, ModuleId, ModuleIdLt, ProcMacroId, ThinFxHashMap,
+    UseId,
     item_scope::{BuiltinShadowMode, ItemScope},
     item_tree::TreeId,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
@@ -188,18 +190,20 @@ pub struct DefMap {
     /// `macro_use` prelude that contains macros from `#[macro_use]`'d external crates. Note that
     /// this contains all kinds of macro, not just `macro_rules!` macro.
     /// ExternCrateId being None implies it being imported from the general prelude import.
-    macro_use_prelude: FxHashMap<Name, (MacroId, Option<ExternCrateId>)>,
+    macro_use_prelude: ThinFxHashMap<Name, (MacroId, Option<ExternCrateId>)>,
 
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
     // FIXME: Figure out a better way for the IDE layer to resolve these?
-    derive_helpers_in_scope:
-        FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, Either<MacroCallId, BuiltinDeriveImplId>)>>,
+    derive_helpers_in_scope: ThinFxHashMap<
+        AstId<ast::Item>,
+        Vec<(Name, MacroId, Either<MacroCallId, BuiltinDeriveImplId>)>,
+    >,
     /// A mapping from [`hir_expand::MacroDefId`] to [`crate::MacroId`].
-    pub macro_def_to_macro_id: FxHashMap<ErasedAstId, MacroId>,
+    pub macro_def_to_macro_id: ThinFxHashMap<ErasedAstId, MacroId>,
 
     /// The diagnostics that need to be emitted for this crate.
-    diagnostics: Vec<DefDiagnostic>,
+    diagnostics: ThinVec<DefDiagnostic>,
 
     /// The crate data that is shared between a crate's def map and all its block def maps.
     data: Arc<DefMapCrateData>,
@@ -372,7 +376,7 @@ pub struct ModuleData {
     ///
     /// [`None`] for block modules because they are always its `DefMap`'s root.
     pub parent: Option<ModuleId>,
-    pub children: FxIndexMap<Name, ModuleId>,
+    pub children: ThinFxHashMap<Name, ModuleId>,
     pub scope: ItemScope,
 }
 
@@ -484,11 +488,11 @@ impl DefMap {
             modules,
             krate,
             prelude: None,
-            macro_use_prelude: FxHashMap::default(),
-            derive_helpers_in_scope: FxHashMap::default(),
-            diagnostics: Vec::new(),
+            macro_use_prelude: ThinFxHashMap::default(),
+            derive_helpers_in_scope: ThinFxHashMap::default(),
+            diagnostics: ThinVec::new(),
             data: crate_data,
-            macro_def_to_macro_id: FxHashMap::default(),
+            macro_def_to_macro_id: ThinFxHashMap::default(),
         }
     }
     fn shrink_to_fit(&mut self) {
@@ -676,7 +680,9 @@ impl DefMap {
         self.prelude
     }
 
-    pub(crate) fn macro_use_prelude(&self) -> &FxHashMap<Name, (MacroId, Option<ExternCrateId>)> {
+    pub(crate) fn macro_use_prelude(
+        &self,
+    ) -> &ThinFxHashMap<Name, (MacroId, Option<ExternCrateId>)> {
         &self.macro_use_prelude
     }
 
@@ -884,15 +890,15 @@ fn sub_namespace_match(
     }
 }
 
-/// A newtype wrapper around `FxHashMap<ModuleId, ModuleData>` that implements `IndexMut`.
+/// A newtype wrapper around `ThinFxHashMap<ModuleId, ModuleData>` that implements `IndexMut`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct ModulesMap {
-    inner: FxIndexMap<ModuleId, ModuleData>,
+    inner: ThinFxHashMap<ModuleId, ModuleData>,
 }
 
 impl ModulesMap {
     fn new() -> Self {
-        Self { inner: FxIndexMap::default() }
+        Self { inner: ThinFxHashMap::new() }
     }
 
     fn iter(&self) -> impl Iterator<Item = (ModuleId, &ModuleData)> + '_ {
@@ -905,7 +911,7 @@ impl ModulesMap {
 }
 
 impl Deref for ModulesMap {
-    type Target = FxIndexMap<ModuleId, ModuleData>;
+    type Target = ThinFxHashMap<ModuleId, ModuleData>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner

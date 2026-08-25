@@ -1607,7 +1607,8 @@ fn coerce<'db>(
 fn is_capturing_closure(db: &dyn HirDatabase, closure: InternedClosureId<'_>) -> bool {
     let InternedClosure { owner, expr, .. } = closure.loc(db);
     upvars_mentioned(db, owner.expression_store_owner(db))
-        .is_some_and(|upvars| upvars.get(&expr).is_some_and(|upvars| !upvars.is_empty()))
+        .get(&expr)
+        .is_some_and(|upvars| !upvars.is_empty())
 }
 
 /// Recursively visit goals to decide whether an unsizing is possible.

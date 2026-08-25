@@ -217,7 +217,7 @@ jobs:
       # - name: Cache Dependencies
       #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
-      - run: cargo miri test -p intern
+      - run: cargo miri test -p intern -p stdx
 
   # Weird targets to catch non-portable code
   rust-cross:

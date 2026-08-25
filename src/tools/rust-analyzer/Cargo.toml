@@ -157,7 +157,7 @@ tracing-subscriber = { version = "0.3.20", default-features = false, features = 
 triomphe = { version = "0.1.14", default-features = false, features = ["std"] }
 url = "2.5.4"
 xshell = "0.2.7"
-thin-vec = "0.2.16"
+thin-vec = { version = "0.2.16", features = ["const_new"] }
 petgraph = { version = "0.8.2", default-features = false }
 hashbrown = { version = "0.17.0", features = [
     "inline-more",

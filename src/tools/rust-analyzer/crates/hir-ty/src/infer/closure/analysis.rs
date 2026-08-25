@@ -44,7 +44,7 @@ use hir_def::{
 use macros::{TypeFoldable, TypeVisitable};
 use rustc_abi::ExternAbi;
 use rustc_ast_ir::Mutability;
-use rustc_hash::{FxBuildHasher, FxHashMap};
+use rustc_hash::FxHashMap;
 use rustc_type_ir::{
     BoundVar, ClosureKind,
     inherent::{AdtDef as _, GenericArgs as _, IntoKind as _, Ty as _},
@@ -54,7 +54,7 @@ use span::Edition;
 use tracing::{debug, instrument};
 
 use crate::{
-    Span,
+    Span, ThinFxHashMap,
     infer::{
         CaptureInfo, CaptureSourceStack, CapturedPlace, InferenceContext, UpvarCapture,
         closure::analysis::expr_use_visitor::{
@@ -196,8 +196,7 @@ type InferredCaptureInformation = Vec<(Place, CaptureInfo)>;
 
 impl<'db> InferenceContext<'db> {
     pub(crate) fn closure_analyze(&mut self) {
-        let upvars = hir_def::upvars::upvars_mentioned(self.db, self.store_owner)
-            .unwrap_or(const { &FxHashMap::with_hasher(FxBuildHasher) });
+        let upvars = hir_def::upvars::upvars_mentioned(self.db, self.store_owner);
         for root_expr in self.store.expr_roots() {
             self.analyze_closures_in_expr(root_expr, upvars);
         }
@@ -206,7 +205,11 @@ impl<'db> InferenceContext<'db> {
         assert!(self.deferred_call_resolutions.is_empty());
     }
 
-    fn analyze_closures_in_expr(&mut self, expr: ExprId, upvars: &'db FxHashMap<ExprId, Upvars>) {
+    fn analyze_closures_in_expr(
+        &mut self,
+        expr: ExprId,
+        upvars: &'db ThinFxHashMap<ExprId, Upvars>,
+    ) {
         self.store.walk_child_exprs(expr, |expr| self.analyze_closures_in_expr(expr, upvars));
 
         match &self.store[expr] {
