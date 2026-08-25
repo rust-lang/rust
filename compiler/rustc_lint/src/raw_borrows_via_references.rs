@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for RawBorrowsViaReferences {
                 && ty_span.can_be_used_for_suggestions()
             {
                 RawBorrowViaReferenceSuggestion::Spanful {
-                    left: expr.span.until(addr_of_span),
+                    left: exp.span.until(addr_of_span),
                     right: addr_of_span.shrink_to_hi().until(ty_span.shrink_to_hi()),
                     mutbl: mutbl.ptr_str(),
                 }
