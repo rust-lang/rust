@@ -649,7 +649,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::Union(_, generics, _)
             | hir::ItemKind::Trait { generics, .. }
             | hir::ItemKind::TraitAlias(_, _, generics, ..)
-            | hir::ItemKind::Impl(hir::Impl { generics, .. }) => {
+            | hir::ItemKind::Impl(hir::Impl { generics, .. })
+            | hir::ItemKind::TestBinderConstraints { generics, .. } => {
                 // These kinds of items have only early-bound lifetime parameters.
                 self.visit_early(item.hir_id(), generics, |this| intravisit::walk_item(this, item));
             }
@@ -1082,6 +1083,71 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn visit_test_binder_forall(
+        &mut self,
+        forall: &'tcx rustc_hir::TestBinderForall<'tcx>,
+    ) -> Self::Result {
+        let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = forall
+            .generics
+            .params
+            .iter()
+            .enumerate()
+            .map(|(late_bound_idx, param)| {
+                (
+                    (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                    late_arg_as_bound_arg(param),
+                )
+            })
+            .unzip();
+        self.record_late_bound_vars(forall.hir_id, binders);
+        let scope = Scope::Binder {
+            hir_id: forall.hir_id,
+            bound_vars,
+            s: self.scope,
+            scope_type: BinderScopeType::Normal,
+            where_bound_origin: None,
+        };
+        self.with(scope, |this| {
+            this.visit_generics(forall.generics);
+            this.visit_test_binder_body(forall.body);
+        });
+        // exit assertions don't have the bound vars in scope
+        if let Some(assert_on_exit) = forall.assert_on_exit {
+            self.visit_test_binder_constraint(assert_on_exit);
+        }
+    }
+
+    fn visit_test_binder_exists(
+        &mut self,
+        exists: &'tcx rustc_hir::TestBinderExists<'tcx>,
+    ) -> Self::Result {
+        let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = exists
+            .params
+            .iter()
+            .enumerate()
+            .map(|(late_bound_idx, param)| {
+                (
+                    (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                    late_arg_as_bound_arg(param),
+                )
+            })
+            .unzip();
+        self.record_late_bound_vars(exists.hir_id, binders);
+        let scope = Scope::Binder {
+            hir_id: exists.hir_id,
+            bound_vars,
+            s: self.scope,
+            scope_type: BinderScopeType::Normal,
+            where_bound_origin: None,
+        };
+        self.with(scope, |this| {
+            for param in exists.params {
+                this.visit_generic_param(param);
+            }
+            this.visit_test_binder_body(exists.body);
+        });
     }
 }
 
@@ -1977,7 +2043,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             | DefKind::Static { .. }
             | DefKind::SyntheticCoroutineBody
             | DefKind::TyParam
-            | DefKind::Use => None, // see NOTE above!
+            | DefKind::Use
+            | DefKind::TestBinderConstraints => None, // see NOTE above!
         }
     }
 

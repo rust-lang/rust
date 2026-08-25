@@ -200,7 +200,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             | ItemKind::MacCall(..)
             | ItemKind::MacroDef(..)
             | ItemKind::Delegation(..)
-            | ItemKind::DelegationMac(..) => Vec::new(),
+            | ItemKind::DelegationMac(..)
+            | ItemKind::TestBinderConstraints(..) => Vec::new(),
         }
     }
 
@@ -573,6 +574,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
                 panic!("macros should have been expanded by now")
+            }
+            ItemKind::TestBinderConstraints(TestBinderConstraints { generics, body }) => {
+                let (generics, body) = self.lower_generics(
+                    generics,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    |this| this.lower_test_binder_body(body),
+                );
+                hir::ItemKind::TestBinderConstraints { generics, body: self.arena.alloc(body) }
             }
         }
     }
@@ -2094,5 +2103,104 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         });
         hir::WherePredicate { hir_id, span, kind }
+    }
+
+    fn lower_test_binder_body(&mut self, body: &TestBinderBody) -> hir::TestBinderBody<'hir> {
+        let foralls = self.arena.alloc_from_iter(
+            body.foralls.iter().map(|forall| self.lower_test_binder_forall(forall)),
+        );
+        let exists = self.arena.alloc_from_iter(
+            body.exists.iter().map(|exists| self.lower_test_binder_exists(exists)),
+        );
+        let constraints = self.lower_test_binder_constraints_as_and(&body.constraints);
+        hir::TestBinderBody { foralls, exists, constraints }
+    }
+
+    fn lower_test_binder_forall(
+        &mut self,
+        forall: &TestBinderForall,
+    ) -> hir::TestBinderForall<'hir> {
+        let (generics, body) = self.lower_generics(
+            &forall.generics,
+            ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+            |this| this.lower_test_binder_body(&forall.body),
+        );
+        let assert_on_exit = forall.assert_on_exit.as_ref().map(|assert_on_exit| {
+            self.arena.alloc(self.lower_test_binder_constraints_as_and(assert_on_exit)) as &_
+        });
+        hir::TestBinderForall {
+            span: self.lower_span(forall.span),
+            hir_id: self.lower_node_id(forall.node_id),
+            generics,
+            body: self.arena.alloc(body),
+            assert_on_exit,
+        }
+    }
+
+    fn lower_test_binder_exists(
+        &mut self,
+        exists: &TestBinderExists,
+    ) -> hir::TestBinderExists<'hir> {
+        let (generics, body) = self.lower_generics(
+            &Generics {
+                params: exists.params.clone(),
+                where_clause: Default::default(),
+                span: exists.span,
+            },
+            ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+            |this| this.lower_test_binder_body(&exists.body),
+        );
+        let params = generics.params;
+        hir::TestBinderExists {
+            span: self.lower_span(exists.span),
+            hir_id: self.lower_node_id(exists.node_id),
+            params,
+            body: self.arena.alloc(body),
+        }
+    }
+
+    // if there are multiple constraints in a block body, automatically wrap them in an `and {}`
+    fn lower_test_binder_constraints_as_and(
+        &mut self,
+        constraints: &[TestBinderConstraint],
+    ) -> hir::TestBinderConstraint<'hir> {
+        if constraints.len() == 1 {
+            self.lower_test_binder_constraint(&constraints[0])
+        } else {
+            hir::TestBinderConstraint::And {
+                items: self.arena.alloc_from_iter(
+                    constraints.iter().map(|item| self.lower_test_binder_constraint(item)),
+                ),
+            }
+        }
+    }
+
+    fn lower_test_binder_constraint(
+        &mut self,
+        constraint: &TestBinderConstraint,
+    ) -> hir::TestBinderConstraint<'hir> {
+        match constraint {
+            TestBinderConstraint::And { items } => hir::TestBinderConstraint::And {
+                items: self.arena.alloc_from_iter(
+                    items.iter().map(|item| self.lower_test_binder_constraint(item)),
+                ),
+            },
+            TestBinderConstraint::Or { items } => hir::TestBinderConstraint::Or {
+                items: self.arena.alloc_from_iter(
+                    items.iter().map(|item| self.lower_test_binder_constraint(item)),
+                ),
+            },
+            TestBinderConstraint::Lifetime { lhs, rhs } => {
+                let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
+                let rhs = self.lower_lifetime(rhs, LifetimeSource::OutlivesBound, rhs.ident.into());
+                hir::TestBinderConstraint::Lifetime { lhs, rhs }
+            }
+            TestBinderConstraint::Type { lhs, rhs } => {
+                let lhs = self
+                    .lower_ty_alloc(lhs, ImplTraitContext::Disallowed(ImplTraitPosition::Bound));
+                let rhs = self.lower_lifetime(rhs, LifetimeSource::OutlivesBound, rhs.ident.into());
+                hir::TestBinderConstraint::Type { lhs, rhs }
+            }
+        }
     }
 }
