@@ -1,5 +1,6 @@
 use rustc_ast::token::{self, Delimiter, Token};
-use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenarena::{ArenaTokenTree, DelimitedData, TokenArena};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing};
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_errors::Diag;
 
@@ -13,48 +14,47 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     // opening delimiter.
     pub(super) fn lex_token_trees(
         &mut self,
+        arena: &mut TokenArena,
         is_delimited: bool,
-    ) -> Result<(Spacing, TokenStream), Diag<'psess>> {
+    ) -> Result<Spacing, Diag<'psess>> {
         // Move past the opening delimiter.
         let open_spacing = self.bump_minimal();
 
-        let mut buf = Vec::new();
         loop {
             if let Some(delim) = self.token.kind.open_delim() {
                 // Invisible delimiters cannot occur here because `TokenTreesReader` parses
                 // code directly from strings, with no macro expansion involved.
                 debug_assert!(!matches!(delim, Delimiter::Invisible(_)));
-                buf.push(match self.lex_token_tree_open_delim(delim) {
-                    Ok(val) => val,
+                let delimited = arena.start_delimited();
+                let value = match self.lex_token_tree_open_delim(arena, delim) {
+                    Ok(value) => value,
                     Err(errs) => return Err(errs),
-                })
+                };
+                arena.finish_delimited(delimited, value);
             } else if let Some(delim) = self.token.kind.close_delim() {
                 // Invisible delimiters cannot occur here because `TokenTreesReader` parses
                 // code directly from strings, with no macro expansion involved.
                 debug_assert!(!matches!(delim, Delimiter::Invisible(_)));
                 return if is_delimited {
-                    Ok((open_spacing, TokenStream::new(buf)))
+                    Ok(open_spacing)
                 } else {
                     Err(self.close_delim_err(delim))
                 };
             } else if self.token.kind == token::Eof {
-                return if is_delimited {
-                    Err(self.eof_err())
-                } else {
-                    Ok((open_spacing, TokenStream::new(buf)))
-                };
+                return if is_delimited { Err(self.eof_err()) } else { Ok(open_spacing) };
             } else {
                 // Get the next normal token.
                 let (this_tok, this_spacing) = self.bump();
-                buf.push(TokenTree::Token(this_tok, this_spacing));
+                arena.push(ArenaTokenTree::Token(this_tok, this_spacing));
             }
         }
     }
 
     fn lex_token_tree_open_delim(
         &mut self,
+        arena: &mut TokenArena,
         open_delim: Delimiter,
-    ) -> Result<TokenTree, Diag<'psess>> {
+    ) -> Result<DelimitedData, Diag<'psess>> {
         // The span for beginning of the delimited section.
         let pre_span = self.token.span;
 
@@ -63,7 +63,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         // Lex the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
         // uses an incorrect delimiter.
-        let (open_spacing, tts) = self.lex_token_trees(/* is_delimited */ true)?;
+
+        // We remember where we were in the arena, so that we can check how many trees were parsed
+        let index = arena.length();
+        let open_spacing = self.lex_token_trees(arena, /* is_delimited */ true)?;
+        let lexed_trees = arena.length() - index;
 
         // Expand to cover the entire delimited token tree.
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
@@ -75,7 +79,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 self.diag_info.open_delimiters.pop().unwrap();
                 let close_delimiter_span = self.token.span;
 
-                if tts.is_empty() && close_delim == Delimiter::Brace {
+                if lexed_trees == 0 && close_delim == Delimiter::Brace {
                     let empty_block_span = pre_span.to(close_delimiter_span);
                     if !sm.is_multiline(empty_block_span) {
                         // Only track if the block is in the form of `{}`, otherwise it is
@@ -93,7 +97,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 // A brace-delimited block whose first token is `&&`/`||` usually means
                 // the user meant to continue an if-let chain, e.g. `if let P = e { && cond {`.
                 if Delimiter::Brace == open_delim
-                    && let Some(TokenTree::Token(tok, _)) = tts.iter().next()
+                    && let Some(ArenaTokenTree::Token(tok, _)) = arena.get_item_at(index)
                     && matches!(tok.kind, token::AndAnd | token::OrOr)
                 {
                     self.diag_info.if_let_chain_hint_spans.push(tok.span);
@@ -159,7 +163,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
         let spacing = DelimSpacing::new(open_spacing, close_spacing);
 
-        Ok(TokenTree::Delimited(delim_span, spacing, open_delim, tts))
+        Ok(DelimitedData { span: delim_span, spacing, delimiter: open_delim })
     }
 
     // Move on to the next token, returning the current token and its spacing.
