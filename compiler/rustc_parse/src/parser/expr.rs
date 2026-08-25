@@ -377,7 +377,7 @@ impl<'a> Parser<'a> {
         // Recover from `and` and `or` which are mistaken for `&&` and `||` respectively.
         if self.may_recover()
             && op.is_none()
-            && let Some((ident, IdentKind::Normal | IdentKind::ForcedKeyword)) = self.token.ident()
+            && let Some(ident) = self.token.non_raw_ident()
         {
             let (op, sub): (_, fn(_) -> _) = match ident.name {
                 sym::and => (BinOpKind::And, diagnostics::InvalidLogicalOperatorSub::Conjunction),
@@ -669,9 +669,8 @@ impl<'a> Parser<'a> {
                 // Check for typo of `'a: loop { break 'a }` with a missing `'`.
                 if let ExprKind::Path(None, ast::Path { segments, .. }) = &lhs.kind
                     && let [segment] = segments.as_slice()
-                    && self.token.is_non_raw_ident_where(|id| {
-                        matches!(id.name, kw::For | kw::Loop | kw::While)
-                    })
+                    && let Some(ident) = self.token.non_raw_ident()
+                    && let kw::For | kw::Loop | kw::While = ident.name
                 {
                     let snapshot = self.create_snapshot_for_diagnostic();
                     let label = Label {

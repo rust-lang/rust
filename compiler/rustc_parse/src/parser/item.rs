@@ -1072,7 +1072,7 @@ impl<'a> Parser<'a> {
         // However, we must avoid keywords that occur as binary operators.
         // Currently, the only applicable keyword is `as` (`default as Ty`).
         if self.check_keyword(exp!(Default))
-            && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
+            && self.look_ahead(1, |t| t.non_raw_ident().is_some_and(|i| i.name != kw::As))
         {
             self.psess.gated_spans.gate(sym::specialization, self.token.span);
             self.bump(); // `default`
@@ -1473,15 +1473,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
-        match self.token.ident() {
-            Some((
-                ident @ Ident { name: kw::Underscore, .. },
-                IdentKind::Normal | IdentKind::ForcedKeyword,
-            )) => {
-                self.bump();
-                Ok(ident)
-            }
-            _ => self.parse_ident(),
+        if let Some(ident) = self.token.non_raw_ident()
+            && let kw::Underscore = ident.name
+        {
+            self.bump();
+            Ok(ident)
+        } else {
+            self.parse_ident()
         }
     }
 
