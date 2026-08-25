@@ -1692,7 +1692,6 @@ pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
 /// # Examples
 ///
 /// ```
-/// #![feature(mem_conjure_zst)]
 /// use std::mem::conjure_zst;
 ///
 /// assert_eq!(unsafe { conjure_zst::<()>() }, ());
@@ -1700,8 +1699,9 @@ pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
 /// ```
 ///
 /// [inhabited]: https://doc.rust-lang.org/reference/glossary.html#inhabited
-#[unstable(feature = "mem_conjure_zst", issue = "95383")]
-#[rustc_const_unstable(feature = "mem_conjure_zst", issue = "95383")]
+#[stable(feature = "mem_conjure_zst", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "mem_conjure_zst", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_allow_const_fn_unstable(const_type_name)] // type_name() called only at run time
 pub const unsafe fn conjure_zst<T>() -> T {
     const_assert!(
         T::IS_ZST,
