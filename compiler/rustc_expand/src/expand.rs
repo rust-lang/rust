@@ -777,6 +777,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         // we are invoking it on an out-of-line module or crate.
                         Annotatable::Crate(krate) => {
                             rustc_parse::fake_token_stream_for_crate(&self.cx.sess.psess, krate)
+                                .to_token_stream()
                         }
                         Annotatable::Item(item_inner)
                             if matches!(attr.style, AttrStyle::Inner)
@@ -795,6 +796,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 item_inner,
                                 Some(&attr),
                             )
+                            .to_token_stream()
                         }
                         Annotatable::Item(item_inner) if item_inner.tokens.is_none() => {
                             rustc_parse::fake_token_stream_for_item(
@@ -802,6 +804,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 item_inner,
                                 None,
                             )
+                            .to_token_stream()
                         }
                         // When a function has EII implementations attached (via `eii_impl`),
                         // use fake tokens so the pretty-printer re-emits the EII attribute
@@ -818,12 +821,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 item_inner,
                                 None,
                             )
+                            .to_token_stream()
                         }
                         Annotatable::ForeignItem(item_inner) if item_inner.tokens.is_none() => {
                             rustc_parse::fake_token_stream_for_foreign_item(
                                 &self.cx.sess.psess,
                                 item_inner,
                             )
+                            .to_token_stream()
                         }
                         _ => item.to_tokens(),
                     };

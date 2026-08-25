@@ -60,6 +60,10 @@ impl TokenArena {
         self.tokens.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.tokens.is_empty()
+    }
+
     pub fn from_stream(stream: &TokenStream) -> Self {
         let mut arena = TokenArena { tokens: Vec::with_capacity(stream.len()) };
         arena.fill(stream);
