@@ -701,6 +701,14 @@ impl UnusedParens {
         }
     }
 
+    /// A pattern that a `macro_rules!` metavariable brings in from the call site keeps the call
+    /// site's syntax context, while the pattern's surroundings keep the macro's. Parentheses in
+    /// such a pattern can be required by the matcher even when they are redundant in the
+    /// expansion, so removing them would break the macro call. (Issue #86959)
+    fn pat_is_macro_arg(pat_span: Span, parent_span: Span) -> bool {
+        !pat_span.eq_ctxt(parent_span)
+    }
+
     fn cast_followed_by_lt(&self, expr: &ast::Expr) -> Option<ast::NodeId> {
         if let ExprKind::Binary(op, lhs, _rhs) = &expr.kind
             && (op.node == ast::BinOpKind::Lt || op.node == ast::BinOpKind::Shl)
@@ -729,7 +737,8 @@ impl EarlyLintPass for UnusedParens {
 
         match e.kind {
             ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop(ForLoop { ref pat, .. }) => {
-                self.check_unused_parens_pat(cx, pat, false, false, (true, true));
+                let avoid_or = Self::pat_is_macro_arg(pat.span, e.span);
+                self.check_unused_parens_pat(cx, pat, avoid_or, false, (true, true));
             }
             // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already
             // handle a hard error for them during AST lowering in `lower_expr_mut`, but we still
@@ -808,13 +817,15 @@ impl EarlyLintPass for UnusedParens {
             | Err(_) => {}
             // These are list-like patterns; parens can always be removed.
             TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => {
-                for p in ps {
-                    self.check_unused_parens_pat(cx, p, false, false, keep_space);
+                for sub in ps {
+                    let avoid_or = Self::pat_is_macro_arg(sub.span, p.span);
+                    self.check_unused_parens_pat(cx, sub, avoid_or, false, keep_space);
                 }
             }
             Struct(_, _, fps, _) => {
                 for f in fps {
-                    self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
+                    let avoid_or = Self::pat_is_macro_arg(f.pat.span, p.span);
+                    self.check_unused_parens_pat(cx, &f.pat, avoid_or, false, keep_space);
                 }
             }
             // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
@@ -856,7 +867,8 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        self.check_unused_parens_pat(cx, &arm.pat, false, false, (false, false));
+        let avoid_or = Self::pat_is_macro_arg(arm.pat.span, arm.span);
+        self.check_unused_parens_pat(cx, &arm.pat, avoid_or, false, (false, false));
     }
 
     fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
