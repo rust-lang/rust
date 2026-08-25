@@ -1,25 +1,4 @@
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:42:22
-   |
-LL |     let _ = || match foo.as_mut() {
-   |                      ^^^^^^^^^^^^
-LL |
-LL |         Foo { x, y } => {}
-   |               -  - ...and here
-   |               |
-   |               data moved here
-   |
-   = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider borrowing the pattern binding
-   |
-LL |         Foo { ref x, y } => {}
-   |               +++
-help: consider borrowing the pattern binding
-   |
-LL |         Foo { x, ref y } => {}
-   |                  +++
-
-error[E0507]: cannot move out of a shared reference
   --> $DIR/pattern-matching-mix-deref-pattern.rs:32:24
    |
 LL |     let Foo { x, y } = foo.as_mut();
@@ -60,10 +39,10 @@ LL |         Foo { x, ref y } => {}
    |                  +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:61:22
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:42:22
    |
-LL |     let _ = || match foo {
-   |                      ^^^
+LL |     let _ = || match foo.as_mut() {
+   |                      ^^^^^^^^^^^^
 LL |
 LL |         Foo { x, y } => {}
    |               -  - ...and here
@@ -71,10 +50,14 @@ LL |         Foo { x, y } => {}
    |               data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider borrowing here
+help: consider borrowing the pattern binding
    |
-LL |     let _ = || match &foo {
-   |                      +
+LL |         Foo { ref x, y } => {}
+   |               +++
+help: consider borrowing the pattern binding
+   |
+LL |         Foo { x, ref y } => {}
+   |                  +++
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/pattern-matching-mix-deref-pattern.rs:51:24
@@ -117,25 +100,21 @@ LL |         Foo { x, ref y } => {}
    |                  +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:80:22
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:61:22
    |
-LL |     let _ = || match bar.as_mut() {
-   |                      ^^^^^^^^^^^^
+LL |     let _ = || match foo {
+   |                      ^^^
 LL |
-LL |         Bar(x, y) => {}
-   |             -  - ...and here
-   |             |
-   |             data moved here
+LL |         Foo { x, y } => {}
+   |               -  - ...and here
+   |               |
+   |               data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider borrowing the pattern binding
+help: consider borrowing here
    |
-LL |         Bar(ref x, y) => {}
-   |             +++
-help: consider borrowing the pattern binding
-   |
-LL |         Bar(x, ref y) => {}
-   |                +++
+LL |     let _ = || match &foo {
+   |                      +
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/pattern-matching-mix-deref-pattern.rs:70:21
@@ -178,10 +157,10 @@ LL |         Bar(x, ref y) => {}
    |                +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:99:22
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:80:22
    |
-LL |     let _ = || match bar {
-   |                      ^^^
+LL |     let _ = || match bar.as_mut() {
+   |                      ^^^^^^^^^^^^
 LL |
 LL |         Bar(x, y) => {}
    |             -  - ...and here
@@ -189,10 +168,14 @@ LL |         Bar(x, y) => {}
    |             data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider borrowing here
+help: consider borrowing the pattern binding
    |
-LL |     let _ = || match &bar {
-   |                      +
+LL |         Bar(ref x, y) => {}
+   |             +++
+help: consider borrowing the pattern binding
+   |
+LL |         Bar(x, ref y) => {}
+   |                +++
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/pattern-matching-mix-deref-pattern.rs:89:21
@@ -233,6 +216,23 @@ help: consider borrowing the pattern binding
    |
 LL |         Bar(x, ref y) => {}
    |                +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:99:22
+   |
+LL |     let _ = || match bar {
+   |                      ^^^
+LL |
+LL |         Bar(x, y) => {}
+   |             -  - ...and here
+   |             |
+   |             data moved here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing here
+   |
+LL |     let _ = || match &bar {
+   |                      +
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/pattern-matching-mix-deref-pattern.rs:108:31

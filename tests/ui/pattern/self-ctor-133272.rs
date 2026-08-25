@@ -16,6 +16,6 @@ impl Foo {
     fn fun() {
         let S { ref Self } = todo!();
         //~^ ERROR expected identifier, found keyword `Self`
-        //~| ERROR cannot find struct, variant or union type `S` in this scope
+        //~| ERROR cannot find type or enum variant `S` in this scope
     }
 }

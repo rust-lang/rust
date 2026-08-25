@@ -437,9 +437,9 @@ pub(crate) enum PathSource<'a, 'ast, 'ra> {
     Expr(Option<&'ast Expr>),
     /// Paths in path patterns `Path`.
     Pat,
-    /// Paths in struct expressions and patterns `Path { .. }`.
+    /// Paths in struct expressions `Path { .. }`.
     Struct(Option<&'a Expr>),
-    /// Paths in patterns matching `Path { .. }` exactly (no fields, with rest pattern).
+    /// Paths in struct patterns `Path { .. }`.
     TypeOrEnumVariant,
     /// Paths in tuple struct patterns `Path(..)`.
     TupleStruct(Span, &'ra [Span]),
@@ -632,8 +632,6 @@ impl PathSource<'_, '_, '_> {
                         | DefKind::Union
                         | DefKind::Enum
                         | DefKind::Variant
-                        | DefKind::Trait
-                        | DefKind::TraitAlias
                         | DefKind::TyAlias
                         | DefKind::AssocTy
                         | DefKind::TyParam
@@ -4260,13 +4258,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PatKind::Path(ref qself, ref path) => {
                     self.smart_resolve_path(pat.id, qself, path, PathSource::Pat);
                 }
-                PatKind::Struct(ref qself, ref path, ref fields, ref rest) => {
-                    let path_source = if fields.is_empty() && matches!(rest, PatFieldsRest::Rest(_))
-                    {
-                        PathSource::TypeOrEnumVariant
-                    } else {
-                        PathSource::Struct(None)
-                    };
+                PatKind::Struct(ref qself, ref path, _, ref rest) => {
+                    let path_source = PathSource::TypeOrEnumVariant;
                     self.smart_resolve_path(pat.id, qself, path, path_source);
                     self.record_patterns_with_skipped_bindings(pat, rest);
                 }
