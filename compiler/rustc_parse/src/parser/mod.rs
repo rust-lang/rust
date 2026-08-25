@@ -27,7 +27,7 @@ pub(crate) use function::{FnContext, FnParseMode, FrontMatterParsingMode, IsDotD
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 use rustc_ast::token::{
-    self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
+    self, IdentKind, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
 use rustc_ast::tokenstream::{
     ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, WithTokens,
@@ -454,9 +454,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err(recover)?;
+        let (ident, kind) = self.ident_or_err(recover)?;
 
-        if is_raw == IdentIsRaw::No && ident.is_reserved() {
+        if kind == IdentKind::Normal && ident.is_reserved() {
             let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
@@ -468,7 +468,7 @@ impl<'a> Parser<'a> {
         Ok(ident)
     }
 
-    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, IdentIsRaw)> {
+    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, IdentKind)> {
         match self.token.ident() {
             Some(ident) => Ok(ident),
             None => self.expected_ident_found(recover),
@@ -550,7 +550,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
+            && let Some((ident, IdentKind::Normal)) = self.token.ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
@@ -582,7 +582,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
+            && let Some((ident, IdentKind::Normal)) = self.token.ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
@@ -717,7 +717,7 @@ impl<'a> Parser<'a> {
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match &t.kind {
                 // async closures do not work with const closures, so we do not parse that here.
-                token::Ident(kw::Move | kw::Use | kw::Static, IdentIsRaw::No)
+                token::Ident(kw::Move | kw::Use | kw::Static, IdentKind::Normal)
                 | token::OrOr
                 | token::Or => true,
                 _ => false,
@@ -1807,8 +1807,8 @@ impl<'a> Parser<'a> {
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
     Tt(TokenTree),
-    Ident(Ident, IdentIsRaw),
-    Lifetime(Ident, IdentIsRaw),
+    Ident(Ident, IdentKind),
+    Lifetime(Ident, IdentKind),
     Item(Box<ast::Item>),
     Block(WithTokens<Box<ast::Block>>),
     Stmt(Box<ast::Stmt>),

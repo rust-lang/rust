@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::mem;
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, MetaVarKind, TokenKind};
@@ -1474,7 +1474,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
-            Some((ident @ Ident { name: kw::Underscore, .. }, IdentIsRaw::No)) => {
+            Some((ident @ Ident { name: kw::Underscore, .. }, IdentKind::Normal)) => {
                 self.bump();
                 Ok(ident)
             }
@@ -2491,8 +2491,8 @@ impl<'a> Parser<'a> {
     /// Parses a field identifier. Specialized version of `parse_ident_common`
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err(true)?;
-        if is_raw == IdentIsRaw::No
+        let (ident, kind) = self.ident_or_err(true)?;
+        if kind == IdentKind::Normal
             && ident.is_reserved()
             && !(ident.name == kw::Underscore && adt_ty == "enum")
         {
@@ -2704,10 +2704,10 @@ impl<'a> Parser<'a> {
         let mut constraints = Vec::new();
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
             match this.token.ident() {
-                Some((Ident { name: sym::forall, .. }, IdentIsRaw::No)) => {
+                Some((Ident { name: sym::forall, .. }, IdentKind::Normal)) => {
                     foralls.push(this.parse_test_binder_forall()?)
                 }
-                Some((Ident { name: sym::exists, .. }, IdentIsRaw::No)) => {
+                Some((Ident { name: sym::exists, .. }, IdentKind::Normal)) => {
                     exists.push(this.parse_test_binder_exists()?)
                 }
                 _ => constraints.push(this.parse_test_binder_constraint()?),
@@ -2726,7 +2726,7 @@ impl<'a> Parser<'a> {
 
         let body = self.parse_test_binder_body()?;
 
-        let assert_on_exit = if let Some((i, IdentIsRaw::No)) = self.token.ident()
+        let assert_on_exit = if let Some((i, IdentKind::Normal)) = self.token.ident()
             && i.name == sym::expect
         {
             self.bump();
@@ -2753,7 +2753,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_test_binder_constraint(&mut self) -> PResult<'a, TestBinderConstraint> {
         match self.token.ident() {
-            Some((Ident { name: sym::and, .. }, IdentIsRaw::No)) => {
+            Some((Ident { name: sym::and, .. }, IdentKind::Normal)) => {
                 self.bump();
                 let items = self
                     .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
@@ -2762,7 +2762,7 @@ impl<'a> Parser<'a> {
                     .0;
                 Ok(TestBinderConstraint::And { items })
             }
-            Some((Ident { name: sym::or, .. }, IdentIsRaw::No)) => {
+            Some((Ident { name: sym::or, .. }, IdentKind::Normal)) => {
                 self.bump();
                 let items = self
                     .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {

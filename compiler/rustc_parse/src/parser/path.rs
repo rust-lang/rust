@@ -1,6 +1,6 @@
 use std::mem;
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
@@ -459,7 +459,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
-            Some((ident, IdentIsRaw::No)) if ident.is_path_segment_keyword() => {
+            Some((ident, IdentKind::Normal)) if ident.is_path_segment_keyword() => {
                 self.bump();
                 Ok(ident)
             }
