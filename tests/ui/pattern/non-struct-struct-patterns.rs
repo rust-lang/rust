@@ -36,6 +36,25 @@ fn main() {
         Option { .. } => x += 1,
     }
 
+    match Some(false) {
+        Option::<bool> { .. } => x += 1,
+    }
+
+    match Some(false) {
+        Option::Some { .. } => x += 1,
+        _ => panic!(),
+    }
+
+    match Some(false) {
+        Option::<bool>::Some { .. } => x += 1,
+        _ => panic!(),
+    }
+
+    match Some(false) {
+        Option::Some::<bool> { .. } => x += 1,
+        _ => panic!(),
+    }
+
     fn foo<T>(input: T, x: &mut usize) {
         match input {
             T { .. } => *x += 1,
@@ -64,5 +83,5 @@ fn main() {
 
     (73_u64,).method([4.2; 17], &mut x);
 
-    assert_eq!(x, 10);
+    assert_eq!(x, 14);
 }
