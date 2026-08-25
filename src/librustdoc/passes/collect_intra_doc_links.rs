@@ -218,6 +218,7 @@ pub(crate) struct DiagnosticInfo<'a> {
     ori_link: &'a str,
     link_range: MarkdownLinkRange,
     link_kind: LinkType,
+    emit_error: bool,
 }
 
 pub(crate) struct OwnedDiagnosticInfo {
@@ -226,6 +227,7 @@ pub(crate) struct OwnedDiagnosticInfo {
     ori_link: String,
     link_range: MarkdownLinkRange,
     link_kind: LinkType,
+    emit_error: bool,
 }
 
 impl From<DiagnosticInfo<'_>> for OwnedDiagnosticInfo {
@@ -236,6 +238,7 @@ impl From<DiagnosticInfo<'_>> for OwnedDiagnosticInfo {
             ori_link: f.ori_link.to_string(),
             link_range: f.link_range.clone(),
             link_kind: f.link_kind,
+            emit_error: f.emit_error,
         }
     }
 }
@@ -248,6 +251,7 @@ impl OwnedDiagnosticInfo {
             dox: &self.dox,
             link_range: self.link_range.clone(),
             link_kind: self.link_kind,
+            emit_error: self.emit_error,
         }
     }
 }
@@ -1222,9 +1226,16 @@ impl LinkCollector<'_, '_> {
             ori_link: &ori_link.link,
             link_range: ori_link.range.clone(),
             link_kind: ori_link.kind,
+            emit_error: ori_link.emit_error,
         };
-        let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } =
-            pp_link.as_ref().map_err(|err| err.report(self.cx, diag_info.clone())).ok()?;
+        let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } = pp_link
+            .as_ref()
+            .map_err(|err| {
+                if ori_link.emit_error {
+                    err.report(self.cx, diag_info.clone())
+                }
+            })
+            .ok()?;
         let disambiguator = *disambiguator;
 
         let mut resolved = self.resolve_with_disambiguator_cached(
@@ -1331,34 +1342,40 @@ impl LinkCollector<'_, '_> {
                         }
                     }
                     0 => {
-                        report_diagnostic(
-                            self.cx.tcx,
-                            BROKEN_INTRA_DOC_LINKS,
-                            format!("all items matching `{path_str}` are private or doc(hidden)"),
-                            &diag_info,
-                            |diag, sp, _| {
-                                if let Some(sp) = sp {
-                                    diag.span_label(sp, "unresolved link");
-                                } else {
-                                    diag.note("unresolved link");
-                                }
-                            },
-                        );
+                        if diag_info.emit_error {
+                            report_diagnostic(
+                                self.cx.tcx,
+                                BROKEN_INTRA_DOC_LINKS,
+                                format!(
+                                    "all items matching `{path_str}` are private or doc(hidden)"
+                                ),
+                                &diag_info,
+                                |diag, sp, _| {
+                                    if let Some(sp) = sp {
+                                        diag.span_label(sp, "unresolved link");
+                                    } else {
+                                        diag.note("unresolved link");
+                                    }
+                                },
+                            );
+                        }
                     }
                     _ => {
-                        let candidates = info
-                            .resolved
-                            .iter()
-                            .map(|(res, fragment)| {
-                                let def_id = if let Some(UrlFragment::Item(def_id)) = fragment {
-                                    Some(*def_id)
-                                } else {
-                                    None
-                                };
-                                (*res, def_id)
-                            })
-                            .collect::<Vec<_>>();
-                        ambiguity_error(self.cx, &diag_info, path_str, &candidates, true);
+                        if diag_info.emit_error {
+                            let candidates = info
+                                .resolved
+                                .iter()
+                                .map(|(res, fragment)| {
+                                    let def_id = if let Some(UrlFragment::Item(def_id)) = fragment {
+                                        Some(*def_id)
+                                    } else {
+                                        None
+                                    };
+                                    (*res, def_id)
+                                })
+                                .collect::<Vec<_>>();
+                            ambiguity_error(self.cx, &diag_info, path_str, &candidates, true);
+                        }
                     }
                 }
             }
@@ -1963,9 +1980,12 @@ fn report_diagnostic(
     tcx: TyCtxt<'_>,
     lint: &'static Lint,
     msg: impl Into<DiagMessage> + Display,
-    DiagnosticInfo { item, dox, link_range, .. }: &DiagnosticInfo<'_>,
+    DiagnosticInfo { item, ori_link: _, link_kind: _, dox, link_range, emit_error }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut Diag<'_>, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
+    if !*emit_error {
+        return;
+    }
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
         // If non-local, no need to check anything.
         info!("ignoring warning from parent crate: {msg}");
