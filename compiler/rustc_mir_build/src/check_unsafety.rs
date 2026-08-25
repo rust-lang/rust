@@ -262,7 +262,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 | PatKind::DerefPattern { .. }
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
-                | PatKind::Array { .. }
                 // Never constitutes a witness of uninhabitedness.
                 | PatKind::Never => {
                     self.requires_unsafe(pat.span, AccessToUnionField);
@@ -273,6 +272,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 // these just wrap other patterns, which we recurse on below.
                 | PatKind::Or { .. }
                 | PatKind::Leaf { .. }
+                | PatKind::Array { .. }
                 | PatKind::Guard { .. }
                 | PatKind::Error(_) => {}
             }
