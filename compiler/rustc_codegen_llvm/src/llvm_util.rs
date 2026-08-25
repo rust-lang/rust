@@ -59,9 +59,16 @@ unsafe fn configure_llvm(sess: &Session) {
             panic!(
                 concat!(
                     "LLVM version mismatch: this compiler was built for LLVM {}, ",
-                    "but LLVM {}.{}.{} is loaded"
+                    "but LLVM {}.{}.{} was found{}"
                 ),
-                expected_version, llvm_major, llvm_minor, llvm_patch
+                expected_version,
+                llvm_major,
+                llvm_minor,
+                llvm_patch,
+                match rustc_session::filesearch::dll_path(llvm::LLVMGetVersion as *mut _) {
+                    Ok(path) => format!(" at {}", path.display()),
+                    Err(_) => String::new(),
+                }
             );
         }
     }
