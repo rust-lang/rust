@@ -1,0 +1,33 @@
+error: functions cannot be both `async` and C-variadic
+  --> $DIR/not-async.rs:4:1
+   |
+LL | async unsafe extern "C" fn fn_cannot_be_async(x: isize, _: ...) {}
+   | ^^^^^ `async` because of this                           ^^^^^^ C-variadic because of this
+
+error: functions cannot be both `async` and C-variadic
+  --> $DIR/not-async.rs:11:5
+   |
+LL |     async unsafe extern "C" fn method_cannot_be_async(x: isize, _: ...) {}
+   |     ^^^^^ `async` because of this                               ^^^^^^ C-variadic because of this
+
+error[E0700]: hidden type for `impl Future<Output = ()>` captures lifetime that does not appear in bounds
+  --> $DIR/not-async.rs:4:65
+   |
+LL | async unsafe extern "C" fn fn_cannot_be_async(x: isize, _: ...) {}
+   | ----------------------------------------------------------------^^
+   | |                                                              |
+   | |                                                              opaque type defined here
+   | hidden type `{async fn body of fn_cannot_be_async()}` captures the anonymous lifetime as defined here
+
+error[E0700]: hidden type for `impl Future<Output = ()>` captures lifetime that does not appear in bounds
+  --> $DIR/not-async.rs:11:73
+   |
+LL |     async unsafe extern "C" fn method_cannot_be_async(x: isize, _: ...) {}
+   |     --------------------------------------------------------------------^^
+   |     |                                                                  |
+   |     |                                                                  opaque type defined here
+   |     hidden type `{async fn body of S::method_cannot_be_async()}` captures the anonymous lifetime as defined here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

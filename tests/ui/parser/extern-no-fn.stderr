@@ -1,0 +1,18 @@
+error: missing `fn` or `struct` for function or struct definition
+  --> $DIR/extern-no-fn.rs:2:5
+   |
+LL | extern "C" {
+   |            - while parsing this item list starting here
+LL |     f();
+   |     ^
+...
+LL | }
+   | - the item list ends here
+   |
+help: if you meant to call a macro, try
+   |
+LL |     f!();
+   |      +
+
+error: aborting due to 1 previous error
+

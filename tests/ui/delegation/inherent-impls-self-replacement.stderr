@@ -1,0 +1,75 @@
+error[E0425]: cannot find function `by_value` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:22:25
+   |
+LL |     reuse S::<(), 123>::by_value { self.get_s() }
+   |                         ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_ref` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:25:25
+   |
+LL |     reuse S::<(), 123>::by_ref { self.get_s() }
+   |                         ^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_mut_ref` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:28:25
+   |
+LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
+   |                         ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_box` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:31:25
+   |
+LL |     reuse S::<(), 123>::by_box { self.get_s() }
+   |                         ^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_rc` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:34:25
+   |
+LL |     reuse S::<(), 123>::by_rc { self.get_s() }
+   |                         ^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_pin` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:37:25
+   |
+LL |     reuse S::<(), 123>::by_pin { self.get_s() }
+   |                         ^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_value` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:42:25
+   |
+LL |     reuse S::<(), 123>::by_value { self.get_s() }
+   |                         ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_ref` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:44:25
+   |
+LL |     reuse S::<(), 123>::by_ref { self.get_s() }
+   |                         ^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_mut_ref` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:46:25
+   |
+LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
+   |                         ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_box` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:48:25
+   |
+LL |     reuse S::<(), 123>::by_box { self.get_s() }
+   |                         ^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_rc` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:50:25
+   |
+LL |     reuse S::<(), 123>::by_rc { self.get_s() }
+   |                         ^^^^^ not found in `S`
+
+error[E0425]: cannot find function `by_pin` in `S`
+  --> $DIR/inherent-impls-self-replacement.rs:52:25
+   |
+LL |     reuse S::<(), 123>::by_pin { self.get_s() }
+   |                         ^^^^^^ not found in `S`
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

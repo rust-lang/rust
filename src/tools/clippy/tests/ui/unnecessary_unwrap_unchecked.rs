@@ -1,0 +1,173 @@
+//@aux-build:unnecessary_unwrap_unchecked_helper.rs
+//@aux-build:proc_macros.rs
+#![warn(clippy::unnecessary_unwrap_unchecked)]
+
+use proc_macros::{external, with_span};
+
+#[rustfmt::skip]
+use unnecessary_unwrap_unchecked_helper::{lol, kek};
+
+mod b {
+    pub fn test_fn() -> Option<u32> {
+        Some(0)
+    }
+
+    pub unsafe fn test_fn_unchecked() -> u32 {
+        0
+    }
+}
+
+fn test_fn() -> Option<u32> {
+    Some(0)
+}
+
+unsafe fn test_fn_unchecked() -> u32 {
+    0
+}
+
+struct A;
+
+impl A {
+    fn a(&self) -> Option<u32> {
+        Some(0)
+    }
+
+    unsafe fn a_unchecked(&self) -> u32 {
+        0
+    }
+
+    fn an_assoc_fn() -> Option<u32> {
+        Some(0)
+    }
+
+    unsafe fn an_assoc_fn_unchecked() -> u32 {
+        0
+    }
+}
+
+struct B;
+
+impl B {
+    fn b(&self) -> Option<u32> {
+        Some(0)
+    }
+}
+
+impl B {
+    unsafe fn b_unchecked(&self) -> u32 {
+        0
+    }
+}
+
+fn main() {
+    let string_slice = unsafe { std::str::from_utf8(&[]).unwrap_unchecked() };
+    //~^ unnecessary_unwrap_unchecked
+    let a = unsafe { A::a(&A).unwrap_unchecked() };
+    //~^ unnecessary_unwrap_unchecked
+    let a = unsafe {
+        let a = A;
+        a.a().unwrap_unchecked()
+    };
+    //~^^ unnecessary_unwrap_unchecked
+    let an_assoc_fn = unsafe { A::an_assoc_fn().unwrap_unchecked() };
+    //~^ unnecessary_unwrap_unchecked
+    let extern_fn = unsafe { lol().unwrap_unchecked() };
+    //~^ unnecessary_unwrap_unchecked
+    let extern_fn_qualified = unsafe { unnecessary_unwrap_unchecked_helper::lol().unwrap_unchecked() };
+    //~^ unnecessary_unwrap_unchecked
+    let local_fn = unsafe { b::test_fn().unwrap_unchecked() };
+    //~^ unnecessary_unwrap_unchecked
+
+    // Don't lint: unlike `kek`, `kek_unchecked` isn't accessible from here
+    let extern_pub_fn = unsafe { kek().unwrap_unchecked() };
+
+    // Don't lint: `B::b` and `B::b_unchecked` come from distinct impl blocks
+    // (even though that wouldn't actually make the suggestion invalid in this case)
+    let b = unsafe {
+        let b = B;
+        b.b().unwrap_unchecked()
+    };
+
+    macro_rules! local {
+        () => {{
+            unsafe { ::std::str::from_utf8(&[]).unwrap_unchecked() };
+        }};
+    }
+    local!();
+    external! {
+        unsafe { std::str::from_utf8(&[]).unwrap_unchecked() };
+    }
+    with_span! {
+        span
+        unsafe { std::str::from_utf8(&[]).unwrap_unchecked() };
+    }
+}
+
+mod issue17349 {
+    pub enum Foo {
+        A,
+        B,
+        C,
+    }
+
+    impl Foo {
+        pub const fn from_u8(value: u8) -> Option<Self> {
+            match value {
+                0 => Some(Self::A),
+                1 => Some(Self::B),
+                2 => Some(Self::C),
+                _ => None,
+            }
+        }
+
+        /// # Safety
+        ///
+        /// The value must be either 0, 1 or 2
+        pub const unsafe fn from_u8_unchecked(value: u8) -> Self {
+            // Don't lint from inside the `_unchecked` associated function itself
+            unsafe { Self::from_u8(value).unwrap_unchecked() }
+        }
+
+        pub const fn to_bool(&self) -> Option<bool> {
+            match self {
+                Self::A => Some(false),
+                Self::B => Some(true),
+                Self::C => None,
+            }
+        }
+
+        /// # Safety
+        ///
+        /// The value must be either `Self::A` or `Self::B`
+        pub const unsafe fn to_bool_unchecked(&self) -> bool {
+            // Don't lint from inside the `_unchecked` method itself
+            unsafe { self.to_bool().unwrap_unchecked() }
+        }
+    }
+
+    pub const fn from_u8(value: u8) -> Option<Foo> {
+        Foo::from_u8(value)
+    }
+
+    /// # Safety
+    ///
+    /// The value must be either 0, 1 or 2
+    pub const unsafe fn from_u8_unchecked(value: u8) -> Foo {
+        // Don't lint from inside the `_unchecked` function itself
+        unsafe { from_u8(value).unwrap_unchecked() }
+    }
+
+    pub fn from_u16(value: u16) -> Option<Foo> {
+        Foo::from_u8(u8::try_from(value).ok()?)
+    }
+
+    /// # Safety
+    ///
+    /// The value must be either 0, 1 or 2
+    pub unsafe fn from_u16_unchecked(value: u16) -> Foo {
+        // Don't lint from inside the `_unchecked` function itself
+        // even in the presence of intermediate bodies.
+        let cl = || unsafe { from_u16(value).unwrap_unchecked() };
+        cl()
+    }
+}

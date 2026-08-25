@@ -1,0 +1,76 @@
+error[E0322]: explicit impls for the `Sized` trait are not permitted
+  --> $DIR/coherence-impls-sized.rs:14:1
+   |
+LL | impl Sized for TestE {}
+   | ^^^^^^^^^^^^^^^^^^^^ impl of `Sized` not allowed
+
+error[E0322]: explicit impls for the `Sized` trait are not permitted
+  --> $DIR/coherence-impls-sized.rs:17:1
+   |
+LL | impl Sized for MyType {}
+   | ^^^^^^^^^^^^^^^^^^^^^ impl of `Sized` not allowed
+
+error[E0322]: explicit impls for the `Sized` trait are not permitted
+  --> $DIR/coherence-impls-sized.rs:20:1
+   |
+LL | impl Sized for (MyType, MyType) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Sized` not allowed
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-sized.rs:20:1
+   |
+LL | impl Sized for (MyType, MyType) {}
+   | ^^^^^^^^^^^^^^^----------------
+   |                |
+   |                this is not defined in the current crate because tuples are always foreign
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0322]: explicit impls for the `Sized` trait are not permitted
+  --> $DIR/coherence-impls-sized.rs:24:1
+   |
+LL | impl Sized for &'static NotSync {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Sized` not allowed
+
+error[E0322]: explicit impls for the `Sized` trait are not permitted
+  --> $DIR/coherence-impls-sized.rs:27:1
+   |
+LL | impl Sized for [MyType] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ impl of `Sized` not allowed
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-sized.rs:27:1
+   |
+LL | impl Sized for [MyType] {}
+   | ^^^^^^^^^^^^^^^--------
+   |                |
+   |                this is not defined in the current crate because slices are always foreign
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0322]: explicit impls for the `Sized` trait are not permitted
+  --> $DIR/coherence-impls-sized.rs:31:1
+   |
+LL | impl Sized for &'static [NotSync] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Sized` not allowed
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-sized.rs:31:1
+   |
+LL | impl Sized for &'static [NotSync] {}
+   | ^^^^^^^^^^^^^^^------------------
+   |                |
+   |                this is not defined in the current crate because slices are always foreign
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0117, E0322.
+For more information about an error, try `rustc --explain E0117`.

@@ -1,0 +1,86 @@
+- // MIR for `otherwise_t5_unreachable_default` before UnreachableEnumBranching
++ // MIR for `otherwise_t5_unreachable_default` after UnreachableEnumBranching
+  
+  fn otherwise_t5_unreachable_default() -> () {
+      let mut _0: ();
+      let _1: &str;
+      let mut _2: Test5<T>;
+      let mut _3: i8;
+      let _4: &str;
+      let _5: &str;
+      let _6: &str;
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = Test5::<T>::C;
+          _3 = discriminant(_2);
+-         switchInt(move _3) -> [255: bb4, 0: bb3, 5: bb2, otherwise: bb1];
++         switchInt(move _3) -> [255: bb4, 0: bb3, 5: bb2, 3: bb1, otherwise: bb8];
+      }
+  
+      bb1: {
+          StorageLive(_6);
+          _6 = const "D";
+          _1 = &(*_6);
+          StorageDead(_6);
+          goto -> bb5;
+      }
+  
+      bb2: {
+          StorageLive(_5);
+          _5 = const "C";
+          _1 = &(*_5);
+          StorageDead(_5);
+          goto -> bb5;
+      }
+  
+      bb3: {
+          StorageLive(_4);
+          _4 = const "B(T)";
+          _1 = &(*_4);
+          StorageDead(_4);
+          goto -> bb5;
+      }
+  
+      bb4: {
+          _1 = const "A(T)";
+          goto -> bb5;
+      }
+  
+      bb5: {
+          drop(_2) -> [return: bb6, unwind: bb7];
+      }
+  
+      bb6: {
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  
+      bb7 (cleanup): {
+          resume;
++     }
++ 
++     bb8: {
++         unreachable;
+      }
+  }
+  
+  ALLOC0 (size: 4, align: 1) {
+      42 28 54 29                                     │ B(T)
+  }
+  
+  ALLOC1 (size: 4, align: 1) {
+      41 28 54 29                                     │ A(T)
+  }
+  
+  ALLOC2 (size: 1, align: 1) {
+      44                                              │ D
+  }
+  
+  ALLOC3 (size: 1, align: 1) {
+      43                                              │ C
+  }
+  

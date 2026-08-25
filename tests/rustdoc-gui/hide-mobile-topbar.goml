@@ -1,0 +1,19 @@
+// Checks sidebar resizing stays synced with the setting
+go-to: "file://" + |DOC_PATH| + "/settings.html"
+set-window-size: (400, 600)
+
+// Verify that the "hide" option is unchecked
+wait-for: "#settings"
+assert-css: ("#settings", {"display": "block"})
+assert-property: ("#hide-sidebar", {"checked": "false"})
+assert-css: ("rustdoc-topbar", {"display": "flex"})
+
+// Toggle it
+click: "#hide-sidebar"
+assert-property: ("#hide-sidebar", {"checked": "true"})
+assert-css: ("rustdoc-topbar", {"display": "none"})
+
+// Toggle it again
+click: "#hide-sidebar"
+assert-property: ("#hide-sidebar", {"checked": "false"})
+assert-css: ("rustdoc-topbar", {"display": "flex"})

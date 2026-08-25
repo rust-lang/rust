@@ -1,0 +1,15 @@
+error: extern crate `bar` is unused in crate `deny_attr`
+  --> $DIR/deny-attr.rs:6:1
+   |
+LL | #![deny(unused_crate_dependencies)]
+   | ^
+   |
+   = help: remove the dependency or add `use bar as _;` to the crate root
+note: the lint level is defined here
+  --> $DIR/deny-attr.rs:6:9
+   |
+LL | #![deny(unused_crate_dependencies)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

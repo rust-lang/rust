@@ -1,0 +1,81 @@
+{
+ "bless_metadata": {
+  "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "debugger_version": "lldb version 22.1.2 (https://github.com/llvm/llvm-project revision 1ab49a973e210e97d61e5db6557180dcb92c3e98)\n  clang revision 1ab49a973e210e97d61e5db6557180dcb92c3e98\n  llvm revision 1ab49a973e210e97d61e5db6557180dcb92c3e98",
+  "feature_flags": "LLDBFeature.StaticFields|TypeRecognizers|Float128"
+ },
+ "breakpoints": [
+  {
+   "b": {
+    "type": "bool",
+    "pretty_print": "false",
+    "value": false
+   },
+   "i": {
+    "type": "long long",
+    "pretty_print": "-1",
+    "value": -1
+   },
+   "c": {
+    "type": "char32_t",
+    "pretty_print": "U+0x00000061 U'a'",
+    "value": "a"
+   },
+   "i8": {
+    "type": "signed char",
+    "pretty_print": "'D'",
+    "value": 68
+   },
+   "i16": {
+    "type": "short",
+    "pretty_print": "-16",
+    "value": -16
+   },
+   "i32": {
+    "type": "int",
+    "pretty_print": "-32",
+    "value": -32
+   },
+   "i64": {
+    "type": "long long",
+    "pretty_print": "-64",
+    "value": -64
+   },
+   "u": {
+    "type": "unsigned long long",
+    "pretty_print": "1",
+    "value": 1
+   },
+   "u8": {
+    "type": "unsigned char",
+    "pretty_print": "'d'",
+    "value": 100
+   },
+   "u16": {
+    "type": "unsigned short",
+    "pretty_print": "16",
+    "value": 16
+   },
+   "u32": {
+    "type": "unsigned int",
+    "pretty_print": "32",
+    "value": 32
+   },
+   "u64": {
+    "type": "unsigned long long",
+    "pretty_print": "64",
+    "value": 64
+   },
+   "f32": {
+    "type": "float",
+    "pretty_print": "2.5",
+    "value": 2.5
+   },
+   "f64": {
+    "type": "double",
+    "pretty_print": "3.5",
+    "value": 3.5
+   }
+  }
+ ]
+}

@@ -1,0 +1,63 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:22:74
+   |
+LL |     async fn wrap_ref_Self_ref_Self(self: Wrap<&Self, &Self>, f: &u8) -> &u8 {
+   |                                           ------------------     ---     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from one of `self`'s 2 lifetimes or `f`
+help: consider introducing a named lifetime parameter
+   |
+LL |     async fn wrap_ref_Self_ref_Self<'a>(self: Wrap<&'a Self, &'a Self>, f: &'a u8) -> &'a u8 {
+   |                                    ++++             ++        ++            ++         ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:27:84
+   |
+LL |     async fn box_wrap_ref_Self_ref_Self(self: Box<Wrap<&Self, &Self>>, f: &u32) -> &u32 {
+   |                                               -----------------------     ----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from one of `self`'s 2 lifetimes or `f`
+help: consider introducing a named lifetime parameter
+   |
+LL |     async fn box_wrap_ref_Self_ref_Self<'a>(self: Box<Wrap<&'a Self, &'a Self>>, f: &'a u32) -> &'a u32 {
+   |                                        ++++                 ++        ++             ++          ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:32:84
+   |
+LL |     async fn pin_wrap_ref_Self_ref_Self(self: Pin<Wrap<&Self, &Self>>, f: &u32) -> &u32 {
+   |                                               -----------------------     ----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from one of `self`'s 2 lifetimes or `f`
+help: consider introducing a named lifetime parameter
+   |
+LL |     async fn pin_wrap_ref_Self_ref_Self<'a>(self: Pin<Wrap<&'a Self, &'a Self>>, f: &'a u32) -> &'a u32 {
+   |                                        ++++                 ++        ++             ++          ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:37:93
+   |
+LL |     async fn box_box_wrap_ref_Self_ref_Self(self: Box<Box<Wrap<&Self, &Self>>>, f: &u32) -> &u32 {
+   |                                                   ----------------------------     ----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from one of `self`'s 2 lifetimes or `f`
+help: consider introducing a named lifetime parameter
+   |
+LL |     async fn box_box_wrap_ref_Self_ref_Self<'a>(self: Box<Box<Wrap<&'a Self, &'a Self>>>, f: &'a u32) -> &'a u32 {
+   |                                            ++++                     ++        ++              ++          ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:42:93
+   |
+LL |     async fn box_pin_wrap_ref_Self_ref_Self(self: Box<Pin<Wrap<&Self, &Self>>>, f: &u32) -> &u32 {
+   |                                                   ----------------------------     ----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from one of `self`'s 2 lifetimes or `f`
+help: consider introducing a named lifetime parameter
+   |
+LL |     async fn box_pin_wrap_ref_Self_ref_Self<'a>(self: Box<Pin<Wrap<&'a Self, &'a Self>>>, f: &'a u32) -> &'a u32 {
+   |                                            ++++                     ++        ++              ++          ++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

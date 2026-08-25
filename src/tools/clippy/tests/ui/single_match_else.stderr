@@ -1,0 +1,232 @@
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:18:13
+   |
+LL |       let _ = match ExprNode::Butterflies {
+   |  _____________^
+LL | |         ExprNode::ExprAddrOf => Some(&NODE),
+LL | |         _ => {
+LL | |             let x = 5;
+LL | |             None
+LL | |         },
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::single-match-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::single_match_else)]`
+help: try
+   |
+LL ~     let _ = if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
+LL +         let x = 5;
+LL +         None
+LL ~     };
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:84:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(a) => println!("${:?}", a),
+LL | |         None => {
+LL | |             println!("else block");
+LL | |             return
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Some(a) = Some(1) { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:94:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(a) => println!("${:?}", a),
+LL | |         None => {
+LL | |             println!("else block");
+LL | |             return;
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Some(a) = Some(1) { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return;
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:103:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(a) => println!("${:?}", a),
+LL | |         // This is an inner comment
+LL | |         None => {
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+   = note: you might want to preserve the comments from inside the `match`
+help: try
+   |
+LL ~     if let Some(a) = Some(1) { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return;
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:116:5
+   |
+LL | /     match Result::<i32, &Infallible>::Ok(1) {
+LL | |         Ok(a) => println!("${:?}", a),
+LL | |         Err(_) => {
+LL | |             println!("else block");
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Ok(a) = Result::<i32, &Infallible>::Ok(1) { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return;
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:126:5
+   |
+LL | /     match Cow::from("moo") {
+LL | |         Cow::Owned(a) => println!("${:?}", a),
+LL | |         Cow::Borrowed(_) => {
+LL | |             println!("else block");
+...  |
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Cow::Owned(a) = Cow::from("moo") { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return;
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:137:5
+   |
+LL | /     match bar {
+LL | |         Some(v) => unsafe {
+LL | |             let r = &v as *const i32;
+LL | |             println!("{}", *r);
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Some(v) = bar { unsafe {
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } } else {
+LL +         println!("None1");
+LL +         println!("None2");
+LL +     }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:149:5
+   |
+LL | /     match bar {
+LL | |         Some(v) => {
+LL | |             println!("Some");
+LL | |             println!("{v}");
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Some(v) = bar {
+LL +         println!("Some");
+LL +         println!("{v}");
+LL +     } else { unsafe {
+LL +         let v = 0;
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:162:5
+   |
+LL | /     match bar {
+LL | |         Some(v) => unsafe {
+LL | |             let r = &v as *const i32;
+LL | |             println!("{}", *r);
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Some(v) = bar { unsafe {
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } } else { unsafe {
+LL +         let v = 0;
+LL +         let r = &v as *const i32;
+LL +         println!("{}", *r);
+LL +     } }
+   |
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match_else.rs:175:5
+   |
+LL | /     match bar {
+LL | |         #[rustfmt::skip]
+LL | |         Some(v) => {
+LL | |             unsafe {
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if let Some(v) = bar {
+LL +         unsafe {
+LL +             let r = &v as *const i32;
+LL +             println!("{}", *r);
+LL +         }
+LL +     } else {
+LL +         println!("None");
+LL +         println!("None");
+LL +     }
+   |
+
+error: this pattern is irrefutable, `match` is useless
+  --> tests/ui/single_match_else.rs:225:5
+   |
+LL | /     match ExprNode::Butterflies {
+LL | |         ExprNode::Butterflies => Some(&NODE),
+LL | |         _ => {
+LL | |             let x = 5;
+LL | |             None
+LL | |         },
+LL | |     }
+   | |_____^ help: try: `Some(&NODE)`
+
+error: aborting due to 11 previous errors
+

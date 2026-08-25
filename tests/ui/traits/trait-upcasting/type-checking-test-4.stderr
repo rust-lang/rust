@@ -1,0 +1,52 @@
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:17:13
+   |
+LL | fn test_wrong1<'a>(x: &dyn Foo<'static>, y: &'a u32) {
+   |                -- lifetime `'a` defined here
+LL |     let _ = x as &dyn Bar<'static, 'a>; // Error
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ cast requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:22:13
+   |
+LL | fn test_wrong2<'a>(x: &dyn Foo<'static>, y: &'a u32) {
+   |                -- lifetime `'a` defined here
+LL |     let _ = x as &dyn Bar<'a, 'static>; // Error
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ cast requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:28:5
+   |
+LL | fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                -- lifetime `'a` defined here
+LL |     let y = x as &dyn Bar<'_, '_>;
+LL |     y.get_b() // ERROR
+   |     ^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:33:5
+   |
+LL | fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                -- lifetime `'a` defined here
+LL |     <_ as Bar>::get_b(x) // ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:38:5
+   |
+LL | fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                -- lifetime `'a` defined here
+LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:46:5
+   |
+LL | fn test_wrong6<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                -- lifetime `'a` defined here
+...
+LL |     z.get_b() // ERROR
+   |     ^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: aborting due to 6 previous errors
+

@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/associated-const-array-len.rs:5:17
+   |
+LL | const X: [i32; <i32 as Foo>::ID] = [0, 1, 2];
+   |                 ^^^ the trait `Foo` is not implemented for `i32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/associated-const-array-len.rs:1:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,53 @@
+error: unknown diagnostic attribute
+  --> $DIR/suggest_typos.rs:4:15
+   |
+LL | #[diagnostic::onunimplemented]
+   |               ^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/suggest_typos.rs:2:9
+   |
+LL | #![deny(unknown_diagnostic_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: an attribute with a similar name exists
+   |
+LL | #[diagnostic::on_unimplemented]
+   |                 +
+
+error: unknown diagnostic attribute
+  --> $DIR/suggest_typos.rs:9:15
+   |
+LL | #[diagnostic::un_onimplemented]
+   |               ^^^^^^^^^^^^^^^^
+   |
+help: an attribute with a similar name exists
+   |
+LL - #[diagnostic::un_onimplemented]
+LL + #[diagnostic::on_unimplemented]
+   |
+
+error: unknown diagnostic attribute
+  --> $DIR/suggest_typos.rs:14:15
+   |
+LL | #[diagnostic::on_implemented]
+   |               ^^^^^^^^^^^^^^
+   |
+help: an attribute with a similar name exists
+   |
+LL | #[diagnostic::on_unimplemented]
+   |                  ++
+
+error: unknown diagnostic attribute
+  --> $DIR/suggest_typos.rs:19:15
+   |
+LL | #[diagnostic::dont_recommend]
+   |               ^^^^^^^^^^^^^^
+   |
+help: an attribute with a similar name exists
+   |
+LL - #[diagnostic::dont_recommend]
+LL + #[diagnostic::do_not_recommend]
+   |
+
+error: aborting due to 4 previous errors
+

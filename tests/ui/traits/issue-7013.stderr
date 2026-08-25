@@ -1,0 +1,19 @@
+error[E0277]: `Rc<RefCell<A>>` cannot be sent between threads safely
+  --> $DIR/issue-7013.rs:24:19
+   |
+LL |     let a = A {v: Box::new(B{v: None}) as Box<dyn Foo + Send>};
+   |                   ^^^^^^^^^^^^^^^^^^^^ `Rc<RefCell<A>>` cannot be sent between threads safely
+   |
+   = help: within `B`, the trait `Send` is not implemented for `Rc<RefCell<A>>`
+note: required because it appears within the type `Option<Rc<RefCell<A>>>`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+note: required because it appears within the type `B`
+  --> $DIR/issue-7013.rs:8:8
+   |
+LL | struct B {
+   |        ^
+   = note: required for the cast from `Box<B>` to `Box<dyn Foo + Send>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

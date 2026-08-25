@@ -1,0 +1,27 @@
+error[E0275]: overflow evaluating the requirement `Ty: Id`
+  --> $DIR/type-alias-impl-trait-with-cycle-error-4.rs:11:1
+   |
+LL | type Ty
+   | ^^^^^^^
+   |
+note: required by a bound on the type alias `Ty`
+  --> $DIR/type-alias-impl-trait-with-cycle-error-4.rs:13:9
+   |
+LL |     Ty: Id<Assoc = Ty>,
+   |         ^^^^^^^^^^^^^^ required by this bound
+
+error[E0275]: overflow evaluating the requirement `Ty: Id`
+  --> $DIR/type-alias-impl-trait-with-cycle-error-4.rs:15:16
+   |
+LL | fn define() -> Ty {}
+   |                ^^
+   |
+note: required by a bound on the type alias `Ty`
+  --> $DIR/type-alias-impl-trait-with-cycle-error-4.rs:13:9
+   |
+LL |     Ty: Id<Assoc = Ty>,
+   |         ^^^^^^^^^^^^^^ required by this bound
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

@@ -1,0 +1,17 @@
+error[E0277]: the size for values of type `[isize]` cannot be known at compilation time
+  --> $DIR/dst-bad-deep.rs:13:34
+   |
+LL |     let h: &Fat<Fat<[isize]>> = &Fat { ptr: *g };
+   |                                  ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Fat<Fat<[isize]>>`, the trait `Sized` is not implemented for `[isize]`
+note: required because it appears within the type `Fat<[isize]>`
+  --> $DIR/dst-bad-deep.rs:6:8
+   |
+LL | struct Fat<T: ?Sized> {
+   |        ^^^
+   = note: structs must have a statically known size to be initialized
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

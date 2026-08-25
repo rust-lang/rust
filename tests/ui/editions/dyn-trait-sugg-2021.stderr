@@ -1,0 +1,14 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-trait-sugg-2021.rs:10:5
+   |
+LL |     Foo::hi(123);
+   |     ^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     <dyn Foo>::hi(123);
+   |     ++++    +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0782`.

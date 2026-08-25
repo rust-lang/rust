@@ -1,0 +1,15 @@
+error[E0080]: interpreting an invalid 8-bit value as a bool: 0x03
+  --> $DIR/ub-invalid-values.rs:8:5
+   |
+LL |     bool_cast(&v as *const u8 as *const bool);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed inside this call
+   |
+note: inside `bool_cast`
+  --> $DIR/ub-invalid-values.rs:2:16
+   |
+LL |     let _val = *ptr as u32;
+   |                ^^^^^^^^^^^ the failure occurred here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,75 @@
+error: MyDerive: struct S1;
+  --> $DIR/macro-rules-derive-error.rs:5:9
+   |
+LL |         compile_error!(concat!("MyDerive: ", stringify!($($body)*)));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     #[derive(MyDerive)]
+   |              -------- in this derive macro expansion
+   |
+   = note: this error originates in the derive macro `MyDerive` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot find macro `MyDerive` in this scope
+  --> $DIR/macro-rules-derive-error.rs:28:5
+   |
+LL |     MyDerive!(arg);
+   |     ^^^^^^^^
+   |
+   = note: `MyDerive` is in scope, but it is a derive macro: `#[derive(MyDerive)]`
+
+error: cannot find derive macro `fn_only` in this scope
+  --> $DIR/macro-rules-derive-error.rs:30:14
+   |
+LL | macro_rules! fn_only {
+   |              ------- `fn_only` exists, but has no `derive` rules
+...
+LL |     #[derive(fn_only)]
+   |              ^^^^^^^
+
+error: cannot find derive macro `fn_only` in this scope
+  --> $DIR/macro-rules-derive-error.rs:30:14
+   |
+LL | macro_rules! fn_only {
+   |              ------- `fn_only` exists, but has no `derive` rules
+...
+LL |     #[derive(fn_only)]
+   |              ^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: cannot find macro `DeriveOnly` in this scope
+  --> $DIR/macro-rules-derive-error.rs:36:5
+   |
+LL | macro_rules! DeriveOnly {
+   |              ---------- `DeriveOnly` exists, but has no rules for function-like invocation
+...
+LL |     DeriveOnly!();
+   |     ^^^^^^^^^^
+
+error: cannot find derive macro `ForwardReferencedDerive` in this scope
+  --> $DIR/macro-rules-derive-error.rs:39:10
+   |
+LL | #[derive(ForwardReferencedDerive)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^ consider moving the definition of `ForwardReferencedDerive` before this call
+   |
+note: a macro with the same name exists, but it appears later
+  --> $DIR/macro-rules-derive-error.rs:47:14
+   |
+LL | macro_rules! ForwardReferencedDerive {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find derive macro `ForwardReferencedDerive` in this scope
+  --> $DIR/macro-rules-derive-error.rs:39:10
+   |
+LL | #[derive(ForwardReferencedDerive)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^ consider moving the definition of `ForwardReferencedDerive` before this call
+   |
+note: a macro with the same name exists, but it appears later
+  --> $DIR/macro-rules-derive-error.rs:47:14
+   |
+LL | macro_rules! ForwardReferencedDerive {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 7 previous errors
+

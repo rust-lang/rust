@@ -1,0 +1,50 @@
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
+  --> $DIR/attr-unquoted-ident.rs:6:15
+   |
+LL |     #[cfg(key=foo)]
+   |               ^^^ expressions are not allowed here
+   |
+help: surround the identifier with quotation marks to make it into a string literal
+   |
+LL |     #[cfg(key="foo")]
+   |               +   +
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
+  --> $DIR/attr-unquoted-ident.rs:13:15
+   |
+LL |     #[cfg(key=foo bar baz)]
+   |               ^^^ expressions are not allowed here
+   |
+help: surround the identifier with quotation marks to make it into a string literal
+   |
+LL |     #[cfg(key="foo bar baz")]
+   |               +           +
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
+  --> $DIR/attr-unquoted-ident.rs:18:15
+   |
+LL |     #[cfg(key=foo 1 bar 2.0 baz.)]
+   |               ^^^ expressions are not allowed here
+   |
+help: surround the identifier with quotation marks to make it into a string literal
+   |
+LL |     #[cfg(key="foo 1 bar 2.0 baz.")]
+   |               +                  +
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
+  --> $DIR/attr-unquoted-ident.rs:28:38
+   |
+LL |     ($name:ident) => { #[doc(alias = $name)] pub struct S; }
+   |                                      ^^^^^ expressions are not allowed here
+...
+LL | make!(nickname);
+   | --------------- in this macro invocation
+   |
+   = note: this error originates in the macro `make` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: surround the identifier with quotation marks to make it into a string literal
+   |
+LL |     ($name:ident) => { #[doc(alias = "$name")] pub struct S; }
+   |                                      +     +
+
+error: aborting due to 4 previous errors
+

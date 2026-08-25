@@ -1,0 +1,9 @@
+error[E0559]: variant `E::S` has no field named `x`
+  --> $DIR/adt_expr_unit_enum_extra_field.rs:11:19
+   |
+LL |     foo::<{E::S { x: const { 1 } }}>();
+   |                   ^ `E::S` does not have this field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0559`.

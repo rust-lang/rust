@@ -1,0 +1,10 @@
+warning: use of deprecated macro `attributes_on_definitions::with_attrs`: test
+  --> $DIR/attributes-on-definitions.rs:8:1
+   |
+LL | attributes_on_definitions::with_attrs!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: 1 warning emitted
+

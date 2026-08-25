@@ -1,0 +1,110 @@
+error: unknown start of token: \u{b7}
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:15
+   |
+LL | impl S { fn f(···>) }
+   |               ^^^
+   |
+   = note: character appears 2 more times
+help: Unicode character '·' (Middle Dot) looks like '.' (Period), but it is not
+   |
+LL - impl S { fn f(···>) }
+LL + impl S { fn f(...>) }
+   |
+
+error: unknown start of token: \u{b7}
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:16
+   |
+LL | impl S { fn f(···>) }
+   |                ^^
+   |
+   = note: character appears once more
+help: Unicode character '·' (Middle Dot) looks like '.' (Period), but it is not
+   |
+LL - impl S { fn f(···>) }
+LL + impl S { fn f(·..>) }
+   |
+
+error: unknown start of token: \u{b7}
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:17
+   |
+LL | impl S { fn f(···>) }
+   |                 ^
+   |
+help: Unicode character '·' (Middle Dot) looks like '.' (Period), but it is not
+   |
+LL - impl S { fn f(···>) }
+LL + impl S { fn f(··.>) }
+   |
+
+error: unexpected `...`
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:15
+   |
+LL | impl S { fn f(···>) }
+   |               ^^^ not a valid pattern
+   |
+help: for a rest pattern, use `..` instead of `...`
+   |
+LL - impl S { fn f(···>) }
+LL + impl S { fn f(..>) }
+   |
+
+error: expected `:`, found `>`
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:18
+   |
+LL | impl S { fn f(···>) }
+   |                  ^ expected `:`
+
+error: expected one of `->`, `where`, or `{`, found `}`
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:21
+   |
+LL | impl S { fn f(···>) }
+   |             -       ^ expected one of `->`, `where`, or `{`
+   |             |
+   |             while parsing this `fn`
+
+error: associated function in `impl` without body
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:10
+   |
+LL | impl S { fn f(···>) }
+   |          ^^^^^^^^^^- help: provide a definition for the function: `{ <body> }`
+
+error[E0425]: cannot find type `S` in this scope
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:6
+   |
+LL | impl S { fn f(···>) }
+   |      ^ not found in this scope
+
+error: missing pattern for `...` argument
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:15
+   |
+LL | impl S { fn f(···>) }
+   |               ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #145544 <https://github.com/rust-lang/rust/issues/145544>
+   = note: `#[deny(varargs_without_pattern)]` (part of `#[deny(future_incompatible)]`) on by default
+help: name the argument, or use `_` to continue ignoring it
+   |
+LL - impl S { fn f(···>) }
+LL + impl S { fn f(_: ...>) }
+   |
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
+Future incompatibility report: Future breakage diagnostic:
+error: missing pattern for `...` argument
+  --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:15
+   |
+LL | impl S { fn f(···>) }
+   |               ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #145544 <https://github.com/rust-lang/rust/issues/145544>
+   = note: `#[deny(varargs_without_pattern)]` (part of `#[deny(future_incompatible)]`) on by default
+help: name the argument, or use `_` to continue ignoring it
+   |
+LL - impl S { fn f(···>) }
+LL + impl S { fn f(_: ...>) }
+   |
+

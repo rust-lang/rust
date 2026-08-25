@@ -1,0 +1,136 @@
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:57:5
+   |
+LL |     a.i = 42;
+   |     ^^^^^^^^^
+   |
+note: consider initializing the variable with `main::A { i: 42, ..Default::default() }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:56:5
+   |
+LL |     let mut a: A = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::field-reassign-with-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::field_reassign_with_default)]`
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:98:5
+   |
+LL |     a.j = 43;
+   |     ^^^^^^^^^
+   |
+note: consider initializing the variable with `main::A { j: 43, i: 42 }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:97:5
+   |
+LL |     let mut a: A = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:104:5
+   |
+LL |     a.i = 42;
+   |     ^^^^^^^^^
+   |
+note: consider initializing the variable with `main::A { i: 42, j: 44 }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:103:5
+   |
+LL |     let mut a: A = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:111:5
+   |
+LL |     a.i = 42;
+   |     ^^^^^^^^^
+   |
+note: consider initializing the variable with `main::A { i: 42, ..Default::default() }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:110:5
+   |
+LL |     let mut a = A::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:122:5
+   |
+LL |     a.i = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider initializing the variable with `main::A { i: Default::default(), ..Default::default() }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:121:5
+   |
+LL |     let mut a: A = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:127:5
+   |
+LL |     a.i = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider initializing the variable with `main::A { i: Default::default(), j: 45 }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:126:5
+   |
+LL |     let mut a: A = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:150:5
+   |
+LL |     a.i = vec![1];
+   |     ^^^^^^^^^^^^^^
+   |
+note: consider initializing the variable with `C { i: vec![1], ..Default::default() }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:149:5
+   |
+LL |     let mut a: C = C::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:169:5
+   |
+LL |     a.i = true;
+   |     ^^^^^^^^^^^
+   |
+note: consider initializing the variable with `Wrapper::<bool> { i: true }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:168:5
+   |
+LL |     let mut a: Wrapper<bool> = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:173:5
+   |
+LL |     a.i = 42;
+   |     ^^^^^^^^^
+   |
+note: consider initializing the variable with `WrapperMulti::<i32, i64> { i: 42, ..Default::default() }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:172:5
+   |
+LL |     let mut a: WrapperMulti<i32, i64> = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:245:13
+   |
+LL |             f.name = name.len();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider initializing the variable with `issue6312::ImplDropAllCopy { name: name.len(), ..Default::default() }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:244:13
+   |
+LL |             let mut f = ImplDropAllCopy::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> tests/ui/field_reassign_with_default.rs:262:13
+   |
+LL |             f.name = name.len();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+note: consider initializing the variable with `issue6312::NoDropAllCopy { name: name.len(), ..Default::default() }` and removing relevant reassignments
+  --> tests/ui/field_reassign_with_default.rs:261:13
+   |
+LL |             let mut f = NoDropAllCopy::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+

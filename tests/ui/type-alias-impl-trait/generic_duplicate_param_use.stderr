@@ -1,0 +1,38 @@
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_duplicate_param_use.rs:22:30
+   |
+LL | fn one_ty<T: Debug>(t: T) -> TwoTys<T, T> {
+   |                              ^^^^^^^^^^^^
+   |
+note: type used multiple times
+  --> $DIR/generic_duplicate_param_use.rs:15:13
+   |
+LL | type TwoTys<T, U> = impl Debug;
+   |             ^  ^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_duplicate_param_use.rs:29:5
+   |
+LL |     t
+   |     ^
+   |
+note: lifetime used multiple times
+  --> $DIR/generic_duplicate_param_use.rs:17:19
+   |
+LL | type TwoLifetimes<'a, 'b> = impl Debug;
+   |                   ^^  ^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_duplicate_param_use.rs:34:50
+   |
+LL | fn one_const<const N: usize>(t: *mut [u8; N]) -> TwoConsts<N, N> {
+   |                                                  ^^^^^^^^^^^^^^^
+   |
+note: constant used multiple times
+  --> $DIR/generic_duplicate_param_use.rs:19:16
+   |
+LL | type TwoConsts<const X: usize, const Y: usize> = impl Debug;
+   |                ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

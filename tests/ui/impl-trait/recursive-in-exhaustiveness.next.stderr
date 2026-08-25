@@ -1,0 +1,31 @@
+error[E0282]: type annotations needed for `(_,)`
+  --> $DIR/recursive-in-exhaustiveness.rs:19:9
+   |
+LL |     let (x,) = (build(x),);
+   |         ^^^^
+   |
+help: consider giving this pattern a type, where the placeholder `_` is specified
+   |
+LL |     let (x,): (_,) = (build(x),);
+   |             ++++++
+
+error[E0282]: type annotations needed for `((_,),)`
+  --> $DIR/recursive-in-exhaustiveness.rs:29:9
+   |
+LL |     let (x,) = (build2(x),);
+   |         ^^^^
+   |
+help: consider giving this pattern a type, where the placeholder `_` is specified
+   |
+LL |     let (x,): ((_,),) = (build2(x),);
+   |             +++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/recursive-in-exhaustiveness.rs:37:23
+   |
+LL | fn build3<T>(x: T) -> impl Sized {
+   |                       ^^^^^^^^^^ cannot infer type
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

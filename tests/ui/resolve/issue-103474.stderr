@@ -1,0 +1,36 @@
+error[E0425]: cannot find value `this` in this scope
+  --> $DIR/issue-103474.rs:23:9
+   |
+LL |         this.i
+   |         ^^^^ not found in this scope
+   |
+help: you might have meant to use `self` here instead
+   |
+LL -         this.i
+LL +         self.i
+   |
+help: if you meant to use `self`, you are also missing a `self` receiver argument
+   |
+LL |     fn needs_self(&self) {
+   |                   +++++
+
+error[E0425]: cannot find function `first` in this scope
+  --> $DIR/issue-103474.rs:6:9
+   |
+LL |         first()
+   |         ^^^^^ not found in this scope
+   |
+help: consider using the method on `Self`
+   |
+LL |         self.first()
+   |         +++++
+
+error[E0425]: cannot find function `no_method_err` in this scope
+  --> $DIR/issue-103474.rs:11:9
+   |
+LL |         no_method_err()
+   |         ^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,19 @@
+error: lifetime parameter `'a` only used once
+  --> $DIR/anonymous_lifetime_in_impl_trait.rs:11:8
+   |
+LL | fn foo<'a>(x: impl IntoIterator<Item = &'a i32>) {
+   |        ^^ this lifetime...              -- ...is used only here
+   |
+note: the lint level is defined here
+  --> $DIR/anonymous_lifetime_in_impl_trait.rs:7:9
+   |
+LL | #![deny(single_use_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+help: elide the single-use lifetime
+   |
+LL - fn foo<'a>(x: impl IntoIterator<Item = &'a i32>) {
+LL + fn foo(x: impl IntoIterator<Item = &i32>) {
+   |
+
+error: aborting due to 1 previous error
+

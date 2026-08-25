@@ -1,0 +1,20 @@
+error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
+  --> $DIR/pub-at-crate-root.rs:8:1
+   |
+LL | pub mod a {
+   | ^^^^^^^^^
+
+error: functions tagged with `#[proc_macro_derive]` must currently reside in the root of the crate
+  --> $DIR/pub-at-crate-root.rs:12:5
+   |
+LL |     pub fn bar(a: TokenStream) -> TokenStream {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions tagged with `#[proc_macro_derive]` must be `pub`
+  --> $DIR/pub-at-crate-root.rs:19:1
+   |
+LL | fn bar(a: proc_macro::TokenStream) -> proc_macro::TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

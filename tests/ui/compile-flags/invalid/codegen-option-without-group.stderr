@@ -1,0 +1,2 @@
+error: Unrecognized option: 'llvm-args'. Did you mean `-C llvm-args`?
+

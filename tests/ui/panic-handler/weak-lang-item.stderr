@@ -1,0 +1,22 @@
+error[E0259]: the name `core` is defined multiple times
+  --> $DIR/weak-lang-item.rs:7:1
+   |
+LL | extern crate core;
+   | ^^^^^^^^^^^^^^^^^^ `core` reimported here
+   |
+   = note: `core` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | extern crate core as other_core;
+   |                   +++++++++++++
+
+error: `#[panic_handler]` function required, but not found
+
+error: unwinding panics are not supported without std
+   |
+   = help: using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
+   = note: since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0259`.

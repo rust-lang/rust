@@ -1,0 +1,8 @@
+error: `impl Trait` can only mention lifetimes from an fn or impl
+  --> $DIR/universal_wrong_hrtb.rs:5:73
+   |
+LL | fn test_argument_position(x: impl for<'a> Trait<'a, Assoc = impl Copy + 'a>) {}
+   |                                       -- lifetime declared here         ^^
+
+error: aborting due to 1 previous error
+

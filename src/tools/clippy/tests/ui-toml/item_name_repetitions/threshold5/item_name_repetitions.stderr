@@ -1,0 +1,34 @@
+error: all fields have the same postfix: `data`
+  --> tests/ui-toml/item_name_repetitions/threshold5/item_name_repetitions.rs:9:1
+   |
+LL | / struct Data2 {
+LL | |
+LL | |     a_data: u8,
+LL | |     b_data: u8,
+...  |
+LL | |     e_data: u8,
+LL | | }
+   | |_^
+   |
+   = help: remove the postfixes
+   = note: `-D clippy::struct-field-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::struct_field_names)]`
+
+error: all variants have the same postfix: `Foo`
+  --> tests/ui-toml/item_name_repetitions/threshold5/item_name_repetitions.rs:23:1
+   |
+LL | / enum Foo2 {
+LL | |
+LL | |     AFoo,
+LL | |     BFoo,
+...  |
+LL | |     EFoo,
+LL | | }
+   | |_^
+   |
+   = help: remove the postfixes and use full paths to the variants instead of glob imports
+   = note: `-D clippy::enum-variant-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::enum_variant_names)]`
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,157 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/return-elided-lifetime.rs:6:12
+   |
+LL | fn f1() -> &i32 { loop {} }
+   |            ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL | fn f1() -> &'static i32 { loop {} }
+   |             +++++++
+help: instead, you are more likely to want to return an owned value
+   |
+LL - fn f1() -> &i32 { loop {} }
+LL + fn f1() -> i32 { loop {} }
+   |
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/return-elided-lifetime.rs:8:14
+   |
+LL | fn f1_() -> (&i32, &i32) { loop {} }
+   |              ^     ^ expected named lifetime parameter
+   |              |
+   |              expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL | fn f1_() -> (&'static i32, &'static i32) { loop {} }
+   |               +++++++       +++++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/return-elided-lifetime.rs:11:26
+   |
+LL | fn f2(a: i32, b: i32) -> &i32 { loop {} }
+   |                          ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL | fn f2(a: i32, b: i32) -> &'static i32 { loop {} }
+   |                           +++++++
+help: instead, you are more likely to want to change one of the arguments to be borrowed...
+   |
+LL | fn f2(a: &i32, b: &i32) -> &i32 { loop {} }
+   |          +        +
+help: ...or alternatively, you might want to return an owned value
+   |
+LL - fn f2(a: i32, b: i32) -> &i32 { loop {} }
+LL + fn f2(a: i32, b: i32) -> i32 { loop {} }
+   |
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/return-elided-lifetime.rs:13:28
+   |
+LL | fn f2_(a: i32, b: i32) -> (&i32, &i32) { loop {} }
+   |                            ^     ^ expected named lifetime parameter
+   |                            |
+   |                            expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL | fn f2_(a: i32, b: i32) -> (&'static i32, &'static i32) { loop {} }
+   |                             +++++++       +++++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/return-elided-lifetime.rs:17:17
+   |
+LL | fn f3(s: &S) -> &i32 { loop {} }
+   |          --     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of `s`'s 3 lifetimes it is borrowed from
+help: consider introducing a named lifetime parameter
+   |
+LL | fn f3<'a>(s: &'a S<'a, 'a>) -> &'a i32 { loop {} }
+   |      ++++     ++  ++++++++      ++
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/return-elided-lifetime.rs:19:26
+   |
+LL | fn f3_(s: &S, t: &S) -> (&i32, &i32) { loop {} }
+   |           --     --      ^     ^ expected named lifetime parameter
+   |                          |
+   |                          expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from one of `s`'s 3 lifetimes or one of `t`'s 3 lifetimes
+help: consider introducing a named lifetime parameter
+   |
+LL | fn f3_<'a>(s: &'a S<'a, 'a>, t: &'a S<'a, 'a>) -> (&'a i32, &'a i32) { loop {} }
+   |       ++++     ++  ++++++++      ++  ++++++++       ++       ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/return-elided-lifetime.rs:22:42
+   |
+LL | fn f4<'a, 'b>(a: &'a i32, b: &'b i32) -> &i32 { loop {} }
+   |                  -------     -------     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+note: these named lifetimes are available to use
+  --> $DIR/return-elided-lifetime.rs:22:7
+   |
+LL | fn f4<'a, 'b>(a: &'a i32, b: &'b i32) -> &i32 { loop {} }
+   |       ^^  ^^
+help: consider using one of the available lifetimes here
+   |
+LL | fn f4<'a, 'b>(a: &'a i32, b: &'b i32) -> &'lifetime i32 { loop {} }
+   |                                           +++++++++
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/return-elided-lifetime.rs:24:44
+   |
+LL | fn f4_<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) { loop {} }
+   |                   -------     -------      ^     ^ expected named lifetime parameter
+   |                                            |
+   |                                            expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+note: these named lifetimes are available to use
+  --> $DIR/return-elided-lifetime.rs:24:8
+   |
+LL | fn f4_<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) { loop {} }
+   |        ^^  ^^
+help: consider using one of the available lifetimes here
+   |
+LL | fn f4_<'a, 'b>(a: &'a i32, b: &'b i32) -> (&'lifetime i32, &'lifetime i32) { loop {} }
+   |                                             +++++++++       +++++++++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/return-elided-lifetime.rs:27:35
+   |
+LL | fn f5<'a>(a: &'a i32, b: &i32) -> &i32 { loop {} }
+   |              -------     ----     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `a` or `b`
+help: consider using the `'a` lifetime
+   |
+LL | fn f5<'a>(a: &'a i32, b: &i32) -> &'a i32 { loop {} }
+   |                                    ++
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/return-elided-lifetime.rs:29:37
+   |
+LL | fn f5_<'a>(a: &'a i32, b: &i32) -> (&i32, &i32) { loop {} }
+   |               -------     ----      ^     ^ expected named lifetime parameter
+   |                                     |
+   |                                     expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `a` or `b`
+help: consider using the `'a` lifetime
+   |
+LL | fn f5_<'a>(a: &'a i32, b: &i32) -> (&'a i32, &'a i32) { loop {} }
+   |                                      ++       ++
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

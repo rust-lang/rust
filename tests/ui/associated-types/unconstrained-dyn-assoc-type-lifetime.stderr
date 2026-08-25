@@ -1,0 +1,16 @@
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-dyn-assoc-type-lifetime.rs:11:6
+   |
+LL | impl<'a> MethodType for MTFn {
+   |      ^^ unconstrained lifetime parameter
+   |
+help: use the lifetime parameter `'a` in the `MTFn` type and use it in the type definition
+   |
+LL ~ pub struct MTFn<'a>;
+LL |
+LL ~ impl<'a> MethodType for MTFn<'a> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0207`.

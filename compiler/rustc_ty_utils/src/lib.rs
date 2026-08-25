@@ -1,0 +1,45 @@
+//! Various checks
+//!
+//! # Note
+//!
+//! This API is completely unstable and subject to change.
+
+// tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(never_type))]
+#![feature(deref_patterns)]
+#![feature(iterator_try_collect)]
+#![feature(option_into_flat_iter)]
+// tidy-alphabetical-end
+
+use rustc_middle::query::Providers;
+
+mod abi;
+mod assoc;
+mod common_traits;
+mod consts;
+mod diagnostics;
+mod implied_bounds;
+mod instance;
+mod layout;
+mod needs_drop;
+mod nested_bodies;
+mod opaque_types;
+mod representability;
+mod structural_match;
+mod ty;
+
+pub fn provide(providers: &mut Providers) {
+    abi::provide(providers);
+    assoc::provide(providers);
+    common_traits::provide(providers);
+    consts::provide(providers);
+    implied_bounds::provide(providers);
+    layout::provide(providers);
+    needs_drop::provide(providers);
+    opaque_types::provide(providers);
+    representability::provide(providers);
+    ty::provide(providers);
+    instance::provide(providers);
+    structural_match::provide(providers);
+    nested_bodies::provide(providers);
+}

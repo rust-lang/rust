@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/typeck_type_placeholder_mismatch.rs:15:21
+   |
+LL |     let x: Foo<_> = Bar::<usize>(PhantomData);
+   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Foo<_>`, found `Bar<usize>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Foo<_>`
+              found struct `Bar<usize>`
+
+error[E0308]: mismatched types
+  --> $DIR/typeck_type_placeholder_mismatch.rs:24:21
+   |
+LL |     let x: Foo<_> = Bar::<usize>(PhantomData);
+   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Foo<_>`, found `Bar<usize>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Foo<_>`
+              found struct `Bar<usize>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

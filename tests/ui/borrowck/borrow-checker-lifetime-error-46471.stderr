@@ -1,0 +1,13 @@
+error[E0597]: `z` does not live long enough
+  --> $DIR/borrow-checker-lifetime-error-46471.rs:5:9
+   |
+LL |         let mut z = 0;
+   |             ----- binding `z` declared here
+LL |         &mut z
+   |         ^^^^^^ borrowed value does not live long enough
+LL |     };
+   |     - `z` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

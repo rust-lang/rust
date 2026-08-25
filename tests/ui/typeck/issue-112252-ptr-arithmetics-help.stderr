@@ -1,0 +1,58 @@
+error[E0369]: cannot add `{integer}` to `*const u32`
+  --> $DIR/issue-112252-ptr-arithmetics-help.rs:6:20
+   |
+LL |     let _a = _ptr1 + 5;
+   |              ----- ^ - {integer}
+   |              |
+   |              *const u32
+   |
+help: consider using `wrapping_add` or `add` for pointer + {integer}
+   |
+LL -     let _a = _ptr1 + 5;
+LL +     let _a = _ptr1.wrapping_add(5);
+   |
+
+error[E0369]: cannot subtract `{integer}` from `*const u32`
+  --> $DIR/issue-112252-ptr-arithmetics-help.rs:7:20
+   |
+LL |     let _b = _ptr1 - 5;
+   |              ----- ^ - {integer}
+   |              |
+   |              *const u32
+   |
+help: consider using `wrapping_sub` or `sub` for pointer - {integer}
+   |
+LL -     let _b = _ptr1 - 5;
+LL +     let _b = _ptr1.wrapping_sub(5);
+   |
+
+error[E0369]: cannot subtract `*const u32` from `*const u32`
+  --> $DIR/issue-112252-ptr-arithmetics-help.rs:8:20
+   |
+LL |     let _c = _ptr2 - _ptr1;
+   |              ----- ^ ----- *const u32
+   |              |
+   |              *const u32
+   |
+help: consider using `offset_from` for pointer - pointer if the pointers point to the same allocation
+   |
+LL -     let _c = _ptr2 - _ptr1;
+LL +     let _c = unsafe { _ptr2.offset_from(_ptr1) };
+   |
+
+error[E0608]: cannot index into a value of type `*const u32`
+  --> $DIR/issue-112252-ptr-arithmetics-help.rs:9:19
+   |
+LL |     let _d = _ptr1[5];
+   |                   ^^^
+   |
+help: consider using `wrapping_add` or `add` for indexing into raw pointer
+   |
+LL -     let _d = _ptr1[5];
+LL +     let _d = _ptr1.wrapping_add(5);
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0369, E0608.
+For more information about an error, try `rustc --explain E0369`.

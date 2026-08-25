@@ -1,0 +1,39 @@
+error[E0735]: generic parameters cannot use `Self` in their defaults
+  --> $DIR/issue-61631-default-type-param-cannot-reference-self.rs:13:25
+   |
+LL | struct Snobound<'a, P = Self> { x: Option<&'a P> }
+   |                         ^^^^
+
+error[E0735]: generic parameters cannot use `Self` in their defaults
+  --> $DIR/issue-61631-default-type-param-cannot-reference-self.rs:16:23
+   |
+LL | enum Enobound<'a, P = Self> { A, B(Option<&'a P>) }
+   |                       ^^^^
+
+error[E0735]: generic parameters cannot use `Self` in their defaults
+  --> $DIR/issue-61631-default-type-param-cannot-reference-self.rs:19:24
+   |
+LL | union Unobound<'a, P = Self> { x: i32, y: Option<&'a P> }
+   |                        ^^^^
+
+error[E0735]: generic parameters cannot use `Self` in their defaults
+  --> $DIR/issue-61631-default-type-param-cannot-reference-self.rs:25:31
+   |
+LL | struct Ssized<'a, P: Sized = [Self]> { x: Option<&'a P> }
+   |                               ^^^^
+
+error[E0735]: generic parameters cannot use `Self` in their defaults
+  --> $DIR/issue-61631-default-type-param-cannot-reference-self.rs:28:29
+   |
+LL | enum Esized<'a, P: Sized = [Self]> { A, B(Option<&'a P>) }
+   |                             ^^^^
+
+error[E0735]: generic parameters cannot use `Self` in their defaults
+  --> $DIR/issue-61631-default-type-param-cannot-reference-self.rs:31:30
+   |
+LL | union Usized<'a, P: Sized = [Self]> { x: i32, y: Option<&'a P> }
+   |                              ^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0735`.

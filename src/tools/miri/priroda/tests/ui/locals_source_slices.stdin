@@ -1,0 +1,13 @@
+break tests/ui/locals_source_slices.rs:4
+break tests/ui/locals_source_slices.rs:8
+break tests/ui/locals_source_slices.rs:12
+continue
+locals
+print 1
+continue
+locals
+print 1
+continue
+locals
+print 1
+quit

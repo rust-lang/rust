@@ -1,0 +1,9 @@
+error[E0220]: associated type `Trget` not found for `Deref`
+  --> $DIR/type-binding.rs:6:20
+   |
+LL | fn homura<T: Deref<Trget = i32>>(_: T) {}
+   |                    ^^^^^ help: there is an associated type with a similar name: `Target`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.

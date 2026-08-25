@@ -1,0 +1,13 @@
+[package]
+name = "error_index_generator"
+version = "0.0.0"
+edition = "2021"
+workspace = "../rustbook"
+
+[dependencies]
+mdbook-driver = { version = "0.5.1", features = ["search"] }
+mdbook-summary = "0.5.1"
+
+[[bin]]
+name = "error_index_generator"
+path = "main.rs"

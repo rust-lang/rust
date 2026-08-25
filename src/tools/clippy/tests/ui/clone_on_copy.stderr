@@ -1,0 +1,233 @@
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:13:5
+   |
+LL |     42.clone();
+   |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
+   |
+   = note: `-D clippy::clone-on-copy` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::clone_on_copy)]`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:18:5
+   |
+LL |     (&42).clone();
+   |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:22:5
+   |
+LL |     rc.borrow().clone();
+   |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
+
+error: using `clone` on type `u32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:26:5
+   |
+LL |     x.clone().rotate_left(1);
+   |     ^^^^^^^^^ help: try removing the `clone` call: `x`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:41:5
+   |
+LL |     m!(42).clone();
+   |     ^^^^^^^^^^^^^^ help: try removing the `clone` call: `m!(42)`
+
+error: using `clone` on type `[u32; 2]` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:52:5
+   |
+LL |     x.clone()[0];
+   |     ^^^^^^^^^ help: try dereferencing it: `(*x)`
+
+error: using `clone` on type `E` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:91:20
+   |
+LL |         let _: E = a.clone();
+   |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
+
+error: using `clone` on type `E` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:93:20
+   |
+LL |         let _: E = E::clone(&a);
+   |                    ^^^^^^^^^^^^ help: try dereferencing it: `*****a`
+
+error: using `clone` on type `E` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:95:20
+   |
+LL |         let _: E = Clone::clone(&a);
+   |                    ^^^^^^^^^^^^^^^^ help: try dereferencing it: `*****a`
+
+error: using `clone` on type `E` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:97:20
+   |
+LL |         let _: E = <E as Clone>::clone(&a);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*****a`
+
+error: using `clone` on type `char` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:110:14
+   |
+LL |     is_ascii('z'.clone());
+   |              ^^^^^^^^^^^ help: try removing the `clone` call: `'z'`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:129:14
+   |
+LL |     vec.push(42.clone());
+   |              ^^^^^^^^^^ help: try removing the `clone` call: `42`
+
+error: using `clone` on type `Option<i32>` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:136:17
+   |
+LL |     let value = opt.clone()?;
+   |                 ^^^^^^^^^^^ help: try dereferencing it: `(*opt)`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:185:17
+   |
+LL |         let _ = i32::clone(&x);
+   |                 ^^^^^^^^^^^^^^ help: try removing the `clone` call: `x`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:187:17
+   |
+LL |         let _ = Clone::clone(&x);
+   |                 ^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `x`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:189:17
+   |
+LL |         let _ = <i32 as Clone>::clone(&x);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `x`
+
+error: using `clone` on type `&i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:195:17
+   |
+LL |         let _ = Clone::clone(ref_ref);
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*ref_ref`
+
+error: using `clone` on type `&i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:197:17
+   |
+LL |         let _ = <&i32 as Clone>::clone(ref_ref);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*ref_ref`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:201:17
+   |
+LL |         let _ = i32::clone(&*imm_ref);
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `*imm_ref`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:203:17
+   |
+LL |         let _ = Clone::clone(&*imm_ref);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `*imm_ref`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:205:17
+   |
+LL |         let _ = <i32 as Clone>::clone(&*imm_ref);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `*imm_ref`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:209:17
+   |
+LL |         let _ = i32::clone(&*x_ref);
+   |                 ^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `*x_ref`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:211:17
+   |
+LL |         let _ = Clone::clone(&*x_ref);
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `*x_ref`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:213:17
+   |
+LL |         let _ = <i32 as Clone>::clone(&*x_ref);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `*x_ref`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:216:17
+   |
+LL |         let _ = i32::clone(&x).rotate_left(1);
+   |                 ^^^^^^^^^^^^^^ help: try removing the `clone` call: `x`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:218:17
+   |
+LL |         let _ = Clone::clone(&x).rotate_left(1);
+   |                 ^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `x`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:220:17
+   |
+LL |         let _ = <i32 as Clone>::clone(&x).rotate_left(1);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `x`
+
+error: using `clone` on type `char` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:227:18
+   |
+LL |         is_ascii(char::clone(&'z'));
+   |                  ^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `'z'`
+
+error: using `clone` on type `char` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:229:18
+   |
+LL |         is_ascii(Clone::clone(&'z'));
+   |                  ^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `'z'`
+
+error: using `clone` on type `char` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:231:18
+   |
+LL |         is_ascii(<char as Clone>::clone(&'z'));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `'z'`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:236:17
+   |
+LL |         let _ = Clone::clone(&m!(42));
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `m!(42)`
+
+error: using `clone` on type `i32` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:240:17
+   |
+LL |         let _ = Clone::clone(&*rc.borrow());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `*rc.borrow()`
+
+error: using `clone` on type `Bar` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:244:17
+   |
+LL |         let _ = Clone::clone(&bar).field;
+   |                 ^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `bar`
+
+error: using `clone` on type `[i32; 2]` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:248:17
+   |
+LL |         let _ = Clone::clone(&array)[0];
+   |                 ^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `array`
+
+error: using `clone` on type `[u32; 2]` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:252:17
+   |
+LL |         let _ = Clone::clone(&*wrapped)[0];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `(*wrapped)`
+
+error: using `clone` on type `Option<i32>` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:275:17
+   |
+LL |         let _ = Option::clone(opt)?;
+   |                 ^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `(*opt)`
+
+error: using `clone` on type `Option<i32>` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:277:17
+   |
+LL |         let _ = Clone::clone(opt)?;
+   |                 ^^^^^^^^^^^^^^^^^ help: try dereferencing it: `(*opt)`
+
+error: using `clone` on type `Option<i32>` which implements the `Copy` trait
+  --> tests/ui/clone_on_copy.rs:279:17
+   |
+LL |         let _ = <Option<i32> as Clone>::clone(opt)?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `(*opt)`
+
+error: aborting due to 38 previous errors
+

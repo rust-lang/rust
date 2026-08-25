@@ -1,0 +1,10 @@
+[package]
+name = "multiple_crate_versions"
+version = "0.1.0"
+publish = false
+
+[workspace]
+
+[dependencies]
+winapi = "0.2"
+ansi_term = "=0.11.0"

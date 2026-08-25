@@ -1,0 +1,31 @@
+error: trailing semicolon in macro used in expression position
+  --> $DIR/warn-semicolon-in-expressions-from-macros.rs:5:13
+   |
+LL |         true;
+   |             ^
+...
+LL |         _ => foo!()
+   |              ------ in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: `#[deny(semicolon_in_expressions_from_macros)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: trailing semicolon in macro used in expression position
+  --> $DIR/warn-semicolon-in-expressions-from-macros.rs:5:13
+   |
+LL |         true;
+   |             ^
+...
+LL |         _ => foo!()
+   |              ------ in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: `#[deny(semicolon_in_expressions_from_macros)]` (part of `#[deny(future_incompatible)]`) on by default
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+

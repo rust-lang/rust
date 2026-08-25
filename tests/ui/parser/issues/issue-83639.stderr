@@ -1,0 +1,8 @@
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `"    "`
+  --> $DIR/issue-83639.rs:5:7
+   |
+LL |     """    "
+   |       ^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 1 previous error
+

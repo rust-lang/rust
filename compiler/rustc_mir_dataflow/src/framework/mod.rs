@@ -1,0 +1,489 @@
+//! A framework that can express both [gen-kill] and generic dataflow problems.
+//!
+//! To use this framework, implement the [`Analysis`] trait. There used to be a `GenKillAnalysis`
+//! alternative trait for gen-kill analyses that would pre-compute the transfer function for each
+//! block. It was intended as an optimization, but it ended up not being any faster than
+//! `Analysis`.
+//!
+//! The `impls` module contains several examples of dataflow analyses.
+//!
+//! Then call `iterate_to_fixpoint` on your type that impls `Analysis` to get a `Results`. From
+//! there, you can use a `ResultsCursor` to inspect the fixpoint solution to your dataflow problem
+//! (good for inspecting a small number of locations), or implement the `ResultsVisitor` interface
+//! and use `visit_results` (good for inspecting many or all locations). The following example uses
+//! the `ResultsCursor` approach.
+//!
+//! ```ignore (cross-crate-imports)
+//! use rustc_const_eval::dataflow::Analysis; // Makes `iterate_to_fixpoint` available.
+//!
+//! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
+//!     let analysis = MyAnalysis::new()
+//!         .iterate_to_fixpoint(tcx, body, None)
+//!         .into_results_cursor(body);
+//!
+//!     // Print the dataflow state *after* each statement in the start block.
+//!     for (_, statement_index) in body.block_data[START_BLOCK].statements.iter_enumerated() {
+//!         cursor.seek_after(Location { block: START_BLOCK, statement_index });
+//!         let state = cursor.get();
+//!         println!("{:?}", state);
+//!     }
+//! }
+//! ```
+//!
+//! [gen-kill]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
+
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
+use rustc_index::{Idx, IndexVec};
+use rustc_middle::bug;
+use rustc_middle::mir::{
+    self, BasicBlock, BasicBlockData, CallReturnPlaces, Location, TerminatorEdges,
+};
+use rustc_middle::ty::TyCtxt;
+use tracing::error;
+
+use self::graphviz::write_graphviz_results;
+use super::fmt::DebugWithContext;
+
+mod cursor;
+mod direction;
+pub mod fmt;
+pub mod graphviz;
+pub mod lattice;
+mod results;
+mod visitor;
+
+pub use self::cursor::ResultsCursor;
+pub use self::direction::{Backward, Direction, Forward};
+pub use self::lattice::{JoinSemiLattice, MaybeReachable};
+pub use self::results::{EntryStates, Results};
+pub use self::visitor::{ResultsVisitor, visit_results};
+
+/// Analysis domains are all bitsets of various kinds. This trait holds
+/// operations needed by all of them.
+pub trait BitSetExt<T> {
+    fn contains(&self, elem: T) -> bool;
+}
+
+impl<T: Idx> BitSetExt<T> for DenseBitSet<T> {
+    fn contains(&self, elem: T) -> bool {
+        self.contains(elem)
+    }
+}
+
+impl<T: Idx> BitSetExt<T> for MixedBitSet<T> {
+    fn contains(&self, elem: T) -> bool {
+        self.contains(elem)
+    }
+}
+
+/// A dataflow problem with an arbitrarily complex transfer function.
+///
+/// This trait specifies the lattice on which this analysis operates (the domain), its
+/// initial value at the entry point of each basic block, and various operations.
+///
+/// # Convergence
+///
+/// When implementing this trait it's possible to choose a transfer function such that the analysis
+/// does not reach fixpoint. To guarantee convergence, your transfer functions must maintain the
+/// following invariant:
+///
+/// > If the dataflow state **before** some point in the program changes to be greater
+/// than the prior state **before** that point, the dataflow state **after** that point must
+/// also change to be greater than the prior state **after** that point.
+///
+/// This invariant guarantees that the dataflow state at a given point in the program increases
+/// monotonically until fixpoint is reached. Note that this monotonicity requirement only applies
+/// to the same point in the program at different points in time. The dataflow state at a given
+/// point in the program may or may not be greater than the state at any preceding point.
+pub trait Analysis<'tcx> {
+    /// The type that holds the dataflow state at any given point in the program.
+    type Domain: Clone + JoinSemiLattice;
+
+    /// The direction of this analysis. Either `Forward` or `Backward`.
+    type Direction: Direction = Forward;
+
+    /// Auxiliary data used for analyzing `SwitchInt` terminators, if necessary.
+    type SwitchIntData = !;
+
+    /// A descriptive name for this analysis. Used only for debugging.
+    ///
+    /// This name should be brief and contain no spaces, periods or other characters that are not
+    /// suitable as part of a filename.
+    const NAME: &'static str;
+
+    /// Returns the initial value of the dataflow state upon entry to each basic block.
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain;
+
+    /// Mutates the initial value of the dataflow state upon entry to the `START_BLOCK`.
+    ///
+    /// For backward analyses, initial state (besides the bottom value) is not yet supported. Trying
+    /// to mutate the initial state will result in a panic.
+    //
+    // FIXME: For backward dataflow analyses, the initial state should be applied to every basic
+    // block where control flow could exit the MIR body (e.g., those terminated with `return` or
+    // `resume`). It's not obvious how to handle `yield` points in coroutines, however.
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain);
+
+    /// Given an `EffectIndex`, calls the appropriate `apply_*` method in the
+    /// {early,primary} x {statement,terminator} space.
+    ///
+    /// Do not override this; instead override one or more of the `apply_*` methods.
+    #[inline]
+    fn apply_effect<'mir>(
+        &self,
+        state: &mut Self::Domain,
+        block: BasicBlock,
+        block_data: &'mir BasicBlockData<'tcx>,
+        idx: EffectIndex,
+    ) {
+        let statement_index = idx.statement_index;
+        let terminator_index = block_data.statements.len();
+        let loc = Location { block, statement_index };
+        let is_terminator = statement_index == terminator_index;
+
+        if !is_terminator {
+            let statement = &block_data.statements[statement_index];
+            match idx.effect {
+                Effect::Early => self.apply_early_statement_effect(state, statement, loc),
+                Effect::Primary => self.apply_primary_statement_effect(state, statement, loc),
+            }
+        } else {
+            let terminator = block_data.terminator();
+            match idx.effect {
+                Effect::Early => self.apply_early_terminator_effect(state, terminator, loc),
+                Effect::Primary => {
+                    self.apply_primary_terminator_effect(state, terminator, loc);
+                }
+            }
+        }
+    }
+
+    /// Updates the current dataflow state with an "early" effect, i.e. one
+    /// that occurs immediately before the given statement.
+    ///
+    /// This method is useful if the consumer of the results of this analysis only needs to observe
+    /// *part* of the effect of a statement (e.g. for two-phase borrows). As a general rule,
+    /// analyses should not implement this without also implementing
+    /// `apply_primary_statement_effect`.
+    fn apply_early_statement_effect(
+        &self,
+        _state: &mut Self::Domain,
+        _statement: &mir::Statement<'tcx>,
+        _location: Location,
+    ) {
+    }
+
+    /// Updates the current dataflow state with the effect of evaluating a statement.
+    fn apply_primary_statement_effect(
+        &self,
+        state: &mut Self::Domain,
+        statement: &mir::Statement<'tcx>,
+        location: Location,
+    );
+
+    /// Updates the current dataflow state with an effect that occurs immediately *before* the
+    /// given terminator.
+    ///
+    /// This method is useful if the consumer of the results of this analysis needs only to observe
+    /// *part* of the effect of a terminator (e.g. for two-phase borrows). As a general rule,
+    /// analyses should not implement this without also implementing
+    /// `apply_primary_terminator_effect`.
+    fn apply_early_terminator_effect(
+        &self,
+        _state: &mut Self::Domain,
+        _terminator: &mir::Terminator<'tcx>,
+        _location: Location,
+    ) {
+    }
+
+    /// Gets the terminator edges. Used by forward analyses only. Called *before*
+    /// `apply_primary_terminator_effect` is applied; this might seem strange but in practice
+    /// `MaybeInitializedPlaces` needs that ordering and other analyses work with either ordering.
+    fn get_terminator_edges<'mir>(
+        &self,
+        _state: &Self::Domain,
+        terminator: &'mir mir::Terminator<'tcx>,
+        _location: Location,
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        terminator.edges()
+    }
+
+    /// Updates the current dataflow state with the effect of evaluating a terminator.
+    ///
+    /// The effect of a successful return from a `Call` terminator should **not** be accounted for
+    /// in this function. That should go in `apply_call_return_effect`. For example, in the
+    /// `InitializedPlaces` analyses, the return place for a function call is not marked as
+    /// initialized here.
+    fn apply_primary_terminator_effect(
+        &self,
+        _state: &mut Self::Domain,
+        _terminator: &mir::Terminator<'tcx>,
+        _location: Location,
+    ) {
+    }
+
+    /* Edge-specific effects */
+
+    /// Updates the current dataflow state with the effect of a successful return from a `Call`
+    /// terminator.
+    ///
+    /// This is separate from `apply_primary_terminator_effect` to properly track state across
+    /// unwind edges.
+    fn apply_call_return_effect(
+        &self,
+        _state: &mut Self::Domain,
+        _block: BasicBlock,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
+    ) {
+    }
+
+    /// Used to update the current dataflow state with the effect of taking a particular branch in
+    /// a `SwitchInt` terminator.
+    ///
+    /// Unlike the other edge-specific effects, which are allowed to mutate `Self::Domain`
+    /// directly, overriders of this method must return a `Self::SwitchIntData` value (wrapped in
+    /// `Some`). The `apply_switch_int_edge_effect` method will then be called once for each
+    /// outgoing edge and will have access to the dataflow state that will be propagated along that
+    /// edge, and also the `Self::SwitchIntData` value.
+    ///
+    /// This interface is somewhat more complex than the other visitor-like "effect" methods.
+    /// However, it is both more ergonomic—callers don't need to recompute or cache information
+    /// about a given `SwitchInt` terminator for each one of its edges—and more efficient—the
+    /// engine doesn't need to clone the exit state for a block unless
+    /// `get_switch_int_data` is actually called.
+    fn get_switch_int_data(
+        &self,
+        _block: mir::BasicBlock,
+        _targets: &mir::SwitchTargets,
+        _discr: &mir::Operand<'tcx>,
+    ) -> Option<Self::SwitchIntData> {
+        None
+    }
+
+    /// See comments on `get_switch_int_data`.
+    fn apply_switch_int_edge_effect(
+        &self,
+        _state: &mut Self::Domain,
+        _data: &Self::SwitchIntData,
+        _target_idx: SwitchTargetIndex,
+    ) {
+        unreachable!();
+    }
+
+    /* Extension methods */
+
+    /// Finds the fixpoint for this dataflow problem.
+    ///
+    /// You shouldn't need to override this. Its purpose is to enable method chaining like so:
+    ///
+    /// ```ignore (cross-crate-imports)
+    /// let results = MyAnalysis::new(tcx, body)
+    ///     .iterate_to_fixpoint(tcx, body, None)
+    ///     .into_results_cursor(body);
+    /// ```
+    /// You can optionally add a `pass_name` to the graphviz output for this particular run of a
+    /// dataflow analysis. Some analyses are run multiple times in the compilation pipeline.
+    /// Without a `pass_name` to differentiates them, only the results for the latest run will be
+    /// saved.
+    fn iterate_to_fixpoint<'mir>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        pass_name: Option<&'static str>,
+    ) -> Results<'tcx, Self>
+    where
+        Self: Sized,
+        Self::Domain: DebugWithContext<Self>,
+    {
+        let mut entry_states =
+            IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
+        self.initialize_start_block(body, &mut entry_states[mir::START_BLOCK]);
+
+        if Self::Direction::IS_BACKWARD && entry_states[mir::START_BLOCK] != self.bottom_value(body)
+        {
+            bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
+        }
+
+        // Forward analyses use a reverse postorder (`rpo`). Every reachable basic block has a
+        // *rank*: its position within `rpo`. Rank order is dataflow order: for every edge A -> B
+        // that is not a back edge, rank(A) < rank(B). This is independent of basic block numbering
+        // (which depends on the vagaries of CFG construction).
+        //
+        // The CFG traversal uses a "min-rank" algorithm. First, all reachable basic blocks are
+        // marked as dirty. The loop-head invariant is that `curr_rank` always points to the
+        // minimum-rank dirty block in `rpo`. Before processing that block we mark it as clean. If
+        // the processing dirties a block with a rank lower than or equal to `curr_rank` (via a
+        // back edge, which could be an edge-to-self) then `curr_rank` is set to that
+        // lower-or-equal rank. After the block is processed, if `curr_rank` doesn't point to a
+        // dirty block it is moved to the next dirty block, and we iterate again.
+        //
+        // This algorithm ensures each basic block is processed only after all its dirty
+        // predecessors (ignoring back edges). When a back edge dirties an earlier block we return
+        // to that earlier block immediately, which avoids processing later blocks with possibly
+        // soon-to-be-stale information. Loop-free code is processed in a single pass.
+        //
+        // Backward analyses: we want a postorder instead of a reverse postorder, but we also want
+        // to avoid the cost of adding a `postorder` field to `mir::basic_blocks::Cache`. We can
+        // fake a postorder traversal cheaply by using a reverse postorder and flipping the rank
+        // mapping. There is also one wrinkle involving unreachable blocks; see below.
+
+        rustc_index::newtype_index! {
+            #[orderable]
+            #[debug_format = "bbr{}"]
+            struct BasicBlockRank {}
+        }
+
+        let rpo: &[BasicBlock] = body.basic_blocks.reverse_postorder();
+        let last = rpo.len() - 1;
+
+        let mut ranks: IndexVec<BasicBlock, Option<BasicBlockRank>> =
+            IndexVec::from_elem_n(None, body.basic_blocks.len());
+        for (i, &bb) in rpo.iter().enumerate() {
+            let rank = if Self::Direction::IS_FORWARD { i } else { last - i };
+            ranks[bb] = Some(BasicBlockRank::new(rank));
+        }
+
+        let mut dirty: DenseBitSet<BasicBlockRank> = DenseBitSet::new_filled(rpo.len());
+        let mut curr_rank = BasicBlockRank::ZERO;
+
+        // `state` is not actually used between iterations; this is just an optimization to avoid
+        // reallocating every iteration.
+        let mut state = self.bottom_value(body);
+
+        loop {
+            let i = curr_rank.as_usize();
+            let bb = rpo[if Self::Direction::IS_FORWARD { i } else { last - i }];
+            debug_assert!(dirty.contains(curr_rank)); // check invariant
+            dirty.remove(curr_rank); // invariant temporarily broken
+
+            state.clone_from(&entry_states[bb]);
+            let prop = |target: BasicBlock, state: &Self::Domain| {
+                // A backward analysis may encounter an unreachable block, because a predecessor
+                // of a reachable block may be unreachable. Ignore any such block. (In contrast, in
+                // a forward analysis any successor of a reachable block must be reachable.)
+                let target_rank = ranks[target];
+                if Self::Direction::IS_BACKWARD && target_rank.is_none() {
+                    return;
+                }
+                let target_rank = target_rank.unwrap();
+
+                let set_changed = entry_states[target].join(state);
+                if set_changed {
+                    dirty.insert(target_rank);
+                    curr_rank = curr_rank.min(target_rank);
+                }
+            };
+            Self::Direction::apply_effects_in_block(&self, body, &mut state, bb, &body[bb], prop);
+
+            match dirty.first_set_at_or_after(curr_rank) {
+                Some(rank) => curr_rank = rank, // broken invariant re-established
+                None => break,                  // no more dirty blocks; finish
+            }
+        }
+
+        let results = Results { analysis: self, entry_states };
+
+        if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
+            let res = write_graphviz_results(tcx, body, &results, pass_name);
+            if let Err(e) = res {
+                error!("Failed to write graphviz dataflow results: {}", e);
+            }
+        }
+
+        results
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SwitchTargetIndex {
+    // Index of a normal switch target.
+    Normal(usize),
+    // The final "otherwise" fallback target.
+    Otherwise,
+}
+
+/// The legal operations for a transfer function in a gen/kill problem.
+pub trait GenKill<T> {
+    /// Inserts `elem` into the state vector.
+    fn gen_(&mut self, elem: T);
+
+    /// Removes `elem` from the state vector.
+    fn kill(&mut self, elem: T);
+
+    /// Calls `gen` for each element in `elems`.
+    fn gen_all(&mut self, elems: impl IntoIterator<Item = T>) {
+        for elem in elems {
+            self.gen_(elem);
+        }
+    }
+
+    /// Calls `kill` for each element in `elems`.
+    fn kill_all(&mut self, elems: impl IntoIterator<Item = T>) {
+        for elem in elems {
+            self.kill(elem);
+        }
+    }
+}
+
+impl<T: Idx> GenKill<T> for DenseBitSet<T> {
+    fn gen_(&mut self, elem: T) {
+        self.insert(elem);
+    }
+
+    fn kill(&mut self, elem: T) {
+        self.remove(elem);
+    }
+}
+
+impl<T: Idx> GenKill<T> for MixedBitSet<T> {
+    fn gen_(&mut self, elem: T) {
+        self.insert(elem);
+    }
+
+    fn kill(&mut self, elem: T) {
+        self.remove(elem);
+    }
+}
+
+impl<T, S: GenKill<T>> GenKill<T> for MaybeReachable<S> {
+    fn gen_(&mut self, elem: T) {
+        match self {
+            // If the state is not reachable, adding an element does nothing.
+            MaybeReachable::Unreachable => {}
+            MaybeReachable::Reachable(set) => set.gen_(elem),
+        }
+    }
+
+    fn kill(&mut self, elem: T) {
+        match self {
+            // If the state is not reachable, killing an element does nothing.
+            MaybeReachable::Unreachable => {}
+            MaybeReachable::Reachable(set) => set.kill(elem),
+        }
+    }
+}
+
+// NOTE: DO NOT CHANGE VARIANT ORDER. The derived `Ord` impls rely on the current order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Effect {
+    /// The "early" effect (e.g., `apply_early_statement_effect`) for a statement/terminator.
+    Early,
+
+    /// The "primary" effect (e.g., `apply_primary_statement_effect`) for a statement/terminator.
+    Primary,
+}
+
+impl Effect {
+    const fn at_index(self, statement_index: usize) -> EffectIndex {
+        EffectIndex { effect: self, statement_index }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EffectIndex {
+    statement_index: usize,
+    effect: Effect,
+}
+
+#[cfg(test)]
+mod tests;

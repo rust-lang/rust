@@ -1,0 +1,47 @@
+error[E0277]: the trait bound `for<'a> {closure@$DIR/explicit-reference-cast-unrelated-leaf.rs:18:34: 18:41}: Output<'a>` is not satisfied
+  --> $DIR/explicit-reference-cast-unrelated-leaf.rs:18:34
+   |
+LL |     wrapper.do_something_wrapper(|value| ());
+   |             -------------------- ^^^^^^^^^^ unsatisfied trait bound
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/explicit-reference-cast-unrelated-leaf.rs:18:34: 18:41}`
+help: this trait has no implementations, consider adding one
+  --> $DIR/explicit-reference-cast-unrelated-leaf.rs:1:1
+   |
+LL | trait Output<'a> {
+   | ^^^^^^^^^^^^^^^^
+note: required by a bound in `Wrapper::do_something_wrapper`
+  --> $DIR/explicit-reference-cast-unrelated-leaf.rs:10:20
+   |
+LL |     fn do_something_wrapper<O, F>(self, _: F)
+   |        -------------------- required by a bound in this associated function
+LL |     where
+LL |         for<'a> F: Output<'a>,
+   |                    ^^^^^^^^^^ required by this bound in `Wrapper::do_something_wrapper`
+
+error[E0277]: the trait bound `for<'a> _: From<<{closure@$DIR/explicit-reference-cast-unrelated-leaf.rs:18:34: 18:41} as Output<'a>>::Type>` is not satisfied
+  --> $DIR/explicit-reference-cast-unrelated-leaf.rs:18:13
+   |
+LL |     wrapper.do_something_wrapper(|value| ());
+   |             ^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/explicit-reference-cast-unrelated-leaf.rs:18:34: 18:41}`
+help: this trait has no implementations, consider adding one
+  --> $DIR/explicit-reference-cast-unrelated-leaf.rs:1:1
+   |
+LL | trait Output<'a> {
+   | ^^^^^^^^^^^^^^^^
+note: required by a bound in `Wrapper::do_something_wrapper`
+  --> $DIR/explicit-reference-cast-unrelated-leaf.rs:11:20
+   |
+LL |     fn do_something_wrapper<O, F>(self, _: F)
+   |        -------------------- required by a bound in this associated function
+...
+LL |         for<'a> O: From<<F as Output<'a>>::Type>,
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Wrapper::do_something_wrapper`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

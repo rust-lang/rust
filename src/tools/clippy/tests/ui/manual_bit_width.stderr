@@ -1,0 +1,244 @@
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:9:13
+   |
+LL |     let _ = u8::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::manual-bit-width` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_bit_width)]`
+help: try
+   |
+LL -     let _ = u8::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:11:13
+   |
+LL |     let _ = u16::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = u16::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:13:13
+   |
+LL |     let _ = u32::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = u32::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:15:13
+   |
+LL |     let _ = u64::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = u64::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:17:13
+   |
+LL |     let _ = usize::BITS - w.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = usize::BITS - w.leading_zeros();
+LL +     let _ = w.bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:21:13
+   |
+LL |     let _ = i8::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = i8::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:23:13
+   |
+LL |     let _ = i16::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = i16::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:25:13
+   |
+LL |     let _ = i32::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = i32::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:27:13
+   |
+LL |     let _ = i64::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = i64::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:29:13
+   |
+LL |     let _ = isize::BITS - x.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = isize::BITS - x.leading_zeros();
+LL +     let _ = x.cast_unsigned().bit_width();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:34:13
+   |
+LL |     let _ = NonZero::<u8>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = NonZero::<u8>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:36:13
+   |
+LL |     let _ = NonZero::<u16>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = NonZero::<u16>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:38:13
+   |
+LL |     let _ = NonZeroU32::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = NonZeroU32::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:40:13
+   |
+LL |     let _ = NonZero::<u64>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = NonZero::<u64>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:42:13
+   |
+LL |     let _ = num::NonZero::<usize>::BITS - y.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = num::NonZero::<usize>::BITS - y.leading_zeros();
+LL +     let _ = y.bit_width().get();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:46:13
+   |
+LL |     let _ = NonZero::<i8>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = NonZero::<i8>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:48:13
+   |
+LL |     let _ = NonZero::<i16>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = NonZero::<i16>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:50:13
+   |
+LL |     let _ = NonZeroI32::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = NonZeroI32::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:52:13
+   |
+LL |     let _ = NonZero::<i64>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = NonZero::<i64>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: manual implementation of `bit_width`
+  --> tests/ui/manual_bit_width.rs:54:13
+   |
+LL |     let _ = num::NonZero::<isize>::BITS - z.leading_zeros();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = num::NonZero::<isize>::BITS - z.leading_zeros();
+LL +     let _ = z.cast_unsigned().bit_width().get();
+   |
+
+error: aborting due to 20 previous errors
+

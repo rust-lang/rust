@@ -1,0 +1,12 @@
+error[E0599]: no method named `method` found for type parameter `Hello` in the current scope
+  --> $DIR/point-at-type-parameter-definition.rs:13:17
+   |
+LL | impl<Hello> Trait for Vec<Hello> {
+   |      ----- method `method` not found for this type parameter
+LL |     fn do_stuff(&self) {
+LL |         self[0].method();
+   |                 ^^^^^^ method not found in `Hello`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

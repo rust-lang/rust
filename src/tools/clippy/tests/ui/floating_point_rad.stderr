@@ -1,0 +1,53 @@
+error: conversion to radians can be done more accurately
+  --> tests/ui/floating_point_rad.rs:10:13
+   |
+LL |     let _ = degrees as f64 * std::f64::consts::PI / 180.0;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(degrees as f64).to_radians()`
+   |
+   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
+
+error: conversion to degrees can be done more accurately
+  --> tests/ui/floating_point_rad.rs:12:13
+   |
+LL |     let _ = degrees as f64 * 180.0 / std::f64::consts::PI;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(degrees as f64).to_degrees()`
+
+error: conversion to degrees can be done more accurately
+  --> tests/ui/floating_point_rad.rs:18:13
+   |
+LL |     let _ = x * 180f32 / std::f32::consts::PI;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.to_degrees()`
+
+error: conversion to degrees can be done more accurately
+  --> tests/ui/floating_point_rad.rs:20:13
+   |
+LL |     let _ = 90. * 180f64 / std::f64::consts::PI;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `90.0_f64.to_degrees()`
+
+error: conversion to degrees can be done more accurately
+  --> tests/ui/floating_point_rad.rs:22:13
+   |
+LL |     let _ = 90.5 * 180f64 / std::f64::consts::PI;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `90.5_f64.to_degrees()`
+
+error: conversion to radians can be done more accurately
+  --> tests/ui/floating_point_rad.rs:24:13
+   |
+LL |     let _ = x * std::f32::consts::PI / 180f32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.to_radians()`
+
+error: conversion to radians can be done more accurately
+  --> tests/ui/floating_point_rad.rs:26:13
+   |
+LL |     let _ = 90. * std::f32::consts::PI / 180f32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `90.0_f64.to_radians()`
+
+error: conversion to radians can be done more accurately
+  --> tests/ui/floating_point_rad.rs:28:13
+   |
+LL |     let _ = 90.5 * std::f32::consts::PI / 180f32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `90.5_f64.to_radians()`
+
+error: aborting due to 8 previous errors
+

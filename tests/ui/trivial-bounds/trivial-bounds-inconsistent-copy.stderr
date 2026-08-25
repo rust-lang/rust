@@ -1,0 +1,28 @@
+warning: trait bound String: Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-copy.rs:7:51
+   |
+LL | fn copy_string(t: String) -> String where String: Copy {
+   |                                                   ^^^^
+   |
+   = note: `#[warn(trivial_bounds)]` on by default
+
+warning: trait bound String: Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-copy.rs:14:56
+   |
+LL | fn copy_out_string(t: &String) -> String where String: Copy {
+   |                                                        ^^^^
+
+warning: trait bound String: Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-copy.rs:18:55
+   |
+LL | fn copy_string_with_param<T>(x: String) where String: Copy {
+   |                                                       ^^^^
+
+warning: trait bound for<'b> &'b mut i32: Copy does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-copy.rs:24:76
+   |
+LL | fn copy_mut<'a>(t: &&'a mut i32) -> &'a mut i32 where for<'b> &'b mut i32: Copy {
+   |                                                                            ^^^^
+
+warning: 4 warnings emitted
+

@@ -1,0 +1,75 @@
+error: expected `;`, found `}`
+  --> $DIR/missing-semicolon.rs:6:7
+   |
+LL |     ()
+   |       ^ help: add `;` here
+LL | }
+   | - unexpected token
+
+error: expected `;`, found `}`
+  --> $DIR/missing-semicolon.rs:32:7
+   |
+LL |     ()
+   |       ^ help: add `;` here
+LL | }
+   | - unexpected token
+
+error[E0618]: expected function, found `{integer}`
+  --> $DIR/missing-semicolon.rs:5:13
+   |
+LL |       let x = 5;
+   |           - `x` has type `{integer}`
+LL |       let y = x
+   |               ^- help: consider using a semicolon here to finish the statement: `;`
+   |  _____________|
+   | |
+LL | |     ()
+   | |______- call expression requires function
+
+error[E0618]: expected function, found `{integer}`
+  --> $DIR/missing-semicolon.rs:11:13
+   |
+LL |       let x = 5;
+   |           - `x` has type `{integer}`
+LL |       let y = x
+   |               ^- help: consider using a semicolon here to finish the statement: `;`
+   |  _____________|
+   | |
+LL | |     ();
+   | |______- call expression requires function
+
+error[E0618]: expected function, found `{integer}`
+  --> $DIR/missing-semicolon.rs:16:5
+   |
+LL |       let x = 5;
+   |           - `x` has type `{integer}`
+LL |       x
+   |       ^- help: consider using a semicolon here to finish the statement: `;`
+   |  _____|
+   | |
+LL | |     ()
+   | |______- call expression requires function
+
+error[E0618]: expected function, found `{integer}`
+  --> $DIR/missing-semicolon.rs:31:13
+   |
+LL |       let y = 5
+   |               ^- help: consider using a semicolon here to finish the statement: `;`
+   |  _____________|
+   | |
+LL | |     ()
+   | |______- call expression requires function
+
+error[E0618]: expected function, found `{integer}`
+  --> $DIR/missing-semicolon.rs:35:5
+   |
+LL |       5
+   |       ^- help: consider using a semicolon here to finish the statement: `;`
+   |  _____|
+   | |
+LL | |     ();
+   | |______- call expression requires function
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0618`.

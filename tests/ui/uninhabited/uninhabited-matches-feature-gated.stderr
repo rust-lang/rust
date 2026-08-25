@@ -1,0 +1,55 @@
+error[E0004]: non-exhaustive patterns: `Err(_)` not covered
+  --> $DIR/uninhabited-matches-feature-gated.rs:6:19
+   |
+LL |     let _ = match x {
+   |                   ^ pattern `Err(_)` not covered
+   |
+note: `Result<u32, &Void>` defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+  ::: $SRC_DIR/core/src/result.rs:LL:COL
+   |
+   = note: not covered
+   = note: the matched value is of type `Result<u32, &Void>`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         Ok(n) => n,
+LL ~         Err(_) => todo!(),
+   |
+
+error[E0004]: non-exhaustive patterns: type `&Void` is non-empty
+  --> $DIR/uninhabited-matches-feature-gated.rs:15:19
+   |
+LL |     let _ = match x {};
+   |                   ^
+   |
+note: `Void` defined here
+  --> $DIR/uninhabited-matches-feature-gated.rs:2:6
+   |
+LL | enum Void {}
+   |      ^^^^
+   = note: the matched value is of type `&Void`
+   = note: references are always considered inhabited
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     let _ = match x {
+LL +         _ => todo!(),
+LL ~     };
+   |
+
+error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
+  --> $DIR/uninhabited-matches-feature-gated.rs:24:19
+   |
+LL |     let _ = match x {
+   |                   ^ pattern `&[_, ..]` not covered
+   |
+   = note: the matched value is of type `&[Void]`
+   = note: `Void` is uninhabited but is not being matched by value, so a wildcard `_` is required
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         &[] => (),
+LL ~         &[_, ..] => todo!(),
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

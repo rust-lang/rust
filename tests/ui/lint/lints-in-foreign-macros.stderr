@@ -1,0 +1,59 @@
+warning: unused import: `std::string::ToString`
+  --> $DIR/lints-in-foreign-macros.rs:11:16
+   |
+LL |     () => {use std::string::ToString;}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | mod a { foo!(); }
+   |         ------ in this macro invocation
+   |
+note: the lint level is defined here
+  --> $DIR/lints-in-foreign-macros.rs:4:9
+   |
+LL | #![warn(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused import: `std::string::ToString`
+  --> $DIR/lints-in-foreign-macros.rs:16:18
+   |
+LL | mod c { baz!(use std::string::ToString;); }
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::string::ToString`
+  --> $DIR/lints-in-foreign-macros.rs:17:19
+   |
+LL | mod d { baz2!(use std::string::ToString;); }
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for the crate
+  --> $DIR/lints-in-foreign-macros.rs:4:1
+   |
+LL | / #![warn(unused_imports)]
+LL | | #![warn(missing_docs)]
+LL | |
+LL | | #[macro_use]
+...  |
+LL | | fn main() {}
+   | |____________^
+   |
+note: the lint level is defined here
+  --> $DIR/lints-in-foreign-macros.rs:5:9
+   |
+LL | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a function
+  --> $DIR/lints-in-foreign-macros.rs:18:6
+   |
+LL | baz!(pub fn undocumented() {});
+   |      ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a function
+  --> $DIR/lints-in-foreign-macros.rs:19:7
+   |
+LL | baz2!(pub fn undocumented2() {});
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 6 warnings emitted
+

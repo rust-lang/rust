@@ -1,0 +1,44 @@
+- // MIR for `remove_generic_array` before RemoveZsts
++ // MIR for `remove_generic_array` after RemoveZsts
+  
+  fn remove_generic_array(_1: T) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: [T; 0];
+      let mut _3: T;
+      let mut _5: T;
+      scope 1 {
+-         debug a => _2;
++         debug a => const ZeroSized: [T; 0];
+          let _4: [T; 0];
+          scope 2 {
+-             debug b => _4;
++             debug b => const ZeroSized: [T; 0];
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = [];
++         nop;
+          StorageDead(_3);
+-         StorageLive(_4);
++         nop;
+          StorageLive(_5);
+          _5 = copy _1;
+-         _4 = [];
++         nop;
+          StorageDead(_5);
+-         _0 = const ();
+-         StorageDead(_4);
+-         StorageDead(_2);
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

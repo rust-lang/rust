@@ -1,0 +1,67 @@
+error: unresolved link to `Foo::X`
+  --> $DIR/value-ctor.rs:5:6
+   |
+LL | /// [value@Foo::X]
+   |      ^^^^^^^^^^^^ this link resolves to the variant `X`, which is not in the value namespace
+   |
+note: the lint level is defined here
+  --> $DIR/value-ctor.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the variant, prefix with `variant@`
+   |
+LL - /// [value@Foo::X]
+LL + /// [variant@Foo::X]
+   |
+
+error: unresolved link to `MyStruct`
+  --> $DIR/value-ctor.rs:10:11
+   |
+LL | /// [tst][value@MyStruct]
+   |           ^^^^^^^^^^^^^^ this link resolves to the struct `MyStruct`, which is not in the value namespace
+   |
+help: to link to the struct, prefix with `struct@`
+   |
+LL - /// [tst][value@MyStruct]
+LL + /// [tst][struct@MyStruct]
+   |
+
+error: unresolved link to `Internals`
+  --> $DIR/value-ctor.rs:20:15
+   |
+LL | /// while [b][value@Internals] fails.
+   |               ^^^^^^^^^^^^^^^ this link resolves to the struct `Internals`, which is not in the value namespace
+   |
+help: to link to the struct, prefix with `struct@`
+   |
+LL - /// while [b][value@Internals] fails.
+LL + /// while [b][struct@Internals] fails.
+   |
+
+error: incompatible link kind for `Internals`
+  --> $DIR/value-ctor.rs:22:15
+   |
+LL | /// while [d][variant@Internals] fails.
+   |               ^^^^^^^^^^^^^^^^^ this link resolved to a struct, which is not a variant
+   |
+help: to link to the struct, prefix with `struct@`
+   |
+LL - /// while [d][variant@Internals] fails.
+LL + /// while [d][struct@Internals] fails.
+   |
+
+error: unresolved link to `Internals2`
+  --> $DIR/value-ctor.rs:34:15
+   |
+LL | /// while [b][value@Internals2] fails.
+   |               ^^^^^^^^^^^^^^^^ this link resolves to the enum `Internals2`, which is not in the value namespace
+   |
+help: to link to the enum, prefix with `enum@`
+   |
+LL - /// while [b][value@Internals2] fails.
+LL + /// while [b][enum@Internals2] fails.
+   |
+
+error: aborting due to 5 previous errors
+

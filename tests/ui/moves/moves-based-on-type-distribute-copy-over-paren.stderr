@@ -1,0 +1,37 @@
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-distribute-copy-over-paren.rs:12:11
+   |
+LL |     let x = "hi".to_string();
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |
+LL |     let _y = Foo { f:x };
+   |                      - value moved here
+LL |
+LL |     touch(&x);
+   |           ^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _y = Foo { f:x.clone() };
+   |                       ++++++++
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/moves-based-on-type-distribute-copy-over-paren.rs:21:11
+   |
+LL |     let x = "hi".to_string();
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |
+LL |     let _y = Foo { f:(((x))) };
+   |                      ------- value moved here
+LL |
+LL |     touch(&x);
+   |           ^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _y = Foo { f:(((x))).clone() };
+   |                             ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

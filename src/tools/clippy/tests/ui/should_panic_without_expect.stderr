@@ -1,0 +1,14 @@
+error: #[should_panic] attribute without a reason
+  --> tests/ui/should_panic_without_expect.rs:5:1
+   |
+LL | #[should_panic]
+   | ^^^^^^^^^^^^^^^ help: consider specifying the expected panic: `#[should_panic(expected = /* panic message */)]`
+   |
+note: the lint level is defined here
+  --> tests/ui/should_panic_without_expect.rs:2:9
+   |
+LL | #![deny(clippy::should_panic_without_expect)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

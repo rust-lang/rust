@@ -1,0 +1,24 @@
+error: invalid format string: expected `}` but string was terminated
+  --> $DIR/issue-51848.rs:6:20
+   |
+LL |         println!("{");
+   |                   -^ expected `}` in format string
+   |                   |
+   |                   because of this opening brace
+...
+LL |     macro_with_error!();
+   |     ------------------- in this macro invocation
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+   = note: this error originates in the macro `macro_with_error` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: invalid format string: unmatched `}` found
+  --> $DIR/issue-51848.rs:18:15
+   |
+LL |     println!("}");
+   |               ^ unmatched `}` in format string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+
+error: aborting due to 2 previous errors
+

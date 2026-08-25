@@ -1,0 +1,456 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          REST_PAT
+            DOT2 ".."
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        COMMENT "//"
+        WHITESPACE "\n    "
+        COMMENT "// Tuples"
+        WHITESPACE "\n    "
+        COMMENT "//"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_PAT
+            L_PAREN "("
+            IDENT_PAT
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_PAT
+            L_PAREN "("
+            IDENT_PAT
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_STRUCT_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Tuple"
+            L_PAREN "("
+            IDENT_PAT
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_STRUCT_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Tuple"
+            L_PAREN "("
+            IDENT_PAT
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_PAT
+            L_PAREN "("
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_STRUCT_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Tuple"
+            L_PAREN "("
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_PAT
+            L_PAREN "("
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_STRUCT_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Tuple"
+            L_PAREN "("
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        COMMENT "//"
+        WHITESPACE "\n    "
+        COMMENT "// Slices"
+        WHITESPACE "\n    "
+        COMMENT "//"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            REST_PAT
+              DOT2 ".."
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            IDENT_PAT
+              NAME
+                IDENT "head"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            IDENT_PAT
+              NAME
+                IDENT "head"
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "tail"
+              WHITESPACE " "
+              AT "@"
+              WHITESPACE " "
+              REST_PAT
+                DOT2 ".."
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            IDENT_PAT
+              NAME
+                IDENT "head"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "cons"
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            IDENT_PAT
+              NAME
+                IDENT "head"
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "mid"
+              WHITESPACE " "
+              AT "@"
+              WHITESPACE " "
+              REST_PAT
+                DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "cons"
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            IDENT_PAT
+              NAME
+                IDENT "head"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "cons"
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            IDENT_PAT
+              NAME
+                IDENT "head"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "mid"
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "tail"
+              WHITESPACE " "
+              AT "@"
+              WHITESPACE " "
+              REST_PAT
+                DOT2 ".."
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            IDENT_PAT
+              NAME
+                IDENT "head"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "mid"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "cons"
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

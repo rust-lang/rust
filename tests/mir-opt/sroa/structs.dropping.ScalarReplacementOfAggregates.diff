@@ -1,0 +1,44 @@
+- // MIR for `dropping` before ScalarReplacementOfAggregates
++ // MIR for `dropping` after ScalarReplacementOfAggregates
+  
+  fn dropping() -> () {
+      let mut _0: ();
+      let _1: Tag;
+      let mut _2: S;
+      let mut _3: Tag;
+      let mut _4: Tag;
+      let mut _5: Tag;
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = Tag(const 0_usize);
+          StorageLive(_4);
+          _4 = Tag(const 1_usize);
+          StorageLive(_5);
+          _5 = Tag(const 2_usize);
+          _2 = S(move _3, move _4, move _5);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          _1 = move (_2.1: Tag);
+          drop(_1) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          drop((_2.0: Tag)) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  
+      bb3: {
+          drop((_2.2: Tag)) -> [return: bb2, unwind unreachable];
+      }
+  }
+  

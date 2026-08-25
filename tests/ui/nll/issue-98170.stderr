@@ -1,0 +1,44 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-98170.rs:7:9
+   |
+LL | impl MyStruct<'_> {
+   |               -- lifetime `'1` appears in the `impl`'s self type
+LL |     pub fn new<'a>(field: &'a [u32]) -> MyStruct<'a> {
+   |                -- lifetime `'a` defined here
+LL |         Self { field }
+   |         ^^^^^^^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-98170.rs:7:16
+   |
+LL | impl MyStruct<'_> {
+   |               -- lifetime `'1` appears in the `impl`'s self type
+LL |     pub fn new<'a>(field: &'a [u32]) -> MyStruct<'a> {
+   |                -- lifetime `'a` defined here
+LL |         Self { field }
+   |                ^^^^^ this usage requires that `'a` must outlive `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-98170.rs:19:9
+   |
+LL | impl<'a> Trait<'a> for MyStruct<'_> {
+   |      --                         -- lifetime `'1` appears in the `impl`'s self type
+   |      |
+   |      lifetime `'a` defined here
+LL |     fn new(field: &'a [u32]) -> MyStruct<'a> {
+LL |         Self { field }
+   |         ^^^^^^^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-98170.rs:19:16
+   |
+LL | impl<'a> Trait<'a> for MyStruct<'_> {
+   |      --                         -- lifetime `'1` appears in the `impl`'s self type
+   |      |
+   |      lifetime `'a` defined here
+LL |     fn new(field: &'a [u32]) -> MyStruct<'a> {
+LL |         Self { field }
+   |                ^^^^^ this usage requires that `'a` must outlive `'1`
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,15 @@
+- // MIR for `move_index` before DeadStoreElimination-final
++ // MIR for `move_index` after DeadStoreElimination-final
+  
+  fn move_index(_1: [usize; 10], _2: usize) -> () {
+      let mut _0: ();
+  
+      bb0: {
+          _1[_2] = passthrough_usize(copy _2) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          return;
+      }
+  }
+  

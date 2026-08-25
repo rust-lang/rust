@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-52820.rs:12:9
+   |
+LL |         guts,
+   |         ^^^^ expected `String`, found `&str`
+   |
+help: try using a conversion method
+   |
+LL |         guts: guts.to_string(),
+   |         +++++     ++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-52820.rs:13:17
+   |
+LL |         brains: guts.clone(),
+   |                 ^^^^^^^^^^^^ expected `String`, found `&str`
+   |
+help: try using a conversion method
+   |
+LL -         brains: guts.clone(),
+LL +         brains: guts.to_string(),
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,10 @@
+error: rustc_peek: bit not set
+  --> $DIR/uninits-2.rs:14:5
+   |
+LL |     rustc_peek(&x);
+   |     ^^^^^^^^^^^^^^
+
+error: stop_after_dataflow ended compilation
+
+error: aborting due to 2 previous errors
+

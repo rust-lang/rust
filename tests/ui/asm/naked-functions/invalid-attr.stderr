@@ -1,0 +1,67 @@
+error[E0433]: cannot find module or crate `a` in the crate root
+  --> $DIR/invalid-attr.rs:57:5
+   |
+LL | #[::a]
+   |     ^ use of unresolved module or unlinked crate `a`
+
+error: the `naked` attribute cannot be used on crates
+  --> $DIR/invalid-attr.rs:5:11
+   |
+LL | #![unsafe(naked)]
+   |           ^^^^^
+   |
+   = help: the `naked` attribute can only be applied to functions
+
+error: the `naked` attribute cannot be used on foreign functions
+  --> $DIR/invalid-attr.rs:10:14
+   |
+LL |     #[unsafe(naked)]
+   |              ^^^^^
+   |
+   = help: the `naked` attribute can only be applied to functions with a body
+
+error: the `naked` attribute cannot be used on structs
+  --> $DIR/invalid-attr.rs:14:10
+   |
+LL | #[unsafe(naked)]
+   |          ^^^^^
+   |
+   = help: the `naked` attribute can only be applied to functions
+
+error: the `naked` attribute cannot be used on struct fields
+  --> $DIR/invalid-attr.rs:17:14
+   |
+LL |     #[unsafe(naked)]
+   |              ^^^^^
+   |
+   = help: the `naked` attribute can only be applied to functions
+
+error: the `naked` attribute cannot be used on required trait methods
+  --> $DIR/invalid-attr.rs:23:14
+   |
+LL |     #[unsafe(naked)]
+   |              ^^^^^
+   |
+   = help: the `naked` attribute can only be applied to functions with a body
+
+error: the `naked` attribute cannot be used on closures
+  --> $DIR/invalid-attr.rs:52:14
+   |
+LL |     #[unsafe(naked)]
+   |              ^^^^^
+   |
+   = help: the `naked` attribute can be applied to functions and methods
+
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/invalid-attr.rs:57:3
+   |
+LL | #[::a]
+   |   ^^^ the `::a` attribute is incompatible with `#[unsafe(naked)]`
+...
+LL | #[unsafe(naked)]
+   | ---------------- function marked with `#[unsafe(naked)]` here
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0433, E0736.
+For more information about an error, try `rustc --explain E0433`.

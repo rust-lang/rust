@@ -1,0 +1,283 @@
+#![warn(clippy::clone_on_copy)]
+#![allow(
+    clippy::deref_addrof,
+    clippy::needless_borrow,
+    clippy::no_effect,
+    clippy::unnecessary_operation
+)]
+#![expect(clippy::toplevel_ref_arg)]
+
+use std::cell::RefCell;
+
+fn main() {
+    42.clone();
+    //~^ clone_on_copy
+
+    vec![1].clone(); // ok, not a Copy type
+    Some(vec![1]).clone(); // ok, not a Copy type
+    (&42).clone();
+    //~^ clone_on_copy
+
+    let rc = RefCell::new(0);
+    rc.borrow().clone();
+    //~^ clone_on_copy
+
+    let x = 0u32;
+    x.clone().rotate_left(1);
+    //~^ clone_on_copy
+
+    #[derive(Clone, Copy)]
+    struct Foo;
+    impl Foo {
+        fn clone(&self) -> u32 {
+            0
+        }
+    }
+    Foo.clone(); // ok, this is not the clone trait
+
+    macro_rules! m {
+        ($e:expr) => {{ $e }};
+    }
+    m!(42).clone();
+    //~^ clone_on_copy
+
+    struct Wrap([u32; 2]);
+    impl core::ops::Deref for Wrap {
+        type Target = [u32; 2];
+        fn deref(&self) -> &[u32; 2] {
+            &self.0
+        }
+    }
+    let x = Wrap([0, 0]);
+    x.clone()[0];
+    //~^ clone_on_copy
+
+    let x = 42;
+    let ref y = x.clone(); // ok, binds by reference
+    let ref mut y = x.clone(); // ok, binds by reference
+}
+
+mod issue3052 {
+    struct A;
+    struct B;
+    struct C;
+    struct D;
+    #[derive(Copy, Clone)]
+    struct E;
+
+    macro_rules! impl_deref {
+        ($src:ident, $dst:ident) => {
+            impl std::ops::Deref for $src {
+                type Target = $dst;
+                fn deref(&self) -> &Self::Target {
+                    &$dst
+                }
+            }
+        };
+    }
+
+    impl_deref!(A, B);
+    impl_deref!(B, C);
+    impl_deref!(C, D);
+    impl std::ops::Deref for D {
+        type Target = &'static E;
+        fn deref(&self) -> &Self::Target {
+            &&E
+        }
+    }
+
+    fn go1() {
+        let a = A;
+        let _: E = a.clone();
+        //~^ clone_on_copy
+        let _: E = E::clone(&a);
+        //~^ clone_on_copy
+        let _: E = Clone::clone(&a);
+        //~^ clone_on_copy
+        let _: E = <E as Clone>::clone(&a);
+        //~^ clone_on_copy
+
+        let _: E = *****a;
+    }
+}
+
+fn issue4348() {
+    fn is_ascii(ch: char) -> bool {
+        ch.is_ascii()
+    }
+
+    'a'.clone().make_ascii_uppercase(); // ok, clone and then mutate
+    is_ascii('z'.clone());
+    //~^ clone_on_copy
+}
+
+fn issue16969() {
+    let mut x = 43;
+    let _ = &x.clone();
+
+    let _ = &mut x.clone();
+
+    let mut y = &42;
+    let _ = &y.clone();
+
+    let _ = &mut y.clone();
+}
+
+#[expect(clippy::vec_init_then_push)]
+fn issue5436() {
+    let mut vec = Vec::new();
+    vec.push(42.clone());
+    //~^ clone_on_copy
+}
+
+fn issue9277() -> Option<i32> {
+    let opt: &Option<i32> = &None;
+    // operator precedence needed (*opt)?
+    let value = opt.clone()?;
+    //~^ clone_on_copy
+    None
+}
+
+mod ufcs_clone_on_copy {
+    use std::cell::RefCell;
+
+    fn is_ascii(ch: char) -> bool {
+        ch.is_ascii()
+    }
+
+    #[derive(Clone, Copy)]
+    struct Foo;
+    impl Foo {
+        fn clone(&self) -> u32 {
+            0
+        }
+    }
+
+    macro_rules! m {
+        ($e:expr) => {{ $e }};
+    }
+
+    #[derive(Clone, Copy)]
+    struct Bar {
+        field: i32,
+    }
+
+    struct Wrap([u32; 2]);
+    impl core::ops::Deref for Wrap {
+        type Target = [u32; 2];
+        fn deref(&self) -> &[u32; 2] {
+            &self.0
+        }
+    }
+
+    fn foo(_x: &i32) {}
+
+    fn main() {
+        let mut x = 42_i32;
+
+        let vec = vec![1];
+        let _ = Vec::clone(&vec); // ok, not a Copy type
+        let _ = Clone::clone(&vec); // ok, not a Copy type
+        let opt_vec = Some(vec![1]);
+        let _ = Option::clone(&opt_vec); // ok, not a Copy type
+        let _ = Clone::clone(&opt_vec); // ok, not a Copy type
+
+        let _ = i32::clone(&x);
+        //~^ clone_on_copy
+        let _ = Clone::clone(&x);
+        //~^ clone_on_copy
+        let _ = <i32 as Clone>::clone(&x);
+        //~^ clone_on_copy
+
+        let ref_ref = &&42_i32;
+        // Clone::clone(ref_ref) and <&i32 as Clone>::clone(ref_ref) both return &i32, so it should be
+        // linted.
+        let _ = Clone::clone(ref_ref);
+        //~^ clone_on_copy
+        let _ = <&i32 as Clone>::clone(ref_ref);
+        //~^ clone_on_copy
+
+        let imm_ref = &mut 43_i32;
+        let _ = i32::clone(&*imm_ref);
+        //~^ clone_on_copy
+        let _ = Clone::clone(&*imm_ref);
+        //~^ clone_on_copy
+        let _ = <i32 as Clone>::clone(&*imm_ref);
+        //~^ clone_on_copy
+
+        let x_ref = &mut x;
+        let _ = i32::clone(&*x_ref);
+        //~^ clone_on_copy
+        let _ = Clone::clone(&*x_ref);
+        //~^ clone_on_copy
+        let _ = <i32 as Clone>::clone(&*x_ref);
+        //~^ clone_on_copy
+
+        let _ = i32::clone(&x).rotate_left(1);
+        //~^ clone_on_copy
+        let _ = Clone::clone(&x).rotate_left(1);
+        //~^ clone_on_copy
+        let _ = <i32 as Clone>::clone(&x).rotate_left(1);
+        //~^ clone_on_copy
+
+        char::clone(&'a').make_ascii_uppercase(); // ok, clone and then mutate
+        Clone::clone(&'a').make_ascii_uppercase(); // ok, clone and then mutate
+        <char as Clone>::clone(&'a').make_ascii_uppercase(); // ok, clone and then mutate
+
+        is_ascii(char::clone(&'z'));
+        //~^ clone_on_copy
+        is_ascii(Clone::clone(&'z'));
+        //~^ clone_on_copy
+        is_ascii(<char as Clone>::clone(&'z'));
+        //~^ clone_on_copy
+
+        let _ = Foo::clone(&Foo); // ok, this is not the clone trait
+
+        let _ = Clone::clone(&m!(42));
+        //~^ clone_on_copy
+
+        let rc = RefCell::new(0);
+        let _ = Clone::clone(&*rc.borrow());
+        //~^ clone_on_copy
+
+        let bar = Bar { field: 0 };
+        let _ = Clone::clone(&bar).field;
+        //~^ clone_on_copy
+
+        let array = [0, 0];
+        let _ = Clone::clone(&array)[0];
+        //~^ clone_on_copy
+
+        let wrapped = Wrap([0, 0]);
+        let _ = Clone::clone(&*wrapped)[0];
+        //~^ clone_on_copy
+
+        let _: &i32 = &i32::clone(&x);
+        let _: &i32 = &Clone::clone(&x);
+        let _: &i32 = &<i32 as Clone>::clone(&x);
+
+        let _: &mut i32 = &mut i32::clone(&x);
+        let _: &mut i32 = &mut Clone::clone(&x);
+        let _: &mut i32 = &mut <i32 as Clone>::clone(&x);
+
+        let ref _y = i32::clone(&x); // ok, binds by reference
+        let ref _y = Clone::clone(&x); // ok, binds by reference
+        let ref mut _y = <i32 as Clone>::clone(&x); // ok, binds by reference
+
+        foo(&i32::clone(&x));
+        foo(&Clone::clone(&x));
+        foo(&<i32 as Clone>::clone(&x));
+    }
+
+    fn option_clone_on_copy() -> Option<i32> {
+        let opt: &Option<i32> = &Some(0);
+
+        let _ = Option::clone(opt)?;
+        //~^ clone_on_copy
+        let _ = Clone::clone(opt)?;
+        //~^ clone_on_copy
+        let _ = <Option<i32> as Clone>::clone(opt)?;
+        //~^ clone_on_copy
+        None
+    }
+}

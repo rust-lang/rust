@@ -1,0 +1,10 @@
+error: missing optimized MIR for `transitive_macro::mod1::mod2::foo` in the crate `transitive_macro`
+   |
+note: missing optimized MIR for this item (was the crate `transitive_macro` compiled with `--emit=metadata`?)
+  --> $DIR/auxiliary/transitive-macro.rs:5:9
+   |
+LL |         pub fn foo() {}
+   |         ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

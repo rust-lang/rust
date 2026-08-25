@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed
+  --> $DIR/obligation-with-leaking-placeholders.rs:18:16
+   |
+LL |     needs_foo(|x| {
+   |                ^
+...
+LL |         x.to_string();
+   |         - type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     needs_foo(|x: /* Type */| {
+   |                 ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

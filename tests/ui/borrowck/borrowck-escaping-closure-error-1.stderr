@@ -1,0 +1,21 @@
+error[E0373]: closure may outlive the current function, but it borrows `books`, which is owned by the current function
+  --> $DIR/borrowck-escaping-closure-error-1.rs:13:11
+   |
+LL |     spawn(|| books.push(4));
+   |           ^^ ----- `books` is borrowed here
+   |           |
+   |           may outlive borrowed value `books`
+   |
+note: function requires argument type to outlive `'static`
+  --> $DIR/borrowck-escaping-closure-error-1.rs:13:5
+   |
+LL |     spawn(|| books.push(4));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `books` (and any other referenced variables), use the `move` keyword
+   |
+LL |     spawn(move || books.push(4));
+   |           ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0373`.

@@ -1,0 +1,43 @@
+
+running 1 test
+test $DIR/display-output.rs - foo (line 9) ... ok
+
+successes:
+
+---- $DIR/display-output.rs - foo (line 9) stdout ----
+warning: unused variable: `x`
+  --> $DIR/display-output.rs:12:5
+   |
+LL | let x = 12;
+   |     ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+note: the lint level is defined here
+  --> $DIR/display-output.rs:9:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `x`
+  --> $DIR/display-output.rs:14:8
+   |
+LL | fn foo(x: &dyn std::fmt::Display) {}
+   |        ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+warning: function `foo` is never used
+  --> $DIR/display-output.rs:14:4
+   |
+LL | fn foo(x: &dyn std::fmt::Display) {}
+   |    ^^^
+   |
+   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
+
+warning: 3 warnings emitted
+
+
+
+successes:
+    $DIR/display-output.rs - foo (line 9)
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

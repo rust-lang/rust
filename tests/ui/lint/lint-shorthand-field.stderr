@@ -1,0 +1,38 @@
+error: the `x:` in this pattern is redundant
+  --> $DIR/lint-shorthand-field.rs:14:13
+   |
+LL |             x: x,
+   |             ^^^^ help: use shorthand field pattern: `x`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-shorthand-field.rs:4:9
+   |
+LL | #![deny(non_shorthand_field_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `y:` in this pattern is redundant
+  --> $DIR/lint-shorthand-field.rs:15:13
+   |
+LL |             y: ref y,
+   |             ^^^^^^^^ help: use shorthand field pattern: `ref y`
+
+error: the `x:` in this pattern is redundant
+  --> $DIR/lint-shorthand-field.rs:65:13
+   |
+LL |             x: mut x,
+   |             ^^^^^^^^ help: use shorthand field pattern: `mut x`
+
+error: the `y:` in this pattern is redundant
+  --> $DIR/lint-shorthand-field.rs:66:13
+   |
+LL |             y: ref y,
+   |             ^^^^^^^^ help: use shorthand field pattern: `ref y`
+
+error: the `z:` in this pattern is redundant
+  --> $DIR/lint-shorthand-field.rs:67:13
+   |
+LL |             z: ref mut z,
+   |             ^^^^^^^^^^^^ help: use shorthand field pattern: `ref mut z`
+
+error: aborting due to 5 previous errors
+

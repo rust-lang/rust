@@ -1,0 +1,79 @@
+error[E0382]: use of moved value: `bar`
+  --> $DIR/moved-value-on-as-ref-arg.rs:27:16
+   |
+LL |     let bar = Bar;
+   |         --- move occurs because `bar` has type `Bar`, which does not implement the `Copy` trait
+LL |     foo(bar);
+   |         --- value moved here
+LL |     let _baa = bar;
+   |                ^^^ value used here after move
+   |
+help: consider borrowing `bar`
+   |
+LL |     foo(&bar);
+   |         +
+
+error[E0382]: use of moved value: `bar`
+  --> $DIR/moved-value-on-as-ref-arg.rs:30:16
+   |
+LL |     let mut bar = Bar;
+   |         ------- move occurs because `bar` has type `Bar`, which does not implement the `Copy` trait
+LL |     qux(bar);
+   |         --- value moved here
+LL |     let _baa = bar;
+   |                ^^^ value used here after move
+   |
+note: if `Bar` implemented `Clone`, you could clone the value
+  --> $DIR/moved-value-on-as-ref-arg.rs:5:1
+   |
+LL | struct Bar;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     qux(bar);
+   |         --- you could clone this value
+help: consider mutably borrowing `bar`
+   |
+LL |     qux(&mut bar);
+   |         ++++
+
+error[E0382]: use of moved value: `bar`
+  --> $DIR/moved-value-on-as-ref-arg.rs:33:16
+   |
+LL |     let bar = Bar;
+   |         --- move occurs because `bar` has type `Bar`, which does not implement the `Copy` trait
+LL |     bat(bar);
+   |         --- value moved here
+LL |     let _baa = bar;
+   |                ^^^ value used here after move
+   |
+help: consider borrowing `bar`
+   |
+LL |     bat(&bar);
+   |         +
+
+error[E0382]: use of moved value: `bar`
+  --> $DIR/moved-value-on-as-ref-arg.rs:36:16
+   |
+LL |     let mut bar = Bar;
+   |         ------- move occurs because `bar` has type `Bar`, which does not implement the `Copy` trait
+LL |     baz(bar);
+   |         --- value moved here
+LL |     let _baa = bar;
+   |                ^^^ value used here after move
+   |
+note: if `Bar` implemented `Clone`, you could clone the value
+  --> $DIR/moved-value-on-as-ref-arg.rs:5:1
+   |
+LL | struct Bar;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     baz(bar);
+   |         --- you could clone this value
+help: consider mutably borrowing `bar`
+   |
+LL |     baz(&mut bar);
+   |         ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

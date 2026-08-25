@@ -1,0 +1,10 @@
+warning: struct `F` is never constructed
+  --> $DIR/issue-86535.rs:5:8
+   |
+LL | struct F<const S: &'static str>;
+   |        ^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

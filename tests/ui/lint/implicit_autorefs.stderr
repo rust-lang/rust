@@ -1,0 +1,389 @@
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:10:13
+   |
+LL |     let _ = (*ptr)[..16];
+   |             ^^---^^^^^^^
+   |               |
+   |               this raw pointer has type `*const [u8]`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&[u8]`
+  --> $DIR/implicit_autorefs.rs:10:13
+   |
+LL |     let _ = (*ptr)[..16];
+   |             ^^^^^^
+   = note: `#[deny(dangerous_implicit_autorefs)]` on by default
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr))[..16];
+   |             ++      +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:19:13
+   |
+LL |     let l = (*ptr).field.len();
+   |             ^^---^^^^^^^^^^^^^
+   |               |
+   |               this raw pointer has type `*const Test`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&[u8]`
+  --> $DIR/implicit_autorefs.rs:19:13
+   |
+LL |     let l = (*ptr).field.len();
+   |             ^^^^^^^^^^^^
+note: method calls to `len` require a reference
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let l = (&(*ptr).field).len();
+   |             ++            +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:22:16
+   |
+LL |     &raw const (*ptr).field[..l - 1]
+   |                ^^---^^^^^^^^^^^^^^^^
+   |                  |
+   |                  this raw pointer has type `*const Test`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&[u8]`
+  --> $DIR/implicit_autorefs.rs:22:16
+   |
+LL |     &raw const (*ptr).field[..l - 1]
+   |                ^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     &raw const (&(*ptr).field)[..l - 1]
+   |                ++            +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:27:9
+   |
+LL |     _ = (*a)[0].len();
+   |         ^^-^^^^^^^^^^
+   |           |
+   |           this raw pointer has type `*mut [String]`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&String`
+  --> $DIR/implicit_autorefs.rs:27:9
+   |
+LL |     _ = (*a)[0].len();
+   |         ^^^^^^^
+note: method calls to `len` require a reference
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = (&(*a)[0]).len();
+   |         ++       +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:30:9
+   |
+LL |     _ = (*a)[..1][0].len();
+   |         ^^-^^^^^^^^^^^^^^^
+   |           |
+   |           this raw pointer has type `*mut [String]`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&String`
+  --> $DIR/implicit_autorefs.rs:30:9
+   |
+LL |     _ = (*a)[..1][0].len();
+   |         ^^^^^^^^^^^^
+note: method calls to `len` require a reference
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = (&(*a)[..1][0]).len();
+   |         ++            +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:30:9
+   |
+LL |     _ = (*a)[..1][0].len();
+   |         ^^-^^^^^^
+   |           |
+   |           this raw pointer has type `*mut [String]`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&[String]`
+  --> $DIR/implicit_autorefs.rs:30:9
+   |
+LL |     _ = (*a)[..1][0].len();
+   |         ^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = (&(*a))[..1][0].len();
+   |         ++    +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:36:13
+   |
+LL |     let _ = (*ptr).field;
+   |             ^^---^^^^^^^
+   |               |
+   |               this raw pointer has type `*const ManuallyDrop<Test>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+   = note: references are created through calls to explicit `Deref(Mut)::deref(_mut)` implementations
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).field;
+   |             ++      +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:38:24
+   |
+LL |     let _ = &raw const (*ptr).field;
+   |                        ^^---^^^^^^^
+   |                          |
+   |                          this raw pointer has type `*const ManuallyDrop<Test>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+   = note: references are created through calls to explicit `Deref(Mut)::deref(_mut)` implementations
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = &raw const (&(*ptr)).field;
+   |                        ++      +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:43:13
+   |
+LL |     let _ = (*ptr).field;
+   |             ^^---^^^^^^^
+   |               |
+   |               this raw pointer has type `*mut ManuallyDrop<Test>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+   = note: references are created through calls to explicit `Deref(Mut)::deref(_mut)` implementations
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).field;
+   |             ++      +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:48:13
+   |
+LL |     let _ = (*ptr).field;
+   |             ^^---^^^^^^^
+   |               |
+   |               this raw pointer has type `*const ManuallyDrop<ManuallyDrop<Test>>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+   = note: references are created through calls to explicit `Deref(Mut)::deref(_mut)` implementations
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).field;
+   |             ++      +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:64:26
+   |
+LL |     let _p: *const i32 = &raw const **w;
+   |                          ^^^^^^^^^^^^^-
+   |                                       |
+   |                                       this raw pointer has type `*const W<i32>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&W<i32>`
+  --> $DIR/implicit_autorefs.rs:64:38
+   |
+LL |     let _p: *const i32 = &raw const **w;
+   |                                      ^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _p: *const i32 = &raw const *(&**w);
+   |                                      +++  +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:74:14
+   |
+LL |     unsafe { (*ptr).field.len() }
+   |              ^^---^^^^^^^^^^^^^
+   |                |
+   |                this raw pointer has type `*const Test2`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&[u8]`
+  --> $DIR/implicit_autorefs.rs:74:14
+   |
+LL |     unsafe { (*ptr).field.len() }
+   |              ^^^^^^^^^^^^
+note: method calls to `len` require a reference
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     unsafe { (&(*ptr).field).len() }
+   |              ++            +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:85:13
+   |
+LL |     let _ = (*ptr).get(0);
+   |             ^^---^^^^^^^^
+   |               |
+   |               this raw pointer has type `*mut Vec<u8>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&[u8]`
+  --> $DIR/implicit_autorefs.rs:85:13
+   |
+LL |     let _ = (*ptr).get(0);
+   |             ^^^^^^
+note: method calls to `get` require a reference
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).get(0);
+   |             ++      +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:87:13
+   |
+LL |     let _ = (*ptr).get_unchecked(0);
+   |             ^^---^^^^^^^^^^^^^^^^^^
+   |               |
+   |               this raw pointer has type `*mut Vec<u8>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&[u8]`
+  --> $DIR/implicit_autorefs.rs:87:13
+   |
+LL |     let _ = (*ptr).get_unchecked(0);
+   |             ^^^^^^
+note: method calls to `get_unchecked` require a reference
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).get_unchecked(0);
+   |             ++      +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:89:13
+   |
+LL |     let _ = (*ptr).get_mut(0);
+   |             ^^---^^^^^^^^^^^^
+   |               |
+   |               this raw pointer has type `*mut Vec<u8>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&mut [u8]`
+  --> $DIR/implicit_autorefs.rs:89:13
+   |
+LL |     let _ = (*ptr).get_mut(0);
+   |             ^^^^^^
+note: method calls to `get_mut` require a reference
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&mut (*ptr)).get_mut(0);
+   |             +++++       +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:91:13
+   |
+LL |     let _ = (*ptr).get_unchecked_mut(0);
+   |             ^^---^^^^^^^^^^^^^^^^^^^^^^
+   |               |
+   |               this raw pointer has type `*mut Vec<u8>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&mut [u8]`
+  --> $DIR/implicit_autorefs.rs:91:13
+   |
+LL |     let _ = (*ptr).get_unchecked_mut(0);
+   |             ^^^^^^
+note: method calls to `get_unchecked_mut` require a reference
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&mut (*ptr)).get_unchecked_mut(0);
+   |             +++++       +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:96:13
+   |
+LL |     let _ = (*ptr).len();
+   |             ^^---^^^^^^^
+   |               |
+   |               this raw pointer has type `*mut String`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&String`
+  --> $DIR/implicit_autorefs.rs:96:13
+   |
+LL |     let _ = (*ptr).len();
+   |             ^^^^^^
+note: method calls to `len` require a reference
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).len();
+   |             ++      +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:98:13
+   |
+LL |     let _ = (*ptr).is_empty();
+   |             ^^---^^^^^^^^^^^^
+   |               |
+   |               this raw pointer has type `*mut String`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&String`
+  --> $DIR/implicit_autorefs.rs:98:13
+   |
+LL |     let _ = (*ptr).is_empty();
+   |             ^^^^^^
+note: method calls to `is_empty` require a reference
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*ptr)).is_empty();
+   |             ++      +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:103:13
+   |
+LL |     let _ = (*slice)[..].len();
+   |             ^^-----^^^^^^^^^^^
+   |               |
+   |               this raw pointer has type `*const [T]`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&[T]`
+  --> $DIR/implicit_autorefs.rs:103:13
+   |
+LL |     let _ = (*slice)[..].len();
+   |             ^^^^^^^^^^^^
+note: method calls to `len` require a reference
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*slice)[..]).len();
+   |             ++            +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:103:13
+   |
+LL |     let _ = (*slice)[..].len();
+   |             ^^-----^^^^^
+   |               |
+   |               this raw pointer has type `*const [T]`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&[T]`
+  --> $DIR/implicit_autorefs.rs:103:13
+   |
+LL |     let _ = (*slice)[..].len();
+   |             ^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _ = (&(*slice))[..].len();
+   |             ++        +
+
+error: aborting due to 20 previous errors
+

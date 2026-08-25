@@ -1,0 +1,41 @@
+error: doc list item overindented
+  --> tests/ui/doc/doc_overindented_list_items.rs:5:5
+   |
+LL | ///        overindented line
+   |     ^^^^^^^ help: try using `  ` (2 spaces)
+   |
+   = note: `-D clippy::doc-overindented-list-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_overindented_list_items)]`
+
+error: doc list item overindented
+  --> tests/ui/doc/doc_overindented_list_items.rs:7:5
+   |
+LL | ///      this is overindented line too
+   |     ^^^^^ help: try using `  ` (2 spaces)
+
+error: doc list item overindented
+  --> tests/ui/doc/doc_overindented_list_items.rs:14:7
+   |
+LL | ///        overindented line
+   |       ^^^^^ help: try using `  ` (2 spaces)
+
+error: doc list item overindented
+  --> tests/ui/doc/doc_overindented_list_items.rs:16:7
+   |
+LL | ///      this is overindented line too
+   |       ^^^ help: try using `  ` (2 spaces)
+
+error: doc list item overindented
+  --> tests/ui/doc/doc_overindented_list_items.rs:23:5
+   |
+LL | ///        overindented line
+   |     ^^^^^^^ help: try using `  ` (2 spaces)
+
+error: doc list item overindented
+  --> tests/ui/doc/doc_overindented_list_items.rs:25:5
+   |
+LL | ///      this is overindented line too
+   |     ^^^^^ help: try using `  ` (2 spaces)
+
+error: aborting due to 6 previous errors
+

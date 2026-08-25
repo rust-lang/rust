@@ -1,0 +1,17 @@
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/nested-closures-mutate-before-call.rs:14:5
+   |
+LL |     let outer = || {
+   |                 -- immutable borrow occurs here
+LL |         let inner = || move(x.clone());
+   |                             - first borrow occurs due to use of `x` in closure
+...
+LL |     x.push_str("more test");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+LL |
+LL |     outer();
+   |     ----- immutable borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0502`.

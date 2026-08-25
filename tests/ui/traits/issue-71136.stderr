@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `Foo: Clone` is not satisfied
+  --> $DIR/issue-71136.rs:5:5
+   |
+LL | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+LL | struct FooHolster {
+LL |     the_foos: Vec<Foo>,
+   |     ^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `Foo`
+   |
+   = note: required for `Vec<Foo>` to implement `Clone`
+help: consider annotating `Foo` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Foo(u8);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

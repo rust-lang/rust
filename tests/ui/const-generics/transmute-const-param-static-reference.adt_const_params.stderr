@@ -1,0 +1,13 @@
+error[E0658]: use of unstable library feature `unsized_const_params`
+  --> $DIR/transmute-const-param-static-reference.rs:9:14
+   |
+LL | struct Const<const P: &'static ()>;
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unsized_const_params)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: required for `&'static ()` to implement `ConstParamTy_`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

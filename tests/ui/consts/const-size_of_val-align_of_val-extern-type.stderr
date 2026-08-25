@@ -1,0 +1,39 @@
+error[E0277]: the size for values of type `Opaque` cannot be known
+  --> $DIR/const-size_of_val-align_of_val-extern-type.rs:10:43
+   |
+LL | const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque) };
+   |                               ----------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MetaSized` is not implemented for `Opaque`
+   |                               |
+   |                               required by a bound introduced by this call
+   |
+   = note: the trait bound `Opaque: MetaSized` is not satisfied
+note: required by a bound in `std::intrinsics::size_of_val`
+  --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
+help: consider borrowing here
+   |
+LL | const _SIZE: usize = unsafe { size_of_val(&(&4 as *const i32 as *const Opaque)) };
+   |                                           ++                                 +
+LL | const _SIZE: usize = unsafe { size_of_val(&mut (&4 as *const i32 as *const Opaque)) };
+   |                                           ++++++                                 +
+
+error[E0277]: the size for values of type `Opaque` cannot be known
+  --> $DIR/const-size_of_val-align_of_val-extern-type.rs:12:45
+   |
+LL | const _ALIGN: usize = unsafe { align_of_val(&4 as *const i32 as *const Opaque) };
+   |                                ------------ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MetaSized` is not implemented for `Opaque`
+   |                                |
+   |                                required by a bound introduced by this call
+   |
+   = note: the trait bound `Opaque: MetaSized` is not satisfied
+note: required by a bound in `std::intrinsics::align_of_val`
+  --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
+help: consider borrowing here
+   |
+LL | const _ALIGN: usize = unsafe { align_of_val(&(&4 as *const i32 as *const Opaque)) };
+   |                                             ++                                 +
+LL | const _ALIGN: usize = unsafe { align_of_val(&mut (&4 as *const i32 as *const Opaque)) };
+   |                                             ++++++                                 +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

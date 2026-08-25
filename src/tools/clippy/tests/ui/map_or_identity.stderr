@@ -1,0 +1,88 @@
+error: expression can be simplified using `Option::unwrap_or()`
+  --> tests/ui/map_or_identity.rs:6:9
+   |
+LL |         opt.map_or(default, |o| o)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::map-or-identity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_or_identity)]`
+help: consider using `unwrap_or`
+   |
+LL -         opt.map_or(default, |o| o)
+LL +         opt.unwrap_or(default)
+   |
+
+error: expression can be simplified using `Result::unwrap_or()`
+  --> tests/ui/map_or_identity.rs:11:9
+   |
+LL |         res.map_or(default, |o| o)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `unwrap_or`
+   |
+LL -         res.map_or(default, |o| o)
+LL +         res.unwrap_or(default)
+   |
+
+error: expression can be simplified using `Option::unwrap_or()`
+  --> tests/ui/map_or_identity.rs:16:9
+   |
+LL |         opt.map_or(default, |o| o)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `unwrap_or`
+   |
+LL -         opt.map_or(default, |o| o)
+LL +         opt.unwrap_or(default)
+   |
+
+error: expression can be simplified using `Option::unwrap_or()`
+  --> tests/ui/map_or_identity.rs:27:9
+   |
+LL |         opt.map_or(mac!(42), |x| x)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `unwrap_or`
+   |
+LL -         opt.map_or(mac!(42), |x| x)
+LL +         opt.unwrap_or(mac!(42))
+   |
+
+error: expression can be simplified using `Result::unwrap_or()`
+  --> tests/ui/map_or_identity.rs:32:9
+   |
+LL |         res.map_or(mac!(42), |x| x)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `unwrap_or`
+   |
+LL -         res.map_or(mac!(42), |x| x)
+LL +         res.unwrap_or(mac!(42))
+   |
+
+error: expression can be simplified using `Option::unwrap_or()`
+  --> tests/ui/map_or_identity.rs:37:9
+   |
+LL |         mac!(opt).map_or(42, |x| x)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `unwrap_or`
+   |
+LL -         mac!(opt).map_or(42, |x| x)
+LL +         mac!(opt).unwrap_or(42)
+   |
+
+error: expression can be simplified using `Result::unwrap_or()`
+  --> tests/ui/map_or_identity.rs:42:9
+   |
+LL |         mac!(res).map_or(42, |x| x)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `unwrap_or`
+   |
+LL -         mac!(res).map_or(42, |x| x)
+LL +         mac!(res).unwrap_or(42)
+   |
+
+error: aborting due to 7 previous errors
+

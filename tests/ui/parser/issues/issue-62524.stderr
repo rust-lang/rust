@@ -1,0 +1,10 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62524.rs:7:3
+   |
+LL | y![
+   |   - unclosed delimiter
+LL | Ϥ,
+   |   ^
+
+error: aborting due to 1 previous error
+

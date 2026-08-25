@@ -1,0 +1,21 @@
+error[E0425]: cannot find value `u` in this scope
+  --> $DIR/impl-future-escaping-bound-vars-ice.rs:11:24
+   |
+LL |     let _ = test_ref & u;
+   |                        ^ not found in this scope
+
+error[E0277]: `u32` is not a future
+  --> $DIR/impl-future-escaping-bound-vars-ice.rs:5:25
+   |
+LL | fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u32` is not a future
+LL |
+LL |     *x
+   |     -- return type was inferred to be `u32` here
+   |
+   = help: the trait `Future` is not implemented for `u32`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,14 @@
+error: reached the recursion limit while instantiating `rec::<&mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut &mut std::option::IntoIter<()>>`
+  --> $DIR/recursion-issue-117696-2.rs:11:9
+   |
+LL |         rec(&mut it);
+   |         ^^^^^^^^^^^^
+   |
+note: `rec` defined here
+  --> $DIR/recursion-issue-117696-2.rs:7:1
+   |
+LL | fn rec<T: Iterator>(mut it: T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

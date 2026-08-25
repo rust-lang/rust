@@ -1,0 +1,228 @@
+error: this creates a dangling pointer because temporary `CString` is dropped at end of statement
+  --> $DIR/types.rs:21:26
+   |
+LL |     declval::<CString>().as_ptr();
+   |     -------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `CString` is dropped at end of statement
+   |
+   = help: bind the `CString` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+note: the lint level is defined here
+  --> $DIR/types.rs:1:9
+   |
+LL | #![deny(dangling_pointers_from_temporaries)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this creates a dangling pointer because temporary `String` is dropped at end of statement
+  --> $DIR/types.rs:23:25
+   |
+LL |     declval::<String>().as_ptr();
+   |     ------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `String` is dropped at end of statement
+   |
+   = help: bind the `String` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Vec<u8>` is dropped at end of statement
+  --> $DIR/types.rs:25:26
+   |
+LL |     declval::<Vec<u8>>().as_ptr();
+   |     -------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Vec<u8>` is dropped at end of statement
+   |
+   = help: bind the `Vec<u8>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Box<CString>` is dropped at end of statement
+  --> $DIR/types.rs:27:31
+   |
+LL |     declval::<Box<CString>>().as_ptr();
+   |     ------------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Box<CString>` is dropped at end of statement
+   |
+   = help: bind the `Box<CString>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Box<[u8]>` is dropped at end of statement
+  --> $DIR/types.rs:29:28
+   |
+LL |     declval::<Box<[u8]>>().as_ptr();
+   |     ---------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Box<[u8]>` is dropped at end of statement
+   |
+   = help: bind the `Box<[u8]>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Box<str>` is dropped at end of statement
+  --> $DIR/types.rs:31:27
+   |
+LL |     declval::<Box<str>>().as_ptr();
+   |     --------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Box<str>` is dropped at end of statement
+   |
+   = help: bind the `Box<str>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Box<CStr>` is dropped at end of statement
+  --> $DIR/types.rs:33:28
+   |
+LL |     declval::<Box<CStr>>().as_ptr();
+   |     ---------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Box<CStr>` is dropped at end of statement
+   |
+   = help: bind the `Box<CStr>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `[u8; 10]` is dropped at end of statement
+  --> $DIR/types.rs:35:27
+   |
+LL |     declval::<[u8; 10]>().as_ptr();
+   |     --------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `[u8; 10]` is dropped at end of statement
+   |
+   = help: bind the `[u8; 10]` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Box<[u8; 10]>` is dropped at end of statement
+  --> $DIR/types.rs:37:32
+   |
+LL |     declval::<Box<[u8; 10]>>().as_ptr();
+   |     -------------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Box<[u8; 10]>` is dropped at end of statement
+   |
+   = help: bind the `Box<[u8; 10]>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Box<Vec<u8>>` is dropped at end of statement
+  --> $DIR/types.rs:39:31
+   |
+LL |     declval::<Box<Vec<u8>>>().as_ptr();
+   |     ------------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Box<Vec<u8>>` is dropped at end of statement
+   |
+   = help: bind the `Box<Vec<u8>>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Box<String>` is dropped at end of statement
+  --> $DIR/types.rs:41:30
+   |
+LL |     declval::<Box<String>>().as_ptr();
+   |     ------------------------ ^^^^^^ pointer created here
+   |     |
+   |     this `Box<String>` is dropped at end of statement
+   |
+   = help: bind the `Box<String>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Box<Box<Box<Box<[u8]>>>>` is dropped at end of statement
+  --> $DIR/types.rs:43:43
+   |
+LL |     declval::<Box<Box<Box<Box<[u8]>>>>>().as_ptr();
+   |     ------------------------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Box<Box<Box<Box<[u8]>>>>` is dropped at end of statement
+   |
+   = help: bind the `Box<Box<Box<Box<[u8]>>>>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Cell<u8>` is dropped at end of statement
+  --> $DIR/types.rs:45:27
+   |
+LL |     declval::<Cell<u8>>().as_ptr();
+   |     --------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Cell<u8>` is dropped at end of statement
+   |
+   = help: bind the `Cell<u8>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `MaybeUninit<u8>` is dropped at end of statement
+  --> $DIR/types.rs:47:34
+   |
+LL |     declval::<MaybeUninit<u8>>().as_ptr();
+   |     ---------------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `MaybeUninit<u8>` is dropped at end of statement
+   |
+   = help: bind the `MaybeUninit<u8>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `Vec<AsPtrFake>` is dropped at end of statement
+  --> $DIR/types.rs:49:33
+   |
+LL |     declval::<Vec<AsPtrFake>>().as_ptr();
+   |     --------------------------- ^^^^^^ pointer created here
+   |     |
+   |     this `Vec<AsPtrFake>` is dropped at end of statement
+   |
+   = help: bind the `Vec<AsPtrFake>` to a variable such that it outlives the pointer returned by `as_ptr`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `UnsafeCell<u8>` is dropped at end of statement
+  --> $DIR/types.rs:51:33
+   |
+LL |     declval::<UnsafeCell<u8>>().get();
+   |     --------------------------- ^^^ pointer created here
+   |     |
+   |     this `UnsafeCell<u8>` is dropped at end of statement
+   |
+   = help: bind the `UnsafeCell<u8>` to a variable such that it outlives the pointer returned by `get`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: this creates a dangling pointer because temporary `SyncUnsafeCell<u8>` is dropped at end of statement
+  --> $DIR/types.rs:53:37
+   |
+LL |     declval::<SyncUnsafeCell<u8>>().get();
+   |     ------------------------------- ^^^ pointer created here
+   |     |
+   |     this `SyncUnsafeCell<u8>` is dropped at end of statement
+   |
+   = help: bind the `SyncUnsafeCell<u8>` to a variable such that it outlives the pointer returned by `get`
+   = note: a dangling pointer is safe, but dereferencing one is undefined behavior
+   = note: returning a pointer to a local variable will always result in a dangling pointer
+   = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: aborting due to 17 previous errors
+

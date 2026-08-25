@@ -1,0 +1,15 @@
+error[E0005]: refutable pattern in closure argument
+  --> $DIR/refutable-pattern-in-fn-arg.rs:2:14
+   |
+LL |     let f = |3: isize| println!("hello");
+   |              ^ patterns `..=2_isize` and `4_isize..` not covered
+   |
+   = note: the matched value is of type `isize`
+help: alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
+   |
+LL |     let f = |_3: isize| println!("hello");
+   |              +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0005`.

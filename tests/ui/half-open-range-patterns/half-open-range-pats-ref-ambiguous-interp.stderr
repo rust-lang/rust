@@ -1,0 +1,96 @@
+error: the range pattern here has ambiguous interpretation
+  --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:6:10
+   |
+LL |         &0.. | _ => {}
+   |          ^^^
+   |
+help: add parentheses to clarify the precedence
+   |
+LL |         &(0..) | _ => {}
+   |          +   +
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:8:11
+   |
+LL |         &0..= | _ => {}
+   |           ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -         &0..= | _ => {}
+LL +         &0.. | _ => {}
+   |
+
+error: the range pattern here has ambiguous interpretation
+  --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:8:10
+   |
+LL |         &0..= | _ => {}
+   |          ^^^^
+   |
+help: add parentheses to clarify the precedence
+   |
+LL |         &(0..=) | _ => {}
+   |          +    +
+
+error[E0586]: inclusive range with no end
+  --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:11:11
+   |
+LL |         &0... | _ => {}
+   |           ^^^
+   |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+help: use `..` instead
+   |
+LL -         &0... | _ => {}
+LL +         &0.. | _ => {}
+   |
+
+error: the range pattern here has ambiguous interpretation
+  --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:16:10
+   |
+LL |         &..0 | _ => {}
+   |          ^^^
+   |
+help: add parentheses to clarify the precedence
+   |
+LL |         &(..0) | _ => {}
+   |          +   +
+
+error: the range pattern here has ambiguous interpretation
+  --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:18:10
+   |
+LL |         &..=0 | _ => {}
+   |          ^^^^
+   |
+help: add parentheses to clarify the precedence
+   |
+LL |         &(..=0) | _ => {}
+   |          +    +
+
+error: range-to patterns with `...` are not allowed
+  --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:20:10
+   |
+LL |         &...0 | _ => {}
+   |          ^^^
+   |
+help: use `..=` instead
+   |
+LL -         &...0 | _ => {}
+LL +         &..=0 | _ => {}
+   |
+
+error: the range pattern here has ambiguous interpretation
+  --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:20:10
+   |
+LL |         &...0 | _ => {}
+   |          ^^^^
+   |
+help: add parentheses to clarify the precedence
+   |
+LL |         &(...0) | _ => {}
+   |          +    +
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0586`.

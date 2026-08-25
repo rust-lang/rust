@@ -1,0 +1,72 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "B"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          COLON2 "::"
+          NAME_REF
+            IDENT "Foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              SELF_KW "self"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "D"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              SUPER_KW "super"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"

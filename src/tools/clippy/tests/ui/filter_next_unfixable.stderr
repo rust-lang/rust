@@ -1,0 +1,38 @@
+error: called `filter(..).next()` on an `Iterator`
+  --> tests/ui/filter_next_unfixable.rs:11:17
+   |
+LL |         let _ = iter.filter(|_| true).next();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you will also need to make `iter` mutable, because `find` takes `&mut self`
+  --> tests/ui/filter_next_unfixable.rs:10:13
+   |
+LL |         let iter = (0..10);
+   |             ^^^^
+   = note: `-D clippy::filter-next` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
+help: use `.find(..)` instead
+   |
+LL -         let _ = iter.filter(|_| true).next();
+LL +         let _ = iter.find(|_| true);
+   |
+
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`
+  --> tests/ui/filter_next_unfixable.rs:16:17
+   |
+LL |         let _ = iter.filter(|_| true).next_back();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you will also need to make `iter` mutable, because `rfind` takes `&mut self`
+  --> tests/ui/filter_next_unfixable.rs:15:13
+   |
+LL |         let iter = (0..10);
+   |             ^^^^
+help: use `.rfind(..)` instead
+   |
+LL -         let _ = iter.filter(|_| true).next_back();
+LL +         let _ = iter.rfind(|_| true);
+   |
+
+error: aborting due to 2 previous errors
+

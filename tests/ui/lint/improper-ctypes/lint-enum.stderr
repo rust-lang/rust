@@ -1,0 +1,211 @@
+error: `extern` block uses type `U`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:82:14
+   |
+LL |     fn uf(x: U);
+   |              ^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+note: the type is defined here
+  --> $DIR/lint-enum.rs:9:1
+   |
+LL | enum U {
+   | ^^^^^^
+note: the lint level is defined here
+  --> $DIR/lint-enum.rs:2:9
+   |
+LL | #![deny(improper_ctypes)]
+   |         ^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `B`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:83:14
+   |
+LL |     fn bf(x: B);
+   |              ^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+note: the type is defined here
+  --> $DIR/lint-enum.rs:12:1
+   |
+LL | enum B {
+   | ^^^^^^
+
+error: `extern` block uses type `T`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:84:14
+   |
+LL |     fn tf(x: T);
+   |              ^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+note: the type is defined here
+  --> $DIR/lint-enum.rs:16:1
+   |
+LL | enum T {
+   | ^^^^^^
+
+error: `extern` block uses type `Option<TransparentUnion<NonZero<u8>>>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:108:36
+   |
+LL |     fn option_transparent_union(x: Option<TransparentUnion<num::NonZero<u8>>>);
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Option<Rust<NonZero<u8>>>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:110:28
+   |
+LL |     fn option_repr_rust(x: Option<Rust<num::NonZero<u8>>>);
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Option<u8>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:111:21
+   |
+LL |     fn option_u8(x: Option<u8>);
+   |                     ^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<TransparentUnion<NonZero<u8>>, ()>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:131:38
+   |
+LL |     fn result_transparent_union_t(x: Result<TransparentUnion<num::NonZero<u8>>, ()>);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<Rust<NonZero<u8>>, ()>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:133:30
+   |
+LL |     fn result_repr_rust_t(x: Result<Rust<num::NonZero<u8>>, ()>);
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<NonZero<u8>, U>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:137:51
+   |
+LL |     fn result_1zst_exhaustive_single_variant_t(x: Result<num::NonZero<u8>, U>);
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<NonZero<u8>, B>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:139:53
+   |
+LL |     fn result_1zst_exhaustive_multiple_variant_t(x: Result<num::NonZero<u8>, B>);
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<NonZero<u8>, NonExhaustive>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:141:51
+   |
+LL |     fn result_1zst_non_exhaustive_no_variant_t(x: Result<num::NonZero<u8>, NonExhaustive>);
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<NonZero<u8>, Field>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:144:49
+   |
+LL |     fn result_1zst_exhaustive_single_field_t(x: Result<num::NonZero<u8>, Field>);
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<Result<(), NonZero<u8>>, ()>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:146:30
+   |
+LL |     fn result_cascading_t(x: Result<Result<(), num::NonZero<u8>>, ()>);
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<(), TransparentUnion<NonZero<u8>>>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:167:38
+   |
+LL |     fn result_transparent_union_e(x: Result<(), TransparentUnion<num::NonZero<u8>>>);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<(), Rust<NonZero<u8>>>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:169:30
+   |
+LL |     fn result_repr_rust_e(x: Result<(), Rust<num::NonZero<u8>>>);
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<U, NonZero<u8>>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:173:51
+   |
+LL |     fn result_1zst_exhaustive_single_variant_e(x: Result<U, num::NonZero<u8>>);
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<B, NonZero<u8>>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:175:53
+   |
+LL |     fn result_1zst_exhaustive_multiple_variant_e(x: Result<B, num::NonZero<u8>>);
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<NonExhaustive, NonZero<u8>>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:177:51
+   |
+LL |     fn result_1zst_non_exhaustive_no_variant_e(x: Result<NonExhaustive, num::NonZero<u8>>);
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<Field, NonZero<u8>>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:180:49
+   |
+LL |     fn result_1zst_exhaustive_single_field_e(x: Result<Field, num::NonZero<u8>>);
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<(), Result<(), NonZero<u8>>>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:182:30
+   |
+LL |     fn result_cascading_e(x: Result<(), Result<(), num::NonZero<u8>>>);
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: `extern` block uses type `Result<(), ()>`, which is not FFI-safe
+  --> $DIR/lint-enum.rs:184:27
+   |
+LL |     fn result_unit_t_e(x: Result<(), ()>);
+   |                           ^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
+error: aborting due to 21 previous errors
+

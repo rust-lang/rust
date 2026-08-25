@@ -1,0 +1,35 @@
+error: `...` is not supported for `extern "cmse-nonsecure-entry"` functions
+  --> $DIR/c-variadic.rs:15:60
+   |
+LL | unsafe extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
+   |        -----------------------------                       ^^^^^^
+   |        |
+   |        `extern "cmse-nonsecure-entry"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error: functions cannot be both `async` and C-variadic
+  --> $DIR/c-variadic.rs:20:1
+   |
+LL | async unsafe extern "cmse-nonsecure-entry" fn async_and_c_variadic(_: ...) {
+   | ^^^^^ `async` because of this                                      ^^^^^^ C-variadic because of this
+
+error: `...` is not supported for `extern "cmse-nonsecure-entry"` functions
+  --> $DIR/c-variadic.rs:20:68
+   |
+LL | async unsafe extern "cmse-nonsecure-entry" fn async_and_c_variadic(_: ...) {
+   |              -----------------------------                         ^^^^^^
+   |              |
+   |              `extern "cmse-nonsecure-entry"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/c-variadic.rs:26:69
+   |
+LL | async unsafe extern "cmse-nonsecure-entry" fn async_is_not_allowed() {
+   |                                                                     ^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0798`.

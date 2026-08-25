@@ -1,0 +1,28 @@
+error: the feature named `sse2` is not valid for this target
+  --> $DIR/cross-arch-feature-note.rs:11:18
+   |
+LL | #[target_feature(enable = "sse2")]
+   |                  ^^^^^^^^^^^^^^^ `sse2` is not valid for this target
+   |
+   = help: valid names are: `backchain`, `concurrent-functions`, `deflate-conversion`, `enhanced-sort`, and `guarded-storage` and 21 more
+   = note: `sse2` is present on the `x86` target architecture. Did you mean to compile for that target, or use conditional compilation?
+
+error: the feature named `aes` is not valid for this target
+  --> $DIR/cross-arch-feature-note.rs:19:18
+   |
+LL | #[target_feature(enable = "aes")]
+   |                  ^^^^^^^^^^^^^^ `aes` is not valid for this target
+   |
+   = help: valid names are: `vector`, `backchain`, `concurrent-functions`, `deflate-conversion`, and `enhanced-sort` and 21 more
+   = note: `aes` is present on the `aarch64`, `arm`, and `x86` target architectures. Did you mean to compile for one of those targets, or use conditional compilation?
+
+error: the feature named `nonesuch` is not valid for this target
+  --> $DIR/cross-arch-feature-note.rs:27:18
+   |
+LL | #[target_feature(enable = "nonesuch")]
+   |                  ^^^^^^^^^^^^^^^^^^^ `nonesuch` is not valid for this target
+   |
+   = help: valid names are: `backchain`, `concurrent-functions`, `deflate-conversion`, `enhanced-sort`, and `guarded-storage` and 21 more
+
+error: aborting due to 3 previous errors
+

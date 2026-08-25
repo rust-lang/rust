@@ -1,0 +1,22 @@
+
+running 1 test
+test remapped_path/remap-path-prefix-failed-doctest-output.rs - SomeStruct (line 11) ... FAILED
+
+failures:
+
+---- remapped_path/remap-path-prefix-failed-doctest-output.rs - SomeStruct (line 11) stdout ----
+Test executable failed (exit status: 101).
+
+stderr:
+
+thread 'main' ($TID) panicked at remapped_path/remap-path-prefix-failed-doctest-output.rs:3:1:
+oh no
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+
+failures:
+    remapped_path/remap-path-prefix-failed-doctest-output.rs - SomeStruct (line 11)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

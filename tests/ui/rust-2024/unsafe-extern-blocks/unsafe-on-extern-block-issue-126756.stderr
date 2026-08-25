@@ -1,0 +1,13 @@
+error: items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
+  --> $DIR/unsafe-on-extern-block-issue-126756.rs:6:5
+   |
+LL |     unsafe fn foo();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: add `unsafe` to this `extern` block
+   |
+LL | unsafe extern "C" {
+   | ++++++
+
+error: aborting due to 1 previous error
+

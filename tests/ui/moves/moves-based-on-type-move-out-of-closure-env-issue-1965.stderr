@@ -1,0 +1,25 @@
+error[E0507]: cannot move out of `i`, a captured variable in an `Fn` closure
+  --> $DIR/moves-based-on-type-move-out-of-closure-env-issue-1965.rs:9:28
+   |
+LL |     let i = Box::new(3);
+   |         -   ----------- move occurs because `i` has type `Box<usize>`, which does not implement the `Copy` trait
+   |         |
+   |         captured outer variable
+LL |     let _f = to_fn(|| test(i));
+   |                    --      ^ `i` is moved here
+   |                    |
+   |                    captured by this `Fn` closure
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/moves-based-on-type-move-out-of-closure-env-issue-1965.rs:3:33
+   |
+LL | fn to_fn<A:std::marker::Tuple,F:Fn<A>>(f: F) -> F { f }
+   |                                 ^^^^^
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _f = to_fn(|| test(i.clone()));
+   |                             ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

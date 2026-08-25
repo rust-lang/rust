@@ -1,0 +1,18 @@
+error: character literal may only contain one codepoint
+  --> $DIR/whitespace-character-literal.rs:5:30
+   |
+LL |     let _hair_space_around = ' x​';
+   |                              ^^^^
+   |
+note: there are non-printing characters, the full sequence is `\u{200a}x\u{200b}`
+  --> $DIR/whitespace-character-literal.rs:5:31
+   |
+LL |     let _hair_space_around = ' x​';
+   |                               ^^
+help: consider removing the non-printing characters
+   |
+LL |     let _hair_space_around = 'x​';
+   |                               ~
+
+error: aborting due to 1 previous error
+

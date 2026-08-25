@@ -1,0 +1,73 @@
+error[E0507]: cannot move out of a mutable reference
+  --> $DIR/issue-20801.rs:26:22
+   |
+LL |     let a = unsafe { *mut_ref() };
+   |                      ^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
+   |
+note: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/issue-20801.rs:3:1
+   |
+LL | struct T(u8);
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let a = unsafe { *mut_ref() };
+   |                      ---------- you could clone this value
+help: consider removing the dereference here
+   |
+LL -     let a = unsafe { *mut_ref() };
+LL +     let a = unsafe { mut_ref() };
+   |
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/issue-20801.rs:29:22
+   |
+LL |     let b = unsafe { *imm_ref() };
+   |                      ^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
+   |
+note: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/issue-20801.rs:3:1
+   |
+LL | struct T(u8);
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let b = unsafe { *imm_ref() };
+   |                      ---------- you could clone this value
+help: consider removing the dereference here
+   |
+LL -     let b = unsafe { *imm_ref() };
+LL +     let b = unsafe { imm_ref() };
+   |
+
+error[E0507]: cannot move out of a raw pointer
+  --> $DIR/issue-20801.rs:32:22
+   |
+LL |     let c = unsafe { *mut_ptr() };
+   |                      ^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
+   |
+note: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/issue-20801.rs:3:1
+   |
+LL | struct T(u8);
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let c = unsafe { *mut_ptr() };
+   |                      ---------- you could clone this value
+
+error[E0507]: cannot move out of a raw pointer
+  --> $DIR/issue-20801.rs:35:22
+   |
+LL |     let d = unsafe { *const_ptr() };
+   |                      ^^^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
+   |
+note: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/issue-20801.rs:3:1
+   |
+LL | struct T(u8);
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let d = unsafe { *const_ptr() };
+   |                      ------------ you could clone this value
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

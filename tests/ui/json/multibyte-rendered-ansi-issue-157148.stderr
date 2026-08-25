@@ -1,0 +1,18 @@
+{"$message_type":"diagnostic","message":"variable does not need to be mutable","code":{"code":"unused_mut","explanation":null},"level":"warning","spans":[{"file_name":"$DIR/multibyte-rendered-ansi-issue-157148.rs","byte_start":365,"byte_end":370,"line_start":12,"line_end":12,"column_start":9,"column_end":14,"is_primary":true,"text":[{"text":"    let mut x = 0; // 这是一段中文注释，用于在被下划线标注的行中加入多字节字符","highlight_start":9,"highlight_end":14}],"label":null,"suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"the lint level is defined here","code":null,"level":"note","spans":[{"file_name":"$DIR/multibyte-rendered-ansi-issue-157148.rs","byte_start":331,"byte_end":341,"line_start":9,"line_end":9,"column_start":9,"column_end":19,"is_primary":true,"text":[{"text":"#![warn(unused_mut)]","highlight_start":9,"highlight_end":19}],"label":null,"suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":null},{"message":"remove this `mut`","code":null,"level":"help","spans":[{"file_name":"$DIR/multibyte-rendered-ansi-issue-157148.rs","byte_start":365,"byte_end":369,"line_start":12,"line_end":12,"column_start":9,"column_end":13,"is_primary":true,"text":[{"text":"    let mut x = 0; // 这是一段中文注释，用于在被下划线标注的行中加入多字节字符","highlight_start":9,"highlight_end":13}],"label":null,"suggested_replacement":"","suggestion_applicability":"MachineApplicable","expansion":null}],"children":[],"rendered":null}],"rendered":"[ANSI]warning[ANSI]: variable does not need to be mutable[ANSI]
+  [ANSI]--> [ANSI]$DIR/multibyte-rendered-ansi-issue-157148.rs:12:9
+   [ANSI]|[ANSI]
+[ANSI]LL[ANSI] [ANSI]|[ANSI]     let mut x = 0; // 这是一段中文注释，用于在被下划线标注的行中加入多字节字符
+   [ANSI]|[ANSI]         [ANSI]----[ANSI]^[ANSI]
+   [ANSI]|[ANSI]         [ANSI]|[ANSI]
+   [ANSI]|[ANSI]         [ANSI]help: remove this `mut`[ANSI]
+   [ANSI]|[ANSI]
+[ANSI]note[ANSI]: the lint level is defined here
+  [ANSI]--> [ANSI]$DIR/multibyte-rendered-ansi-issue-157148.rs:9:9
+   [ANSI]|[ANSI]
+[ANSI]LL[ANSI] [ANSI]|[ANSI] #![warn(unused_mut)]
+   [ANSI]|[ANSI]         [ANSI]^^^^^^^^^^[ANSI]
+
+"}
+{"$message_type":"diagnostic","message":"1 warning emitted","code":null,"level":"warning","spans":[],"children":[],"rendered":"[ANSI]warning[ANSI]: 1 warning emitted[ANSI]
+
+"}

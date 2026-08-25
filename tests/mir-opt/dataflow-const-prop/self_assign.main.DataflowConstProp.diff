@@ -1,0 +1,46 @@
+- // MIR for `main` before DataflowConstProp
++ // MIR for `main` after DataflowConstProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: i32;
+      let mut _2: i32;
+      let mut _3: i32;
+      let mut _5: &i32;
+      let mut _6: i32;
+      scope 1 {
+          debug a => _1;
+          let mut _4: &i32;
+          scope 2 {
+              debug b => _4;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const 0_i32;
+          StorageLive(_2);
+          _2 = copy _1;
+          _1 = Add(move _2, const 1_i32);
+          StorageDead(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _1 = move _3;
+          StorageDead(_3);
+          StorageLive(_4);
+          _4 = &_1;
+          StorageLive(_5);
+          _5 = copy _4;
+          _4 = move _5;
+          StorageDead(_5);
+          StorageLive(_6);
+          _6 = copy (*_4);
+          _1 = move _6;
+          StorageDead(_6);
+          _0 = const ();
+          StorageDead(_4);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

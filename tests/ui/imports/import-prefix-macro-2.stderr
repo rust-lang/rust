@@ -1,0 +1,13 @@
+error: expected identifier, found metavariable
+  --> $DIR/import-prefix-macro-2.rs:11:26
+   |
+LL |     ($p: path) => (use ::$p {S, Z});
+   |                          ^^ expected identifier, found metavariable
+...
+LL | import! { a::b::c }
+   | ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `import` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

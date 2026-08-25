@@ -1,0 +1,146 @@
+// Because `cfg_select` requires rust verion 1.95 and we support older versions,
+// we use the following replacement until that is no longer true.
+//
+// Doesn't support the syntax that rustfmt changes to, hence not calling it just
+// `cfg_seelect`.
+//
+// FIXME(msrv)
+macro_rules! cfg_select_nofmt {
+    ({ $($tt:tt)* }) => {{
+        $crate::cfg_select_nofmt! { $($tt)* }
+    }};
+    (_ => { $($output:tt)* }) => {
+        $($output)*
+    };
+    (
+        $cfg:meta => $output:tt
+        $($( $rest:tt )+)?
+    ) => {
+        #[cfg($cfg)]
+        cfg_select_nofmt! { _ => $output }
+        $(
+            #[cfg(not($cfg))]
+            cfg_select_nofmt! { $($rest)+ }
+        )?
+    }
+}
+
+/// Choose between using an arch-specific implementation and the function body. Returns directly
+/// if the arch implementation is used, otherwise continue with the rest of the function.
+///
+/// Specify a `use_arch` meta field if an architecture-specific implementation is provided.
+/// These live in the `math::arch::some_target_arch` module.
+///
+/// Specify a `use_arch_required` meta field if something architecture-specific must be used
+/// regardless of feature configuration (`arch`).
+///
+/// The passed meta options do not need to account for the `arch` target feature.
+macro_rules! select_implementation {
+    (
+        name: $fn_name:ident,
+        // Configuration meta for when to use arch-specific implementation that requires hard
+        // float ops
+        $( use_arch: $use_arch:meta, )?
+        // Configuration meta for when to use the arch module regardless of whether softfloats
+        // have been requested.
+        $( use_arch_required: $use_arch_required:meta, )?
+        args: $($arg:ident),+ ,
+    ) => {
+        // FIXME: these use paths that are a pretty fragile (`super`). We should figure out
+        // something better w.r.t. how this is vendored into compiler-builtins.
+
+        // However, we do need a few things from `arch` that are used even with soft floats.
+        select_implementation! {
+            @cfg $($use_arch_required)?;
+            if true {
+                return  super::arch::$fn_name( $($arg),+ );
+            }
+        }
+
+        // By default, never use arch-specific implementations if `arch` is disabled or with Miri
+        // (no inline assembly support).
+        #[cfg(all(feature = "arch", not(miri)))]
+        select_implementation! {
+            @cfg $($use_arch)?;
+            // Wrap in `if true` to avoid unused warnings
+            if true {
+                return  super::arch::$fn_name( $($arg),+ );
+            }
+        }
+    };
+
+    // Coalesce helper to construct an expression only if a config is provided
+    (@cfg ; $ex:expr) => { };
+    (@cfg $provided:meta; $ex:expr) => { #[cfg($provided)] $ex };
+}
+
+/// Construct a 16-bit float from hex float representation (C-style), guaranteed to
+/// evaluate at compile time.
+#[cfg(f16_enabled)]
+#[cfg_attr(feature = "unstable-public-internals", macro_export)]
+#[allow(unused_macros)]
+macro_rules! hf16 {
+    ($s:literal) => {{
+        const X: f16 = $crate::support::hf16($s);
+        X
+    }};
+}
+
+/// Construct a 32-bit float from hex float representation (C-style), guaranteed to
+/// evaluate at compile time.
+#[allow(unused_macros)]
+#[cfg_attr(feature = "unstable-public-internals", macro_export)]
+macro_rules! hf32 {
+    ($s:literal) => {{
+        const X: f32 = $crate::support::hf32($s);
+        X
+    }};
+}
+
+/// Construct a 64-bit float from hex float representation (C-style), guaranteed to
+/// evaluate at compile time.
+#[allow(unused_macros)]
+#[cfg_attr(feature = "unstable-public-internals", macro_export)]
+macro_rules! hf64 {
+    ($s:literal) => {{
+        const X: f64 = $crate::support::hf64($s);
+        X
+    }};
+}
+
+/// Construct a 128-bit float from hex float representation (C-style), guaranteed to
+/// evaluate at compile time.
+#[cfg(f128_enabled)]
+#[allow(unused_macros)]
+#[cfg_attr(feature = "unstable-public-internals", macro_export)]
+macro_rules! hf128 {
+    ($s:literal) => {{
+        const X: f128 = $crate::support::hf128($s);
+        X
+    }};
+}
+
+/// Assert `F::biteq` with better messages.
+#[cfg(test)]
+macro_rules! assert_biteq {
+    ($left:expr, $right:expr, $($tt:tt)*) => {{
+        let l = $left;
+        let r = $right;
+        // hack to get width from a value
+        let bits = $crate::support::Int::leading_zeros(l.to_bits() - l.to_bits());
+        assert!(
+            $crate::support::Float::biteq(l, r),
+            "{}\nl: {l:?} ({lb:#0width$x} {lh})\nr: {r:?} ({rb:#0width$x} {rh})",
+            format_args!($($tt)*),
+            lb = l.to_bits(),
+            lh = $crate::support::Hex(l),
+            rb = r.to_bits(),
+            rh = $crate::support::Hex(r),
+            width = ((bits / 4) + 2) as usize,
+
+        );
+    }};
+    ($left:expr, $right:expr $(,)?) => {
+        assert_biteq!($left, $right, "")
+    };
+}

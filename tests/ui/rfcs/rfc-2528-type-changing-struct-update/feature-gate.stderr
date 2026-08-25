@@ -1,0 +1,23 @@
+error[E0658]: type changing struct updating is experimental
+  --> $DIR/feature-gate.rs:22:11
+   |
+LL |         ..m1
+   |           ^^
+   |
+   = note: see issue #86555 <https://github.com/rust-lang/rust/issues/86555> for more information
+   = help: add `#![feature(type_changing_struct_update)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate.rs:22:11
+   |
+LL |         ..m1
+   |           ^^ expected `Machine<State2>`, found `Machine<State1>`
+   |
+   = note: expected struct `Machine<State2>`
+              found struct `Machine<State1>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

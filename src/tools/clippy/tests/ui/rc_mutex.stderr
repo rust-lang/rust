@@ -1,0 +1,36 @@
+error: usage of `Rc<Mutex<_>>`
+  --> tests/ui/rc_mutex.rs:8:10
+   |
+LL |     foo: Rc<Mutex<i32>>,
+   |          ^^^^^^^^^^^^^^
+   |
+   = help: consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
+   = note: `-D clippy::rc-mutex` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::rc_mutex)]`
+
+error: usage of `Rc<Mutex<_>>`
+  --> tests/ui/rc_mutex.rs:27:18
+   |
+LL | fn test1<T>(foo: Rc<Mutex<T>>) {}
+   |                  ^^^^^^^^^^^^
+   |
+   = help: consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
+
+error: usage of `Rc<Mutex<_>>`
+  --> tests/ui/rc_mutex.rs:30:15
+   |
+LL | fn test2(foo: Rc<Mutex<MyEnum>>) {}
+   |               ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
+
+error: usage of `Rc<Mutex<_>>`
+  --> tests/ui/rc_mutex.rs:33:15
+   |
+LL | fn test3(foo: Rc<Mutex<SubT<usize>>>) {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
+
+error: aborting due to 4 previous errors
+

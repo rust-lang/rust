@@ -1,0 +1,63 @@
+- // MIR for `get_metadata` before LowerIntrinsics
++ // MIR for `get_metadata` after LowerIntrinsics
+  
+  fn get_metadata(_1: *const i32, _2: *const [u8], _3: *const dyn Debug) -> () {
+      debug a => _1;
+      debug b => _2;
+      debug c => _3;
+      let mut _0: ();
+      let _4: ();
+      let mut _5: *const i32;
+      let mut _7: *const [u8];
+      let mut _9: *const dyn std::fmt::Debug;
+      scope 1 {
+          debug _unit => _4;
+          let _6: usize;
+          scope 2 {
+              debug _usize => _6;
+              let _8: std::ptr::DynMetadata<dyn std::fmt::Debug>;
+              scope 3 {
+                  debug _vtable => _8;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+-         _4 = ptr_metadata::<i32, ()>(move _5) -> [return: bb1, unwind unreachable];
++         _4 = PtrMetadata(move _5);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _2;
+-         _6 = ptr_metadata::<[u8], usize>(move _7) -> [return: bb2, unwind unreachable];
++         _6 = PtrMetadata(move _7);
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _3;
+-         _8 = ptr_metadata::<dyn Debug, DynMetadata<dyn Debug>>(move _9) -> [return: bb3, unwind unreachable];
++         _8 = PtrMetadata(move _9);
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_9);
+          _0 = const ();
+          StorageDead(_8);
+          StorageDead(_6);
+          StorageDead(_4);
+          return;
+      }
+  }
+  

@@ -1,0 +1,18 @@
+warning[E0602]: unknown lint: `foo_qux`
+   |
+   = note: requested on the command line with `--force-warn foo_qux`
+   = note: `#[warn(unknown_lints)]` on by default
+
+warning[E0602]: unknown lint: `foo_qux`
+   |
+   = note: requested on the command line with `--force-warn foo_qux`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning[E0602]: unknown lint: `foo_qux`
+   |
+   = note: requested on the command line with `--force-warn foo_qux`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0602`.

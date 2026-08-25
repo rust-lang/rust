@@ -1,0 +1,204 @@
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:21:9
+   |
+LL |     x & 9_8765_4321;
+   |         ^^^^^^^^^^^
+   |
+   = help: use binary (0b11_1010_1101_1110_0110_1000_1011_0001), hex (0x3ade_68b1), or octal (0o7_267_464_261) notation for better readability
+   = note: `-D clippy::decimal-bitwise-operands` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::decimal_bitwise_operands)]`
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:22:9
+   |
+LL |     x & 100_i32;
+   |         ^^^^^^^
+   |
+   = help: use binary (0b110_0100_i32), hex (0x0064_i32), or octal (0o144_i32) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:23:23
+   |
+LL |     x | (/* comment */99);
+   |                       ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:24:10
+   |
+LL |     x ^ (99);
+   |          ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:25:10
+   |
+LL |     x &= 99;
+   |          ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:26:12
+   |
+LL |     x |= { 99 };
+   |            ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:27:14
+   |
+LL |     x |= { { 99 } };
+   |              ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:30:9
+   |
+LL |         99
+   |         ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:32:11
+   |
+LL |     x ^= (99);
+   |           ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:35:14
+   |
+LL |     0b1010 & 99;
+   |              ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:36:15
+   |
+LL |     0b1010 | (99);
+   |               ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:37:28
+   |
+LL |     0b1010 ^ (/* comment */99);
+   |                            ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:38:5
+   |
+LL |     99 & 0b1010;
+   |     ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:39:6
+   |
+LL |     (99) | 0b1010;
+   |      ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:40:19
+   |
+LL |     (/* comment */99) ^ 0b1010;
+   |                   ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:41:13
+   |
+LL |     0xD | { 99 };
+   |             ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:42:5
+   |
+LL |     88 & 99;
+   |     ^^
+   |
+   = help: use binary (0b101_1000), hex (0x0058), or octal (0o130) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:42:10
+   |
+LL |     88 & 99;
+   |          ^^
+   |
+   = help: use binary (0b110_0011), hex (0x0063), or octal (0o143) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:45:15
+   |
+LL |     37 & 38 & 39;
+   |               ^^
+   |
+   = help: use binary (0b10_0111), hex (0x0027), or octal (0o47) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:45:5
+   |
+LL |     37 & 38 & 39;
+   |     ^^
+   |
+   = help: use binary (0b10_0101), hex (0x0025), or octal (0o45) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:45:10
+   |
+LL |     37 & 38 & 39;
+   |          ^^
+   |
+   = help: use binary (0b10_0110), hex (0x0026), or octal (0o46) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:80:10
+   |
+LL |     x & !100;
+   |          ^^^
+   |
+   = help: use binary (0b110_0100), hex (0x0064), or octal (0o144) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:81:10
+   |
+LL |     x & -100;
+   |          ^^^
+   |
+   = help: use binary (0b110_0100), hex (0x0064), or octal (0o144) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:82:10
+   |
+LL |     x & (100 as i32);
+   |          ^^^
+   |
+   = help: use binary (0b110_0100), hex (0x0064), or octal (0o144) notation for better readability
+
+error: using decimal literal for bitwise operation
+  --> tests/ui/decimal_bitwise_operands.rs:83:10
+   |
+LL |     x & &100;
+   |          ^^^
+   |
+   = help: use binary (0b110_0100), hex (0x0064), or octal (0o144) notation for better readability
+
+error: aborting due to 25 previous errors
+

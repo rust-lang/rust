@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `match`
+  --> $DIR/keyword-match-as-identifier.rs:4:9
+   |
+LL |     let match = "foo";
+   |         ^^^^^ expected identifier, found keyword
+   |
+help: escape `match` to use it as an identifier
+   |
+LL |     let r#match = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

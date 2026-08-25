@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `a::b` (argument key must be an identifier)
+

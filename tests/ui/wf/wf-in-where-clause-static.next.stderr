@@ -1,0 +1,18 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/wf-in-where-clause-static.rs:18:18
+   |
+LL |     let s = foo(&String::from("blah blah blah"));
+   |             -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- temporary value is freed at the end of this statement
+   |             |    |
+   |             |    creates a temporary value which is freed while still in use
+   |             argument requires that borrow lasts for `'static`
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/wf-in-where-clause-static.rs:12:17
+   |
+LL |     &'static S: Static,
+   |                 ^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

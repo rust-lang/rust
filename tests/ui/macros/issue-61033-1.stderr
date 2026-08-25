@@ -1,0 +1,17 @@
+error: this must repeat at least once
+  --> $DIR/issue-61033-1.rs:4:34
+   |
+LL |     ($x:ident, $($tt:tt)*) => { $($tt)+ }
+   |                                  ^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-61033-1.rs:9:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

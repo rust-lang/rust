@@ -1,0 +1,3 @@
+break tests/ui/continue_hits_breakpoint.rs:6
+continue
+quit

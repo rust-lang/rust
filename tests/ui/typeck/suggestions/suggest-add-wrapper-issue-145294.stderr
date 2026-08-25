@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-add-wrapper-issue-145294.rs:24:32
+   |
+LL |     assert_eq!(Ok(Some("hi")), foo());
+   |                                ^^^^^ expected `Result<Option<&str>, _>`, found `Result<Option<String>, ()>`
+   |
+   = note: expected enum `Result<Option<&str>, _>`
+              found enum `Result<Option<String>, ()>`
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-add-wrapper-issue-145294.rs:25:30
+   |
+LL |     assert_eq!(Bar::A("hi"), bar());
+   |                              ^^^^^ expected `Bar<&str, _>`, found `Bar<String, ()>`
+   |
+   = note: expected enum `Bar<&str, _>`
+              found enum `Bar<String, ()>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

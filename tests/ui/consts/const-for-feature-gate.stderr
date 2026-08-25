@@ -1,0 +1,20 @@
+error[E0015]: cannot use `for` loop on `std::ops::Range<i32>` in constants
+  --> $DIR/const-for-feature-gate.rs:4:14
+   |
+LL |     for _ in 0..5 {}
+   |              ^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot use `for` loop on `std::ops::Range<i32>` in constants
+  --> $DIR/const-for-feature-gate.rs:4:14
+   |
+LL |     for _ in 0..5 {}
+   |              ^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

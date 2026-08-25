@@ -1,0 +1,30 @@
+error[E0425]: cannot find value `x2` in this scope
+  --> $DIR/suggest-let-and-typo-issue-132483.rs:3:5
+   |
+LL |     x2 = 1;
+   |     ^^
+   |
+help: a local variable with a similar name exists
+   |
+LL -     x2 = 1;
+LL +     x1 = 1;
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x2 = 1;
+   |     +++
+
+error[E0425]: cannot find value `other_val` in this scope
+  --> $DIR/suggest-let-and-typo-issue-132483.rs:5:5
+   |
+LL |     other_val = 2;
+   |     ^^^^^^^^^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let other_val = 2;
+   |     +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

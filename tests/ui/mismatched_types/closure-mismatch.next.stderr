@@ -1,0 +1,67 @@
+error[E0277]: the trait bound `{closure@$DIR/closure-mismatch.rs:12:9: 12:12}: Foo` is not satisfied
+  --> $DIR/closure-mismatch.rs:12:9
+   |
+LL |     baz(|_| ());
+   |     --- ^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `for<'a> FnOnce(&'a ())` is not implemented for closure `{closure@$DIR/closure-mismatch.rs:12:9: 12:12}`
+   = note: expected a closure with signature `for<'a> fn(&'a ())`
+              found a closure with signature `fn(&())`
+note: this is a known limitation of the trait solver that will be lifted in the future
+  --> $DIR/closure-mismatch.rs:12:9
+   |
+LL |     baz(|_| ());
+   |     ----^^^----
+   |     |   |
+   |     |   the trait solver is unable to infer the generic types that should be inferred from this argument
+   |     add turbofish arguments to this call to specify the types manually, even if it's redundant
+note: required for `{closure@$DIR/closure-mismatch.rs:12:9: 12:12}` to implement `Foo`
+  --> $DIR/closure-mismatch.rs:7:18
+   |
+LL | impl<T: Fn(&())> Foo for T {}
+   |         -------  ^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+note: required by a bound in `baz`
+  --> $DIR/closure-mismatch.rs:9:11
+   |
+LL | fn baz<T: Foo>(_: T) {}
+   |           ^^^ required by this bound in `baz`
+
+error[E0277]: the trait bound `{closure@$DIR/closure-mismatch.rs:16:9: 16:12}: Foo` is not satisfied
+  --> $DIR/closure-mismatch.rs:16:9
+   |
+LL |     baz(|x| ());
+   |     --- ^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `for<'a> FnOnce(&'a ())` is not implemented for closure `{closure@$DIR/closure-mismatch.rs:16:9: 16:12}`
+   = note: expected a closure with signature `for<'a> fn(&'a ())`
+              found a closure with signature `fn(&())`
+note: this is a known limitation of the trait solver that will be lifted in the future
+  --> $DIR/closure-mismatch.rs:16:9
+   |
+LL |     baz(|x| ());
+   |     ----^^^----
+   |     |   |
+   |     |   the trait solver is unable to infer the generic types that should be inferred from this argument
+   |     add turbofish arguments to this call to specify the types manually, even if it's redundant
+note: required for `{closure@$DIR/closure-mismatch.rs:16:9: 16:12}` to implement `Foo`
+  --> $DIR/closure-mismatch.rs:7:18
+   |
+LL | impl<T: Fn(&())> Foo for T {}
+   |         -------  ^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+note: required by a bound in `baz`
+  --> $DIR/closure-mismatch.rs:9:11
+   |
+LL | fn baz<T: Foo>(_: T) {}
+   |           ^^^ required by this bound in `baz`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

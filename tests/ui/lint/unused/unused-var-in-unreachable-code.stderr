@@ -1,0 +1,14 @@
+warning: unused variable: `e`
+  --> $DIR/unused-var-in-unreachable-code.rs:43:9
+   |
+LL |     let e = 5;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_e`
+   |
+note: the lint level is defined here
+  --> $DIR/unused-var-in-unreachable-code.rs:5:9
+   |
+LL | #![warn(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

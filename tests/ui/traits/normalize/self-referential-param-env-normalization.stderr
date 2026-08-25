@@ -1,0 +1,42 @@
+error[E0275]: overflow evaluating the requirement `Self: StreamingIterator<'_>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`self_referential_param_env_normalization`)
+note: required for `Self` to implement `StreamingIterator<'_>`
+  --> $DIR/self-referential-param-env-normalization.rs:8:16
+   |
+LL | impl<'b, I, T> StreamingIterator<'b> for I
+   |                ^^^^^^^^^^^^^^^^^^^^^     ^
+...
+LL |     T: FnMut(Self::Item, I::Item),
+   |        -------------------------- unsatisfied trait bound introduced here
+   = note: 127 redundant requirements hidden
+   = note: required for `Self` to implement `StreamingIterator<'a>`
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/self-referential-param-env-normalization.rs:8:13
+   |
+LL | impl<'b, I, T> StreamingIterator<'b> for I
+   |             ^ unconstrained type parameter
+
+error[E0275]: overflow evaluating the requirement `I: IntoIterator`
+  --> $DIR/self-referential-param-env-normalization.rs:14:17
+   |
+LL |     type Item = T;
+   |                 ^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`self_referential_param_env_normalization`)
+note: required for `I` to implement `StreamingIterator<'_>`
+  --> $DIR/self-referential-param-env-normalization.rs:8:16
+   |
+LL | impl<'b, I, T> StreamingIterator<'b> for I
+   |                ^^^^^^^^^^^^^^^^^^^^^     ^
+...
+LL |     T: FnMut(Self::Item, I::Item),
+   |        -------------------------- unsatisfied trait bound introduced here
+   = note: 127 redundant requirements hidden
+   = note: required for `I` to implement `StreamingIterator<'b>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0207, E0275.
+For more information about an error, try `rustc --explain E0207`.

@@ -1,0 +1,16 @@
+error: borrow expressions cannot be annotated with lifetimes
+  --> $DIR/regions-out-of-scope-slice.rs:7:13
+   |
+LL |         x = &'blk [1,2,3];
+   |             ^-----^^^^^^^
+   |              |
+   |              annotated with lifetime here
+   |
+help: remove the lifetime annotation
+   |
+LL -         x = &'blk [1,2,3];
+LL +         x = &[1,2,3];
+   |
+
+error: aborting due to 1 previous error
+

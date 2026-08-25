@@ -1,0 +1,81 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "F"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "Start"
+            PARENTHESIZED_ARG_LIST
+              COLON2 "::"
+              L_PAREN "("
+              TYPE_ARG
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Middle"
+              R_PAREN ")"
+            WHITESPACE " "
+            RET_TYPE
+              THIN_ARROW "->"
+              WHITESPACE " "
+              PAREN_TYPE
+                L_PAREN "("
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Middle"
+                R_PAREN ")"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "End"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "GenericArg"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "S"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Start"
+                      PARENTHESIZED_ARG_LIST
+                        L_PAREN "("
+                        TYPE_ARG
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "Middle"
+                        R_PAREN ")"
+                  COLON2 "::"
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "End"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

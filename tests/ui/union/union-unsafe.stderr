@@ -1,0 +1,115 @@
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:41:6
+   |
+LL |     *(u.p) = 13;
+   |      ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:55:26
+   |
+LL |     let _p = &raw const *(u.p);
+   |                          ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:67:6
+   |
+LL |     *u3.a = T::default();
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:73:6
+   |
+LL |     *u3.a = T::default();
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:81:13
+   |
+LL |     let a = u1.a;
+   |             ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:96:29
+   |
+LL |     let _a = &raw const vec[u4.a];
+   |                             ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:98:14
+   |
+LL |     let U1 { a } = u1;
+   |              ^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:99:20
+   |
+LL |     if let U1 { a: 12 } = u1 {}
+   |                    ^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:100:25
+   |
+LL |     if let Some(U1 { a: 13 }) = Some(u1) {}
+   |                         ^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:105:6
+   |
+LL |     *u2.a = String::from("new");
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:109:6
+   |
+LL |     *u3.a = 1;
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:113:6
+   |
+LL |     *u3.a = String::from("new");
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:122:28
+   |
+LL |     let _p = &raw const (**a.b).c;
+   |                            ^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:153:27
+   |
+LL |     let _p = &raw const (*a.b).c;
+   |                           ^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

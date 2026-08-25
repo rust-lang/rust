@@ -1,0 +1,42 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont-eval-const-block-during-promotion.rs:48:14
+   |
+LL |         x = &([0][const { 0 }] & 0);
+   |              ^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |              |
+   |              creates a temporary value which is freed while still in use
+...
+LL |         (x, y, z);
+   |          - borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont-eval-const-block-during-promotion.rs:50:14
+   |
+LL |         y = &(1 / const { 1 });
+   |              ^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |              |
+   |              creates a temporary value which is freed while still in use
+...
+LL |         (x, y, z);
+   |             - borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont-eval-const-block-during-promotion.rs:52:14
+   |
+LL |         z = &(const { 1 } / -1);
+   |              ^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |              |
+   |              creates a temporary value which is freed while still in use
+LL |
+LL |         (x, y, z);
+   |                - borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

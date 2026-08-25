@@ -1,0 +1,13 @@
+error: left-hand side of `@` must be a binding
+  --> $DIR/intersection-patterns-2.rs:13:9
+   |
+LL |         Some(x) @ Some(y) => {}
+   |         -------^^^-------
+   |         |         |
+   |         |         also a pattern
+   |         interpreted as a pattern, not a binding
+   |
+   = note: bindings are `x`, `mut x`, `ref x`, and `ref mut x`
+
+error: aborting due to 1 previous error
+

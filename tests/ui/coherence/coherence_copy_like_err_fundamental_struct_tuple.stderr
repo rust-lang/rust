@@ -1,0 +1,14 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `MyFundamentalStruct<(MyType,)>`
+  --> $DIR/coherence_copy_like_err_fundamental_struct_tuple.rs:16:1
+   |
+LL | impl<T: lib::MyCopy> MyTrait for T { }
+   | ---------------------------------- first implementation here
+...
+LL | impl MyTrait for lib::MyFundamentalStruct<(MyType,)> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `MyFundamentalStruct<(MyType,)>`
+   |
+   = note: upstream crates may add a new impl of trait `lib::MyCopy` for type `lib::MyFundamentalStruct<(MyType,)>` in future versions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

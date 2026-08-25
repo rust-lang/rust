@@ -1,0 +1,22 @@
+error[E0382]: use of moved value: `t`
+  --> $DIR/issue-25700.rs:13:10
+   |
+LL |     let t = S::<()>(None);
+   |         - move occurs because `t` has type `S<()>`, which does not implement the `Copy` trait
+LL |     drop(t);
+   |          - value moved here
+LL |     drop(t);
+   |          ^ value used here after move
+   |
+note: if `S<()>` implemented `Clone`, you could clone the value
+  --> $DIR/issue-25700.rs:1:1
+   |
+LL | struct S<T: 'static>(#[allow(dead_code)] Option<&'static T>);
+   | ^^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(t);
+   |          - you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,80 @@
+error[E0425]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:7:11
+   |
+LL | type A0 = dyn;
+   |           ^^^ not found in this scope
+
+error[E0425]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:13:11
+   |
+LL | type A2 = dyn<dyn, dyn>;
+   |           ^^^ not found in this scope
+
+error[E0425]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:13:15
+   |
+LL | type A2 = dyn<dyn, dyn>;
+   |               ^^^ not found in this scope
+
+error[E0425]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:13:20
+   |
+LL | type A2 = dyn<dyn, dyn>;
+   |                    ^^^ not found in this scope
+
+error[E0425]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:18:11
+   |
+LL | type A3 = dyn<<dyn as dyn>::dyn>;
+   |           ^^^ not found in this scope
+
+error[E0405]: cannot find trait `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:18:23
+   |
+LL | type A3 = dyn<<dyn as dyn>::dyn>;
+   |                       ^^^ not found in this scope
+
+error[E0425]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:18:16
+   |
+LL | type A3 = dyn<<dyn as dyn>::dyn>;
+   |                ^^^ not found in this scope
+
+error[E0405]: cannot find trait `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:24:11
+   |
+LL | type A4 = dyn + dyn;
+   |           ^^^ not found in this scope
+
+error[E0405]: cannot find trait `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:24:17
+   |
+LL | type A4 = dyn + dyn;
+   |                 ^^^ not found in this scope
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/dyn-2015-identifier.rs:24:11
+   |
+LL | type A4 = dyn + dyn;
+   |           ^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | type A4 = dyn dyn + dyn;
+   |           +++
+
+error[E0433]: cannot find module or crate `dyn` in this scope
+  --> $DIR/dyn-2015-identifier.rs:10:11
+   |
+LL | type A1 = dyn::dyn;
+   |           ^^^ use of unresolved module or unlinked crate `dyn`
+   |
+   = help: you might be missing a crate named `dyn`
+
+error: aborting due to 10 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0405, E0425, E0433.
+For more information about an error, try `rustc --explain E0405`.

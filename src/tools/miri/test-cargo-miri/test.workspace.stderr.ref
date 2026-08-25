@@ -1,0 +1,2 @@
+warning: unit tests of `proc-macro` crates are executed outside Miri
+warning: doc tests of `proc-macro` crates are not supported by Miri

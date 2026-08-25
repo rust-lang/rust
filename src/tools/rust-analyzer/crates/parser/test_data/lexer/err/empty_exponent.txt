@@ -1,0 +1,48 @@
+FLOAT_NUMBER "0e" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "0E" error: Missing digits after the exponent symbol
+WHITESPACE "\n\n"
+FLOAT_NUMBER "42e+" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "42e-" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "42E+" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "42E-" error: Missing digits after the exponent symbol
+WHITESPACE "\n\n"
+INT_NUMBER "42"
+DOT "."
+IDENT "e"
+PLUS "+"
+WHITESPACE "\n"
+INT_NUMBER "42"
+DOT "."
+IDENT "e"
+MINUS "-"
+WHITESPACE "\n"
+INT_NUMBER "42"
+DOT "."
+IDENT "E"
+PLUS "+"
+WHITESPACE "\n"
+INT_NUMBER "42"
+DOT "."
+IDENT "E"
+MINUS "-"
+WHITESPACE "\n\n"
+FLOAT_NUMBER "42.2e+" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "42.2e-" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "42.2E+" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "42.2E-" error: Missing digits after the exponent symbol
+WHITESPACE "\n\n"
+FLOAT_NUMBER "42.2e+f32" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "42.2e-f32" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "42.2E+f32" error: Missing digits after the exponent symbol
+WHITESPACE "\n"
+FLOAT_NUMBER "42.2E-f32" error: Missing digits after the exponent symbol
+WHITESPACE "\n"

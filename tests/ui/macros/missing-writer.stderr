@@ -1,0 +1,59 @@
+error: format argument must be a string literal
+  --> $DIR/missing-writer.rs:5:21
+   |
+LL |     write!("{}_{}", x, y);
+   |                     ^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     write!("{}_{}", "{} {}", x, y);
+   |                     ++++++++
+
+error: format argument must be a string literal
+  --> $DIR/missing-writer.rs:11:23
+   |
+LL |     writeln!("{}_{}", x, y);
+   |                       ^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     writeln!("{}_{}", "{} {}", x, y);
+   |                       ++++++++
+
+error[E0599]: cannot write into `&'static str`
+  --> $DIR/missing-writer.rs:5:12
+   |
+LL |     write!("{}_{}", x, y);
+   |     -------^^^^^^^------- method not found in `&'static str`
+   |
+note: must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
+  --> $DIR/missing-writer.rs:5:12
+   |
+LL |     write!("{}_{}", x, y);
+   |            ^^^^^^^
+help: a writer is needed before this format string
+  --> $DIR/missing-writer.rs:5:12
+   |
+LL |     write!("{}_{}", x, y);
+   |            ^
+
+error[E0599]: cannot write into `&'static str`
+  --> $DIR/missing-writer.rs:11:14
+   |
+LL |     writeln!("{}_{}", x, y);
+   |     ---------^^^^^^^------- method not found in `&'static str`
+   |
+note: must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
+  --> $DIR/missing-writer.rs:11:14
+   |
+LL |     writeln!("{}_{}", x, y);
+   |              ^^^^^^^
+help: a writer is needed before this format string
+  --> $DIR/missing-writer.rs:11:14
+   |
+LL |     writeln!("{}_{}", x, y);
+   |              ^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

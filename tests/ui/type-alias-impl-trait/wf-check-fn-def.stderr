@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `B: Bar` is not satisfied
+  --> $DIR/wf-check-fn-def.rs:14:5
+   |
+LL |     mop // NOTE: no function pointer, but function zst item
+   |     ^^^ the trait `Bar` is not implemented for `B`
+   |
+note: required by a bound in `mop`
+  --> $DIR/wf-check-fn-def.rs:11:15
+   |
+LL |     fn mop<B: Bar>(bar: B) {
+   |               ^^^ required by this bound in `mop`
+help: consider restricting type parameter `B` with trait `Bar`
+   |
+LL | type FooFn<B: Bar> = impl FnOnce(B);
+   |             +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

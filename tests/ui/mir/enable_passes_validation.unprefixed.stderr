@@ -1,0 +1,2 @@
+error: incorrect value `CheckAlignment` for unstable option `mir-enable-passes` - a comma-separated list of strings, with elements beginning with + or - was expected
+

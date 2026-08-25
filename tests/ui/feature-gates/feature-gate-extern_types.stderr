@@ -1,0 +1,13 @@
+error[E0658]: extern types are experimental
+  --> $DIR/feature-gate-extern_types.rs:2:5
+   |
+LL |     type T;
+   |     ^^^^^^^
+   |
+   = note: see issue #43467 <https://github.com/rust-lang/rust/issues/43467> for more information
+   = help: add `#![feature(extern_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

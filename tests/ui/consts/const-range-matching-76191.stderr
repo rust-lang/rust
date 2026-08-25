@@ -1,0 +1,51 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/const-range-matching-76191.rs:9:37
+   |
+LL | const RANGE2: RangeInclusive<i32> = panic!();
+   |                                     ^^^^^^^^ evaluation of `RANGE2` failed here
+
+error[E0308]: mismatched types
+  --> $DIR/const-range-matching-76191.rs:15:9
+   |
+LL | const RANGE: RangeInclusive<i32> = 0..=255;
+   | -------------------------------- constant defined here
+...
+LL |     match n {
+   |           - this expression has type `i32`
+LL |         RANGE => {}
+   |         ^^^^^
+   |         |
+   |         expected `i32`, found `RangeInclusive<i32>`
+   |         `RANGE` is interpreted as a constant, not a new binding
+   |
+   = note: expected type `i32`
+            found struct `std::ops::RangeInclusive<i32>`
+help: you may want to move the range into the match block
+   |
+LL -         RANGE => {}
+LL +         0..=255 => {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/const-range-matching-76191.rs:17:9
+   |
+LL | const RANGE2: RangeInclusive<i32> = panic!();
+   | --------------------------------- constant defined here
+...
+LL |     match n {
+   |           - this expression has type `i32`
+...
+LL |         RANGE2 => {}
+   |         ^^^^^^
+   |         |
+   |         expected `i32`, found `RangeInclusive<i32>`
+   |         `RANGE2` is interpreted as a constant, not a new binding
+   |
+   = note: expected type `i32`
+            found struct `std::ops::RangeInclusive<i32>`
+   = note: constants only support matching by type, if you meant to match against a range of values, consider using a range pattern like `min ..= max` in the match block
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0080, E0308.
+For more information about an error, try `rustc --explain E0080`.

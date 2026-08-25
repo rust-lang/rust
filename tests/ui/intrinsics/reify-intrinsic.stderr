@@ -1,0 +1,30 @@
+error[E0308]: cannot coerce intrinsics to function pointers
+  --> $DIR/reify-intrinsic.rs:6:40
+   |
+LL |     let _: unsafe fn(isize) -> usize = std::mem::transmute;
+   |            -------------------------   ^^^^^^^^^^^^^^^^^^^ cannot coerce intrinsics to function pointers
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `unsafe fn(isize) -> usize`
+                 found fn item `unsafe fn(_) -> _ {std::intrinsics::transmute::<_, _>}`
+
+error[E0606]: casting `unsafe fn(_) -> _ {std::intrinsics::transmute::<_, _>}` as `unsafe fn(isize) -> usize` is invalid
+  --> $DIR/reify-intrinsic.rs:11:13
+   |
+LL |     let _ = std::mem::transmute as unsafe fn(isize) -> usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: cannot coerce intrinsics to function pointers
+  --> $DIR/reify-intrinsic.rs:17:9
+   |
+LL |         std::intrinsics::floorf32,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot coerce intrinsics to function pointers
+   |
+   = note: expected fn pointer `unsafe fn(_) -> _`
+                 found fn item `fn(_) -> _ {floorf32}`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0606.
+For more information about an error, try `rustc --explain E0308`.

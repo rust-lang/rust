@@ -1,0 +1,30 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/fresh-lifetime-from-bare-trait-obj-114664.rs:5:24
+   |
+LL | fn ice() -> impl AsRef<Fn(&())> {
+   |                        ^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | fn ice() -> impl AsRef<dyn Fn(&())> {
+   |                        +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/fresh-lifetime-from-bare-trait-obj-114664.rs:5:24
+   |
+LL | fn ice() -> impl AsRef<Fn(&())> {
+   |                        ^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | fn ice() -> impl AsRef<dyn Fn(&())> {
+   |                        +++
+
+warning: 2 warnings emitted
+

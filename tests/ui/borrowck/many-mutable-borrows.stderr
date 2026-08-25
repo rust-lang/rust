@@ -1,0 +1,33 @@
+error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
+  --> $DIR/many-mutable-borrows.rs:2:9
+   |
+LL |     let v = Vec::new();
+   |         ^ not mutable
+LL |     v.push(0);
+   |     - cannot borrow as mutable
+LL |     v.push(0);
+   |     - cannot borrow as mutable
+LL |     v.push(0);
+   |     - cannot borrow as mutable
+LL |     v.push(0);
+   |     - cannot borrow as mutable
+LL |     v.push(0);
+   |     - cannot borrow as mutable
+LL |     v.push(0);
+   |     - cannot borrow as mutable
+LL |     v.push(0);
+   |     - cannot borrow as mutable
+LL |     v.push(0);
+   |     - cannot borrow as mutable
+LL |     v.push(0);
+   |     - cannot borrow as mutable
+   |
+   = note: ...and 5 other attempted mutable borrows
+help: consider changing this to be mutable
+   |
+LL |     let mut v = Vec::new();
+   |         +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

@@ -1,0 +1,74 @@
+error: this attribute can only be applied to a `use` item
+  --> $DIR/invalid-doc-attr.rs:8:7
+   |
+LL | #[doc(inline)]
+   |       ^^^^^^ only applicable on `use` items
+LL |
+LL | pub fn foo() {}
+   | ------------ not a `use` item
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
+note: the lint level is defined here
+  --> $DIR/invalid-doc-attr.rs:1:9
+   |
+LL | #![deny(invalid_doc_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: conflicting doc inlining attributes
+  --> $DIR/invalid-doc-attr.rs:18:7
+   |
+LL | #[doc(inline)]
+   |       ^^^^^^ this attribute...
+LL | #[doc(no_inline)]
+   |       ^^^^^^^^^ ...conflicts with this attribute
+   |
+   = help: remove one of the conflicting attributes
+
+error: this attribute can only be applied to an `extern crate` item
+  --> $DIR/invalid-doc-attr.rs:24:7
+   |
+LL | #[doc(masked)]
+   |       ^^^^^^ only applicable on `extern crate` items
+LL |
+LL | pub struct Masked;
+   | ----------------- not an `extern crate` item
+   |
+   = note: read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
+
+error: this attribute cannot be applied to an `extern crate self` item
+  --> $DIR/invalid-doc-attr.rs:28:7
+   |
+LL | #[doc(masked)]
+   |       ^^^^^^ not applicable on `extern crate self` items
+LL |
+LL | pub extern crate self as reexport;
+   | --------------------------------- `extern crate self` defined here
+
+error: this attribute can only be applied to an `extern crate` item
+  --> $DIR/invalid-doc-attr.rs:5:8
+   |
+LL | / #![deny(invalid_doc_attributes)]
+LL | | #![crate_type = "lib"]
+LL | | #![feature(doc_masked)]
+LL | |
+LL | | #![doc(masked)]
+   | |        ^^^^^^ only applicable on `extern crate` items
+...  |
+LL | | pub extern crate self as reexport;
+   | |__________________________________- not an `extern crate` item
+   |
+   = note: read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
+
+error: this attribute can only be applied to a `use` item
+  --> $DIR/invalid-doc-attr.rs:13:11
+   |
+LL |     #[doc(inline)]
+   |           ^^^^^^ only applicable on `use` items
+LL |
+LL |     pub fn baz() {}
+   |     ------------ not a `use` item
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information
+
+error: aborting due to 6 previous errors
+

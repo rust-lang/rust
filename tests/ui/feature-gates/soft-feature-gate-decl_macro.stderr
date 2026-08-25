@@ -1,0 +1,26 @@
+warning: `macro` is experimental
+  --> $DIR/soft-feature-gate-decl_macro.rs:8:1
+   |
+LL | macro make() {}
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #39412 <https://github.com/rust-lang/rust/issues/39412> for more information
+   = help: add `#![feature(decl_macro)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #154045 <https://github.com/rust-lang/rust/issues/154045>
+
+warning: `macro` is experimental
+  --> $DIR/soft-feature-gate-decl_macro.rs:13:1
+   |
+LL | macro create { () => {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #39412 <https://github.com/rust-lang/rust/issues/39412> for more information
+   = help: add `#![feature(decl_macro)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = warning: unstable syntax can change at any point in the future, causing a hard error!
+   = note: for more information, see issue #154045 <https://github.com/rust-lang/rust/issues/154045>
+
+warning: 2 warnings emitted
+

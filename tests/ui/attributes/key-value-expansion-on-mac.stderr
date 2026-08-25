@@ -1,0 +1,8 @@
+error: attribute value must be a literal
+  --> $DIR/key-value-expansion-on-mac.rs:11:17
+   |
+LL | #[rustc_dummy = stringify!(b)]
+   |                 ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

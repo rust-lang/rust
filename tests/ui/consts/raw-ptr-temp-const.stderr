@@ -1,0 +1,9 @@
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw-ptr-temp-const.rs:3:55
+   |
+LL | const CONST_RAW: *const Vec<i32> = std::ptr::addr_of!(Vec::new());
+   |                                                       ^^^^^^^^^^ temporary value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0745`.

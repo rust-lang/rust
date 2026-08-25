@@ -1,0 +1,36 @@
+error[E0025]: field `a` bound multiple times in the pattern
+  --> $DIR/struct-field-duplicate-binding-15260.rs:10:9
+   |
+LL |         a: _,
+   |         ---- first use of `a`
+LL |         a: _
+   |         ^^^^ multiple uses of `a` in pattern
+
+error[E0025]: field `a` bound multiple times in the pattern
+  --> $DIR/struct-field-duplicate-binding-15260.rs:16:9
+   |
+LL |         a,
+   |         - first use of `a`
+LL |         a: _
+   |         ^^^^ multiple uses of `a` in pattern
+
+error[E0025]: field `a` bound multiple times in the pattern
+  --> $DIR/struct-field-duplicate-binding-15260.rs:22:9
+   |
+LL |         a,
+   |         - first use of `a`
+LL |         a: _,
+   |         ^^^^ multiple uses of `a` in pattern
+
+error[E0025]: field `a` bound multiple times in the pattern
+  --> $DIR/struct-field-duplicate-binding-15260.rs:24:9
+   |
+LL |         a,
+   |         - first use of `a`
+...
+LL |         a: x
+   |         ^^^^ multiple uses of `a` in pattern
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0025`.

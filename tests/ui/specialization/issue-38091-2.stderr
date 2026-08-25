@@ -1,0 +1,14 @@
+error[E0275]: overflow evaluating the requirement `i32: Check`
+   |
+note: required for `i32` to implement `Iterate<'_>`
+  --> $DIR/issue-38091-2.rs:10:13
+   |
+LL | impl<'a, T> Iterate<'a> for T
+   |             ^^^^^^^^^^^     ^
+LL | where
+LL |     T: Check,
+   |        ----- unsatisfied trait bound introduced here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

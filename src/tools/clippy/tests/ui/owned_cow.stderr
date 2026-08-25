@@ -1,0 +1,41 @@
+error: needlessly owned Cow type
+  --> tests/ui/owned_cow.rs:8:25
+   |
+LL |     let x: Cow<'static, String> = Cow::Owned(String::from("Hi!"));
+   |                         ^^^^^^ help: use: `str`
+   |
+   = note: `-D clippy::owned-cow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::owned_cow)]`
+
+error: needlessly owned Cow type
+  --> tests/ui/owned_cow.rs:10:20
+   |
+LL |     let y: Cow<'_, Vec<u8>> = Cow::Owned(vec![]);
+   |                    ^^^^^^^ help: use: `[u8]`
+
+error: needlessly owned Cow type
+  --> tests/ui/owned_cow.rs:12:20
+   |
+LL |     let z: Cow<'_, Vec<_>> = Cow::Owned(vec![2_i32]);
+   |                    ^^^^^^ help: use: `[_]`
+
+error: needlessly owned Cow type
+  --> tests/ui/owned_cow.rs:14:20
+   |
+LL |     let o: Cow<'_, OsString> = Cow::Owned(OsString::new());
+   |                    ^^^^^^^^ help: use: `std::ffi::OsStr`
+
+error: needlessly owned Cow type
+  --> tests/ui/owned_cow.rs:16:20
+   |
+LL |     let c: Cow<'_, CString> = Cow::Owned(CString::new("").unwrap());
+   |                    ^^^^^^^ help: use: `std::ffi::CStr`
+
+error: needlessly owned Cow type
+  --> tests/ui/owned_cow.rs:18:20
+   |
+LL |     let p: Cow<'_, PathBuf> = Cow::Owned(PathBuf::new());
+   |                    ^^^^^^^ help: use: `std::path::Path`
+
+error: aborting due to 6 previous errors
+

@@ -1,0 +1,72 @@
+error[E0321]: traits with a default impl, like `Marker1`, cannot be implemented for trait object `(dyn Object + Marker2 + 'static)`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:15:1
+   |
+LL | impl !Marker1 for dyn Object + Marker2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a trait object implements `Marker1` if and only if `Marker1` is one of the trait object's trait bounds
+
+error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker1`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:15:1
+   |
+LL | impl !Marker1 for dyn Object + Marker2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker1`
+
+error[E0321]: traits with a default impl, like `Marker2`, cannot be implemented for trait object `(dyn Object + Marker2 + 'static)`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:18:1
+   |
+LL | impl !Marker2 for dyn Object + Marker2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a trait object implements `Marker2` if and only if `Marker2` is one of the trait object's trait bounds
+
+error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker2`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:18:1
+   |
+LL | impl !Marker2 for dyn Object + Marker2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker2`
+
+error[E0321]: traits with a default impl, like `Marker2`, cannot be implemented for trait object `(dyn Object + 'static)`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:26:1
+   |
+LL | impl !Marker2 for dyn Object {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a trait object implements `Marker2` if and only if `Marker2` is one of the trait object's trait bounds
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:22:1
+   |
+LL | impl !Send for dyn Marker2 {}
+   | ^^^^^^^^^^^^^^^-----------
+   |                |
+   |                `dyn Marker2` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `(dyn Object + 'static)`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:27:1
+   |
+LL | impl !Send for dyn Object {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
+
+error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `(dyn Object + Marker2 + 'static)`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:28:1
+   |
+LL | impl !Send for dyn Object + Marker2 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
+
+error[E0321]: traits with a default impl, like `Marker3`, cannot be implemented for generic type `T`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:32:1
+   |
+LL | impl<T: ?Sized> !Marker3 for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a trait object implements `Marker3` if and only if `Marker3` is one of the trait object's trait bounds
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0117, E0321, E0371.
+For more information about an error, try `rustc --explain E0117`.

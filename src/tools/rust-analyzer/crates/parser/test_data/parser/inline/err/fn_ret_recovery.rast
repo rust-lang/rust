@@ -1,0 +1,112 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "A"
+    ERROR
+      R_ANGLE ">"
+    ERROR
+      R_BRACK "]"
+    ERROR
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "x"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "A"
+    ERROR
+      R_ANGLE ">"
+    ERROR
+      R_BRACK "]"
+    ERROR
+      R_PAREN ")"
+    WHITESPACE " "
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE " "
+      WHERE_PRED
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Copy"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "x"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 13: expected a curly brace
+error 14: expected a curly brace
+error 15: expected a curly brace
+error 45: expected a curly brace
+error 46: expected a curly brace
+error 47: expected a curly brace

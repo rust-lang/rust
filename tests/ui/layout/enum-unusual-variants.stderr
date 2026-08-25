@@ -1,0 +1,44 @@
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u8, valid_range: 0..=127 })
+  --> $DIR/enum-unusual-variants.rs:8:1
+   |
+LL | enum With128Variants {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: 0..=127 })
+  --> $DIR/enum-unusual-variants.rs:21:1
+   |
+LL | enum With128VariantsI8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u8, valid_range: 0..=127 })
+  --> $DIR/enum-unusual-variants.rs:34:1
+   |
+LL | enum With128VariantsU8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u8, valid_range: 1..=129 })
+  --> $DIR/enum-unusual-variants.rs:50:1
+   |
+LL | enum Symmetric {
+   | ^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u8, valid_range: 1..=129 })
+  --> $DIR/enum-unusual-variants.rs:58:1
+   |
+LL | enum SymmetricU8 {
+   | ^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: 1..=129 })
+  --> $DIR/enum-unusual-variants.rs:68:1
+   |
+LL | enum SymmetricSigned {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: 1..=129 })
+  --> $DIR/enum-unusual-variants.rs:76:1
+   |
+LL | enum SymmetricSignedI8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

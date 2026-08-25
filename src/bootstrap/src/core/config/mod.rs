@@ -1,0 +1,417 @@
+//! Entry point for the `config` module.
+//!
+//! Additionally, this module defines common types, enums, and helper functions used across
+//! various TOML configuration sections in `bootstrap.toml`.
+//!
+//! It provides shared definitions for:
+//! - Data types deserialized from TOML.
+//! - Utility enums for specific configuration options.
+//! - Helper functions for managing configuration values.
+
+#[expect(clippy::module_inception)]
+mod config;
+pub mod flags;
+pub(crate) mod macros;
+pub mod target_selection;
+#[cfg(test)]
+mod tests;
+pub mod toml;
+
+use std::collections::HashSet;
+use std::fmt::Display;
+use std::path::PathBuf;
+use std::str::FromStr;
+
+use serde::de::Unexpected;
+use serde::{Deserialize, Deserializer};
+use serde_derive::Deserialize;
+pub use target_selection::TargetSelection;
+pub use toml::BUILDER_CONFIG_FILENAME;
+pub use toml::change_id::ChangeId;
+pub use toml::rust::BootstrapOverrideLld;
+pub use toml::target::Target;
+
+pub(crate) use self::config::*;
+use crate::utils::helpers;
+
+pub(crate) trait Merge {
+    fn merge(
+        &mut self,
+        parent_config_path: Option<PathBuf>,
+        included_extensions: &mut HashSet<PathBuf>,
+        other: Self,
+        replace: ReplaceOpt,
+    );
+}
+
+impl<T> Merge for Option<T> {
+    fn merge(
+        &mut self,
+        _parent_config_path: Option<PathBuf>,
+        _included_extensions: &mut HashSet<PathBuf>,
+        other: Self,
+        replace: ReplaceOpt,
+    ) {
+        match replace {
+            ReplaceOpt::IgnoreDuplicate => {
+                if self.is_none() {
+                    *self = other;
+                }
+            }
+            ReplaceOpt::Override => {
+                if other.is_some() {
+                    *self = other;
+                }
+            }
+            ReplaceOpt::ErrorOnDuplicate => {
+                if other.is_some() {
+                    if self.is_some() {
+                        if cfg!(test) {
+                            panic!("overriding existing option")
+                        } else {
+                            eprintln!("overriding existing option");
+                            helpers::exit_process(2);
+                        }
+                    } else {
+                        *self = other;
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub enum CompilerBuiltins {
+    #[default]
+    // Only build native rust intrinsic compiler functions.
+    BuildRustOnly,
+    // Some intrinsic functions have a C implementation provided by LLVM's
+    // compiler-rt builtins library. Build them from the LLVM source included
+    // with Rust.
+    BuildLLVMFuncs,
+    // Similar to BuildLLVMFuncs, but specify a path to an existing library
+    // containing LLVM's compiler-rt builtins instead of compiling them.
+    LinkLLVMBuiltinsLib(String),
+}
+
+impl<'de> Deserialize<'de> for CompilerBuiltins {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(match Deserialize::deserialize(deserializer)? {
+            StringOrBool::Bool(false) => Self::BuildRustOnly,
+            StringOrBool::Bool(true) => Self::BuildLLVMFuncs,
+            StringOrBool::String(path) => Self::LinkLLVMBuiltinsLib(path),
+        })
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Allocator {
+    System,
+    Jemalloc,
+}
+
+impl Allocator {
+    pub fn feature_name(self) -> Option<&'static str> {
+        match self {
+            Allocator::System => None,
+            Allocator::Jemalloc => Some("jemalloc"),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Allocator {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let name = String::deserialize(deserializer)?;
+        match name.as_str() {
+            "system" => Ok(Self::System),
+            "jemalloc" => Ok(Self::Jemalloc),
+            other => Err(serde::de::Error::unknown_variant(other, &["system", "jemalloc"])),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+pub enum DebuginfoLevel {
+    #[default]
+    None,
+    LineDirectivesOnly,
+    LineTablesOnly,
+    Limited,
+    Full,
+}
+
+// NOTE: can't derive(Deserialize) because the intermediate trip through toml::Value only
+// deserializes i64, and derive() only generates visit_u64
+impl<'de> Deserialize<'de> for DebuginfoLevel {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        Ok(match Deserialize::deserialize(deserializer)? {
+            StringOrInt::String(s) if s == "none" => DebuginfoLevel::None,
+            StringOrInt::Int(0) => DebuginfoLevel::None,
+            StringOrInt::String(s) if s == "line-directives-only" => {
+                DebuginfoLevel::LineDirectivesOnly
+            }
+            StringOrInt::String(s) if s == "line-tables-only" => DebuginfoLevel::LineTablesOnly,
+            StringOrInt::String(s) if s == "limited" => DebuginfoLevel::Limited,
+            StringOrInt::Int(1) => DebuginfoLevel::Limited,
+            StringOrInt::String(s) if s == "full" => DebuginfoLevel::Full,
+            StringOrInt::Int(2) => DebuginfoLevel::Full,
+            StringOrInt::Int(n) => {
+                let other = serde::de::Unexpected::Signed(n);
+                return Err(D::Error::invalid_value(other, &"expected 0, 1, or 2"));
+            }
+            StringOrInt::String(s) => {
+                let other = serde::de::Unexpected::Str(&s);
+                return Err(D::Error::invalid_value(
+                    other,
+                    &"expected none, line-tables-only, limited, or full",
+                ));
+            }
+        })
+    }
+}
+
+/// Suitable for passing to `-C debuginfo`
+impl Display for DebuginfoLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use DebuginfoLevel::*;
+        f.write_str(match self {
+            None => "0",
+            LineDirectivesOnly => "line-directives-only",
+            LineTablesOnly => "line-tables-only",
+            Limited => "1",
+            Full => "2",
+        })
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum StringOrBool {
+    String(String),
+    Bool(bool),
+}
+
+impl Default for StringOrBool {
+    fn default() -> StringOrBool {
+        StringOrBool::Bool(false)
+    }
+}
+
+impl StringOrBool {
+    pub fn is_string_or_true(&self) -> bool {
+        matches!(self, Self::String(_) | Self::Bool(true))
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum StringOrInt {
+    String(String),
+    Int(i64),
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum LlvmLibunwind {
+    #[default]
+    No,
+    InTree,
+    System,
+}
+
+impl FromStr for LlvmLibunwind {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "no" => Ok(Self::No),
+            "in-tree" => Ok(Self::InTree),
+            "system" => Ok(Self::System),
+            invalid => Err(format!("Invalid value '{invalid}' for rust.llvm-libunwind config.")),
+        }
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum SplitDebuginfo {
+    Packed,
+    Unpacked,
+    #[default]
+    Off,
+}
+
+impl std::str::FromStr for SplitDebuginfo {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "packed" => Ok(SplitDebuginfo::Packed),
+            "unpacked" => Ok(SplitDebuginfo::Unpacked),
+            "off" => Ok(SplitDebuginfo::Off),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum CompressDebuginfo {
+    Zlib,
+    #[default]
+    Off,
+}
+
+impl CompressDebuginfo {
+    fn default_on() -> Self {
+        Self::Zlib
+    }
+}
+
+impl std::str::FromStr for CompressDebuginfo {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "zlib" => Ok(CompressDebuginfo::Zlib),
+            "off" => Ok(CompressDebuginfo::Off),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for CompressDebuginfo {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        Ok(match Deserialize::deserialize(deserializer)? {
+            StringOrBool::Bool(value) => {
+                if value {
+                    CompressDebuginfo::default_on()
+                } else {
+                    CompressDebuginfo::Off
+                }
+            }
+            StringOrBool::String(value) => CompressDebuginfo::from_str(&value).map_err(|_| {
+                D::Error::invalid_value(Unexpected::Str(&value), &"`zlib` or `off`")
+            })?,
+        })
+    }
+}
+
+/// Describes how to handle conflicts in merging two `TomlConfig`
+#[derive(Copy, Clone, Debug)]
+pub enum ReplaceOpt {
+    /// Silently ignore a duplicated value
+    IgnoreDuplicate,
+    /// Override the current value, even if it's `Some`
+    Override,
+    /// Exit with an error on duplicate values
+    ErrorOnDuplicate,
+}
+
+#[derive(Clone, Default)]
+pub enum DryRun {
+    /// This isn't a dry run.
+    #[default]
+    Disabled,
+    /// This is a dry run enabled by bootstrap itself, so it can verify that no work is done.
+    SelfCheck,
+    /// This is a dry run enabled by the `--dry-run` flag.
+    UserSelected,
+}
+
+/// LTO mode used for compiling rustc itself.
+#[derive(Default, Clone, PartialEq, Debug)]
+pub enum RustcLto {
+    Off,
+    #[default]
+    ThinLocal,
+    Thin,
+    Fat,
+}
+
+impl std::str::FromStr for RustcLto {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "thin-local" => Ok(RustcLto::ThinLocal),
+            "thin" => Ok(RustcLto::Thin),
+            "fat" => Ok(RustcLto::Fat),
+            "off" => Ok(RustcLto::Off),
+            _ => Err(format!("Invalid value for rustc LTO: {s}")),
+        }
+    }
+}
+
+/// Determines how will GCC be provided.
+#[derive(Default, Debug, Clone, PartialEq)]
+pub enum GccCiMode {
+    /// Build GCC from the local `src/gcc` submodule.
+    BuildLocally,
+    /// Try to download GCC from CI.
+    /// If it is not available on CI, it will be built locally instead.
+    #[default]
+    DownloadFromCi,
+}
+
+/// Determines how will LLVM be provided.
+#[derive(Default, Debug, Clone, PartialEq)]
+pub enum LlvmCiMode {
+    /// Build LLVM from the local `src/llvm-project` submodule.
+    BuildLocally,
+    /// Try to download LLVM from CI.
+    /// If it is not available on CI, it will be built locally instead.
+    #[default]
+    DownloadFromCi,
+}
+
+impl LlvmCiMode {
+    pub fn download_from_ci(&self) -> bool {
+        match self {
+            LlvmCiMode::BuildLocally => false,
+            LlvmCiMode::DownloadFromCi => true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum DebuggerPath {
+    /// Use a debugger at this path
+    Path(PathBuf),
+    /// Try to automatically discover a version of a debugger from the environment
+    Discover,
+}
+
+impl<'d> Deserialize<'d> for DebuggerPath {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as serde::Deserializer<'d>>::Error>
+    where
+        D: serde::Deserializer<'d>,
+    {
+        let value = String::deserialize(deserializer)?;
+        match value.as_str() {
+            "discover" => Ok(Self::Discover),
+            path => Ok(Self::Path(PathBuf::from(path))),
+        }
+    }
+}
+
+pub fn threads_from_config(v: u32) -> u32 {
+    match v {
+        0 => std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32,
+        n => n,
+    }
+}

@@ -1,0 +1,13 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/issue-68987-unmatch-issue-3.rs:8:1
+   |
+LL |     while cnt < j {
+   |                   - the nearest open delimiter
+LL |         write!&mut res, " ");
+   |                            - missing open `(` for this delimiter
+LL |     }
+LL | }
+   | ^ unexpected closing delimiter
+
+error: aborting due to 1 previous error
+

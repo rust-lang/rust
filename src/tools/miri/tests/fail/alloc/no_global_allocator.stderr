@@ -1,0 +1,10 @@
+error: unsupported operation: can't call foreign function `__rust_alloc` on $OS
+  --> tests/fail/alloc/no_global_allocator.rs:LL:CC
+   |
+LL |         __rust_alloc(1, 1);
+   |         ^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
+   |
+   = help: this means the program tried to do something Miri does not support; it does not indicate a bug in the program
+
+error: aborting due to 1 previous error
+

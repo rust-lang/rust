@@ -1,0 +1,9 @@
+error[E0522]: definition of an unknown lang item: `foo`
+  --> $DIR/lang-item-unknown-definition-error.rs:6:1
+   |
+LL | #[lang = "foo"]
+   | ^^^^^^^^^^^^^^^ definition of unknown lang item `foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0522`.

@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/liveness-issue-2163.rs:5:30
+   |
+LL |       a.iter().all(|_| -> bool {
+   |  ______________________________^
+LL | |
+LL | |     });
+   | |_____^ expected `bool`, found `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

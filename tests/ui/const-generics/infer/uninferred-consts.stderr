@@ -1,0 +1,35 @@
+error[E0284]: type annotations needed
+  --> $DIR/uninferred-consts.rs:9:9
+   |
+LL |     Foo.foo();
+   |         ^^^ cannot infer the value of the const parameter `A` declared on the method `foo`
+   |
+note: required by a const generic parameter in `Foo::foo`
+  --> $DIR/uninferred-consts.rs:6:12
+   |
+LL |     fn foo<const A: usize, const B: usize>(self) {}
+   |            ^^^^^^^^^^^^^^ required by this const generic parameter in `Foo::foo`
+help: consider specifying the generic arguments
+   |
+LL |     Foo.foo::<A, B>();
+   |            ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/uninferred-consts.rs:9:9
+   |
+LL |     Foo.foo();
+   |         ^^^ cannot infer the value of the const parameter `B` declared on the method `foo`
+   |
+note: required by a const generic parameter in `Foo::foo`
+  --> $DIR/uninferred-consts.rs:6:28
+   |
+LL |     fn foo<const A: usize, const B: usize>(self) {}
+   |                            ^^^^^^^^^^^^^^ required by this const generic parameter in `Foo::foo`
+help: consider specifying the generic arguments
+   |
+LL |     Foo.foo::<A, B>();
+   |            ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

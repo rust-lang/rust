@@ -1,0 +1,13 @@
+error[E0658]: `async` blocks are not allowed in constants
+  --> $DIR/const-suggest-feature.rs:5:13
+   |
+LL |     let x = async { 13 };
+   |             ^^^^^^^^^^^^
+   |
+   = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
+   = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

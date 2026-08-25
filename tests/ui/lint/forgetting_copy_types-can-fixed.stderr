@@ -1,0 +1,49 @@
+error: calls to `std::mem::forget` with a value that implements `Copy` does nothing
+  --> $DIR/forgetting_copy_types-can-fixed.rs:19:5
+   |
+LL |     forget(s1);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `SomeStruct`
+   |
+note: the lint level is defined here
+  --> $DIR/forgetting_copy_types-can-fixed.rs:4:9
+   |
+LL | #![deny(forgetting_copy_types)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s1);
+LL +     let _ = s1;
+   |
+
+error: calls to `std::mem::forget` with a value that implements `Copy` does nothing
+  --> $DIR/forgetting_copy_types-can-fixed.rs:20:5
+   |
+LL |     forget(s2);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s2);
+LL +     let _ = s2;
+   |
+
+error: calls to `std::mem::forget` with a value that implements `Copy` does nothing
+  --> $DIR/forgetting_copy_types-can-fixed.rs:21:5
+   |
+LL |     forget(s3);
+   |     ^^^^^^^--^
+   |            |
+   |            argument has type `SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     forget(s3);
+LL +     let _ = s3;
+   |
+
+error: aborting due to 3 previous errors
+

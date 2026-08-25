@@ -1,0 +1,8 @@
+error: the SIMD type `Simd<65536>` has more elements than the limit 32768
+  --> $DIR/type-generic-monomorphisation-oversized.rs:9:9
+   |
+LL |     let _x = Simd::<65536>([0.; 65536]);
+   |         ^^
+
+error: aborting due to 1 previous error
+

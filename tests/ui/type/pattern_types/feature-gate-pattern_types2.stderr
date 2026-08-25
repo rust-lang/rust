@@ -1,0 +1,8 @@
+error: pattern not supported in pattern types
+  --> $DIR/feature-gate-pattern_types2.rs:11:44
+   |
+LL | type Always = pattern_type!(Option<u32> is Some(_));
+   |                                            ^^^^^^^
+
+error: aborting due to 1 previous error
+

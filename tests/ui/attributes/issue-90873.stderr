@@ -1,0 +1,44 @@
+error: attribute value must be a literal
+  --> $DIR/issue-90873.rs:1:6
+   |
+LL | #![u=||{static d=||1;}]
+   |      ^^^^^^^^^^^^^^^^^
+
+error: attribute value must be a literal
+  --> $DIR/issue-90873.rs:6:6
+   |
+LL | #![a={impl std::ops::Neg for i8 {}}]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `u` in this scope
+  --> $DIR/issue-90873.rs:1:4
+   |
+LL | #![u=||{static d=||1;}]
+   |    ^
+
+error: cannot find attribute `a` in this scope
+  --> $DIR/issue-90873.rs:6:4
+   |
+LL | #![a={impl std::ops::Neg for i8 {}}]
+   |    ^
+
+error[E0601]: `main` function not found in crate `issue_90873`
+  --> $DIR/issue-90873.rs:6:37
+   |
+LL | #![a={impl std::ops::Neg for i8 {}}]
+   |                                     ^ consider adding a `main` function to `$DIR/issue-90873.rs`
+
+error: missing type for `static` item
+  --> $DIR/issue-90873.rs:1:17
+   |
+LL | #![u=||{static d=||1;}]
+   |                 ^
+   |
+help: provide a type for the item
+   |
+LL | #![u=||{static d: <type>=||1;}]
+   |                 ++++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

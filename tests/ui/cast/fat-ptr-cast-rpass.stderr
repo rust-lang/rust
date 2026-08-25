@@ -1,0 +1,12 @@
+warning: method `foo` is never used
+  --> $DIR/fat-ptr-cast-rpass.rs:6:8
+   |
+LL | trait Foo {
+   |       --- method in this trait
+LL |     fn foo(&self) {}
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,58 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/not-on-bare-trait-2021.rs:8:12
+   |
+LL | fn foo(_x: Foo + Send) {
+   |            ^^^^^^^^^^
+   |
+help: use a new generic type parameter, constrained by `Foo + Send`
+   |
+LL - fn foo(_x: Foo + Send) {
+LL + fn foo<T: Foo + Send>(_x: T) {
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | fn foo(_x: impl Foo + Send) {
+   |            ++++
+help: alternatively, use a trait object to accept any type that implements `Foo + Send`, accessing its methods at runtime using dynamic dispatch
+   |
+LL | fn foo(_x: &(dyn Foo + Send)) {
+   |            +++++           +
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/not-on-bare-trait-2021.rs:11:11
+   |
+LL | fn bar(x: Foo) -> Foo {
+   |           ^^^
+   |
+help: use a new generic type parameter, constrained by `Foo`
+   |
+LL - fn bar(x: Foo) -> Foo {
+LL + fn bar<T: Foo>(x: T) -> Foo {
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | fn bar(x: impl Foo) -> Foo {
+   |           ++++
+help: alternatively, use a trait object to accept any type that implements `Foo`, accessing its methods at runtime using dynamic dispatch
+   |
+LL | fn bar(x: &dyn Foo) -> Foo {
+   |           ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/not-on-bare-trait-2021.rs:11:19
+   |
+LL | fn bar(x: Foo) -> Foo {
+   |                   ^^^
+   |
+help: use `impl Foo` to return an opaque type, as long as you return a single underlying type
+   |
+LL | fn bar(x: Foo) -> impl Foo {
+   |                   ++++
+help: alternatively, you can return an owned trait object
+   |
+LL | fn bar(x: Foo) -> Box<dyn Foo> {
+   |                   +++++++    +
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

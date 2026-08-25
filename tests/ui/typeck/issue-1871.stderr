@@ -1,0 +1,9 @@
+error[E0599]: no method named `honk` found for type `{integer}` in the current scope
+  --> $DIR/issue-1871.rs:7:9
+   |
+LL |       f.honk()
+   |         ^^^^ method not found in `{integer}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

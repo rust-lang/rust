@@ -1,0 +1,20 @@
+# not present in ICX
+_mm_cvtsd_si64x
+_mm_cvtsi128_si64x
+_mm_cvtsi64x_sd
+_mm_cvtsi64x_si128
+_mm_cvttsd_si64x
+
+# ICX bug
+_mm512_mask_reduce_max_pd
+_mm512_mask_reduce_max_ps
+_mm512_mask_reduce_min_pd
+_mm512_mask_reduce_min_ps
+
+# Rounding errors in release mode
+_mm_maskz_fmadd_sd
+_mm_maskz_fmadd_ss
+_mm_maskz_fmsub_sd
+_mm_maskz_fmsub_ss
+_mm_maskz_fnmadd_sd
+_mm_maskz_fnmadd_ss

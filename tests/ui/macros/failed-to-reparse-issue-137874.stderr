@@ -1,0 +1,10 @@
+error: invalid base prefix for number literal
+  --> $DIR/failed-to-reparse-issue-137874.rs:11:8
+   |
+LL |     m!(0X0);
+   |        ^^^ help: try making the prefix lowercase (notice the capitalization): `0x0`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: aborting due to 1 previous error
+

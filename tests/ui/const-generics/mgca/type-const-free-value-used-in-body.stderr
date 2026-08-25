@@ -1,0 +1,14 @@
+error: the constant `1` is not of type `usize`
+  --> $DIR/type-const-free-value-used-in-body.rs:7:1
+   |
+LL | type const CONST: usize = 1u32;
+   | ^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `u32`
+
+error: the constant `1` is not of type `bool`
+  --> $DIR/type-const-free-value-used-in-body.rs:10:1
+   |
+LL | type const S: bool = 1i32;
+   | ^^^^^^^^^^^^^^^^^^ expected `bool`, found `i32`
+
+error: aborting due to 2 previous errors
+

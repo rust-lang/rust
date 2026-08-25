@@ -1,0 +1,84 @@
+- // MIR for `main` before DataflowConstProp
++ // MIR for `main` after DataflowConstProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: i32;
+      let mut _4: i32;
+      let mut _5: i32;
+      let mut _6: (i32, bool);
+      let mut _9: i32;
+      let mut _10: (i32, bool);
+      scope 1 {
+          debug a => _1;
+          let _2: i32;
+          scope 2 {
+              debug b => _2;
+              let _3: i32;
+              scope 3 {
+                  debug c => _3;
+                  let _7: i32;
+                  scope 4 {
+                      debug d => _7;
+                      let _8: i32;
+                      scope 5 {
+                          debug e => _8;
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const 1_i32;
+          StorageLive(_2);
+          _2 = const 2_i32;
+          StorageLive(_3);
+          StorageLive(_4);
+-         _4 = copy _1;
++         _4 = const 1_i32;
+          StorageLive(_5);
+-         _5 = copy _2;
+-         _6 = AddWithOverflow(copy _4, copy _5);
+-         assert(!move (_6.1: bool), "attempt to compute `{} + {}`, which would overflow", move _4, move _5) -> [success: bb1, unwind unreachable];
++         _5 = const 2_i32;
++         _6 = const (3_i32, false);
++         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 1_i32, const 2_i32) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _3 = move (_6.0: i32);
++         _3 = const 3_i32;
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_7);
+          _7 = const core::num::<impl i32>::MAX;
+          StorageLive(_8);
+          StorageLive(_9);
+-         _9 = copy _7;
+-         _10 = AddWithOverflow(copy _9, const 1_i32);
+-         assert(!move (_10.1: bool), "attempt to compute `{} + {}`, which would overflow", move _9, const 1_i32) -> [success: bb2, unwind unreachable];
++         _9 = const i32::MAX;
++         _10 = const (i32::MIN, true);
++         assert(!const true, "attempt to compute `{} + {}`, which would overflow", const i32::MAX, const 1_i32) -> [success: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+-         _8 = move (_10.0: i32);
++         _8 = const i32::MIN;
+          StorageDead(_9);
+          _0 = const ();
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
++ 
++ ALLOC0 (size: 8, align: 4) { .. }
++ 
++ ALLOC1 (size: 8, align: 4) { .. }
+  

@@ -1,0 +1,59 @@
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/loop-if-else-break-issue-123261.rs:10:13
+   |
+LL |             break 1;
+   |             ^^^^^^^ cannot `break` outside of a loop or labeled block
+LL |         } else {
+LL |             break 2;
+   |             ^^^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL ~     let x = 'block: {
+LL |         if n == 0 {
+LL ~             break 'block 1;
+LL |         } else {
+LL ~             break 'block 2;
+   |
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/loop-if-else-break-issue-123261.rs:18:13
+   |
+LL |             break 1;
+   |             ^^^^^^^ cannot `break` outside of a loop or labeled block
+LL |         }
+LL |         break 0;
+   |         ^^^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL ~     let y = 'block: {
+LL |         if n == 0 {
+LL ~             break 'block 1;
+LL |         }
+LL ~         break 'block 0;
+   |
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/loop-if-else-break-issue-123261.rs:26:17
+   |
+LL |                 break 3;
+   |                 ^^^^^^^ cannot `break` outside of a loop or labeled block
+...
+LL |         break 1;
+   |         ^^^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL ~     let z = 'block: {
+LL |         if n == 0 {
+LL |             if m > 1 {
+LL ~                 break 'block 3;
+LL |             }
+LL |         }
+LL ~         break 'block 1;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0268`.

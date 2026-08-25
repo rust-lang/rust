@@ -1,0 +1,17 @@
+error: lifetime may not live long enough
+  --> $DIR/match-ref-mut-invariance.rs:10:9
+   |
+LL | impl<'b> S<'b> {
+   |      -- lifetime `'b` defined here
+LL |     fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
+   |            -- lifetime `'a` defined here
+LL |         match self.0 { ref mut x => x }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable reference to `&i32`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

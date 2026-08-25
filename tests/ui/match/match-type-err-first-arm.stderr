@@ -1,0 +1,62 @@
+error[E0308]: mismatched types
+  --> $DIR/match-type-err-first-arm.rs:8:15
+   |
+LL | fn test_func1(n: i32) -> i32 {
+   |                          --- expected `i32` because of return type
+LL |     match n {
+LL |         12 => 'b',
+   |               ^^^ expected `i32`, found `char`
+   |
+help: you can cast a `char` to an `i32`, since a `char` always occupies 4 bytes
+   |
+LL |         12 => 'b' as i32,
+   |                   ++++++
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-type-err-first-arm.rs:18:14
+   |
+LL |       let x = match n {
+   |  _____________-
+LL | |         12 => 'b',
+   | |               --- this is found to be of type `char`
+LL | |         _ => 42,
+   | |              ^^ expected `char`, found integer
+...  |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-type-err-first-arm.rs:34:14
+   |
+LL |       let x = match n {
+   |  _____________-
+LL | |         1 => 'b',
+LL | |         2 => 'b',
+LL | |         3 => 'b',
+...  |
+LL | |         6 => 'b',
+   | |              --- this and all prior arms are found to be of type `char`
+LL | |
+LL | |         _ => 42,
+   | |              ^^ expected `char`, found integer
+...  |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-type-err-first-arm.rs:46:17
+   |
+LL | /     match Some(0u32) {
+LL | |         Some(x) => {
+LL | |             x
+   | |             - this is found to be of type `u32`
+LL | |         },
+LL | |         None => {}
+   | |                 ^^ expected `u32`, found `()`
+...  |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

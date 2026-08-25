@@ -1,0 +1,29 @@
+//@ run-rustfix
+
+// These are forbidden occurrences of label-break-value
+
+#[allow(unused_unsafe)]
+fn labeled_unsafe() {
+    unsafe {} //~ ERROR block label not supported here
+}
+
+fn labeled_if() {
+    if true {} //~ ERROR block label not supported here
+}
+
+fn labeled_else() {
+    if true {} else {} //~ ERROR block label not supported here
+}
+
+fn labeled_match() {
+    match false { //~ ERROR block label not supported here
+        _ => {}
+    }
+}
+
+fn main() {
+    labeled_unsafe();
+    labeled_if();
+    labeled_else();
+    labeled_match();
+}

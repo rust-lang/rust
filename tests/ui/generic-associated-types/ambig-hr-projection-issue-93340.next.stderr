@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/ambig-hr-projection-issue-93340.rs:16:5
+   |
+LL |     cmp_eq
+   |     ^^^^^^ cannot infer type of the type parameter `A` declared on the function `cmp_eq`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     cmp_eq::<A, B, O>
+   |           +++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

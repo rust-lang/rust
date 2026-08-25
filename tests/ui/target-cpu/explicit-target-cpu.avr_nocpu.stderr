@@ -1,0 +1,4 @@
+error: target requires explicitly specifying a cpu with `-C target-cpu`
+
+error: aborting due to 1 previous error
+

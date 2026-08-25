@@ -1,0 +1,130 @@
+// tidy-alphabetical-start
+#![allow(internal_features)]
+#![deny(implicit_provenance_casts)]
+#![deny(unsafe_op_in_unsafe_fn)]
+#![feature(alloc_io)]
+#![feature(allocator_api)]
+#![feature(binary_heap_drain_sorted)]
+#![feature(binary_heap_into_iter_sorted)]
+#![feature(binary_heap_pop_if)]
+#![feature(borrowed_buf_init)]
+#![feature(bstr)]
+#![feature(bstr_to_string)]
+#![feature(buf_read_has_data_left)]
+#![feature(can_vector)]
+#![feature(casefold)]
+#![feature(const_btree_len)]
+#![feature(const_cmp)]
+#![feature(const_heap)]
+#![feature(const_trait_impl)]
+#![feature(core_intrinsics)]
+#![feature(core_io_borrowed_buf)]
+#![feature(core_io_internals)]
+#![feature(cow_is_borrowed)]
+#![feature(cursor_split)]
+#![feature(deque_extend_front)]
+#![feature(downcast_unchecked)]
+#![feature(drain_keep_rest)]
+#![feature(exact_size_is_empty)]
+#![feature(hashmap_internals)]
+#![feature(inplace_iteration)]
+#![feature(io_const_error)]
+#![feature(iter_advance_by)]
+#![feature(iter_array_chunks)]
+#![feature(iter_next_chunk)]
+#![feature(linked_list_cursors)]
+#![feature(local_waker)]
+#![feature(macro_metavar_expr_concat)]
+#![feature(map_try_insert)]
+#![feature(pattern)]
+#![feature(ptr_cast_slice)]
+#![feature(read_buf)]
+#![feature(seek_io_take_position)]
+#![feature(seek_stream_len)]
+#![feature(slice_partial_sort_unstable)]
+#![feature(slice_partition_dedup)]
+#![feature(slice_ptr_get)]
+#![feature(slice_range)]
+#![feature(str_as_str)]
+#![feature(str_copy_from_str)]
+#![feature(strict_provenance_lints)]
+#![feature(string_remove_matches)]
+#![feature(string_replace_in_place)]
+#![feature(test)]
+#![feature(thin_box)]
+#![feature(titlecase)]
+#![feature(trusted_len)]
+#![feature(try_reserve_kind)]
+#![feature(try_with_capacity)]
+#![feature(unboxed_closures)]
+#![feature(unique_rc_arc)]
+#![feature(vec_deque_retain_range)]
+#![feature(vec_peek_mut)]
+#![feature(vec_try_remove)]
+#![feature(write_all_vectored)]
+// tidy-alphabetical-end
+
+extern crate alloc;
+
+use std::hash::{DefaultHasher, Hash, Hasher};
+
+mod alloc_test;
+mod arc;
+mod autotraits;
+mod borrow;
+mod boxed;
+mod bstr;
+mod btree_set_hash;
+mod c_str;
+mod c_str2;
+mod collections;
+mod const_fns;
+mod cow_str;
+mod fmt;
+mod heap;
+mod io;
+mod linked_list;
+mod misc_tests;
+mod num;
+mod rc;
+mod slice;
+mod sort;
+mod str;
+mod string;
+mod sync;
+mod task;
+mod testing;
+mod thin_box;
+mod vec;
+mod vec_deque;
+
+fn hash<T: Hash>(t: &T) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
+}
+
+/// Copied from `std::test_helpers::test_rng`, since these tests rely on the
+/// seed not being the same for every RNG invocation too.
+fn test_rng() -> rand_xorshift::XorShiftRng {
+    use std::hash::{BuildHasher, Hash, Hasher};
+    let mut hasher = std::hash::RandomState::new().build_hasher();
+    std::panic::Location::caller().hash(&mut hasher);
+    let hc64 = hasher.finish();
+    let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();
+    let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
+    rand::SeedableRng::from_seed(seed)
+}
+
+#[test]
+fn test_boxed_hasher() {
+    let ordinary_hash = hash(&5u32);
+
+    let mut hasher_1 = Box::new(DefaultHasher::new());
+    5u32.hash(&mut hasher_1);
+    assert_eq!(ordinary_hash, hasher_1.finish());
+
+    let mut hasher_2 = Box::new(DefaultHasher::new()) as Box<dyn Hasher>;
+    5u32.hash(&mut hasher_2);
+    assert_eq!(ordinary_hash, hasher_2.finish());
+}

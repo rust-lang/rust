@@ -1,0 +1,159 @@
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:12:19
+   |
+LL | reuse S::<(), 1>::foo_static::<'static, (), true> as foo_static_1;
+   |                   ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:14:19
+   |
+LL | reuse S::<(), 1>::foo_static as foo_static_3;
+   |                   ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:16:22
+   |
+LL | reuse S::<usize, 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                      ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:19:19
+   |
+LL | reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1;
+   |                   ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:21:19
+   |
+LL | reuse S::<(), 1>::foo_self as foo_self_3;
+   |                   ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:23:23
+   |
+LL | reuse S::<String, 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                       ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:27:23
+   |
+LL |     reuse S::<(), 1>::foo_static::<'static, (), true> as foo_static_1;
+   |                       ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:29:23
+   |
+LL |     reuse S::<(), 1>::foo_static as foo_static_3;
+   |                       ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:31:23
+   |
+LL |     reuse S::<(), 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                       ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:38:23
+   |
+LL |     reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
+   |                       ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:40:23
+   |
+LL |     reuse S::<(), 1>::foo_self as foo_self_3 { self.get_s() }
+   |                       ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:42:23
+   |
+LL |     reuse S::<(), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                       ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:49:23
+   |
+LL |     reuse S::<(), 1>::foo_static::<'static, (), true> as foo_static_1;
+   |                       ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:51:23
+   |
+LL |     reuse S::<(), 1>::foo_static as foo_static_3;
+   |                       ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:53:23
+   |
+LL |     reuse S::<(), 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                       ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:56:23
+   |
+LL |     reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
+   |                       ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:59:23
+   |
+LL |     reuse S::<(), 1>::foo_self as foo_self_3 { self.get_s() }
+   |                       ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:62:23
+   |
+LL |     reuse S::<(), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                       ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:67:23
+   |
+LL |     reuse S::<(), 1>::foo_static::<'static, (), true> as foo_static_1;
+   |                       ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:69:23
+   |
+LL |     reuse S::<(), 1>::foo_static as foo_static_3;
+   |                       ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_static` in `S`
+  --> $DIR/inherent-impls-structs.rs:71:23
+   |
+LL |     reuse S::<(), 1>::foo_static::<'static, _, _> as foo_static_4;
+   |                       ^^^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:78:23
+   |
+LL |     reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
+   |                       ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:80:23
+   |
+LL |     reuse S::<(), 1>::foo_self as foo_self_3 { self.get_s() }
+   |                       ^^^^^^^^ not found in `S`
+
+error[E0425]: cannot find function `foo_self` in `S`
+  --> $DIR/inherent-impls-structs.rs:82:23
+   |
+LL |     reuse S::<(), 1>::foo_self::<'static, _, _> as foo_self_4;
+   |                       ^^^^^^^^ not found in `S`
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/inherent-impls-structs.rs:56:67
+   |
+LL |     reuse S::<(), 1>::foo_self::<'static, (), true> as foo_self_1 { self.get_s() }
+   |                                                                   ^^^^^^^^^^^^^^^^
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/inherent-impls-structs.rs:59:46
+   |
+LL |     reuse S::<(), 1>::foo_self as foo_self_3 { self.get_s() }
+   |                                              ^^^^^^^^^^^^^^^^
+
+error: aborting due to 26 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,22 @@
+error[E0277]: the size for values of type `dyn Send` cannot be known at compilation time
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-2.rs:15:38
+   |
+LL |     let _: Box<dyn Send> = sized_box(Box::new(1));
+   |                            --------- ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                            |
+   |                            required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `dyn Send`
+note: required by an implicit `Sized` bound in `sized_box`
+  --> $DIR/fn-ret-trait-object-propagated-to-inputs-issue-149379-2.rs:10:14
+   |
+LL | fn sized_box<T>(x: Box<T>) -> Box<T> {
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `sized_box`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn sized_box<T: ?Sized>(x: Box<T>) -> Box<T> {
+   |               ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

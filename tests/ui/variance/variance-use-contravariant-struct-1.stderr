@@ -1,0 +1,15 @@
+error: lifetime may not live long enough
+  --> $DIR/variance-use-contravariant-struct-1.rs:10:5
+   |
+LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
+   |        ---- ---- lifetime `'max` defined here
+   |        |
+   |        lifetime `'min` defined here
+...
+LL |     v
+   |     ^ function was supposed to return data with lifetime `'max` but it is returning data with lifetime `'min`
+   |
+   = help: consider adding the following bound: `'min: 'max`
+
+error: aborting due to 1 previous error
+

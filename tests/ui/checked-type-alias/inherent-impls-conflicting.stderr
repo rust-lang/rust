@@ -1,0 +1,11 @@
+error[E0592]: duplicate definitions with name `method`
+  --> $DIR/inherent-impls-conflicting.rs:7:14
+   |
+LL | impl Alias { fn method() {} }
+   |              ^^^^^^^^^^^ duplicate definitions for `method`
+LL | impl Local { fn method() {} }
+   |              ----------- other definition for `method`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0592`.

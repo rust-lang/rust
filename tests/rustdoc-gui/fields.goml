@@ -1,0 +1,50 @@
+// This test checks that fields are displayed as expected (one by line) and they are surrounded
+// by margins.
+
+store-value: (margin, "9.6px")
+define-function: (
+    "check-fields",
+    [path, selector_1, selector_2],
+    block {
+        go-to: "file://" + |DOC_PATH| + "/test_docs/fields/" + |path|
+        store-position: (|selector_1|, {"y": a_y})
+        store-position: (|selector_2|, {"y": b_y})
+        assert: |a_y| < |b_y|
+
+        // Check the margins.
+        assert-css: (".structfield.section-header", {
+            "margin-top": |margin|,
+            "margin-bottom": |margin|,
+            "margin-left": "0px",
+            "margin-right": "0px",
+        }, ALL)
+    }
+)
+
+call-function: ("check-fields", {
+    "path": "struct.Struct.html",
+    "selector_1": "#structfield\.a",
+    "selector_2": "#structfield\.b",
+})
+
+call-function: ("check-fields", {
+    "path": "union.Union.html",
+    "selector_1": "#structfield\.a",
+    "selector_2": "#structfield\.b",
+})
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/fields/enum.Enum.html"
+store-position: ("#variant\.A\.field\.a", {"y": a_y})
+store-position: ("#variant\.A\.field\.b", {"y": b_y})
+assert: |a_y| < |b_y|
+store-position: ("#variant\.B\.field\.a", {"y": a_y})
+store-position: ("#variant\.B\.field\.b", {"y": b_y})
+assert: |a_y| < |b_y|
+
+// Check the margins.
+assert-css: (".sub-variant-field", {
+    "margin-top": |margin|,
+    "margin-bottom": |margin|,
+    "margin-left": "24px",
+    "margin-right": "0px",
+}, ALL)

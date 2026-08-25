@@ -1,0 +1,22 @@
+- // MIR for `transmute_inhabited` before LowerIntrinsics
++ // MIR for `transmute_inhabited` after LowerIntrinsics
+  
+  fn transmute_inhabited(_1: std::cmp::Ordering) -> i8 {
+      debug c => _1;
+      let mut _0: i8;
+      let mut _2: std::cmp::Ordering;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1;
+-         _0 = std::intrinsics::transmute::<std::cmp::Ordering, i8>(move _2) -> [return: bb1, unwind unreachable];
++         _0 = move _2 as i8 (Transmute);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

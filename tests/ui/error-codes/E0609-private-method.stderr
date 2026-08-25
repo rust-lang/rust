@@ -1,0 +1,9 @@
+error[E0609]: no field `method` on type `Foo`
+  --> $DIR/E0609-private-method.rs:15:7
+   |
+LL |     f.method;
+   |       ^^^^^^ unknown field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

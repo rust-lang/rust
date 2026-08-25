@@ -1,0 +1,95 @@
+error: using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`
+  --> tests/ui/bind_instead_of_map_multipart.rs:5:13
+   |
+LL |     let _ = Some("42").and_then(|s| if s.len() < 42 { Some(0) } else { Some(s.len()) });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/bind_instead_of_map_multipart.rs:1:9
+   |
+LL | #![deny(clippy::bind_instead_of_map)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use `map` instead
+   |
+LL -     let _ = Some("42").and_then(|s| if s.len() < 42 { Some(0) } else { Some(s.len()) });
+LL +     let _ = Some("42").map(|s| if s.len() < 42 { 0 } else { s.len() });
+   |
+
+error: using `Result.and_then(|x| Ok(y))`, which is more succinctly expressed as `map(|x| y)`
+  --> tests/ui/bind_instead_of_map_multipart.rs:9:13
+   |
+LL |     let _ = Ok::<_, ()>("42").and_then(|s| if s.len() < 42 { Ok(0) } else { Ok(s.len()) });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map` instead
+   |
+LL -     let _ = Ok::<_, ()>("42").and_then(|s| if s.len() < 42 { Ok(0) } else { Ok(s.len()) });
+LL +     let _ = Ok::<_, ()>("42").map(|s| if s.len() < 42 { 0 } else { s.len() });
+   |
+
+error: using `Result.or_else(|x| Err(y))`, which is more succinctly expressed as `map_err(|x| y)`
+  --> tests/ui/bind_instead_of_map_multipart.rs:13:13
+   |
+LL |     let _ = Err::<(), _>("42").or_else(|s| if s.len() < 42 { Err(s.len() + 20) } else { Err(s.len()) });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_err` instead
+   |
+LL -     let _ = Err::<(), _>("42").or_else(|s| if s.len() < 42 { Err(s.len() + 20) } else { Err(s.len()) });
+LL +     let _ = Err::<(), _>("42").map_err(|s| if s.len() < 42 { s.len() + 20 } else { s.len() });
+   |
+
+error: using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`
+  --> tests/ui/bind_instead_of_map_multipart.rs:22:5
+   |
+LL | /     Some("42").and_then(|s| {
+LL | |
+LL | |         if {
+LL | |             if s == "43" {
+...  |
+LL | |     });
+   | |______^
+   |
+help: use `map` instead
+   |
+LL ~     Some("42").map(|s| {
+LL |
+LL |         if {
+LL |             if s == "43" {
+LL ~                 return 43;
+LL |             }
+LL |             s == "42"
+LL |         } {
+LL ~             return 45;
+LL |         }
+LL |         match s.len() {
+LL ~             10 => 2,
+LL |             20 => {
+...
+LL |                         if foo() {
+LL ~                             return 20;
+LL |                         }
+LL |                         println!("foo");
+LL ~                         3
+LL |                     };
+LL |                 }
+LL ~                 20
+LL |             },
+LL ~             40 => 30,
+LL ~             _ => 1,
+   |
+
+error: using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`
+  --> tests/ui/bind_instead_of_map_multipart.rs:64:13
+   |
+LL |     let _ = Some("").and_then(|s| if s.len() == 20 { Some(m!()) } else { Some(Some(20)) });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map` instead
+   |
+LL -     let _ = Some("").and_then(|s| if s.len() == 20 { Some(m!()) } else { Some(Some(20)) });
+LL +     let _ = Some("").map(|s| if s.len() == 20 { m!() } else { Some(20) });
+   |
+
+error: aborting due to 5 previous errors
+

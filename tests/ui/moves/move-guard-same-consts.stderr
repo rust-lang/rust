@@ -1,0 +1,26 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/move-guard-same-consts.rs:20:24
+   |
+LL |     let x: Box<_> = Box::new(1);
+   |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+...
+LL |         (1, 2) if take(x) => (),
+   |                        - value moved here
+LL |         (1, 2) if take(x) => (),
+   |                        ^ value used here after move
+   |
+note: consider changing this parameter type in function `take` to borrow instead if owning the value isn't necessary
+  --> $DIR/move-guard-same-consts.rs:25:15
+   |
+LL | fn take<T>(_: T) -> bool { false }
+   |    ----       ^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         (1, 2) if take(x.clone()) => (),
+   |                         ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

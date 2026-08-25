@@ -1,0 +1,38 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-3.rs:2:5
+   |
+LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
+   |                     -                   - let's call the lifetime of this reference `'1`
+   |                     |
+   |                     let's call the lifetime of this reference `'2`
+LL |     z.push((x,y));
+   |     ^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<(&u8, &u8)>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(z: &mut Vec<(&'a u8,&u8)>, (x, y): (&'a u8, &u8)) {
+   |       ++++               ++                     ++
+
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-3.rs:2:5
+   |
+LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
+   |                         -                    - let's call the lifetime of this reference `'3`
+   |                         |
+   |                         let's call the lifetime of this reference `'4`
+LL |     z.push((x,y));
+   |     ^^^^^^^^^^^^^ argument requires that `'3` must outlive `'4`
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<(&u8, &u8)>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(z: &mut Vec<(&u8,&'a u8)>, (x, y): (&u8, &'a u8)) {
+   |       ++++                   ++                      ++
+
+error: aborting due to 2 previous errors
+

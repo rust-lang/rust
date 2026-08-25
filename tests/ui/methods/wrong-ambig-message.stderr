@@ -1,0 +1,30 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/wrong-ambig-message.rs:32:30
+   |
+LL |     println!("c2 = {:?}", c2.name());
+   |                              ^^^^ multiple `name` found
+   |
+note: candidate #1 is defined in an impl of the trait `AName2` for the type `Container2`
+  --> $DIR/wrong-ambig-message.rs:20:9
+   |
+LL |         fn name(&self) -> String {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `BName2` for the type `Container2`
+  --> $DIR/wrong-ambig-message.rs:26:9
+   |
+LL |         fn name(&self, _v: bool) -> String {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     println!("c2 = {:?}", c2.name());
+LL +     println!("c2 = {:?}", AName2::name(&c2));
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     println!("c2 = {:?}", c2.name());
+LL +     println!("c2 = {:?}", BName2::name(&c2));
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

@@ -1,0 +1,20 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/issue-91883.rs:34:24
+   |
+LL |     type Cursor<'tx> = CursorImpl<'tx>;
+   |                        ^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'db` as defined here
+  --> $DIR/issue-91883.rs:33:6
+   |
+LL | impl<'db> Transaction<'db> for TransactionImpl<'db> {
+   |      ^^^
+note: but lifetime parameter must outlive the lifetime `'tx` as defined here
+  --> $DIR/issue-91883.rs:34:17
+   |
+LL |     type Cursor<'tx> = CursorImpl<'tx>;
+   |                 ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0478`.

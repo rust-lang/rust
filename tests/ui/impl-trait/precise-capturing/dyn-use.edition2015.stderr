@@ -1,0 +1,8 @@
+error: expected one of `!`, `(`, `::`, `<`, `where`, or `{`, found keyword `use`
+  --> $DIR/dyn-use.rs:4:26
+   |
+LL | fn dyn() -> &'static dyn use<> { &() }
+   |                          ^^^ expected one of `!`, `(`, `::`, `<`, `where`, or `{`
+
+error: aborting due to 1 previous error
+

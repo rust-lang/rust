@@ -1,0 +1,21 @@
+error[E0735]: generic parameters cannot use `Self` in their defaults
+  --> $DIR/default-const-param-cannot-reference-self.rs:1:34
+   |
+LL | struct Struct<const N: usize = { Self; 10 }>;
+   |                                  ^^^^
+
+error[E0735]: generic parameters cannot use `Self` in their defaults
+  --> $DIR/default-const-param-cannot-reference-self.rs:4:30
+   |
+LL | enum Enum<const N: usize = { Self; 10 }> { }
+   |                              ^^^^
+
+error[E0735]: generic parameters cannot use `Self` in their defaults
+  --> $DIR/default-const-param-cannot-reference-self.rs:7:32
+   |
+LL | union Union<const N: usize = { Self; 10 }> { not_empty: () }
+   |                                ^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0735`.

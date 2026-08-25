@@ -1,0 +1,9 @@
+error[E0433]: cannot find `utils` in `my_api`
+  --> $DIR/open-ns-4.rs:10:21
+   |
+LL |     let _ = my_api::utils::utils_helper();
+   |                     ^^^^^ could not find `utils` in `my_api`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

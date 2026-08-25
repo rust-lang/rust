@@ -1,0 +1,58 @@
+PRINT-ATTR INPUT (DISPLAY): fn foo<T>() where T: Copy + {}
+PRINT-ATTR RE-COLLECTED (DISPLAY): fn foo < T > () where T : Copy + {}
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "fn",
+        span: $DIR/trailing-plus.rs:11:1: 11:3 (#0),
+    },
+    Ident {
+        ident: "foo",
+        span: $DIR/trailing-plus.rs:11:4: 11:7 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/trailing-plus.rs:11:7: 11:8 (#0),
+    },
+    Ident {
+        ident: "T",
+        span: $DIR/trailing-plus.rs:11:8: 11:9 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/trailing-plus.rs:11:9: 11:10 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/trailing-plus.rs:11:10: 11:12 (#0),
+    },
+    Ident {
+        ident: "where",
+        span: $DIR/trailing-plus.rs:11:13: 11:18 (#0),
+    },
+    Ident {
+        ident: "T",
+        span: $DIR/trailing-plus.rs:11:19: 11:20 (#0),
+    },
+    Punct {
+        ch: ':',
+        spacing: Alone,
+        span: $DIR/trailing-plus.rs:11:20: 11:21 (#0),
+    },
+    Ident {
+        ident: "Copy",
+        span: $DIR/trailing-plus.rs:11:22: 11:26 (#0),
+    },
+    Punct {
+        ch: '+',
+        spacing: Alone,
+        span: $DIR/trailing-plus.rs:11:27: 11:28 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/trailing-plus.rs:11:29: 12:2 (#0),
+    },
+]

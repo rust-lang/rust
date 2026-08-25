@@ -1,0 +1,29 @@
+error: indexing into a string may panic if the index is within a UTF-8 character
+  --> tests/ui/string_slice.rs:7:6
+   |
+LL |     &"Ölkanne"[1..];
+   |      ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::string-slice` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::string_slice)]`
+
+error: indexing into a string may panic if the index is within a UTF-8 character
+  --> tests/ui/string_slice.rs:11:6
+   |
+LL |     &m[2..5];
+   |      ^^^^^^^
+
+error: indexing into a string may panic if the index is within a UTF-8 character
+  --> tests/ui/string_slice.rs:15:6
+   |
+LL |     &s[0..2];
+   |      ^^^^^^^
+
+error: indexing into a string may panic if the index is within a UTF-8 character
+  --> tests/ui/string_slice.rs:19:6
+   |
+LL |     &a[0..3];
+   |      ^^^^^^^
+
+error: aborting due to 4 previous errors
+

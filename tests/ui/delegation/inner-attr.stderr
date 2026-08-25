@@ -1,0 +1,37 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/inner-attr.rs:5:16
+   |
+LL | reuse a as b { #![rustc_dummy] self }
+   |                ^^^^^^^^^^^^^^^
+...
+LL | fn main() {}
+   | ------------ the inner attribute doesn't annotate this function
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/inner-attr.rs:5:14
+   |
+LL | reuse a as b { #![rustc_dummy] self }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/inner-attr.rs:5:7
+   |
+LL | reuse a as b { #![rustc_dummy] self }
+   |       ^      ------------------------ unexpected argument
+   |
+note: function defined here
+  --> $DIR/inner-attr.rs:3:4
+   |
+LL | fn a() {}
+   |    ^
+help: remove the extra argument
+   |
+LL - reuse a as b { #![rustc_dummy] self }
+LL + reuse { #![rustc_dummy] self }
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

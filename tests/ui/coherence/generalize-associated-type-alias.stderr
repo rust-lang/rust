@@ -1,0 +1,28 @@
+error[E0277]: the trait bound `*const T: ToUnit<'a>` is not satisfied
+  --> $DIR/generalize-associated-type-alias.rs:18:13
+   |
+LL | impl<'a, T> Overlap<(&'a (), Assoc<'a, T>)> for T {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `ToUnit<'a>` is not implemented for `*const T`
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | impl<'a, T> Overlap<(&'a (), Assoc<'a, T>)> for T where *const T: ToUnit<'a> {}
+   |                                                   ++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `T: Overlap<(&'a (), _)>` is not satisfied
+  --> $DIR/generalize-associated-type-alias.rs:18:49
+   |
+LL | impl<'a, T> Overlap<(&'a (), Assoc<'a, T>)> for T {}
+   |                                                 ^ the trait `Overlap<(&'a (), _)>` is not implemented for `T`
+   |
+help: the trait `Overlap<(&'a (), _)>` is not implemented for `T`
+      but trait `Overlap<(&(), ())>` is implemented for `u32`
+  --> $DIR/generalize-associated-type-alias.rs:18:1
+   |
+LL | impl<'a, T> Overlap<(&'a (), Assoc<'a, T>)> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `u32`, found `T`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

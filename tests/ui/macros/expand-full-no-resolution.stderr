@@ -1,0 +1,44 @@
+error: cannot find macro `a` in this scope
+  --> $DIR/expand-full-no-resolution.rs:18:18
+   |
+LL |     format_args!(a!());
+   |                  ^
+   |
+note: similarly named macro `_a` defined here
+  --> $DIR/expand-full-no-resolution.rs:7:9
+   |
+LL |         macro_rules! _a {
+   |         ^^^^^^^^^^^^^^^
+...
+LL | wrap!();
+   | ------- in this macro invocation
+   = note: this error originates in the macro `wrap` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: the leading underscore in `_a` marks it as unused, consider renaming it to `a`
+   |
+LL -         macro_rules! _a {
+LL +         macro_rules! a {
+   |
+
+error: cannot find macro `a` in this scope
+  --> $DIR/expand-full-no-resolution.rs:19:10
+   |
+LL |     env!(a!());
+   |          ^
+   |
+note: similarly named macro `_a` defined here
+  --> $DIR/expand-full-no-resolution.rs:7:9
+   |
+LL |         macro_rules! _a {
+   |         ^^^^^^^^^^^^^^^
+...
+LL | wrap!();
+   | ------- in this macro invocation
+   = note: this error originates in the macro `wrap` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: the leading underscore in `_a` marks it as unused, consider renaming it to `a`
+   |
+LL -         macro_rules! _a {
+LL +         macro_rules! a {
+   |
+
+error: aborting due to 2 previous errors
+

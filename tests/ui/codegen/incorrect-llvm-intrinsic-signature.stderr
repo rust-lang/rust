@@ -1,0 +1,8 @@
+error: intrinsic signature mismatch for `llvm.assume`: expected signature `void (i1)`, found `void ()`
+  --> $DIR/incorrect-llvm-intrinsic-signature.rs:8:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

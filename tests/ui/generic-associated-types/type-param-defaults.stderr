@@ -1,0 +1,62 @@
+error: defaults for generic parameters are not allowed here
+  --> $DIR/type-param-defaults.rs:6:16
+   |
+LL |     type Assoc<T = u32>;
+   |                ^^^^^^^
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/type-param-defaults.rs:11:16
+   |
+LL |     type Assoc<T = u32> = u64;
+   |                ^^^^^^^
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/type-param-defaults.rs:16:16
+   |
+LL |     type Assoc<T = u32> = T;
+   |                ^^^^^^^
+
+error[E0271]: type mismatch resolving `<() as Trait>::Assoc == u32`
+  --> $DIR/type-param-defaults.rs:31:11
+   |
+LL |     foo::<()>();
+   |           ^^ type mismatch resolving `<() as Trait>::Assoc == u32`
+   |
+note: expected this to be `u32`
+  --> $DIR/type-param-defaults.rs:11:27
+   |
+LL |     type Assoc<T = u32> = u64;
+   |                           ^^^
+note: required by a bound in `foo`
+  --> $DIR/type-param-defaults.rs:25:14
+   |
+LL | fn foo<T>()
+   |    --- required by a bound in this function
+LL | where
+LL |     T: Trait<Assoc = u32>,
+   |              ^^^^^^^^^^^ required by this bound in `foo`
+
+error[E0277]: the trait bound `u64: Other` is not satisfied
+  --> $DIR/type-param-defaults.rs:31:11
+   |
+LL |     foo::<()>();
+   |           ^^ the trait `Other` is not implemented for `u64`
+   |
+help: the trait `Other` is implemented for `u32`
+  --> $DIR/type-param-defaults.rs:21:1
+   |
+LL | impl Other for u32 {}
+   | ^^^^^^^^^^^^^^^^^^
+note: required by a bound in `foo`
+  --> $DIR/type-param-defaults.rs:26:15
+   |
+LL | fn foo<T>()
+   |    --- required by a bound in this function
+...
+LL |     T::Assoc: Other {
+   |               ^^^^^ required by this bound in `foo`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

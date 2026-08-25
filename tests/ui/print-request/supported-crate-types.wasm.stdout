@@ -1,0 +1,5 @@
+bin
+cdylib
+lib
+rlib
+staticlib

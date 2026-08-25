@@ -1,0 +1,6 @@
+warning: ignoring feature with missing prefix in `-Ctarget-feature`: `rdrand`
+   |
+   = note: features must begin with a `+` to enable or `-` to disable it
+
+warning: 1 warning emitted
+

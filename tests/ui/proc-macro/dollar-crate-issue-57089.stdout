@@ -1,0 +1,80 @@
+PRINT-BANG INPUT (DISPLAY): struct M($crate :: S);
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/dollar-crate-issue-57089.rs:17:13: 17:19 (#3),
+    },
+    Ident {
+        ident: "M",
+        span: $DIR/dollar-crate-issue-57089.rs:17:20: 17:21 (#3),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Ident {
+                ident: "$crate",
+                span: $DIR/dollar-crate-issue-57089.rs:17:22: 17:28 (#3),
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: $DIR/dollar-crate-issue-57089.rs:17:28: 17:29 (#3),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/dollar-crate-issue-57089.rs:17:29: 17:30 (#3),
+            },
+            Ident {
+                ident: "S",
+                span: $DIR/dollar-crate-issue-57089.rs:17:30: 17:31 (#3),
+            },
+        ],
+        span: $DIR/dollar-crate-issue-57089.rs:17:21: 17:32 (#3),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: $DIR/dollar-crate-issue-57089.rs:17:32: 17:33 (#3),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): struct A($crate :: S);
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/dollar-crate-issue-57089.rs:21:9: 21:15 (#3),
+    },
+    Ident {
+        ident: "A",
+        span: $DIR/dollar-crate-issue-57089.rs:21:16: 21:17 (#3),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Ident {
+                ident: "$crate",
+                span: $DIR/dollar-crate-issue-57089.rs:21:18: 21:24 (#3),
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: $DIR/dollar-crate-issue-57089.rs:21:24: 21:25 (#3),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/dollar-crate-issue-57089.rs:21:25: 21:26 (#3),
+            },
+            Ident {
+                ident: "S",
+                span: $DIR/dollar-crate-issue-57089.rs:21:26: 21:27 (#3),
+            },
+        ],
+        span: $DIR/dollar-crate-issue-57089.rs:21:17: 21:28 (#3),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: $DIR/dollar-crate-issue-57089.rs:21:28: 21:29 (#3),
+    },
+]

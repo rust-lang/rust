@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `Self: Trait1` is not satisfied
+  --> $DIR/issue-74816.rs:12:31
+   |
+LL |     type Associated: Trait1 = Self;
+   |                               ^^^^ the trait `Trait1` is not implemented for `Self`
+   |
+note: required by a bound in `Trait2::Associated`
+  --> $DIR/issue-74816.rs:12:22
+   |
+LL |     type Associated: Trait1 = Self;
+   |                      ^^^^^^ required by this bound in `Trait2::Associated`
+help: consider further restricting `Self`
+   |
+LL | trait Trait2: Trait1 {
+   |             ++++++++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-74816.rs:12:31
+   |
+LL |     type Associated: Trait1 = Self;
+   |                               ^^^^ doesn't have a size known at compile-time
+   |
+note: required by a bound in `Trait2::Associated`
+  --> $DIR/issue-74816.rs:12:5
+   |
+LL |     type Associated: Trait1 = Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Trait2::Associated`
+help: consider further restricting `Self`
+   |
+LL | trait Trait2: Sized {
+   |             +++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,6 @@
+[package]
+name = "cargo_common_metadata_pass_publish_false"
+version = "0.1.0"
+publish = false
+
+[workspace]

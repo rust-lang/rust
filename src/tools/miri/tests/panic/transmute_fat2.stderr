@@ -1,0 +1,5 @@
+
+thread 'main' ($TID) panicked at tests/panic/transmute_fat2.rs:LL:CC:
+index out of bounds: the len is 0 but the index is 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect

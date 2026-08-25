@@ -1,0 +1,69 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/disambiguate-multiple-impl.rs:29:8
+   |
+LL |     S::foo(&s);
+   |        ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in an impl of the trait `A` for the type `S`
+  --> $DIR/disambiguate-multiple-impl.rs:18:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `B` for the type `S`
+  --> $DIR/disambiguate-multiple-impl.rs:24:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     S::foo(&s);
+LL +     A::foo(&s);
+   |
+LL -     S::foo(&s);
+LL +     B::foo(&s);
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/disambiguate-multiple-impl.rs:32:12
+   |
+LL |     let _: S::Type = ();
+   |            ^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let _: S::Type = ();
+LL +     let _: <S as A>::Type = ();
+   |
+LL -     let _: S::Type = ();
+LL +     let _: <S as B>::Type = ();
+   |
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/disambiguate-multiple-impl.rs:34:16
+   |
+LL |     let _ = S::CONST;
+   |                ^^^^^ multiple `CONST` found
+   |
+note: candidate #1 is defined in an impl of the trait `A` for the type `S`
+  --> $DIR/disambiguate-multiple-impl.rs:17:5
+   |
+LL |     const CONST: usize = 1;
+   |     ^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `B` for the type `S`
+  --> $DIR/disambiguate-multiple-impl.rs:23:5
+   |
+LL |     const CONST: usize = 2;
+   |     ^^^^^^^^^^^^^^^^^^
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     let _ = S::CONST;
+LL +     let _ = <S as A>::CONST;
+   |
+LL -     let _ = S::CONST;
+LL +     let _ = <S as B>::CONST;
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0034, E0223.
+For more information about an error, try `rustc --explain E0034`.

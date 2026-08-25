@@ -1,0 +1,9 @@
+// This test ensure that `stab` elements if used in doc blocks are not breaking the text layout.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// We make the window wide enough for the two stabs who are looking into to be on the same line.
+set-window-size: (1100, 600)
+compare-elements-position: (
+    ".top-doc .docblock span[data-span='1']",
+    ".top-doc .docblock span[data-span='2']",
+    ["y"],
+)

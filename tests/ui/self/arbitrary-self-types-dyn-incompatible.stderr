@@ -1,0 +1,22 @@
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/arbitrary-self-types-dyn-incompatible.rs:29:39
+   |
+LL |     fn foo(self: &Rc<Self>) -> usize;
+   |                  --------- help: consider changing method `foo`'s `self` parameter to be `&self`: `&Self`
+...
+LL |     let x = Rc::new(5usize) as Rc<dyn Foo>;
+   |                                       ^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/arbitrary-self-types-dyn-incompatible.rs:4:18
+   |
+LL | trait Foo {
+   |       --- this trait is not dyn compatible...
+LL |     fn foo(self: &Rc<Self>) -> usize;
+   |                  ^^^^^^^^^ ...because method `foo`'s `self` parameter cannot be dispatched on
+   = help: only type `usize` implements `Foo`; consider using it directly instead.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

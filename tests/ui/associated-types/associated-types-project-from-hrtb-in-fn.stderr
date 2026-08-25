@@ -1,0 +1,15 @@
+error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
+  --> $DIR/associated-types-project-from-hrtb-in-fn.rs:13:8
+   |
+LL |     x: I::A)
+   |        ^^^^
+   |
+help: use a fully qualified path with inferred lifetimes
+   |
+LL -     x: I::A)
+LL +     x: <I as Foo<&isize>>::A)
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0212`.

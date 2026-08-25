@@ -1,0 +1,4 @@
+error: `RUST_MIN_STACK` should be a number of bytes, but was "banana"
+  |
+  = note: you can also unset `RUST_MIN_STACK` to use the default stack size
+

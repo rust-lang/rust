@@ -1,0 +1,6 @@
+warning: unstable feature specified for `-Ctarget-feature`: `x87`
+   |
+   = note: this feature is not stably supported; its behavior can change in the future
+
+warning: 1 warning emitted
+

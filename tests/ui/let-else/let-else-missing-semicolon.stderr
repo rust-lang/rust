@@ -1,0 +1,18 @@
+error: expected `;`, found keyword `let`
+  --> $DIR/let-else-missing-semicolon.rs:4:6
+   |
+LL |     }
+   |      ^ help: add `;` here
+LL |     let _ = "";
+   |     --- unexpected token
+
+error: expected `;`, found `}`
+  --> $DIR/let-else-missing-semicolon.rs:8:6
+   |
+LL |     }
+   |      ^ help: add `;` here
+LL | }
+   | - unexpected token
+
+error: aborting due to 2 previous errors
+

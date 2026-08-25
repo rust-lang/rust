@@ -1,0 +1,21 @@
+error[E0307]: invalid `self` parameter type: `Bar<u32>`
+  --> $DIR/method_resolution3.rs:16:18
+   |
+LL |     fn bar(self: Bar<u32>) {
+   |                  ^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or some type implementing `Receiver`
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error[E0307]: invalid `self` parameter type: `&Bar<u32>`
+  --> $DIR/method_resolution3.rs:20:18
+   |
+LL |     fn baz(self: &Bar<u32>) {
+   |                  ^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or some type implementing `Receiver`
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0307`.

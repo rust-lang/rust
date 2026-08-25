@@ -1,0 +1,58 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-62504.rs:18:21
+   |
+LL |         ArrayHolder([0; Self::SIZE])
+   |                     ^^^^^^^^^^^^^^^ expected `X`, found `Self::SIZE`
+   |
+   = note: expected constant `X`
+              found constant `Self::SIZE`
+
+error: unconstrained generic constant
+  --> $DIR/issue-62504.rs:18:25
+   |
+LL |         ArrayHolder([0; Self::SIZE])
+   |                         ^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL |     pub const fn new() -> Self where [(); Self::SIZE]: {
+   |                                +++++++++++++++++++++++
+
+error[E0284]: type annotations needed for `ArrayHolder<_>`
+  --> $DIR/issue-62504.rs:26:9
+   |
+LL |     let mut array = ArrayHolder::new();
+   |         ^^^^^^^^^   ----------- type must be known at this point
+   |
+note: required by a const generic parameter in `ArrayHolder`
+  --> $DIR/issue-62504.rs:14:20
+   |
+LL | struct ArrayHolder<const X: usize>([u32; X]);
+   |                    ^^^^^^^^^^^^^^ required by this const generic parameter in `ArrayHolder`
+help: consider giving `array` an explicit type, where the value of const parameter `X` is specified
+   |
+LL |     let mut array: ArrayHolder<X> = ArrayHolder::new();
+   |                  ++++++++++++++++
+
+error[E0284]: type annotations needed for `ArrayHolder<_>`
+  --> $DIR/issue-62504.rs:26:9
+   |
+LL |     let mut array = ArrayHolder::new();
+   |         ^^^^^^^^^   ------------------ type must be known at this point
+   |
+note: required by a const generic parameter in `ArrayHolder::<X>::new`
+  --> $DIR/issue-62504.rs:16:6
+   |
+LL | impl<const X: usize> ArrayHolder<X> {
+   |      ^^^^^^^^^^^^^^ required by this const generic parameter in `ArrayHolder::<X>::new`
+LL |     pub const fn new() -> Self {
+   |                  --- required by a bound in this associated function
+help: consider giving `array` an explicit type, where the value of const parameter `X` is specified
+   |
+LL |     let mut array: ArrayHolder<X> = ArrayHolder::new();
+   |                  ++++++++++++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0284, E0308.
+For more information about an error, try `rustc --explain E0284`.

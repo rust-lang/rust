@@ -1,0 +1,105 @@
+error[E0566]: conflicting representation hints
+  --> $DIR/conflicting-repr-hints.rs:13:8
+   |
+LL | #[repr(C, u64)]
+   |        ^  ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error[E0566]: conflicting representation hints
+  --> $DIR/conflicting-repr-hints.rs:19:8
+   |
+LL | #[repr(u32, u64)]
+   |        ^^^  ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:29:1
+   |
+LL | struct F(i32);
+   | ^^^^^^^^
+
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:33:1
+   |
+LL | struct G(i32);
+   | ^^^^^^^^
+
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:37:1
+   |
+LL | struct H(i32);
+   | ^^^^^^^^
+
+error[E0634]: type has conflicting packed representation hints
+  --> $DIR/conflicting-repr-hints.rs:40:1
+   |
+LL | struct I(i32);
+   | ^^^^^^^^
+
+error[E0634]: type has conflicting packed representation hints
+  --> $DIR/conflicting-repr-hints.rs:44:1
+   |
+LL | struct J(i32);
+   | ^^^^^^^^
+
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:50:1
+   |
+LL | union X {
+   | ^^^^^^^
+
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:57:1
+   |
+LL | union Y {
+   | ^^^^^^^
+
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:64:1
+   |
+LL | union Z {
+   | ^^^^^^^
+
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:70:1
+   |
+LL | pub struct S(u16);
+   | ^^^^^^^^^^^^
+
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:73:1
+   |
+LL | pub union U {
+   | ^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0566, E0587, E0634.
+For more information about an error, try `rustc --explain E0566`.
+Future incompatibility report: Future breakage diagnostic:
+error[E0566]: conflicting representation hints
+  --> $DIR/conflicting-repr-hints.rs:13:8
+   |
+LL | #[repr(C, u64)]
+   |        ^  ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error[E0566]: conflicting representation hints
+  --> $DIR/conflicting-repr-hints.rs:19:8
+   |
+LL | #[repr(u32, u64)]
+   |        ^^^  ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
+

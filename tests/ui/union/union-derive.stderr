@@ -1,0 +1,38 @@
+error: this trait cannot be derived for unions
+  --> $DIR/union-derive.rs:4:5
+   |
+LL |     PartialEq,
+   |     ^^^^^^^^^
+
+error: this trait cannot be derived for unions
+  --> $DIR/union-derive.rs:5:5
+   |
+LL |     PartialOrd,
+   |     ^^^^^^^^^^
+
+error: this trait cannot be derived for unions
+  --> $DIR/union-derive.rs:6:5
+   |
+LL |     Ord,
+   |     ^^^
+
+error: this trait cannot be derived for unions
+  --> $DIR/union-derive.rs:7:5
+   |
+LL |     Hash,
+   |     ^^^^
+
+error: this trait cannot be derived for unions
+  --> $DIR/union-derive.rs:8:5
+   |
+LL |     Default,
+   |     ^^^^^^^
+
+error: this trait cannot be derived for unions
+  --> $DIR/union-derive.rs:9:5
+   |
+LL |     Debug,
+   |     ^^^^^
+
+error: aborting due to 6 previous errors
+

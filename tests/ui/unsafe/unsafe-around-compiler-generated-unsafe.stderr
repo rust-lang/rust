@@ -1,0 +1,20 @@
+error: unnecessary `unsafe` block
+  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:7:9
+   |
+LL |         unsafe { async {}.await; }
+   |         ^^^^^^ unnecessary `unsafe` block
+   |
+note: the lint level is defined here
+  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:3:9
+   |
+LL | #![deny(unused_unsafe)]
+   |         ^^^^^^^^^^^^^
+
+error: unnecessary `unsafe` block
+  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:11:5
+   |
+LL |     unsafe { println!("foo"); }
+   |     ^^^^^^ unnecessary `unsafe` block
+
+error: aborting due to 2 previous errors
+

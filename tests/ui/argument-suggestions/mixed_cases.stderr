@@ -1,0 +1,123 @@
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+  --> $DIR/mixed_cases.rs:10:3
+   |
+LL |   two_args(1, "", X {});
+   |   ^^^^^^^^    --  ---- unexpected argument #3 of type `X`
+   |               |
+   |               expected `f32`, found `&str`
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:5:4
+   |
+LL | fn two_args(_a: i32, _b: f32) {}
+   |    ^^^^^^^^          -------
+help: remove the extra argument
+   |
+LL -   two_args(1, "", X {});
+LL +   two_args(1, /* f32 */);
+   |
+
+error[E0061]: this function takes 3 arguments but 4 arguments were supplied
+  --> $DIR/mixed_cases.rs:11:3
+   |
+LL |   three_args(1, "", X {}, "");
+   |   ^^^^^^^^^^    --  ----  -- unexpected argument #4 of type `&'static str`
+   |                 |   |
+   |                 |   unexpected argument #3 of type `X`
+   |                 argument #2 of type `f32` is missing
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^          -------
+help: did you mean
+   |
+LL -   three_args(1, "", X {}, "");
+LL +   three_args(1, /* f32 */, "");
+   |
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> $DIR/mixed_cases.rs:14:3
+   |
+LL |   three_args(1, X {});
+   |   ^^^^^^^^^^---------
+   |             |   |
+   |             |   expected `f32`, found `X`
+   |             argument #3 of type `&str` is missing
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^          -------  --------
+help: provide the argument
+   |
+LL -   three_args(1, X {});
+LL +   three_args(1, /* f32 */, /* &str */);
+   |
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/mixed_cases.rs:17:3
+   |
+LL |   three_args(1, "", X {});
+   |   ^^^^^^^^^^    --  ---- unexpected argument #3 of type `X`
+   |                 |
+   |                 argument #2 of type `f32` is missing
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^          -------
+help: did you mean
+   |
+LL -   three_args(1, "", X {});
+LL +   three_args(1, /* f32 */, "");
+   |
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/mixed_cases.rs:20:3
+   |
+LL |   three_args("", X {}, 1);
+   |   ^^^^^^^^^^ --  ----  - expected `&str`, found `{integer}`
+   |              |   |
+   |              |   expected `f32`, found `X`
+   |              expected `i32`, found `&'static str`
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^          -------
+help: swap these arguments
+   |
+LL -   three_args("", X {}, 1);
+LL +   three_args(1, /* f32 */, "");
+   |
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+  --> $DIR/mixed_cases.rs:23:3
+   |
+LL |   three_args("", 1);
+   |   ^^^^^^^^^^ --  -
+   |              |   |
+   |              |   argument #2 of type `f32` is missing
+   |              |   expected `&str`, found `{integer}`
+   |              expected `i32`, found `&'static str`
+   |
+note: function defined here
+  --> $DIR/mixed_cases.rs:6:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^          -------
+help: did you mean
+   |
+LL -   three_args("", 1);
+LL +   three_args(1, /* f32 */, "");
+   |
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0061, E0308.
+For more information about an error, try `rustc --explain E0061`.

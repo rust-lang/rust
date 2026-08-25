@@ -1,0 +1,25 @@
+error[E0507]: cannot move out of `*self` which is behind a mutable reference
+  --> $DIR/issue-119915-bad-clone-suggestion.rs:23:18
+   |
+LL |         unsafe { self.change() }
+   |                  ^^^^ -------- `*self` moved due to this method call
+   |                  |
+   |                  move occurs because `*self` has type `Example<E, NoLifetime>`, which does not implement the `Copy` trait
+   |
+note: `Example::<E, FakeParam>::change` takes ownership of the receiver `self`, which moves `*self`
+  --> $DIR/issue-119915-bad-clone-suggestion.rs:16:36
+   |
+LL |     unsafe fn change<NewFakeParam>(self) -> Example<E, NewFakeParam> {
+   |                                    ^^^^
+note: if `Example<E, NoLifetime>` implemented `Clone`, you could clone the value
+  --> $DIR/issue-119915-bad-clone-suggestion.rs:3:1
+   |
+LL | struct Example<E, FakeParam>(PhantomData<(fn(E), fn(FakeParam))>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         unsafe { self.change() }
+   |                  ---- you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

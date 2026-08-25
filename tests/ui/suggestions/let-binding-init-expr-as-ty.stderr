@@ -1,0 +1,194 @@
+error: expected type, found `42`
+  --> $DIR/let-binding-init-expr-as-ty.rs:43:12
+   |
+LL |     let x: 42;
+   |          - ^^ expected type
+   |          |
+   |          while parsing the type for `x`
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: 42;
+LL +     let x = 42;
+   |
+
+error: expected type, found `""`
+  --> $DIR/let-binding-init-expr-as-ty.rs:44:12
+   |
+LL |     let x: "";
+   |          - ^^ expected type
+   |          |
+   |          while parsing the type for `x`
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: "";
+LL +     let x = "";
+   |
+
+error[E0573]: cannot find type `num` in this scope
+  --> $DIR/let-binding-init-expr-as-ty.rs:3:27
+   |
+LL |     let foo: i32::from_be(num);
+   |                           ^^^ not found in this scope
+   |
+   = note: a local variable named `num` exists in another namespace
+help: use `=` if you meant to assign
+   |
+LL -     let foo: i32::from_be(num);
+LL +     let foo = i32::from_be(num);
+   |
+
+error[E0573]: cannot find type `bar` in this scope
+  --> $DIR/let-binding-init-expr-as-ty.rs:47:12
+   |
+LL |     let x: bar();
+   |            ^^^ not found in this scope
+   |
+   = note: a function named `bar` exists in another namespace
+help: use `=` if you meant to assign
+   |
+LL -     let x: bar();
+LL +     let x = bar();
+   |
+
+error[E0573]: cannot find type `bar` in this scope
+  --> $DIR/let-binding-init-expr-as-ty.rs:48:12
+   |
+LL |     let x: bar;
+   |            ^^^ not found in this scope
+   |
+   = note: a function named `bar` exists in another namespace
+
+error[E0573]: cannot find type `x` in this scope
+  --> $DIR/let-binding-init-expr-as-ty.rs:51:12
+   |
+LL |     let x: x;
+   |            ^ not found in this scope
+   |
+   = note: a local variable named `x` exists in another namespace
+note: similarly named struct `K` defined here
+  --> $DIR/let-binding-init-expr-as-ty.rs:18:1
+   |
+LL | struct K(S::new(()));
+   | ^^^^^^^^^^^^^^^^^^^^^
+help: a struct with a similar name exists
+   |
+LL -     let x: x;
+LL +     let x: K;
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: x;
+LL +     let x = x;
+   |
+
+error[E0658]: return type notation is experimental
+  --> $DIR/let-binding-init-expr-as-ty.rs:27:18
+   |
+LL |     let x: S::new(..);
+   |                  ^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = help: add `#![feature(return_type_notation)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: return type notation not allowed in this position yet
+  --> $DIR/let-binding-init-expr-as-ty.rs:18:10
+   |
+LL | struct K(S::new(()));
+   |          ^^^^^^^^^^
+   |
+help: furthermore, argument types not allowed with return type notation
+   |
+LL - struct K(S::new(()));
+LL + struct K(S::new(..));
+   |
+
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:3:14
+   |
+LL |     let foo: i32::from_be(num);
+   |              ^^^^^^^^^^^^^^^^^
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let foo: i32::from_be(num);
+LL +     let foo = i32::from_be(num);
+   |
+
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:25:12
+   |
+LL |     let x: Vec::new();
+   |            ^^^^^^^^^^
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: Vec::new();
+LL +     let x = Vec::new();
+   |
+
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:26:12
+   |
+LL |     let x: Vec<()>::new();
+   |            ^^^^^^^^^^^^^^
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: Vec<()>::new();
+LL +     let x = Vec<()>::new();
+   |
+
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:27:12
+   |
+LL |     let x: S::new(..);
+   |            ^^^^^^^^^^
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: S::new(..);
+LL +     let x = S::new(..);
+   |
+
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:29:12
+   |
+LL |     let x: S::new(());
+   |            ^^^^^^^^^^
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: S::new(());
+LL +     let x = S::new(());
+   |
+
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:32:12
+   |
+LL |     let x: vec![];
+   |            ^^^^^^
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let x: vec![];
+LL +     let x = vec![];
+   |
+
+error: expected type, found associated function call
+  --> $DIR/let-binding-init-expr-as-ty.rs:37:23
+   |
+LL |             let $pat: Vec::new();
+   |                       ^^^^^^^^^^
+...
+LL |     make!(_);
+   |     -------- in this macro invocation
+   |
+   = note: this error originates in the macro `make` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0573, E0658.
+For more information about an error, try `rustc --explain E0573`.

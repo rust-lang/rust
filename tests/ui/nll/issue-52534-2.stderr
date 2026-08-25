@@ -1,0 +1,17 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/issue-52534-2.rs:6:13
+   |
+LL |         let x = 32;
+   |             - binding `x` declared here
+LL |         y = &x
+   |             ^^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `x` dropped here while still borrowed
+LL |
+LL |     println!("{}", y);
+   |                    - borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

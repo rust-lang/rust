@@ -1,0 +1,47 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/normalize-param-env-2.rs:24:22
+   |
+LL | /     fn f()
+LL | |     where
+LL | |         Self::Assoc: A<T>,
+   | |__________________________- definition of `f` from trait
+...
+LL |           Self::Assoc: A<T>,
+   |                        ^^^^ impl has extra requirement `<() as A<T>>::Assoc: A<T>`
+
+error[E0277]: the trait bound `<() as A<T>>::Assoc: A<T>` is not satisfied
+  --> $DIR/normalize-param-env-2.rs:24:22
+   |
+LL |         Self::Assoc: A<T>,
+   |                      ^^^^ the trait `A<T>` is not implemented for `<() as A<T>>::Assoc`
+   |
+help: the trait `A<T>` is implemented for `()`
+  --> $DIR/normalize-param-env-2.rs:19:1
+   |
+LL | impl<T> A<T> for () {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `<() as A<T>>::Assoc: A<T>` is not satisfied
+  --> $DIR/normalize-param-env-2.rs:27:18
+   |
+LL |         <() as A<T>>::f();
+   |                  ^ the trait `A<T>` is not implemented for `<() as A<T>>::Assoc`
+   |
+help: the trait `A<T>` is implemented for `()`
+  --> $DIR/normalize-param-env-2.rs:19:1
+   |
+LL | impl<T> A<T> for () {
+   | ^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `A::f`
+  --> $DIR/normalize-param-env-2.rs:14:22
+   |
+LL |     fn f()
+   |        - required by a bound in this associated function
+LL |     where
+LL |         Self::Assoc: A<T>,
+   |                      ^^^^ required by this bound in `A::f`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0276, E0277.
+For more information about an error, try `rustc --explain E0276`.

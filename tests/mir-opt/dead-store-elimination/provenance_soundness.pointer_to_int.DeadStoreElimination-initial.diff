@@ -1,0 +1,35 @@
+- // MIR for `pointer_to_int` before DeadStoreElimination-initial
++ // MIR for `pointer_to_int` after DeadStoreElimination-initial
+  
+  fn pointer_to_int(_1: *mut i32) -> () {
+      debug p => _1;
+      let mut _0: ();
+      let _2: usize;
+      let mut _3: *mut i32;
+      let mut _5: *mut i32;
+      scope 1 {
+          debug _x => _2;
+          let _4: isize;
+          scope 2 {
+              debug _y => _4;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = move _3 as usize (PointerExposeProvenance);
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+          _4 = move _5 as isize (PointerExposeProvenance);
+          StorageDead(_5);
+          _0 = const ();
+          StorageDead(_4);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

@@ -1,0 +1,50 @@
+error[E0038]: the trait `B` is not dyn compatible
+  --> $DIR/issue-38404.rs:3:19
+   |
+LL | trait C<T>: A<dyn B<T, Output = usize>> {}
+   |                   ^^^^^^^^^^^^^^^^^^^^ `B` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-38404.rs:1:13
+   |
+LL | trait A<T>: std::ops::Add<Self> + Sized {}
+   |             ^^^^^^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
+LL | trait B<T>: A<T> {}
+   |       - this trait is not dyn compatible...
+
+error[E0038]: the trait `B` is not dyn compatible
+  --> $DIR/issue-38404.rs:3:19
+   |
+LL | trait C<T>: A<dyn B<T, Output = usize>> {}
+   |                   ^^^^^^^^^^^^^^^^^^^^ `B` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-38404.rs:1:13
+   |
+LL | trait A<T>: std::ops::Add<Self> + Sized {}
+   |             ^^^^^^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
+LL | trait B<T>: A<T> {}
+   |       - this trait is not dyn compatible...
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `B` is not dyn compatible
+  --> $DIR/issue-38404.rs:3:19
+   |
+LL | trait C<T>: A<dyn B<T, Output = usize>> {}
+   |                   ^^^^^^^^^^^^^^^^^^^^ `B` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-38404.rs:1:13
+   |
+LL | trait A<T>: std::ops::Add<Self> + Sized {}
+   |             ^^^^^^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
+LL | trait B<T>: A<T> {}
+   |       - this trait is not dyn compatible...
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

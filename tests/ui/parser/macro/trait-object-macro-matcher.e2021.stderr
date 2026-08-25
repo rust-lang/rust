@@ -1,0 +1,16 @@
+error: expected type, found lifetime
+  --> $DIR/trait-object-macro-matcher.rs:17:8
+   |
+LL |     m!('static);
+   |        ^^^^^^^ expected type
+
+error: expected type, found lifetime
+  --> $DIR/trait-object-macro-matcher.rs:17:8
+   |
+LL |     m!('static);
+   |        ^^^^^^^ expected type
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

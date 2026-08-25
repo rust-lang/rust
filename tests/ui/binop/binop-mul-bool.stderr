@@ -1,0 +1,11 @@
+error[E0369]: cannot multiply `bool` by `bool`
+  --> $DIR/binop-mul-bool.rs:1:26
+   |
+LL | fn main() { let x = true * false; }
+   |                     ---- ^ ----- bool
+   |                     |
+   |                     bool
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

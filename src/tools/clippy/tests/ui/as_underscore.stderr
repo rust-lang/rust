@@ -1,0 +1,21 @@
+error: using `as _` conversion
+  --> tests/ui/as_underscore.rs:7:9
+   |
+LL |     foo(n as _);
+   |         ^^^^^-
+   |              |
+   |              help: consider giving the type explicitly: `usize`
+   |
+   = note: `-D clippy::as-underscore` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::as_underscore)]`
+
+error: using `as _` conversion
+  --> tests/ui/as_underscore.rs:11:18
+   |
+LL |     let _n: u8 = n as _;
+   |                  ^^^^^-
+   |                       |
+   |                       help: consider giving the type explicitly: `u8`
+
+error: aborting due to 2 previous errors
+
