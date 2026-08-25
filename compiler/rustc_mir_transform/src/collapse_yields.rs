@@ -1,17 +1,22 @@
+use std::borrow::Cow;
 use std::mem::discriminant;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::Successors;
 use rustc_data_structures::indexmap::{IndexMap, IndexSet};
 use rustc_middle::mir::{
-    AssertKind, BasicBlock, Body, Local, NonDivergingIntrinsic, Operand, Rvalue, Statement,
-    StatementKind, TerminatorKind,
+    AssertKind, BasicBlock, Body, Local, MirDumper, NonDivergingIntrinsic, OUTERMOST_SOURCE_SCOPE,
+    Operand, Place, Rvalue, SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_mir_dataflow::Analysis;
+use rustc_mir_dataflow::impls::{MaybeStorageLive, always_storage_live_locals};
+use rustc_span::DUMMY_SP;
 use tracing::instrument;
 
 use crate::MirPass;
 use crate::pass_manager::PassPolicy;
+use crate::simplify::remove_dead_blocks;
 
 pub(super) struct CollapseIdenticalYields;
 
@@ -22,22 +27,33 @@ impl<'tcx> MirPass<'tcx> for CollapseIdenticalYields {
             return;
         }
 
+        if let Some(dumper) = MirDumper::new(tcx, "collapse_yields_before", body) {
+            dumper.dump_mir(body);
+        }
+
         tracing::debug!("running pass for {}", tcx.def_path_str(body.source.def_id()));
 
         let mut yields = body
             .basic_blocks
             .iter_enumerated()
-            .filter_map(|(bb, bb_data)| match &bb_data.terminator.as_ref()?.kind {
-                TerminatorKind::Yield { .. } => Some(Yield { basic_block: bb }),
-                _ => None,
+            .filter_map(|(bb, bb_data)| {
+                if let TerminatorKind::Yield { .. } = &bb_data.terminator.as_ref()?.kind {
+                    Some(Yield { basic_block: bb })
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>();
+        // Sort so we always translate from high bbs to low bbs
+        yields.sort_unstable_by(|y1, y2| y1.basic_block.cmp(&y2.basic_block).reverse());
 
         while let Some(base_yield) = yields.pop() {
+            tracing::trace!("Comparing base yield {:?} to others:", base_yield.basic_block);
             for i in (0..yields.len()).rev() {
                 let compare_yield = &yields[i];
 
-                let Some(translation) = base_yield.try_find_translation(compare_yield, body) else {
+                let Some(translation) = compare_yield.try_find_translation(&base_yield, body)
+                else {
                     // No translation, so these yields aren't equivalent
                     continue;
                 };
@@ -46,13 +62,17 @@ impl<'tcx> MirPass<'tcx> for CollapseIdenticalYields {
                     continue;
                 };
 
-                // FIXME: impl doing the translation with a visitor
                 tracing::trace!(
-                    "Successfully translated {:?} to {:?}:\n{:?}",
+                    "Successfully translated yield {:?} to yield {:?}:\n{:?}",
                     compare_yield.basic_block,
                     base_yield.basic_block,
                     translation
                 );
+
+                yields.remove(i);
+
+                translation.redirect_entry_points(tcx, body);
+                remove_dead_blocks(body);
             }
         }
     }
@@ -129,7 +149,7 @@ impl LocalTranslationMap {
 
 #[derive(Debug)]
 struct TranslationMap {
-    blocks: FxHashMap<BasicBlock, BasicBlock>,
+    blocks: IndexMap<BasicBlock, BasicBlock>,
     locals: LocalTranslationMap,
 }
 
@@ -190,6 +210,70 @@ impl TranslationMap {
         }
 
         Some(self)
+    }
+
+    fn redirect_entry_points<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let body_predecessors = body.basic_blocks.predecessors().clone();
+        let always_live_locals = always_storage_live_locals(body);
+        let mut results = MaybeStorageLive::new(Cow::Borrowed(&always_live_locals))
+            .iterate_to_fixpoint(tcx, body, Some("callapse_yields"))
+            .into_results_cursor(body);
+
+        let from_live_locals = self
+            .blocks
+            .keys()
+            .map(|from| {
+                results.seek_to_block_start(*from);
+                (*from, results.get().clone())
+            })
+            .collect::<FxHashMap<_, _>>();
+
+        for (from, to) in self.blocks.iter() {
+            let predecessors = &body_predecessors[*from];
+            // These predecessors go to the 'from' block, but need to go to the 'to' block
+            // We also need to translate the live locals
+            // So we insert the translations into the predecessor and change the successor to 'to'
+
+            for predecessor in predecessors {
+                let predecessor_data = &mut body.basic_blocks_mut()[*predecessor];
+
+                let live_locals = &from_live_locals[from];
+                for from_local in live_locals.iter() {
+                    if let Some(to_local) = self.locals.locals.get(&from_local) {
+                        if from_local == *to_local {
+                            continue;
+                        }
+
+                        if !always_live_locals.contains(*to_local) {
+                            predecessor_data.statements.push(Statement::new(
+                                SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
+                                StatementKind::StorageLive(*to_local),
+                            ));
+                        }
+                        predecessor_data.statements.push(Statement::new(
+                            SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
+                            StatementKind::Assign(Box::new((
+                                Place::from(*to_local),
+                                Rvalue::Use(Operand::Move(Place::from(from_local)), WithRetag::Yes),
+                            ))),
+                        ));
+                        if !always_live_locals.contains(from_local) {
+                            predecessor_data.statements.push(Statement::new(
+                                SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
+                                StatementKind::StorageDead(from_local),
+                            ));
+                        }
+                    }
+                }
+
+                // Change the terminator to go to the 'to' block
+                predecessor_data.terminator_mut().successors_mut(|successor| {
+                    if *successor == *from {
+                        *successor = *to
+                    }
+                });
+            }
+        }
     }
 
     fn statements_functionally_equivalent<'tcx>(
