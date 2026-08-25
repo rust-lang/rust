@@ -32,7 +32,7 @@
 //   an edge both identifies a position and contains a pointer to a child node.
 
 use core::marker::PhantomData;
-use core::mem::{self, MaybeUninit};
+use core::mem::{self, DropGuard, MaybeUninit};
 use core::num::NonZero;
 use core::ptr::{self, NonNull};
 use core::slice::SliceIndex;
@@ -1192,23 +1192,13 @@ impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> 
     /// The node that the handle refers to must not yet have been deallocated.
     #[inline]
     pub(super) unsafe fn drop_key_val(mut self) {
-        // Run the destructor of the value even if the destructor of the key panics.
-        struct Dropper<'a, T>(&'a mut MaybeUninit<T>);
-        impl<T> Drop for Dropper<'_, T> {
-            #[inline]
-            fn drop(&mut self) {
-                unsafe {
-                    self.0.assume_init_drop();
-                }
-            }
-        }
-
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.as_leaf_dying();
         unsafe {
             let key = leaf.keys.get_unchecked_mut(self.idx);
             let val = leaf.vals.get_unchecked_mut(self.idx);
-            let _guard = Dropper(val);
+            // Run the destructor of the value even if the destructor of the key panics.
+            let _guard = DropGuard::new(val, |val| val.assume_init_drop());
             key.assume_init_drop();
             // dropping the guard will drop the value
         }

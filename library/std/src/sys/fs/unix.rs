@@ -2239,19 +2239,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 #[cfg(target_vendor = "apple")]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     const COPYFILE_ALL: libc::copyfile_flags_t = libc::COPYFILE_METADATA | libc::COPYFILE_DATA;
-
-    struct FreeOnDrop(libc::copyfile_state_t);
-    impl Drop for FreeOnDrop {
-        fn drop(&mut self) {
-            // The code below ensures that `FreeOnDrop` is never a null pointer
-            unsafe {
-                // `copyfile_state_free` returns -1 if the `to` or `from` files
-                // cannot be closed. However, this is not considered an error.
-                libc::copyfile_state_free(self.0);
-            }
-        }
-    }
-
     let (reader, reader_metadata) = open_from(from)?;
 
     let clonefile_result = run_path_with_cstr(to, &|to| {
@@ -2272,24 +2259,29 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     // Fall back to using `fcopyfile` if `fclonefileat` does not succeed.
     let (writer, writer_metadata) = open_to_and_set_permissions(to, &reader_metadata)?;
 
-    // We ensure that `FreeOnDrop` never contains a null pointer so it is
+    let state = unsafe { libc::copyfile_state_alloc() };
+    // We ensure that the guard never contains a null pointer so it is
     // always safe to call `copyfile_state_free`
-    let state = unsafe {
-        let state = libc::copyfile_state_alloc();
-        if state.is_null() {
-            return Err(crate::io::Error::last_os_error());
+    if state.is_null() {
+        return Err(crate::io::Error::last_os_error());
+    }
+    let state = crate::mem::DropGuard::new(state, |state| {
+        // SAFETY: just checked it's not null
+        unsafe {
+            // `copyfile_state_free` returns -1 if the `to` or `from` files
+            // cannot be closed. However, this is not considered an error.
+            libc::copyfile_state_free(state);
         }
-        FreeOnDrop(state)
-    };
+    });
 
     let flags = if writer_metadata.is_file() { COPYFILE_ALL } else { libc::COPYFILE_DATA };
 
-    cvt(unsafe { libc::fcopyfile(reader.as_raw_fd(), writer.as_raw_fd(), state.0, flags) })?;
+    cvt(unsafe { libc::fcopyfile(reader.as_raw_fd(), writer.as_raw_fd(), *state, flags) })?;
 
     let mut bytes_copied: libc::off_t = 0;
     cvt(unsafe {
         libc::copyfile_state_get(
-            state.0,
+            *state,
             libc::COPYFILE_STATE_COPIED as u32,
             (&raw mut bytes_copied) as *mut libc::c_void,
         )

@@ -394,19 +394,13 @@ impl Command {
         // want to be sure to restore the global environment back to what it
         // once was, ensuring that our temporary override, when free'd, doesn't
         // corrupt our process's environment.
-        let mut _reset = None;
+        let _reset;
         if let Some(envp) = maybe_envp {
-            struct Reset(*const *const libc::c_char);
+            use core::mem::DropGuard;
 
-            impl Drop for Reset {
-                fn drop(&mut self) {
-                    unsafe {
-                        *sys::env::environ() = self.0;
-                    }
-                }
-            }
-
-            _reset = Some(Reset(*sys::env::environ()));
+            _reset = DropGuard::new(*sys::env::environ(), |prev| unsafe {
+                *sys::env::environ() = prev;
+            });
             *sys::env::environ() = envp.as_ptr();
         }
 
@@ -677,65 +671,51 @@ impl Command {
 
         let pgroup = self.get_pgroup();
 
-        struct PosixSpawnFileActions<'a>(&'a mut MaybeUninit<libc::posix_spawn_file_actions_t>);
-
-        impl Drop for PosixSpawnFileActions<'_> {
-            fn drop(&mut self) {
-                unsafe {
-                    libc::posix_spawn_file_actions_destroy(self.0.as_mut_ptr());
-                }
-            }
-        }
-
-        struct PosixSpawnattr<'a>(&'a mut MaybeUninit<libc::posix_spawnattr_t>);
-
-        impl Drop for PosixSpawnattr<'_> {
-            fn drop(&mut self) {
-                unsafe {
-                    libc::posix_spawnattr_destroy(self.0.as_mut_ptr());
-                }
-            }
-        }
-
         unsafe {
+            use core::mem::DropGuard;
+
             let mut attrs = MaybeUninit::uninit();
             cvt_nz(libc::posix_spawnattr_init(attrs.as_mut_ptr()))?;
-            let attrs = PosixSpawnattr(&mut attrs);
+            let mut attrs = DropGuard::new(&mut attrs, |attrs| {
+                libc::posix_spawnattr_destroy(attrs.as_mut_ptr());
+            });
 
             let mut flags = 0;
 
             let mut file_actions = MaybeUninit::uninit();
             cvt_nz(libc::posix_spawn_file_actions_init(file_actions.as_mut_ptr()))?;
-            let file_actions = PosixSpawnFileActions(&mut file_actions);
+            let mut file_actions = DropGuard::new(&mut file_actions, |file_actions| {
+                libc::posix_spawn_file_actions_destroy(file_actions.as_mut_ptr());
+            });
 
             if let Some(fd) = stdio.stdin.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
-                    file_actions.0.as_mut_ptr(),
+                    file_actions.as_mut_ptr(),
                     fd,
                     libc::STDIN_FILENO,
                 ))?;
             }
             if let Some(fd) = stdio.stdout.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
-                    file_actions.0.as_mut_ptr(),
+                    file_actions.as_mut_ptr(),
                     fd,
                     libc::STDOUT_FILENO,
                 ))?;
             }
             if let Some(fd) = stdio.stderr.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
-                    file_actions.0.as_mut_ptr(),
+                    file_actions.as_mut_ptr(),
                     fd,
                     libc::STDERR_FILENO,
                 ))?;
             }
             if let Some((f, cwd)) = addchdir {
-                cvt_nz(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
+                cvt_nz(f(file_actions.as_mut_ptr(), cwd.as_ptr()))?;
             }
 
             if let Some(pgroup) = pgroup {
                 flags |= libc::POSIX_SPAWN_SETPGROUP;
-                cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.as_mut_ptr(), pgroup))?;
+                cvt_nz(libc::posix_spawnattr_setpgroup(attrs.as_mut_ptr(), pgroup))?;
             }
 
             // Inherit the signal mask from this process rather than resetting it (i.e. do not call
@@ -754,7 +734,7 @@ impl Command {
                     cvt(sigaddset(default_set.as_mut_ptr(), libc::SIGLOST))?;
                 }
                 cvt_nz(libc::posix_spawnattr_setsigdefault(
-                    attrs.0.as_mut_ptr(),
+                    attrs.as_mut_ptr(),
                     default_set.as_ptr(),
                 ))?;
                 flags |= libc::POSIX_SPAWN_SETSIGDEF;
@@ -771,7 +751,7 @@ impl Command {
                 }
             }
 
-            cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
+            cvt_nz(libc::posix_spawnattr_setflags(attrs.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
             let _env_lock = sys::env::env_read_lock();
@@ -788,8 +768,8 @@ impl Command {
                 let spawn_res = pidfd_spawnp.get().unwrap()(
                     &mut pidfd,
                     self.get_program_cstr().as_ptr(),
-                    file_actions.0.as_ptr(),
-                    attrs.0.as_ptr(),
+                    file_actions.as_ptr(),
+                    attrs.as_ptr(),
                     self.get_argv().as_ptr() as *const _,
                     envp as *const _,
                 );
@@ -830,8 +810,8 @@ impl Command {
             let spawn_res = spawn_fn(
                 &mut p.pid,
                 self.get_program_cstr().as_ptr(),
-                file_actions.0.as_ptr(),
-                attrs.0.as_ptr(),
+                file_actions.as_ptr(),
+                attrs.as_ptr(),
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
             );
