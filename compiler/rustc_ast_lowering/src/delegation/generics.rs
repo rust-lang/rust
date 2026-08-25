@@ -153,6 +153,9 @@ impl<'hir> DelegationGenericArgsIterator<'hir> {
         ids_to_reuse: Vec<hir::HirId>,
     ) -> Vec<hir::GenericArg<'hir>> {
         let mut args = vec![];
+
+        // If there were already generic args in HIR that should be replaced by our args,
+        // reuse their HIR ids in order not to trigger an assert for an unused HIR.
         let mut ids_iter = ids_to_reuse.into_iter();
         while let Some(arg) = self.next(ctx, |ctx| ids_iter.next().unwrap_or_else(|| ctx.next_id()))
         {

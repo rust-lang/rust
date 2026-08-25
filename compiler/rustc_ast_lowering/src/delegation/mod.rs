@@ -525,14 +525,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         impl NewArgsCreationKind {
+            /// There may be cases with delegations to inherent impls where
+            /// while lowering path segment through default AST -> HIR
+            /// lowering routine infer lifetimes are inserted. This means
+            /// that HIR ids were allocated and if we will just replace them
+            /// with our generated args we will trigger assert that there are
+            /// unused HIR ids, so we need to reuse those HIR ids.
             fn new(segment: &hir::PathSegment<'_>) -> NewArgsCreationKind {
-                let Some(args) = segment.args else {
+                let Some(args) = segment.args.filter(|args| !args.is_empty()) else {
                     return NewArgsCreationKind::Propagate(vec![]);
                 };
-
-                if args.is_empty() {
-                    return NewArgsCreationKind::Propagate(vec![]);
-                }
 
                 let ids_to_reuse = args
                     .args

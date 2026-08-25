@@ -27,11 +27,12 @@ pub(crate) fn resolve_type_relative_delegations(
     tcx: TyCtxt<'_>,
     _: (),
 ) -> FxIndexMap<LocalDefId, TypeRelativeDelegationRes> {
+    // FIXME(fn_delegation): fair resolution through `ProbeContext` engine.
     let ast_index = tcx.index_ast(());
     let resolutions = tcx.resolutions(());
 
     let infos = &resolutions.delegation_infos;
-    let inh_methods = &resolutions.delegation_inh_functions_map;
+    let inh_fns = &resolutions.delegation_inh_functions_map;
 
     let mut type_relative_resolutions: FxIndexMap<LocalDefId, TypeRelativeDelegationRes> =
         Default::default();
@@ -63,7 +64,7 @@ pub(crate) fn resolve_type_relative_delegations(
         {
             match res.as_local() {
                 Some(local_def_id) => {
-                    let res = inh_methods.get(&local_def_id).and_then(|map| map.get(&ident));
+                    let res = inh_fns.get(&local_def_id).and_then(|map| map.get(&ident));
 
                     match res {
                         Some(res) => match res {
@@ -258,7 +259,9 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
 
     pub(super) fn is_delegation_to_inherent_impl(&self, sig_id: DefId) -> bool {
         let tcx = self.tcx();
-        matches!(tcx.def_kind(tcx.parent(sig_id)), DefKind::Impl { of_trait: false })
+
+        tcx.def_kind(sig_id) == DefKind::AssocFn
+            && matches!(tcx.def_kind(tcx.parent(sig_id)), DefKind::Impl { of_trait: false })
     }
 
     fn get_call_path_res(
