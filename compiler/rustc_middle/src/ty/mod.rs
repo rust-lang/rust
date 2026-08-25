@@ -504,7 +504,7 @@ impl TyCtxt<'_> {
     /// Compare def-ids based on their position in def-id tree, ancestor def-ids are considered
     /// larger than descendant def-ids, and two different def-ids are considered unordered if
     /// neither of them is an ancestor of the other.
-    fn def_id_partial_cmp(self, lhs: DefId, rhs: DefId) -> Option<Ordering> {
+    pub fn def_id_partial_cmp(self, lhs: DefId, rhs: DefId) -> Option<Ordering> {
         // Def-ids from different crates are always unordered.
         if lhs.krate != rhs.krate {
             return None;
