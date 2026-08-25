@@ -258,7 +258,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 // match is conditional on having this value
                 | PatKind::Constant { .. }
                 | PatKind::Variant { .. }
-                | PatKind::Leaf { .. }
                 | PatKind::Deref { .. }
                 | PatKind::DerefPattern { .. }
                 | PatKind::Range { .. }
@@ -271,10 +270,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     return; // we can return here since this already requires unsafe
                 }
                 // wildcard doesn't read anything.
-                PatKind::Wild |
-                // these just wrap other patterns, which we recurse on below.
-                PatKind::Or { .. } |
-                PatKind::Error(_) => {}
+                PatKind::Wild
+                // these two just wrap other patterns, which we recurse on below.
+                | PatKind::Or { .. }
+                | PatKind::Leaf { .. }
+                | PatKind::Error(_) => {}
             }
         };
 
