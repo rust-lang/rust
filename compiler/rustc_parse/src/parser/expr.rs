@@ -273,55 +273,35 @@ impl<'a> Parser<'a> {
 
     /// Possibly translate the current token to an associative operator.
     /// The method does not advance the current token.
-    ///
-    /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
     pub(super) fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
-        let (op, span) = match (AssocOp::from_token(&self.token), self.token.ident()) {
-            // When parsing const expressions, stop parsing when encountering `>`.
-            (
-                Some(
-                    AssocOp::Binary(BinOpKind::Shr | BinOpKind::Gt | BinOpKind::Ge)
-                    | AssocOp::AssignOp(AssignOpKind::ShrAssign),
-                ),
-                _,
-            ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
-                return None;
-            }
-            // When recovering patterns as expressions, stop parsing when encountering an
-            // assignment `=`, an alternative `|`, or a range `..`.
-            (
-                Some(
-                    AssocOp::Assign
-                    | AssocOp::AssignOp(_)
-                    | AssocOp::Binary(BinOpKind::BitOr)
-                    | AssocOp::Range(_),
-                ),
-                _,
-            ) if self.restrictions.contains(Restrictions::IS_PAT) => {
-                return None;
-            }
-            (Some(op), _) => (op, self.token.span),
-            (None, Some((Ident { name: sym::and, span }, IdentIsRaw::No)))
-                if self.may_recover() =>
-            {
-                self.dcx().emit_err(diagnostics::InvalidLogicalOperator {
-                    span: self.token.span,
-                    incorrect: "and".into(),
-                    sub: diagnostics::InvalidLogicalOperatorSub::Conjunction(self.token.span),
-                });
-                (AssocOp::Binary(BinOpKind::And), span)
-            }
-            (None, Some((Ident { name: sym::or, span }, IdentIsRaw::No))) if self.may_recover() => {
-                self.dcx().emit_err(diagnostics::InvalidLogicalOperator {
-                    span: self.token.span,
-                    incorrect: "or".into(),
-                    sub: diagnostics::InvalidLogicalOperatorSub::Disjunction(self.token.span),
-                });
-                (AssocOp::Binary(BinOpKind::Or), span)
-            }
-            _ => return None,
-        };
-        Some(respan(span, op))
+        let op = AssocOp::from_token(&self.token);
+
+        // When parsing const expressions, stop parsing when encountering `>`.
+        if self.restrictions.contains(Restrictions::CONST_EXPR)
+            && let Some(op) = op
+            && let AssocOp::Binary(BinOpKind::Shr | BinOpKind::Gt | BinOpKind::Ge)
+            | AssocOp::AssignOp(AssignOpKind::ShrAssign) = op
+        {
+            return None;
+        }
+
+        // When recovering patterns as expressions, stop parsing when encountering an
+        // assignment `=`, an alternative `|`, or a range `..`.
+        if self.restrictions.contains(Restrictions::IS_PAT)
+            && let Some(op) = op
+            && let AssocOp::Assign
+            | AssocOp::AssignOp(_)
+            | AssocOp::Binary(BinOpKind::BitOr)
+            | AssocOp::Range(_) = op
+        {
+            return None;
+        }
+
+        if let Some(op) = op {
+            return Some(respan(self.token.span, op));
+        }
+
+        self.recover_from_alpha_logic_op()
     }
 
     /// Checks if this expression is a successfully parsed statement.

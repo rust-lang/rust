@@ -1,12 +1,35 @@
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{BinOpKind, Expr, ExprKind, token};
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::{Span, Spanned};
+use rustc_span::{Span, Spanned, respan, sym};
 
 use crate::diagnostics;
 use crate::parser::Parser;
 
 impl<'a> Parser<'a> {
+    /// Recover from alphabetic logic operators `and` and `or` as found in e.g., Python and PHP.
+    pub(super) fn recover_from_alpha_logic_op(&self) -> Option<Spanned<AssocOp>> {
+        if self.may_recover()
+            && let Some((ident, token::IdentIsRaw::No)) = self.token.ident()
+        {
+            let (op, sub): (_, fn(_) -> _) = match ident.name {
+                sym::and => (BinOpKind::And, diagnostics::InvalidLogicalOperatorSub::Conjunction),
+                sym::or => (BinOpKind::Or, diagnostics::InvalidLogicalOperatorSub::Disjunction),
+                _ => return None,
+            };
+
+            self.dcx().emit_err(diagnostics::InvalidLogicalOperator {
+                span: self.token.span,
+                incorrect: ident.name,
+                sub: sub(self.token.span),
+            });
+
+            Some(respan(self.token.span, AssocOp::Binary(op)))
+        } else {
+            None
+        }
+    }
+
     /// Reject `...` being used as an expression operator.
     pub(super) fn reject_dotdotdot_expr_op(&self) {
         if self.token == token::DotDotDot {
