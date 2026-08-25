@@ -2,54 +2,43 @@
 //@ revisions: opt noopt ctfe
 //@[opt] compile-flags: -O
 //@[noopt] compile-flags: -Zmir-opt-level=0
-//@ min-llvm-version: 22
-//@ compile-flags: --check-cfg=cfg(target_has_reliable_f16)
+//@ min-llvm-version: 23
+//@ compile-flags: --check-cfg=cfg(target_has_reliable_f16,target_has_reliable_f128)
 // ignore-tidy-file-linelength
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![cfg_attr(target_has_reliable_f16, feature(f16))]
+#![cfg_attr(target_has_reliable_f128, feature(f128))]
 
 // This tests the float classification functions, for regular runtime code and for const evaluation.
 
-
+use std::hint::black_box;
 use std::num::FpCategory::*;
 
 #[cfg(not(ctfe))]
-use std::hint::black_box;
-#[cfg(ctfe)]
-#[allow(unused)]
-const fn black_box<T>(x: T) -> T { x }
-
-#[cfg(not(ctfe))]
 macro_rules! assert_test {
-    ($a:expr, NonDet) => {
-        {
-            // Compute `a`, but do not compare with anything as the result is non-deterministic.
-            let _val = $a;
-        }
-    };
-    ($a:expr, $b:ident) => {
-        {
-            // Let-bind to avoid promotion.
-            // No black_box here! That can mask x87 failures.
-            let a = $a;
-            let b = $b;
-            assert_eq!(a, b, "{} produces wrong result", stringify!($a));
-        }
-    };
+    ($a:expr, NonDet) => {{
+        // Compute `a`, but do not compare with anything as the result is non-deterministic.
+        let _val = $a;
+    }};
+    ($a:expr, $b:ident) => {{
+        // Let-bind to avoid promotion.
+        // No black_box here! That can mask x87 failures.
+        let a = $a;
+        let b = $b;
+        assert_eq!(a, b, "{} produces wrong result", stringify!($a));
+    }};
 }
 #[cfg(ctfe)]
 macro_rules! assert_test {
-    ($a:expr, NonDet) => {
-        {
-            // Compute `a`, but do not compare with anything as the result is non-deterministic.
-            const _: () = { let _val = $a; };
-        }
-    };
-    ($a:expr, $b:ident) => {
-        {
-            const _: () = assert!(matches!($a, $b));
-        }
-    };
+    ($a:expr, NonDet) => {{
+        // Compute `a`, but do not compare with anything as the result is non-deterministic.
+        const _: () = {
+            let _val = $a;
+        };
+    }};
+    ($a:expr, $b:ident) => {{
+        const _: () = assert!(matches!($a, $b));
+    }};
 }
 
 macro_rules! suite {
@@ -71,6 +60,13 @@ macro_rules! suite {
             #[allow(unused)]
             type $tyname = f64;
             suite_inner!(f64 => $($tt)*);
+        }
+
+        #[cfg(target_has_reliable_f128)]
+        fn f128() {
+            #[allow(unused)]
+            type $tyname = f128;
+            suite_inner!(f128 => $($tt)*);
         }
     }
 }
@@ -136,5 +132,6 @@ fn main() {
     f16();
     f32();
     f64();
-    // FIXME(f128): also test f128
+    #[cfg(target_has_reliable_f128)]
+    f128();
 }
