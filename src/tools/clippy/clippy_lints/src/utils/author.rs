@@ -804,11 +804,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Tuple({fields}, {skip_pos:?})");
                 self.slice(fields, |field| self.pat(field));
             },
-            PatKind::Box(pat) => {
-                bind!(self, pat);
-                kind!("Box({pat})");
-                self.pat(pat);
-            },
             PatKind::Deref(pat) => {
                 bind!(self, pat);
                 kind!("Deref({pat})");

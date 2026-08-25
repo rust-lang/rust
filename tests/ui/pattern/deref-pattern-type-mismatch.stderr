@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/box-pattern-type-mismatch.rs:7:31
+  --> $DIR/deref-pattern-type-mismatch.rs:7:31
    |
 LL | struct X(dyn Iterator<Item = &'a ()>);
    |                               ^^ undeclared lifetime

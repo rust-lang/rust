@@ -666,7 +666,7 @@ impl<'a> Parser<'a> {
 
                     // Sub-patterns
                     // FIXME: this doesn't work with recursive subpats (`&mut &mut <err>`)
-                    PatKind::Box(subpat) | PatKind::Ref(subpat, _, _)
+                    PatKind::Ref(subpat, _, _)
                         if matches!(subpat.kind, PatKind::Err(_) | PatKind::Expr(_)) =>
                     {
                         self.maybe_add_suggestions_then_emit(subpat.span, p.span, false)
@@ -1623,7 +1623,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses `box pat`
+    // FIXME: remove this entirely eventually
+    /// Parses the removed `box pat` syntax to provide a more helpful error message.
     fn parse_pat_box(&mut self) -> PResult<'a, PatKind> {
         let box_span = self.prev_token.span;
 
@@ -1647,8 +1648,11 @@ impl<'a> Parser<'a> {
             Ok(PatKind::Ident(BindingMode::NONE, Ident::new(kw::Box, box_span), sub))
         } else {
             let pat = Box::new(self.parse_pat_with_range_pat(false, None, None)?);
-            self.psess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
-            Ok(PatKind::Box(pat))
+            self.dcx().emit_err(diagnostics::BoxPatternsRemoved {
+                span: box_span.to(self.prev_token.span),
+            });
+            // Treat the box pattern like a deref pattern to avoid lots of "value not found" errors.
+            Ok(PatKind::Deref(pat))
         }
     }
 
@@ -1882,7 +1886,7 @@ impl<'a> Parser<'a> {
     /// Parse a field in a struct pattern.
     ///
     /// ```ebnf
-    /// PatField = FieldName ":" Pat | "box"? "mut"? ByRef? Ident
+    /// PatField = FieldName ":" Pat | "mut"? ByRef? Ident
     /// ```
     fn parse_pat_field(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, PatField> {
         let hi;
@@ -1898,9 +1902,12 @@ impl<'a> Parser<'a> {
             hi = pat.span;
             (pat, fieldname, false)
         } else {
+            // FIXME: remove the recovery for parsing box patterrns entirely
             let is_box = self.eat_keyword(exp!(Box));
             if is_box {
-                self.psess.gated_spans.gate(sym::box_patterns, self.prev_token.span);
+                self.dcx()
+                    .create_err(diagnostics::BoxPatternsRemoved { span: self.prev_token.span })
+                    .emit();
             }
             let boxed_span = self.token.span;
             let mutability = self.parse_mutability();
@@ -1917,7 +1924,7 @@ impl<'a> Parser<'a> {
                 self.psess.gated_spans.gate(sym::mut_ref, fieldpat.span);
             }
             let subpat = if is_box {
-                self.mk_pat(lo.to(hi), PatKind::Box(Box::new(fieldpat)))
+                self.mk_pat(lo.to(hi), PatKind::Deref(Box::new(fieldpat)))
             } else {
                 fieldpat
             };
