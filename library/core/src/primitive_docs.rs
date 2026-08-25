@@ -120,10 +120,8 @@ const _: () = ();
 ///
 /// When implementing this trait for [`String`] we need to pick a type for [`Err`]. And since
 /// converting a string into a string will never result in an error, the appropriate type is `!`.
-/// (Currently the type actually used is an enum with no variants, though this is only because `!`
-/// was added to Rust at a later date and it may change in the future.) With an [`Err`] type of
-/// `!`, if we have to call [`String::from_str`] for some reason the result will be a
-/// [`Result<String, !>`] which we can unpack like this:
+/// With an [`Err`] type of `!`, if we have to call [`String::from_str`] for some reason the result
+/// will be a [`Result<String, !>`] which we can unpack like this:
 ///
 /// ```
 /// use std::str::FromStr;
@@ -303,7 +301,8 @@ const _: () = ();
 ///
 /// Historically, the fallback type was [`()`], causing confusing behavior where `!` spontaneously
 /// coerced to `()`, even when it would not infer `()` without the fallback. The fallback was changed
-/// to `!` in the [2024 edition], and will be changed in all editions at a later date.
+/// to `!` in Rust `1.85.0` in the [2024 edition], and it was changed in all editions in Rust
+/// `CURRENT_RUSTC_VERSION`.
 ///
 /// [coercion site]: <https://doc.rust-lang.org/reference/type-coercions.html#coercion-sites>
 /// [`()`]: prim@unit
