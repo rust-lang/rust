@@ -2648,8 +2648,9 @@ rustc_queries! {
         desc { "computing proof tree for `{}` with depth `{}`", key.0.canonical.value.goal.predicate, key.1 }
     }
 
-    /// Returns the Rust target features for the current target. These are not always the same as LLVM target features!
-    query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::Stability> {
+    /// Returns a list of all Rust target features for the current target (not just the ones that
+    /// are enabled). These are not always the same as LLVM target features!
+    query all_rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::Stability> {
         arena_cache
         eval_always
         desc { "looking up Rust target features" }
