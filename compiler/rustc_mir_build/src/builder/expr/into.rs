@@ -714,13 +714,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut targets =
                     if asm_macro.diverges(options) { vec![] } else { vec![destination_block] };
 
+                // If any input operand is `!`, then  we don't need to generate the asm terminator,
+                // but we still need to evaluate the operands.
+                // Fixes an ICE with `!` inline asm inputs (#154904).
+                let mut has_never_input = false;
+
                 let operands = operands
                     .into_iter()
                     .map(|op| match *op {
-                        thir::InlineAsmOperand::In { reg, expr } => mir::InlineAsmOperand::In {
-                            reg,
-                            value: unpack!(block = this.as_local_operand(block, expr)),
-                        },
+                        thir::InlineAsmOperand::In { reg, expr } => {
+                            let value = unpack!(block = this.as_local_operand(block, expr));
+                            if value.ty(&this.local_decls, this.tcx).is_never() {
+                                has_never_input = true;
+                            }
+                            mir::InlineAsmOperand::In { reg, value }
+                        }
                         thir::InlineAsmOperand::Out { reg, late, expr } => {
                             mir::InlineAsmOperand::Out {
                                 reg,
@@ -729,7 +737,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             }
                         }
                         thir::InlineAsmOperand::InOut { reg, late, expr } => {
+                            // We don't need to check for `!` input types here,
+                            // since `!` is disallowed as an output type.
                             let place = unpack!(block = this.as_place(block, expr));
+                            debug_assert!(!place.ty(&this.local_decls, this.tcx).ty.is_never());
                             mir::InlineAsmOperand::InOut {
                                 reg,
                                 late,
@@ -739,10 +750,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             }
                         }
                         thir::InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
+                            let in_value = unpack!(block = this.as_local_operand(block, in_expr));
+                            if in_value.ty(&this.local_decls, this.tcx).is_never() {
+                                has_never_input = true;
+                            }
                             mir::InlineAsmOperand::InOut {
                                 reg,
                                 late,
-                                in_value: unpack!(block = this.as_local_operand(block, in_expr)),
+                                in_value,
                                 out_place: out_expr.map(|out_expr| {
                                     unpack!(block = this.as_place(block, out_expr))
                                 }),
@@ -794,21 +809,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::InlineAsm {
-                        asm_macro,
-                        template,
-                        operands,
-                        options,
-                        line_spans,
-                        targets: targets.into_boxed_slice(),
-                        unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
-                            UnwindAction::Continue
-                        } else {
-                            UnwindAction::Unreachable
-                        },
+                    if has_never_input {
+                        // Codegen can't handle `Operand::ZeroSized` asm inputs,
+                        // so don't emit an asm terminator if the inputs include `!`,
+                        // since the asm would be unreachable anyway.
+                        TerminatorKind::Unreachable
+                    } else {
+                        TerminatorKind::InlineAsm {
+                            asm_macro,
+                            template,
+                            operands,
+                            options,
+                            line_spans,
+                            targets: targets.into_boxed_slice(),
+                            unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
+                                UnwindAction::Continue
+                            } else {
+                                UnwindAction::Unreachable
+                            },
+                        }
                     },
                 );
-                if options.contains(InlineAsmOptions::MAY_UNWIND) {
+                if !has_never_input && options.contains(InlineAsmOptions::MAY_UNWIND) {
                     this.diverge_from(block);
                 }
                 destination_block.unit()
