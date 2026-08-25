@@ -460,11 +460,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let o_creat = this.eval_libc_i32("O_CREAT");
         if flag & o_creat == o_creat {
             flag &= !o_creat;
-            // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
-            // C integer promotion rules mean that on the ABI level, it gets passed as `u32`
-            // (see https://github.com/rust-lang/rust/issues/71915).
+            // Get the mode.
             let ([mode], _) = this.check_varargs(
-                shim_varargs![libc::mode_t],
+                if this.libc_ty_layout("mode_t").size.bytes() >= 4 {
+                    // `mode_t` is big enough, no C integer promotion.
+                    shim_varargs![libc::mode_t]
+                } else {
+                    // Types smaller than int get promoted to int
+                    // (see https://github.com/rust-lang/rust/issues/71915).
+                    shim_varargs![i32]
+                },
                 varargs,
                 "open(pathname, O_CREAT, ...)",
             )?;

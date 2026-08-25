@@ -26,7 +26,7 @@ pub fn prctl<'tcx>(
     let res = match ecx.read_scalar(op)?.to_i32()? {
         op if op == pr_set_name => {
             let ([name], _) =
-                ecx.check_varargs(shim_varargs![*_], varargs, "prctl(PR_SET_NAME, ...)")?;
+                ecx.check_varargs(shim_varargs![*libc::c_char], varargs, "prctl(PR_SET_NAME, ...)")?;
 
             let name = ecx.read_scalar(name)?;
             let thread = ecx.pthread_self()?;
@@ -39,7 +39,7 @@ pub fn prctl<'tcx>(
         }
         op if op == pr_get_name => {
             let ([name], _) =
-                ecx.check_varargs(shim_varargs![*_], varargs, "prctl(PR_GET_NAME, ...)")?;
+                ecx.check_varargs(shim_varargs![*libc::c_char], varargs, "prctl(PR_GET_NAME, ...)")?;
 
             let name = ecx.read_scalar(name)?;
             let thread = ecx.pthread_self()?;

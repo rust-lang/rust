@@ -150,8 +150,18 @@ macro_rules! shim_sig_arg {
         $this.tcx.types.bool
     };
     ($this:ident, *_) => {
+        // Pointee types usually don't matter so we allow it to be omitted.
         // Mutability does not matter for ABI.
         $this.machine.layouts.mut_raw_ptr.ty
+    };
+    ($this:ident, *$($ty:tt)*) => {
+        // Pointee types matter for varargs so we support explicitly giving them.
+        // Mutability does not matter for ABI.
+        rustc_middle::ty::Ty::new_ptr(
+            *$this.tcx,
+            shim_sig_arg!($this, $($ty)*),
+            rustc_middle::mir::Mutability::Mut,
+        )
     };
     ($this:ident, fn(..) -> _) => {
         // We currently treat fn ptrs as ABI-compatible with data ptrs so we can just use a raw ptr.
@@ -208,12 +218,12 @@ fn check_shim_abi<'tcx>(
 
     if caller_abi.c_variadic && !callee_abi.c_variadic {
         throw_ub_format!(
-            "ABI mismatch: `{link_name}` is a non-variadic function, but the caller is using a variadic signature"
+            "ABI mismatch: `{link_name}` is a non-variadic function, but the caller is using a c-variadic signature"
         );
     }
     if !caller_abi.c_variadic && callee_abi.c_variadic {
         throw_ub_format!(
-            "ABI mismatch: `{link_name}` is a variadic function, but the caller is using a non-variadic signature"
+            "ABI mismatch: `{link_name}` is a c-variadic function, but the caller is using a non-variadic signature"
         );
     }
 
@@ -254,7 +264,7 @@ fn check_shim_abi<'tcx>(
 // Deliberately not `Copy` so that we don't consume the same vararg multiple times accidentally.
 pub struct Varargs<'tcx, 'a> {
     args: &'a [OpTy<'tcx>],
-    /// Number of variadic arguments that have already been taken, for error messages.
+    /// Number of arguments (variadic and fixed) that have already been taken, for error messages.
     already_gone: usize,
 }
 
@@ -299,7 +309,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         if abi.c_variadic {
             throw_ub_format!(
-                "calling a non-variadic function with a variadic caller-side signature"
+                "calling a non-variadic function with a c-variadic caller-side signature"
             );
         }
 
@@ -360,7 +370,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Return arguments.
         if let Some((fixed, var)) = caller_args.split_first_chunk() {
-            return interp_ok((fixed, Varargs { args: var, already_gone: 0 }));
+            return interp_ok((fixed, Varargs { args: var, already_gone: N }));
         }
         unreachable!()
     }
@@ -378,20 +388,45 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let Some((now, tail)) = varargs.args.split_first_chunk::<N>() else {
             throw_ub_format!(
-                "not enough variadic arguments for `{fn_name}`: got {}, expected at least {}",
+                "not enough arguments for `{fn_name}`: got {}, expected at least {}",
                 varargs.already_gone.strict_add(varargs.args.len()),
                 varargs.already_gone.strict_add(N),
             )
         };
 
         for (n, (caller_gave, callee_expected)) in now.iter().zip(tys).enumerate() {
-            // Check ABI compatibility. This is less strict than `next_arg` but we're also
-            // not limited to just a few simple types.
-            let callee_expected = this.layout_of(callee_expected)?;
-
-            // FIXME: check compatibility once <https://github.com/rust-lang/rust/pull/161615>
-            // landed.
-            let _unused = (n, caller_gave, callee_expected);
+            // Check ABI compatibility.
+            let compatible =
+                this.validate_c_variadic_compatible_ty(caller_gave.layout.ty, callee_expected)?;
+            match compatible {
+                VarArgCompatible::Compatible => {}
+                VarArgCompatible::Incompatible => {
+                    throw_ub_format!(
+                        "incorrect c-variadic argument type for `{fn_name}`: \
+                        expected argument #{n} to have type `{callee_expected}` but got incompatible type `{caller_ty}`",
+                        n = varargs.already_gone.strict_add(n).strict_add(1),
+                        caller_ty = caller_gave.layout.ty,
+                    );
+                }
+                VarArgCompatible::CastIntTo { source_is_signed } => {
+                    // Check that the value can be represented in the target type.
+                    let size = caller_gave.layout.size;
+                    let scalar = this.read_scalar(caller_gave)?;
+                    if scalar.to_int(size)? < 0 {
+                        throw_ub_format!(
+                            "incorrect c-variadic argument type for `{fn_name}`: \
+                            argument #{n} has value `{value}_{caller_ty}` which cannot be represented in expected type `{callee_expected}`",
+                            n = varargs.already_gone.strict_add(n).strict_add(1),
+                            caller_ty = caller_gave.layout.ty,
+                            value = if source_is_signed {
+                                scalar.to_int(size)?.to_string()
+                            } else {
+                                scalar.to_uint(size)?.to_string()
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         interp_ok((now, Varargs { args: tail, already_gone: varargs.already_gone.strict_add(N) }))

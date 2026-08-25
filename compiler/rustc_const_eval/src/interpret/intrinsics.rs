@@ -71,6 +71,7 @@ pub enum VarArgCompatible {
     /// `T` and `U` are definitely not compatible.
     Incompatible,
     /// `T` and `U` are corresponding signed and unsigned integer types.
+    /// This is compatible only if the value can be represented in both types.
     CastIntTo { source_is_signed: bool },
 }
 
@@ -817,7 +818,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// integers of the same size but different signedness, the passed value must be representable
     /// in both types.
     fn validate_c_variadic_argument(
-        &mut self,
+        &self,
         arg_mplace: &MPlaceTy<'tcx, M::Provenance>,
         callee_type: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx> {
@@ -866,8 +867,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// - `T` and `U` are both pointers, and their target types are compatible.
     /// - `T` is a pointer to [`std::ffi::c_void`] and `U` is a pointer to [`i8`] or [`u8`],
     /// or vice versa.
+    ///
+    /// This is designed to match the C rules for variadics, it is incomparable to what we allow in
+    /// terms of ABI mismatches for regular (fixed) function arguments.
     pub fn validate_c_variadic_compatible_ty(
-        &mut self,
+        &self,
         caller_type: Ty<'tcx>,
         callee_type: Ty<'tcx>,
     ) -> InterpResult<'tcx, VarArgCompatible> {
@@ -884,7 +888,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let is_c_char = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(UintTy::U8) | ty::Int(IntTy::I8));
 
         match (caller_type.kind(), callee_type.kind()) {
-            (ty::RawPtr(caller_target_ty, _), ty::RawPtr(callee_target_ty, _)) => {
+            // Some types look different but are actually the same for ABI purposes.
+            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => {
+                // E.g. cast between `usize` and `u64` on a 64-bit platform.
+                interp_ok(VarArgCompatible::Compatible)
+            }
+            // C allows different types if...
+            // - "both types are pointers to qualified or unqualified versions of compatible types"
+            // - "one type is pointer to qualified or unqualified void and the other is a pointer to a qualified or
+            //   unqualified character type"
+            //
+            // As usual for the ABI, we treat references and raw pointers alike.
+            (
+                ty::RawPtr(caller_target_ty, _) | ty::Ref(_, caller_target_ty, _),
+                ty::RawPtr(callee_target_ty, _) | ty::Ref(_, callee_target_ty, _),
+            ) => {
                 // In C, types can be qualified by a combination of `const`, `volatile` and
                 // `restrict`. These properties are irrelevant for the ABI, and don't have an
                 // equivalent in rust.
@@ -910,16 +928,58 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     }
                 }
             }
+            // - "one type is a signed integer type, the other type is the corresponding unsigned integer type,
+            //   and the value is representable in both types"
             (ty::Int(_), ty::Uint(_)) => {
                 interp_ok(VarArgCompatible::CastIntTo { source_is_signed: true })
             }
             (ty::Uint(_), ty::Int(_)) => {
                 interp_ok(VarArgCompatible::CastIntTo { source_is_signed: false })
             }
-            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => {
-                // E.g. cast between `usize` and `u64` on a 64-bit platform.
-                interp_ok(VarArgCompatible::Compatible)
+            // - "or, the type of the next argument is nullptr_t and type is a pointer type that has the same
+            //   representation and alignment requirements as a pointer to a character type"
+            //   This one does not have an equivalent form in Rust.
+
+            // C also considers two structs to be the same if they have the same name and the same
+            // fields. We need a similar rules that that e.g. if caller and callee use the "same"
+            // type from two different versions of the same crate, that call is accepted.
+            (ty::Adt(caller_adt, caller_args), ty::Adt(callee_adt, callee_args))
+                if (caller_adt.is_struct() && callee_adt.is_struct())
+                    && (caller_adt.repr().c() && callee_adt.repr().c())
+                    && (self.tcx.item_name(caller_adt.did())
+                        == self.tcx.item_name(callee_adt.did())) =>
+            {
+                let caller_fields = &caller_adt.non_enum_variant().fields;
+                let callee_fields = &callee_adt.non_enum_variant().fields;
+                if caller_fields.len() == callee_fields.len()
+                    && caller_fields.iter().zip(callee_fields).try_fold(
+                        true,
+                        |acc, (caller_field, callee_field)| {
+                            if !acc {
+                                return interp_ok(false);
+                            }
+                            if caller_field.name != callee_field.name {
+                                return interp_ok(false);
+                            }
+                            let caller_ty = caller_field.ty(*self.tcx, caller_args);
+                            let caller_ty =
+                                self.tcx.normalize_erasing_regions(self.typing_env, caller_ty);
+                            let callee_ty = callee_field.ty(*self.tcx, callee_args);
+                            let callee_ty =
+                                self.tcx.normalize_erasing_regions(self.typing_env, callee_ty);
+                            interp_ok(matches!(
+                                self.validate_c_variadic_compatible_ty(caller_ty, callee_ty)?,
+                                VarArgCompatible::Compatible
+                            ))
+                        },
+                    )?
+                {
+                    interp_ok(VarArgCompatible::Compatible)
+                } else {
+                    interp_ok(VarArgCompatible::Incompatible)
+                }
             }
+
             _ => interp_ok(VarArgCompatible::Incompatible),
         }
     }
