@@ -296,12 +296,13 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         state: &mut State<FlatSet<Scalar>>,
     ) {
-        match rvalue {
+        let result = match rvalue {
             Rvalue::Use(operand, _) => {
                 state.flood(target.as_ref(), &self.map);
                 if let Some(target) = self.map.find(target.as_ref()) {
                     self.assign_operand(state, target, operand);
                 }
+                return;
             }
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
             Rvalue::Aggregate(kind, operands) => {
@@ -347,27 +348,35 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                         state.insert_value_idx(discr_idx, FlatSet::Elem(discr_val), &self.map);
                     }
                 }
+                return;
             }
-            Rvalue::BinaryOp(op, (left, right)) if op.is_overflowing() => {
-                // Flood everything now, so we can use `insert_value_idx` directly later.
-                state.flood(target.as_ref(), &self.map);
+            Rvalue::BinaryOp(op, (left, right)) => {
+                if op.is_overflowing() {
+                    // Flood everything now, so we can use `insert_value_idx` directly later.
+                    state.flood(target.as_ref(), &self.map);
 
-                let Some(target) = self.map.find(target.as_ref()) else { return };
+                    let Some(target) = self.map.find(target.as_ref()) else { return };
 
-                let value_target = self.map.apply(target, TrackElem::Field(0_u32.into()));
-                let overflow_target = self.map.apply(target, TrackElem::Field(1_u32.into()));
+                    let value_target = self.map.apply(target, TrackElem::Field(0_u32.into()));
+                    let overflow_target = self.map.apply(target, TrackElem::Field(1_u32.into()));
 
-                if value_target.is_some() || overflow_target.is_some() {
-                    let (val, overflow) = self.binary_op(state, *op, left, right);
+                    if value_target.is_some() || overflow_target.is_some() {
+                        let (val, overflow) = self.binary_op(state, *op, left, right);
 
-                    if let Some(value_target) = value_target {
-                        // We have flooded `target` earlier.
-                        state.insert_value_idx(value_target, val, &self.map);
+                        if let Some(value_target) = value_target {
+                            // We have flooded `target` earlier.
+                            state.insert_value_idx(value_target, val, &self.map);
+                        }
+                        if let Some(overflow_target) = overflow_target {
+                            // We have flooded `target` earlier.
+                            state.insert_value_idx(overflow_target, overflow, &self.map);
+                        }
                     }
-                    if let Some(overflow_target) = overflow_target {
-                        // We have flooded `target` earlier.
-                        state.insert_value_idx(overflow_target, overflow, &self.map);
-                    }
+                    return;
+                } else {
+                    // Overflows must be ignored here.
+                    let (val, _overflow) = self.binary_op(state, *op, left, right);
+                    ValueOrPlace::Value(val)
                 }
             }
             Rvalue::Cast(
@@ -387,83 +396,73 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 {
                     state.insert_value_idx(target_len, FlatSet::Elem(len.into()), &self.map);
                 }
+                return;
             }
-            _ => {
-                let result = self.handle_rvalue(rvalue, state);
-                state.assign(target.as_ref(), result, &self.map);
-            }
-        }
-    }
-
-    fn handle_rvalue(
-        &self,
-        rvalue: &Rvalue<'tcx>,
-        state: &State<FlatSet<Scalar>>,
-    ) -> ValueOrPlace<FlatSet<Scalar>> {
-        let val = match rvalue {
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
-                let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
-                    return ValueOrPlace::Value(FlatSet::Top);
-                };
-                self.eval_operand(operand, state).and_then(|op| {
-                    self.ecx
-                        .int_to_int_or_float(&op, layout)
-                        .discard_err()
-                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result))
-                })
+                ValueOrPlace::Value(
+                    if let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) {
+                        self.eval_operand(operand, state).and_then(|op| {
+                            self.ecx
+                                .int_to_int_or_float(&op, layout)
+                                .discard_err()
+                                .map_or(FlatSet::Top, |result| self.wrap_immediate(*result))
+                        })
+                    } else {
+                        FlatSet::Top
+                    },
+                )
             }
             Rvalue::Cast(CastKind::FloatToInt | CastKind::FloatToFloat, operand, ty) => {
-                let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
-                    return ValueOrPlace::Value(FlatSet::Top);
-                };
-                self.eval_operand(operand, state).and_then(|op| {
-                    self.ecx
-                        .float_to_float_or_int(&op, layout)
-                        .discard_err()
-                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result))
-                })
+                ValueOrPlace::Value(
+                    if let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) {
+                        self.eval_operand(operand, state).and_then(|op| {
+                            self.ecx
+                                .float_to_float_or_int(&op, layout)
+                                .discard_err()
+                                .map_or(FlatSet::Top, |result| self.wrap_immediate(*result))
+                        })
+                    } else {
+                        FlatSet::Top
+                    },
+                )
             }
             Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, operand, _) => {
-                self.eval_operand(operand, state).and_then(|op| self.wrap_immediate(*op))
-            }
-            Rvalue::BinaryOp(op, (left, right)) if !op.is_overflowing() => {
-                // Overflows must be ignored here.
-                // The overflowing operators are handled in `handle_assign`.
-                let (val, _overflow) = self.binary_op(state, *op, left, right);
-                val
+                ValueOrPlace::Value(
+                    self.eval_operand(operand, state).and_then(|op| self.wrap_immediate(*op)),
+                )
             }
             Rvalue::UnaryOp(op, operand) => {
                 if let UnOp::PtrMetadata = op
                     && let Some(place) = operand.place()
                     && let Some(len) = self.map.find_len(place.as_ref())
                 {
-                    return ValueOrPlace::Place(len);
+                    ValueOrPlace::Place(len)
+                } else {
+                    ValueOrPlace::Value(self.eval_operand(operand, state).and_then(|value| {
+                        self.ecx
+                            .unary_op(*op, &value)
+                            .discard_err()
+                            .map_or(FlatSet::Top, |val| self.wrap_immediate(*val))
+                    }))
                 }
-                self.eval_operand(operand, state).and_then(|value| {
-                    self.ecx
-                        .unary_op(*op, &value)
-                        .discard_err()
-                        .map_or(FlatSet::Top, |val| self.wrap_immediate(*val))
-                })
             }
-            Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
-            Rvalue::Use(operand, _) => return self.handle_operand(operand),
-            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
+            Rvalue::Discriminant(place) => {
+                ValueOrPlace::Value(state.get_discr(place.as_ref(), &self.map))
+            }
             Rvalue::Ref(..) | Rvalue::Reborrow(..) | Rvalue::RawPtr(..) => {
                 // We don't track such places.
-                return ValueOrPlace::TOP;
+                ValueOrPlace::TOP
             }
             Rvalue::Repeat(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Cast(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::Aggregate(..)
             | Rvalue::WrapUnsafeBinder(..) => {
                 // No modification is possible through these r-values.
-                return ValueOrPlace::TOP;
+                ValueOrPlace::TOP
             }
         };
-        ValueOrPlace::Value(val)
+        // For the arms that didn't return early.
+        state.assign(target.as_ref(), result, &self.map);
     }
 
     fn handle_constant(&self, constant: &ConstOperand<'tcx>) -> FlatSet<Scalar> {
