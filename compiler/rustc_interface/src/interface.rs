@@ -450,9 +450,22 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             sess.fallback_intrinsics = FxHashSet::from_iter(codegen_backend.fallback_intrinsics());
             sess.thin_lto_supported = codegen_backend.thin_lto_supported();
 
-            let mut cfg = parse_cfg(&sess, config.crate_cfg);
-            util::add_configuration(&mut cfg, &mut sess, &*codegen_backend);
-            sess.config = cfg;
+            let target_config = codegen_backend.target_config(&sess);
+
+            sess.config = parse_cfg(&sess, config.crate_cfg);
+            let is_nightly_build = sess.is_nightly_build();
+            let is_crt_static = sess.crt_static(None);
+            util::add_configuration(
+                &mut sess.config,
+                &target_config,
+                &sess.target,
+                is_nightly_build,
+                is_crt_static,
+            );
+
+            // Store all of the target features in the session.
+            sess.internal_target_features
+                .extend(target_config.internal_target_features.into_sorted_stable_ord());
 
             sess.check_config = parse_check_cfg(&sess, config.crate_check_cfg);
 
