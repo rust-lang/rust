@@ -1,0 +1,14 @@
+error: `box_patterns` has been removed
+  --> $DIR/removed-syntax-box-patterns.rs:2:9
+   |
+LL |     let box x = Box::new('c');
+   |         ^^^^^
+
+error: `box_patterns` has been removed
+  --> $DIR/removed-syntax-box-patterns.rs:7:18
+   |
+LL |     let Packet { box x } = Packet { x: Box::new(0) };
+   |                  ^^^
+
+error: aborting due to 2 previous errors
+

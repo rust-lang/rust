@@ -812,18 +812,9 @@ impl Session {
         self.out.join(target).join("json-doc")
     }
 
-    pub(crate) fn test_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(target).join("test")
-    }
-
     /// Output directory for all documentation for a target
     pub(crate) fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("compiler-doc")
-    }
-
-    /// Output directory for some generated md crate documentation for a target (temporary)
-    pub(crate) fn md_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(target).join("md-doc")
     }
 
     /// Path to the vendored Rust crates.
@@ -834,12 +825,6 @@ impl Session {
     /// Directory for libraries built from C/C++ code and shared between stages.
     pub(crate) fn native_dir(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("native")
-    }
-
-    /// Root output directory for rust_test_helpers library compiled for
-    /// `target`
-    pub(crate) fn test_helpers_out(&self, target: TargetSelection) -> PathBuf {
-        self.native_dir(target).join("rust-test-helpers")
     }
 
     /// Adds the `RUST_TEST_THREADS` env var if necessary
@@ -1306,11 +1291,6 @@ impl Session {
     /// emulated with QEMU and binaries will need to be shipped to the emulator.
     pub(crate) fn qemu_rootfs(&self, target: TargetSelection) -> Option<&Path> {
         self.config.target_config.get(&target).and_then(|t| t.qemu_rootfs.as_ref()).map(|p| &**p)
-    }
-
-    /// Temporary directory that extended error information is emitted to.
-    pub(crate) fn extended_error_dir(&self) -> PathBuf {
-        self.out.join("tmp/extended-error-metadata")
     }
 
     /// Tests whether the `compiler` compiling for `target` should be forced to
