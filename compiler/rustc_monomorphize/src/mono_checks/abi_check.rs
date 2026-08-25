@@ -84,6 +84,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature: feature,
+                        abi: abi.conv.to_string(),
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: false,
@@ -101,6 +102,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature,
+                        abi: abi.conv.to_string(),
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: true,
