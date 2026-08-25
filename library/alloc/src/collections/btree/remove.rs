@@ -1,4 +1,4 @@
-use core::alloc::Allocator;
+use core::alloc::AllocatorClone;
 
 use super::map::MIN_LEN;
 use super::node::ForceResult::*;
@@ -10,7 +10,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
     /// the leaf edge corresponding to that former pair. It's possible this empties
     /// a root node that is internal, which the caller should pop from the map
     /// holding the tree. The caller should also decrement the map's length.
-    pub(super) fn remove_kv_tracking<F: FnOnce(), A: Allocator + Clone>(
+    pub(super) fn remove_kv_tracking<F: FnOnce(), A: AllocatorClone>(
         self,
         handle_emptied_internal_root: F,
         alloc: A,
@@ -23,7 +23,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> {
-    fn remove_leaf_kv<F: FnOnce(), A: Allocator + Clone>(
+    fn remove_leaf_kv<F: FnOnce(), A: AllocatorClone>(
         self,
         handle_emptied_internal_root: F,
         alloc: A,
@@ -76,7 +76,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
-    fn remove_internal_kv<F: FnOnce(), A: Allocator + Clone>(
+    fn remove_internal_kv<F: FnOnce(), A: AllocatorClone>(
         self,
         handle_emptied_internal_root: F,
         alloc: A,

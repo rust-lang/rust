@@ -3,7 +3,7 @@ use core::fmt::{self, Debug};
 use Entry::*;
 
 use super::{SetValZST, map};
-use crate::alloc::{Allocator, Global};
+use crate::alloc::{AllocatorClone, Global};
 
 /// A view into a single entry in a set, which may either be vacant or occupied.
 ///
@@ -42,7 +42,7 @@ use crate::alloc::{Allocator, Global};
 pub enum Entry<
     'a,
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
 > {
     /// An occupied entry.
     ///
@@ -84,7 +84,7 @@ pub enum Entry<
 }
 
 #[unstable(feature = "btree_set_entry", issue = "133549")]
-impl<T: Debug + Ord, A: Allocator + Clone> Debug for Entry<'_, T, A> {
+impl<T: Debug + Ord, A: AllocatorClone> Debug for Entry<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
@@ -133,13 +133,13 @@ impl<T: Debug + Ord, A: Allocator + Clone> Debug for Entry<'_, T, A> {
 pub struct OccupiedEntry<
     'a,
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
 > {
     pub(super) inner: map::OccupiedEntry<'a, T, SetValZST, A>,
 }
 
 #[unstable(feature = "btree_set_entry", issue = "133549")]
-impl<T: Debug + Ord, A: Allocator + Clone> Debug for OccupiedEntry<'_, T, A> {
+impl<T: Debug + Ord, A: AllocatorClone> Debug for OccupiedEntry<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry").field("value", self.get()).finish()
     }
@@ -175,19 +175,19 @@ impl<T: Debug + Ord, A: Allocator + Clone> Debug for OccupiedEntry<'_, T, A> {
 pub struct VacantEntry<
     'a,
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
 > {
     pub(super) inner: map::VacantEntry<'a, T, SetValZST, A>,
 }
 
 #[unstable(feature = "btree_set_entry", issue = "133549")]
-impl<T: Debug + Ord, A: Allocator + Clone> Debug for VacantEntry<'_, T, A> {
+impl<T: Debug + Ord, A: AllocatorClone> Debug for VacantEntry<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.get()).finish()
     }
 }
 
-impl<'a, T: Ord, A: Allocator + Clone> Entry<'a, T, A> {
+impl<'a, T: Ord, A: AllocatorClone> Entry<'a, T, A> {
     /// Sets the value of the entry, and returns an `OccupiedEntry`.
     ///
     /// # Examples
@@ -266,7 +266,7 @@ impl<'a, T: Ord, A: Allocator + Clone> Entry<'a, T, A> {
     }
 }
 
-impl<'a, T: Ord, A: Allocator + Clone> OccupiedEntry<'a, T, A> {
+impl<'a, T: Ord, A: AllocatorClone> OccupiedEntry<'a, T, A> {
     /// Gets a reference to the value in the entry.
     ///
     /// # Examples
@@ -316,7 +316,7 @@ impl<'a, T: Ord, A: Allocator + Clone> OccupiedEntry<'a, T, A> {
     }
 }
 
-impl<'a, T: Ord, A: Allocator + Clone> VacantEntry<'a, T, A> {
+impl<'a, T: Ord, A: AllocatorClone> VacantEntry<'a, T, A> {
     /// Gets a reference to the value that would be used when inserting
     /// through the `VacantEntry`.
     ///

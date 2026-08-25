@@ -1,5 +1,7 @@
 //! impl char {}
 
+#![expect(clippy::manual_is_ascii_check, reason = "this module implements various is_ascii checks")]
+
 use super::*;
 use crate::panic::const_panic;
 use crate::slice;
@@ -343,6 +345,7 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_char_classify", since = "1.87.0")]
+    #[expect(clippy::to_digit_is_some, reason = "implements is_digit")]
     #[inline]
     pub const fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
@@ -1985,6 +1988,7 @@ impl char {
     /// [to_ascii_lowercase]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
+    #[expect(clippy::manual_ignore_case_cmp, reason = "implements eq_ignore_ascii_case")]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &char) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()

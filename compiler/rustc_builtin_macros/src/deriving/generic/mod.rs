@@ -174,7 +174,6 @@
 //! )
 //! ```
 
-use std::cell::RefCell;
 use std::ops::Not;
 use std::{iter, vec};
 
@@ -184,12 +183,13 @@ use rustc_ast::token::{IdentIsRaw, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg,
-    GenericParamKind, Generics, Mutability, PatKind, Safety, VariantData,
+    GenericParamKind, Generics, Mutability, PatKind, Safety, SelfKind, VariantData,
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan, sym};
+pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
@@ -212,18 +212,16 @@ pub(crate) struct TraitDef<'a> {
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    pub additional_bounds: Vec<Ty>,
+    pub additional_bounds: SmallVec<[Ty; 1]>,
 
     /// Can this trait be derived for unions?
     pub supports_unions: bool,
 
-    pub methods: Vec<MethodDef<'a>>,
+    pub methods: SmallVec<[MethodDef<'a>; 1]>,
 
-    pub associated_types: Vec<(Ident, Ty)>,
+    pub associated_types: SmallVec<[(Ident, Ty); 1]>,
 
     pub is_const: bool,
-
-    pub is_staged_api_crate: bool,
 
     /// The safety of the `impl`.
     pub safety: Safety,
@@ -242,7 +240,7 @@ pub(crate) struct MethodDef<'a> {
     pub explicit_self: bool,
 
     /// Arguments other than the self argument.
-    pub nonself_args: Vec<(Ty, Symbol)>,
+    pub nonself_args: SmallVec<[(Ty, Symbol); 1]>,
 
     /// Returns type
     pub ret_ty: Ty,
@@ -251,7 +249,7 @@ pub(crate) struct MethodDef<'a> {
 
     pub fieldless_variants_strategy: FieldlessVariantsStrategy,
 
-    pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
+    pub combine_substructure: CombineSubstructureFunc<'a>,
 }
 
 /// How to handle fieldless enum variants.
@@ -339,12 +337,12 @@ pub(crate) enum SubstructureFields<'a> {
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
 pub(crate) type CombineSubstructureFunc<'a> =
-    Box<dyn FnMut(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
+    Box<dyn Fn(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
 
-pub(crate) fn combine_substructure(
-    f: CombineSubstructureFunc<'_>,
-) -> RefCell<CombineSubstructureFunc<'_>> {
-    RefCell::new(f)
+pub(crate) fn combine_substructure<'a>(
+    f: impl Fn(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a,
+) -> CombineSubstructureFunc<'a> {
+    Box::new(f)
 }
 
 struct TypeParameter {
@@ -632,7 +630,7 @@ impl<'a> TraitDef<'a> {
             .params
             .iter()
             .map(|param| match &param.kind {
-                GenericParamKind::Lifetime { .. } => param.clone(),
+                GenericParamKind::Lifetime => param.clone(),
                 GenericParamKind::Type { .. } => {
                     // Extra restrictions on the generics parameters to the
                     // type being derived upon.
@@ -711,7 +709,7 @@ impl<'a> TraitDef<'a> {
 
         if !ty_param_names.is_empty() {
             for field_ty in field_tys {
-                let field_ty_params = find_type_parameters(&field_ty, &ty_param_names, cx);
+                let field_ty_params = find_type_parameters(field_ty, &ty_param_names, cx);
 
                 for field_ty_param in field_ty_params {
                     // if we have already handled this type, skip it
@@ -776,7 +774,7 @@ impl<'a> TraitDef<'a> {
             .params
             .iter()
             .map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => {
+                GenericParamKind::Lifetime => {
                     GenericArg::Lifetime(cx.lifetime(param.ident.span.with_ctxt(ctxt), param.ident))
                 }
                 GenericParamKind::Type { .. } => {
@@ -800,7 +798,7 @@ impl<'a> TraitDef<'a> {
         // Only add `rustc_const_unstable` attributes if `derive_const` is used within libcore/libstd,
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
-        if self.is_const && self.is_staged_api_crate {
+        if self.is_const && cx.ecfg.features.staged_api() {
             attrs.push(
                 cx.attr_nested(
                     rustc_ast::AttrItem {
@@ -976,8 +974,7 @@ impl<'a> MethodDef<'a> {
     ) -> BlockOrExpr {
         let span = trait_.span;
         let substructure = Substructure { type_ident, nonselflike_args, fields };
-        let mut f = self.combine_substructure.borrow_mut();
-        let f: &mut CombineSubstructureFunc<'_> = &mut *f;
+        let f: &CombineSubstructureFunc<'_> = &self.combine_substructure;
         f(cx, span, &substructure)
     }
 
@@ -1006,9 +1003,9 @@ impl<'a> MethodDef<'a> {
         let span = trait_.span;
 
         let explicit_self = self.explicit_self.then(|| {
-            let (self_expr, explicit_self) = ty::get_explicit_self(cx, span);
-            selflike_args.push(self_expr);
-            explicit_self
+            // This constructs a fresh `self` path.
+            selflike_args.push(cx.expr_self(span));
+            respan(span, SelfKind::Region(None, ast::Mutability::Not))
         });
 
         for (ty, name) in self.nonself_args.iter() {
@@ -1233,13 +1230,7 @@ impl<'a> MethodDef<'a> {
         }
 
         let prefixes = iter::once("__self".to_string())
-            .chain(
-                selflike_args
-                    .iter()
-                    .enumerate()
-                    .skip(1)
-                    .map(|(arg_count, _selflike_arg)| format!("__arg{arg_count}")),
-            )
+            .chain((1..selflike_args.len()).map(|arg_count| format!("__arg{arg_count}")))
             .collect::<Vec<String>>();
 
         // Build a series of let statements mapping each selflike_arg

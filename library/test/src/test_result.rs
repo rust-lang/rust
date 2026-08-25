@@ -60,15 +60,15 @@ pub(crate) fn calc_result(
                 TestResult::TrOk
             } else if let Some(panic_str) = maybe_panic_str {
                 TestResult::TrFailedMsg(format!(
-                    r#"panic did not contain expected string
+                    r"panic did not contain expected string
       panic message: {panic_str:?}
- expected substring: {msg:?}"#
+ expected substring: {msg:?}"
                 ))
             } else {
                 TestResult::TrFailedMsg(format!(
-                    r#"expected panic with string value,
+                    r"expected panic with string value,
  found non-string value: `{:?}`
-     expected substring: {msg:?}"#,
+     expected substring: {msg:?}",
                     (*err).type_id()
                 ))
             }

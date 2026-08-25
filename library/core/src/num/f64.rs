@@ -10,6 +10,7 @@
 //! defined directly on the `f64` type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![expect(clippy::approx_constant, reason = "this module defines f64 constants")]
 
 use crate::convert::{FloatToFloat, FloatToInt};
 use crate::num::FpCategory;
@@ -437,7 +438,7 @@ impl f64 {
     /// [`MANTISSA_DIGITS`]: f64::MANTISSA_DIGITS
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     #[rustc_diagnostic_item = "f64_epsilon"]
-    pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
+    pub const EPSILON: f64 = 2.220446049250313e-16_f64;
 
     /// Smallest finite `f64` value.
     ///
@@ -1637,6 +1638,7 @@ impl f64 {
     #[stable(feature = "clamp", since = "1.50.0")]
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
     pub const fn clamp(mut self, min: f64, max: f64) -> f64 {
         const_assert!(
             min <= max,
@@ -1678,8 +1680,9 @@ impl f64 {
     #[must_use = "this returns the clamped value and does not modify the original"]
     #[unstable(feature = "clamp_magnitude", issue = "148519")]
     #[inline]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
     pub fn clamp_magnitude(self, limit: f64) -> f64 {
-        assert!(limit >= 0.0, "limit must be non-negative");
+        assert!(limit >= 0.0, "limit must be non-negative and not NaN");
         let limit = limit.abs(); // Canonicalises -0.0 to 0.0
         self.clamp(-limit, limit)
     }

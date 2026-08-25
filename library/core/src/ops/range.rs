@@ -148,6 +148,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     #[inline]
     #[stable(feature = "range_is_empty", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "incomparable ranges are empty")]
     pub const fn is_empty(&self) -> bool
     where
         Idx: [const] PartialOrd<Idx>,
@@ -568,6 +569,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     #[stable(feature = "range_is_empty", since = "1.47.0")]
     #[inline]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "incomparable ranges are empty")]
     pub const fn is_empty(&self) -> bool
     where
         Idx: [const] PartialOrd,
