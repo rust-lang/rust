@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::{assert_matches, iter, ptr};
 
 use libc::{c_longlong, c_uint};
-use rustc_abi::{Align, Layout, NumScalableVectors, Size};
+use rustc_abi::{Align, Endian, Layout, NumScalableVectors, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -20,7 +20,7 @@ use rustc_middle::ty::{
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::{DUMMY_SP, FileName, RemapPathScopeComponents, SourceFile, Span, Symbol, hygiene};
 use rustc_symbol_mangling::typeid_for_trait_ref;
-use rustc_target::spec::{Arch, DebuginfoKind};
+use rustc_target::spec::{Arch, DebuginfoKind, HasTargetSpec};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -692,33 +692,22 @@ impl MsvcBasicName for ty::UintTy {
     }
 }
 
-impl MsvcBasicName for ty::FloatTy {
-    fn msvc_basic_name(self) -> &'static str {
-        // FIXME(f128): `f128` has no MSVC representation. We could improve the debuginfo.
-        // See: <https://github.com/rust-lang/rust/issues/121837>
-        match self {
-            ty::FloatTy::F16 => {
-                bug!("`f16` should have been handled in `build_basic_type_di_node`")
-            }
-            ty::FloatTy::F32 => "float",
-            ty::FloatTy::F64 => "double",
-            ty::FloatTy::F128 => "fp128",
-        }
-    }
-}
-
-fn build_cpp_f16_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> DINodeCreationResult<'ll> {
-    // MSVC has no native support for `f16`. Instead, emit `struct f16 { bits: u16 }` to allow the
-    // `f16`'s value to be displayed using a Natvis visualiser in `intrinsic.natvis`.
-    let float_ty = cx.tcx.types.f16;
-    let bits_ty = cx.tcx.types.u16;
-    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
-        match float_ty.kind() {
-            ty::Adt(def, _) => Some(file_metadata_from_def_id(cx, Some(def.did()))),
-            _ => None,
-        }
+/// `float_ty` must be a [`ty::Float`] and `bits_ty` must be a [`ty::Uint`].
+/// `cx.size_of(bits_ty) * bits_names.len()` must equal `cx.size_of(float_ty)`.
+fn build_cpp_float_struct_di_node<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    float_ty: Ty<'tcx>,
+    bits_ty: Ty<'tcx>,
+    bits_names: &[&str],
+) -> DINodeCreationResult<'ll> {
+    debug_assert!(matches!(bits_ty.kind(), ty::Uint(_)));
+    debug_assert_eq!(cx.size_of(bits_ty) * (bits_names.len() as u64), cx.size_of(float_ty));
+    // MSVC has no native support for `f16` or `f128`. Instead, emit a struct containing the bits as
+    // field(s) to allow the value to be displayed using a Natvis visualiser in `intrinsic.natvis`.
+    let name = if let ty::Float(f) = float_ty.kind() {
+        f.name_str()
     } else {
-        None
+        bug!("{float_ty:?} was not a float");
     };
     type_map::build_type_with_children(
         cx,
@@ -726,32 +715,33 @@ fn build_cpp_f16_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> DINodeCreation
             cx,
             Stub::Struct,
             UniqueTypeId::for_ty(cx.tcx, float_ty),
-            "f16",
-            def_location,
+            name,
+            None,
             cx.size_and_align_of(float_ty),
             NO_SCOPE_METADATA,
             DIFlags::FlagZero,
         ),
         // Fields:
         |cx, float_di_node| {
-            let def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
-                match bits_ty.kind() {
-                    ty::Adt(def, _) => Some(def.did()),
-                    _ => None,
-                }
-            } else {
-                None
-            };
-            smallvec![build_field_di_node(
-                cx,
-                float_di_node,
-                "bits",
-                cx.layout_of(bits_ty),
-                Size::ZERO,
-                DIFlags::FlagZero,
-                type_di_node(cx, bits_ty),
-                def_id,
-            )]
+            let bits_layout = cx.layout_of(bits_ty);
+            let bits_node = type_di_node(cx, bits_ty);
+            bits_names
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(i, field_name)| {
+                    build_field_di_node(
+                        cx,
+                        float_di_node,
+                        field_name,
+                        bits_layout,
+                        bits_layout.size * (i as u64),
+                        DIFlags::FlagZero,
+                        bits_node,
+                        None,
+                    )
+                })
+                .collect()
         },
         NO_GENERICS,
     )
@@ -783,9 +773,20 @@ fn build_basic_type_di_node<'ll, 'tcx>(
         ty::Int(int_ty) if cpp_like_debuginfo => (int_ty.msvc_basic_name(), DW_ATE_signed),
         ty::Uint(uint_ty) if cpp_like_debuginfo => (uint_ty.msvc_basic_name(), DW_ATE_unsigned),
         ty::Float(ty::FloatTy::F16) if cpp_like_debuginfo => {
-            return build_cpp_f16_di_node(cx);
+            return build_cpp_float_struct_di_node(cx, t, cx.tcx.types.u16, &["bits"]);
         }
-        ty::Float(float_ty) if cpp_like_debuginfo => (float_ty.msvc_basic_name(), DW_ATE_float),
+        ty::Float(ty::FloatTy::F128) if cpp_like_debuginfo => {
+            // All MSVC architectures are little endian.
+            assert_eq!(cx.target_spec().endian, Endian::Little);
+            return build_cpp_float_struct_di_node(
+                cx,
+                t,
+                cx.tcx.types.u64,
+                &["low_bits", "high_bits"],
+            );
+        }
+        ty::Float(ty::FloatTy::F32) if cpp_like_debuginfo => ("float", DW_ATE_float),
+        ty::Float(ty::FloatTy::F64) if cpp_like_debuginfo => ("double", DW_ATE_float),
         ty::Int(int_ty) => (int_ty.name_str(), DW_ATE_signed),
         ty::Uint(uint_ty) => (uint_ty.name_str(), DW_ATE_unsigned),
         ty::Float(float_ty) => (float_ty.name_str(), DW_ATE_float),
