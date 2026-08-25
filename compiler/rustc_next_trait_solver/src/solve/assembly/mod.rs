@@ -705,7 +705,7 @@ where
         candidates: &mut Vec<Candidate<I>>,
         failed_candidate_info: &mut FailedCandidateInfo,
     ) -> Result<(), RerunNonErased> {
-        for assumption in goal.param_env.caller_bounds().iter() {
+        for assumption in goal.param_env.caller_bounds() {
             match G::probe_and_consider_param_env_candidate(self, goal, assumption)? {
                 Ok(candidate) => candidates.push(candidate),
                 Err(head_usages) => {
