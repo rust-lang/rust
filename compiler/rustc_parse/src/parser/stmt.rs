@@ -1025,7 +1025,7 @@ impl<'a> Parser<'a> {
                                                     token.kind,
                                                     token::Ident(
                                                         kw::For | kw::Loop | kw::While,
-                                                        token::IdentIsRaw::No
+                                                        token::IdentKind::Normal
                                                     ) | token::OpenBrace
                                                 )
                                         })

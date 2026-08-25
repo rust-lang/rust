@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentKind, Lit, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
 use rustc_ast::{LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
@@ -272,8 +272,8 @@ fn parse_ident_from_token<'psess>(
     psess: &'psess ParseSess,
     token: &Token,
 ) -> PResult<'psess, Ident> {
-    if let Some((elem, is_raw)) = token.ident() {
-        if let IdentIsRaw::Yes = is_raw {
+    if let Some((elem, kind)) = token.ident() {
+        if let IdentKind::Raw = kind {
             return Err(psess.dcx().struct_span_err(elem.span, RAW_IDENT_ERR));
         }
         return Ok(elem);

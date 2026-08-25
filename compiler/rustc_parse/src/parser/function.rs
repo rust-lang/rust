@@ -1,4 +1,4 @@
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, TokenKind};
@@ -836,7 +836,7 @@ impl<'a> Parser<'a> {
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
         let expect_self_ident = |this: &mut Self| match this.token.ident() {
-            Some((ident, IdentIsRaw::No)) => {
+            Some((ident, IdentKind::Normal)) => {
                 this.bump();
                 ident
             }
