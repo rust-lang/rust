@@ -71,6 +71,7 @@ pub enum VarArgCompatible {
     /// `T` and `U` are definitely not compatible.
     Incompatible,
     /// `T` and `U` are corresponding signed and unsigned integer types.
+    /// This is compatible only if the value can be represented in both types.
     CastIntTo { source_is_signed: bool },
 }
 
