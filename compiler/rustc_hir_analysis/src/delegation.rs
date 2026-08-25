@@ -179,6 +179,15 @@ fn create_mapping<'tcx>(
     let process_parent = matches!(parent_kind, FnKind::AssocTrait | FnKind::AssocInherentImpl);
     let parent_generics = process_parent.then(|| tcx.generics_of(tcx.parent(sig_id)));
 
+    // In case of delegations to inherent impls indices of generic params which are passed
+    // to ADT can be random numbers not from range 0..parent_params_count, so we need to
+    // use original indices in mapping:
+    // impl<'a, 'b, 'c, A: 'a, const C: usize> S<'a, A, C> {
+    //      fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+    //      fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+    // },
+    // 'a has index 0, A index 3, C index 4. If we encounter not a generic param as generic arg,
+    // then we do not need to map it (i.e. consts like `1`, `2`, `3`; `'static`, etc.).
     let parent_params = match parent_kind {
         FnKind::AssocInherentImpl => {
             let ty::Adt(_, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
