@@ -288,6 +288,8 @@ declare_features! (
     (internal, rustc_attrs, "1.0.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
+    /// Perma-unstable, only used in the test suite for binders (`for<'a>`).
+    (internal, test_binder_constraints, "CURRENT_RUSTC_VERSION", None),
     /// Perma-unstable, only used to test the `incomplete_features` lint.
     (incomplete, test_incomplete_feature, "1.96.0", None),
     /// Added for testing unstable lints; perma-unstable.

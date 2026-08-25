@@ -201,6 +201,8 @@ pub enum DefKind {
     /// The definition of a synthetic coroutine body created by the lowering of a
     /// coroutine-closure, such as an async closure.
     SyntheticCoroutineBody,
+    /// Perma-unstable. Used for test infrastructure for binders.
+    TestBinderConstraints,
 }
 
 impl DefKind {
@@ -245,6 +247,7 @@ impl DefKind {
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
             DefKind::SyntheticCoroutineBody => "synthetic mir body",
+            DefKind::TestBinderConstraints => "test_binder_constraints!",
         }
     }
 
@@ -303,7 +306,8 @@ impl DefKind {
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
             | DefKind::OpaqueTy
-            | DefKind::SyntheticCoroutineBody => None,
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::TestBinderConstraints => None,
         }
     }
 
@@ -345,6 +349,7 @@ impl DefKind {
             DefKind::Impl { .. } => DefPathData::Impl,
             DefKind::Closure => DefPathData::Closure,
             DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
+            DefKind::TestBinderConstraints => DefPathData::TestBinderConstraints,
         }
     }
 
@@ -394,7 +399,8 @@ impl DefKind {
             | DefKind::TraitAlias
             | DefKind::TyAlias
             | DefKind::Union
-            | DefKind::Variant => true,
+            | DefKind::Variant
+            | DefKind::TestBinderConstraints => true,
             DefKind::ConstParam
             | DefKind::ExternCrate
             | DefKind::ForeignMod
@@ -439,7 +445,8 @@ impl DefKind {
             | DefKind::LifetimeParam
             | DefKind::AnonConst
             | DefKind::GlobalAsm
-            | DefKind::ExternCrate => false,
+            | DefKind::ExternCrate
+            | DefKind::TestBinderConstraints => false,
         }
     }
 }

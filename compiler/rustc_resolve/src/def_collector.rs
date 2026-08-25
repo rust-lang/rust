@@ -213,6 +213,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 return;
             }
             ItemKind::DelegationMac(..) => unreachable!(),
+            ItemKind::TestBinderConstraints(..) => DefKind::TestBinderConstraints,
         };
         self.with_owner(
             i.id,
