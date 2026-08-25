@@ -79,7 +79,7 @@ todo!()
         ),
         vec![
             "/test.rs:1:  ignoring todo usage unnecessarily".to_string(),
-            "/test.rs:3: the `todo!` macro is used for tasks that should be done before merging a PR. If you want to panic here, use `panic!`, `unimplemented!`, `unreachable!`, `rustc_middle::bug!` or an assertion".to_string()
+            "/test.rs:3: the `todo!` macro is used for tasks that should be done before merging a PR.\nIf you want to panic here, use `panic!`, `unimplemented!`, `unreachable!`, `rustc_middle::bug!` or an assertion".to_string()
         ]
     );
 }
