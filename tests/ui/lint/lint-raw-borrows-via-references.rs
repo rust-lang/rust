@@ -74,6 +74,17 @@ fn from_macro(x: *const i32) -> *const i32 {
     unsafe { ref_cast!(*x) }
 }
 
+fn parenthesized() {
+    let x = 0;
+    let _ = (&x as *const i32);
+    //~^ WARN creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers [raw_borrows_via_references]
+    let mut y = 0;
+    let _ = (&mut y as *mut i32);
+    //~^ WARN creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers [raw_borrows_via_references]
+    let _ = (&x as *const i32).wrapping_add(1);
+    //~^ WARN creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers [raw_borrows_via_references]
+}
+
 fn main() {
     let a = 0;
     let a = &a as *const i32;

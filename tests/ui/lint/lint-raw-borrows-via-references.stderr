@@ -123,5 +123,41 @@ LL -     let b = &mut b as *mut i32;
 LL +     let b = &raw mut b;
    |
 
-warning: 10 warnings emitted
+warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
+  --> $DIR/lint-raw-borrows-via-references.rs:79:14
+   |
+LL |     let _ = (&x as *const i32);
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     let _ = (&x as *const i32);
+LL +     let _ = (&raw const x);
+   |
+
+warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
+  --> $DIR/lint-raw-borrows-via-references.rs:82:14
+   |
+LL |     let _ = (&mut y as *mut i32);
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw mut` for a safer and more explicit raw pointer
+   |
+LL -     let _ = (&mut y as *mut i32);
+LL +     let _ = (&raw mut y);
+   |
+
+warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
+  --> $DIR/lint-raw-borrows-via-references.rs:84:14
+   |
+LL |     let _ = (&x as *const i32).wrapping_add(1);
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     let _ = (&x as *const i32).wrapping_add(1);
+LL +     let _ = (&raw const x).wrapping_add(1);
+   |
+
+warning: 13 warnings emitted
 
