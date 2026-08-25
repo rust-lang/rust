@@ -405,36 +405,26 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);
                 };
-                match self.eval_operand(operand, state) {
-                    FlatSet::Elem(op) => self
-                        .ecx
+                self.eval_operand(operand, state).and_then(|op| {
+                    self.ecx
                         .int_to_int_or_float(&op, layout)
                         .discard_err()
-                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
-                    FlatSet::Bottom => FlatSet::Bottom,
-                    FlatSet::Top => FlatSet::Top,
-                }
+                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result))
+                })
             }
             Rvalue::Cast(CastKind::FloatToInt | CastKind::FloatToFloat, operand, ty) => {
                 let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);
                 };
-                match self.eval_operand(operand, state) {
-                    FlatSet::Elem(op) => self
-                        .ecx
+                self.eval_operand(operand, state).and_then(|op| {
+                    self.ecx
                         .float_to_float_or_int(&op, layout)
                         .discard_err()
-                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
-                    FlatSet::Bottom => FlatSet::Bottom,
-                    FlatSet::Top => FlatSet::Top,
-                }
+                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result))
+                })
             }
             Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, operand, _) => {
-                match self.eval_operand(operand, state) {
-                    FlatSet::Elem(op) => self.wrap_immediate(*op),
-                    FlatSet::Bottom => FlatSet::Bottom,
-                    FlatSet::Top => FlatSet::Top,
-                }
+                self.eval_operand(operand, state).and_then(|op| self.wrap_immediate(*op))
             }
             Rvalue::BinaryOp(op, (left, right)) if !op.is_overflowing() => {
                 // Overflows must be ignored here.
@@ -449,15 +439,12 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 {
                     return ValueOrPlace::Place(len);
                 }
-                match self.eval_operand(operand, state) {
-                    FlatSet::Elem(value) => self
-                        .ecx
+                self.eval_operand(operand, state).and_then(|value| {
+                    self.ecx
                         .unary_op(*op, &value)
                         .discard_err()
-                        .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
-                    FlatSet::Bottom => FlatSet::Bottom,
-                    FlatSet::Top => FlatSet::Top,
-                }
+                        .map_or(FlatSet::Top, |val| self.wrap_immediate(*val))
+                })
             }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
             Rvalue::Use(operand, _) => return self.handle_operand(operand),
@@ -675,18 +662,12 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
         };
-        match value {
-            FlatSet::Top => FlatSet::Top,
-            FlatSet::Elem(scalar) => {
-                let ty = op.ty(self.local_decls, self.tcx);
-                self.tcx
-                    .layout_of(self.typing_env.as_query_input(ty))
-                    .map_or(FlatSet::Top, |layout| {
-                        FlatSet::Elem(ImmTy::from_scalar(scalar, layout))
-                    })
-            }
-            FlatSet::Bottom => FlatSet::Bottom,
-        }
+        value.and_then(|scalar| {
+            let ty = op.ty(self.local_decls, self.tcx);
+            self.tcx
+                .layout_of(self.typing_env.as_query_input(ty))
+                .map_or(FlatSet::Top, |layout| FlatSet::Elem(ImmTy::from_scalar(scalar, layout)))
+        })
     }
 
     fn eval_discriminant(&self, enum_ty: Ty<'tcx>, variant_index: VariantIdx) -> Option<Scalar> {
