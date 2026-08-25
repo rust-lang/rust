@@ -627,7 +627,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
-            | DefKind::Impl { .. } => false,
+            | DefKind::Impl { .. }
+            | DefKind::TestBinderConstraints => false,
         }
     }
 

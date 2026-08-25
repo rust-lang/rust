@@ -3021,7 +3021,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 | DefKind::Closure
                 | DefKind::ExternCrate
                 | DefKind::GlobalAsm
-                | DefKind::SyntheticCoroutineBody,
+                | DefKind::SyntheticCoroutineBody
+                | DefKind::TestBinderConstraints,
                 _,
             )
             | Res::PrimTy(_)

@@ -2408,7 +2408,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
-            | DefKind::SyntheticCoroutineBody => false,
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::TestBinderConstraints => false,
         }
     }
 

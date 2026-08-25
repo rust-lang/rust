@@ -582,6 +582,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     self.add_impl_to_current_mod(item, impl_);
                 }
             }
+            hir::ItemKind::TestBinderConstraints { .. } => {}
         }
     }
 

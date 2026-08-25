@@ -431,4 +431,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         }
         intravisit::walk_precise_capturing_arg(self, arg);
     }
+
+    fn visit_test_binder_forall(&mut self, forall: &'hir TestBinderForall<'hir>) -> Self::Result {
+        self.insert(forall.span, forall.hir_id, Node::TestBinderForall(forall));
+        self.with_parent(forall.hir_id, |this| intravisit::walk_test_binder_forall(this, forall))
+    }
+
+    fn visit_test_binder_exists(&mut self, exists: &'hir TestBinderExists<'hir>) -> Self::Result {
+        self.insert(exists.span, exists.hir_id, Node::TestBinderExists(exists));
+        self.with_parent(exists.hir_id, |this| intravisit::walk_test_binder_exists(this, exists))
+    }
 }

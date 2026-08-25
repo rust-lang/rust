@@ -66,7 +66,8 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::Closure
-        | DefKind::SyntheticCoroutineBody => false,
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
