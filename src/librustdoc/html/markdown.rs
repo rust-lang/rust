@@ -462,8 +462,31 @@ impl<'a> LinkReplacerInner<'a> {
             }
             // If this is a link, but not a shortcut link,
             // replace the URL, since the broken_link_callback was not called.
-            Event::Start(Tag::Link { dest_url, title, .. }) => {
-                if let Some(link) =
+            Event::Start(Tag::Link { dest_url, title, link_type, id, .. }) => {
+                if matches!(
+                    link_type,
+                    LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut
+                ) && let Some(link) = self.links.iter().find(|&link| *link.original_text == **id)
+                {
+                    // Markdown link references are case insensitive, so if you have:
+                    //
+                    // ```
+                    // - [`Foo`]
+                    // - [`foo`]
+                    //
+                    // [`foo`]: Bar::foo
+                    // ```
+                    //
+                    // It'll consider that both `Foo` and `foo` are defined by "[`foo`]: Bar::foo".
+                    // So we start by checking if an intra-doc link has the same ID, and if so,
+                    // use it instead of the `original_text` which would be `Bar::foo` here.
+                    assert!(self.shortcut_link.is_none(), "shortcut links cannot be nested");
+                    self.shortcut_link = Some(link);
+                    if title.is_empty() && !link.tooltip.is_empty() {
+                        *title = CowStr::Borrowed(link.tooltip.as_ref());
+                    }
+                    *dest_url = CowStr::Borrowed(link.href.as_ref());
+                } else if let Some(link) =
                     self.links.iter().find(|&link| *link.original_text == **dest_url)
                 {
                     *dest_url = CowStr::Borrowed(link.href.as_ref());
@@ -1767,6 +1790,9 @@ pub(crate) struct MarkdownLink {
     pub kind: LinkType,
     pub link: String,
     pub range: MarkdownLinkRange,
+    // If this is a link where a case-insensitive link reference matches, we don't want to emit
+    // warnings in case the intra-doc link doesn't find anything.
+    pub emit_error: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -1961,6 +1987,7 @@ pub(crate) fn markdown_links<'md, R>(
             Event::Start(Tag::Link { link_type, dest_url, id, .. })
                 if may_be_doc_link(link_type) =>
             {
+                let mut alternative_span = None;
                 let range = match link_type {
                     // Link is pulled from the link itself.
                     LinkType::ReferenceUnknown | LinkType::ShortcutUnknown => {
@@ -1974,16 +2001,45 @@ pub(crate) fn markdown_links<'md, R>(
                             *is_used = true;
                             span_for_refdef(&CowStr::from(&dest_url[..]), span.clone())
                         } else {
+                            // Markdown link references are case insensitive, so if you have:
+                            //
+                            // ```
+                            // - [`Foo`]
+                            // - [`foo`]
+                            //
+                            // [`foo`]: Bar::foo
+                            // ```
+                            //
+                            // It'll consider that both `Foo` and `foo` are defined by
+                            // "[`foo`]: Bar::foo". So if no key in `refdefs` has the exact same
+                            // name, we consider that it might be a case-sensitivity conflict
+                            // between a defined link and this one. If so, we don't want to use
+                            // its `dest_url` (which is `Bar::foo` in the case above) and instead
+                            // use its original link "id" (which is `Foo`).
+                            alternative_span =
+                                Some(span_for_offset_backward(span.clone(), b'[', b']'));
                             span_for_link(&dest_url, span)
                         }
                     }
                     LinkType::Autolink | LinkType::Email => unreachable!(),
                 };
-
+                if let Some(range) = alternative_span
+                    && let Some(link) = preprocess_link(MarkdownLink {
+                        kind: link_type,
+                        link: id.into_string(),
+                        range,
+                        // This is `false` because in case this is supposed to match the link def
+                        // with case insensitivity, we don't want to emit warning.
+                        emit_error: false,
+                    })
+                {
+                    links.push(link);
+                }
                 if let Some(link) = preprocess_link(MarkdownLink {
                     kind: link_type,
                     link: dest_url.into_string(),
                     range,
+                    emit_error: true,
                 }) {
                     links.push(link);
                 }
@@ -1998,6 +2054,7 @@ pub(crate) fn markdown_links<'md, R>(
                 kind: LinkType::Reference,
                 range: span_for_refdef(&CowStr::from(&dest_url[..]), span),
                 link: dest_url,
+                emit_error: true,
             })
         {
             links.push(link);
