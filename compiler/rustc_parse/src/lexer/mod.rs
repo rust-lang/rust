@@ -343,9 +343,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
 
                     let ident_start = start + BytePos(3);
-                    let prefix_span = self.mk_sp(start, ident_start);
-
-                    if prefix_span.at_least_rust_2021() {
+                    if self.mk_sp(start, ident_start).at_least_rust_2021() {
                         // If the raw lifetime is followed by \' then treat it a normal
                         // lifetime followed by a \', which is to interpret it as a character
                         // literal. In this case, it's always an invalid character literal
@@ -391,7 +389,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
                         token::Lifetime(sym, IdentIsRaw::Yes)
                     } else {
-                        // Otherwise, this should be parsed like `'r`. Warn about it though.
+                        // Reset the state so we just lex the `'r`.
+                        self.pos = start + BytePos(2);
+                        self.cursor = Cursor::new(&str_before[2 as usize..], FrontmatterAllowed::No);
+
+                        let prefix_span = self.mk_sp(start, self.pos);
                         self.psess.buffer_lint(
                             RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                             prefix_span,
@@ -400,15 +402,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                                 subject: "`r`".into(),
                                 kind: "prefix",
                                 edition: Edition::Edition2021,
-                                // FIXME(fmease): Wrong!
                                 sugg: prefix_span.shrink_to_hi(),
                             }
                         );
-
-                        // Reset the state so we just lex the `'r`.
-                        let lt_start = start + BytePos(2);
-                        self.pos = lt_start;
-                        self.cursor = Cursor::new(&str_before[2 as usize..], FrontmatterAllowed::No);
 
                         let lifetime_name = nfc_normalize(self.str_from(start));
                         token::Lifetime(lifetime_name, IdentIsRaw::No)

@@ -2,7 +2,7 @@ warning: `r` is parsed as a prefix in Rust 2021 and onward
   --> $DIR/three-tokens.rs:14:8
    |
 LL | check!('r#lt);
-   |        ^^^
+   |        ^^
    |
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
@@ -13,8 +13,8 @@ LL | #![warn(rust_2021_prefixes_incompatible_syntax)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider inserting whitespace here to avoid this
    |
-LL | check!('r# lt);
-   |           +
+LL | check!('r #lt);
+   |          +
 
 warning: 1 warning emitted
 
