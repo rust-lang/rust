@@ -406,7 +406,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     fn handle_rvalue(
         &self,
         rvalue: &Rvalue<'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
+        state: &State<FlatSet<Scalar>>,
     ) -> ValueOrPlace<FlatSet<Scalar>> {
         let val = match rvalue {
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
@@ -617,7 +617,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
 
     fn binary_op(
         &self,
-        state: &mut State<FlatSet<Scalar>>,
+        state: &State<FlatSet<Scalar>>,
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
@@ -677,7 +677,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     fn eval_operand(
         &self,
         op: &Operand<'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
+        state: &State<FlatSet<Scalar>>,
     ) -> FlatSet<ImmTy<'tcx>> {
         let value = match self.handle_operand(op) {
             ValueOrPlace::Value(value) => value,
