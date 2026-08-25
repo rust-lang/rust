@@ -12,6 +12,7 @@ use rustc_middle::throw_unsup_format;
 use rustc_target::spec::Os;
 
 use crate::shims::files::{EvalContextExt as _, FdNum, FileDescription, FileDescriptionRef};
+use crate::shims::sig::Varargs;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::{SocketFamily, UnixSocketFileDescription};
 use crate::*;
@@ -185,7 +186,7 @@ impl UnixFileDescription for TcpSocket {
     fn ioctl<'tcx>(
         &self,
         op: Scalar,
-        arg: Option<&OpTy<'tcx>>,
+        args: Varargs<'tcx, '_>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         assert!(ecx.machine.communicate(), "cannot have `TcpSocket` with isolation enabled!");
@@ -207,9 +208,7 @@ impl UnixFileDescription for TcpSocket {
                 );
             }
 
-            let Some(value_ptr) = arg else {
-                throw_ub_format!("ioctl: setting FIONBIO on sockets requires a third argument");
-            };
+            let ([value_ptr], _) = ecx.check_varargs(shim_varargs![*_], args, "ioctl")?;
             let value = ecx.deref_pointer_as(value_ptr, ecx.machine.layouts.i32)?;
             let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
             self.is_non_block.set(non_block);
