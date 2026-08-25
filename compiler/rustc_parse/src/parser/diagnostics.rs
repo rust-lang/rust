@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
         if self.token == token::Lt {
             // Let's check if the previous token could denote the start of an item
             // whose kind can have generics.
-            if let Some((Ident { name, .. }, IdentKind::Normal)) = self.prev_token.ident()
+            if let Some(Ident { name, .. }) = self.prev_token.non_raw_ident()
                 && let kw::Fn | kw::Type | kw::Struct | kw::Enum | kw::Union | kw::Trait = name
             {
                 match self.parse_generics() {
@@ -508,7 +508,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        if let Some((ident, IdentKind::Normal)) = self.prev_token.ident()
+        if let Some(ident) = self.prev_token.non_raw_ident()
             && let "def" | "fun" | "func" | "function" = ident.name.as_str()
         {
             err.span_suggestion_short(
