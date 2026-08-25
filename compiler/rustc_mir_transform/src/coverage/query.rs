@@ -1,5 +1,6 @@
 use rustc_hir::attrs::CoverageAttrKind;
-use rustc_hir::find_attr;
+use rustc_hir::def::DefKind;
+use rustc_hir::{Constness, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, CoverageIdsInfo, CoverageKind, MappingKind};
@@ -21,6 +22,8 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 /// Query implementation for [`TyCtxt::is_eligible_for_coverage`].
 fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    let def_kind = tcx.def_kind(def_id);
+
     // Only instrument functions, methods, and closures (not constants since they are evaluated
     // at compile time by Miri).
     // FIXME(#73156): Handle source code coverage in const eval, but note, if and when const
@@ -28,7 +31,7 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // expressions from coverage spans in enclosing MIR's, like we do for closures. (That might
     // be tricky if const expressions have no corresponding statements in the enclosing MIR.
     // Closures are carved out by their initial `Assign` statement.)
-    if !tcx.def_kind(def_id).is_fn_like() {
+    if !def_kind.is_fn_like() {
         trace!("InstrumentCoverage skipped for {def_id:?} (not an fn-like)");
         return false;
     }
@@ -40,6 +43,24 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
     if !tcx.coverage_attr_on(def_id) {
         trace!("InstrumentCoverage skipped for {def_id:?} (`#[coverage(off)]`)");
+        return false;
+    }
+
+    // Do not generate coverage records for compile-time-only functions
+    // (#[rustc_comptime] attribute, translated to "always const" in the compiler)
+    //
+    // These functions (which are generally, though not exclusively, intrinsics) should always
+    // resolve to a definite value at compile time, and so should never be called at runtime.
+    // We ensure that these functions never reach codegen using a check in `compute_symbol_name`
+    // in `compiler/rustc_symbol_mangling/src/lib.rs`.
+    //
+    // However, when generating coverage, `prepare_covfun_records_for_unused_functions` will
+    // detect them as unused functions (since every call has been replaced by a constant by
+    // this point) and try to generate dummy coverage records. This will trip the above check;
+    // to avoid that, skip generating coverage for such functions.
+    if matches!(def_kind, DefKind::Fn | DefKind::AssocFn)
+        && matches!(tcx.constness(def_id), Constness::Const { always: true })
+    {
         return false;
     }
 
