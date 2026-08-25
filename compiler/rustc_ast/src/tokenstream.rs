@@ -20,6 +20,7 @@ use thin_vec::ThinVec;
 use crate::ast::AttrStyle;
 use crate::ast_traits::HasTokens;
 use crate::token::{self, Delimiter, Token, TokenKind};
+use crate::tokenarena::TokenArena;
 use crate::{AttrVec, Attribute};
 
 #[cfg(test)]
@@ -969,7 +970,8 @@ pub struct TokenCursor {
 
 impl TokenCursor {
     #[inline]
-    pub fn new(stream: TokenStream) -> Self {
+    pub fn new(arena: TokenArena) -> Self {
+        let stream = arena.to_token_stream();
         TokenCursor { curr: TokenTreeCursor::new(stream), stack: vec![] }
     }
 

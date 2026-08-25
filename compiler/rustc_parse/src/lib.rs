@@ -29,6 +29,7 @@ pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 #[macro_use]
 pub mod parser;
 use parser::Parser;
+use rustc_ast::tokenarena::TokenArena;
 
 use crate::lexer::StripTokens;
 
@@ -245,7 +246,7 @@ pub fn source_str_to_stream(
     name: FileName,
     source: String,
     override_span: Option<Span>,
-) -> Result<TokenStream, Vec<Diag<'_>>> {
+) -> Result<TokenArena, Vec<Diag<'_>>> {
     let source_file = psess.source_map().new_source_file(name, source);
     // FIXME(frontmatter): Consider stripping frontmatter in a future edition. We can't strip them
     // in the current edition since that would be breaking.
@@ -262,7 +263,7 @@ fn source_file_to_stream<'psess>(
     source_file: Arc<SourceFile>,
     override_span: Option<Span>,
     strip_tokens: StripTokens,
-) -> Result<TokenStream, Vec<Diag<'psess>>> {
+) -> Result<TokenArena, Vec<Diag<'psess>>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
         psess.dcx().bug(format!(
             "cannot lex `source_file` without source: {}",
@@ -276,11 +277,11 @@ fn source_file_to_stream<'psess>(
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
 pub fn parse_in<'a, T>(
     psess: &'a ParseSess,
-    tts: TokenStream,
+    arena: TokenArena,
     name: &'static str,
     mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
 ) -> PResult<'a, T> {
-    let mut parser = Parser::new(psess, tts, Some(name));
+    let mut parser = Parser::new(psess, arena, Some(name));
     let result = f(&mut parser)?;
     if parser.token != token::Eof {
         parser.unexpected()?;
@@ -292,9 +293,9 @@ pub fn fake_token_stream_for_item(
     psess: &ParseSess,
     item: &ast::Item,
     attr_to_exclude: Option<&ast::Attribute>,
-) -> TokenStream {
+) -> TokenArena {
     if let Some(tokens) = fake_token_stream_for_file_mod(psess, item, attr_to_exclude) {
-        return tokens;
+        return TokenArena::from_stream(&tokens);
     }
 
     let source = pprust::item_to_string(item);
@@ -350,7 +351,7 @@ fn lex_token_trees_for_span(
 ) -> Option<impl Iterator<Item = TokenTree>> {
     let src = psess.source_map().span_to_snippet(span).ok()?;
     let stream = match lexer::lex_token_trees(psess, &src, span.lo(), None, StripTokens::Nothing) {
-        Ok(stream) => stream,
+        Ok(arena) => arena.to_token_stream(),
         Err(errs) => {
             errs.into_iter().for_each(|err| err.cancel());
             return None;
@@ -362,13 +363,13 @@ fn lex_token_trees_for_span(
 pub fn fake_token_stream_for_foreign_item(
     psess: &ParseSess,
     item: &ast::ForeignItem,
-) -> TokenStream {
+) -> TokenArena {
     let source = pprust::foreign_item_to_string(item);
     let filename = FileName::macro_expansion_source_code(&source);
     unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)))
 }
 
-pub fn fake_token_stream_for_crate(psess: &ParseSess, krate: &ast::Crate) -> TokenStream {
+pub fn fake_token_stream_for_crate(psess: &ParseSess, krate: &ast::Crate) -> TokenArena {
     let source = pprust::crate_to_string_for_macros(krate);
     let filename = FileName::macro_expansion_source_code(&source);
     unwrap_or_emit_fatal(source_str_to_stream(

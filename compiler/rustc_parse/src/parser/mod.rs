@@ -29,6 +29,7 @@ pub use path::PathStyle;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
+use rustc_ast::tokenarena::TokenArena;
 use rustc_ast::tokenstream::{
     ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, WithTokens,
 };
@@ -342,12 +343,12 @@ pub fn token_descr(token: &Token) -> String {
 impl<'a> Parser<'a> {
     pub fn new(
         psess: &'a ParseSess,
-        stream: TokenStream,
+        arena: TokenArena,
         subparser_name: Option<&'static str>,
     ) -> Self {
         let mut parser = Parser {
             psess,
-            token_cursor: TokenCursor::new(stream),
+            token_cursor: TokenCursor::new(arena),
             subparser_name,
             capture_state: CaptureState {
                 capturing: Capturing::No,

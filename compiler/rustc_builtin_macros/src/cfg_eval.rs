@@ -2,6 +2,7 @@ use core::ops::ControlFlow;
 
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
+use rustc_ast::tokenarena::TokenArena;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{Attribute, HasTokens, NodeId, mut_visit, visit};
 use rustc_errors::PResult;
@@ -105,7 +106,8 @@ impl CfgEval<'_> {
         //
         // After that we have our re-parsed `AttrTokenStream`, recursively configuring
         // our attribute target will correctly configure the tokens as well.
-        let mut parser = Parser::new(&self.0.sess.psess, orig_tokens, None);
+        let mut parser =
+            Parser::new(&self.0.sess.psess, TokenArena::from_stream(&orig_tokens), None);
         parser.capture_cfg = true;
         let res: PResult<'_, Option<Annotatable>> = try {
             match &annotatable {
