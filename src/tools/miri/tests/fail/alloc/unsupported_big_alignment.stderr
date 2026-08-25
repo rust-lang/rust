@@ -1,8 +1,8 @@
 error: unsupported operation: creating allocation with alignment ALIGN exceeding rustc's maximum supported value
   --> tests/fail/alloc/unsupported_big_alignment.rs:LL:CC
    |
-LL |         __rust_alloc(1, 1 << 30);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
+LL |         __rust_alloc(1, (1 << 30).try_into().unwrap());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
 
