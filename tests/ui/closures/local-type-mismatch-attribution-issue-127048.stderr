@@ -9,18 +9,24 @@ LL |         let _: i32 = false;
 error[E0308]: mismatched types
   --> $DIR/local-type-mismatch-attribution-issue-127048.rs:19:13
    |
+LL |         let _: i32 = {
+   |                --- expected due to this
 LL |             false
    |             ^^^^^ expected `i32`, found `bool`
 
 error[E0308]: mismatched types
   --> $DIR/local-type-mismatch-attribution-issue-127048.rs:30:13
    |
+LL |         let _: i32 = {
+   |                --- expected due to this
 LL |             false
    |             ^^^^^ expected `i32`, found `bool`
 
 error[E0308]: mismatched types
   --> $DIR/local-type-mismatch-attribution-issue-127048.rs:41:13
    |
+LL |         let _: i32 = {
+   |                --- expected due to this
 LL |             false
    |             ^^^^^ expected `i32`, found `bool`
 
