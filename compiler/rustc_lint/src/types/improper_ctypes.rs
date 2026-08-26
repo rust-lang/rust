@@ -1606,11 +1606,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
             }
 
-            ty::UnsafeBinder(_) => FfiResult::new_with_reason(
-                ty,
-                msg!("unsafe binders are incompatible with foreign function interfaces"),
-                None,
-            ),
+            // FIXME(unsafe_binder): once it is stabilised, confirm the following
+            // - that `unsafe<'a> T` has the same memory layout as `T` (since the conversion can be done in-place)
+            // - that they behave the same way for niche optimisation (`Option<NonZero>` vs `Option<unsafe<'a> NonZero>`)
+            // - that they get treated the same way when passed to functions
+            //   (registers vs stack passing, if early enough in the argument list)
+            ty::UnsafeBinder(inner) => self.visit_type(state, inner.skip_binder()),
 
             // Safety net for when normalization reveals a body's own defining opaque
             // (e.g. `async extern fn`'s `impl Future` → `Coroutine`); the nicer
