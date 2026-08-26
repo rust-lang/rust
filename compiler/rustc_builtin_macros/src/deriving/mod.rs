@@ -60,15 +60,7 @@ impl MultiItemModifier for BuiltinDerive {
                         span,
                         meta_item,
                         &item,
-                        &mut |a| {
-                            // Cannot use 'ecx.stmt_item' here, because we need to pass 'ecx'
-                            // to the function
-                            items.push(Annotatable::Stmt(Box::new(ast::Stmt {
-                                id: ast::DUMMY_NODE_ID,
-                                kind: ast::StmtKind::Item(a),
-                                span,
-                            })));
-                        },
+                        &mut |a| items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, a)))),
                         is_derive_const,
                     );
                 } else {

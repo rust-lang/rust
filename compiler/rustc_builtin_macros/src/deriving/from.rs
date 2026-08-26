@@ -75,7 +75,7 @@ pub(crate) fn expand_deriving_from(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: sym::from,
-            generics: Bounds { bounds: vec![] },
+            generics: Bounds::empty(),
             explicit_self: false,
             nonself_args: smallvec![(from_type, sym::value)],
             ret_ty: Ty::Self_,
