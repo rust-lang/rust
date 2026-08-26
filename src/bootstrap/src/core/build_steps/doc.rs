@@ -959,16 +959,15 @@ impl CommandLineStep for CompilerWithTools {
         let _guard = builder.msg(Kind::Doc, "compiler-doc", Mode::Rustc, build_compiler, target);
 
         let rustc_stage = Rustc::for_stage(builder, stage, target);
-        builder.ensure(rustc_stage.clone());
-        let out_dir = builder.stage_out(build_compiler, Mode::Rustc).join(target);
+        let out_dir = builder.ensure(rustc_stage.clone());
         // Copy crate docs into place.
         for krate in &*rustc_stage.crates {
             let dir_name = krate.replace('-', "_");
-            let crate_doc_dir = out_dir.join("doc").join(&dir_name);
+            let crate_doc_dir = out_dir.join(&dir_name);
             let doc_out = out.join(&dir_name);
             t!(fs::create_dir_all(&doc_out));
             builder.cp_link_r(&crate_doc_dir, &doc_out);
-            let crate_src_dir = out_dir.join("doc").join("src").join(&dir_name);
+            let crate_src_dir = out_dir.join("src").join(&dir_name);
             let src_out = out.join("src").join(&dir_name);
             t!(fs::create_dir_all(&src_out));
             builder.cp_link_r(&crate_src_dir, &src_out);
@@ -1047,6 +1046,8 @@ impl CommandLineStep for CompilerWithTools {
 }
 
 /// Document the compiler for the given `target` using rustdoc from `build_compiler`.
+///
+/// Return the path to the generated rustc documentation directory.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
     build_compiler: Compiler,
@@ -1076,7 +1077,7 @@ impl Rustc {
 }
 
 impl CommandLineStep for Rustc {
-    type Output = ();
+    type Output = PathBuf;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1097,7 +1098,7 @@ impl CommandLineStep for Rustc {
     /// Compiler documentation is distributed separately, so we make sure
     /// we do not merge it with the other documentation from std, test and
     /// proc_macros. This is largely just a wrapper around `cargo doc`.
-    fn run(self, builder: &Builder<'_>) {
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.target;
 
         // Build the standard library, so that proc-macros can use it.
@@ -1205,10 +1206,12 @@ impl CommandLineStep for Rustc {
                 // Let's open the first crate documentation page:
                 out_dir.join(krate).join("index.html")
             } else {
-                out_dir
+                out_dir.clone()
             };
             builder.open_in_browser(index);
         }
+
+        out_dir
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
