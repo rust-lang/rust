@@ -94,6 +94,7 @@ pub mod hardwired {
             REFINING_IMPL_TRAIT_INTERNAL,
             REFINING_IMPL_TRAIT_REACHABLE,
             RENAMED_AND_REMOVED_LINTS,
+            REPEATED_REPRS,
             REPR_C_ENUMS_LARGER_THAN_INT,
             RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
             RTSAN_NONBLOCKING_ASYNC,
@@ -274,6 +275,30 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #68585),
         report_in_deps: true,
     };
+}
+
+declare_lint! {
+    /// The `repeated_reprs` lint detects when the same representation is
+    /// specified more than once in a `#[repr(..)]` attribute.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[repr(C)]
+    /// #[repr(C)]
+    /// enum Foo { A }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// While some representations may be specified more than once, the compiler
+    /// will reject repeated uses of some others. For consistency, prefer to
+    /// only specify the representation once.
+    pub REPEATED_REPRS,
+    Warn,
+    "detects repeated representations in `#[repr(..)]` attributes",
 }
 
 declare_lint! {
