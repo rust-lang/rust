@@ -1249,12 +1249,23 @@ impl CommandLineStep for StdarchGenCheck {
         // Keep cargo's build artifacts out of the (possibly read-only) source tree.
         let cargo_target_dir = builder.out.join("stdarch-gen-check").join("target");
 
+        let manifest = stdarch_root.join("Cargo.toml");
+        let arm_spec = stdarch_root.join("crates/stdarch-gen-arm/spec");
+        let core_arch_src = stdarch_root.join("crates/core_arch/src");
+
         // `stdarch-gen-common` runs each generator into a temp dir and diffs/blesses
         // against the committed files itself, driven by STDARCH_GEN_MODE.
         let run_gen = |selector: &str, pkg: &str, args: &[&OsStr]| {
             let mut cmd = command(&builder.initial_cargo);
-            cmd.current_dir(&stdarch_root);
-            cmd.arg("run").arg(selector).arg(pkg).arg("--release").arg("--").args(args);
+            cmd.current_dir(&builder.src);
+            cmd.arg("run")
+                .arg("--manifest-path")
+                .arg(&manifest)
+                .arg(selector)
+                .arg(pkg)
+                .arg("--release")
+                .arg("--")
+                .args(args);
             // RUSTC_BOOTSTRAP=1 allow nightly features when building tools against stage0.
             cmd.env("RUSTC_BOOTSTRAP", "1");
             cmd.env("RUSTC", &builder.initial_rustc);
@@ -1264,11 +1275,7 @@ impl CommandLineStep for StdarchGenCheck {
             cmd.run(builder);
         };
 
-        run_gen(
-            "--bin",
-            "stdarch-gen-arm",
-            &[OsStr::new("crates/stdarch-gen-arm/spec"), OsStr::new("crates/core_arch/src")],
-        );
+        run_gen("--bin", "stdarch-gen-arm", &[arm_spec.as_os_str(), core_arch_src.as_os_str()]);
         run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lsx")]);
         run_gen("-p", "stdarch-gen-loongarch", &[OsStr::new("lasx")]);
         run_gen("-p", "stdarch-gen-hexagon", &[]);
