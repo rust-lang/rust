@@ -959,11 +959,11 @@ impl CommandLineStep for CompilerDoc {
             let crate_doc_dir = out_dir.join("doc").join(&dir_name);
             let doc_out = out.join(&dir_name);
             t!(fs::create_dir_all(&doc_out));
-            if crate_doc_dir.exists() {
-                builder.cp_link_r(&crate_doc_dir, &doc_out);
-            } else if !builder.config.dry_run() {
-                panic!("no docs found for {krate} in {}", crate_doc_dir.display());
-            }
+            builder.cp_link_r(&crate_doc_dir, &doc_out);
+            let crate_src_dir = out_dir.join("doc").join("src").join(&dir_name);
+            let src_out = out.join("src").join(&dir_name);
+            t!(fs::create_dir_all(&src_out));
+            builder.cp_link_r(&crate_src_dir, &src_out);
             // Making sure the directory exists and is not empty.
             if !builder.config.dry_run() {
                 assert!(doc_out.exists(), "{}", doc_out.display());
@@ -985,11 +985,11 @@ impl CommandLineStep for CompilerDoc {
                     let crate_doc_dir = out_dir.join("doc").join(&dir_name);
                     let doc_out = out.join(&dir_name);
                     t!(fs::create_dir_all(&doc_out));
-                    if crate_doc_dir.exists() {
-                        builder.cp_link_r(&crate_doc_dir, &doc_out);
-                    } else if !builder.config.dry_run() {
-                        panic!("no docs found for {krate} in {}", crate_doc_dir.display());
-                    }
+                    builder.cp_link_r(&crate_doc_dir, &doc_out);
+                    let crate_src_dir = out_dir.join("doc").join("src").join(&dir_name);
+                    let src_out = out.join("src").join(&dir_name);
+                    t!(fs::create_dir_all(&src_out));
+                    builder.cp_link_r(&crate_src_dir, &src_out);
                     // Making sure the directory exists and is not empty.
                     if !builder.config.dry_run() {
                         assert!(doc_out.exists(), "{}", doc_out.display());
@@ -1165,7 +1165,10 @@ impl CommandLineStep for Rustc {
                     // explicitly (https://github.com/rust-lang/cargo/issues/7677).
                     t!(fs::remove_dir(&doc_out));
                     t!(symlink_dir(&builder.config, &proc_macro_doc_out, &doc_out));
-                };
+                    let src_out = out_dir.join("src").join(&*dir_name);
+                    let proc_macro_src_out = proc_macro_out_dir.join("src").join(&*dir_name);
+                    t!(symlink_dir(&builder.config, &proc_macro_src_out, &src_out));
+                }
                 assert!(doc_out.exists(), "{}", doc_out.display());
                 assert!(doc_out.read_dir().expect(&dir_name).next().is_some());
             }
@@ -1342,7 +1345,10 @@ macro_rules! tool_doc {
                             // explicitly (https://github.com/rust-lang/cargo/issues/7677).
                             t!(fs::remove_dir(&doc_out));
                             t!(symlink_dir(&builder.config, &proc_macro_doc_out, &doc_out));
-                        };
+                            let src_out = out_dir.join("src").join(&*dir_name);
+                            let proc_macro_src_out = proc_macro_out_dir.join("src").join(&*dir_name);
+                            t!(symlink_dir(&builder.config, &proc_macro_src_out, &src_out));
+                        }
                         assert!(doc_out.exists(), "{}", doc_out.display());
                         assert!(doc_out.read_dir().expect(&dir_name).next().is_some());
                     })?
