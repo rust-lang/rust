@@ -27,12 +27,17 @@ pub struct AlignedSlice {
 impl AlignedSlice {
     /// Allocate a slice aligned to ALIGN with at least `len` items, with `offset` from
     /// page alignment.
-    pub fn new_zeroed(len: usize, offset: usize) -> Self {
+    pub fn new(fill: u8, len: usize, offset: usize) -> Self {
         assert!(offset < PAGE_SIZE);
         let total_len = len + offset;
         let limbs = total_len.div_ceil(PAGE_SIZE);
-        let buf = vec![Page([0u8; PAGE_SIZE]); limbs].into_boxed_slice();
+        let buf = vec![Page([fill; PAGE_SIZE]); limbs].into_boxed_slice();
         AlignedSlice { buf, len, offset }
+    }
+
+    /// Same as [`new`] but with 0 as the value.
+    pub fn new_zeroed(len: usize, offset: usize) -> Self {
+        AlignedSlice::new(0, len, offset)
     }
 }
 
