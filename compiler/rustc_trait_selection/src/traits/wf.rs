@@ -485,6 +485,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         //     `i32: Clone`
         //     `i32: Copy`
         // ]
+        if matches!(data.kind, ty::AliasTermKind::ProjectionConst { .. }) {
+            self.require_const_item_ty(data.expect_ct());
+        }
+
         self.nominal_obligations(data.expect_projection_def_id(), data.args, |this, obligation| {
             this.out.push(obligation)
         });
@@ -560,6 +564,33 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 ty::Binder::dummy(trait_ref),
             ));
         }
+    }
+
+    fn require_const_item_ty(&mut self, ct: ty::AliasConst<'tcx>) {
+        let ty = match ct.kind {
+            ty::AliasConstKind::Projection { .. }
+            | ty::AliasConstKind::Inherent { .. }
+            | ty::AliasConstKind::Free { .. } => ct.type_of(self.tcx()).skip_norm_wip(),
+            ty::AliasConstKind::Anon { .. } => return,
+        };
+
+        if self.tcx().features().const_param_ty_unchecked() || ty.has_escaping_bound_vars() {
+            return;
+        }
+
+        let cause = self.cause(ObligationCauseCode::ConstItemTy(ty));
+        let trait_ref = ty::TraitRef::new(
+            self.tcx(),
+            self.tcx().require_lang_item(LangItem::ConstParamTy, cause.span),
+            [ty],
+        );
+        self.out.push(traits::Obligation::with_depth(
+            self.tcx(),
+            cause,
+            self.recursion_depth,
+            self.param_env,
+            ty::Binder::dummy(trait_ref),
+        ));
     }
 
     /// Pushes all the predicates needed to validate that `term` is WF into `out`.
@@ -1015,8 +1046,13 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
                 if !t.has_escaping_bound_vars() {
                     for projection in data.projection_bounds() {
+                        let projection = projection.with_self_ty(tcx, t);
+                        let projection_pred = projection.skip_binder();
+                        if projection_pred.term.as_const().is_some() {
+                            self.require_const_item_ty(projection_pred.projection_term.expect_ct());
+                        }
+
                         let pred_binder = projection
-                            .with_self_ty(tcx, t)
                             .map_bound(|p| {
                                 p.term.as_const().map(|ct| {
                                     let assoc_const_ty = tcx
@@ -1078,6 +1114,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
         match c.kind() {
             ty::ConstKind::Alias(_, alias_const) => {
                 if !c.has_escaping_bound_vars() {
+                    self.require_const_item_ty(alias_const);
+
                     // Skip type consts as mGCA doesn't support evaluatable clauses
                     if !alias_const.kind.is_type_const(tcx) && !tcx.features().generic_const_args()
                     {

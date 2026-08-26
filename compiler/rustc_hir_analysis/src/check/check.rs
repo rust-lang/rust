@@ -988,20 +988,36 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     // HACK: We sometimes incidentally check that const arguments have the correct
                     // type as a side effect of the anon const desugaring. To make this "consistent"
                     // for users we explicitly check `ConstArgHasType` clauses so that const args
-                    // that don't go through an anon const still have their types checked.
+                    // that don't go through an anon const still have their types checked. We also
+                    // check that the types of const items used in the type system implement
+                    // `ConstParamTy`, while continuing to ignore ordinary nominal bounds.
                     //
                     // We use the unnormalized type as this mirrors the behaviour that we previously
                     // would have had when all const arguments were anon consts.
                     //
                     // Changing this to normalized obligations is a breaking change:
                     // `type Bar = [(); panic!()];` would become an error
-                    if let Some(unnormalized_obligations) = wfcx.unnormalized_obligations(span, ty.skip_norm_wip())
+                    if let Some(unnormalized_obligations) =
+                        wfcx.unnormalized_obligations(span, ty.skip_norm_wip())
                     {
                         let filtered_obligations =
                             unnormalized_obligations.into_iter().filter(|o| {
-                                matches!(o.predicate.kind().skip_binder(),
-                                    ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
-                                    if matches!(ct.kind(), ty::ConstKind::Param(..)))
+                                match o.predicate.kind().skip_binder() {
+                                    ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
+                                        ct,
+                                        _,
+                                    )) => matches!(ct.kind(), ty::ConstKind::Param(..)),
+                                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                                        matches!(
+                                            *o.cause.code().peel_derives(),
+                                            ObligationCauseCode::ConstItemTy(_)
+                                        ) && tcx.is_lang_item(
+                                            pred.trait_ref.def_id,
+                                            LangItem::ConstParamTy,
+                                        )
+                                    }
+                                    _ => false,
+                                }
                             });
                         wfcx.ocx.register_obligations(filtered_obligations)
                     }

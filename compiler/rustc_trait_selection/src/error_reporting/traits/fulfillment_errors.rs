@@ -102,10 +102,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .emit();
                 }
 
-                // Report a const-param specific error
-                if let ObligationCauseCode::ConstParam(ty) = *obligation.cause.code().peel_derives()
-                {
-                    return self.report_const_param_not_wf(ty, &obligation).emit();
+                // Report a `ConstParamTy`-specific error
+                match *obligation.cause.code().peel_derives() {
+                    ObligationCauseCode::ConstParam(ty) => {
+                        return self
+                            .report_const_param_not_wf(
+                                ty,
+                                self.tcx.ty_span(obligation.cause.body_def_id),
+                                &obligation,
+                            )
+                            .emit();
+                    }
+                    ObligationCauseCode::ConstItemTy(ty) => {
+                        return self
+                            .report_const_param_not_wf(ty, obligation.cause.span, &obligation)
+                            .emit();
+                    }
+                    _ => {}
                 }
 
                 let bound_predicate = obligation.predicate.kind();
@@ -1389,11 +1402,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_const_param_not_wf(
         &self,
         ty: Ty<'tcx>,
+        span: Span,
         obligation: &PredicateObligation<'tcx>,
     ) -> Diag<'a> {
-        let def_id = obligation.cause.body_def_id;
-        let span = self.tcx.ty_span(def_id);
-
         let mut file = None;
         let ty_str = self.tcx.short_string(ty, &mut file);
         let mut diag = match ty.kind() {
