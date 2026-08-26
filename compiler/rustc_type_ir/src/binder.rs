@@ -907,6 +907,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     #[instrument(level = "trace", skip(self), fields(binders_passed = self.binders_passed), ret)]
     fn shift_vars_through_binders<T: TypeFoldable<I>>(&self, val: T) -> T {
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
+            // ponytail: fix #161802 - avoid shifting early-bound Params (T: Unsize<U> aliasing)
             val
         } else {
             ty::shift_vars(self.cx, val, self.binders_passed)
