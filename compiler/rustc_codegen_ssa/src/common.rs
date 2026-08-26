@@ -200,7 +200,7 @@ pub fn asm_const_ptr_clean<'tcx>(tcx: TyCtxt<'tcx>, scalar: Scalar) -> Scalar {
     }
 }
 
-pub fn is_mingw_gnu_toolchain(target: &Target) -> bool {
+pub fn is_using_dlltool(target: &Target) -> bool {
     target.os == Os::Windows && target.env == Env::Gnu && target.cfg_abi == CfgAbi::Unspecified
 }
 

@@ -267,7 +267,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
 
         g2
     } else if cx.tcx.sess.target.arch == Arch::X86
-        && common::is_mingw_gnu_toolchain(&cx.tcx.sess.target)
+        && common::is_using_dlltool(&cx.tcx.sess.target)
         && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
         cx.declare_global(&common::i686_decorated_name(dllimport, true, true, false), llty)
