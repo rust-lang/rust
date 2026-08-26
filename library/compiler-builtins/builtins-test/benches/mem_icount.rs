@@ -3,27 +3,14 @@
 
 use std::hint::black_box;
 
-use builtins_test::mem::{AlignedSlice, MAX_TESTED_ALIGN, MEG1};
-use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
+use builtins_test::mem::{AlignedSlice, MEG1};
 use gungraun::{library_benchmark, library_benchmark_group, main};
 
 mod mcpy {
+    use builtins_test::mem::mcpy::{Cfg, setup};
+    use compiler_builtins::mem::memcpy;
+
     use super::*;
-
-    struct Cfg {
-        len: usize,
-        s_off: usize,
-        d_off: usize,
-    }
-
-    fn setup(cfg: Cfg) -> (usize, AlignedSlice, AlignedSlice) {
-        let Cfg { len, s_off, d_off } = cfg;
-        println!("bytes: {len} bytes, src offset: {s_off}, dst offset: {d_off}");
-        let mut src = AlignedSlice::new_zeroed(len, s_off);
-        let dst = AlignedSlice::new_zeroed(len, d_off);
-        src.fill(1);
-        (len, src, dst)
-    }
 
     #[library_benchmark]
     #[benches::aligned(
@@ -39,7 +26,7 @@ mod mcpy {
         setup = setup,
     )]
     #[benches::offset(
-        // Both at the same offset
+        // Both unaligned but at the same offset
         args = [
             Cfg { len: 16, s_off: 65, d_off: 65 },
             Cfg { len: 32, s_off: 65, d_off: 65 },
@@ -76,17 +63,10 @@ mod mcpy {
 }
 
 mod mset {
+    use builtins_test::mem::mset::{Cfg, setup};
+    use compiler_builtins::mem::memset;
+
     use super::*;
-
-    struct Cfg {
-        len: usize,
-        offset: usize,
-    }
-
-    fn setup(Cfg { len, offset }: Cfg) -> (usize, AlignedSlice) {
-        println!("bytes: {len}, offset: {offset}");
-        (len, AlignedSlice::new_zeroed(len, offset))
-    }
 
     #[library_benchmark]
     #[benches::aligned(
@@ -125,22 +105,10 @@ mod mset {
 }
 
 mod mcmp {
+    use builtins_test::mem::mcmp::{Cfg, setup};
+    use compiler_builtins::mem::memcmp;
+
     use super::*;
-
-    struct Cfg {
-        len: usize,
-        s_off: usize,
-        d_off: usize,
-    }
-
-    fn setup(cfg: Cfg) -> (usize, AlignedSlice, AlignedSlice) {
-        let Cfg { len, s_off, d_off } = cfg;
-        println!("bytes: {len}, src offset: {s_off}, dst offset: {d_off}");
-        let b1 = AlignedSlice::new_zeroed(len, s_off);
-        let mut b2 = AlignedSlice::new_zeroed(len, d_off);
-        b2[len - 1] = 1;
-        (len, b1, b2)
-    }
 
     #[library_benchmark]
     #[benches::aligned(
@@ -194,70 +162,10 @@ mod mcmp {
 
 mod mmove {
     use Spread::{Aligned, Large, Medium, Small};
+    use builtins_test::mem::mmove::{Cfg, Spread, setup_backward, setup_forward};
+    use compiler_builtins::mem::memmove;
 
     use super::*;
-
-    struct Cfg {
-        len: usize,
-        spread: Spread,
-        off: usize,
-    }
-
-    enum Spread {
-        /// `src` and `dst` are close and have the same alignment (or offset).
-        Aligned,
-        /// `src` and `dst` are close.
-        Small,
-        /// `src` and `dst` are halfway offset in the buffer.
-        Medium,
-        /// `src` and `dst` only overlap by a single byte.
-        Large,
-    }
-
-    // Note that small and large are
-    fn calculate_spread(len: usize, spread: Spread) -> usize {
-        match spread {
-            // Note that this test doesn't make sense for lengths less than len=128
-            Aligned => {
-                assert!(
-                    len > MAX_TESTED_ALIGN,
-                    "aligned memset would have no overlap"
-                );
-                MAX_TESTED_ALIGN
-            }
-            Small => 1,
-            Medium => (len / 2) + 1, // add 1 so all are misaligned
-            Large => len - 1,
-        }
-    }
-
-    fn setup_forward(cfg: Cfg) -> (usize, usize, AlignedSlice) {
-        let Cfg { len, spread, off } = cfg;
-        let spread = calculate_spread(len, spread);
-        println!("bytes: {len}, spread: {spread}, offset: {off}, forward");
-        assert!(spread < len, "memmove tests should have some overlap");
-        let mut buf = AlignedSlice::new_zeroed(len + spread, off);
-        let mut fill: usize = 0;
-        buf[..len].fill_with(|| {
-            fill += 1;
-            fill as u8
-        });
-        (len, spread, buf)
-    }
-
-    fn setup_backward(cfg: Cfg) -> (usize, usize, AlignedSlice) {
-        let Cfg { len, spread, off } = cfg;
-        let spread = calculate_spread(len, spread);
-        println!("bytes: {len}, spread: {spread}, offset: {off}, backward");
-        assert!(spread < len, "memmove tests should have some overlap");
-        let mut buf = AlignedSlice::new_zeroed(len + spread, off);
-        let mut fill: usize = 0;
-        buf[spread..].fill_with(|| {
-            fill += 1;
-            fill as u8
-        });
-        (len, spread, buf)
-    }
 
     #[library_benchmark]
     #[benches::aligned(
