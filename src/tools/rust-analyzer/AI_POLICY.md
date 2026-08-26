@@ -38,6 +38,6 @@ of the rustc code responsible for the change you did, along with an explanation 
 The reason for that is that it is almost impossible to be fully correct in analysis if we implement things differently from rustc. We should not guess
 how to fix bugs in analysis without looking at the rustc code.
 
-This policy was adapted from [uv's AI policy].
+This policy was inspired by [uv's AI policy].
 
 [uv's AI policy]: https://github.com/astral-sh/.github/blob/c5187e200db51bfe11d56e13053d29bd3793fdd8/AI_POLICY.md
