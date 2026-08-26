@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
 pub use rustc_lexer::UNICODE_VERSION;
@@ -29,7 +29,7 @@ pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 #[macro_use]
 pub mod parser;
 use parser::Parser;
-use rustc_ast::tokenarena::TokenArena;
+use rustc_ast::tokenarena::{ArenaTokenTree, DelimitedData, TokenArena};
 
 use crate::lexer::StripTokens;
 
@@ -303,8 +303,8 @@ pub fn fake_token_stream_for_item(
     item: &ast::Item,
     attr_to_exclude: Option<&ast::Attribute>,
 ) -> TokenArena {
-    if let Some(tokens) = fake_token_stream_for_file_mod(psess, item, attr_to_exclude) {
-        return TokenArena::from_stream(&tokens);
+    if let Some(arena) = fake_token_stream_for_file_mod(psess, item, attr_to_exclude) {
+        return arena;
     }
 
     let source = pprust::item_to_string(item);
@@ -316,7 +316,7 @@ fn fake_token_stream_for_file_mod(
     psess: &ParseSess,
     item: &ast::Item,
     attr_to_exclude: Option<&ast::Attribute>,
-) -> Option<TokenStream> {
+) -> Option<TokenArena> {
     let ast::ItemKind::Mod(_, _, ast::ModKind::Loaded(_, ast::Inline::No { .. }, spans)) =
         &item.kind
     else {
@@ -326,55 +326,46 @@ fn fake_token_stream_for_file_mod(
     let attr = attr_to_exclude.expect("file modules must have an attribute to exclude");
     assert_eq!(attr.style, ast::AttrStyle::Inner);
 
-    let mut body_tts = Vec::new();
-    body_tts.extend(lex_token_trees_for_span(psess, spans.inner_span.until(attr.span))?);
-    body_tts.extend(lex_token_trees_for_span(
-        psess,
-        attr.span.between(spans.inner_span.shrink_to_hi()),
-    )?);
+    let mut arena = TokenArena::default();
 
-    let mut wrapper_tts = Vec::new();
     for attr in item.attrs.iter().filter(|attr| attr.style == ast::AttrStyle::Outer) {
-        wrapper_tts.extend(attr.token_trees());
+        attr.push_token_trees(&mut arena);
     }
-    wrapper_tts.extend(lex_token_trees_for_span(psess, item.span)?);
-    let Some(TokenTree::Token(semi, _)) = wrapper_tts.pop() else {
+    lex_token_trees_for_span(psess, item.span, &mut arena)?;
+    let Some(ArenaTokenTree::Token(semi, _)) = arena.pop() else {
         return None;
     };
     if semi.kind != token::Semi {
         return None;
     }
-    wrapper_tts.push(TokenTree::Delimited(
-        DelimSpan::from_single(semi.span),
-        DelimSpacing::new(Spacing::Alone, Spacing::Alone),
-        token::Delimiter::Brace,
-        TokenStream::new(body_tts),
-    ));
 
-    Some(TokenStream::new(wrapper_tts))
+    let start = arena.start_delimited();
+    lex_token_trees_for_span(psess, spans.inner_span.until(attr.span), &mut arena)?;
+    lex_token_trees_for_span(
+        psess,
+        attr.span.between(spans.inner_span.shrink_to_hi()),
+        &mut arena,
+    )?;
+    arena.finish_delimited(
+        start,
+        DelimitedData {
+            span: DelimSpan::from_single(semi.span),
+            spacing: DelimSpacing::new(Spacing::Alone, Spacing::Alone),
+            delimiter: token::Delimiter::Brace,
+        },
+    );
+    Some(arena)
 }
 
-fn lex_token_trees_for_span(
-    psess: &ParseSess,
-    span: Span,
-) -> Option<impl Iterator<Item = TokenTree>> {
+fn lex_token_trees_for_span(psess: &ParseSess, span: Span, arena: &mut TokenArena) -> Option<()> {
     let src = psess.source_map().span_to_snippet(span).ok()?;
-    let mut arena = TokenArena::default();
-    let stream = match lexer::lex_token_trees(
-        psess,
-        &src,
-        span.lo(),
-        &mut arena,
-        None,
-        StripTokens::Nothing,
-    ) {
-        Ok(_) => arena.to_token_stream(),
+    match lexer::lex_token_trees(psess, &src, span.lo(), arena, None, StripTokens::Nothing) {
+        Ok(_) => Some(()),
         Err(errs) => {
             errs.into_iter().for_each(|err| err.cancel());
-            return None;
+            None
         }
-    };
-    Some((0..).map_while(move |index| stream.get(index).cloned()))
+    }
 }
 
 pub fn fake_token_stream_for_foreign_item(
