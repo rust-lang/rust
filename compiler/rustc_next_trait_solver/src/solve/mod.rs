@@ -23,7 +23,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner, Region, TypeVisitableExt};
+use rustc_type_ir::{self as ty, Interner, Region, TypeVisitableExt};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -80,36 +80,6 @@ fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<
     response.value.var_values.is_identity_modulo_regions()
         && opaque_types.is_empty()
         && hidden_types_of_opaques.is_empty()
-        && normalization_nested_goals.is_empty()
-}
-
-// FIXME: In some cases, hidden types are resolved into other vars, which isn't considered
-// as *hidden* anymore in the caller's context while it's not resolved at all in the nested
-// context. Can we just avoid such cases somehow and be happy by just checking whether all
-// those constraints except the region one are empty?
-fn has_only_region_constraints_in_caller<D, I>(
-    delegate: &D,
-    response: ty::Canonical<I, Response<I>>,
-) -> bool
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    let ExternalConstraintsData {
-        region_constraints: _,
-        ref opaque_types,
-        ref hidden_types_of_opaques,
-        ref normalization_nested_goals,
-    } = *response.value.external_constraints;
-    response.value.var_values.is_identity_modulo_regions()
-        && opaque_types.is_empty()
-        && hidden_types_of_opaques.iter().all(|(hidden_ty, _)| {
-            if let ty::Infer(ty::InferTy::TyVar(vid)) = hidden_ty.kind() {
-                !delegate.opportunistic_resolve_ty_var(vid).is_ty_var()
-            } else {
-                true
-            }
-        })
         && normalization_nested_goals.is_empty()
 }
 
