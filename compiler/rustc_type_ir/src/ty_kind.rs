@@ -118,6 +118,10 @@ impl<I: Interner> AliasTyKind<I> {
 /// if the param env is the same, e.g., `Typeck/PostTypeckUntilBorrowck` and
 /// `PostAnalysis/Codegen`.
 ///
+/// We always reveal auto traits for rigid aliases and this can cause query cycle in
+/// `TypingMode::ErasedNotCoherence`. Thus we don't allow incorrectly marked rigid local
+/// opaques. We achieve this by immediately bailing out when normalizing local opaques.
+///
 /// FIXME(#155345): Alias handling is currently still in flux for the new trait
 /// solver and this is currently somewhat messy. Please reach out on
 /// #t-types/trait-system-refactor-initiative if you encounter this and it isn't

@@ -154,6 +154,10 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// we bail out, setting a field on `EvalCtxt` that indicates the canonicalization must be
     /// rerun in the original typing mode.
     ///
+    /// Specifically, we always reveal auto traits for rigid aliases and thus we don't allow
+    /// incorrectly marked rigid local opaques. We ensure this by immediately bailing out
+    /// when normalizing local opaques.
+    ///
     /// `TypingMode::Coherence` is not replaced by this and is always kept as-is.
     ErasedNotCoherence(S),
 }
