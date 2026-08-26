@@ -175,6 +175,22 @@ pub mod mmove {
     }
 }
 
+pub mod slen {
+    use super::*;
+
+    pub struct Cfg {
+        pub len: usize,
+        pub offset: usize,
+    }
+
+    pub fn setup(Cfg { len, offset }: Cfg) -> AlignedSlice {
+        assert!(len > 0, "must have one byte for the \\0");
+        let mut ret = AlignedSlice::new(b'x', len, offset);
+        ret[len - 1] = 0;
+        ret
+    }
+}
+
 #[test]
 fn test_alignment() {
     let v = AlignedSlice::new_zeroed(1, 0);

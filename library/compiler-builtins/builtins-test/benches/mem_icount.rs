@@ -357,9 +357,50 @@ mod mmove {
     library_benchmark_group!(name = memmove, benchmarks = [forward_move, backward_move]);
 }
 
+mod slen {
+    use builtins_test::mem::slen::{Cfg, setup};
+    use compiler_builtins::mem::strlen;
+
+    use super::*;
+
+    #[library_benchmark]
+    #[benches::aligned(
+        args = [
+            Cfg { len: 1, offset: 0 },
+            Cfg { len: 16, offset: 0 },
+            Cfg { len: 32, offset: 0 },
+            Cfg { len: 64, offset: 0 },
+            Cfg { len: 512, offset: 0 },
+            Cfg { len: 4096, offset: 0 },
+            Cfg { len: MEG1, offset: 0 },
+        ],
+        setup = setup,
+    )]
+    #[benches::offset(
+        args = [
+            Cfg { len: 1, offset: 65 },
+            Cfg { len: 16, offset: 65 },
+            Cfg { len: 32, offset: 65 },
+            Cfg { len: 64, offset: 65 },
+            Cfg { len: 512, offset: 65 },
+            Cfg { len: 4096, offset: 65 },
+            Cfg { len: MEG1, offset: 65 },
+        ],
+        setup = setup,
+    )]
+    fn bench_strlen(s: AlignedSlice) {
+        unsafe {
+            black_box(strlen(black_box(s.as_ptr().cast::<core::ffi::c_char>())));
+        }
+    }
+
+    library_benchmark_group!(name = strlen, benchmarks = [bench_strlen]);
+}
+
 use mcmp::memcmp;
 use mcpy::memcpy;
 use mmove::memmove;
 use mset::memset;
+use slen::strlen;
 
-main!(library_benchmark_groups = [memcpy, memset, memcmp, memmove]);
+main!(library_benchmark_groups = [memcpy, memset, memcmp, memmove, strlen]);
