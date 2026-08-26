@@ -272,6 +272,7 @@ enum ResolutionError<'ra> {
         segment: Symbol,
         label: String,
         suggestion: Option<Suggestion>,
+        help: Option<String>,
         module: Option<ModuleOrUniformRoot<'ra>>,
         message: String,
     },
@@ -339,7 +340,14 @@ enum ResolutionError<'ra> {
 enum VisResolutionError {
     Relative2018(Span, ast::Path),
     AncestorOnly(Span),
-    FailedToResolve(Span, Symbol, String, Option<Suggestion>, String),
+    FailedToResolve {
+        span: Span,
+        segment: Symbol,
+        label: String,
+        suggestion: Option<Suggestion>,
+        help: Option<String>,
+        message: String,
+    },
     ExpectedFound(Span, String, Res),
     Indeterminate(Span),
     ModuleOnly(Span),
@@ -459,6 +467,7 @@ enum PathResult<'ra> {
         span: Span,
         label: String,
         suggestion: Option<Suggestion>,
+        help: Option<String>,
         is_error_from_last_segment: bool,
         /// The final module being resolved, for instance:
         ///
@@ -494,19 +503,21 @@ impl<'ra> PathResult<'ra> {
             String,
             Option<Suggestion>,
             Option<String>,
+            Option<String>,
         ),
     ) -> PathResult<'ra> {
-        let (message, label, suggestion, note) = if finalize {
+        let (message, label, suggestion, note, help) = if finalize {
             label_and_suggestion_and_note()
         } else {
             // FIXME: this output isn't actually present in the test suite.
-            (format!("cannot find `{ident}` in this scope"), String::new(), None, None)
+            (format!("cannot find `{ident}` in this scope"), String::new(), None, None, None)
         };
         PathResult::Failed {
             span: ident.span,
             segment: ident,
             label,
             suggestion,
+            help,
             is_error_from_last_segment,
             module,
             error_implied_by_parse_error,
