@@ -1,3 +1,4 @@
+use rustc_index::static_assert_size;
 use rustc_macros::{Decodable, Encodable, StableHash};
 
 use crate::token::{Delimiter, Token};
@@ -7,11 +8,14 @@ use crate::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTre
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub enum ArenaTokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
-    /// delimiters are implicitly represented by `Delimited`.
+    /// delimiters are implicitly represented by `DelimitedStart`/`DelimitedEnd`.
     Token(Token, Spacing),
     /// A delimited sequence of token trees.
-    Delimited(DelimitedBounds, DelimitedData),
+    DelimitedStart(DelimitedBounds, DelimitedData),
+    DelimitedEnd(DelimitedBounds, DelimitedData),
 }
+
+static_assert_size!(ArenaTokenTree, 36);
 
 #[derive(Debug, Default, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct TokenArena {
@@ -29,7 +33,7 @@ impl TokenArena {
 
     pub fn start_delimited(&mut self) -> OpenDelimited {
         let index = self.length();
-        self.tokens.push(ArenaTokenTree::Delimited(
+        self.tokens.push(ArenaTokenTree::DelimitedStart(
             DelimitedBounds { start: index as u32, length: 0 },
             DelimitedData {
                 span: DelimSpan { open: Default::default(), close: Default::default() },
@@ -42,9 +46,15 @@ impl TokenArena {
 
     pub fn finish_delimited(&mut self, open: OpenDelimited, delimited_data: DelimitedData) {
         let length = self.length();
+        self.tokens.push(ArenaTokenTree::DelimitedEnd(
+            DelimitedBounds { start: open.start as u32, length: length as u32 },
+            delimited_data,
+        ));
         match &mut self.tokens[open.start] {
-            ArenaTokenTree::Token(_, _) => unreachable!("Called finish_delimited on a token"),
-            ArenaTokenTree::Delimited(bounds, data) => {
+            tree @ (ArenaTokenTree::Token(..) | ArenaTokenTree::DelimitedEnd(..)) => {
+                unreachable!("Called finish_delimited on an invalid tree type {tree:?}")
+            }
+            ArenaTokenTree::DelimitedStart(bounds, data) => {
                 let len = length.saturating_sub(open.start);
                 bounds.length = len as u32;
                 *data = delimited_data;
@@ -99,7 +109,7 @@ impl TokenArena {
                         tokens.push(TokenTree::Token(*a, *b));
                         index += 1;
                     }
-                    ArenaTokenTree::Delimited(bounds, data) => {
+                    ArenaTokenTree::DelimitedStart(bounds, data) => {
                         let tokenstream = to_token_stream(
                             arena,
                             (bounds.start + 1) as usize,
@@ -112,6 +122,9 @@ impl TokenArena {
                             tokenstream,
                         ));
                         index += bounds.length as usize;
+                    }
+                    ArenaTokenTree::DelimitedEnd(..) => {
+                        index += 1;
                     }
                 }
             }
@@ -129,10 +142,12 @@ pub struct OpenDelimited {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub struct DelimitedBounds {
     pub start: u32,
+    /// The length includes both the start and the end token.
+    /// So an empty delimited sequence has length 2.
     pub length: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub struct DelimitedData {
     pub span: DelimSpan,
     pub spacing: DelimSpacing,
