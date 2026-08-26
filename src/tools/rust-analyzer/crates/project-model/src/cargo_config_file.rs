@@ -1,6 +1,7 @@
 //! Read `.cargo/config.toml` as a TOML table
 use paths::{AbsPath, Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
+use stdx::tempfile::NamedTempFile;
 use toml::{
     Spanned,
     de::{DeTable, DeValue},
@@ -139,7 +140,7 @@ impl<'a> CargoConfigFileReader<'a> {
 pub(crate) struct LockfileCopy {
     pub(crate) path: Utf8PathBuf,
     pub(crate) usage: LockfileUsage,
-    _temp_dir: temp_dir::TempDir,
+    _temp_file: NamedTempFile,
 }
 
 pub(crate) enum LockfileUsage {
@@ -193,22 +194,12 @@ pub(crate) fn make_lockfile_copy(
         return None;
     };
 
-    let temp_dir = temp_dir::TempDir::with_prefix("rust-analyzer").ok()?;
-    let path: Utf8PathBuf = temp_dir.path().join("Cargo.lock").try_into().ok()?;
-    let path = match std::fs::copy(lockfile_path, &path) {
-        Ok(_) => {
-            tracing::debug!("Copied lock file from `{}` to `{}`", lockfile_path, path);
-            path
-        }
-        // lockfile does not yet exist, so we can just create a new one in the temp dir
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => path,
-        Err(e) => {
-            tracing::warn!("Failed to copy lock file from `{lockfile_path}` to `{path}`: {e}",);
-            return None;
-        }
-    };
+    let temp_file =
+        NamedTempFile::new_from_existing("rust-analyzer-Cargo.lock", lockfile_path.as_std_path())
+            .ok()?;
+    let path = Utf8Path::from_path(temp_file.path())?.to_path_buf();
 
-    Some(LockfileCopy { path, usage, _temp_dir: temp_dir })
+    Some(LockfileCopy { path, usage, _temp_file: temp_file })
 }
 
 #[test]
