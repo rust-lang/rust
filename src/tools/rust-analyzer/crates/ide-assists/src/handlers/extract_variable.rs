@@ -76,10 +76,16 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
         if let Some(t) = ctx.token_at_offset().find(|it| it.kind() == T![;]) {
             t.parent().and_then(ast::ExprStmt::cast)?.syntax().clone()
         } else {
-            let expr = ancestors_at_offset(ctx.source_file().syntax(), ctx.offset())
-                .next()
-                .and_then(ast::Expr::cast)?;
-            expr.syntax().ancestors().find_map(valid_target_expr(ctx))?.syntax().clone()
+            // Offer the assist only if the nearest syntax node is an expression, or a record
+            // field, or a record field’s name. This prevents the assist from appearing when
+            // it is unlikely to be relevant, such as when the cursor is in a pattern.
+            // (If we did not want to restrict it this way, we could just apply
+            // `valid_target_expr()` to all ancestors.)
+            let expr_or_field = ancestors_at_offset(ctx.source_file().syntax(), ctx.offset())
+                .find(|it| !ast::NameRef::can_cast(it.kind()))
+                .and_then(either::Either::<ast::Expr, ast::RecordExprField>::cast)?;
+
+            expr_or_field.syntax().ancestors().find_map(valid_target_expr(ctx))?.syntax().clone()
         }
     } else {
         match ctx.covering_element() {
@@ -366,6 +372,11 @@ fn valid_target_expr(ctx: &AssistContext<'_, '_>) -> impl Fn(SyntaxNode) -> Opti
             let path_expr = ast::PathExpr::cast(node)?;
             let path_resolution = ctx.sema.resolve_path(&path_expr.path()?)?;
             like_const_value(ctx, path_resolution).then_some(path_expr.into())
+        }
+        SyntaxKind::RECORD_EXPR_FIELD => {
+            // If we are on `k` in `Struct { k: v }`, then extract `v`.
+            let record_field = ast::RecordExprField::cast(node)?;
+            record_field.expr()
         }
         _ => ast::Expr::cast(node),
     }
@@ -950,6 +961,16 @@ fn foo() {
     fn dont_extract_in_comment() {
         cov_mark::check!(extract_var_in_comment_is_not_applicable);
         check_assist_not_applicable(extract_variable, r#"fn main() { 1 + /* $0comment$0 */ 1; }"#);
+    }
+
+    #[test]
+    fn dont_extract_in_pattern_with_selection() {
+        check_assist_not_applicable(extract_variable, r#"fn foo() { [].map(|$0bar$0| bar + 1) } "#);
+    }
+
+    #[test]
+    fn dont_extract_in_pattern_without_selection() {
+        check_assist_not_applicable(extract_variable, r#"fn foo() { [].map(|b$0ar| bar + 1) } "#);
     }
 
     #[test]
@@ -1579,6 +1600,87 @@ struct S {
 
 fn main() {
     S { foo: $01 + 1$0 }
+}
+"#,
+            r#"
+struct S {
+    foo: i32
+}
+
+fn main() {
+    let $0foo = 1 + 1;
+    S { foo }
+}
+"#,
+            "Extract into variable",
+        )
+    }
+
+    #[test]
+    fn extract_var_from_record_field() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct S {
+    foo: i32
+}
+
+fn main() {
+    S { $0foo: 1 + 1,$0 }
+}
+"#,
+            r#"
+struct S {
+    foo: i32
+}
+
+fn main() {
+    let $0foo = 1 + 1;
+    S { foo, }
+}
+"#,
+            "Extract into variable",
+        )
+    }
+
+    #[test]
+    fn extract_var_from_record_field_name() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct S {
+    foo: i32
+}
+
+fn main() {
+    S { f$0oo: 1 + 1 }
+}
+"#,
+            r#"
+struct S {
+    foo: i32
+}
+
+fn main() {
+    let $0foo = 1 + 1;
+    S { foo }
+}
+"#,
+            "Extract into variable",
+        )
+    }
+
+    #[test]
+    fn extract_var_from_record_field_colon() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct S {
+    foo: i32
+}
+
+fn main() {
+    S { foo   $0: 1 + 1 }
 }
 "#,
             r#"
