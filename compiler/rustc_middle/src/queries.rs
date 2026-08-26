@@ -714,6 +714,14 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Returns `true` if this def is a function-like thing that is eligible for
+    /// coverage instrumentation under `-Cinstrument-coverage`.
+    ///
+    /// (Eligible functions might nevertheless be skipped for other reasons.)
+    query is_eligible_for_coverage(key: LocalDefId) -> bool {
+        desc { "checking whether `{}` is eligible for coverage", tcx.def_path_str(key) }
+    }
+
     /// Checks for the nearest `#[coverage(off)]` or `#[coverage(on)]` on
     /// this def and any enclosing defs, up to the crate root.
     ///
