@@ -77,7 +77,8 @@ use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::snapshot::undo_log::UndoLog;
 use crate::infer::{
-    self, GenericKind, InferCtxt, SubregionOrigin, TypeOutlivesConstraint, VerifyBound,
+    self, GenericKind, InferCtxt, SolverRegionConstraint, SubregionOrigin, TypeOutlivesConstraint,
+    VerifyBound,
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 
@@ -137,6 +138,13 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.push(UndoLog::PushTypeOutlivesConstraint);
         inner.region_obligations.push(obligation);
+    }
+
+    pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
+        let mut inner = self.inner.borrow_mut();
+        let previous_was_and = inner.solver_region_constraint_storage.is_and();
+        inner.undo_log.push(UndoLog::PushSolverRegionConstraint { previous_was_and });
+        inner.solver_region_constraint_storage.push(c);
     }
 
     pub fn register_type_outlives_constraint(

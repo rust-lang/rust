@@ -339,9 +339,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     }
                 }
             }
-            PatKind::Box(..) => {
-                gate!(self, box_patterns, pattern.span, "box pattern syntax is experimental");
-            }
             _ => {}
         }
         visit::walk_pat(self, pattern)
@@ -415,6 +412,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             );
         }
         visit::walk_assoc_item(self, i, ctxt)
+    }
+
+    fn visit_test_binder_forall(&mut self, forall: &'a ast::TestBinderForall) {
+        self.check_late_bound_lifetime_defs(&forall.generics.params);
+        visit::walk_test_binder_forall(self, forall)
+    }
+
+    fn visit_test_binder_exists(&mut self, exists: &'a ast::TestBinderExists) {
+        self.check_late_bound_lifetime_defs(&exists.params);
+        visit::walk_test_binder_exists(self, exists)
     }
 }
 
@@ -596,7 +603,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 
     // tidy-alphabetical-start
     soft_gate_all_legacy_dont_use!(auto_traits, "`auto` traits are unstable");
-    soft_gate_all_legacy_dont_use!(box_patterns, "box pattern syntax is experimental");
     soft_gate_all_legacy_dont_use!(decl_macro, "`macro` is experimental");
     soft_gate_all_legacy_dont_use!(negative_impls, "negative impls are experimental");
     soft_gate_all_legacy_dont_use!(specialization, "specialization is experimental");

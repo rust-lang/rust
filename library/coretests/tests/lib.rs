@@ -11,6 +11,7 @@
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(casefold)]
+#![feature(cfg_overflow_checks)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]

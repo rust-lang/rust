@@ -1,11 +1,11 @@
 use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety, ast};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, sym};
-use thin_vec::{ThinVec, thin_vec};
+use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::{path_std, pathvec_std};
+use crate::deriving::{path_std, pathvec};
 
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
@@ -17,7 +17,7 @@ pub(crate) fn expand_deriving_partial_ord(
 ) {
     let ordering_ty = Path(path_std!(cmp::Ordering));
     let ret_ty =
-        Path(Path::new_(pathvec_std!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
+        Path(Path::new_(pathvec!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
     // Order in which to perform matching
     let discr_then_data = if let Annotatable::Item(item) = item
@@ -44,51 +44,46 @@ pub(crate) fn expand_deriving_partial_ord(
 
     let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
     let has_derive_ord = cx.resolver.has_derive_ord(container_id);
-    let is_simple_candidate = |params: &ThinVec<ast::GenericParam>| -> bool {
-        has_derive_ord
-            && !params.iter().any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
-    };
-
-    let default_substructure = combine_substructure(Box::new(|cx, span, substr| {
-        cs_partial_cmp(cx, span, substr, discr_then_data)
-    }));
-    let simple_substructure = combine_substructure(Box::new(|cx, span, _| {
+    let default_substructure =
+        combine_substructure(|cx, span, substr| cs_partial_cmp(cx, span, substr, discr_then_data));
+    let simple_substructure = combine_substructure(|cx, span, _| {
         cs_partial_cmp_simple(cx, span, cx.expr_ident(span, Ident::new(sym::other, span)))
-    }));
-    let (is_simple, substructure) = match item {
+    });
+    let is_simple = match item {
         Annotatable::Item(annitem) => match &annitem.kind {
             // For unit structs/zero-variant enums, the default generated code is better.
-            ItemKind::Struct(.., ast::VariantData::Unit(..)) => (false, default_substructure),
+            ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
             // Also for single fieldless variant enum
-            ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => {
-                (false, default_substructure)
-            }
+            ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => false,
             ItemKind::Enum(.., enum_def)
                 if enum_def.variants.len() == 1
                     && matches!(enum_def.variants[0].data, ast::VariantData::Unit(..)) =>
             {
-                (false, default_substructure)
+                false
             }
             ItemKind::Struct(_, ast::Generics { params, .. }, _)
             | ItemKind::Enum(_, ast::Generics { params, .. }, _)
-                if is_simple_candidate(params) =>
+                if has_derive_ord
+                    && !params
+                        .iter()
+                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })) =>
             {
-                (true, simple_substructure)
+                true
             }
-            _ => (false, default_substructure),
+            _ => false,
         },
-        _ => (false, default_substructure),
+        _ => false,
     };
 
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
         generics: Bounds::empty(),
         explicit_self: true,
-        nonself_args: vec![(self_ref(), sym::other)],
+        nonself_args: smallvec![(self_ref(), sym::other)],
         ret_ty,
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: substructure,
+        combine_substructure: if is_simple { simple_substructure } else { default_substructure },
     };
 
     let trait_def = TraitDef {
@@ -96,12 +91,11 @@ pub(crate) fn expand_deriving_partial_ord(
         path: path_std!(cmp::PartialOrd),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
-        additional_bounds: vec![],
+        additional_bounds: smallvec![],
         supports_unions: false,
-        methods: vec![partial_cmp_def],
-        associated_types: Vec::new(),
+        methods: smallvec![partial_cmp_def],
+        associated_types: SmallVec::new(),
         is_const,
-        is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
         document: true,
     };

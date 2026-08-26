@@ -58,6 +58,9 @@ pub(crate) trait TestableFloat: Sized {
     const RAW_MINUS_14_DOT_25: Self;
     /// The result of 12.3.mul_add(4.5, 6.7)
     const MUL_ADD_RESULT: Self;
+    /// The result of 48.34375.mul_add(0.000013887882, 0.12438965), which checks that f16::mul_add
+    /// is correctly rounded. A naive implementation via f32::mul_add has insufficient precision.
+    const F16_NO_DOUBLE_ROUNDING_MUL_ADD_RESULT: Self;
     /// The result of (-12.3).mul_add(-4.5, -6.7)
     const NEG_MUL_ADD_RESULT: Self;
     /// Reciprocal of the maximum val
@@ -109,6 +112,7 @@ impl TestableFloat for f16 {
     const RAW_1337: Self = Self::from_bits(0x6539);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xcb20);
     const MUL_ADD_RESULT: Self = 62.031;
+    const F16_NO_DOUBLE_ROUNDING_MUL_ADD_RESULT: Self = 0.1251;
     const NEG_MUL_ADD_RESULT: Self = 48.625;
     const MAX_RECIP: Self = 1.526624e-5;
     const ASINH_ACOSH_MAX: Self = 11.781;
@@ -168,6 +172,7 @@ impl TestableFloat for f32 {
     const RAW_1337: Self = Self::from_bits(0x44a72000);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc1640000);
     const MUL_ADD_RESULT: Self = 62.05;
+    const F16_NO_DOUBLE_ROUNDING_MUL_ADD_RESULT: Self = 0.12506104;
     const NEG_MUL_ADD_RESULT: Self = 48.65;
     const MAX_RECIP: Self = 2.938736e-39;
     const ASINH_ACOSH_MAX: Self = 89.4159851;
@@ -200,6 +205,7 @@ impl TestableFloat for f64 {
     const RAW_1337: Self = Self::from_bits(0x4094e40000000000);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc02c800000000000);
     const MUL_ADD_RESULT: Self = 62.050000000000004;
+    const F16_NO_DOUBLE_ROUNDING_MUL_ADD_RESULT: Self = 0.1250610422954375;
     const NEG_MUL_ADD_RESULT: Self = 48.650000000000006;
     const MAX_RECIP: Self = 5.562684646268003e-309;
     const ASINH_ACOSH_MAX: Self = 710.47586007394398;
@@ -242,6 +248,7 @@ impl TestableFloat for f128 {
     const RAW_1337: Self = Self::from_bits(0x40094e40000000000000000000000000);
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc002c800000000000000000000000000);
     const MUL_ADD_RESULT: Self = 62.0500000000000000000000000000000037;
+    const F16_NO_DOUBLE_ROUNDING_MUL_ADD_RESULT: Self = 0.1250610422954375;
     const NEG_MUL_ADD_RESULT: Self = 48.6500000000000000000000000000000049;
     const MAX_RECIP: Self = 8.40525785778023376565669454330438228902076605e-4933;
     const ASINH_ACOSH_MAX: Self = 11357.216553474703894801348310092223;
@@ -1978,6 +1985,7 @@ float_test! {
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
         assert_biteq!(flt(12.3).mul_add(flt(4.5), flt(6.7)), Float::MUL_ADD_RESULT);
+        assert_biteq!(flt( 48.34375).mul_add(flt(0.000013887882), flt(0.12438965)), Float::F16_NO_DOUBLE_ROUNDING_MUL_ADD_RESULT);
         assert_biteq!((flt(-12.3)).mul_add(flt(-4.5), flt(-6.7)), Float::NEG_MUL_ADD_RESULT);
         assert_biteq!(flt(0.0).mul_add(8.9, 1.2), 1.2);
         assert_biteq!(flt(3.4).mul_add(-0.0, 5.6), 5.6);

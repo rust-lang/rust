@@ -426,82 +426,6 @@ impl<T> Box<T> {
     pub fn try_new_zeroed() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
         Box::try_new_zeroed_in(Global)
     }
-
-    /// Maps the value in a box, reusing the allocation if possible.
-    ///
-    /// `f` is called on the value in the box, and the result is returned, also boxed.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::map(b, f)` instead of `b.map(f)`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(smart_pointer_try_map)]
-    ///
-    /// let b = Box::new(7);
-    /// let new = Box::map(b, |i| i + 7);
-    /// assert_eq!(*new, 14);
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
-    pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> Box<U> {
-        if size_of::<T>() == size_of::<U>() && align_of::<T>() == align_of::<U>() {
-            let (value, allocation) = Box::take(this);
-            Box::write(
-                unsafe { mem::transmute::<Box<MaybeUninit<T>>, Box<MaybeUninit<U>>>(allocation) },
-                f(value),
-            )
-        } else {
-            Box::new(f(*this))
-        }
-    }
-
-    /// Attempts to map the value in a box, reusing the allocation if possible.
-    ///
-    /// `f` is called on the value in the box, and if the operation succeeds, the result is
-    /// returned, also boxed.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::try_map(b, f)` instead of `b.try_map(f)`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(smart_pointer_try_map)]
-    ///
-    /// let b = Box::new(7);
-    /// let new = Box::try_map(b, u32::try_from).unwrap();
-    /// assert_eq!(*new, 7);
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
-    pub fn try_map<R>(
-        this: Self,
-        f: impl FnOnce(T) -> R,
-    ) -> <R::Residual as Residual<Box<R::Output>>>::TryType
-    where
-        R: Try,
-        R::Residual: Residual<Box<R::Output>>,
-    {
-        if size_of::<T>() == size_of::<R::Output>() && align_of::<T>() == align_of::<R::Output>() {
-            let (value, allocation) = Box::take(this);
-            try {
-                Box::write(
-                    unsafe {
-                        mem::transmute::<Box<MaybeUninit<T>>, Box<MaybeUninit<R::Output>>>(
-                            allocation,
-                        )
-                    },
-                    f(value)?,
-                )
-            }
-        } else {
-            try { Box::new(f(*this)?) }
-        }
-    }
 }
 
 impl<T, A: Allocator> Box<T, A> {
@@ -776,6 +700,77 @@ impl<T, A: Allocator> Box<T, A> {
             (value, uninit)
         }
     }
+
+    /// Maps the value in a box, reusing the allocation if possible.
+    ///
+    /// `f` is called on the value in the box, and the result is returned, also boxed.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::map(b, f)` instead of `b.map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// let b = Box::new(7);
+    /// let new = Box::map(b, |i| i + 7);
+    /// assert_eq!(*new, 14);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> Box<U, A> {
+        let (value, allocation) = Box::take(this);
+        let (raw, alloc) = Box::into_non_null_with_allocator(allocation);
+        if size_of::<T>() == size_of::<U>() && align_of::<T>() == align_of::<U>() {
+            let allocation = unsafe { Box::from_non_null_in(raw.cast::<MaybeUninit<U>>(), alloc) };
+            Box::write(allocation, f(value))
+        } else {
+            unsafe { alloc.deallocate(raw.cast(), Layout::for_value(&value)) }
+            Box::new_in(f(value), alloc)
+        }
+    }
+
+    /// Attempts to map the value in a box, reusing the allocation if possible.
+    ///
+    /// `f` is called on the value in the box, and if the operation succeeds, the result is
+    /// returned, also boxed.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::try_map(b, f)` instead of `b.try_map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// let b = Box::new(7);
+    /// let new = Box::try_map(b, u32::try_from).unwrap();
+    /// assert_eq!(*new, 7);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn try_map<R>(
+        this: Self,
+        f: impl FnOnce(T) -> R,
+    ) -> <R::Residual as Residual<Box<R::Output, A>>>::TryType
+    where
+        R: Try,
+        R::Residual: Residual<Box<R::Output, A>>,
+    {
+        let (value, allocation) = Box::take(this);
+        let (raw, alloc) = Box::into_non_null_with_allocator(allocation);
+        if size_of::<T>() == size_of::<R::Output>() && align_of::<T>() == align_of::<R::Output>() {
+            let allocation =
+                unsafe { Box::from_non_null_in(raw.cast::<MaybeUninit<R::Output>>(), alloc) };
+            try { Box::write(allocation, f(value)?) }
+        } else {
+            unsafe { alloc.deallocate(raw.cast(), Layout::for_value(&value)) }
+            try { Box::new_in(f(value)?, alloc) }
+        }
+    }
 }
 
 impl<T: ?Sized + CloneToUninit> Box<T> {
@@ -813,7 +808,6 @@ impl<T: ?Sized + CloneToUninit> Box<T> {
     /// ```
     #[unstable(feature = "clone_from_ref", issue = "149075")]
     //#[unstable(feature = "allocator_api", issue = "32838")]
-    #[must_use]
     #[inline]
     pub fn try_clone_from_ref(src: &T) -> Result<Box<T>, AllocError> {
         Box::try_clone_from_ref_in(src, Global)
@@ -865,7 +859,6 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
     /// ```
     #[unstable(feature = "clone_from_ref", issue = "149075")]
     //#[unstable(feature = "allocator_api", issue = "32838")]
-    #[must_use]
     #[inline]
     pub fn try_clone_from_ref_in(src: &T, alloc: A) -> Result<Box<T, A>, AllocError> {
         struct DeallocDropGuard<'a, A: Allocator>(Layout, &'a A, NonNull<u8>);
@@ -1161,7 +1154,6 @@ impl<T, A: Allocator> Box<[T], A> {
     /// ```
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
-    #[must_use]
     pub fn into_array<const N: usize>(self) -> Result<Box<[T; N], A>, Self> {
         if self.len() == N {
             let (ptr, alloc) = Self::into_raw_with_allocator(self);

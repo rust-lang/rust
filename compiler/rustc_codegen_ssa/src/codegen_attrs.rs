@@ -64,7 +64,7 @@ fn process_builtin_attrs(
     codegen_fn_attrs: &mut CodegenFnAttrs,
 ) -> InterestingAttributeDiagnosticSpans {
     let mut interesting_spans = InterestingAttributeDiagnosticSpans::default();
-    let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
+    let rust_target_features = tcx.all_rust_target_features(LOCAL_CRATE);
 
     let parsed_attrs = attrs
         .iter()

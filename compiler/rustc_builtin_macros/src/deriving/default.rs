@@ -26,17 +26,17 @@ pub(crate) fn expand_deriving_default(
         path: Path::new(vec![kw::Default, sym::Default]),
         skip_path_as_bound: has_a_default_variant(item),
         needs_copy_as_bound_if_packed: false,
-        additional_bounds: Vec::new(),
+        additional_bounds: SmallVec::new(),
         supports_unions: false,
-        methods: vec![MethodDef {
+        methods: smallvec![MethodDef {
             name: kw::Default,
             generics: Bounds::empty(),
             explicit_self: false,
-            nonself_args: Vec::new(),
+            nonself_args: SmallVec::new(),
             ret_ty: Self_,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: combine_substructure(Box::new(|cx, trait_span, substr| {
+            combine_substructure: combine_substructure(|cx, trait_span, substr| {
                 match substr.fields {
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)
@@ -46,11 +46,10 @@ pub(crate) fn expand_deriving_default(
                     }
                     _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
                 }
-            })),
+            }),
         }],
-        associated_types: Vec::new(),
+        associated_types: SmallVec::new(),
         is_const,
-        is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
         document: true,
     };

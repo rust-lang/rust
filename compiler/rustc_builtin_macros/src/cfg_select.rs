@@ -74,7 +74,7 @@ pub(super) fn expand_cfg_select<'cx>(
         ) {
             Ok(mut branches) => {
                 if let Some((selected_tts, selected_span)) = branches.pop_first_match(|cfg| {
-                    matches!(attr::eval_config_entry(&ecx.sess, cfg), EvalConfigResult::True)
+                    matches!(attr::eval_config_entry(ecx.sess, cfg), EvalConfigResult::True)
                 }) {
                     let mac = CfgSelectResult {
                         ecx,

@@ -500,7 +500,7 @@ pub fn report_result<'tcx>(
         trace!("-------------------");
         trace!("Frame {}", i);
         trace!("    return: {:?}", frame.return_place());
-        for (i, local) in frame.locals.iter().enumerate() {
+        for (i, local) in frame.locals().iter().enumerate() {
             trace!("    local {}: {:?}", i, local);
         }
     }

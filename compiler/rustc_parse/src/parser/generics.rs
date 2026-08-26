@@ -25,7 +25,7 @@ impl<'a> Parser<'a> {
     /// ```text
     /// BOUND = LT_BOUND (e.g., `'a`)
     /// ```
-    fn parse_lt_param_bounds(&mut self) -> GenericBounds {
+    pub(crate) fn parse_lt_param_bounds(&mut self) -> GenericBounds {
         let mut lifetimes = ThinVec::new();
         while self.check_lifetime() {
             lifetimes.push(ast::GenericBound::Outlives(self.expect_lifetime()));
@@ -536,7 +536,9 @@ impl<'a> Parser<'a> {
         };
 
         match self.parse_ty_where_predicate_kind() {
-            Ok(pred) => Ok(PredicateKindOrStructBody::PredicateKind(pred)),
+            Ok(pred) => Ok(PredicateKindOrStructBody::PredicateKind(
+                ast::WherePredicateKind::BoundPredicate(pred),
+            )),
             Err(type_err) => {
                 let Some(((struct_name, body_insertion_point), mut snapshot)) = snapshot else {
                     return Err(type_err);
@@ -584,7 +586,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ty_where_predicate_kind(&mut self) -> PResult<'a, ast::WherePredicateKind> {
+    pub(crate) fn parse_ty_where_predicate_kind(
+        &mut self,
+    ) -> PResult<'a, ast::WhereBoundPredicate> {
         // Parse optional `for<'a, 'b>`.
         // This `for` is parsed greedily and applies to the whole predicate,
         // the bounded type can have its own `for` applying only to it.
@@ -600,11 +604,11 @@ impl<'a> Parser<'a> {
             // The bounds may be empty; we intentionally accept predicates like  `Ty:`.
             let bounds = self.parse_generic_bounds()?;
 
-            return Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
+            return Ok(ast::WhereBoundPredicate {
                 bound_generic_params: bound_vars,
                 bounded_ty: ty,
                 bounds,
-            }));
+            });
         }
 
         // NOTE: If we ever end up impl'ing and stabilizing equality predicates (#20041),

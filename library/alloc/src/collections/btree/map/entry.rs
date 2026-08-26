@@ -7,7 +7,7 @@ use Entry::*;
 use super::super::borrow::DormantMutRef;
 use super::super::node::{Handle, NodeRef, marker};
 use super::BTreeMap;
-use crate::alloc::{Allocator, Global};
+use crate::alloc::{AllocatorClone, Global};
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
 ///
@@ -20,7 +20,7 @@ pub enum Entry<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
 > {
     /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -32,7 +32,7 @@ pub enum Entry<
 }
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
-impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for Entry<'_, K, V, A> {
+impl<K: Debug + Ord, V: Debug, A: AllocatorClone> Debug for Entry<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
@@ -48,7 +48,7 @@ pub struct VacantEntry<
     'a,
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
 > {
     pub(super) key: K,
     /// `None` for a (empty) map without root
@@ -63,7 +63,7 @@ pub struct VacantEntry<
 }
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
-impl<K: Debug + Ord, V, A: Allocator + Clone> Debug for VacantEntry<'_, K, V, A> {
+impl<K: Debug + Ord, V, A: AllocatorClone> Debug for VacantEntry<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
     }
@@ -76,7 +76,7 @@ pub struct OccupiedEntry<
     'a,
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
 > {
     pub(super) handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>,
     pub(super) dormant_map: DormantMutRef<'a, BTreeMap<K, V, A>>,
@@ -89,7 +89,7 @@ pub struct OccupiedEntry<
 }
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
-impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedEntry<'_, K, V, A> {
+impl<K: Debug + Ord, V: Debug, A: AllocatorClone> Debug for OccupiedEntry<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry").field("key", self.key()).field("value", self.get()).finish()
     }
@@ -104,7 +104,7 @@ pub struct OccupiedError<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
 > {
     /// The entry in the map that was already occupied.
     pub entry: OccupiedEntry<'a, K, V, A>,
@@ -115,7 +115,7 @@ pub struct OccupiedError<
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
-impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedError<'_, K, V, A> {
+impl<K: Debug + Ord, V: Debug, A: AllocatorClone> Debug for OccupiedError<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedError")
             .field("key", self.entry.key())
@@ -126,7 +126,7 @@ impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedError<'_,
     }
 }
 
-impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
+impl<'a, K: Ord, V, A: AllocatorClone> Entry<'a, K, V, A> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -345,7 +345,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
     }
 }
 
-impl<'a, K: Ord, V: Default, A: Allocator + Clone> Entry<'a, K, V, A> {
+impl<'a, K: Ord, V: Default, A: AllocatorClone> Entry<'a, K, V, A> {
     #[stable(feature = "entry_or_default", since = "1.28.0")]
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
@@ -368,7 +368,7 @@ impl<'a, K: Ord, V: Default, A: Allocator + Clone> Entry<'a, K, V, A> {
     }
 }
 
-impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
+impl<'a, K: Ord, V, A: AllocatorClone> VacantEntry<'a, K, V, A> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the VacantEntry.
     ///
@@ -479,7 +479,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     }
 }
 
-impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
+impl<'a, K: Ord, V, A: AllocatorClone> OccupiedEntry<'a, K, V, A> {
     /// Gets a reference to the key in the entry.
     ///
     /// # Examples
