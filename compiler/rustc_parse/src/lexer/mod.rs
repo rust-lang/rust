@@ -67,9 +67,10 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     psess: &'psess ParseSess,
     mut src: &'src str,
     mut start_pos: BytePos,
+    arena: &mut TokenArena,
     override_span: Option<Span>,
     strip_tokens: StripTokens,
-) -> Result<TokenArena, Vec<Diag<'psess>>> {
+) -> Result<(), Vec<Diag<'psess>>> {
     match strip_tokens {
         StripTokens::Shebang | StripTokens::ShebangAndFrontmatter => {
             if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
@@ -98,8 +99,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         token: Token::dummy(),
         diag_info: TokenTreeDiagInfo::default(),
     };
-    let mut arena = TokenArena::new(Vec::new());
-    let res = lexer.lex_token_trees(&mut arena, /* is_delimited */ false);
+    let res = lexer.lex_token_trees(arena, /* is_delimited */ false);
 
     let mut unmatched_closing_delims: Vec<_> =
         make_errors_for_mismatched_closing_delims(&lexer.diag_info.unmatched_delims, psess);
@@ -107,7 +107,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     match res {
         Ok(_) => {
             if unmatched_closing_delims.is_empty() {
-                Ok(arena)
+                Ok(())
             } else {
                 // Return error if there are unmatched delimiters or unclosed delimiters.
                 Err(unmatched_closing_delims)
