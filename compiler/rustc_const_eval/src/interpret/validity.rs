@@ -1611,7 +1611,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("validate_place_internal: {:?}, {:?}", *val, val.layout.ty);
 
         // Run the visitor.
-        self.run_for_validation_mut(|ecx| {
+        self.ghost_run_mut(|ecx| {
             let reset_padding = reset_provenance_and_padding && {
                 // Check if `val` is actually stored in memory. If not, padding is not even
                 // represented and we need not reset it.

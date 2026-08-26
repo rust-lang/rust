@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/match-errors-derived-error-suppression.rs:10:9
+  --> $DIR/match-errors-derived-error-suppression.rs:8:9
    |
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
@@ -10,7 +10,7 @@ LL |         A::B => (),
                found enum `A`
 
 error[E0308]: mismatched types
-  --> $DIR/match-errors-derived-error-suppression.rs:19:9
+  --> $DIR/match-errors-derived-error-suppression.rs:17:9
    |
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
@@ -21,7 +21,7 @@ LL |         (true, false, false) => ()
               found tuple `(_, _, _)`
 
 error[E0308]: mismatched types
-  --> $DIR/match-errors-derived-error-suppression.rs:27:9
+  --> $DIR/match-errors-derived-error-suppression.rs:25:9
    |
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
@@ -32,18 +32,7 @@ LL |         (true, false, false) => ()
               found tuple `(_, _, _)`
 
 error[E0308]: mismatched types
-  --> $DIR/match-errors-derived-error-suppression.rs:35:9
-   |
-LL |     match (true, false) {
-   |           ------------- this expression has type `(bool, bool)`
-LL |         box (true, false) => ()
-   |         ^^^^^^^^^^^^^^^^^ expected `(bool, bool)`, found `Box<_>`
-   |
-   = note: expected tuple `(bool, bool)`
-             found struct `Box<_>`
-
-error[E0308]: mismatched types
-  --> $DIR/match-errors-derived-error-suppression.rs:42:9
+  --> $DIR/match-errors-derived-error-suppression.rs:33:9
    |
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
@@ -54,20 +43,20 @@ LL |         &(true, false) => ()
            found reference `&_`
 
 error[E0618]: expected function, found `(char, char)`
-  --> $DIR/match-errors-derived-error-suppression.rs:50:14
+  --> $DIR/match-errors-derived-error-suppression.rs:41:14
    |
 LL |     let v = [('a', 'b')
    |              ^^^^^^^^^^- help: consider separating array elements with a comma: `,`
 
 error[E0308]: mismatched types
-  --> $DIR/match-errors-derived-error-suppression.rs:57:19
+  --> $DIR/match-errors-derived-error-suppression.rs:48:19
    |
 LL |     let x: char = true;
    |            ----   ^^^^ expected `char`, found `bool`
    |            |
    |            expected due to this
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0308, E0618.
 For more information about an error, try `rustc --explain E0308`.

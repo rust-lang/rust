@@ -7,7 +7,7 @@ use std::iter;
 
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
+use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, DelayedSet, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable,
@@ -16,7 +16,7 @@ use rustc_middle::ty::{
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Span, sym};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use crate::infer::InferCtxt;
 use crate::traits;
@@ -392,10 +392,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             return;
         }
 
-        // if the trait predicate is not const, the wf obligations should not be const as well.
-        let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.args);
-
-        debug!("compute_trait_pred obligations {:?}", obligations);
         let param_env = self.param_env;
         let depth = self.recursion_depth;
 
@@ -412,12 +408,20 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             traits::Obligation::with_depth(tcx, cause, depth, param_env, predicate)
         };
 
+        // if the trait predicate is not const, the wf obligations should not be const as well.
         if let Elaborate::All = elaborate {
+            let mut obligations = PredicateObligations::new();
+            self.nominal_obligations(trait_ref.def_id, trait_ref.args, |_, obligation| {
+                obligations.push(obligation)
+            });
+            debug!("compute_trait_pred obligations {:?}", obligations);
             let implied_obligations = traits::util::elaborate(tcx, obligations);
             let implied_obligations = implied_obligations.map(extend);
             self.out.extend(implied_obligations);
         } else {
-            self.out.extend(obligations);
+            self.nominal_obligations(trait_ref.def_id, trait_ref.args, |this, obligation| {
+                this.out.push(obligation)
+            });
         }
 
         self.out.extend(
@@ -481,8 +485,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         //     `i32: Clone`
         //     `i32: Copy`
         // ]
-        let obligations = self.nominal_obligations(data.expect_projection_def_id(), data.args);
-        self.out.extend(obligations);
+        self.nominal_obligations(data.expect_projection_def_id(), data.args, |this, obligation| {
+            this.out.push(obligation)
+        });
 
         self.add_wf_preds_for_projection_args(data.args);
     }
@@ -511,8 +516,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 &mut self.out,
             );
             let def_id = data.expect_inherent_def_id();
-            let obligations = self.nominal_obligations(def_id, args);
-            self.out.extend(obligations);
+            self.nominal_obligations(def_id, args, |this, obligation| this.out.push(obligation));
         }
 
         data.args.visit_with(self);
@@ -565,51 +569,51 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         debug!(?self.out);
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, push_obligation))]
     fn nominal_obligations(
         &mut self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
-    ) -> PredicateObligations<'tcx> {
+        mut push_obligation: impl FnMut(&mut Self, PredicateObligation<'tcx>),
+    ) {
         // PERF: `Sized`'s predicates include `MetaSized`, but both are compiler implemented marker
         // traits, so `MetaSized` will always be WF if `Sized` is WF and vice-versa. Determining
         // the nominal obligations of `Sized` would in-effect just elaborate `MetaSized` and make
         // the compiler do a bunch of work needlessly.
         if self.tcx().is_lang_item(def_id, LangItem::Sized) {
-            return Default::default();
+            return;
         }
         if self.tcx().is_lang_item(def_id, LangItem::ConstParamTy)
             && self.tcx().features().const_param_ty_unchecked()
         {
-            return Default::default();
+            return;
         }
 
-        let gen_clauses = self.tcx().clauses_of(def_id);
-        let mut origins = vec![def_id; gen_clauses.clauses.len()];
-        let mut head = gen_clauses;
-        while let Some(parent) = head.parent {
-            head = self.tcx().clauses_of(parent);
-            origins.extend(iter::repeat(parent).take(head.clauses.len()));
+        let tcx = self.tcx();
+        let mut head = (def_id, tcx.clauses_of(def_id));
+        let mut inner_levels = Vec::new(); // only allocates if a parent chain exists
+        while let Some(parent) = head.1.parent {
+            inner_levels.push(head);
+            head = (parent, tcx.clauses_of(parent));
         }
 
-        let gen_clauses = gen_clauses.instantiate(self.tcx(), args);
-        trace!("{:#?}", gen_clauses);
-        debug_assert_eq!(gen_clauses.clauses.len(), origins.len());
-
-        iter::zip(gen_clauses, origins.into_iter().rev())
-            .map(|((clause, span), origin_def_id)| {
-                let code = ObligationCauseCode::WhereClause(origin_def_id, span);
-                let cause = self.cause(code);
-                traits::Obligation::with_depth(
-                    self.tcx(),
-                    cause,
-                    self.recursion_depth,
-                    self.param_env,
-                    clause.skip_norm_wip(),
-                )
-            })
-            .filter(|clause| !clause.has_escaping_bound_vars())
-            .collect()
+        // Emit outermost first, as diagnostics rely on that order.
+        for &(origin_def_id, clauses) in iter::once(&head).chain(inner_levels.iter().rev()) {
+            for (clause, span) in clauses.instantiate_own(tcx, args) {
+                if !clause.has_escaping_bound_vars() {
+                    let code = ObligationCauseCode::WhereClause(origin_def_id, span);
+                    let cause = self.cause(code);
+                    let obligation = traits::Obligation::with_depth(
+                        tcx,
+                        cause,
+                        self.recursion_depth,
+                        self.param_env,
+                        clause.skip_norm_wip(),
+                    );
+                    push_obligation(self, obligation);
+                }
+            }
+        }
     }
 
     fn add_wf_preds_for_dyn_ty(
@@ -818,8 +822,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     ..
                 },
             ) => {
-                let obligations = self.nominal_obligations(def_id, args);
-                self.out.extend(obligations);
+                self.nominal_obligations(def_id, args, |this, obligation| {
+                    this.out.push(obligation)
+                });
             }
             ty::Alias(_, data @ ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
                 self.add_wf_preds_for_inherent_projection(data.into());
@@ -828,8 +833,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
             ty::Adt(def, args) => {
                 // WfNominalType
-                let obligations = self.nominal_obligations(def.did(), args);
-                self.out.extend(obligations);
+                self.nominal_obligations(def.did(), args, |this, obligation| {
+                    this.out.push(obligation)
+                });
             }
 
             ty::FnDef(did, args) => {
@@ -842,8 +848,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 let fn_sig = tcx.fn_sig(did).instantiate(tcx, args).skip_norm_wip();
                 fn_sig.output().skip_binder().visit_with(self);
 
-                let obligations = self.nominal_obligations(did, args);
-                self.out.extend(obligations);
+                self.nominal_obligations(did, args, |this, obligation| this.out.push(obligation));
             }
 
             ty::Ref(r, rty, _) => {
@@ -870,8 +875,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // about the signature of the closure. We don't
                 // have the problem of implied bounds here since
                 // coroutines don't take arguments.
-                let obligations = self.nominal_obligations(did, args);
-                self.out.extend(obligations);
+                self.nominal_obligations(did, args, |this, obligation| this.out.push(obligation));
             }
 
             ty::Closure(did, args) => {
@@ -890,8 +894,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // can cause compiler crashes when the user abuses unsafe
                 // code to procure such a closure.
                 // See tests/ui/type-alias-impl-trait/wf_check_closures.rs
-                let obligations = self.nominal_obligations(did, args);
-                self.out.extend(obligations);
+                self.nominal_obligations(did, args, |this, obligation| this.out.push(obligation));
                 // Only check the upvar types for WF, not the rest
                 // of the types within. This is needed because we
                 // capture the signature and it may not be WF
@@ -918,8 +921,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
             ty::CoroutineClosure(did, args) => {
                 // See the above comments. The same apply to coroutine-closures.
-                let obligations = self.nominal_obligations(did, args);
-                self.out.extend(obligations);
+                self.nominal_obligations(did, args, |this, obligation| this.out.push(obligation));
                 let upvars = args.as_coroutine_closure().tupled_upvars_ty();
                 return upvars.visit_with(self);
             }
@@ -988,27 +990,27 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     //
                     // See also: https://rustc-dev-guide.rust-lang.org/const-generics.html
                     let args = principal.skip_binder().with_self_ty(self.tcx(), t).args;
-                    let obligations =
-                        self.nominal_obligations(principal_def_id, args).into_iter().filter(|o| {
-                            let kind = o.predicate.kind().skip_binder();
-                            match kind {
-                                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
-                                    ct,
-                                    _,
-                                )) if matches!(ct.kind(), ty::ConstKind::Param(..)) => {
-                                    // ConstArgHasType clauses are not higher kinded. Assert as
-                                    // such so we can fix this up if that ever changes.
-                                    assert!(o.predicate.kind().bound_vars().is_empty());
-                                    // In stable rust, variables from the trait object binder
-                                    // cannot be referenced by a ConstArgHasType clause. However,
-                                    // under `generic_const_parameter_types`, it can. Ignore those
-                                    // predicates for now, to not have HKT-ConstArgHasTypes.
-                                    !kind.has_escaping_bound_vars()
-                                }
-                                _ => false,
+                    self.nominal_obligations(principal_def_id, args, |this, obligation| {
+                        let kind = obligation.predicate.kind().skip_binder();
+                        let keep = match kind {
+                            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
+                                if matches!(ct.kind(), ty::ConstKind::Param(..)) =>
+                            {
+                                // ConstArgHasType clauses are not higher kinded. Assert as
+                                // such so we can fix this up if that ever changes.
+                                assert!(obligation.predicate.kind().bound_vars().is_empty());
+                                // In stable rust, variables from the trait object binder
+                                // cannot be referenced by a ConstArgHasType clause. However,
+                                // under `generic_const_parameter_types`, it can. Ignore those
+                                // predicates for now, to not have HKT-ConstArgHasTypes.
+                                !kind.has_escaping_bound_vars()
                             }
-                        });
-                    self.out.extend(obligations);
+                            _ => false,
+                        };
+                        if keep {
+                            this.out.push(obligation);
+                        }
+                    });
                 }
 
                 if !t.has_escaping_bound_vars() {
@@ -1100,8 +1102,11 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         ty::AliasConstKind::Projection { def_id }
                         | ty::AliasConstKind::Free { def_id }
                         | ty::AliasConstKind::Anon { def_id } => {
-                            let obligations = self.nominal_obligations(def_id, alias_const.args);
-                            self.out.extend(obligations);
+                            self.nominal_obligations(
+                                def_id,
+                                alias_const.args,
+                                |this, obligation| this.out.push(obligation),
+                            );
                         }
                     }
                 }

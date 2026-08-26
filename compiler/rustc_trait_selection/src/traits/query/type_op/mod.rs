@@ -12,7 +12,7 @@ use crate::infer::canonical::{
     QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::{ObligationCause, ObligationCtxt};
+use crate::traits::ObligationCause;
 
 pub mod ascribe_user_type;
 pub mod custom;
@@ -82,18 +82,6 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         tcx: TyCtxt<'tcx>,
         canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution>;
-
-    /// In the new trait solver, we already do caching in the solver itself,
-    /// so there's no need to canonicalize and cache via the query system.
-    /// Additionally, even if we were to canonicalize, we'd still need to
-    /// make sure to feed it predefined opaque types and the defining anchor
-    /// and that would require duplicating all of the tcx queries. Instead,
-    /// just perform these ops locally.
-    fn perform_locally_with_next_solver(
-        ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
-        span: Span,
-    ) -> Result<Self::QueryResponse, NoSolution>;
 
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,

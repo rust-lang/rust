@@ -1535,9 +1535,7 @@ impl<'hir> Pat<'hir> {
         match self.kind {
             Missing => unreachable!(),
             Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Err(_) => true,
-            Box(s) | Deref(s) | Ref(s, _, _) | Binding(.., Some(s)) | Guard(s, _) => {
-                s.walk_short_(it)
-            }
+            Deref(s) | Ref(s, _, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
             Slice(before, slice, after) => {
@@ -1564,7 +1562,7 @@ impl<'hir> Pat<'hir> {
         use PatKind::*;
         match self.kind {
             Missing | Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Err(_) => {}
-            Box(s) | Deref(s) | Ref(s, _, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_(it),
+            Deref(s) | Ref(s, _, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
             Slice(before, slice, after) => {
@@ -1646,7 +1644,6 @@ impl<'hir> Pat<'hir> {
             | PatKind::Struct(_, _, _)
             | PatKind::TupleStruct(_, _, _)
             | PatKind::Tuple(_, _)
-            | PatKind::Box(_)
             | PatKind::Ref(_, _, _)
             | PatKind::Deref(_)
             | PatKind::Expr(_)
@@ -1791,9 +1788,6 @@ pub enum PatKind<'hir> {
     /// If the `..` pattern fragment is present, then `DotDotPos` denotes its position.
     /// `0 <= position <= subpats.len()`
     Tuple(&'hir [Pat<'hir>], DotDotPos),
-
-    /// A `box` pattern.
-    Box(&'hir Pat<'hir>),
 
     /// A `deref` pattern (currently `deref!()` macro-based syntax).
     Deref(&'hir Pat<'hir>),
@@ -4324,6 +4318,9 @@ impl<'hir> Item<'hir> {
             ItemKind::TraitAlias(constness, ident, generics, bounds), (*constness, *ident, generics, bounds);
 
         expect_impl, &Impl<'hir>, ItemKind::Impl(imp), imp;
+
+        expect_test_binder_constraints, (&'hir Generics<'hir>, &'hir TestBinderBody<'hir>),
+            ItemKind::TestBinderConstraints { generics, body }, (generics, body);
     }
 }
 
@@ -4467,6 +4464,38 @@ impl FnHeader {
 }
 
 #[derive(Debug, Clone, Copy, StableHash)]
+pub struct TestBinderBody<'hir> {
+    pub foralls: &'hir [TestBinderForall<'hir>],
+    pub exists: &'hir [TestBinderExists<'hir>],
+    pub constraints: TestBinderConstraint<'hir>,
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
+pub struct TestBinderForall<'hir> {
+    pub span: Span,
+    pub hir_id: HirId,
+    pub generics: &'hir Generics<'hir>,
+    pub body: &'hir TestBinderBody<'hir>,
+    pub assert_on_exit: Option<&'hir TestBinderConstraint<'hir>>,
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
+pub struct TestBinderExists<'hir> {
+    pub span: Span,
+    pub hir_id: HirId,
+    pub params: &'hir [GenericParam<'hir>],
+    pub body: &'hir TestBinderBody<'hir>,
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
+pub enum TestBinderConstraint<'hir> {
+    And { items: &'hir [TestBinderConstraint<'hir>] },
+    Or { items: &'hir [TestBinderConstraint<'hir>] },
+    Lifetime { lhs: &'hir Lifetime, rhs: &'hir Lifetime },
+    Type { lhs: &'hir Ty<'hir>, rhs: &'hir Lifetime },
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
 pub enum ItemKind<'hir> {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
@@ -4500,7 +4529,10 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(Ident, &'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemId] },
+    ForeignMod {
+        abi: ExternAbi,
+        items: &'hir [ForeignItemId],
+    },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm {
         asm: &'hir InlineAsm<'hir>,
@@ -4535,6 +4567,11 @@ pub enum ItemKind<'hir> {
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
     Impl(Impl<'hir>),
+
+    TestBinderConstraints {
+        generics: &'hir Generics<'hir>,
+        body: &'hir TestBinderBody<'hir>,
+    },
 }
 
 /// Represents an impl block declaration.
@@ -4581,7 +4618,8 @@ impl ItemKind<'_> {
             ItemKind::Use(_, UseKind::Glob | UseKind::ListStem)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
-            | ItemKind::Impl(_) => None,
+            | ItemKind::Impl(_)
+            | ItemKind::TestBinderConstraints { .. } => None,
         }
     }
 
@@ -4595,7 +4633,8 @@ impl ItemKind<'_> {
             | ItemKind::Union(_, generics, _)
             | ItemKind::Trait { generics, .. }
             | ItemKind::TraitAlias(_, _, generics, _)
-            | ItemKind::Impl(Impl { generics, .. }) => generics,
+            | ItemKind::Impl(Impl { generics, .. })
+            | ItemKind::TestBinderConstraints { generics, .. } => generics,
             _ => return None,
         })
     }
@@ -4869,6 +4908,8 @@ pub enum Node<'hir> {
     Infer(&'hir InferArg),
     WherePredicate(&'hir WherePredicate<'hir>),
     PreciseCapturingNonLifetimeArg(&'hir PreciseCapturingNonLifetimeArg),
+    TestBinderForall(&'hir TestBinderForall<'hir>),
+    TestBinderExists(&'hir TestBinderExists<'hir>),
     // Created by query feeding
     Synthetic,
     Err(Span),
@@ -4924,6 +4965,8 @@ impl<'hir> Node<'hir> {
             | Node::OpaqueTy(..)
             | Node::Infer(..)
             | Node::WherePredicate(..)
+            | Node::TestBinderForall(..)
+            | Node::TestBinderExists(..)
             | Node::Synthetic
             | Node::Err(..) => None,
         }

@@ -216,6 +216,8 @@ impl<'a> State<'a> {
             Node::LetStmt(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
             Node::WherePredicate(pred) => self.print_where_predicate(pred),
+            Node::TestBinderForall(_) => panic!("cannot print Node::TestBinderForall"),
+            Node::TestBinderExists(_) => panic!("cannot print Node::TestBinderExists"),
             Node::Synthetic => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
         }
@@ -806,6 +808,9 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(ib);
                 self.end(cb);
+            }
+            rustc_hir::ItemKind::TestBinderConstraints { .. } => {
+                self.word("test_binder_constraints!(/* pretty-printing not supported */)");
             }
         }
         self.ann.post(self, AnnNode::Item(item))
@@ -2087,17 +2092,6 @@ impl<'a> State<'a> {
                     }
                 }
                 self.pclose();
-            }
-            PatKind::Box(inner) => {
-                let is_range_inner = matches!(inner.kind, PatKind::Range(..));
-                self.word("box ");
-                if is_range_inner {
-                    self.popen();
-                }
-                self.print_pat(inner);
-                if is_range_inner {
-                    self.pclose();
-                }
             }
             PatKind::Deref(inner) => {
                 self.word("deref!");

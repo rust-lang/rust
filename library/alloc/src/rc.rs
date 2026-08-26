@@ -651,93 +651,6 @@ impl<T> Rc<T> {
     pub fn pin(value: T) -> Pin<Rc<T>> {
         unsafe { Pin::new_unchecked(Rc::new(value)) }
     }
-
-    /// Maps the value in an `Rc`, reusing the allocation if possible.
-    ///
-    /// `f` is called on a reference to the value in the `Rc`, and the result is returned, also in
-    /// an `Rc`.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Rc::map(r, f)` instead of `r.map(f)`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(smart_pointer_try_map)]
-    ///
-    /// use std::rc::Rc;
-    ///
-    /// let r = Rc::new(7);
-    /// let new = Rc::map(r, |i| i + 7);
-    /// assert_eq!(*new, 14);
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
-    pub fn map<U>(this: Self, f: impl FnOnce(&T) -> U) -> Rc<U> {
-        if size_of::<T>() == size_of::<U>()
-            && align_of::<T>() == align_of::<U>()
-            && Rc::is_unique(&this)
-        {
-            unsafe {
-                let ptr = Rc::into_raw(this);
-                let value = ptr.read();
-                let mut allocation = Rc::from_raw(ptr.cast::<mem::MaybeUninit<U>>());
-
-                Rc::get_mut_unchecked(&mut allocation).write(f(&value));
-                allocation.assume_init()
-            }
-        } else {
-            Rc::new(f(&*this))
-        }
-    }
-
-    /// Attempts to map the value in an `Rc`, reusing the allocation if possible.
-    ///
-    /// `f` is called on a reference to the value in the `Rc`, and if the operation succeeds, the
-    /// result is returned, also in an `Rc`.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Rc::try_map(r, f)` instead of `r.try_map(f)`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(smart_pointer_try_map)]
-    ///
-    /// use std::rc::Rc;
-    ///
-    /// let b = Rc::new(7);
-    /// let new = Rc::try_map(b, |&i| u32::try_from(i)).unwrap();
-    /// assert_eq!(*new, 7);
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
-    pub fn try_map<R>(
-        this: Self,
-        f: impl FnOnce(&T) -> R,
-    ) -> <R::Residual as Residual<Rc<R::Output>>>::TryType
-    where
-        R: Try,
-        R::Residual: Residual<Rc<R::Output>>,
-    {
-        if size_of::<T>() == size_of::<R::Output>()
-            && align_of::<T>() == align_of::<R::Output>()
-            && Rc::is_unique(&this)
-        {
-            unsafe {
-                let ptr = Rc::into_raw(this);
-                let value = ptr.read();
-                let mut allocation = Rc::from_raw(ptr.cast::<mem::MaybeUninit<R::Output>>());
-
-                Rc::get_mut_unchecked(&mut allocation).write(f(&value)?);
-                try { allocation.assume_init() }
-            }
-        } else {
-            try { Rc::new(f(&*this)?) }
-        }
-    }
 }
 
 impl<T, A: Allocator> Rc<T, A> {
@@ -1107,6 +1020,102 @@ impl<T, A: Allocator> Rc<T, A> {
     pub fn into_inner(this: Self) -> Option<T> {
         Rc::try_unwrap(this).ok()
     }
+
+    /// Maps the value in an `Rc`, reusing the allocation if possible.
+    ///
+    /// `f` is called on a reference to the value in the `Rc`, and the result is returned, also in
+    /// an `Rc`.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Rc::map(r, f)` instead of `r.map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let r = Rc::new(7);
+    /// let new = Rc::map(r, |i| i + 7);
+    /// assert_eq!(*new, 14);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn map<U>(this: Self, f: impl FnOnce(&T) -> U) -> Rc<U, A> {
+        if size_of::<T>() == size_of::<U>()
+            && align_of::<T>() == align_of::<U>()
+            && Rc::is_unique(&this)
+        {
+            unsafe {
+                let (ptr, alloc) = Rc::into_raw_with_allocator(this);
+                let value = ptr.read();
+                let mut allocation = Rc::from_raw_in(ptr.cast::<mem::MaybeUninit<U>>(), alloc);
+
+                Rc::get_mut_unchecked(&mut allocation).write(f(&value));
+                allocation.assume_init()
+            }
+        } else {
+            let output = f(&*this);
+            let (ptr, alloc) = Rc::into_raw_with_allocator(this);
+            unsafe { Rc::decrement_strong_count_in(ptr, &alloc) }
+
+            Rc::new_in(output, alloc)
+        }
+    }
+
+    /// Attempts to map the value in an `Rc`, reusing the allocation if possible.
+    ///
+    /// `f` is called on a reference to the value in the `Rc`, and if the operation succeeds, the
+    /// result is returned, also in an `Rc`.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Rc::try_map(r, f)` instead of `r.try_map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let b = Rc::new(7);
+    /// let new = Rc::try_map(b, |&i| u32::try_from(i)).unwrap();
+    /// assert_eq!(*new, 7);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn try_map<R>(
+        this: Self,
+        f: impl FnOnce(&T) -> R,
+    ) -> <R::Residual as Residual<Rc<R::Output, A>>>::TryType
+    where
+        R: Try,
+        R::Residual: Residual<Rc<R::Output, A>>,
+    {
+        if size_of::<T>() == size_of::<R::Output>()
+            && align_of::<T>() == align_of::<R::Output>()
+            && Rc::is_unique(&this)
+        {
+            unsafe {
+                let (ptr, alloc) = Rc::into_raw_with_allocator(this);
+                let value = ptr.read();
+                let mut allocation =
+                    Rc::from_raw_in(ptr.cast::<mem::MaybeUninit<R::Output>>(), alloc);
+
+                Rc::get_mut_unchecked(&mut allocation).write(f(&value)?);
+                try { allocation.assume_init() }
+            }
+        } else {
+            let output = f(&*this)?;
+            let (ptr, alloc) = Rc::into_raw_with_allocator(this);
+            unsafe { Rc::decrement_strong_count_in(ptr, &alloc) }
+
+            try { Rc::new_in(output, alloc) }
+        }
+    }
 }
 
 impl<T> Rc<[T]> {
@@ -1257,7 +1266,6 @@ impl<T, A: Allocator> Rc<[T], A> {
     /// ```
     #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
-    #[must_use]
     pub fn into_array<const N: usize>(self) -> Result<Rc<[T; N], A>, Self> {
         if self.len() == N {
             let (ptr, alloc) = Self::into_raw_with_allocator(self);

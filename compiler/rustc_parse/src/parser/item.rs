@@ -2689,6 +2689,110 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parses the contents of a `test_binder_constraints!`. Perma-unstable and for testing only.
+    pub fn parse_test_binder_constraints(&mut self) -> PResult<'a, Box<TestBinderConstraints>> {
+        self.expect_keyword(exp!(Impl))?;
+        let mut generics = self.parse_generics()?;
+        generics.where_clause = self.parse_where_clause()?;
+        let body = self.parse_test_binder_body()?;
+        Ok(Box::new(TestBinderConstraints { generics, body: Box::new(body) }))
+    }
+
+    pub fn parse_test_binder_body(&mut self) -> PResult<'a, TestBinderBody> {
+        let mut foralls = ThinVec::new();
+        let mut exists = ThinVec::new();
+        let mut constraints = Vec::new();
+        self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
+            match this.token.ident() {
+                Some((Ident { name: sym::forall, .. }, IdentIsRaw::No)) => {
+                    foralls.push(this.parse_test_binder_forall()?)
+                }
+                Some((Ident { name: sym::exists, .. }, IdentIsRaw::No)) => {
+                    exists.push(this.parse_test_binder_exists()?)
+                }
+                _ => constraints.push(this.parse_test_binder_constraint()?),
+            }
+            Ok(())
+        })?;
+        Ok(TestBinderBody { foralls, exists, constraints })
+    }
+
+    pub fn parse_test_binder_forall(&mut self) -> PResult<'a, TestBinderForall> {
+        let span = self.token.span;
+        self.bump();
+
+        let mut generics = self.parse_generics()?;
+        generics.where_clause = self.parse_where_clause()?;
+
+        let body = self.parse_test_binder_body()?;
+
+        let assert_on_exit = if let Some((i, IdentIsRaw::No)) = self.token.ident()
+            && i.name == sym::expect
+        {
+            self.bump();
+            let items = self
+                .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
+                    this.parse_test_binder_constraint()
+                })?
+                .0;
+            Some(items)
+        } else {
+            None
+        };
+
+        Ok(TestBinderForall { span, node_id: DUMMY_NODE_ID, generics, body, assert_on_exit })
+    }
+
+    pub fn parse_test_binder_exists(&mut self) -> PResult<'a, TestBinderExists> {
+        let span = self.token.span;
+        self.bump();
+        let params = self.parse_generics()?.params;
+        let body = self.parse_test_binder_body()?;
+        Ok(TestBinderExists { span, node_id: DUMMY_NODE_ID, params, body })
+    }
+
+    pub fn parse_test_binder_constraint(&mut self) -> PResult<'a, TestBinderConstraint> {
+        match self.token.ident() {
+            Some((Ident { name: sym::and, .. }, IdentIsRaw::No)) => {
+                self.bump();
+                let items = self
+                    .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
+                        this.parse_test_binder_constraint()
+                    })?
+                    .0;
+                Ok(TestBinderConstraint::And { items })
+            }
+            Some((Ident { name: sym::or, .. }, IdentIsRaw::No)) => {
+                self.bump();
+                let items = self
+                    .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
+                        this.parse_test_binder_constraint()
+                    })?
+                    .0;
+                Ok(TestBinderConstraint::Or { items })
+            }
+            _ if self.token.lifetime().is_some() => {
+                let lhs = self.expect_lifetime();
+                self.expect(exp!(Colon))?;
+                if !self.check_lifetime() {
+                    self.unexpected()?;
+                }
+                let rhs = self.expect_lifetime();
+                Ok(TestBinderConstraint::Lifetime { lhs, rhs })
+            }
+            _ if self.token.can_begin_type() => {
+                let lhs = self.parse_ty_for_where_clause()?;
+                self.expect(exp!(Colon))?;
+                if !self.check_lifetime() {
+                    self.unexpected()?;
+                }
+                let rhs = self.expect_lifetime();
+                Ok(TestBinderConstraint::Type { lhs, rhs })
+            }
+            _ => Err(self.dcx().struct_span_err(self.token.span, "unexpected token")),
+        }
+    }
+
     fn report_invalid_macro_expansion_item(&self, args: &DelimArgs, path: Option<&Path>) {
         let span = args.dspan.entire();
         let mut err = self.dcx().struct_span_err(

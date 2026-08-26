@@ -399,7 +399,9 @@ impl Cargo {
                 // Do not enable Zlib compression on:
                 // - Windows, because MSVC/PDB doesn't support it
                 // - macOS, because its linker doesn't know the flag
-                if !self.target.is_windows() && !self.target.is_apple() {
+                // - Cygwin, because its linker may not support the flag
+                if !self.target.is_windows() && !self.target.is_apple() && !self.target.is_cygwin()
+                {
                     // If we link through cc, we need the -Wl prefix.
                     // If we don't, then we must not add it, because the linker wouldn't
                     // understand it.
@@ -1053,15 +1055,13 @@ impl Builder<'_> {
         // These variables are primarily all read by
         // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
         cargo
-            .env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
             .env("RUSTC_REAL", self.rustc(compiler))
             .env("RUSTC_STAGE", build_compiler_stage.to_string())
             .env("RUSTC_SYSROOT", sysroot)
             .env("RUSTC_LIBDIR", &libdir)
             .env("RUSTDOC_LIBDIR", libdir)
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
-            .env("RUSTDOC_REAL", rustdoc_path)
-            .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
+            .env("RUSTDOC_REAL", rustdoc_path);
 
         if self.config.rust_break_on_ice {
             cargo.env("RUSTC_BREAK_ON_ICE", "1");

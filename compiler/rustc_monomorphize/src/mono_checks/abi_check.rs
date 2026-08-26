@@ -84,6 +84,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature: feature,
+                        abi: abi.conv.to_string(),
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: false,
@@ -101,6 +102,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature,
+                        abi: abi.conv.to_string(),
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: true,
@@ -170,12 +172,8 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         tcx.dcx().delayed_bug("ABI computation failure should lead to compilation failure");
         return;
     };
-    // Unlike the call-site check, we do also check "Rust" ABI functions here.
-    // This should never trigger, *except* if we start making use of vector registers
-    // for the "Rust" ABI and the user disables those vector registers (which should trigger a
-    // warning as that's clearly disabling a "required" target feature for this target).
-    // Using such a function is where disabling the vector register actually can start leading
-    // to soundness issues, so erroring here seems good.
+    // Unlike the call-site check, we do also check "Rust" ABI functions here. This can actually
+    // trigger due to scalable vectors being require for the "Rust" ABI for some types.
     let loc = || {
         let def_id = instance.def_id();
         (

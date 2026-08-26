@@ -2,9 +2,9 @@
 //! when specifying impls to be derived.
 
 pub(crate) use Ty::*;
-use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind, TyKind};
+use rustc_ast::{self as ast, GenericArg, GenericParamKind, Generics, TyKind};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use thin_vec::ThinVec;
 
 /// A path, e.g., `::std::option::Option::<i32>` (global). Has support
@@ -33,15 +33,6 @@ impl Path {
         Path { path, params, kind }
     }
 
-    pub(crate) fn to_ty(
-        &self,
-        cx: &ExtCtxt<'_>,
-        span: Span,
-        self_ty: Ident,
-        self_generics: &Generics,
-    ) -> Box<ast::Ty> {
-        cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
-    }
     pub(crate) fn to_path(
         &self,
         cx: &ExtCtxt<'_>,
@@ -49,18 +40,15 @@ impl Path {
         self_ty: Ident,
         self_generics: &Generics,
     ) -> ast::Path {
-        let mut idents = self.path.iter().map(|s| Ident::new(*s, span)).collect();
+        let mut idents = self.path.iter().map(|s| Ident::new(*s, span)).collect::<Vec<_>>();
         let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics));
         let params = tys.map(GenericArg::Type).collect();
 
-        match self.kind {
-            PathKind::Local => cx.path_all(span, false, idents, params),
-            PathKind::Std => {
-                let def_site = cx.with_def_site_ctxt(DUMMY_SP);
-                idents.insert(0, Ident::new(kw::DollarCrate, def_site));
-                cx.path_all(span, false, idents, params)
-            }
+        if let PathKind::Std = self.kind {
+            let def_site = cx.with_def_site_ctxt(DUMMY_SP);
+            idents.insert(0, Ident::new(kw::DollarCrate, def_site));
         }
+        cx.path_all(span, false, idents, params)
     }
 }
 
@@ -96,7 +84,7 @@ impl Ty {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
                 cx.ty_ref(span, raw_ty, None, *mutbl)
             }
-            Path(p) => p.to_ty(cx, span, self_ty, self_generics),
+            Path(p) => cx.ty_path(p.to_path(cx, span, self_ty, self_generics)),
             Self_ => cx.ty_path(self.to_path(cx, span, self_ty, self_generics)),
             Unit => {
                 let ty = ast::TyKind::Tup(ThinVec::new());
@@ -119,7 +107,7 @@ impl Ty {
                     .params
                     .iter()
                     .map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
+                        GenericParamKind::Lifetime => {
                             GenericArg::Lifetime(ast::Lifetime { id: param.id, ident: param.ident })
                         }
                         GenericParamKind::Type { .. } => {
@@ -195,11 +183,4 @@ impl Bounds {
             span,
         }
     }
-}
-
-pub(crate) fn get_explicit_self(cx: &ExtCtxt<'_>, span: Span) -> (Box<Expr>, ast::ExplicitSelf) {
-    // This constructs a fresh `self` path.
-    let self_path = cx.expr_self(span);
-    let self_ty = respan(span, SelfKind::Region(None, ast::Mutability::Not));
-    (self_path, self_ty)
 }

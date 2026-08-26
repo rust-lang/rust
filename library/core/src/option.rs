@@ -737,6 +737,7 @@ impl<T> Option<T> {
     /// println!("still can print text: {text:?}");
     /// ```
     #[inline]
+    #[expect(clippy::match_as_ref, reason = "implements as_ref")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn as_ref(&self) -> Option<&T> {
@@ -759,6 +760,7 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(42));
     /// ```
     #[inline]
+    #[expect(clippy::match_as_ref, reason = "implements as_mut")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn as_mut(&mut self) -> Option<&mut T> {
@@ -1823,7 +1825,7 @@ impl<T> Option<T> {
             // It could also be expressed as `unsafe { core::ptr::write(self, Some(f())) }`, but
             // no reason is currently known to use additional unsafe code here.
 
-            mem::forget(mem::replace(self, Some(f())));
+            mem::forget(self.replace(f()));
         }
 
         // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
@@ -1896,6 +1898,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
+    #[expect(clippy::mem_replace_option_with_none, reason = "implements Option::take")]
     pub const fn take(&mut self) -> Option<T> {
         // FIXME(const-hack) replace `mem::replace` by `mem::take` when the latter is const ready
         mem::replace(self, None)
@@ -1932,7 +1935,7 @@ impl<T> Option<T> {
     where
         P: [const] FnOnce(&mut T) -> bool + [const] Destruct,
     {
-        if self.as_mut().map_or(false, predicate) { self.take() } else { None }
+        if self.as_mut().is_some_and(predicate) { self.take() } else { None }
     }
 
     /// Replaces the actual value in the option by the value given in parameter,
@@ -1955,6 +1958,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_replace", since = "1.31.0")]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
+    #[expect(clippy::mem_replace_option_with_some, reason = "implements Option::replace")]
     pub const fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
     }
@@ -2154,6 +2158,7 @@ impl<T> Option<&T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[expect(clippy::map_clone, reason = "implements Option::cloned")]
     pub fn cloned(self) -> Option<T>
     where
         T: Clone,
@@ -2206,7 +2211,7 @@ impl<T> Option<&mut T> {
     where
         T: Clone,
     {
-        self.as_deref().map(T::clone)
+        self.as_deref().cloned()
     }
 }
 

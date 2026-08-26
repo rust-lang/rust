@@ -197,7 +197,8 @@ impl ItemType {
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
             | DefKind::Closure
-            | DefKind::SyntheticCoroutineBody => Self::ForeignType,
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::TestBinderConstraints => Self::ForeignType,
         }
     }
 

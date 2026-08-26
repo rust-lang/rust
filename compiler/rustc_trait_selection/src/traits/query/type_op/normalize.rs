@@ -1,13 +1,10 @@
 use std::fmt;
 
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::Normalize;
 use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_span::Span;
 
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
-use crate::traits::ObligationCtxt;
 
 impl<'tcx, T> super::QueryTypeOp<'tcx> for Normalize<'tcx, T>
 where
@@ -28,19 +25,6 @@ where
         canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
         T::type_op_method(tcx, canonicalized)
-    }
-
-    fn perform_locally_with_next_solver(
-        ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
-        span: Span,
-    ) -> Result<Self::QueryResponse, NoSolution> {
-        ocx.deeply_normalize(
-            &ObligationCause::dummy_with_span(span),
-            key.param_env,
-            key.value.value,
-        )
-        .map_err(|_| NoSolution)
     }
 }
 

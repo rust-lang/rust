@@ -5,7 +5,7 @@ use core::{hint, ptr};
 use super::node::ForceResult::*;
 use super::node::{Handle, NodeRef, marker};
 use super::search::SearchBound;
-use crate::alloc::Allocator;
+use crate::alloc::AllocatorClone;
 // `front` and `back` are always both `None` or both `Some`.
 pub(super) struct LeafRange<BorrowType, K, V> {
     front: Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
@@ -190,7 +190,7 @@ impl<K, V> LazyLeafRange<marker::Dying, K, V> {
     }
 
     #[inline]
-    pub(super) unsafe fn deallocating_next_unchecked<A: Allocator + Clone>(
+    pub(super) unsafe fn deallocating_next_unchecked<A: AllocatorClone>(
         &mut self,
         alloc: A,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
@@ -200,7 +200,7 @@ impl<K, V> LazyLeafRange<marker::Dying, K, V> {
     }
 
     #[inline]
-    pub(super) unsafe fn deallocating_next_back_unchecked<A: Allocator + Clone>(
+    pub(super) unsafe fn deallocating_next_back_unchecked<A: AllocatorClone>(
         &mut self,
         alloc: A,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
@@ -210,7 +210,7 @@ impl<K, V> LazyLeafRange<marker::Dying, K, V> {
     }
 
     #[inline]
-    pub(super) fn deallocating_end<A: Allocator + Clone>(&mut self, alloc: A) {
+    pub(super) fn deallocating_end<A: AllocatorClone>(&mut self, alloc: A) {
         if let Some(front) = self.take_front() {
             front.deallocating_end(alloc)
         }
@@ -456,7 +456,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///   `deallocating_next_back`.
     /// - The returned KV handle is only valid to access the key and value,
     ///   and only valid until the next call to a `deallocating_` method.
-    unsafe fn deallocating_next<A: Allocator + Clone>(
+    unsafe fn deallocating_next<A: AllocatorClone>(
         self,
         alloc: A,
     ) -> Option<(Self, Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>)>
@@ -488,7 +488,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///   `deallocating_next`.
     /// - The returned KV handle is only valid to access the key and value,
     ///   and only valid until the next call to a `deallocating_` method.
-    unsafe fn deallocating_next_back<A: Allocator + Clone>(
+    unsafe fn deallocating_next_back<A: AllocatorClone>(
         self,
         alloc: A,
     ) -> Option<(Self, Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>)>
@@ -513,7 +513,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// both sides of the tree, and have hit the same edge. As it is intended
     /// only to be called when all keys and values have been returned,
     /// no cleanup is done on any of the keys or values.
-    fn deallocating_end<A: Allocator + Clone>(self, alloc: A) {
+    fn deallocating_end<A: AllocatorClone>(self, alloc: A) {
         let mut edge = self.forget_node_type();
         while let Some(parent_edge) =
             unsafe { edge.into_node().deallocate_and_ascend(alloc.clone()) }
@@ -592,7 +592,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///
     /// The only safe way to proceed with the updated handle is to compare it, drop it,
     /// or call this method or counterpart `deallocating_next_back_unchecked` again.
-    unsafe fn deallocating_next_unchecked<A: Allocator + Clone>(
+    unsafe fn deallocating_next_unchecked<A: AllocatorClone>(
         &mut self,
         alloc: A,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
@@ -613,7 +613,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///
     /// The only safe way to proceed with the updated handle is to compare it, drop it,
     /// or call this method or counterpart `deallocating_next_unchecked` again.
-    unsafe fn deallocating_next_back_unchecked<A: Allocator + Clone>(
+    unsafe fn deallocating_next_back_unchecked<A: AllocatorClone>(
         &mut self,
         alloc: A,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {

@@ -1,4 +1,4 @@
-use core::alloc::Allocator;
+use core::alloc::AllocatorClone;
 use core::borrow::Borrow;
 
 use super::node::ForceResult::*;
@@ -31,7 +31,7 @@ impl<K, V> Root<K, V> {
     /// and if the ordering of `Q` corresponds to that of `K`.
     /// If `self` respects all `BTreeMap` tree invariants, then both
     /// `self` and the returned tree will respect those invariants.
-    pub(super) fn split_off<Q: ?Sized + Ord, A: Allocator + Clone>(
+    pub(super) fn split_off<Q: ?Sized + Ord, A: AllocatorClone>(
         &mut self,
         key: &Q,
         alloc: A,
@@ -69,7 +69,7 @@ impl<K, V> Root<K, V> {
     }
 
     /// Creates a tree consisting of empty nodes.
-    fn new_pillar<A: Allocator + Clone>(height: usize, alloc: A) -> Self {
+    fn new_pillar<A: AllocatorClone>(height: usize, alloc: A) -> Self {
         let mut root = Root::new(alloc.clone());
         for _ in 0..height {
             root.push_internal_level(alloc.clone());

@@ -29,14 +29,6 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
     ) -> Result<CanonicalQueryResponse<'tcx, ()>, NoSolution> {
         tcx.type_op_ascribe_user_type(canonicalized)
     }
-
-    fn perform_locally_with_next_solver(
-        ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
-        span: Span,
-    ) -> Result<Self::QueryResponse, NoSolution> {
-        type_op_ascribe_user_type_with_span(ocx, key, span)
-    }
 }
 
 /// The core of the `type_op_ascribe_user_type` query: for diagnostics purposes in NLL HRTB errors,

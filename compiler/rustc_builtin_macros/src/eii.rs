@@ -150,7 +150,7 @@ fn eii_(
     let (macro_attrs, foreign_item_attrs, default_func_attrs) =
         split_attrs(ecx, item_span, attrs_from_decl);
 
-    let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, &meta_item) else {
+    let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, meta_item) else {
         // we don't need to wrap in Annotatable::Stmt conditionally since
         // EII can't be used on items in statement position
         return vec![Annotatable::Item(item)];
@@ -302,14 +302,10 @@ fn generate_default_impl(
 ) -> Option<Box<ast::Item>> {
     match item_kind {
         ItemKind::Fn(func) => {
-            if func.body.is_none() {
-                return None;
-            }
+            func.body.as_ref()?;
         }
         ItemKind::Static(stat) => {
-            if stat.expr.is_none() {
-                return None;
-            }
+            stat.expr.as_ref()?;
         }
         _ => unreachable!("Target was checked earlier"),
     };

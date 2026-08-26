@@ -48,7 +48,7 @@ impl<T: Write> JsonFormatter<T> {
             String::from("")
         };
         let extra_json =
-            if let Some(extra) = extra { format!(r#", {extra}"#) } else { String::from("") };
+            if let Some(extra) = extra { format!(r", {extra}") } else { String::from("") };
         let newline = "\n";
 
         self.writeln_message(&format!(

@@ -1578,6 +1578,63 @@ impl Dir {
             .map(|inner| Self { inner })
     }
 
+    /// Attempts to open a directory at `path` according to `opts`.
+    ///
+    /// This function opens a directory. To open a file instead, see [`File::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::{Dir, OpenOptions}, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open_with("foo", &OpenOptions::new().read(true))?;
+    ///     let mut f = dir.open_file("bar.txt")?;
+    ///     let contents = io::read_to_string(f)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
+        fs_imp::Dir::open(path.as_ref(), &opts.0).map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a directory at `path` with the minimum permissions for traversal.
+    ///
+    /// The permissions requested by this function are guaranteed to be sufficient to open a child
+    /// file or folder, but not necessarily to list all children.
+    ///
+    /// # Errors
+    ///
+    /// This function may return an error according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let foo = Dir::open_for_traversal("foo")?;
+    ///     let foobar = foo.open_dir("bar")?;
+    ///     let mut foobarbaz = foobar.open_file("baz")?;
+    ///     let contents = io::read_to_string(foobarbaz)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs_imp::Dir::open_for_traversal(path.as_ref()).map(|inner| Self { inner })
+    }
+
     /// Queries metadata about the underlying directory.
     ///
     /// # Examples
@@ -1718,6 +1775,99 @@ impl Dir {
         to: Q,
     ) -> io::Result<()> {
         self.inner.rename(from.as_ref(), &to_dir.inner, to.as_ref())
+    }
+
+    /// Attempts to create a directory relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To create a directory
+    /// relative to the current working directory, or at an absolute path, see
+    /// [`fs::create_dir`][crate::fs::create_dir].
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.create_dir(path.as_ref())
+    }
+
+    /// Attempts to open a directory in read-only mode relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To open a directory
+    /// relative to the current working directory, or at an absolute path, see [`Dir::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let foobar = dir.open_dir("bar")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
+        self.inner
+            .open_dir(path.as_ref(), &OpenOptions::new().read(true).0)
+            .map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a directory relative to this directory according to `opts`.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To open a directory
+    /// relative to the current working directory, or at an absolute path, see [`Dir::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return errors according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::{Dir, OpenOptions};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let foobar_w = dir.open_dir_with("bar", &OpenOptions::new().write(true))?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
+        self.inner.open_dir(path.as_ref(), &opts.0).map(|inner| Self { inner })
+    }
+
+    /// Attempts to remove a directory relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To remove a directory
+    /// relative to the current working directory, or at an absolute path, see
+    /// [`fs::remove_dir`][crate::fs::remove_dir].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     dir.remove_dir("bar")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.remove_dir(path.as_ref())
     }
 }
 
@@ -3590,7 +3740,7 @@ impl DirBuilder {
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
         // if path's parent is None, it is "/" path, which should
         // return Ok immediately
-        if path.is_empty() || path.parent() == None {
+        if path.is_empty() || path.parent().is_none() {
             return Ok(());
         }
 
@@ -3601,7 +3751,7 @@ impl DirBuilder {
             // for relative paths like "foo/bar", the parent of
             // "foo" will be "" which there's no need to invoke
             // a mkdir syscall on
-            if ancestor.is_empty() || ancestor.parent() == None {
+            if ancestor.is_empty() || ancestor.parent().is_none() {
                 break;
             }
 

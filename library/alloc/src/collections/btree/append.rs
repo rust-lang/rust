@@ -1,4 +1,4 @@
-use core::alloc::Allocator;
+use core::alloc::AllocatorClone;
 
 use super::node::{self, Root};
 
@@ -6,12 +6,8 @@ impl<K, V> Root<K, V> {
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
     /// caller to avoid a leak when the iterator panicks.
-    pub(super) fn bulk_push<I, A: Allocator + Clone>(
-        &mut self,
-        iter: I,
-        length: &mut usize,
-        alloc: A,
-    ) where
+    pub(super) fn bulk_push<I, A: AllocatorClone>(&mut self, iter: I, length: &mut usize, alloc: A)
+    where
         I: Iterator<Item = (K, V)>,
     {
         let mut cur_node = self.borrow_mut().last_leaf_edge().into_node();

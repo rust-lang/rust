@@ -15,7 +15,7 @@
 
 //@ check-pass
 
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 struct Root {
     boxed: Box<SetOfVariants>,
@@ -41,7 +41,7 @@ fn main() {
             rhs: SomeVariant::B(B(String::from("This is B"))),
         }),
     };
-    if let box SetOfVariants {
+    if let SetOfVariants {
         lhs: SomeVariant::A(a),
         rhs: SomeVariant::B(b),
     } = root.boxed
