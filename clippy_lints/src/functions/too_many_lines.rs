@@ -17,13 +17,13 @@ pub(super) fn check_fn(
     def_id: LocalDefId,
     too_many_lines_threshold: u64,
 ) {
-    if is_lint_allowed(cx, TOO_MANY_LINES, cx.tcx.local_def_id_to_hir_id(def_id)) {
-        return;
-    }
-
     // Closures must be contained in a parent body, which will be checked for `too_many_lines`.
     // Don't check closures for `too_many_lines` to avoid duplicated lints.
     if matches!(kind, FnKind::Closure) || (span.from_expansion() && span.in_external_macro(cx.sess().source_map())) {
+        return;
+    }
+
+    if is_lint_allowed(cx, TOO_MANY_LINES, cx.tcx.local_def_id_to_hir_id(def_id)) {
         return;
     }
 
