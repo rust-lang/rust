@@ -75,7 +75,7 @@ impl Command {
 
         // `toolchain` goes first as it could affect the others
         if config.auto.toolchain {
-            Self::toolchain(None, None, vec![])?;
+            Self::toolchain(None, None, vec![], config)?;
         }
         if config.auto.fmt {
             Self::fmt(vec![])?;
@@ -116,7 +116,8 @@ impl Command {
             Command::Clippy { features, flags } => Self::clippy(features, flags),
             Command::Bench { target, no_install, save_baseline, load_baseline, benches } =>
                 Self::bench(target, no_install, save_baseline, load_baseline, benches),
-            Command::Toolchain { name, commit, flags } => Self::toolchain(name, commit, flags),
+            Command::Toolchain { name, commit, flags } =>
+                Self::toolchain(name, commit, flags, config),
             Command::Squash => Self::squash(),
         }
     }
@@ -125,8 +126,9 @@ impl Command {
         name: Option<String>,
         new_commit: Option<String>,
         flags: Vec<String>,
+        config: &Config,
     ) -> Result<()> {
-        let name = name.as_deref().unwrap_or("miri");
+        let name = name.as_deref().or(config.toolchain.name.as_deref()).unwrap_or("miri");
 
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);

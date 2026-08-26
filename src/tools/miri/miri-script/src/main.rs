@@ -138,7 +138,8 @@ pub enum Command {
         /// List of benchmarks to run (default: run all benchmarks).
         benches: Vec<String>,
     },
-    /// Update and activate the rustup toolchain 'miri'.
+    /// Update and activate the rustup toolchain 'miri' (or whatever name is configured in
+    /// `miri.toml`).
     ///
     /// The `rust-version` file is used to determine the commit that will be intsalled.
     /// `rustup-toolchain-install-master` must be installed for this to work.

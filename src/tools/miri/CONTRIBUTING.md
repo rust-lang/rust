@@ -119,8 +119,16 @@ The `./miri` script supports optional configuration via a `miri.toml` file.
 The following configuration keys are currently supported, with the given default values:
 
 ```toml
+[toolchain]
+# Overwrite the default toolchain name used by `./miri toolchain`.
+# Note that all other commands will just use the currently active rustup toolchain!
+# (Though note that if you have `auto.toolchain` enabled, most commands will run `./miri toolchain`
+# first, which will activate the toolchain given here.)
+name = "miri"
+
 [auto]
 # Automatically run `./miri toolchain` before most commands.
+# Uses the toolchain name configured above, if any.
 toolchain = false
 # Automatically run `./miri clippy` before most commands.
 clippy = false

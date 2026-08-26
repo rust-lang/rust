@@ -9,7 +9,14 @@ use crate::util::miri_dir;
 #[derive(Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
+    pub toolchain: Toolchain,
+    #[serde(default)]
     pub auto: Auto,
+}
+
+#[derive(Deserialize, Default)]
+pub struct Toolchain {
+    pub name: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
