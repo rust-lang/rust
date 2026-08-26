@@ -29,7 +29,7 @@ pub use path::PathStyle;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
-use rustc_ast::tokenarena::TokenArena;
+use rustc_ast::tokenarena::{ArenaTokenTree, TokenArena};
 use rustc_ast::tokenstream::{
     ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, WithTokens,
 };
@@ -504,7 +504,7 @@ impl<'a> Parser<'a> {
     fn check_noexpect_past_close_delim(&self, tok: &TokenKind) -> bool {
         matches!(
             self.token_cursor.look_ahead_past_close_delim(),
-            Some(TokenTree::Token(token::Token { kind, .. }, _)) if kind == tok
+            Some(ArenaTokenTree::Token(token::Token { kind, .. }, _)) if kind == tok
         )
     }
 
@@ -1157,12 +1157,16 @@ impl<'a> Parser<'a> {
                 Some(tree) => {
                     // Indexing stayed within the current token tree.
                     match tree {
-                        TokenTree::Token(token, _) => return looker(token),
-                        &TokenTree::Delimited(dspan, _, delim, _) => {
-                            if !delim.skip() {
-                                return looker(&Token::new(delim.as_open_token_kind(), dspan.open));
+                        ArenaTokenTree::Token(token, _) => return looker(token),
+                        &ArenaTokenTree::DelimitedStart(_, data) => {
+                            if !data.delimiter.skip() {
+                                return looker(&Token::new(
+                                    data.delimiter.as_open_token_kind(),
+                                    data.span.open,
+                                ));
                             }
                         }
+                        _ => unreachable!(),
                     }
                 }
                 None => {
@@ -1201,7 +1205,7 @@ impl<'a> Parser<'a> {
     pub fn tree_look_ahead<R>(
         &self,
         dist: usize,
-        looker: impl FnOnce(&TokenTree) -> R,
+        looker: impl FnOnce(&ArenaTokenTree) -> R,
     ) -> Option<R> {
         self.token_cursor.look_ahead(dist).map(looker)
     }
@@ -1390,6 +1394,7 @@ impl<'a> Parser<'a> {
             // Clone the `TokenTree::Delimited` that we are currently
             // within. That's what we are going to return.
             let tree = self.token_cursor.clone_enclosing_delim();
+            let tree = tree.to_token_tree(&self.token_cursor.arena);
             debug_assert_matches!(tree, TokenTree::Delimited(..));
 
             // Advance the token cursor through the entire delimited

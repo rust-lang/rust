@@ -5,6 +5,7 @@ use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, MetaVarKind, TokenKind};
+use rustc_ast::tokenarena::ArenaTokenTree;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast_pretty::pprust;
@@ -1116,7 +1117,7 @@ impl<'a> Parser<'a> {
             SUFFIXES.iter().any(|suffix| {
                 suffix.iter().enumerate().all(|(i, kw)| {
                     self.tree_look_ahead(i + 2, |t| {
-                        if let TokenTree::Token(token, _) = t {
+                        if let ArenaTokenTree::Token(token, _) = t {
                             token.is_keyword(*kw)
                         } else {
                             false
@@ -1661,7 +1662,7 @@ impl<'a> Parser<'a> {
         // might be a metavariable i.e. an invisible-delimited sequence, and
         // `tree_look_ahead` will consider that a single element when looking
         // ahead.
-        self.tree_look_ahead(n, |t| matches!(t, TokenTree::Delimited(_, _, Delimiter::Brace, _)))
+        self.tree_look_ahead(n, |t| matches!(t, ArenaTokenTree::DelimitedStart(_, data) if matches!(data.delimiter, Delimiter::Brace)))
             == Some(true)
     }
 
