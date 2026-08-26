@@ -67,6 +67,31 @@ impl Instant {
     }
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+pub struct Stopwatch {
+    ticks: i64,
+}
+
+impl Stopwatch {
+    pub fn start() -> Self {
+        Self { ticks: perf_counter::now() }
+    }
+
+    pub fn checked_duration_since(self, other: Stopwatch) -> Option<Duration> {
+        let diff = self.ticks - other.ticks;
+        if diff < -1 {
+            None
+        } else if diff <= 1 {
+            // When QPC is used across threads, equivalent tick counts might differ by +/- 1.
+            Some(Duration::ZERO)
+        } else {
+            let freq = perf_counter::frequency() as u64;
+            let nanos = mul_div_u64(diff as u64, NANOS_PER_SEC, freq);
+            Some(Duration::from_nanos(nanos))
+        }
+    }
+}
+
 impl SystemTime {
     pub const MAX: SystemTime = SystemTime::from_intervals(i64::MAX);
     pub const MIN: SystemTime = SystemTime::from_intervals(0);

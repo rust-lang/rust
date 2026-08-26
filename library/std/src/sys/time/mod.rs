@@ -43,3 +43,32 @@ cfg_select! {
 }
 
 pub use imp::{Instant, SystemTime, UNIX_EPOCH};
+
+cfg_select! {
+    any(
+        target_os = "windows",
+        target_os = "hermit",
+        target_os = "teeos",
+        target_family = "unix",
+        target_os = "wasi"
+    ) => {
+        pub use imp::Stopwatch;
+    }
+    _ => {
+        // The default implementation of Stopwatch simply wraps an Instant.
+        #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+        pub struct Stopwatch {
+            t: Instant,
+        }
+
+        impl Stopwatch {
+            pub fn start() -> Self {
+                Self { t: Instant::now() }
+            }
+
+            pub fn checked_duration_since(self, other: Stopwatch) -> Option<crate::time::Duration> {
+                self.t.checked_sub_instant(&other.t)
+            }
+        }
+    }
+}

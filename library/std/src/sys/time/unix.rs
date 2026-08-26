@@ -3,6 +3,9 @@ use crate::sys::pal::time::Timespec;
 use crate::time::Duration;
 use crate::{fmt, io};
 
+#[cfg(target_vendor = "apple")]
+mod apple;
+
 pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -100,20 +103,8 @@ impl Instant {
     /// representable value.
     #[cfg(target_vendor = "apple")]
     pub fn into_mach_absolute_time_ceil(self) -> Option<u128> {
-        #[repr(C)]
-        struct mach_timebase_info {
-            numer: u32,
-            denom: u32,
-        }
-
-        unsafe extern "C" {
-            unsafe fn mach_timebase_info(info: *mut mach_timebase_info) -> libc::kern_return_t;
-        }
-
         let secs = u64::try_from(self.t.tv_sec).ok()?;
-
-        let mut timebase = mach_timebase_info { numer: 0, denom: 0 };
-        assert_eq!(unsafe { mach_timebase_info(&mut timebase) }, libc::KERN_SUCCESS);
+        let timebase = crate::sys::pal::time::mach_timebase_info();
 
         // Since `tv_sec` is 64-bit and `tv_nsec` is smaller than 1 billion,
         // this cannot overflow. The resulting number needs at most 94 bits.
@@ -139,6 +130,36 @@ impl AsInner<Timespec> for Instant {
 impl fmt::Debug for Instant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Instant")
+            .field("tv_sec", &self.t.tv_sec)
+            .field("tv_nsec", &self.t.tv_nsec)
+            .finish()
+    }
+}
+
+#[cfg(target_vendor = "apple")]
+pub use apple::Stopwatch;
+
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[cfg(not(target_vendor = "apple"))]
+pub struct Stopwatch {
+    t: Timespec,
+}
+
+#[cfg(not(target_vendor = "apple"))]
+impl Stopwatch {
+    pub fn start() -> Self {
+        Self { t: Timespec::now(libc::CLOCK_MONOTONIC) }
+    }
+
+    pub fn checked_duration_since(self, other: Stopwatch) -> Option<Duration> {
+        self.t.sub_timespec(&other.t).ok()
+    }
+}
+
+#[cfg(not(target_vendor = "apple"))]
+impl fmt::Debug for Stopwatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Stopwatch")
             .field("tv_sec", &self.t.tv_sec)
             .field("tv_nsec", &self.t.tv_nsec)
             .finish()
