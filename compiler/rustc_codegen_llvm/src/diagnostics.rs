@@ -119,6 +119,8 @@ pub(crate) enum LlvmError<'a> {
     WriteOutput { path: &'a Path },
     #[diag("could not create LLVM TargetMachine for triple: {$triple}")]
     CreateTargetMachine { triple: SmallCStr },
+    #[diag("could not create LLVM MCSubtargetInfo for triple: {$triple}")]
+    CreateMCSubtargetInfo { triple: SmallCStr },
     #[diag("failed to run LLVM passes")]
     RunLlvmPasses,
     #[diag("failed to write LLVM IR to {$path}")]
@@ -144,6 +146,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
             WriteOutput { .. } => msg!("could not write output to {$path}: {$llvm_err}"),
             CreateTargetMachine { .. } => {
                 msg!("could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}")
+            }
+            CreateMCSubtargetInfo { .. } => {
+                msg!("could not create LLVM MCSubtargetInfo for triple: {$triple}: {$llvm_err}")
             }
             RunLlvmPasses => msg!("failed to run LLVM passes: {$llvm_err}"),
             WriteIr { .. } => msg!("failed to write LLVM IR to {$path}: {$llvm_err}"),

@@ -6,6 +6,7 @@ use std::sync::Once;
 use std::{ptr, slice, str};
 
 use libc::c_int;
+use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::target_features::internal_target_features;
 use rustc_codegen_ssa::{TargetConfig, target_features};
@@ -20,7 +21,8 @@ use rustc_target::spec::{
 };
 use smallvec::{SmallVec, smallvec};
 
-use crate::back::write::create_informational_target_machine;
+use crate::back::owned_mc_subtarget_info::OwnedMCSubtargetInfo;
+use crate::back::write::{create_informational_target_machine, llvm_err};
 use crate::{diagnostics, llvm};
 
 static INIT: Once = Once::new();
@@ -340,7 +342,14 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
 pub(crate) fn target_config(sess: &Session) -> TargetConfig {
-    let target_machine = create_informational_target_machine(sess, true);
+    require_inited();
+    let target_features = global_llvm_features(sess, true);
+
+    let triple = SmallCStr::new(&versioned_llvm_target(sess));
+    let cpu = SmallCStr::new(target_cpu(sess));
+    let features = CString::new(target_features.join(",")).unwrap();
+    let mc_subtarget_info = OwnedMCSubtargetInfo::new(&triple, &cpu, &features)
+        .unwrap_or_else(|err| llvm_err(sess.dcx(), err));
 
     let internal_target_features = internal_target_features(
         sess,
@@ -357,10 +366,10 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
                 // All the LLVM features this expands to must be enabled.
                 for llvm_feature in feat {
                     let cstr = SmallCStr::new(llvm_feature);
-                    // `LLVMRustHasFeature` is moderately expensive. On targets with many
+                    // `has_feature` is moderately expensive. On targets with many
                     // features (e.g. x86) these calls take a non-trivial fraction of runtime
                     // when compiling very small programs.
-                    if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) } {
+                    if !mc_subtarget_info.has_feature(&cstr) {
                         return false;
                     }
                 }
@@ -501,7 +510,7 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
 
 pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
     require_inited();
-    let tm = create_informational_target_machine(sess, false);
+    let tm = create_informational_target_machine(sess);
     match req.kind {
         PrintKind::TargetCPUs => print_target_cpus(sess, tm.raw(), out),
         PrintKind::TargetFeatures => print_target_features(sess, tm.raw(), out),
@@ -799,7 +808,7 @@ pub(crate) fn tune_cpu(sess: &Session) -> Option<&str> {
 
 pub(crate) fn target_has_mnemonic(sess: &Session, mnemonic: &str) -> bool {
     require_inited();
-    let tm = create_informational_target_machine(sess, false);
+    let tm = create_informational_target_machine(sess);
     let cstr = SmallCStr::new(mnemonic);
     unsafe { llvm::LLVMRustTargetHasMnemonic(tm.raw(), cstr.as_ptr()) }
 }
