@@ -77,9 +77,5 @@ impl<'tcx> Visitor<'tcx> for CVoidChecker<'_, 'tcx> {
 }
 
 fn is_c_void(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
-    if let Some(adt_def) = ty.ty_adt_def() {
-        tcx.is_lang_item(adt_def.did(), LangItem::CVoid)
-    } else {
-        false
-    }
+    matches!(ty.ty_adt_def(), Some(adt_def) if tcx.is_lang_item(adt_def.did(), LangItem::CVoid))
 }
