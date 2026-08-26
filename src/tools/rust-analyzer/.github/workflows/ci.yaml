@@ -206,6 +206,7 @@ jobs:
 
       - name: Install Rust toolchain
         run: |
+          rustup toolchain install nightly
           rustup default nightly
           rustup component add miri
 
