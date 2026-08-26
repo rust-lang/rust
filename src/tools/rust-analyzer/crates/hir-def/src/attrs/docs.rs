@@ -258,11 +258,10 @@ impl Docs {
             return;
         }
 
-        let doc_start = doc.as_ptr() as usize;
         let mut lines: Vec<(&str, TextSize)> = doc
             .lines()
             .map(|line| {
-                let offset = TextSize::new((line.as_ptr() as usize - doc_start) as u32);
+                let offset = TextSize::new(doc.substr_range(line).unwrap().start as u32);
                 (line, offset)
             })
             .collect();
