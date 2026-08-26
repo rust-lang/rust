@@ -730,12 +730,12 @@ impl CommandLineStep for Miri {
         // This compiler runs on the host, we'll just use it for the target.
         let compilers = RustcPrivateCompilers::new(builder, stage, host);
 
+        let target_compiler = compilers.target_compiler();
+
         // Build our tools.
-        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
+        let miri = builder.ensure(tool::Miri::from_compilers(compilers.clone()));
         // the ui tests also assume cargo-miri has been built
         builder.ensure(tool::CargoMiri::from_compilers(compilers));
-
-        let target_compiler = compilers.target_compiler();
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
@@ -903,8 +903,8 @@ impl CommandLineStep for Priroda {
 
         // Priroda tests run under Miri, so reuse the Miri binary and sysroot.
         let compilers = RustcPrivateCompilers::new(builder, stage, host);
-        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
         let target_compiler = compilers.target_compiler();
+        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
 
         let miri_sysroot = Miri::build_miri_sysroot(builder, target_compiler, target);
         builder.std(target_compiler, host);
