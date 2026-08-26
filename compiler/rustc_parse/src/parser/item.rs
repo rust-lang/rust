@@ -2603,7 +2603,11 @@ impl<'a> Parser<'a> {
             // Convert `MacParams MacBody` into `{ MacParams => MacBody }`.
             let bspan = body.span();
             let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
-            let tokens = TokenStream::new(vec![params, arrow, body]);
+            let tokens = TokenStream::new(vec![
+                params.to_token_tree(&self.token_cursor.arena),
+                arrow,
+                body.to_token_tree(&self.token_cursor.arena),
+            ]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
             Box::new(DelimArgs { dspan, delim: Delimiter::Brace, tokens })
         } else {

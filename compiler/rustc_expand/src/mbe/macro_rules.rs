@@ -7,8 +7,8 @@ use ast::token::IdentIsRaw;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
-use rustc_ast::tokenarena::TokenArena;
-use rustc_ast::tokenstream::{self, DelimSpan, TokenStream};
+use rustc_ast::tokenarena::{DelimitedBounds, DelimitedData, TokenArena};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId, Safety};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::diagnostic::Directive;
@@ -823,9 +823,17 @@ pub fn compile_declarative_macro(
             if let Some(guar) = check_no_eof(sess, &p, "expected macro attr args") {
                 return dummy_syn_ext(guar);
             }
-            let args = p.parse_token_tree();
-            check_args_parens(sess, sym::attr, &args);
-            let args = parse_one_tt(args, RulePart::Pattern, sess, node_id, features, edition);
+            let tt = p.parse_token_tree();
+            let args = tt.to_delimited_data();
+            check_args_parens(sess, sym::attr, args);
+            let args = parse_one_tt(
+                tt.to_token_tree(p.arena()),
+                RulePart::Pattern,
+                sess,
+                node_id,
+                features,
+                edition,
+            );
             check_emission(check_lhs(sess, features, node_id, &args));
             if let Some(guar) = check_no_eof(sess, &p, "expected macro attr body") {
                 return dummy_syn_ext(guar);
@@ -845,9 +853,10 @@ pub fn compile_declarative_macro(
             if let Some(guar) = check_no_eof(sess, &p, "expected `()` after `derive`") {
                 return dummy_syn_ext(guar);
             }
-            let args = p.parse_token_tree();
-            check_args_parens(sess, sym::derive, &args);
-            let args_empty_result = check_args_empty(sess, &args);
+            let tt = p.parse_token_tree();
+            let args = tt.to_delimited_data();
+            check_args_parens(sess, sym::derive, args);
+            let args_empty_result = check_args_empty(sess, tt.to_delimited_bounds(), tt.span());
             let args_not_empty = args_empty_result.is_err();
             check_emission(args_empty_result);
             if let Some(guar) = check_no_eof(sess, &p, "expected macro derive body") {
@@ -873,7 +882,7 @@ pub fn compile_declarative_macro(
             }
             (None, false)
         };
-        let lhs_tt = p.parse_token_tree();
+        let lhs_tt = p.parse_token_tree().to_token_tree(p.arena());
         let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
         check_emission(check_lhs(sess, features, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
@@ -882,7 +891,7 @@ pub fn compile_declarative_macro(
         if let Some(guar) = check_no_eof(sess, &p, "expected right-hand side of macro rule") {
             return dummy_syn_ext(guar);
         }
-        let rhs = p.parse_token_tree();
+        let rhs = p.parse_token_tree().to_token_tree(p.arena());
         let rhs = parse_one_tt(rhs, RulePart::Body, sess, node_id, features, edition);
         check_emission(check_rhs(sess, &rhs));
         check_emission(check_meta_variables(&sess.psess, node_id, args.as_ref(), &lhs_tt, &rhs));
@@ -962,25 +971,32 @@ fn check_no_eof(sess: &Session, p: &Parser<'_>, msg: &'static str) -> Option<Err
     None
 }
 
-fn check_args_parens(sess: &Session, rule_kw: Symbol, args: &tokenstream::TokenTree) {
+fn check_args_parens(sess: &Session, rule_kw: Symbol, args: Option<&DelimitedData>) {
     // This does not handle the non-delimited case; that gets handled separately by `check_lhs`.
-    if let tokenstream::TokenTree::Delimited(dspan, _, delim, _) = args
-        && *delim != Delimiter::Parenthesis
+    if let Some(data) = args
+        && data.delimiter != Delimiter::Parenthesis
     {
         sess.dcx().emit_err(diagnostics::MacroArgsBadDelim {
-            span: dspan.entire(),
-            sugg: diagnostics::MacroArgsBadDelimSugg { open: dspan.open, close: dspan.close },
+            span: data.span.entire(),
+            sugg: diagnostics::MacroArgsBadDelimSugg {
+                open: data.span.open,
+                close: data.span.close,
+            },
             rule_kw,
         });
     }
 }
 
-fn check_args_empty(sess: &Session, args: &tokenstream::TokenTree) -> Result<(), ErrorGuaranteed> {
+fn check_args_empty(
+    sess: &Session,
+    args: Option<&DelimitedBounds>,
+    span: Span,
+) -> Result<(), ErrorGuaranteed> {
     match args {
-        tokenstream::TokenTree::Delimited(.., delimited) if delimited.is_empty() => Ok(()),
+        Some(bounds) if bounds.is_empty() => Ok(()),
         _ => {
             let msg = "`derive` rules do not accept arguments; `derive` must be followed by `()`";
-            Err(sess.dcx().span_err(args.span(), msg))
+            Err(sess.dcx().span_err(span, msg))
         }
     }
 }

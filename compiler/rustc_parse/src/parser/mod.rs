@@ -244,6 +244,12 @@ pub struct Parser<'a> {
     pub fn_body_missing_semi_guar: Option<ErrorGuaranteed> = None,
 }
 
+impl<'a> Parser<'a> {
+    pub fn arena(&self) -> &TokenArena {
+        &self.token_cursor.arena
+    }
+}
+
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
 // nonterminals. Make sure it doesn't unintentionally get bigger. We only check a few arches
 // though, because `TokenTypeSet(u128)` alignment varies on others, changing the total size.
@@ -1381,7 +1387,9 @@ impl<'a> Parser<'a> {
             || self.check(exp!(OpenBrace));
 
         delimited.then(|| {
-            let TokenTree::Delimited(dspan, _, delim, tokens) = self.parse_token_tree() else {
+            let TokenTree::Delimited(dspan, _, delim, tokens) =
+                self.parse_token_tree().to_token_tree(&self.token_cursor.arena)
+            else {
                 unreachable!()
             };
             DelimArgs { dspan, delim, tokens }
@@ -1389,13 +1397,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a single token tree from the input.
-    pub fn parse_token_tree(&mut self) -> TokenTree {
+    pub fn parse_token_tree(&mut self) -> ArenaTokenTree {
         if self.token.kind.open_delim().is_some() {
             // Clone the `TokenTree::Delimited` that we are currently
             // within. That's what we are going to return.
             let tree = self.token_cursor.clone_enclosing_delim();
-            let tree = tree.to_token_tree(&self.token_cursor.arena);
-            debug_assert_matches!(tree, TokenTree::Delimited(..));
+            debug_assert_matches!(tree, ArenaTokenTree::DelimitedStart(..));
 
             // Advance the token cursor through the entire delimited
             // sequence. After getting the `OpenDelim` we are *within* the
@@ -1431,7 +1438,7 @@ impl<'a> Parser<'a> {
             assert!(!self.token.kind.is_close_delim_or_eof());
             let prev_spacing = self.token_spacing;
             self.bump();
-            TokenTree::Token(self.prev_token, prev_spacing)
+            ArenaTokenTree::Token(self.prev_token, prev_spacing)
         }
     }
 
@@ -1444,7 +1451,9 @@ impl<'a> Parser<'a> {
                 result.push(self.parse_token_tree());
             }
         }
-        TokenStream::new(result)
+        TokenStream::new(
+            result.into_iter().map(|tt| tt.to_token_tree(&self.token_cursor.arena)).collect(),
+        )
     }
 
     /// Evaluates the closure with restrictions in place.

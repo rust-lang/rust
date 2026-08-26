@@ -1,5 +1,6 @@
 use rustc_index::static_assert_size;
 use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_span::Span;
 
 use crate::token::{Delimiter, Token};
 use crate::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
@@ -25,6 +26,31 @@ impl ArenaTokenTree {
                 let tts = arena.iter_delimited(bounds).map(|tt| tt.to_token_tree(arena)).collect();
                 TokenTree::Delimited(data.span, data.spacing, data.delimiter, TokenStream::new(tts))
             }
+            ArenaTokenTree::DelimitedEnd => unreachable!(),
+        }
+    }
+
+    /// Retrieves the `TokenTree`'s span.
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Token(token, _) => token.span,
+            Self::DelimitedStart(_, data) => data.span.entire(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn to_delimited_data(&self) -> Option<&DelimitedData> {
+        match self {
+            ArenaTokenTree::Token(_, _) => None,
+            ArenaTokenTree::DelimitedStart(_, data) => Some(data),
+            ArenaTokenTree::DelimitedEnd => unreachable!(),
+        }
+    }
+
+    pub fn to_delimited_bounds(&self) -> Option<&DelimitedBounds> {
+        match self {
+            ArenaTokenTree::Token(_, _) => None,
+            ArenaTokenTree::DelimitedStart(bounds, _) => Some(bounds),
             ArenaTokenTree::DelimitedEnd => unreachable!(),
         }
     }
@@ -185,6 +211,10 @@ impl DelimitedBounds {
     /// Return the index of the closing delimiter of this token sequence.
     pub fn index_of_closing_delimiter(&self) -> usize {
         self.index_of_next_token_tree().saturating_sub(1)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.length == 2
     }
 }
 
