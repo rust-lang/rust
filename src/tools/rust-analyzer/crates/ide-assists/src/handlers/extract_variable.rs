@@ -101,7 +101,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
     let node = node.ancestors().take_while(|anc| anc.text_range() == node.text_range()).last()?;
     let range = node.text_range();
 
-    let (to_replace, analysis, use_source_expr) = if node.kind() == SyntaxKind::TOKEN_TREE {
+    let (to_replace, analysis, source_to_extract) = if node.kind() == SyntaxKind::TOKEN_TREE {
         let (first, last) = extract_token_range_of(&node, ctx.selection_trimmed())?;
 
         let first_descend = ctx.sema.descend_into_macros_single_exact(first.clone());
@@ -120,14 +120,16 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
         if !node.text_range().contains_range(original_range.range) {
             return None;
         }
-        (cover_edit_range(&node, original_range.range), expr, true)
+        let to_replace = cover_edit_range(&node, original_range.range);
+        let source_to_extract = source_expr(ctx, to_replace.clone())?;
+        (to_replace, expr, Some(source_to_extract))
     } else {
         let expr = node
             .descendants()
             .take_while(|it| range.contains_range(it.text_range()))
             .find_map(valid_target_expr(ctx))?;
         let to_extract = expr.syntax().syntax_element();
-        (to_extract.clone()..=to_extract, expr, false)
+        (to_extract.clone()..=to_extract, expr, None)
     };
     let place = match to_replace.start() {
         NodeOrToken::Node(node) => node.clone(),
@@ -226,10 +228,9 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
                     editor.add_annotation(pat_name.syntax().clone(), tabstop);
                 }
 
-                let to_extract_no_ref = if use_source_expr {
-                    source_expr(ctx, to_replace.clone()).unwrap()
-                } else {
-                    to_extract_no_ref.clone()
+                let to_extract_no_ref = match &source_to_extract {
+                    Some(expr) => expr.clone(),
+                    None => to_extract_no_ref.clone(),
                 };
                 let initializer = match ty.as_ref().filter(|_| needs_ref) {
                     Some(receiver_type) if receiver_type.is_mutable_reference() => {
@@ -1398,6 +1399,46 @@ fn main() {
         x + x,
         var_name,
     )
+}
+"#,
+            "Extract into variable",
+        );
+    }
+
+    #[test]
+    fn extract_var_in_macro_call_with_multiple_args() {
+        check_assist_not_applicable(
+            extract_variable,
+            r#"
+macro_rules! m {
+    ($a:expr, $b:expr) => { $a + $b };
+}
+fn f(x: u32) -> u32 {
+    m!($0x$0, 1)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_var_in_macro_call_with_single_arg() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+macro_rules! m {
+    ($e:expr) => { $e + 1 };
+}
+fn f(x: u32) -> u32 {
+    m!($0x$0)
+}
+"#,
+            r#"
+macro_rules! m {
+    ($e:expr) => { $e + 1 };
+}
+fn f(x: u32) -> u32 {
+    let $0var_name = x;
+    m!(var_name)
 }
 "#,
             "Extract into variable",
