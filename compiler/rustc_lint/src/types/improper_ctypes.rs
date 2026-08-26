@@ -1605,11 +1605,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
             }
 
-            ty::UnsafeBinder(_) => FfiResult::new_with_reason(
-                ty,
-                msg!("unsafe binders are incompatible with foreign function interfaces"),
-                None,
-            ),
+            // FIXME(unsafe_binder): once we know if UnsafeBinder has the same ABI properties as its underlying type,
+            // decide whether or not to remove the lint
+            // TODO: also determine what we want to do while waiting for the decision to happen
+            ty::UnsafeBinder(inner) => {
+                FfiResult::new_with_reason(
+                    ty,
+                    msg!("unsafe binders are incompatible with foreign function interfaces"),
+                    None,
+                ) + self.visit_type(state, inner.skip_binder())
+            }
 
             // Safety net for when normalization reveals a body's own defining opaque
             // (e.g. `async extern fn`'s `impl Future` → `Coroutine`); the nicer
