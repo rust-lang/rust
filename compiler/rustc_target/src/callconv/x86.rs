@@ -32,8 +32,10 @@ where
             // https://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
             let t = cx.target_spec();
-            if let Some(Float::F16) = fn_abi.ret.layout.complex_float(cx) {
-                // `_Complex _Float16` is returned as `<2 x half>`.
+            if let Some(Float::F16) = fn_abi.ret.layout.complex_float(cx)
+                && cx.target_spec().rustc_abi == Some(RustcAbi::X86Sse2)
+            {
+                // With SSE2 `_Complex _Float16` is returned as `<2 x half>`.
                 let kind = RegKind::Vector { hint_vector_elem: Primitive::Float(Float::F16) };
                 fn_abi.ret.cast_to(Reg { kind, size: fn_abi.ret.layout.size });
             } else if t.abi_return_struct_as_int
