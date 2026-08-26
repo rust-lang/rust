@@ -1,6 +1,6 @@
 // Tests for repeating attribute warnings.
 //@ aux-build:lint_unused_extern_crate.rs
-//@ compile-flags:--test
+//@ compile-flags:--test -W repeated-reprs
 // Not tested due to extra requirements:
 // - panic_handler: needs extra setup
 // - target_feature: platform-specific
@@ -64,8 +64,7 @@ fn t1() {}
 #[must_use = "some message"]
 //~^ ERROR unused attribute
 //~| WARN this was previously accepted
-// No warnings for #[repr], would require more logic.
-#[repr(C)]
+#[repr(C)] //~ WARN `#[repr(..)]` attribute is specified more than once [repeated_reprs]
 #[repr(C)]
 #[non_exhaustive]
 #[non_exhaustive] //~ ERROR unused attribute

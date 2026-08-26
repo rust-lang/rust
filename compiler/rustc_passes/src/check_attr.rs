@@ -30,7 +30,8 @@ use rustc_hir::{
 };
 use rustc_lint_defs::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS,
+    UNUSED_ATTRIBUTES,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -1220,18 +1221,47 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ReprAttr::ReprC => {
                     is_c = true;
                 }
-                ReprAttr::ReprAlign(..) => {}
-                ReprAttr::ReprPacked(_) => {}
+                ReprAttr::ReprAlign(..) => (),
+                ReprAttr::ReprPacked(..) => (),
                 ReprAttr::ReprSimd => {
                     is_simd = true;
                 }
                 ReprAttr::ReprTransparent => {
                     is_transparent = true;
                 }
-                ReprAttr::ReprInt(_) => {
+                ReprAttr::ReprInt(..) => {
                     int_reprs += 1;
                 }
             };
+        }
+
+        if !reprs.is_empty() {
+            let sorted_reprs = {
+                let mut to_sort = reprs.to_owned();
+                to_sort.sort_unstable();
+                to_sort
+            };
+
+            // To collect all duplicates, get subslices where all of the elements of the subslice
+            // are equal, then filter out all those whose length is not 1. We could return warnings
+            // for each of them, but that's annoyingly excessive. So we instead collect all spans in
+            // one big Vec.
+            let spans: Vec<Span> = sorted_reprs
+                .chunk_by(|(a, _), (b, _)| a == b)
+                .map(ToOwned::to_owned)
+                .filter(|slice| slice.len() != 1)
+                .flatten()
+                .map(|(_, span)| span)
+                .collect();
+
+            if !spans.is_empty() {
+                self.tcx.emit_node_span_lint(
+                    REPEATED_REPRS,
+                    hir_id,
+                    spans,
+                    diagnostics::RepeatedRepr,
+                );
+            }
         }
 
         // Just point at all repr hints if there are any incompatibilities.
