@@ -228,7 +228,7 @@ pub(crate) unsafe fn create_module<'ll>(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     {
-        let tm = crate::back::write::create_informational_target_machine(sess, false);
+        let tm = crate::back::write::create_informational_target_machine(sess);
         unsafe {
             llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm.raw());
         }

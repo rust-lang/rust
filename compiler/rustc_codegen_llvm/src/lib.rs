@@ -247,7 +247,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn provide(&self, providers: &mut Providers) {
         providers.queries.global_backend_features =
-            |tcx, ()| llvm_util::global_llvm_features(tcx.sess, false)
+            |tcx, ()| llvm_util::global_llvm_features(tcx.sess, /* for_cfg */ false)
     }
 
     fn print(&self, req: &PrintRequest, out: &mut String, sess: &Session) {
@@ -493,7 +493,7 @@ impl ModuleLlvm {
             ModuleLlvm {
                 llmod_raw,
                 llcx,
-                tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess, false)),
+                tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess)),
             }
         }
     }

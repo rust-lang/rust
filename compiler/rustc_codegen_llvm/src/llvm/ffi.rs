@@ -720,6 +720,7 @@ unsafe extern "C" {
     pub type TargetMachine;
 }
 unsafe extern "C" {
+    pub(crate) type MCSubtargetInfo;
     pub(crate) type Twine;
     pub(crate) type DiagnosticInfo;
     pub(crate) type SMDiagnostic;
@@ -2362,7 +2363,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
     pub(crate) fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
 
-    pub(crate) fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
     pub(crate) fn LLVMRustTargetHasMnemonic(T: &TargetMachine, s: *const c_char) -> bool;
 
     pub(crate) fn LLVMRustPrintTargetCPUs(TM: &TargetMachine, OutStr: &RustString);
@@ -2403,6 +2403,19 @@ unsafe extern "C" {
         UseWasmEH: bool,
         LargeDataThreshold: u64,
     ) -> *mut TargetMachine;
+
+    pub(crate) fn LLVMRustCreateMCSubtargetInfo(
+        TripleStr: *const c_char,
+        CPU: *const c_char,
+        Features: *const c_char,
+    ) -> *mut MCSubtargetInfo;
+
+    pub(crate) fn LLVMRustMCSubtargetInfoHasFeature(
+        MCInfo: &MCSubtargetInfo,
+        Feature: *const c_char,
+    ) -> bool;
+
+    pub(crate) fn LLVMRustDisposeMCSubtargetInfo(MCInfo: ptr::NonNull<MCSubtargetInfo>);
 
     pub(crate) fn LLVMRustAddLibraryInfo<'a>(
         T: &TargetMachine,

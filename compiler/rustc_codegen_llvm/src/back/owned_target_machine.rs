@@ -38,7 +38,7 @@ impl OwnedTargetMachine {
         use_wasm_eh: bool,
         large_data_threshold: u64,
     ) -> Result<Self, LlvmError<'static>> {
-        // SAFETY: llvm::LLVMRustCreateTargetMachine copies pointed to data
+        // SAFETY: llvm::LLVMRustCreateTargetMachine copies pointed-to data.
         let tm_ptr = unsafe {
             llvm::LLVMRustCreateTargetMachine(
                 triple.as_ptr(),
