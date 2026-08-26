@@ -201,7 +201,8 @@ impl Docs {
 
     fn extend_with_doc_comment(&mut self, comment: ast::Comment, indent: &mut usize) {
         let Some((doc, offset)) = comment.doc_comment() else { return };
-        self.extend_with_doc_str(doc, comment.syntax().text_range().start() + offset, indent);
+        let offset = comment.syntax().text_range().start() + offset;
+        self.extend_with_doc_str(doc, offset, indent, comment.kind().shape);
     }
 
     fn extend_with_doc_attr(&mut self, value: ast::String, indent: &mut usize) {
@@ -209,7 +210,9 @@ impl Docs {
         let value_offset = value_offset.start();
         let Ok(value) = value.value() else { return };
         // FIXME: Handle source maps for escaped text.
-        self.extend_with_doc_str(&value, value_offset, indent);
+        //
+        // rustc passes `CommentKind::Line` for desugared `#[doc = "..."]` attributes.
+        self.extend_with_doc_str(&value, value_offset, indent, ast::CommentShape::Line);
     }
 
     pub(crate) fn extend_with_doc_str(
@@ -217,30 +220,94 @@ impl Docs {
         doc: &str,
         offset_in_ast: TextSize,
         indent: &mut usize,
+        shape: ast::CommentShape,
     ) {
-        self.push_doc_lines(doc, Some(offset_in_ast), indent);
+        self.push_doc_lines(doc, Some(offset_in_ast), indent, shape);
     }
 
     fn extend_with_unmapped_doc_str(&mut self, doc: &str, indent: &mut usize) {
-        self.push_doc_lines(doc, None, indent);
+        // Macro-expanded doc strings are desugared, so pass `CommentShape::Line` matching
+        // rustc's `CommentKind::Line`.
+        self.push_doc_lines(doc, None, indent, ast::CommentShape::Line);
     }
 
-    fn push_doc_lines(&mut self, doc: &str, mut ast_offset: Option<TextSize>, indent: &mut usize) {
-        for line in doc.split('\n') {
-            self.docs_source_map
-                .push(DocsSourceMapLine { string_offset: TextSize::of(&self.docs), ast_offset });
-            if let Some(ref mut offset) = ast_offset {
-                *offset += TextSize::of(line) + TextSize::of("\n");
-            }
-
-            let line = line.trim_end();
-            if let Some(line_indent) = line.chars().position(|ch| !ch.is_whitespace()) {
-                // Empty lines are handled because `position()` returns `None` for them.
-                *indent = std::cmp::min(*indent, line_indent);
-            }
-            self.docs.push_str(line);
-            self.docs.push('\n');
+    /// Beautifies `doc` and appends the result to `self.docs`, one line at a time via
+    /// [`Docs::push_doc_line`]. Mirrors rustc's [`beautify_doc_string`], delegating to
+    /// [`get_vertical_trim`] and [`get_horizontal_trim`] for the multi-line case.
+    ///
+    /// Individual `///` line comments always reach us as a single-line `doc`, so the
+    /// `!doc.contains('\n')` fast path fires and the multi-line logic never runs on them.
+    /// Desugared `#[doc = "..."]` strings and macro-expanded docs also route through here
+    /// with `shape = CommentShape::Line`, matching rustc.
+    ///
+    /// Unlike rustc's version, which joins the beautified lines into a new interned `Symbol`,
+    /// this port pushes each line individually via [`Docs::push_doc_line`] and pairs it with
+    /// its byte offset relative to `doc`'s start so the source-map records accurate per-line
+    /// offsets.
+    ///
+    /// [`beautify_doc_string`]: https://github.com/rust-lang/rust/blob/16a623ad672a92409b5c04beb303583c6cf72a7e/compiler/rustc_ast/src/util/comments.rs#L37
+    fn push_doc_lines(
+        &mut self,
+        doc: &str,
+        ast_offset: Option<TextSize>,
+        indent: &mut usize,
+        shape: ast::CommentShape,
+    ) {
+        if !doc.contains('\n') {
+            self.push_doc_line(doc, ast_offset, indent);
+            return;
         }
+
+        let doc_start = doc.as_ptr() as usize;
+        let mut lines: Vec<(&str, TextSize)> = doc
+            .lines()
+            .map(|line| {
+                let offset = TextSize::new((line.as_ptr() as usize - doc_start) as u32);
+                (line, offset)
+            })
+            .collect();
+
+        let raw_lines: Vec<&str> = lines.iter().map(|(l, _)| *l).collect();
+        let lines = match get_vertical_trim(&raw_lines) {
+            Some((i, j)) => &mut lines[i..j],
+            None => &mut lines[..],
+        };
+
+        let raw_lines: Vec<&str> = lines.iter().map(|(l, _)| *l).collect();
+        if let Some(horizontal) = get_horizontal_trim(&raw_lines, shape) {
+            let horizontal_len = TextSize::of(horizontal.as_str());
+            // Strip `"[ \t]*\*"` from each line where present, exactly like rustc.
+            for (line, line_offset) in lines.iter_mut() {
+                if let Some(rest) = line.strip_prefix(horizontal.as_str()) {
+                    *line = rest;
+                    *line_offset += horizontal_len;
+                    if shape == ast::CommentShape::Block
+                        && (*line == "*" || line.starts_with("* ") || line.starts_with("**"))
+                    {
+                        *line = &line[1..];
+                        *line_offset += TextSize::of("*");
+                    }
+                }
+            }
+        }
+
+        for (line, line_offset) in lines.iter().copied() {
+            self.push_doc_line(line, ast_offset.map(|it| it + line_offset), indent);
+        }
+    }
+
+    /// Appends a single beautified line to `self.docs` and records its source-map row.
+    fn push_doc_line(&mut self, line: &str, ast_offset: Option<TextSize>, indent: &mut usize) {
+        self.docs_source_map
+            .push(DocsSourceMapLine { string_offset: TextSize::of(&self.docs), ast_offset });
+
+        let line = line.trim_end();
+        if let Some(line_indent) = line.chars().position(|ch| !ch.is_whitespace()) {
+            // Empty lines are handled because `position()` returns `None` for them.
+            *indent = std::cmp::min(*indent, line_indent);
+        }
+        self.docs.push_str(line);
+        self.docs.push('\n');
     }
 
     fn remove_indent(&mut self, indent: usize, start_source_map_index: usize) {
@@ -345,6 +412,79 @@ impl Docs {
         docs_source_map.shrink_to_fit();
         macro_calls.shrink_to_fit();
     }
+}
+
+/// Copied verbatim from rustc's [`beautify_doc_string`], modulo `CommentKind`/`CommentShape`
+/// renaming.
+///
+/// [`beautify_doc_string`]: https://github.com/rust-lang/rust/blob/16a623ad672a92409b5c04beb303583c6cf72a7e/compiler/rustc_ast/src/util/comments.rs#L38
+fn get_vertical_trim(lines: &[&str]) -> Option<(usize, usize)> {
+    let mut i = 0;
+    let mut j = lines.len();
+    // first line of all-stars should be omitted
+    if lines.first().is_some_and(|line| line.chars().all(|c| c == '*')) {
+        i += 1;
+    }
+
+    // like the first, a last line of all stars should be omitted
+    if j > i && !lines[j - 1].is_empty() && lines[j - 1].chars().all(|c| c == '*') {
+        j -= 1;
+    }
+
+    if i != 0 || j != lines.len() { Some((i, j)) } else { None }
+}
+
+/// Copied verbatim from rustc's [`beautify_doc_string`], modulo `CommentKind`/`CommentShape`
+/// renaming and returning `String` rather than interning to `Symbol`.
+///
+/// [`beautify_doc_string`]: https://github.com/rust-lang/rust/blob/16a623ad672a92409b5c04beb303583c6cf72a7e/compiler/rustc_ast/src/util/comments.rs#L54
+fn get_horizontal_trim(lines: &[&str], kind: ast::CommentShape) -> Option<String> {
+    let mut i = usize::MAX;
+    let mut first = true;
+
+    // In case we have doc comments like `/**` or `/*!`, we want to remove stars if they are
+    // present. However, we first need to strip the empty lines so they don't get in the middle
+    // when we try to compute the "horizontal trim".
+    let lines = match kind {
+        ast::CommentShape::Block => {
+            // Whatever happens, we skip the first line.
+            let mut i = lines
+                .first()
+                .map(|l| if l.trim_start().starts_with('*') { 0 } else { 1 })
+                .unwrap_or(0);
+            let mut j = lines.len();
+
+            while i < j && lines[i].trim().is_empty() {
+                i += 1;
+            }
+            while j > i && lines[j - 1].trim().is_empty() {
+                j -= 1;
+            }
+            &lines[i..j]
+        }
+        ast::CommentShape::Line => lines,
+    };
+
+    for line in lines {
+        for (j, c) in line.chars().enumerate() {
+            if j > i || !"* \t".contains(c) {
+                return None;
+            }
+            if c == '*' {
+                if first {
+                    i = j;
+                    first = false;
+                } else if i != j {
+                    return None;
+                }
+                break;
+            }
+        }
+        if i >= line.len() {
+            return None;
+        }
+    }
+    Some(lines.first()?[..i].to_string())
 }
 
 struct DocMacroExpander<'db> {
@@ -587,6 +727,7 @@ pub(crate) fn extract_docs<'a, 'db>(
 mod tests {
     use expect_test::expect;
     use hir_expand::InFile;
+    use syntax::{AstToken, ast};
     use test_fixture::WithFixture;
     use thin_vec::ThinVec;
     use tt::{TextRange, TextSize};
@@ -613,7 +754,7 @@ mod tests {
         let outer = " foo\n\tbar  baz";
         let mut ast_offset = TextSize::new(123);
         for line in outer.split('\n') {
-            docs.extend_with_doc_str(line, ast_offset, &mut indent);
+            docs.extend_with_doc_str(line, ast_offset, &mut indent, ast::CommentShape::Line);
             ast_offset += TextSize::of(line) + TextSize::of("\n");
         }
 
@@ -621,7 +762,7 @@ mod tests {
         ast_offset += TextSize::new(123);
         let inner = " bar \n baz";
         for line in inner.split('\n') {
-            docs.extend_with_doc_str(line, ast_offset, &mut indent);
+            docs.extend_with_doc_str(line, ast_offset, &mut indent, ast::CommentShape::Line);
             ast_offset += TextSize::of(line) + TextSize::of("\n");
         }
 
@@ -761,5 +902,80 @@ mod tests {
             docs.find_ast_range(range(23, 25)),
             Some((in_file(range(263, 265)), IsInnerDoc::Yes))
         );
+    }
+
+    /// Extracts the docs of the first comment in `source`, running the same normalization as
+    /// [`super::extract_docs`] does for inline docs.
+    fn comment_docs(source: &str) -> Docs {
+        let (_db, file_id) = TestDB::with_single_file("");
+        let comment = syntax::SourceFile::parse(source, span::Edition::CURRENT)
+            .syntax_node()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find_map(ast::Comment::cast)
+            .expect("no comment in the fixture");
+        let mut docs = Docs {
+            docs: String::new(),
+            docs_source_map: Vec::new(),
+            outline_mod: None,
+            inline_file: file_id.into(),
+            prefix_len: TextSize::new(0),
+            inline_inner_docs_start: None,
+            outline_inner_docs_start: None,
+            macro_calls: ThinVec::new(),
+        };
+        let mut indent = usize::MAX;
+        docs.extend_with_doc_comment(comment, &mut indent);
+        docs.remove_indent(indent, 0);
+        docs.remove_last_newline();
+        docs
+    }
+
+    #[test]
+    fn block_doc_comment_stars() {
+        #[track_caller]
+        fn check(source: &str, expect: expect_test::Expect) {
+            expect.assert_eq(&comment_docs(source).docs);
+        }
+
+        // The decoration is stripped, but markdown bullets and `*foo` are content.
+        // `*bar` doesn't start with `* ` / `**`, so rustc's beautifier only strips the
+        // horizontal `[ \t]*` prefix (here a single space) and leaves the leading `*` in
+        // place. That in turn pins the block's minimum indent at 0, so surrounding lines
+        // aren't re-indented.
+        check(
+            "/**\n * foo\n *\n *   * bullet\n *bar\n */",
+            expect![[r#"
+                 foo
+
+                   * bullet
+                *bar
+            "#]],
+        );
+        // Single-line block doc comments are left alone, like rustdoc does.
+        check("/** * item */", expect!["* item"]);
+        // So are blocks without a consistent star column.
+        check(
+            "/**\n * foo\n   * bar\n */",
+            expect![[r#"
+                * foo
+                  * bar
+            "#]],
+        );
+    }
+
+    #[test]
+    fn block_doc_comment_source_map() {
+        let docs = comment_docs("/**\n * foo\n * bar\n */");
+        // `.lines()` (matching rustc) doesn't emit a leading empty entry for the newline
+        // right after `/**`, so the docs body starts at `foo`, not with a blank line.
+        assert_eq!(docs.docs, "foo\nbar\n");
+
+        let range = |start, end| TextRange::new(TextSize::new(start), TextSize::new(end));
+        let in_file = |range| InFile::new(docs.inline_file, range);
+        let mapped = |start, end| docs.find_ast_range(range(start, end));
+        // Both `foo` and `bar` map back past the stripped ` * ` decoration.
+        assert_eq!(mapped(0, 3), Some((in_file(range(7, 10)), IsInnerDoc::No)));
+        assert_eq!(mapped(4, 7), Some((in_file(range(14, 17)), IsInnerDoc::No)));
     }
 }

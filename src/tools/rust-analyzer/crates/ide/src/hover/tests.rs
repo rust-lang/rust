@@ -5086,6 +5086,33 @@ fn foo$0() {}
 }
 
 #[test]
+fn hover_doc_block_style_leading_asterisks() {
+    check(
+        r#"
+/**
+ * Some docs, *not a bullet*.
+ */
+fn foo$0() {}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn foo()
+            ```
+
+            ---
+
+            Some docs, *not a bullet*.
+        "#]],
+    );
+}
+
+#[test]
 fn hover_comments_dont_highlight_parent() {
     cov_mark::check!(no_highlight_on_comment_hover);
     check_hover_no_result(
