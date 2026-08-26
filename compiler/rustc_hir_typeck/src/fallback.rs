@@ -208,11 +208,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .collect();
 
         {
-            // Construct a coercion graph where an edge `A -> B` indicates
-            // a type variable is that is coerced
-            let coercion_graph = self.create_coercion_graph();
-
             if !diverging_root_vids.is_empty() {
+                // Construct a coercion graph where an edge `A -> B` indicates
+                // a type variable is that is coerced
+                let coercion_graph = self.create_coercion_graph();
+
                 let unsafe_infer_vars = compute_unsafe_infer_vars(self, self.body_def_id);
 
                 for &root_vid in &diverging_root_vids {
