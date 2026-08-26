@@ -5,7 +5,6 @@ use std::str;
 
 use rustc_abi::Align;
 use rustc_ast::attr::version::RustcVersion;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::{ColorConfig, TerminalUrl};
@@ -353,9 +352,6 @@ top_level_options!(
         sysroot: Sysroot [UNTRACKED],
 
         target_triple: TargetTuple [TRACKED],
-
-        /// Effective logical environment used by `env!`/`option_env!` macros
-        logical_env: FxIndexMap<String, String> [TRACKED],
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],

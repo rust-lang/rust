@@ -1910,7 +1910,7 @@ pub mod tracked {
     #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
     pub fn env_var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
-        let value = BridgeMethods::injected_env_var(key).map_or_else(|| env::var(key), Ok);
+        let value = env::var(key);
         BridgeMethods::track_env_var(key, value.as_deref().ok());
         value
     }
