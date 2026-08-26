@@ -1,4 +1,3 @@
-extern crate compiler_builtins;
 use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
 
 const WORD_SIZE: usize = core::mem::size_of::<usize>();

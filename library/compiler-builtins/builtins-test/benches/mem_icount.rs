@@ -2,56 +2,10 @@
 //! is stable enough to be tested in CI.
 
 use std::hint::black_box;
-use std::{ops, slice};
 
+use builtins_test::mem::{AlignedSlice, MAX_TESTED_ALIGN, MEG1};
 use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
 use gungraun::{library_benchmark, library_benchmark_group, main};
-
-const PAGE_SIZE: usize = 0x1000; // 4 kiB
-const MAX_ALIGN: usize = 512; // assume we may use avx512 operations one day
-const MEG1: usize = 1 << 20; // 1 MiB
-
-#[derive(Clone)]
-#[repr(C, align(0x1000))]
-struct Page([u8; PAGE_SIZE]);
-
-/// A buffer that is page-aligned by default, with an optional offset to create a
-/// misalignment.
-struct AlignedSlice {
-    buf: Box<[Page]>,
-    len: usize,
-    offset: usize,
-}
-
-impl AlignedSlice {
-    /// Allocate a slice aligned to ALIGN with at least `len` items, with `offset` from
-    /// page alignment.
-    fn new_zeroed(len: usize, offset: usize) -> Self {
-        assert!(offset < PAGE_SIZE);
-        let total_len = len + offset;
-        let items = (total_len / PAGE_SIZE) + if total_len % PAGE_SIZE > 0 { 1 } else { 0 };
-        let buf = vec![Page([0u8; PAGE_SIZE]); items].into_boxed_slice();
-        AlignedSlice { buf, len, offset }
-    }
-}
-
-impl ops::Deref for AlignedSlice {
-    type Target = [u8];
-    fn deref(&self) -> &Self::Target {
-        unsafe { slice::from_raw_parts(self.buf.as_ptr().cast::<u8>().add(self.offset), self.len) }
-    }
-}
-
-impl ops::DerefMut for AlignedSlice {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe {
-            slice::from_raw_parts_mut(
-                self.buf.as_mut_ptr().cast::<u8>().add(self.offset),
-                self.len,
-            )
-        }
-    }
-}
 
 mod mcpy {
     use super::*;
@@ -265,8 +219,11 @@ mod mmove {
         match spread {
             // Note that this test doesn't make sense for lengths less than len=128
             Aligned => {
-                assert!(len > MAX_ALIGN, "aligned memset would have no overlap");
-                MAX_ALIGN
+                assert!(
+                    len > MAX_TESTED_ALIGN,
+                    "aligned memset would have no overlap"
+                );
+                MAX_TESTED_ALIGN
             }
             Small => 1,
             Medium => (len / 2) + 1, // add 1 so all are misaligned
