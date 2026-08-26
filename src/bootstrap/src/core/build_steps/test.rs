@@ -1021,7 +1021,12 @@ impl CommandLineStep for StdarchVerify {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(StdarchVerify);
+        let builder = run.builder;
+        if builder.remote_tested(run.target) {
+            builder.info("remote testing is not supported by stdarch-verify. skipping");
+            return;
+        }
+        builder.ensure(StdarchVerify);
     }
 
     fn run(self, builder: &Builder<'_>) {
