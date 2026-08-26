@@ -2843,8 +2843,11 @@ written to standard error output)"),
     self_profile_events: Option<Vec<String>> = (None, parse_opt_comma_list, [UNTRACKED],
         "specify the events recorded by the self profiler;
         for example: `-Z self-profile-events=default,query-keys`
-        all options: none, all, default, generic-activity, query-provider, query-cache-hit
-                     query-blocked, incr-cache-load, incr-result-hashing, query-keys, function-args, args, llvm, artifact-sizes"),
+        all option groups: none, all, default, args
+          `default` contains: generic-activity, query-provider, query-cache-hit-count, \
+                            query-blocked, incr-cache-load, incr-result-hashing, artifact-sizes
+             `args` contains: query-keys, function-args
+        remaining (ungrouped) options: query-cache-hit, llvm"),
     share_generics: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make the current crate share its generic instantiations"),
     shell_argfiles: bool = (false, parse_bool, [UNTRACKED],
