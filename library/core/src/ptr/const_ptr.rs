@@ -1587,7 +1587,12 @@ impl<T, const N: usize> *const [T; N] {
     }
 }
 
-/// Pointer equality is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
+/// Pointers to [`Sized`] types are compared by their addresses, as produced by the
+/// [`<*const T>::addr`](pointer::addr) method.
+/// Pointers to [dynamically sized types] additionally have their metadata compared.
+/// See [`core::ptr::eq`] for more information about metadata comparisons.
+///
+/// [dynamically sized types]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
@@ -1609,7 +1614,12 @@ impl<T: PointeeSized> PartialEq for *const T {
 )]
 impl<T: PointeeSized> Eq for *const T {}
 
-/// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
+/// Pointers to [`Sized`] types are compared by their addresses, as produced by the
+/// [`<*const T>::addr`](pointer::addr) method.
+/// Pointers to [dynamically sized types] additionally have their metadata compared.
+/// See [`core::ptr::eq`] for more information about metadata comparisons.
+///
+/// [dynamically sized types]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
@@ -1629,7 +1639,12 @@ impl<T: PointeeSized> Ord for *const T {
     }
 }
 
-/// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
+/// Pointers to [`Sized`] types are compared by their addresses, as produced by the
+/// [`<*const T>::addr`](pointer::addr) method.
+/// Pointers to [dynamically sized types] additionally have their metadata compared.
+/// See [`core::ptr::eq`] for more information about metadata comparisons.
+///
+/// [dynamically sized types]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
