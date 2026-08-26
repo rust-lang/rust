@@ -143,6 +143,9 @@ pub enum Command {
     /// The `rust-version` file is used to determine the commit that will be intsalled.
     /// `rustup-toolchain-install-master` must be installed for this to work.
     Toolchain {
+        /// Overwrite the name the toolchain will have in `rustup`.
+        #[arg(long)]
+        name: Option<String>,
         /// Overwrite the commit to install.
         #[arg(long)]
         commit: Option<String>,

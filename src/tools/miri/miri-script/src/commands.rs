@@ -75,7 +75,7 @@ impl Command {
 
         // `toolchain` goes first as it could affect the others
         if config.auto.toolchain {
-            Self::toolchain(None, vec![])?;
+            Self::toolchain(None, None, vec![])?;
         }
         if config.auto.fmt {
             Self::fmt(vec![])?;
@@ -116,12 +116,18 @@ impl Command {
             Command::Clippy { features, flags } => Self::clippy(features, flags),
             Command::Bench { target, no_install, save_baseline, load_baseline, benches } =>
                 Self::bench(target, no_install, save_baseline, load_baseline, benches),
-            Command::Toolchain { commit, flags } => Self::toolchain(commit, flags),
+            Command::Toolchain { name, commit, flags } => Self::toolchain(name, commit, flags),
             Command::Squash => Self::squash(),
         }
     }
 
-    fn toolchain(new_commit: Option<String>, flags: Vec<String>) -> Result<()> {
+    fn toolchain(
+        name: Option<String>,
+        new_commit: Option<String>,
+        flags: Vec<String>,
+    ) -> Result<()> {
+        let name = name.as_deref().unwrap_or("miri");
+
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let new_commit = match new_commit {
@@ -129,7 +135,7 @@ impl Command {
             None => sh.read_file("rust-version")?.trim().to_owned(),
         };
         let current_commit = {
-            let rustc_info = cmd!(sh, "rustc +miri --version -v").read();
+            let rustc_info = cmd!(sh, "rustc +{name} --version -v").read();
             if let Ok(rustc_info) = rustc_info {
                 let metadata = rustc_version::version_meta_for(&rustc_info)?;
                 Some(
@@ -143,18 +149,20 @@ impl Command {
         };
         // Check if we already are at that commit.
         if current_commit.as_ref() == Some(&new_commit) {
-            if active_toolchain()? != "miri" {
-                cmd!(sh, "rustup override set miri").run()?;
+            // The toolchain is already at the right version. Make sure it is active in `miri_dir`.
+            // Ignore errors from `active_toolchain`, the active toolchain might be uninstalled.
+            if active_toolchain().ok().is_none_or(|toolchain| toolchain != name) {
+                cmd!(sh, "rustup override set {name}").run()?;
             }
             return Ok(());
         }
         // Install and setup new toolchain.
-        cmd!(sh, "rustup toolchain uninstall miri").run()?;
+        cmd!(sh, "rustup toolchain uninstall {name}").run()?;
 
-        cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}")
+        cmd!(sh, "rustup-toolchain-install-master -n {name} -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}")
             .run()
             .context("Failed to run rustup-toolchain-install-master. If it is not installed, run 'cargo install --locked rustup-toolchain-install-master'.")?;
-        cmd!(sh, "rustup override set miri").run()?;
+        cmd!(sh, "rustup override set {name}").run()?;
         // Cleanup.
         cmd!(sh, "cargo clean").run()?;
         Ok(())
