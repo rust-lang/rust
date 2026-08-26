@@ -725,7 +725,7 @@ struct Patch<'tcx> {
 }
 
 impl<'tcx> Patch<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
     }
 
@@ -742,7 +742,7 @@ struct Collector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Collector<'a, 'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: &'a Map<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: &'a Map<'tcx>) -> Self {
         Self {
             patch: Patch::new(tcx),
             local_decls: &body.local_decls,
