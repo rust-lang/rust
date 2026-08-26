@@ -24,7 +24,7 @@ use rustc_type_ir::{
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
 
-use super::has_only_region_constraints_in_caller;
+use super::has_only_region_constraints;
 use crate::canonical::{
     canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
     response_no_constraints_raw,
@@ -542,11 +542,6 @@ where
             }
         }
 
-        let initial_opaque_types_storage_num_entries = delegate.opaque_types_storage_num_entries();
-        if cfg!(debug_assertions) && delegate.typing_mode_raw().is_erased_not_coherence() {
-            assert!(delegate.clone_opaque_types_lookup_table().is_empty());
-        }
-
         for chunk in input.hidden_types_of_opaques_in_body.as_slice().chunk_by(|a, b| a.0 == b.0) {
             debug_assert!(chunk.iter().filter(|(_hidden_ty, bound)| bound.is_none()).count() <= 1);
 
@@ -560,6 +555,11 @@ where
                     chunk.iter().flat_map(|(_, bound)| *bound),
                 );
             }
+        }
+
+        let initial_opaque_types_storage_num_entries = delegate.opaque_types_storage_num_entries();
+        if cfg!(debug_assertions) && delegate.typing_mode_raw().is_erased_not_coherence() {
+            assert!(delegate.clone_opaque_types_lookup_table().is_empty());
         }
 
         let mut ecx = EvalCtxt {
@@ -682,9 +682,10 @@ where
         let tracing_span = tracing::span!(
             Level::DEBUG,
             "evaluate_goal_raw in typing mode",
-            "{:?} opaques={:?}",
+            "{:?} opaques={:?}, hidden_types_of_opaques={:?}",
             typing_mode,
-            opaque_types
+            opaque_types,
+            hidden_types_of_opaques,
         )
         .entered();
 
@@ -810,11 +811,8 @@ where
 
         drop(tracing_span);
 
-        let has_changed = if !self.response_has_only_region_constraints_in_caller(response) {
-            HasChanged::Yes
-        } else {
-            HasChanged::No
-        };
+        let has_changed =
+            if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
@@ -891,16 +889,17 @@ where
             })
             .collect();
 
+        let num_opaques_in_storage =
+            canonical_goal.canonical.value.predefined_opaques_in_body.len()
+                + canonical_goal.canonical.value.hidden_types_of_opaques_in_body.len();
+
         GoalStalledOn {
             stalled_vars,
             sub_roots,
             stalled_maybe_info: maybe_info,
             opaques: GoalStalledOnOpaques::Yes {
-                num_opaques_in_storage: canonical_goal
-                    .canonical
-                    .value
-                    .predefined_opaques_in_body
-                    .len(),
+                // FIXME: Need to change the field name
+                num_opaques_in_storage,
                 previously_succeeded_in_erased,
             },
         }
@@ -1766,13 +1765,6 @@ where
             Ok((self.resolve_vars_if_possible(infer_term), normalization_was_ambiguous))
         });
         value.try_fold_with(&mut folder)
-    }
-
-    fn response_has_only_region_constraints_in_caller(
-        &self,
-        response: ty::Canonical<I, Response<I>>,
-    ) -> bool {
-        has_only_region_constraints_in_caller(self.delegate, response)
     }
 }
 

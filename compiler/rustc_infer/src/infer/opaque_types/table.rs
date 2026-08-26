@@ -4,7 +4,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::indexmap::map::Entry;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
-use rustc_middle::ty::{self as ty, OpaqueTypeKey, ProvisionalHiddenType, Ty};
+use rustc_middle::ty::{self as ty, OpaqueTypeKey, ProvisionalHiddenType, Ty, TyVid};
 use tracing::instrument;
 
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};
@@ -29,7 +29,23 @@ pub struct OpaqueTypeStorageEntries<'tcx> {
 
 impl rustc_type_ir::inherent::OpaqueTypeStorageEntries for OpaqueTypeStorageEntries<'_> {
     fn needs_reevaluation(self, canonicalized: usize) -> bool {
-        self.opaque_types != canonicalized
+        let OpaqueTypeStorageEntries {
+            opaque_types,
+            duplicate_entries: _,
+            ref hidden_types_of_opaques,
+        } = self;
+
+        opaque_types
+            + hidden_types_of_opaques
+                .iter()
+                .map(|(_, &len)| {
+                    // FIXME: We flatten this in the call site, with `None` for empty bounds
+                    // and so this should be `1` for `0`. Should fix having those two representations
+                    // (the flattened one and the keyed one).
+                    len.max(1)
+                })
+                .sum::<usize>()
+            != canonicalized
     }
 }
 
@@ -171,6 +187,12 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         let OpaqueTypeStorage { opaque_types: _, duplicate_entries: _, hidden_types_of_opaques } =
             self;
         hidden_types_of_opaques.iter().map(|(hidden, bounds)| (*hidden, bounds))
+    }
+
+    pub(super) fn has_hidden_type_of_opaque_for_exact_vid(&self, vid: TyVid) -> bool {
+        self.hidden_types_of_opaques
+            .keys()
+            .any(|ty| matches!(*ty.kind(), ty::Infer(ty::TyVar(ty_vid)) if ty_vid == vid))
     }
 
     #[inline]

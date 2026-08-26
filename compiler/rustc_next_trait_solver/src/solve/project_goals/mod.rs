@@ -51,13 +51,16 @@ where
             goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });
 
         // FIXME: Explain this hack. Why this is needed and why should be done here
-        if unconstrained_term.as_type().is_some() && alias.self_ty().is_ty_var() {
+        if self.typing_mode().should_add_hidden_types_of_opaques()
+            && unconstrained_term.as_type().is_some()
+            && alias.self_ty().is_ty_var()
+        {
             let hidden_bounds =
                 self.hidden_types_of_opaques_modulo_sub_unification(alias.self_ty());
             if let Some(unmentioned) = ty::OpaqueHiddenTyBound::opt_unmentioned_projection(
                 self.cx(),
                 hidden_bounds.iter().flat_map(|(_, bounds)| bounds).copied(),
-                ty::ProjectionClause { projection_term: alias, term: unconstrained_term },
+                goal.predicate,
             ) {
                 self.add_hidden_type_of_opaque(alias.self_ty(), Some(unmentioned));
             }

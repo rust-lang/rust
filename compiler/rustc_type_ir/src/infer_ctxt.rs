@@ -270,6 +270,23 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             | TypingMode::Codegen => false,
         }
     }
+
+    /// This is `true` for `Typeck` and `false otherwise` as we take into account the
+    /// item self bounds for `hidden_types_of_opaques` for that `TypingMode` only.
+    ///
+    /// See also the documentation on [`TypingMode`] about exhaustive matching.
+    pub fn should_add_hidden_types_of_opaques(&self) -> bool {
+        match self {
+            TypingMode::Typeck { .. } => true,
+            TypingMode::PostTypeckUntilBorrowck { .. } => false,
+            TypingMode::Coherence
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::Reflection
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::ErasedNotCoherence(_) => false,
+        }
+    }
 }
 
 impl<I: Interner> TypingMode<I, MayBeErased> {

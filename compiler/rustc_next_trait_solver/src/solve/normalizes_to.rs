@@ -1108,7 +1108,9 @@ where
                 // `ty::OpaqueHiddenTyBound` of an opaque (or another assoc ty on it), otherwise
                 // it might make blaket impl candidate inapplicable.
                 // See `tests/ui/impl-trait/non-defining-uses/use-blanket-impl.rs` for such case.
-                if let ty::AliasTermKind::ProjectionTy { def_id } = alias.kind {
+                if ecx.typing_mode().should_add_hidden_types_of_opaques()
+                    && let ty::AliasTermKind::ProjectionTy { def_id } = alias.kind
+                {
                     ecx.add_hidden_type_of_opaque(
                         term.expect_ty(),
                         ty::OpaqueHiddenTyBound::iter_self_bounds_for_alias_ty(

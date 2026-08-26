@@ -414,7 +414,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         hidden_ty: Ty<'tcx>,
         bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<'tcx>>,
     ) {
-        self.inner.borrow_mut().opaque_types().add_hidden_type_of_opaque(hidden_ty, bounds);
+        self.add_hidden_type_of_opaque_in_storage(hidden_ty, bounds);
     }
 
     fn reset_opaque_types(&self) {
