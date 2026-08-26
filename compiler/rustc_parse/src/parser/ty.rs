@@ -775,7 +775,7 @@ impl<'a> Parser<'a> {
     /// PinAndMut = "pin" MutOrConst | "mut"
     /// ```
     pub(crate) fn parse_pin_and_mut(&mut self) -> (Pinnedness, Mutability) {
-        if self.token.is_ident_named(sym::pin) && self.look_ahead(1, Token::is_mutability) {
+        if self.token.is_keyword(kw::Pin) && self.look_ahead(1, Token::is_mutability) {
             self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
             assert!(self.eat_keyword(exp!(Pin)));
             let mutbl = self.parse_mut_or_const().unwrap();
