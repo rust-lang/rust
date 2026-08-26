@@ -147,8 +147,7 @@ fn eii_(
 
     let attrs_from_decl =
         filter_attrs_for_multiple_eii_attr(ecx, attrs, eii_attr_span, &meta_item.path);
-    let (macro_attrs, foreign_item_attrs, default_func_attrs) =
-        split_attrs(ecx, item_span, attrs_from_decl);
+    let (macro_attrs, foreign_item_attrs) = split_attrs(ecx, item_span, attrs_from_decl);
 
     let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, meta_item) else {
         // we don't need to wrap in Annotatable::Stmt conditionally since
@@ -166,7 +165,6 @@ fn eii_(
         eii_attr_span,
         item_span,
         foreign_item_name,
-        default_func_attrs,
     ) {
         module_items.push(default_impl);
     }
@@ -197,15 +195,12 @@ fn split_attrs(
     ecx: &mut ExtCtxt<'_>,
     span: Span,
     attrs: ThinVec<Attribute>,
-) -> (ThinVec<Attribute>, ThinVec<Attribute>, ThinVec<Attribute>) {
+) -> (ThinVec<Attribute>, ThinVec<Attribute>) {
     let mut macro_attributes = ThinVec::new();
     let mut foreign_item_attributes = ThinVec::new();
-    let mut default_attributes = ThinVec::new();
 
     for attr in attrs {
         match attr.name() {
-            // Inline only matters for the default function being inlined into callsites
-            Some(sym::inline) => default_attributes.push(attr),
             // If an eii is marked a lang item, that's because we want to call its declaration, so
             // mark the foreign item as the lang item
             Some(sym::lang) => foreign_item_attributes.push(attr),
@@ -240,7 +235,7 @@ fn split_attrs(
         }
     }
 
-    (macro_attributes, foreign_item_attributes, default_attributes)
+    (macro_attributes, foreign_item_attributes)
 }
 
 /// Decide on the name of the macro that can be used to implement the EII.
@@ -298,8 +293,9 @@ fn generate_default_impl(
     eii_attr_span: Span,
     item_span: Span,
     foreign_item_name: Ident,
-    attrs: ThinVec<Attribute>,
 ) -> Option<Box<ast::Item>> {
+    let attrs = ThinVec::new();
+
     match item_kind {
         ItemKind::Fn(func) => {
             func.body.as_ref()?;
