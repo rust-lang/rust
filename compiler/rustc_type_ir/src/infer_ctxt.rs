@@ -271,7 +271,7 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
         }
     }
 
-    /// This is `true` for `Typeck` and `false otherwise` as we take into account the
+    /// This is `true` for `Typeck` and `false` otherwise as we take into account the
     /// item self bounds for `hidden_types_of_opaques` for that `TypingMode` only.
     ///
     /// See also the documentation on [`TypingMode`] about exhaustive matching.

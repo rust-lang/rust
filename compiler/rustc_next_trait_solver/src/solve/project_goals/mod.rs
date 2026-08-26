@@ -51,6 +51,9 @@ where
             goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });
 
         // FIXME: Explain this hack. Why this is needed and why should be done here
+        // FIXME: Maybe we need probing for whole this call as the following lines
+        // directly add `hidden_types_of_opaques` to the context without probing or
+        // instantiating the response.
         if self.typing_mode().should_add_hidden_types_of_opaques()
             && unconstrained_term.as_type().is_some()
             && alias.self_ty().is_ty_var()
