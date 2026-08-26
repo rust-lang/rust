@@ -21,6 +21,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 /// Query implementation for [`TyCtxt::is_eligible_for_coverage`].
+#[allow(clippy::needless_bool)]
 fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let def_kind = tcx.def_kind(def_id);
 
