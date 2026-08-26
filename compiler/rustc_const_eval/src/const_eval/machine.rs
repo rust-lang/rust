@@ -629,6 +629,20 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_discriminant(variant_index, dest)?;
             }
 
+            sym::type_id_element_ty => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let variant_index = if let ty::Array(ty, _) | ty::Slice(ty) = ty.kind() {
+                    let (variant_idx, variant_place) =
+                        ecx.project_downcast_named(dest, sym::Some)?;
+                    let type_id_field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    ecx.write_type_id(*ty, &type_id_field_place)?;
+                    variant_idx
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+                ecx.write_discriminant(variant_index, dest)?;
+            }
+
             sym::type_id_fields => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_idx = ecx.read_target_usize(&args[1])? as usize;

@@ -27,9 +27,9 @@ fn test_arrays() {
 
 #[test]
 fn test_slices() {
-    match const { Type::of::<[usize]>() }.kind {
-        TypeKind::Slice(slice) => assert_eq!(slice.element_ty, TypeId::of::<usize>()),
-        _ => unreachable!(),
+    assert!(matches!(Type::of::<[usize]>().kind, TypeKind::Slice));
+    const {
+        assert!(TypeId::of::<[usize]>().element_ty() == Some(TypeId::of::<usize>()));
     }
 }
 

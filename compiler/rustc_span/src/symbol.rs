@@ -2184,6 +2184,7 @@ symbols! {
         type_ascription,
         type_changing_struct_update,
         type_id,
+        type_id_element_ty,
         type_id_eq,
         type_id_field_representing_type,
         type_id_fields,

@@ -80,7 +80,7 @@ pub enum TypeKind {
     /// Arrays.
     Array(Array),
     /// Slices.
-    Slice(Slice),
+    Slice,
     /// Dynamic Traits.
     DynTrait(DynTrait),
     /// Structs.
@@ -118,15 +118,6 @@ pub struct Array {
     pub element_ty: TypeId,
     /// The length of the array.
     pub len: usize,
-}
-
-/// Compile-time type information about slices.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Slice {
-    /// The type of each element in the slice.
-    pub element_ty: TypeId,
 }
 
 /// Compile-time type information about dynamic traits.
@@ -301,6 +292,25 @@ impl TypeId {
     #[rustc_comptime]
     pub fn is_signed(self) -> bool {
         intrinsics::type_id_is_signed(self)
+    }
+
+    /// When called on a `TypeId` representing an array or slice this returns the type of each
+    /// element otherwise this returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<[u32; 16]>().element_ty() }, Some(TypeId::of::<u32>()));
+    /// assert_eq!(const { TypeId::of::<u8>().element_ty() }, None); // not an array or slice
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn element_ty(self) -> Option<TypeId> {
+        intrinsics::type_id_element_ty(self)
     }
 
     /// Returns the size of the type represented by this `TypeId`. `None` if it is unsized.
