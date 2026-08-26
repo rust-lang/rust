@@ -2838,7 +2838,7 @@ type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
 /// "speculative resolution", to a parallel algorithm, which requires 2 things to change:
 ///     - A `&Resolver`, because cannot mutate any fields in it.
 ///     - Some fields with interior mutability may not be changed during import resolution, as
-///       this can conflict with other in process resolutions (so locks are not the solution).
+///       this can conflict with other in progress resolutions (so locks are not the solution).
 ///       But these fields do require interior mutability during the other phases.
 ///
 /// Because refactoring the entire name resolution code to be split into "immutable" and "mutable"
@@ -2864,11 +2864,6 @@ mod ref_mut {
         Ref(&'a T),
         Mut(&'a mut T),
     }
-
-    // SAFETY: a shared `RefOrMut` only ever yields `&T`, so letting multiple threads
-    // read through it concurrently is just ordinary shared-reference aliasing; no
-    // thread can obtain `&mut T` through it, so there is no data race to worry about.
-    unsafe impl<'a, T: DynSync> DynSync for RefOrMut<'a, T> {}
 
     impl<'a, T> Deref for RefOrMut<'a, T> {
         type Target = T;
