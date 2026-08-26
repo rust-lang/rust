@@ -1,6 +1,10 @@
-//@ edition: 2015
+// Ensure that we parse `'r#lt` as three tokens pre Rust 2021.
+// Moreover, make sure we emit the relevant migration lint.
+
+//@ edition: 2015..2021
 //@ check-pass
-// Ensure that we parse `'r#lt` as three tokens in edition 2015.
+
+#![warn(rust_2021_prefixes_incompatible_syntax)]
 
 macro_rules! ed2015 {
     ('r # lt) => {};
@@ -8,5 +12,7 @@ macro_rules! ed2015 {
 }
 
 ed2015!('r#lt);
+//~^ WARNING prefix `'r` is reserved
+//~| WARNING hard error in Rust 2021
 
 fn main() {}
