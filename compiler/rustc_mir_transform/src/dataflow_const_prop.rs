@@ -119,7 +119,51 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         _location: Location,
     ) {
         if state.is_reachable() {
-            self.handle_statement(statement, state);
+            match &statement.kind {
+                StatementKind::Assign((place, rvalue)) => {
+                    self.handle_assign(*place, rvalue, state);
+                }
+                StatementKind::SetDiscriminant { place, variant_index } => {
+                    let place = (**place).as_ref();
+                    state.flood_discr(place, &self.map);
+                    if let Some(target) = self.map.find_discr(place) {
+                        let enum_ty = place.ty(self.local_decls, self.tcx).ty;
+                        if let Some(discr) = self.eval_discriminant(enum_ty, *variant_index) {
+                            state.insert_value_idx(target, FlatSet::Elem(discr), &self.map);
+                        }
+                    }
+                }
+                StatementKind::Intrinsic(intrinsic) => {
+                    match intrinsic {
+                        NonDivergingIntrinsic::Assume(..) => {
+                            // Could use this, but ignoring it is sound.
+                        }
+                        NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+                            dst: _,
+                            src: _,
+                            count: _,
+                        }) => {
+                            // This statement represents `*dst = *src`, `count` times.
+                        }
+                    }
+                }
+                StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                    // StorageLive leaves the local in an uninitialized state.
+                    // StorageDead makes it UB to access the local afterwards.
+                    state.flood_with(
+                        Place::from(*local).as_ref(),
+                        &self.map,
+                        FlatSet::<Scalar>::BOTTOM,
+                    );
+                }
+                StatementKind::ConstEvalCounter
+                | StatementKind::Nop
+                | StatementKind::FakeRead(..)
+                | StatementKind::PlaceMention(..)
+                | StatementKind::Coverage(..)
+                | StatementKind::BackwardIncompatibleDropHint { .. }
+                | StatementKind::AscribeUserType(..) => {}
+            }
         }
     }
 
@@ -147,7 +191,34 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         _location: Location,
     ) {
         if state.is_reachable() {
-            self.handle_terminator(terminator, state)
+            match &terminator.kind {
+                TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
+                    // Effect is applied by `apply_call_return_effect`.
+                }
+                TerminatorKind::Drop { place, .. } => {
+                    state.flood_with(place.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
+                }
+                TerminatorKind::Yield { .. } => {
+                    // They would have an effect, but are not allowed in this phase.
+                    bug!("encountered disallowed terminator");
+                }
+                TerminatorKind::TailCall { .. } => {
+                    // FIXME(explicit_tail_calls): determine if we need to do something here
+                    // (probably not)
+                }
+                TerminatorKind::SwitchInt { .. }
+                | TerminatorKind::Goto { .. }
+                | TerminatorKind::UnwindResume
+                | TerminatorKind::UnwindTerminate(_)
+                | TerminatorKind::Return
+                | TerminatorKind::Unreachable
+                | TerminatorKind::Assert { .. }
+                | TerminatorKind::CoroutineDrop
+                | TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::FalseUnwind { .. } => {
+                    // These terminators have no effect on the analysis.
+                }
+            }
         }
     }
 
@@ -158,7 +229,9 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         if state.is_reachable() {
-            self.handle_call_return(return_places, state)
+            return_places.for_each(|place| {
+                state.flood(place.as_ref(), &self.map);
+            })
         }
     }
 }
@@ -175,117 +248,19 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         }
     }
 
-    fn handle_statement(&self, statement: &Statement<'tcx>, state: &mut State<FlatSet<Scalar>>) {
-        match &statement.kind {
-            StatementKind::Assign((place, rvalue)) => {
-                self.handle_assign(*place, rvalue, state);
-            }
-            StatementKind::SetDiscriminant { place, variant_index } => {
-                self.handle_set_discriminant(**place, *variant_index, state);
-            }
-            StatementKind::Intrinsic(intrinsic) => {
-                self.handle_intrinsic(intrinsic);
-            }
-            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                // StorageLive leaves the local in an uninitialized state.
-                // StorageDead makes it UB to access the local afterwards.
-                state.flood_with(
-                    Place::from(*local).as_ref(),
-                    &self.map,
-                    FlatSet::<Scalar>::BOTTOM,
-                );
-            }
-            StatementKind::ConstEvalCounter
-            | StatementKind::Nop
-            | StatementKind::FakeRead(..)
-            | StatementKind::PlaceMention(..)
-            | StatementKind::Coverage(..)
-            | StatementKind::BackwardIncompatibleDropHint { .. }
-            | StatementKind::AscribeUserType(..) => {}
-        }
-    }
-
-    fn handle_intrinsic(&self, intrinsic: &NonDivergingIntrinsic<'tcx>) {
-        match intrinsic {
-            NonDivergingIntrinsic::Assume(..) => {
-                // Could use this, but ignoring it is sound.
-            }
-            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
-                dst: _,
-                src: _,
-                count: _,
-            }) => {
-                // This statement represents `*dst = *src`, `count` times.
-            }
-        }
-    }
-
     fn handle_operand(&self, operand: &Operand<'tcx>) -> ValueOrPlace<FlatSet<Scalar>> {
         match operand {
             Operand::RuntimeChecks(_) => ValueOrPlace::TOP,
-            Operand::Constant(constant) => ValueOrPlace::Value(self.handle_constant(constant)),
+            Operand::Constant(constant) => ValueOrPlace::Value(
+                constant
+                    .const_
+                    .try_eval_scalar(self.tcx, self.typing_env)
+                    .map_or(FlatSet::Top, FlatSet::Elem),
+            ),
             Operand::Copy(place) | Operand::Move(place) => {
                 // On move, we would ideally flood the place with bottom. But with the current
                 // framework this is not possible (similar to `InterpCx::eval_operand`).
                 self.map.find(place.as_ref()).map(ValueOrPlace::Place).unwrap_or(ValueOrPlace::TOP)
-            }
-        }
-    }
-
-    /// The effect of a successful function call return should not be
-    /// applied here, see [`Analysis::apply_primary_terminator_effect`].
-    fn handle_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<FlatSet<Scalar>>) {
-        match &terminator.kind {
-            TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
-                // Effect is applied by `handle_call_return`.
-            }
-            TerminatorKind::Drop { place, .. } => {
-                state.flood_with(place.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
-            }
-            TerminatorKind::Yield { .. } => {
-                // They would have an effect, but are not allowed in this phase.
-                bug!("encountered disallowed terminator");
-            }
-            TerminatorKind::TailCall { .. } => {
-                // FIXME(explicit_tail_calls): determine if we need to do something here (probably
-                // not)
-            }
-            TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Goto { .. }
-            | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
-                // These terminators have no effect on the analysis.
-            }
-        }
-    }
-
-    fn handle_call_return(
-        &self,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
-    ) {
-        return_places.for_each(|place| {
-            state.flood(place.as_ref(), &self.map);
-        })
-    }
-
-    fn handle_set_discriminant(
-        &self,
-        place: Place<'tcx>,
-        variant_index: VariantIdx,
-        state: &mut State<FlatSet<Scalar>>,
-    ) {
-        state.flood_discr(place.as_ref(), &self.map);
-        if let Some(target) = self.map.find_discr(place.as_ref()) {
-            let enum_ty = place.ty(self.local_decls, self.tcx).ty;
-            if let Some(discr) = self.eval_discriminant(enum_ty, variant_index) {
-                state.insert_value_idx(target, FlatSet::Elem(discr), &self.map);
             }
         }
     }
@@ -463,13 +438,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         };
         // For the arms that didn't return early.
         state.assign(target.as_ref(), result, &self.map);
-    }
-
-    fn handle_constant(&self, constant: &ConstOperand<'tcx>) -> FlatSet<Scalar> {
-        constant
-            .const_
-            .try_eval_scalar(self.tcx, self.typing_env)
-            .map_or(FlatSet::Top, FlatSet::Elem)
     }
 
     fn get_switch_int_edges<'mir>(
