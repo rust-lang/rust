@@ -14,7 +14,7 @@ use walkdir::WalkDir;
 use xshell::{Shell, cmd};
 
 use crate::Command;
-use crate::config::Config;
+use crate::config::{Config, Toolchain};
 use crate::util::*;
 
 impl MiriEnv {
@@ -128,7 +128,8 @@ impl Command {
         flags: Vec<String>,
         config: &Config,
     ) -> Result<()> {
-        let name = name.as_deref().or(config.toolchain.name.as_deref()).unwrap_or("miri");
+        let name =
+            name.as_deref().or(config.toolchain.name.as_deref()).unwrap_or(Toolchain::DEFAULT_NAME);
 
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
@@ -158,10 +159,15 @@ impl Command {
             }
             return Ok(());
         }
+
+        // Compute rustup-toolchain-install-master flags for additional components.
+        let components =
+            config.toolchain.components.as_deref().unwrap_or(Toolchain::DEFAULT_COMPONENTS);
+        let component_flags = components.iter().flat_map(|component| ["-c", component]);
+
         // Install and setup new toolchain.
         cmd!(sh, "rustup toolchain uninstall {name}").run()?;
-
-        cmd!(sh, "rustup-toolchain-install-master -n {name} -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}")
+        cmd!(sh, "rustup-toolchain-install-master -n {name} -c cargo -c rust-src -c rustc-dev -c llvm-tools {component_flags...} {flags...} -- {new_commit}")
             .run()
             .context("Failed to run rustup-toolchain-install-master. If it is not installed, run 'cargo install --locked rustup-toolchain-install-master'.")?;
         cmd!(sh, "rustup override set {name}").run()?;

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::{fs, io};
 
 use anyhow::{Context, Result, bail};
@@ -17,6 +18,13 @@ pub struct Config {
 #[derive(Deserialize, Default)]
 pub struct Toolchain {
     pub name: Option<String>,
+    pub components: Option<Vec<Cow<'static, str>>>,
+}
+
+impl Toolchain {
+    pub const DEFAULT_NAME: &str = "miri";
+    pub const DEFAULT_COMPONENTS: &[Cow<'static, str>] =
+        &[Cow::Borrowed("clippy"), Cow::Borrowed("rustfmt")];
 }
 
 #[derive(Deserialize, Default)]

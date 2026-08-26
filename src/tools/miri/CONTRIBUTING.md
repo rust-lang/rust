@@ -125,6 +125,11 @@ The following configuration keys are currently supported, with the given default
 # (Though note that if you have `auto.toolchain` enabled, most commands will run `./miri toolchain`
 # first, which will activate the toolchain given here.)
 name = "miri"
+# Additional components to install with the toolchain. Note that if you remove `clippy` or `rustfmt`
+# from this list then obviously `./miri clippy`/`./miri fmt` will not work.
+# Only takes effect when a new toolchain is installed. Run `rustup toolchain remove <name>` followed
+# by `./miri toolchain` to force this to have effect.
+components = ["clippy", "rustfmt"]
 
 [auto]
 # Automatically run `./miri toolchain` before most commands.
