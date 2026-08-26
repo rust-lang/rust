@@ -111,12 +111,22 @@ install that exact version of rustc as a toolchain:
 This will set up a rustup toolchain called `miri` and set it as an override for
 the current directory.
 
-You can also create a `.auto-everything` file (contents don't matter, can be empty), which
-will cause any `./miri` command to automatically call `./miri toolchain`, `clippy` and `rustfmt`
-for you. If you don't want all of these to happen, you can add individual `.auto-toolchain`,
-`.auto-clippy` and `.auto-fmt` files respectively.
-
 [`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
+
+### Configuring `./miri`
+
+The `./miri` script supports optional configuration via a `miri.toml` file.
+The following configuration keys are currently supported, with the given default values:
+
+```toml
+[auto]
+# Automatically run `./miri toolchain` before most commands.
+toolchain = false
+# Automatically run `./miri clippy` before most commands.
+clippy = false
+# Automatically run `./miri fmt` before most commands.
+fmt = false
+```
 
 ## Building and testing Miri
 

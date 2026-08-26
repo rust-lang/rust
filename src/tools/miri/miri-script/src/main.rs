@@ -1,6 +1,7 @@
 #![allow(clippy::needless_question_mark, rustc::internal)]
 
 mod commands;
+mod config;
 mod coverage;
 mod util;
 
@@ -200,6 +201,10 @@ fn main() -> Result<()> {
     let args = Cli::parse_from(miri_args);
     let mut command = args.command;
     command.add_remainder(remainder)?;
-    command.exec()?;
-    Ok(())
+
+    // Parse config file.
+    let config = config::Config::load()?;
+
+    // Run the thing.
+    command.exec(&config)
 }

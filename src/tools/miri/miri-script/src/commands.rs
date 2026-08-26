@@ -14,6 +14,7 @@ use walkdir::WalkDir;
 use xshell::{Shell, cmd};
 
 use crate::Command;
+use crate::config::Config;
 use crate::util::*;
 
 impl MiriEnv {
@@ -67,25 +68,19 @@ impl MiriEnv {
 }
 
 impl Command {
-    fn auto_actions() -> Result<()> {
+    fn auto_actions(config: &Config) -> Result<()> {
         if env::var_os("MIRI_AUTO_OPS").is_some_and(|x| x == "no") {
             return Ok(());
         }
 
-        let miri_dir = miri_dir()?;
-        let auto_everything = path!(miri_dir / ".auto-everything").exists();
-        let auto_toolchain = auto_everything || path!(miri_dir / ".auto-toolchain").exists();
-        let auto_fmt = auto_everything || path!(miri_dir / ".auto-fmt").exists();
-        let auto_clippy = auto_everything || path!(miri_dir / ".auto-clippy").exists();
-
         // `toolchain` goes first as it could affect the others
-        if auto_toolchain {
+        if config.auto.toolchain {
             Self::toolchain(None, vec![])?;
         }
-        if auto_fmt {
+        if config.auto.fmt {
             Self::fmt(vec![])?;
         }
-        if auto_clippy {
+        if config.auto.clippy {
             // no features for auto actions, see
             // https://github.com/rust-lang/miri/pull/4396#discussion_r2149654845
             Self::clippy(vec![], vec![])?;
@@ -94,7 +89,7 @@ impl Command {
         Ok(())
     }
 
-    pub fn exec(self) -> Result<()> {
+    pub fn exec(self, config: &Config) -> Result<()> {
         // First, and crucially only once, run the auto-actions -- but not for all commands.
         match &self {
             Command::Install { .. }
@@ -104,7 +99,7 @@ impl Command {
             | Command::Run { .. }
             | Command::Fmt { .. }
             | Command::Doc { .. }
-            | Command::Clippy { .. } => Self::auto_actions()?,
+            | Command::Clippy { .. } => Self::auto_actions(config)?,
             | Command::Toolchain { .. } | Command::Bench { .. } | Command::Squash => {}
         }
         // Then run the actual command.
