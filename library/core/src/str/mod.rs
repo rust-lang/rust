@@ -2917,7 +2917,7 @@ impl str {
     /// Converts this string to its ASCII upper case equivalent in-place.
     ///
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
-    /// but non-ASCII letters are unchanged.
+    /// but all other characters are unchanged.
     ///
     /// To return a new uppercased value without modifying the existing one, use
     /// [`to_ascii_uppercase()`].
@@ -2945,7 +2945,7 @@ impl str {
     /// Converts this string to its ASCII lower case equivalent in-place.
     ///
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
-    /// but non-ASCII letters are unchanged.
+    /// but all other characters are unchanged.
     ///
     /// To return a new lowercased value without modifying the existing one, use
     /// [`to_ascii_lowercase()`].
