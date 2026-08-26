@@ -97,7 +97,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 // A brace-delimited block whose first token is `&&`/`||` usually means
                 // the user meant to continue an if-let chain, e.g. `if let P = e { && cond {`.
                 if Delimiter::Brace == open_delim
-                    && let Some(ArenaTokenTree::Token(tok, _)) = arena.get_item_at(index)
+                    && let Some(ArenaTokenTree::Token(tok, _)) = arena.get_innermost_elem_at(index)
                     && matches!(tok.kind, token::AndAnd | token::OrOr)
                 {
                     self.diag_info.if_let_chain_hint_spans.push(tok.span);
