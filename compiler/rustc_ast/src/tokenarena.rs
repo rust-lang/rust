@@ -2,7 +2,7 @@ use rustc_index::static_assert_size;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Span;
 
-use crate::token::{Delimiter, Token};
+use crate::token::{Delimiter, Token, TokenKind};
 use crate::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 
 /// Part of a `TokenArena`.
@@ -13,11 +13,16 @@ pub enum ArenaTokenTree {
     Token(Token, Spacing),
     /// A delimited sequence of token trees.
     DelimitedStart(DelimitedBounds, DelimitedData),
-    // TODO: get rid of this and represent it implicitly
+    // FIXME: get rid of this and represent it implicitly
     DelimitedEnd,
 }
 
 impl ArenaTokenTree {
+    /// Create a `TokenTree::Token` with alone spacing.
+    pub fn token_alone(kind: TokenKind, span: Span) -> ArenaTokenTree {
+        ArenaTokenTree::Token(Token::new(kind, span), Spacing::Alone)
+    }
+
     /// Convert an arena token tree to the tree-shaped token tree.
     pub fn to_token_tree(&self, arena: &TokenArena) -> TokenTree {
         match self {
@@ -64,12 +69,16 @@ pub struct TokenArena {
 }
 
 impl TokenArena {
-    pub fn new(tokens: Vec<ArenaTokenTree>) -> Self {
-        Self { tokens }
-    }
-
     pub fn push(&mut self, token: ArenaTokenTree) {
         self.tokens.push(token);
+    }
+
+    pub fn pop(&mut self) -> Option<ArenaTokenTree> {
+        let tree = self.tokens.pop();
+        if let Some(tree) = &tree {
+            assert!(matches!(tree, ArenaTokenTree::Token(..)));
+        }
+        tree
     }
 
     /// Iter top-level token trees of a delimited token sequence.
@@ -163,21 +172,25 @@ impl TokenArena {
         arena
     }
 
-    fn fill(&mut self, stream: &TokenStream) {
-        for item in stream.iter() {
-            match item {
-                TokenTree::Token(token, spacing) => {
-                    self.tokens.push(ArenaTokenTree::Token(*token, *spacing));
-                }
-                TokenTree::Delimited(span, spacing, delimiter, stream) => {
-                    let start = self.start_delimited();
-                    self.fill(stream);
-                    self.finish_delimited(
-                        start,
-                        DelimitedData { span: *span, spacing: *spacing, delimiter: *delimiter },
-                    );
-                }
+    pub fn push_token_tree(&mut self, tt: &TokenTree) {
+        match tt {
+            TokenTree::Token(token, spacing) => {
+                self.tokens.push(ArenaTokenTree::Token(*token, *spacing));
             }
+            TokenTree::Delimited(span, spacing, delimiter, stream) => {
+                let start = self.start_delimited();
+                self.fill(stream);
+                self.finish_delimited(
+                    start,
+                    DelimitedData { span: *span, spacing: *spacing, delimiter: *delimiter },
+                );
+            }
+        }
+    }
+
+    fn fill(&mut self, stream: &TokenStream) {
+        for tt in stream.iter() {
+            self.push_token_tree(tt);
         }
     }
 

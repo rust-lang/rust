@@ -19,6 +19,7 @@ use crate::ast::{
 use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
+use crate::tokenarena::{ArenaTokenTree, TokenArena};
 use crate::tokenstream::{
     AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
     TokenStream, TokenStreamIter, TokenTree,
@@ -305,6 +306,28 @@ impl Attribute {
                 token::DocComment(comment_kind, self.style, data),
                 self.span,
             )],
+        }
+    }
+
+    pub fn push_token_trees(&self, arena: &mut TokenArena) {
+        match self.kind {
+            AttrKind::Normal(ref normal) => {
+                for token_tree in normal
+                    .tokens
+                    .as_ref()
+                    .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
+                    .to_attr_token_stream()
+                    .to_token_trees()
+                {
+                    arena.push_token_tree(&token_tree);
+                }
+            }
+            // Empty tokens here ensures synthetic attributes are invisible to proc macros.
+            AttrKind::Synthetic(..) => {}
+            AttrKind::DocComment(comment_kind, data) => arena.push(ArenaTokenTree::token_alone(
+                token::DocComment(comment_kind, self.style, data),
+                self.span,
+            )),
         }
     }
 
