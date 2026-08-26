@@ -22,7 +22,7 @@ use crate::core::builder::{
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 use crate::core::session::{FileType, Mode};
-use crate::utils::helpers::{submodule_path_of, t, up_to_date};
+use crate::utils::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {
@@ -870,6 +870,40 @@ pub fn prepare_doc_compiler(
     build_compiler
 }
 
+fn merge_rustdoc_cci_parts_from_fingerprints(
+    builder: &Builder<'_>,
+    build_compiler: Compiler,
+    fingerprints: impl IntoIterator<Item = impl AsRef<Path>>,
+    out_dir: impl AsRef<Path>,
+) {
+    let mut cmd = builder.rustdoc_cmd(build_compiler);
+
+    cmd.arg("--enable-index-page").arg("-Zunstable-options").arg("-o").arg(&out_dir.as_ref());
+
+    if !builder.config.docs_minification {
+        cmd.arg("--disable-minification");
+    }
+
+    #[derive(serde_derive::Deserialize)]
+    struct FingerprintData {
+        doc_parts: Vec<PathBuf>,
+    }
+
+    for fingerprint in fingerprints {
+        let fingerprint_file = fingerprint.as_ref().join(".rustdoc_fingerprint.json");
+        if fingerprint_file.exists() {
+            let fingerprint_data = t!(std::fs::read_to_string(fingerprint_file));
+            let fingerprint_data: FingerprintData = t!(serde_json::from_str(&fingerprint_data));
+            for part in fingerprint_data.doc_parts.iter() {
+                cmd.arg("--read-doc-meta-dir")
+                    .arg(fingerprint.as_ref().join(part).parent().unwrap());
+            }
+        }
+    }
+
+    cmd.run(builder);
+}
+
 /// Generate the combined compiler docs for a given toolchain.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CompilerDoc {
@@ -913,39 +947,19 @@ impl CommandLineStep for CompilerDoc {
 
         // This is the intended out directory for compiler documentation.
         let out = builder.compiler_doc_out(target);
-        t!(fs::create_dir_all(&out));
 
         let _guard = builder.msg(Kind::Doc, "compiler-doc", Mode::Rustc, build_compiler, target);
-
-        let mut cmd = builder.rustdoc_cmd(build_compiler);
-
-        cmd.arg("--enable-index-page").arg("-Zunstable-options").arg("-o").arg(&out);
-
-        if !builder.config.docs_minification {
-            cmd.arg("--disable-minification");
-        }
-
-        #[derive(serde_derive::Deserialize)]
-        struct FingerprintData {
-            doc_parts: Vec<PathBuf>,
-        }
 
         let rustc_stage = Rustc::for_stage(builder, stage, target);
         builder.ensure(rustc_stage.clone());
         let out_dir = builder.stage_out(build_compiler, Mode::Rustc).join(target);
-        // Cargo puts proc macros in `target/doc` even if you pass `--target`
-        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
-        let proc_macro_out_dir = builder.stage_out(build_compiler, Mode::Rustc);
         // Copy crate docs into place.
         for krate in &*rustc_stage.crates {
             let dir_name = krate.replace('-', "_");
             let crate_doc_dir = out_dir.join("doc").join(&dir_name);
-            let proc_macro_doc_dir = proc_macro_out_dir.join("doc").join(&dir_name);
             let doc_out = out.join(&dir_name);
             t!(fs::create_dir_all(&doc_out));
-            if proc_macro_doc_dir.exists() {
-                builder.cp_link_r(&proc_macro_doc_dir, &doc_out);
-            } else if crate_doc_dir.exists() {
+            if crate_doc_dir.exists() {
                 builder.cp_link_r(&crate_doc_dir, &doc_out);
             } else if !builder.config.dry_run() {
                 panic!("no docs found for {krate} in {}", crate_doc_dir.display());
@@ -960,30 +974,18 @@ impl CommandLineStep for CompilerDoc {
                 );
             }
         }
-        if !builder.config.dry_run() {
-            let fingerprint_rustc =
-                t!(std::fs::read_to_string(out_dir.join(".rustdoc_fingerprint.json")));
-            let fingerprint_rustc: FingerprintData = t!(serde_json::from_str(&fingerprint_rustc));
-            for part in fingerprint_rustc.doc_parts.iter() {
-                cmd.arg("--read-doc-meta-dir").arg(out_dir.join(part).parent().unwrap());
-            }
-        }
 
         macro_rules! merge_tool_doc {
             ($tool: ident, $builder: ident, $target: ident) => {{
                 let tool_stage = $tool::new($builder, $target);
                 builder.ensure(tool_stage.clone());
                 let out_dir = builder.stage_out(build_compiler, tool_stage.mode).join(target);
-                let proc_macro_out_dir = builder.stage_out(build_compiler, tool_stage.mode);
                 for krate in $tool::crates() {
                     let dir_name = krate.replace('-', "_");
                     let crate_doc_dir = out_dir.join("doc").join(&dir_name);
-                    let proc_macro_doc_dir = proc_macro_out_dir.join("doc").join(&dir_name);
                     let doc_out = out.join(&dir_name);
                     t!(fs::create_dir_all(&doc_out));
-                    if proc_macro_doc_dir.exists() {
-                        builder.cp_link_r(&proc_macro_doc_dir, &doc_out);
-                    } else if crate_doc_dir.exists() {
+                    if crate_doc_dir.exists() {
                         builder.cp_link_r(&crate_doc_dir, &doc_out);
                     } else if !builder.config.dry_run() {
                         panic!("no docs found for {krate} in {}", crate_doc_dir.display());
@@ -1013,16 +1015,18 @@ impl CommandLineStep for CompilerDoc {
         merge_tool_doc!(Compiletest, builder, target);
 
         if !builder.config.dry_run() {
-            let out_dir_tool = builder.stage_out(build_compiler, Mode::ToolTarget).join(target);
-            let fingerprint_tool =
-                t!(std::fs::read_to_string(out_dir_tool.join(".rustdoc_fingerprint.json")));
-            let fingerprint_tool: FingerprintData = t!(serde_json::from_str(&fingerprint_tool));
-            for part in fingerprint_tool.doc_parts.iter() {
-                cmd.arg("--read-doc-meta-dir").arg(out_dir_tool.join(part).parent().unwrap());
-            }
+            merge_rustdoc_cci_parts_from_fingerprints(
+                builder,
+                build_compiler,
+                [
+                    builder.stage_out(build_compiler, Mode::Rustc).join(target),
+                    builder.stage_out(build_compiler, Mode::ToolTarget).join(target),
+                    builder.stage_out(build_compiler, Mode::Rustc),
+                    builder.stage_out(build_compiler, Mode::ToolTarget),
+                ],
+                &out,
+            )
         }
-
-        cmd.run(builder);
 
         // Handle `--open`.
         builder.open_in_browser(out.join("index.html"));
@@ -1135,6 +1139,7 @@ impl CommandLineStep for Rustc {
         cargo.rustdocflag("ena=https://docs.rs/ena/latest/");
 
         let out_dir = builder.stage_out(build_compiler, Mode::Rustc).join(target).join("doc");
+        let proc_macro_out_dir = builder.stage_out(build_compiler, Mode::Rustc).join("doc");
         for krate in &*self.crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
@@ -1145,6 +1150,38 @@ impl CommandLineStep for Rustc {
         }
 
         cargo.into_cmd().run(builder);
+
+        if !builder.config.dry_run() {
+            // Sanity check on linked doc directories
+            for krate in &*self.crates {
+                let dir_name = krate.replace("-", "_");
+                // Making sure the directory exists and is not empty.
+                let doc_out = out_dir.join(&*dir_name);
+                let proc_macro_doc_out = proc_macro_out_dir.join(&*dir_name);
+                if proc_macro_doc_out.exists()
+                    && doc_out.read_dir().expect(&dir_name).next().is_none()
+                {
+                    // Cargo puts proc macros in `target/doc` even if you pass `--target`
+                    // explicitly (https://github.com/rust-lang/cargo/issues/7677).
+                    t!(fs::remove_dir(&doc_out));
+                    t!(symlink_dir(&builder.config, &proc_macro_doc_out, &doc_out));
+                };
+                assert!(doc_out.exists(), "{}", doc_out.display());
+                assert!(doc_out.read_dir().expect(&dir_name).next().is_some());
+            }
+        }
+
+        if !builder.config.dry_run() {
+            merge_rustdoc_cci_parts_from_fingerprints(
+                builder,
+                build_compiler,
+                [
+                    builder.stage_out(build_compiler, Mode::Rustc).join(target),
+                    builder.stage_out(build_compiler, Mode::Rustc),
+                ],
+                &out_dir,
+            )
+        }
 
         // We open rustc_middle as the default if invoked as `x.py doc --open RELEASES.md`
         // with no particular explicit doc requested (e.g. library/core).
@@ -1300,9 +1337,14 @@ macro_rules! tool_doc {
                         // Making sure the directory exists and is not empty.
                         let doc_out = out_dir.join(&*dir_name);
                         let proc_macro_doc_out = proc_macro_out_dir.join(&*dir_name);
-                        let dir = if proc_macro_doc_out.exists() { proc_macro_doc_out } else { doc_out };
-                        assert!(dir.exists(), "{}", dir.display());
-                        assert!(dir.read_dir().expect(&dir_name).next().is_some());
+                        if proc_macro_doc_out.exists() && doc_out.read_dir().expect(&dir_name).next().is_none() {
+                            // Cargo puts proc macros in `target/doc` even if you pass `--target`
+                            // explicitly (https://github.com/rust-lang/cargo/issues/7677).
+                            t!(fs::remove_dir(&doc_out));
+                            t!(symlink_dir(&builder.config, &proc_macro_doc_out, &doc_out));
+                        };
+                        assert!(doc_out.exists(), "{}", doc_out.display());
+                        assert!(doc_out.read_dir().expect(&dir_name).next().is_some());
                     })?
                 }
             }
