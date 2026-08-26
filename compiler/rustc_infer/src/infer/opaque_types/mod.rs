@@ -213,6 +213,29 @@ impl<'tcx> InferCtxt<'tcx> {
         hidden_ty: Ty<'tcx>,
         bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<'tcx>>,
     ) {
+        let ty::Infer(ty::TyVar(vid)) = *hidden_ty.kind() else {
+            return;
+        };
+
+        // Since we lookup `hidden_types_of_opaques` modulo sub roots,
+        // it's okay to save them as sub roots.
+        //
+        // And doing so helps avoiding possibly duplicates (modulo sub roots)
+        // which is not so good for caching and goal evaluation progress
+        // heuristics.
+        let sub_root = self.sub_unification_table_root_var(vid);
+        let hidden_ty = if sub_root != vid
+            && self
+                .inner
+                .borrow_mut()
+                .opaque_types()
+                .has_hidden_type_of_opaque_for_exact_vid(sub_root)
+        {
+            Ty::new_var(self.tcx, sub_root)
+        } else {
+            hidden_ty
+        };
+
         self.inner.borrow_mut().opaque_types().add_hidden_type_of_opaque(hidden_ty, bounds);
     }
 

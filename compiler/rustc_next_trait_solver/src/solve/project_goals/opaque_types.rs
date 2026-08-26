@@ -117,17 +117,19 @@ where
                     goal.param_env,
                     expected,
                 )?;
-                self.add_hidden_type_of_opaque(
-                    expected,
-                    ty::OpaqueHiddenTyBound::iter_self_bounds_for_alias_ty(
-                        cx,
-                        ty::AliasTy::new_from_args(
+                if self.typing_mode().should_add_hidden_types_of_opaques() {
+                    self.add_hidden_type_of_opaque(
+                        expected,
+                        ty::OpaqueHiddenTyBound::iter_self_bounds_for_alias_ty(
                             cx,
-                            ty::AliasTyKind::Opaque { def_id: def_id.into() },
-                            normalized_args,
+                            ty::AliasTy::new_from_args(
+                                cx,
+                                ty::AliasTyKind::Opaque { def_id: def_id.into() },
+                                normalized_args,
+                            ),
                         ),
-                    ),
-                );
+                    );
+                }
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     .map_err(Into::into)
             }
