@@ -1,3 +1,4 @@
+use rustc_ast::token;
 use rustc_ast::tokenarena::ArenaTokenTree;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
