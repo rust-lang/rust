@@ -78,7 +78,7 @@ pub enum TypeKind {
     /// Tuples.
     Tuple,
     /// Arrays.
-    Array(Array),
+    Array,
     /// Slices.
     Slice,
     /// Dynamic Traits.
@@ -107,17 +107,6 @@ pub enum TypeKind {
     FnPtr(FnPtr),
     /// FIXME(#146922): add all the common types
     Other,
-}
-
-/// Compile-time type information about arrays.
-#[derive(Debug)]
-#[non_exhaustive]
-#[unstable(feature = "type_info", issue = "146922")]
-pub struct Array {
-    /// The type of each element in the array.
-    pub element_ty: TypeId,
-    /// The length of the array.
-    pub len: usize,
 }
 
 /// Compile-time type information about dynamic traits.
@@ -311,6 +300,25 @@ impl TypeId {
     #[rustc_comptime]
     pub fn element_ty(self) -> Option<TypeId> {
         intrinsics::type_id_element_ty(self)
+    }
+
+    /// When called on a `TypeId` representing an array this returns the length of the array in
+    /// all other cases this returns zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<[u32; 16]>().array_len() }, 16);
+    /// assert_eq!(const { TypeId::of::<u8>().array_len() }, 0); // not an array
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn array_len(self) -> usize {
+        intrinsics::type_id_array_len(self)
     }
 
     /// Returns the size of the type represented by this `TypeId`. `None` if it is unsized.

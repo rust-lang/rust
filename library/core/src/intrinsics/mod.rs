@@ -3136,6 +3136,14 @@ pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
 #[rustc_comptime]
 pub fn type_id_is_signed(_id: crate::any::TypeId) -> bool;
 
+/// Gets the length of the array represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::array_len`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_array_len(_id: crate::any::TypeId) -> usize;
+
 /// Gets the type of each element of the array or slice represented by this `TypeId`.
 ///
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::element_ty`].

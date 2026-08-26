@@ -643,6 +643,13 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_discriminant(variant_index, dest)?;
             }
 
+            sym::type_id_array_len => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let len =
+                    if let ty::Array(_, len) = ty.kind() { len.to_leaf().to_u64() } else { 0 };
+                ecx.write_scalar(Scalar::from_target_usize(len, ecx), dest)?;
+            }
+
             sym::type_id_fields => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_idx = ecx.read_target_usize(&args[1])? as usize;

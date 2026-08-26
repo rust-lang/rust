@@ -7,21 +7,19 @@ use std::mem::type_info::{Const, Generic, GenericType, Type, TypeKind};
 #[test]
 fn test_arrays() {
     // Normal array.
-    match const { Type::of::<[u16; 4]>() }.kind {
-        TypeKind::Array(array) => {
-            assert_eq!(array.element_ty, TypeId::of::<u16>());
-            assert_eq!(array.len, 4);
-        }
-        _ => unreachable!(),
+    assert!(matches!(Type::of::<[u16; 4]>().kind, TypeKind::Array));
+    const {
+        let ty_id = TypeId::of::<[u16; 4]>();
+        assert!(ty_id.element_ty() == Some(TypeId::of::<u16>()));
+        assert!(ty_id.array_len() == 4);
     }
 
     // Zero-length array.
-    match const { Type::of::<[bool; 0]>() }.kind {
-        TypeKind::Array(array) => {
-            assert_eq!(array.element_ty, TypeId::of::<bool>());
-            assert_eq!(array.len, 0);
-        }
-        _ => unreachable!(),
+    assert!(matches!(Type::of::<[bool; 0]>().kind, TypeKind::Array));
+    const {
+        let ty_id = TypeId::of::<[bool; 0]>();
+        assert!(ty_id.element_ty() == Some(TypeId::of::<bool>()));
+        assert!(ty_id.array_len() == 0);
     }
 }
 
