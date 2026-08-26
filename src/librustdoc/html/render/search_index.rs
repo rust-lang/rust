@@ -2177,6 +2177,7 @@ fn simplify_fn_type<'a, 'tcx>(
             Some(get_index_type(arg, ty_generics, rgen))
         }
         Type::Array(ref ty, _) => {
+            // ponytail: Array [T; N] for search - ignore const N, use inner T so Box<[T; N]> matches Box<_> (fix #161735)
             let ty_generics =
                 simplify_fn_type(self_, generics, ty, tcx, recurse + 1, rgen, is_return, cache)
                     .into_iter()
