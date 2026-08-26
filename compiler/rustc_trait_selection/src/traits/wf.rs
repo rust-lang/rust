@@ -185,6 +185,9 @@ pub fn clause_obligations<'tcx>(
             wf.add_wf_preds_for_term(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
+            if matches!(t.projection_term.kind, ty::AliasTermKind::ProjectionConst { .. }) {
+                wf.require_const_item_ty(t.projection_term.expect_ct());
+            }
             wf.add_wf_preds_for_projection_term(t.projection_term);
             wf.add_wf_preds_for_term(t.term);
         }
@@ -568,6 +571,32 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 ty::Binder::dummy(trait_ref),
             ));
         }
+    }
+
+    fn require_const_item_ty(&mut self, ct: ty::AliasConst<'tcx>) {
+        let ty = ct.type_of(self.tcx()).skip_norm_wip();
+
+        if ct.kind.is_direct_const(self.tcx()) {
+            return;
+        }
+
+        if self.tcx().features().const_param_ty_unchecked() || ty.has_escaping_bound_vars() {
+            return;
+        }
+
+        let cause = self.cause(ObligationCauseCode::ConstItemTy(ty));
+        let trait_ref = ty::TraitRef::new(
+            self.tcx(),
+            self.tcx().require_lang_item(LangItem::ConstParamTy, cause.span),
+            [ty],
+        );
+        self.out.push(traits::Obligation::with_depth(
+            self.tcx(),
+            cause,
+            self.recursion_depth,
+            self.param_env,
+            ty::Binder::dummy(trait_ref),
+        ));
     }
 
     /// Pushes all the predicates needed to validate that `term` is WF into `out`.
@@ -1026,8 +1055,16 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
                 if !t.has_escaping_bound_vars() {
                     for projection in data.projection_bounds() {
+                        let projection = projection.with_self_ty(tcx, t);
+                        let projection_pred = projection.skip_binder();
+                        if matches!(
+                            projection_pred.projection_term.kind,
+                            ty::AliasTermKind::ProjectionConst { .. }
+                        ) {
+                            self.require_const_item_ty(projection_pred.projection_term.expect_ct());
+                        }
+
                         let pred_binder = projection
-                            .with_self_ty(tcx, t)
                             .map_bound(|p| {
                                 p.term.as_const().map(|ct| {
                                     let assoc_const_ty = tcx
