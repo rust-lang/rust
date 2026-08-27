@@ -111,30 +111,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match expr.kind {
             ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
-                let lhs_then_block = this.lower_if_condition(block, lhs, args).into_block();
-                let rhs_then_block =
-                    this.lower_if_condition(lhs_then_block, rhs, args).into_block();
-                rhs_then_block.unit()
+                // A condition of `lhs && rhs` is fairly straightforward.
+                // We can just lower them in sequence, and break if either is false.
+                let lhs_true_block = this.lower_if_condition(block, lhs, args).into_block();
+                let rhs_true_block =
+                    this.lower_if_condition(lhs_true_block, rhs, args).into_block();
+                rhs_true_block.unit()
             }
             ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
+                // A condition of `lhs || rhs` is more complicated, because we need to
+                // short-circuit if `lhs` is *true*. So an inner condition-scope is needed.
+                // See <https://github.com/rust-lang/rust/pull/111752>.
                 let local_scope = this.local_scope();
-                let (lhs_success_block, failure_block) =
+                let (lhs_true_block, lhs_false_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
                         this.lower_if_condition(block, lhs, args.let_not_permitted())
                     });
-                let rhs_success_block = this
-                    .lower_if_condition(failure_block, rhs, args.let_not_permitted())
+                let rhs_true_block = this
+                    .lower_if_condition(lhs_false_block, rhs, args.let_not_permitted())
                     .into_block();
 
-                // Make the LHS and RHS success arms converge to a common block.
-                // (We can't just make LHS goto RHS, because `rhs_success_block`
+                // Make the LHS-true and RHS-true arms converge to a common block.
+                // (We can't just make LHS goto RHS, because `rhs_true_block`
                 // might contain statements that we don't want on the LHS path.)
                 let success_block = this.cfg.start_new_block();
-                this.cfg.goto(lhs_success_block, args.variable_source_info, success_block);
-                this.cfg.goto(rhs_success_block, args.variable_source_info, success_block);
+                this.cfg.goto(lhs_true_block, args.variable_source_info, success_block);
+                this.cfg.goto(rhs_true_block, args.variable_source_info, success_block);
                 success_block.unit()
             }
             ExprKind::Unary { op: UnOp::Not, arg } => {
+                // For a condition of `!cond`, lower `cond` as its own condition,
+                // then invert the meaning of the true/false blocks.
+                // This avoids an intermediate temporary for negating the condition value.
+                // See <https://github.com/rust-lang/rust/pull/111752>.
+
                 // Improve branch coverage instrumentation by noting conditions
                 // nested within one or more `!` expressions.
                 // (Skipped if branch coverage is not enabled.)
@@ -143,7 +153,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 let local_scope = this.local_scope();
-                let (success_block, failure_block) =
+                let (true_block, false_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
                         // Help out coverage instrumentation by injecting a dummy statement with
                         // the original condition's span (including `!`). This fixes #115468.
@@ -152,8 +162,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                         this.lower_if_condition(block, arg, args.let_not_permitted())
                     });
-                this.break_for_else(success_block, args.variable_source_info);
-                failure_block.unit()
+                // Break if the condition was true; proceed if the condition was false.
+                this.break_for_else(true_block, args.variable_source_info);
+                false_block.unit()
             }
             ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, this.source_info(expr_span));
@@ -170,7 +181,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 args.variable_source_info.span,
                 args.declare_let_bindings,
             ),
+
             _ => {
+                // The condition is an ordinary boolean-valued expression,
+                // so lower it normally and branch on the result.
                 let mut block = block;
                 let temp_scope = args.temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
@@ -189,19 +203,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let operand = Operand::Move(Place::from(place));
 
-                let then_block = this.cfg.start_new_block();
-                let else_block = this.cfg.start_new_block();
-                let term = TerminatorKind::if_(operand, then_block, else_block);
+                let true_block = this.cfg.start_new_block();
+                let false_block = this.cfg.start_new_block();
+                let term = TerminatorKind::if_(operand, true_block, false_block);
 
                 // Record branch coverage info for this condition.
                 // (Does nothing if branch coverage is not enabled.)
-                this.visit_coverage_branch_condition(expr_id, then_block, else_block);
+                this.visit_coverage_branch_condition(expr_id, true_block, false_block);
 
                 let source_info = this.source_info(expr_span);
                 this.cfg.terminate(block, source_info, term);
-                this.break_for_else(else_block, source_info);
+                this.break_for_else(false_block, source_info);
 
-                then_block.unit()
+                true_block.unit()
             }
         }
     }
@@ -2419,7 +2433,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let mut guard_span = rustc_span::DUMMY_SP;
 
-            let (post_guard_block, otherwise_post_guard_block) =
+            let (guard_true_block, guard_false_block) =
                 self.in_if_then_scope(match_scope, guard_span, |this| {
                     guard_span = this.thir[guard].span;
                     this.lower_if_condition(
@@ -2448,10 +2462,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             for &(_, temp, _) in fake_borrows {
                 let cause = FakeReadCause::ForMatchGuard;
-                self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(temp));
+                self.cfg.push_fake_read(guard_true_block, guard_end, cause, Place::from(temp));
             }
 
-            self.cfg.goto(otherwise_post_guard_block, source_info, sub_branch.otherwise_block);
+            self.cfg.goto(guard_false_block, source_info, sub_branch.otherwise_block);
 
             // We want to ensure that the matched candidates are bound
             // after we have confirmed this candidate *and* any
@@ -2488,16 +2502,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for binding in by_value_bindings.clone() {
                 let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
                 let cause = FakeReadCause::ForGuardBinding;
-                self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(local_id));
+                self.cfg.push_fake_read(guard_true_block, guard_end, cause, Place::from(local_id));
             }
             // Only schedule drops for the last sub-branch we lower.
             self.bind_matched_candidate_for_arm_body(
-                post_guard_block,
+                guard_true_block,
                 schedule_drops,
                 by_value_bindings,
             );
 
-            post_guard_block
+            guard_true_block
         } else {
             // (Here, it is not too early to bind the matched
             // candidate on `block`, because there is no guard result

@@ -67,7 +67,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let then_source_info = this.source_info(then_span);
                 let condition_scope = this.local_scope();
 
-                let then_and_else_blocks = this.in_scope(
+                let true_and_false_blocks = this.in_scope(
                     (if_then_scope, then_source_info),
                     LintLevel::Inherited,
                     |this| {
@@ -81,10 +81,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.source_info(then_span)
                         };
 
-                        // Lower the condition, and have it branch into `then` and `else` blocks.
-                        let (then_block, else_block) =
+                        // Lower the condition, and have it branch into *true* and *false* blocks.
+                        let (true_block, false_block) =
                             this.in_if_then_scope(condition_scope, then_span, |this| {
-                                let then_blk = this
+                                let true_block = this
                                     .lower_if_condition(
                                         block,
                                         cond,
@@ -97,33 +97,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     .into_block();
 
                                 // Lower the `then` arm into its block.
-                                this.expr_into_dest(destination, then_blk, then)
+                                this.expr_into_dest(destination, true_block, then)
                             });
 
-                        // Pack `(then_block, else_block)` into `BlockAnd<BasicBlock>`.
-                        then_block.and(else_block)
+                        // Pack `(true_block, false_block)` into `BlockAnd<BasicBlock>`.
+                        true_block.and(false_block)
                     },
                 );
 
-                // Unpack `BlockAnd<BasicBlock>` into `(then_blk, else_blk)`.
-                let (then_blk, mut else_blk);
-                else_blk = unpack!(then_blk = then_and_else_blocks);
+                // Unpack `BlockAnd<BasicBlock>` into `(true_block, false_block)`.
+                let (true_block, mut false_block);
+                false_block = unpack!(true_block = true_and_false_blocks);
 
-                // If there is an `else` arm, lower it into `else_blk`.
+                // If there is an `else` arm, lower it into `false_block`.
                 if let Some(else_expr) = else_opt {
-                    else_blk = this.expr_into_dest(destination, else_blk, else_expr).into_block();
+                    false_block =
+                        this.expr_into_dest(destination, false_block, else_expr).into_block();
                 } else {
                     // There is no `else` arm, so we know both arms have type `()`.
                     // Generate the implicit `else {}` by assigning unit.
                     let correct_si = this.source_info(expr_span.shrink_to_hi());
-                    this.cfg.push_assign_unit(else_blk, correct_si, destination, this.tcx);
+                    this.cfg.push_assign_unit(false_block, correct_si, destination, this.tcx);
                 }
 
                 // The `then` and `else` arms have been lowered into their respective
                 // blocks, so make both of them meet up in a new block.
                 let join_block = this.cfg.start_new_block();
-                this.cfg.goto(then_blk, source_info, join_block);
-                this.cfg.goto(else_blk, source_info, join_block);
+                this.cfg.goto(true_block, source_info, join_block);
+                this.cfg.goto(false_block, source_info, join_block);
                 join_block.unit()
             }
             ExprKind::Let { .. } => {
@@ -160,7 +161,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let source_info = this.source_info(expr.span);
 
                 // We first evaluate the left-hand side of the predicate ...
-                let (then_block, else_block) =
+                let (true_block, false_block) =
                     this.in_if_then_scope(condition_scope, expr.span, |this| {
                         this.lower_if_condition(
                             block,
@@ -172,36 +173,38 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             },
                         )
                     });
-                let (short_circuit, continuation, constant) = match op {
-                    LogicalOp::And => (else_block, then_block, false),
-                    LogicalOp::Or => (then_block, else_block, true),
-                };
+
                 // At this point, the control flow splits into a short-circuiting path
                 // and a continuation path.
                 // - If the operator is `&&`, passing `lhs` leads to continuation of evaluation on `rhs`;
                 //   failing it leads to the short-circuting path which assigns `false` to the place.
                 // - If the operator is `||`, failing `lhs` leads to continuation of evaluation on `rhs`;
                 //   passing it leads to the short-circuting path which assigns `true` to the place.
+                let (short_circuit_block, short_circuit_value, continue_block) = match op {
+                    LogicalOp::And => (false_block, false, true_block),
+                    LogicalOp::Or => (true_block, true, false_block),
+                };
                 this.cfg.push_assign_constant(
-                    short_circuit,
+                    short_circuit_block,
                     source_info,
                     destination,
                     ConstOperand {
                         span: expr.span,
                         user_ty: None,
-                        const_: Const::from_bool(this.tcx, constant),
+                        const_: Const::from_bool(this.tcx, short_circuit_value),
                     },
                 );
                 let mut rhs_block =
-                    this.expr_into_dest(destination, continuation, rhs).into_block();
+                    this.expr_into_dest(destination, continue_block, rhs).into_block();
                 // Instrument the lowered RHS's value for condition coverage.
                 // (Does nothing if condition coverage is not enabled.)
                 this.visit_coverage_standalone_condition(rhs, destination, &mut rhs_block);
 
-                let target = this.cfg.start_new_block();
-                this.cfg.goto(rhs_block, source_info, target);
-                this.cfg.goto(short_circuit, source_info, target);
-                target.unit()
+                // Reunite the continuation path and the short-circuit path.
+                let join_block = this.cfg.start_new_block();
+                this.cfg.goto(rhs_block, source_info, join_block);
+                this.cfg.goto(short_circuit_block, source_info, join_block);
+                join_block.unit()
             }
             ExprKind::Loop { body } => {
                 // [block]
