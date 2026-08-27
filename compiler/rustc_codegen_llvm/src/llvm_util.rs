@@ -497,10 +497,11 @@ fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String)
         cpu_name: &'a str,
         remark: String,
     }
-    // Compare CPU against current target to label the default.
+    // Compare CPU against current target to label the default. Do not print it if
+    // `need_explicit_cpu` is set, because in that case the concept of default makes less sense.
     let target_cpu = handle_native(&sess.target.cpu);
     let make_remark = |cpu_name| {
-        if cpu_name == target_cpu {
+        if cpu_name == target_cpu && !sess.target.need_explicit_cpu {
             // FIXME(#132514): This prints the LLVM target string, which can be
             // different from the Rust target string. Is that intended?
             let target = &sess.target.llvm_target;

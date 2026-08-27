@@ -100,5 +100,5 @@ fn main() {
         .target("require-explicit-cpu")
         .print("target-cpus")
         .run()
-        .assert_stdout_contains("default target CPU");
+        .assert_stdout_not_contains("default target CPU");
 }
