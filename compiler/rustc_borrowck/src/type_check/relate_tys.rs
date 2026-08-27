@@ -11,8 +11,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::relate_args_invariantly;
 use rustc_middle::ty::{self, FnMutDelegate, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;

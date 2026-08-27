@@ -1,9 +1,10 @@
 //! Conversion of internal Rust compiler `ty` items to stable ones.
 
 use rustc_middle::ty::Ty;
-use rustc_middle::{bug, mir, ty};
+use rustc_middle::{mir, ty};
 use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
+use rustc_span::bug;
 
 use crate::alloc;
 use crate::compiler_interface::BridgeTys;

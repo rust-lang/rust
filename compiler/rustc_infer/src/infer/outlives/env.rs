@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
-use rustc_middle::{bug, ty};
+use rustc_middle::ty;
+use rustc_span::bug;
 use tracing::debug;
 
 use super::explicit_outlives_bounds;

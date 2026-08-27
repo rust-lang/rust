@@ -6,9 +6,9 @@ use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, LayoutTypeCodegenMethods,
 };
-use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_span::bug;
 use rustc_target::spec::{Arch, Env, LlvmAbi, RustcAbi};
 
 use crate::builder::Builder;

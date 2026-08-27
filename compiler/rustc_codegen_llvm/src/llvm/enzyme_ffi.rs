@@ -92,9 +92,9 @@ pub(crate) mod Enzyme_AD {
     use std::ffi::{c_char, c_void};
     use std::sync::{Mutex, MutexGuard, OnceLock};
 
-    use rustc_middle::bug;
     use rustc_session::config::{Sysroot, host_tuple};
     use rustc_session::filesearch;
+    use rustc_span::bug;
 
     use super::{CConcreteType, CTypeTreeRef, Context};
     use crate::llvm::{EnzymeTypeTree, LLVMRustVersionMajor};

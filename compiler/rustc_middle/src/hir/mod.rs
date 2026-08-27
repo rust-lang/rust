@@ -17,7 +17,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_span::{ErrorGuaranteed, ExpnId, Span};
+use rustc_span::{ErrorGuaranteed, ExpnId, Span, bug, span_bug};
 
 use crate::query::Providers;
 use crate::ty::TyCtxt;

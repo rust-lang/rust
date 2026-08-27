@@ -8,8 +8,7 @@ use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, bug, span_bug};
 use tracing::{instrument, trace};
 
 use crate::diagnostics::{DuplicateArg, NotParam};

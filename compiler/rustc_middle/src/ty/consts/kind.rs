@@ -1,6 +1,7 @@
 use std::assert_matches;
 
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_span::bug;
 
 use super::Const;
 use crate::mir;

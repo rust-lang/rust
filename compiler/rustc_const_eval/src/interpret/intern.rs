@@ -23,10 +23,10 @@ use rustc_middle::mir::interpret::{
     AllocBytes, ConstAllocation, CtfeProvenance, InterpResult, Provenance,
 };
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::span_bug;
 use tracing::{instrument, trace};
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, interp_ok};

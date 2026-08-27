@@ -7,8 +7,9 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, DefLocation, Location, TerminatorKind, traversal};
+use rustc_middle::ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
-use rustc_middle::{bug, span_bug, ty};
+use rustc_span::{bug, span_bug};
 use tracing::debug;
 
 use super::FunctionCx;

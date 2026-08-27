@@ -4,10 +4,10 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, InlineAsmOperand, START_BLOCK};
 use rustc_middle::mono::{MonoItemData, Visibility};
+use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug, ty};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::{Arch, BinaryFormat, Env, Os};
 

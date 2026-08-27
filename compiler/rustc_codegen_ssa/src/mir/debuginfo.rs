@@ -9,9 +9,9 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
-use rustc_middle::{bug, mir, ty};
+use rustc_middle::{mir, ty};
 use rustc_session::config::DebugInfo;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, hygiene, sym};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, bug, hygiene, sym};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::{PlaceRef, PlaceValue};

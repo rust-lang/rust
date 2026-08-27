@@ -229,9 +229,8 @@ use rustc_middle::ty::{
     TypeFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
 };
 use rustc_middle::util::Providers;
-use rustc_middle::{bug, span_bug};
 use rustc_session::config::{DebugInfo, EntryFnType, Offload};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, dummy_spanned, respan};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, bug, dummy_spanned, respan, span_bug};
 use rustc_structures::Limit;
 use tracing::{debug, instrument, trace};
 

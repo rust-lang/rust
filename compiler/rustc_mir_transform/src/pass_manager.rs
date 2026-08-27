@@ -5,11 +5,11 @@ use std::sync::atomic::Ordering;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir::attrs::OptimizeAttr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
 use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::OptLevel;
+use rustc_span::bug;
 use tracing::trace;
 
 use crate::lint::lint_body;

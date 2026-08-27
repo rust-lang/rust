@@ -28,7 +28,6 @@ use rustc_lint_defs::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_IMPORT_VISIBILITIES,
     AMBIGUOUS_PANIC_IMPORTS, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
-use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::Session;
 use rustc_session::utils::was_invoked_from_cargo;
@@ -38,7 +37,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{
-    BytePos, Ident, RemapPathScopeComponents, Span, Spanned, Symbol, SyntaxContext, kw, sym,
+    BytePos, Ident, RemapPathScopeComponents, Span, Spanned, Symbol, SyntaxContext, bug, kw, sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, instrument};

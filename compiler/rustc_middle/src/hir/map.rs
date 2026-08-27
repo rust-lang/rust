@@ -16,7 +16,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_span::def_id::{CRATE_MOD_ID, StableCrateId};
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, bug, kw, span_bug, with_metavar_spans};
 
 use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;

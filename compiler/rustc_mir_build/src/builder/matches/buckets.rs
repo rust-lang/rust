@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::Place;
-use rustc_middle::{bug, span_bug};
+use rustc_span::{bug, span_bug};
 use tracing::debug;
 
 use crate::builder::Builder;

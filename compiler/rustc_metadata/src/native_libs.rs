@@ -7,13 +7,12 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::attrs::PeImportNameType;
 use rustc_hir::def::DefKind;
 use rustc_hir::find_attr;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::{Symbol, bug};
 use rustc_structures::NativeLibKind;
 use rustc_target::spec::{Arch, BinaryFormat, CfgAbi};
 

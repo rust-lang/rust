@@ -8,9 +8,8 @@ use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use rustc_lint_defs::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
-use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{Ident, STDLIB_STABLE_CRATES, Span, Symbol, kw, sym};
+use rustc_span::{Ident, STDLIB_STABLE_CRATES, Span, Symbol, kw, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 

@@ -18,8 +18,9 @@ pub mod util;
 
 use std::sync::atomic::AtomicBool;
 
+use rustc_middle::ty;
 use rustc_middle::util::Providers;
-use rustc_middle::{bug, ty};
+use rustc_span::bug;
 
 /// Const eval always happens in post analysis mode in order to be able to use the hidden types of
 /// opaque types. This is needed for trivial things like `size_of`, but also for using associated

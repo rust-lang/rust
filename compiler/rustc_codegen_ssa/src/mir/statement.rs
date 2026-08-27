@@ -1,5 +1,6 @@
 use rustc_middle::mir::{self, NonDivergingIntrinsic};
-use rustc_middle::{bug, span_bug, ty};
+use rustc_middle::ty;
+use rustc_span::{bug, span_bug};
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
