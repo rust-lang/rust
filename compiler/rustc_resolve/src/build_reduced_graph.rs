@@ -412,6 +412,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 non_glob_decl: Some(decl),
                 orig_ident_span,
                 single_imports: Default::default(),
+                extern_reexport_chain: reexport_chain.clone(),
                 ..
             });
 
