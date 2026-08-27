@@ -12,7 +12,7 @@ codebase take a look at [Adding Lints] or [Common Tools].
   - [Building and Testing](#building-and-testing)
   - [`cargo dev`](#cargo-dev)
   - [lintcheck](#lintcheck)
-  - [PR](#pr)
+  - [PR](#on-prs)
   - [Common Abbreviations](#common-abbreviations)
   - [Install from source](#install-from-source)
 

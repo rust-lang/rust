@@ -19,7 +19,7 @@ When reading the policy in the context of Clippy:
   We expect to adopt whatever tooling `rust-lang/rust` adopts to specify this more precisely.
 * When in doubt,
   the Clippy team will provide any and all Clippy-specific interpretations of the policy,
-  until such time as the policy itself is updated to encompass Clipy.
+  until such time as the policy itself is updated to encompass Clippy.
 
 For suggestions about how to use LLMs *well*,
 and how to review LLM-created PRs,
