@@ -2427,9 +2427,12 @@ pub struct Ident {
 
 impl Ident {
     #[inline]
+    #[track_caller]
     /// Constructs a new identifier from a symbol and a span.
     pub fn new(name: Symbol, span: Span) -> Ident {
-        debug_assert_ne!(name, sym::empty);
+        if cfg!(debug_assertions) && name == sym::empty {
+            crate::span_bug!(span, "called `Ident::new` with empty symbol");
+        }
         Ident { name, span }
     }
 
