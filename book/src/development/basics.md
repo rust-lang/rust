@@ -122,8 +122,8 @@ Refer to the tools [README] for more details.
 We follow a rustc no merge-commit policy. See
 <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
 
-Before opening your pull request, know that we follow an LLM policy. See
-<https://doc.rust-lang.org/stable/clippy/development/llm_usage.html>
+Before opening your pull request, know that we follow an LLM policy.
+See [LLM policy](llm_usage.md)
 
 ## Common Abbreviations
 

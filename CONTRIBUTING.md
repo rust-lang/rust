@@ -273,4 +273,4 @@ All code in this repository is under the [Apache-2.0] or the [MIT] license.
 [Apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0
 [MIT]: https://opensource.org/licenses/MIT
 [LLM usage policy]: https://forge.rust-lang.org/policies/llm-usage.html
-[LLM usage chapter]: https://doc.rust-lang.org/stable/clippy/development/infrastructure/book.html
+[LLM usage chapter]: https://doc.rust-lang.org/nightly/clippy/development/llm_usage.html
