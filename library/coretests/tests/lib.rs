@@ -14,6 +14,7 @@
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
+#![feature(clamp_to)]
 #![feature(clone_to_uninit)]
 #![feature(cmp_minmax)]
 #![feature(cmp_splat)]
