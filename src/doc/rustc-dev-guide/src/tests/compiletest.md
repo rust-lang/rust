@@ -460,6 +460,10 @@ problematic in the presence of pointers in constants or other bit width dependen
 In that case you can add `// EMIT_MIR_FOR_EACH_BIT_WIDTH` to
 your test, causing separate files to be generated for 32bit and 64bit systems.
 
+Similarly,
+to generate separate files for each panic strategy ("panic-abort" and "panic-unwind"),
+add `// EMIT_MIR_FOR_EACH_PANIC_STRATEGY` to the test.
+
 [`tests/mir-opt`]: https://github.com/rust-lang/rust/tree/HEAD/tests/mir-opt
 
 
