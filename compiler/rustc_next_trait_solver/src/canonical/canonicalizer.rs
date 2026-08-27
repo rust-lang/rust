@@ -325,7 +325,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         }
 
         let hidden_types_of_opaques_in_body =
-            delegate.cx().mk_hidden_types_of_opaques_in_body(&hidden_types_of_opaques_in_body);
+            delegate.cx().mk_opaque_hidden_ty_bounds_in_body(&hidden_types_of_opaques_in_body);
 
         let value =
             QueryInput { goal, predefined_opaques_in_body, hidden_types_of_opaques_in_body };

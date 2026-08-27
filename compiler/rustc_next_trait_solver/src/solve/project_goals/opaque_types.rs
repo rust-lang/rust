@@ -118,7 +118,7 @@ where
                     expected,
                 )?;
                 if self.typing_mode().should_add_hidden_types_of_opaques() {
-                    self.add_hidden_type_of_opaque(
+                    self.add_hidden_type_of_opaque_in_storage(
                         expected,
                         ty::OpaqueHiddenTyBound::iter_self_bounds_for_alias_ty(
                             cx,
