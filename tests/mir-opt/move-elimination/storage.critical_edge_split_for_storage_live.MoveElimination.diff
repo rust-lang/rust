@@ -23,6 +23,7 @@
       bb2: {
 +         StorageDead(_3);
           _2 = const 2_u32;
++         StorageDead(_2);
           return;
 +     }
 + 

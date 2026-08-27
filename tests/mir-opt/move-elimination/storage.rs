@@ -110,6 +110,30 @@ pub fn terminator_end_storage_dead_in_successor(x: u32) -> u32 {
     out
 }
 
+// EMIT_MIR storage.storage_dead_before_return.MoveElimination.diff
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+pub fn storage_dead_before_return() -> *const u32 {
+    // This checks that a borrowed local without input storage statements has
+    // its reconstructed storage ended before returning.
+    // CHECK-LABEL: fn storage_dead_before_return(
+    // CHECK: debug x => [[x:_.*]];
+    // CHECK: StorageLive([[x]]);
+    // CHECK: [[x]] = const 1_u32;
+    // CHECK: [[ret:_.*]] = &raw const [[x]];
+    // CHECK: StorageDead([[x]]);
+    // CHECK-NEXT: return;
+    mir! {
+        let x: u32;
+        debug x => x;
+
+        {
+            x = 1;
+            RET = &raw const x;
+            Return()
+        }
+    }
+}
+
 // EMIT_MIR storage.critical_edge_split_for_storage_live.MoveElimination.diff
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 pub fn critical_edge_split_for_storage_live(flag: bool) {

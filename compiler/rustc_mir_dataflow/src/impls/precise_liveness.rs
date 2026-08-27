@@ -371,6 +371,15 @@ impl MatrixBuilder {
             self.kill(local, point, effect);
         }
     }
+
+    fn kill_all_except(&mut self, except: Local, point: PointIndex, effect: SplitPointEffect) {
+        while let Some(local) = self.maybe_live_locals.pop() {
+            if local != except {
+                self.kill(local, point, effect);
+            }
+        }
+        self.maybe_live_locals.push(except);
+    }
 }
 
 pub fn liveness_matrix<'tcx>(
@@ -398,8 +407,21 @@ pub fn liveness_matrix<'tcx>(
         // terminator.
         state.intersect(&kill_points.live_on_entry[block]);
 
-        for local in state.iter() {
-            builder.gen_(local, points.entry_point(block), SplitPointEffect::Early);
+        // Gen any locals that are live at the start of the block. If this block
+        // only consists of a return terminator then instead of gen the return
+        // place. This ensures that StorageDead for all other locals are
+        // inserted before the return terminator.
+        let terminator = block_data.terminator();
+        if let mir::TerminatorKind::Return = terminator.kind
+            && block_data.statements.is_empty()
+        {
+            if state.contains(mir::RETURN_PLACE) {
+                builder.gen_(mir::RETURN_PLACE, points.entry_point(block), SplitPointEffect::Early);
+            }
+        } else {
+            for local in state.iter() {
+                builder.gen_(local, points.entry_point(block), SplitPointEffect::Early);
+            }
         }
 
         for (statement_index, statement) in block_data.statements.iter().enumerate() {
@@ -444,9 +466,22 @@ pub fn liveness_matrix<'tcx>(
             }
         }
 
+        // If this block ends in a return terminator, end all live ranges before
+        // the terminator so that StorageDead statements are inserted before it.
+        //
+        // This is useful after inlining so that the lifetime of locals in the
+        // inlined callee don't extend past the call in the callee.
+        if let mir::TerminatorKind::Return = terminator.kind
+            && !block_data.statements.is_empty()
+        {
+            // Blocks with only a return terminator are handled above.
+            let location = Location { block, statement_index: block_data.statements.len() - 1 };
+            let point = points.point_from_location(location);
+            builder.kill_all_except(mir::RETURN_PLACE, point, SplitPointEffect::Late);
+        }
+
         let location = Location { block, statement_index: block_data.statements.len() };
         let point = points.point_from_location(location);
-        let terminator = block_data.terminator();
 
         // Kill moved operands if the whole local was moved.
         VisitPlacesWith(|place: Place<'tcx>, ctxt| {
