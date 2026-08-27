@@ -19,18 +19,13 @@ pub(crate) mod clone;
 pub(crate) mod coerce_pointee;
 pub(crate) mod debug;
 pub(crate) mod default;
+pub(crate) mod eq;
 pub(crate) mod from;
 pub(crate) mod hash;
-pub(crate) mod reborrow;
-
-#[path = "cmp/eq.rs"]
-pub(crate) mod eq;
-#[path = "cmp/ord.rs"]
 pub(crate) mod ord;
-#[path = "cmp/partial_eq.rs"]
 pub(crate) mod partial_eq;
-#[path = "cmp/partial_ord.rs"]
 pub(crate) mod partial_ord;
+pub(crate) mod reborrow;
 
 pub(crate) mod generic;
 
