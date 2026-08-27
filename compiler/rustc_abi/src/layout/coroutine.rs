@@ -67,7 +67,7 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
                         "removing local {:?} in >1 variant ({:?}, {:?})",
                         local, variant_index, idx
                     );
-                    ineligible_locals.insert(*local);
+                    ineligible_locals.insert2(*local);
                     assignments[*local] = Ineligible(None);
                 }
                 Ineligible(_) => {}
@@ -98,7 +98,7 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
             let conflicts_b = storage_conflicts.count(local_b);
             let (remove, other) =
                 if conflicts_a > conflicts_b { (local_a, local_b) } else { (local_b, local_a) };
-            ineligible_locals.insert(remove);
+            ineligible_locals.insert2(remove);
             assignments[remove] = Ineligible(None);
             trace!("removing local {:?} due to conflict with {:?}", remove, other);
         }
@@ -113,7 +113,7 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
         let mut used_variants = DenseBitSet::new_empty(variant_fields.len());
         for assignment in &assignments {
             if let Assigned(idx) = assignment {
-                used_variants.insert(*idx);
+                used_variants.insert2(*idx);
             }
         }
         if used_variants.count() < 2 {

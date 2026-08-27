@@ -329,7 +329,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSe
     let mut unsizing_params = DenseBitSet::new_empty(num_params);
     for arg in tcx.type_of(tail_field.did).instantiate_identity().skip_norm_wip().walk() {
         if let Some(i) = maybe_unsizing_param_idx(arg) {
-            unsizing_params.insert(i);
+            unsizing_params.insert2(i);
         }
     }
 

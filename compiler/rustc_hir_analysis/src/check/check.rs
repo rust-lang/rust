@@ -2111,7 +2111,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             && let ty::Param(param) = leaf_ty.kind()
         {
             debug!("found use of ty param {:?}", param);
-            params_used.insert(param.index);
+            params_used.insert2(param.index);
         }
     }
 
