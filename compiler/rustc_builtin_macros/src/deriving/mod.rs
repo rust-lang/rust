@@ -14,9 +14,10 @@ macro path_std($($x:tt)*) {
     generic::ty::Path::new( pathvec!( $($x)* ) )
 }
 
-pub(crate) mod bounds;
 pub(crate) mod clone;
 pub(crate) mod coerce_pointee;
+pub(crate) mod const_param_ty;
+pub(crate) mod copy;
 pub(crate) mod debug;
 pub(crate) mod default;
 pub(crate) mod eq;
