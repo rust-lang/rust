@@ -108,7 +108,7 @@ For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust
 You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also
 a lot more type hints.
 
-To have `rust-analyzer` also work in the `clippy_dev` and `lintcheck` crates, add the following configuration
+To have `rust-analyzer` also work in the `clippy-dev` and `lintcheck` crates, add the following configuration
 
 ```json
 {
