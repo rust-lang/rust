@@ -40,22 +40,19 @@ fn main() -> Result<()> {
             continue;
         }
         let path = entry.into_path();
-        if let Some(extension) = path.extension() {
-            if extension != "md" {
-                continue;
-            }
-            let old = fs::read_to_string(&path)?;
-            let new = comply(&old);
-            if new == old {
-                compliant.push(path.clone());
-            } else {
-                if cli.overwrite {
-                    fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
-                    made_compliant.push(path.clone());
-                } else {
-                    not_compliant.push(path.clone());
-                }
-            }
+        let Some(extension) = path.extension() else { continue };
+        if extension != "md" {
+            continue;
+        }
+        let old = fs::read_to_string(&path)?;
+        let new = comply(&old);
+        if new == old {
+            compliant.push(path.clone());
+        } else if cli.overwrite {
+            fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
+            made_compliant.push(path.clone());
+        } else {
+            not_compliant.push(path.clone());
         }
     }
     if !compliant.is_empty() {
