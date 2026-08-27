@@ -75,9 +75,8 @@ fn display(header: &str, paths: &[PathBuf]) {
     }
 }
 
-fn ignore(line: &str, in_code_block: bool) -> bool {
-    in_code_block
-        || line.to_lowercase().contains("e.g.")
+fn ignore(line: &str) -> bool {
+    line.to_lowercase().contains("e.g.")
         || line.to_lowercase().contains("n.b.")
         || line.contains(" etc.")
         || line.contains("i.e.")
@@ -104,7 +103,7 @@ fn comply(content: &str) -> String {
             in_code_block = !in_code_block;
             continue;
         }
-        if ignore(&line, in_code_block) {
+        if in_code_block || ignore(&line) {
             continue;
         }
         if REGEX_SPLIT.is_match(&line) {
@@ -161,7 +160,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if line.trim_end().ends_with("<br>") {
             continue;
         }
-        if ignore(line, in_code_block) || REGEX_SPLIT.is_match(line) {
+        if in_code_block || ignore(line) || REGEX_SPLIT.is_match(line) {
             continue;
         }
         let Some(next_line) = content.get(n + 1) else {
@@ -170,7 +169,8 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if next_line.trim_start().starts_with("```") {
             continue;
         }
-        if ignore(next_line, in_code_block)
+        if in_code_block
+            || ignore(next_line)
             || REGEX_LIST_ENTRY.is_match(next_line)
             || REGEX_IGNORE_END.is_match(line)
         {
