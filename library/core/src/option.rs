@@ -2456,16 +2456,7 @@ const impl<T: [const] PartialEq> PartialEq for Option<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<T: [const] PartialOrd> PartialOrd for Option<T> {
-    /// If `T` implements [`PartialOrd`], then [`Option<T>`] will derive its [`PartialOrd`] implementation.
-    /// With this order, `None` compares as less than any `Some`, and two `Some` values compare the
-    /// same way as their contained values would in `T`. If `T` also implements [`Ord`], then so does [`Option<T>`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert!(None < Some(0));
-    /// assert!(Some(0) < Some(1));
-    /// ```
+    /// See [the documentation](https://doc.rust-lang.org/std/option/#comparison-operators) for details.
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         match (self, other) {
