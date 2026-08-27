@@ -4311,6 +4311,47 @@ impl<T> UniqueRc<T> {
     pub fn new(value: T) -> Self {
         Self::new_in(value, Global)
     }
+}
+
+impl<T, A: Allocator> UniqueRc<T, A> {
+    /// Creates a new `UniqueRc` in the provided allocator.
+    ///
+    /// Weak references to this `UniqueRc` can be created with [`UniqueRc::downgrade`]. Upgrading
+    /// these weak references will fail before the `UniqueRc` has been converted into an [`Rc`].
+    /// After converting the `UniqueRc` into an [`Rc`], any weak references created beforehand will
+    /// point to the new [`Rc`].
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    #[must_use]
+    // #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn new_in(value: T, alloc: A) -> Self {
+        let (ptr, alloc) = Box::into_unique(Box::new_in(
+            RcInner {
+                strong: Cell::new(0),
+                // keep one weak reference so if all the weak pointers that are created are dropped
+                // the UniqueRc still stays valid.
+                weak: Cell::new(1),
+                value,
+            },
+            alloc,
+        ));
+        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn unwrap_with_allocator(this: Self) -> (T, A) {
+        let inner_ptr = this.ptr;
+        let (data_ptr, alloc) = Self::into_raw_with_allocator(this);
+
+        // SAFETY: Conceptually moves out of the `UniqueRc`.
+        // We do not use the data inside ever again.
+        let val = unsafe { data_ptr.read() };
+
+        // Drop the strong-weak ref
+        drop(Weak { ptr: inner_ptr, alloc: &alloc });
+
+        (val, alloc)
+    }
 
     /// Maps the value in a `UniqueRc`, reusing the allocation if possible.
     ///
@@ -4334,22 +4375,24 @@ impl<T> UniqueRc<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
-    pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> UniqueRc<U> {
+    pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> UniqueRc<U, A> {
         if size_of::<T>() == size_of::<U>()
             && align_of::<T>() == align_of::<U>()
             && UniqueRc::weak_count(&this) == 0
         {
             // ignore-tidy-undocumented-unsafe
             unsafe {
-                let ptr = UniqueRc::into_raw(this);
+                let (ptr, alloc) = UniqueRc::into_raw_with_allocator(this);
                 let value = ptr.read();
-                let mut allocation = UniqueRc::from_raw(ptr.cast::<mem::MaybeUninit<U>>());
+                let mut allocation =
+                    UniqueRc::from_raw_with_allocator(ptr.cast::<mem::MaybeUninit<U>>(), alloc);
 
                 allocation.write(f(value));
                 allocation.assume_init()
             }
         } else {
-            UniqueRc::new(f(UniqueRc::unwrap(this)))
+            let (val, alloc) = UniqueRc::unwrap_with_allocator(this);
+            UniqueRc::new_in(f(val), alloc)
         }
     }
 
@@ -4379,10 +4422,10 @@ impl<T> UniqueRc<T> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(T) -> R,
-    ) -> <R::Residual as Residual<UniqueRc<R::Output>>>::TryType
+    ) -> <R::Residual as Residual<UniqueRc<R::Output, A>>>::TryType
     where
         R: Try,
-        R::Residual: Residual<UniqueRc<R::Output>>,
+        R::Residual: Residual<UniqueRc<R::Output, A>>,
     {
         if size_of::<T>() == size_of::<R::Output>()
             && align_of::<T>() == align_of::<R::Output>()
@@ -4390,34 +4433,27 @@ impl<T> UniqueRc<T> {
         {
             // ignore-tidy-undocumented-unsafe
             unsafe {
-                let ptr = UniqueRc::into_raw(this);
+                let (ptr, alloc) = UniqueRc::into_raw_with_allocator(this);
                 let value = ptr.read();
-                let mut allocation = UniqueRc::from_raw(ptr.cast::<mem::MaybeUninit<R::Output>>());
+                let mut allocation = UniqueRc::from_raw_with_allocator(
+                    ptr.cast::<mem::MaybeUninit<R::Output>>(),
+                    alloc,
+                );
 
                 allocation.write(f(value)?);
                 try { allocation.assume_init() }
             }
         } else {
-            try { UniqueRc::new(f(UniqueRc::unwrap(this))?) }
+            let (val, alloc) = UniqueRc::unwrap_with_allocator(this);
+            try { UniqueRc::new_in(f(val)?, alloc) }
         }
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    fn unwrap(this: Self) -> T {
-        let this = ManuallyDrop::new(this);
-        // SAFETY: Pointer is valid for reads.
-        let val: T = unsafe { ptr::read(&**this) };
-
-        let _weak = Weak { ptr: this.ptr, alloc: Global };
-
-        val
     }
 }
 
-impl<T: ?Sized> UniqueRc<T> {
+impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_raw(ptr: *const T) -> Self {
-        // SAFETY: Caller upholds that data behind pointer is initialised & correct.
+    unsafe fn from_raw_with_allocator(ptr: *const T, alloc: A) -> Self {
+        // SAFETY: Upheld by caller
         let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original RcInner.
@@ -4429,42 +4465,17 @@ impl<T: ?Sized> UniqueRc<T> {
             ptr: unsafe { NonNull::new_unchecked(rc_ptr) },
             _marker: PhantomData,
             _marker2: PhantomData,
-            alloc: Global,
+            alloc,
         }
     }
 
     #[cfg(not(no_global_oom_handling))]
-    fn into_raw(this: Self) -> *const T {
+    fn into_raw_with_allocator(this: Self) -> (*const T, A) {
         let this = ManuallyDrop::new(this);
-        Self::as_ptr(&*this)
+        // SAFETY: The copy of the allocator stored in `this` is forgotten
+        (Self::as_ptr(&this), unsafe { ptr::read(&this.alloc) })
     }
-}
 
-impl<T, A: Allocator> UniqueRc<T, A> {
-    /// Creates a new `UniqueRc` in the provided allocator.
-    ///
-    /// Weak references to this `UniqueRc` can be created with [`UniqueRc::downgrade`]. Upgrading
-    /// these weak references will fail before the `UniqueRc` has been converted into an [`Rc`].
-    /// After converting the `UniqueRc` into an [`Rc`], any weak references created beforehand will
-    /// point to the new [`Rc`].
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "unique_rc_arc", issue = "112566")]
-    pub fn new_in(value: T, alloc: A) -> Self {
-        let (ptr, alloc) = Box::into_unique(Box::new_in(
-            RcInner {
-                strong: Cell::new(0),
-                // keep one weak reference so if all the weak pointers that are created are dropped
-                // the UniqueRc still stays valid.
-                weak: Cell::new(1),
-                value,
-            },
-            alloc,
-        ));
-        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
-    }
-}
-
-impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
     /// Converts the `UniqueRc` into a regular [`Rc`].
     ///
     /// This consumes the `UniqueRc` and returns a regular [`Rc`] that contains the `value` that

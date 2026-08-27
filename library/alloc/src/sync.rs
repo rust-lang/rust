@@ -4781,6 +4781,46 @@ impl<T> UniqueArc<T, Global> {
     pub fn new(value: T) -> Self {
         Self::new_in(value, Global)
     }
+}
+
+impl<T, A: Allocator> UniqueArc<T, A> {
+    /// Creates a new `UniqueArc` in the provided allocator.
+    ///
+    /// Weak references to this `UniqueArc` can be created with [`UniqueArc::downgrade`]. Upgrading
+    /// these weak references will fail before the `UniqueArc` has been converted into an [`Arc`].
+    /// After converting the `UniqueArc` into an [`Arc`], any weak references created beforehand will
+    /// point to the new [`Arc`].
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    #[must_use]
+    // #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn new_in(data: T, alloc: A) -> Self {
+        let (ptr, alloc) = Box::into_unique(Box::new_in(
+            ArcInner {
+                strong: atomic::AtomicUsize::new(0),
+                // keep one weak reference so if all the weak pointers that are created are dropped
+                // the UniqueArc still stays valid.
+                weak: atomic::AtomicUsize::new(1),
+                data,
+            },
+            alloc,
+        ));
+        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn unwrap_with_allocator(this: Self) -> (T, A) {
+        let inner_ptr = this.ptr;
+        let (data_ptr, alloc) = Self::into_raw_with_allocator(this);
+
+        // SAFETY: Conceptually moves out of the `UniqueRc`.
+        // We do not use the data inside ever again.
+        let val = unsafe { data_ptr.read() };
+
+        drop(Weak { ptr: inner_ptr, alloc: &alloc });
+
+        (val, alloc)
+    }
 
     /// Maps the value in a `UniqueArc`, reusing the allocation if possible.
     ///
@@ -4804,22 +4844,24 @@ impl<T> UniqueArc<T, Global> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
-    pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> UniqueArc<U> {
+    pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> UniqueArc<U, A> {
         if size_of::<T>() == size_of::<U>()
             && align_of::<T>() == align_of::<U>()
             && UniqueArc::weak_count(&this) == 0
         {
             // ignore-tidy-undocumented-unsafe
             unsafe {
-                let ptr = UniqueArc::into_raw(this);
+                let (ptr, alloc) = UniqueArc::into_raw_with_allocator(this);
                 let value = ptr.read();
-                let mut allocation = UniqueArc::from_raw(ptr.cast::<mem::MaybeUninit<U>>());
+                let mut allocation =
+                    UniqueArc::from_raw_with_allocator(ptr.cast::<mem::MaybeUninit<U>>(), alloc);
 
                 allocation.write(f(value));
                 allocation.assume_init()
             }
         } else {
-            UniqueArc::new(f(UniqueArc::unwrap(this)))
+            let (val, alloc) = UniqueArc::unwrap_with_allocator(this);
+            UniqueArc::new_in(f(val), alloc)
         }
     }
 
@@ -4849,10 +4891,10 @@ impl<T> UniqueArc<T, Global> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(T) -> R,
-    ) -> <R::Residual as Residual<UniqueArc<R::Output>>>::TryType
+    ) -> <R::Residual as Residual<UniqueArc<R::Output, A>>>::TryType
     where
         R: Try,
-        R::Residual: Residual<UniqueArc<R::Output>>,
+        R::Residual: Residual<UniqueArc<R::Output, A>>,
     {
         if size_of::<T>() == size_of::<R::Output>()
             && align_of::<T>() == align_of::<R::Output>()
@@ -4860,33 +4902,26 @@ impl<T> UniqueArc<T, Global> {
         {
             // ignore-tidy-undocumented-unsafe
             unsafe {
-                let ptr = UniqueArc::into_raw(this);
+                let (ptr, alloc) = UniqueArc::into_raw_with_allocator(this);
                 let value = ptr.read();
-                let mut allocation = UniqueArc::from_raw(ptr.cast::<mem::MaybeUninit<R::Output>>());
+                let mut allocation = UniqueArc::from_raw_with_allocator(
+                    ptr.cast::<mem::MaybeUninit<R::Output>>(),
+                    alloc,
+                );
 
                 allocation.write(f(value)?);
                 try { allocation.assume_init() }
             }
         } else {
-            try { UniqueArc::new(f(UniqueArc::unwrap(this))?) }
+            let (val, alloc) = UniqueArc::unwrap_with_allocator(this);
+            try { UniqueArc::new_in(f(val)?, alloc) }
         }
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    fn unwrap(this: Self) -> T {
-        let this = ManuallyDrop::new(this);
-        // SAFETY: Pointer is valid for reads and `this` is ManuallyDrop.
-        let val: T = unsafe { ptr::read(&**this) };
-
-        let _weak = Weak { ptr: this.ptr, alloc: Global };
-
-        val
     }
 }
 
-impl<T: ?Sized> UniqueArc<T> {
+impl<T: ?Sized, A: Allocator> UniqueArc<T, A> {
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_raw(ptr: *const T) -> Self {
+    unsafe fn from_raw_with_allocator(ptr: *const T, alloc: A) -> Self {
         // SAFETY: Upheld by caller.
         let offset = unsafe { data_offset(ptr) };
 
@@ -4899,44 +4934,17 @@ impl<T: ?Sized> UniqueArc<T> {
             ptr: unsafe { NonNull::new_unchecked(rc_ptr) },
             _marker: PhantomData,
             _marker2: PhantomData,
-            alloc: Global,
+            alloc,
         }
     }
 
     #[cfg(not(no_global_oom_handling))]
-    fn into_raw(this: Self) -> *const T {
+    fn into_raw_with_allocator(this: Self) -> (*const T, A) {
         let this = ManuallyDrop::new(this);
-        Self::as_ptr(&*this)
+        // SAFETY: The copy of the allocator stored in `this` is forgotten
+        (Self::as_ptr(&*this), unsafe { ptr::read(&this.alloc) })
     }
-}
 
-impl<T, A: Allocator> UniqueArc<T, A> {
-    /// Creates a new `UniqueArc` in the provided allocator.
-    ///
-    /// Weak references to this `UniqueArc` can be created with [`UniqueArc::downgrade`]. Upgrading
-    /// these weak references will fail before the `UniqueArc` has been converted into an [`Arc`].
-    /// After converting the `UniqueArc` into an [`Arc`], any weak references created beforehand will
-    /// point to the new [`Arc`].
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "unique_rc_arc", issue = "112566")]
-    #[must_use]
-    // #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn new_in(data: T, alloc: A) -> Self {
-        let (ptr, alloc) = Box::into_unique(Box::new_in(
-            ArcInner {
-                strong: atomic::AtomicUsize::new(0),
-                // keep one weak reference so if all the weak pointers that are created are dropped
-                // the UniqueArc still stays valid.
-                weak: atomic::AtomicUsize::new(1),
-                data,
-            },
-            alloc,
-        ));
-        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
-    }
-}
-
-impl<T: ?Sized, A: Allocator> UniqueArc<T, A> {
     /// Converts the `UniqueArc` into a regular [`Arc`].
     ///
     /// This consumes the `UniqueArc` and returns a regular [`Arc`] that contains the `value` that
