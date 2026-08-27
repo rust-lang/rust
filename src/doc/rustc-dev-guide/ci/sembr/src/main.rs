@@ -11,8 +11,8 @@ use regex::Regex;
 struct Cli {
     /// File or directory to check
     path: PathBuf,
-    #[arg(long)]
     /// Modify files that do not comply
+    #[arg(long)]
     overwrite: bool,
     /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
