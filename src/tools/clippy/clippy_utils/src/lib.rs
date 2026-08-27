@@ -2773,6 +2773,7 @@ pub fn expr_use_sites<'tcx>(
                 | Node::Crate(_)
                 | Node::Ctor(_)
                 | Node::Err(_)
+                | Node::FieldProject(_)
                 | Node::ForeignItem(_)
                 | Node::GenericParam(_)
                 | Node::Infer(_)

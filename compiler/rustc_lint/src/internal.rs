@@ -243,6 +243,10 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                             kind: hir::PatExprKind::Path(qpath),
                             ..
                         })
+                        | hir::Node::FieldProject(hir::FieldProject {
+                            kind: hir::FieldProjectKind::Path(qpath),
+                            ..
+                        })
                         | hir::Node::Pat(hir::Pat {
                             kind:
                                 hir::PatKind::TupleStruct(qpath, ..) | hir::PatKind::Struct(qpath, ..),

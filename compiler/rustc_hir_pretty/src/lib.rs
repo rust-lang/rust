@@ -186,6 +186,7 @@ impl<'a> State<'a> {
             Node::ConstBlock(a) => self.print_inline_const(a),
             Node::ConstArg(a) => self.print_const_arg(a),
             Node::Expr(a) => self.print_expr(a),
+            Node::FieldProject(a) => self.print_field_project(a),
             Node::ExprField(a) => self.print_expr_field(a),
             // FIXME(mgca): proper printing for struct exprs
             Node::ConstArgExprField(_) => self.word("/* STRUCT EXPR */"),
@@ -1365,6 +1366,26 @@ impl<'a> State<'a> {
         self.word("}");
     }
 
+    fn print_field_project(&mut self, fp: &hir::FieldProject<'_>) {
+        match fp.kind {
+            hir::FieldProjectKind::Path(ref qpath) => self.print_qpath(qpath, true),
+            hir::FieldProjectKind::Field(base, ident) => {
+                self.print_field_project(base);
+                self.word(".");
+                self.print_ident(ident);
+            }
+            hir::FieldProjectKind::Deref(mut base) => {
+                self.word("(*");
+                while let hir::FieldProjectKind::Deref(next) = base.kind {
+                    self.word("*");
+                    base = next;
+                }
+                self.print_field_project(base);
+                self.word(")");
+            }
+        }
+    }
+
     fn print_expr_field(&mut self, field: &hir::ExprField<'_>) {
         let cb = self.cbox(INDENT_UNIT);
         self.print_attrs(self.attrs(field.hir_id));
@@ -1789,6 +1810,11 @@ impl<'a> State<'a> {
                     }
                 }
 
+                self.word(")");
+            }
+            hir::ExprKind::RawHandle(expr) => {
+                self.word("raw_handle!(");
+                self.print_field_project(expr);
                 self.word(")");
             }
             hir::ExprKind::UnsafeBinderCast(kind, expr, ty) => {

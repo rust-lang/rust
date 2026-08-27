@@ -113,6 +113,14 @@ pub(crate) struct UnderscoreExprLhsAssign {
 }
 
 #[derive(Diagnostic)]
+#[diag("cannot take address of a temporary", code = E0745)]
+pub(crate) struct AddressOfTemporaryTaken {
+    #[primary_span]
+    #[label("temporary value")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`await` is only allowed inside `async` functions and blocks", code = E0728)]
 pub(crate) struct AwaitOnlyInAsyncFnAndBlocks {
     #[primary_span]

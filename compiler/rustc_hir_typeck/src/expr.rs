@@ -407,6 +407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::UnsafeBinderCast(kind, inner_expr, ty) => {
                 self.check_expr_unsafe_binder_cast(expr.span, kind, inner_expr, ty, expected)
             }
+            ExprKind::RawHandle(inner_expr) => self.check_expr_raw_handle(expr, inner_expr),
             ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }
@@ -507,7 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match kind {
             hir::BorrowKind::Raw => {
-                self.check_named_place_expr(oprnd);
+                let _ = self.check_named_place_expr(oprnd);
                 Ty::new_ptr(self.tcx, ty, mutbl)
             }
             hir::BorrowKind::Ref | hir::BorrowKind::Pin => {
@@ -540,7 +541,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * Contains a dereference
     /// Note that the adjustments for the children of `expr` should already
     /// have been resolved.
-    fn check_named_place_expr(&self, oprnd: &'tcx hir::Expr<'tcx>) {
+    fn check_named_place_expr(&self, oprnd: &'tcx hir::Expr<'tcx>) -> Result<(), ErrorGuaranteed> {
         let is_named = oprnd.is_place_expr(|base| {
             // Allow raw borrows if there are any deref adjustments.
             //
@@ -560,7 +561,234 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
         });
         if !is_named {
-            self.dcx().emit_err(AddressOfTemporaryTaken { span: oprnd.span });
+            Err(self.dcx().emit_err(AddressOfTemporaryTaken { span: oprnd.span }))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_expr_raw_handle(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        oprnd: &'tcx hir::FieldProject<'tcx>,
+    ) -> Ty<'tcx> {
+        // We don't need to adjust mutability in DerefHandle.
+        // Instead we always capture maximum access.
+        let ty = self.check_field_project(oprnd);
+        if let Err(guar) = ty.error_reported() {
+            return Ty::new_error(self.tcx, guar);
+        }
+        self.check_raw_handle_inner(expr, oprnd)
+    }
+
+    fn check_field_project(&self, fp: &'tcx hir::FieldProject<'tcx>) -> Ty<'tcx> {
+        let ty = self.check_field_project_kind(fp);
+        let ty = self.deeply_resolve_ignoring_regions(ty);
+        self.write_ty(fp.hir_id, ty);
+        ty
+    }
+
+    fn check_field_project_kind(&self, fp: &'tcx hir::FieldProject<'tcx>) -> Ty<'tcx> {
+        match fp.kind {
+            hir::FieldProjectKind::Path(ref qpath) => {
+                self.check_qpath(qpath, fp.hir_id, fp.span, None, None)
+            }
+            hir::FieldProjectKind::Field(base, field) => {
+                let base_ty = self.check_field_project(base);
+                let base_ty = self.structurally_resolve_type(base.span, base_ty);
+                match self.resolve_autoderef_field(
+                    fp.hir_id,
+                    fp.span,
+                    base.hir_id,
+                    base.span,
+                    base_ty,
+                    field,
+                ) {
+                    Ok(ty) => ty,
+                    Err(Some(did)) => {
+                        let guar = self.private_field_err(field, did).emit_err();
+                        Ty::new_error(self.tcx, guar)
+                    }
+                    Err(None) => {
+                        let mut err = self.dcx().create_err(NoFieldOnType {
+                            span: field.span,
+                            ty: base_ty,
+                            field,
+                        });
+                        if base_ty.references_error() {
+                            err.downgrade_to_delayed_bug();
+                        }
+                        let guar = err.emit_err();
+                        Ty::new_error(self.tcx, guar)
+                    }
+                }
+            }
+            hir::FieldProjectKind::Deref(base) => {
+                let base_ty: Ty<'_> = self.check_field_project(base);
+                if let Err(guar) = base_ty.error_reported() {
+                    return Ty::new_error(self.tcx, guar);
+                }
+                let base_ty = self.structurally_resolve_type(fp.span, base_ty);
+                if let Some(ty) = base_ty.builtin_deref(true) {
+                    return ty;
+                }
+                let guar = self.dcx().emit_err(CantDereference { span: fp.span, ty: base_ty });
+                Ty::new_error(self.tcx, guar)
+            }
+        }
+    }
+
+    fn check_raw_handle_inner(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        mut opr: &'tcx hir::FieldProject<'tcx>,
+    ) -> Ty<'tcx> {
+        let mut projs = smallvec::SmallVec::<[_; 2]>::new();
+        let (root_ty, root_span) = loop {
+            let qpath = match opr.kind {
+                hir::FieldProjectKind::Path(ref qpath) => qpath,
+                hir::FieldProjectKind::Field(base, _) | hir::FieldProjectKind::Deref(base) => {
+                    projs.push(opr);
+                    opr = base;
+                    continue;
+                }
+            };
+            let results = self.typeck_results.borrow();
+            let res = results.qpath_res(qpath, opr.hir_id);
+            let root_ty = results.node_type(opr.hir_id);
+            drop(results);
+            let root_cap = match res {
+                // Only a `static mut` is a mutable place on its own.
+                Res::Def(DefKind::Static { mutability, .. }, _) => mutability,
+                // `let (mut a, b)` and `fn foo(mut a: _, b: _)` produce the same bindings,
+                // so the `mut` of this one binding decides.
+                Res::Local(hir_id) => match self.tcx.hir_node(hir_id).expect_pat().kind {
+                    hir::PatKind::Binding(hir::BindingMode(_, hir::Mutability::Mut), ..) => {
+                        hir::Mutability::Mut
+                    }
+                    _ => hir::Mutability::Not,
+                },
+                Res::Err => return Ty::new_misc_error(self.tcx),
+                _ => {
+                    return Ty::new_error(
+                        self.tcx,
+                        self.dcx().emit_err(AddressOfTemporaryTaken { span: opr.span }),
+                    );
+                }
+            };
+            if root_cap.is_mut() {
+                self.typeck_results.borrow_mut().raw_handle_mutability.insert(expr.hir_id);
+            }
+            break (root_ty, opr.span);
+        };
+        // We start with LocalHandle, but deduce the projection handle type by chasing the field
+        // projection traits.
+        // We also need to differentiate between imm. LocalHandle and mut. LocalHandle.
+        let mut handle_ty = Ty::new_adt(
+            self.tcx,
+            self.tcx.adt_def(self.tcx.require_lang_item(LangItem::LocalHandle, root_span)),
+            self.tcx.mk_args(&[root_ty.into()]),
+        );
+        for proj in projs.into_iter().rev() {
+            match proj.kind {
+                hir::FieldProjectKind::Path(..) => unreachable!(),
+                hir::FieldProjectKind::Deref(_) => {
+                    handle_ty = self.normalize(
+                        proj.span,
+                        ty::Unnormalized::new_wip(Ty::new_projection_from_args(
+                            self.tcx,
+                            ty::IsRigid::No,
+                            self.tcx
+                                .require_lang_item(LangItem::DerefPlacePointeeHandle, proj.span),
+                            self.tcx.mk_args(&[handle_ty.into()]),
+                        )),
+                    );
+                }
+                hir::FieldProjectKind::Field(base, _) => {
+                    for adj in self.typeck_results.borrow().node_adjustments(base.hir_id) {
+                        if matches!(adj.kind, Adjust::Deref(_)) {
+                            // Project out DerefPlace::PointeeHandle
+                            // Normalize <$handle_ty as DerefPlace>::PointeeHandle
+                            handle_ty = self.normalize(
+                                base.span,
+                                ty::Unnormalized::new_wip(Ty::new_projection_from_args(
+                                    self.tcx,
+                                    ty::IsRigid::No,
+                                    self.tcx.require_lang_item(
+                                        LangItem::DerefPlacePointeeHandle,
+                                        base.span,
+                                    ),
+                                    self.tcx.mk_args(&[handle_ty.into()]),
+                                )),
+                            );
+                            if handle_ty.error_reported().is_err() {
+                                return handle_ty;
+                            }
+                        } else {
+                            bug!("field projections don't know how to lower {adj:?} it yet")
+                        }
+                    }
+                    let results = self.typeck_results.borrow();
+                    let adjusted_ty = results.node_ty_adjusted(base.hir_id);
+                    let field_idx = results.field_index(proj.hir_id);
+                    let base_ty = self.structurally_resolve_type(proj.span, adjusted_ty);
+                    let subplace_ty = Ty::new_field_representing_type(
+                        self.tcx,
+                        base_ty,
+                        FIRST_VARIANT,
+                        field_idx,
+                    );
+                    handle_ty = self.normalize(
+                        proj.span,
+                        ty::Unnormalized::new_wip(Ty::new_projection_from_args(
+                            self.tcx,
+                            ty::IsRigid::No,
+                            self.tcx.require_lang_item(LangItem::ProjectPlaceProjected, proj.span),
+                            self.tcx.mk_args(&[handle_ty.into(), subplace_ty.into()]),
+                        )),
+                    );
+                }
+            }
+            if handle_ty.error_reported().is_err() {
+                return handle_ty;
+            }
+        }
+        handle_ty
+    }
+
+    fn check_qpath(
+        &self,
+        qpath: &'tcx hir::QPath<'tcx>,
+        hir_id: HirId,
+        span: Span,
+        expr: Option<&'tcx hir::Expr<'tcx>>,
+        call_expr_and_args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
+    ) -> Ty<'tcx> {
+        let (res, opt_ty, segs) = self.resolve_ty_and_res_fully_qualified_call(qpath, hir_id, span);
+        match res {
+            Res::Err => {
+                self.suggest_assoc_method_call(segs);
+                let e =
+                    self.dcx().span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
+                Ty::new_error(self.tcx, e)
+            }
+            Res::Def(DefKind::Variant, _) => {
+                let e =
+                    self.report_unexpected_variant_res(res, expr, &[], qpath, span, E0533, "value");
+                Ty::new_error(self.tcx, e)
+            }
+            _ => {
+                self.instantiate_value_path(
+                    segs,
+                    opt_ty,
+                    res,
+                    call_expr_and_args.map_or(span, |(e, _)| e.span),
+                    span,
+                    hir_id,
+                    call_expr_and_args.map(|(_, args)| args),
+                )
+                .0
+            }
         }
     }
 
@@ -610,40 +838,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let (res, opt_ty, segs) =
-            self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
-        let ty = match res {
-            Res::Err => {
-                self.suggest_assoc_method_call(segs);
-                let e =
-                    self.dcx().span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
-                Ty::new_error(tcx, e)
-            }
-            Res::Def(DefKind::Variant, _) => {
-                let e = self.report_unexpected_variant_res(
-                    res,
-                    Some(expr),
-                    &[],
-                    qpath,
-                    expr.span,
-                    E0533,
-                    "value",
-                );
-                Ty::new_error(tcx, e)
-            }
-            _ => {
-                self.instantiate_value_path(
-                    segs,
-                    opt_ty,
-                    res,
-                    call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
-                    expr.span,
-                    expr.hir_id,
-                    call_expr_and_args.map(|(_, args)| args),
-                )
-                .0
-            }
-        };
+        let ty = self.check_qpath(qpath, expr.hir_id, expr.span, Some(expr), call_expr_and_args);
 
         if let ty::FnDef(did, args) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
@@ -2808,6 +3003,85 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         None
     }
 
+    fn resolve_autoderef_field(
+        &self,
+        expr_hir_id: HirId,
+        expr_span: Span,
+        base_hir_id: HirId,
+        base_span: Span,
+        base_ty: Ty<'tcx>,
+        field: Ident,
+    ) -> Result<Ty<'tcx>, Option<DefId>> {
+        // Whether we are trying to access a private field. Used for error reporting.
+        let mut private_candidate = None;
+
+        // Field expressions automatically deref
+        let mut autoderef = self.autoderef(expr_span, base_ty);
+        while let Some((deref_base_ty, _)) = autoderef.next() {
+            debug!("deref_base_ty: {:?}", deref_base_ty);
+            match deref_base_ty.kind() {
+                ty::Adt(base_def, args) if !base_def.is_enum() => {
+                    debug!("struct named {:?}", deref_base_ty);
+                    // we don't care to report errors for a struct if the struct itself is tainted
+                    if let Err(guar) = base_def.non_enum_variant().has_errors() {
+                        return Ok(Ty::new_error(self.tcx(), guar));
+                    }
+
+                    let (ident, def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
+
+                    if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
+                        self.write_field_index(expr_hir_id, idx);
+
+                        let adjustments = self.adjust_steps(&autoderef);
+                        if field.vis.is_accessible_from(def_scope, self.tcx) {
+                            self.apply_node_adjustments(base_hir_id, base_span, adjustments);
+                            self.register_predicates(autoderef.into_obligations());
+
+                            self.tcx.check_stability(field.did, Some(expr_hir_id), expr_span, None);
+                            return Ok(self.field_ty(expr_span, field, *args));
+                        }
+
+                        // The field is not accessible, fall through to error reporting.
+                        private_candidate = Some((adjustments, base_def.did()));
+                    }
+                }
+                ty::Tuple(tys) => {
+                    if let Ok(index) = field.as_str().parse::<usize>()
+                        && field.name == sym::integer(index)
+                        && let Some(&field_ty) = tys.get(index)
+                    {
+                        let adjustments = self.adjust_steps(&autoderef);
+                        self.apply_node_adjustments(base_hir_id, base_span, adjustments);
+                        self.register_predicates(autoderef.into_obligations());
+
+                        self.write_field_index(expr_hir_id, FieldIdx::from_usize(index));
+                        return Ok(field_ty);
+                    }
+                }
+                _ => {}
+            }
+        }
+        // We failed to check the expression, report an error.
+
+        // Emits an error if we deref an infer variable, like calling `.field` on a base type
+        // of `&_`. We can also use this to suppress unnecessary "missing field" errors that
+        // will follow ambiguity errors.
+        let final_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty());
+        if let ty::Error(_) = final_ty.kind() {
+            return Ok(final_ty);
+        }
+
+        if let Some((adjustments, did)) = private_candidate {
+            // (#90483) apply adjustments to avoid ExprUseVisitor from
+            // creating erroneous projection.
+            self.apply_node_adjustments(base_hir_id, base_span, adjustments);
+            return Err(Some(did));
+        }
+
+        Err(None)
+    }
+
     /// Check field access expressions, this works for both structs and tuples.
     /// Returns the Ty of the field.
     ///
@@ -2829,79 +3103,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let base_ty = self.check_expr(base);
         let base_ty = self.structurally_resolve_type(base.span, base_ty);
 
-        // Whether we are trying to access a private field. Used for error reporting.
-        let mut private_candidate = None;
-
-        // Field expressions automatically deref
-        let mut autoderef = self.autoderef(expr.span, base_ty);
-        while let Some((deref_base_ty, _)) = autoderef.next() {
-            debug!("deref_base_ty: {:?}", deref_base_ty);
-            match deref_base_ty.kind() {
-                ty::Adt(base_def, args) if !base_def.is_enum() => {
-                    debug!("struct named {:?}", deref_base_ty);
-                    // we don't care to report errors for a struct if the struct itself is tainted
-                    if let Err(guar) = base_def.non_enum_variant().has_errors() {
-                        return Ty::new_error(self.tcx(), guar);
-                    }
-
-                    let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
-
-                    if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
-                        self.write_field_index(expr.hir_id, idx);
-
-                        let adjustments = self.adjust_steps(&autoderef);
-                        if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            self.apply_adjustments(base, adjustments);
-                            self.register_predicates(autoderef.into_obligations());
-
-                            self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
-                            return self.field_ty(expr.span, field, *args);
-                        }
-
-                        // The field is not accessible, fall through to error reporting.
-                        private_candidate = Some((adjustments, base_def.did()));
-                    }
-                }
-                ty::Tuple(tys) => {
-                    if let Ok(index) = field.as_str().parse::<usize>() {
-                        if field.name == sym::integer(index) {
-                            if let Some(&field_ty) = tys.get(index) {
-                                let adjustments = self.adjust_steps(&autoderef);
-                                self.apply_adjustments(base, adjustments);
-                                self.register_predicates(autoderef.into_obligations());
-
-                                self.write_field_index(expr.hir_id, FieldIdx::from_usize(index));
-                                return field_ty;
-                            }
-                        }
-                    }
-                }
-                _ => {}
+        match self.resolve_autoderef_field(
+            expr.hir_id,
+            expr.span,
+            base.hir_id,
+            base.span,
+            base_ty,
+            field,
+        ) {
+            Ok(ty) => return ty,
+            Err(Some(did)) => {
+                let guar = self.ban_private_field_access(
+                    expr,
+                    base_ty,
+                    field,
+                    did,
+                    expected.only_has_type(self),
+                );
+                return Ty::new_error(self.tcx(), guar);
             }
-        }
-        // We failed to check the expression, report an error.
-
-        // Emits an error if we deref an infer variable, like calling `.field` on a base type
-        // of `&_`. We can also use this to suppress unnecessary "missing field" errors that
-        // will follow ambiguity errors.
-        let final_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty());
-        if let ty::Error(_) = final_ty.kind() {
-            return final_ty;
-        }
-
-        if let Some((adjustments, did)) = private_candidate {
-            // (#90483) apply adjustments to avoid ExprUseVisitor from
-            // creating erroneous projection.
-            self.apply_adjustments(base, adjustments);
-            let guar = self.ban_private_field_access(
-                expr,
-                base_ty,
-                field,
-                did,
-                expected.only_has_type(self),
-            );
-            return Ty::new_error(self.tcx(), guar);
+            Err(None) => {}
         }
 
         let guar = if self.method_exists_for_diagnostic(

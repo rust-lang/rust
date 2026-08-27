@@ -814,6 +814,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::Node::Ty(_)
             | hir::Node::Expr(_)
             | hir::Node::PatExpr(_)
+            | hir::Node::FieldProject(_)
             | hir::Node::PathSegment(_)
             | hir::Node::AssocItemConstraint(_)
             | hir::Node::TraitRef(_)

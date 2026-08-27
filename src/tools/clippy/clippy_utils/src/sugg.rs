@@ -171,6 +171,7 @@ impl<'a> Sugg<'a> {
             | ExprKind::Tup(..)
             | ExprKind::Use(..)
             | ExprKind::Err(_)
+            | ExprKind::RawHandle(..)
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Match(_, _,
                 MatchSource::AwaitDesugar | MatchSource::TryDesugar(_) | MatchSource::FormatArgs
@@ -250,6 +251,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Await(..)
             | ast::ExprKind::GcaMacro(..)
             | ast::ExprKind::Err(_)
+            | ast::ExprKind::RawHandle(..)
             | ast::ExprKind::Dummy
             | ast::ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(snippet(expr.span)),
             ast::ExprKind::Range(ref lhs, ref rhs, limits) => Sugg::BinOp(

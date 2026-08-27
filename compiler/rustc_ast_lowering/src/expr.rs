@@ -14,13 +14,14 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::diagnostics::report_lit_error;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, span_bug, sym,
+    ByteSymbol, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Spanned, Symbol, respan,
+    span_bug, sym,
 };
 use thin_vec::ThinVec;
 mod closure;
 
 use crate::diagnostics::{
-    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks,
+    AddressOfTemporaryTaken, AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd,
     InvalidLegacyConstGenericArg, MatchArmWithNoBody, MoveExprOnlyInSupportedContexts,
     NestedMoveExprWithoutEnclosingContext, NeverPatternWithBody, NeverPatternWithGuard,
@@ -500,6 +501,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
             ),
+            ExprKind::RawHandle(place) => match self.lower_field_project(place) {
+                Ok(fp) => hir::ExprKind::RawHandle(fp),
+                Err(guar) => hir::ExprKind::Err(guar),
+            },
             ExprKind::Struct(se) => {
                 let rest = match se.rest {
                     StructRest::Base(ref e) => hir::StructTailExpr::Base(self.lower_expr(e)),
@@ -551,6 +556,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         hir::Expr { hir_id: expr_hir_id, kind, span }
+    }
+
+    fn lower_field_project(
+        &mut self,
+        e: &Expr,
+    ) -> Result<&'hir hir::FieldProject<'hir>, ErrorGuaranteed> {
+        let kind = match &e.kind {
+            ExprKind::Paren(inner) => return self.lower_field_project(inner),
+            ExprKind::Path(qself, path) => hir::FieldProjectKind::Path(self.lower_qpath(
+                e.id,
+                qself,
+                path,
+                ParamMode::Optional,
+                AllowReturnTypeNotation::No,
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            )),
+            ExprKind::Field(base, ident) => {
+                let base = self.lower_field_project(base)?;
+                hir::FieldProjectKind::Field(base, self.lower_ident(*ident))
+            }
+            ExprKind::Unary(UnOp::Deref, base) => {
+                hir::FieldProjectKind::Deref(self.lower_field_project(base)?)
+            }
+            ExprKind::Err(guar) => return Err(*guar),
+            _ => return Err(self.dcx().emit_err(AddressOfTemporaryTaken { span: e.span })),
+        };
+        let hir_id = self.lower_node_id(e.id);
+        Ok(self.arena.alloc(hir::FieldProject { hir_id, kind, span: self.lower_span(e.span) }))
     }
 
     pub(crate) fn lower_const_block(&mut self, c: &AnonConst) -> hir::ConstBlock {

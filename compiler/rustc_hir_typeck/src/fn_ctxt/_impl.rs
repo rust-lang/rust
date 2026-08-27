@@ -353,7 +353,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let mut expr_ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
+        let autoborrow_mut = adj.iter().any(|adj| {
+            matches!(
+                adj,
+                &Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
+                    ..
+                }
+            )
+        });
+
+        self.apply_node_adjustments(expr.hir_id, expr.span, adj);
+
+        // If there is an mutable auto-borrow, it is equivalent to `&mut <expr>`.
+        // In this case implicit use of `Deref` and `Index` within `<expr>` should
+        // instead be `DerefMut` and `IndexMut`, so fix those up.
+        if autoborrow_mut {
+            self.convert_place_derefs_to_mutable(expr);
+        }
+    }
+
+    pub(crate) fn apply_node_adjustments(
+        &self,
+        hir_id: HirId,
+        span: Span,
+        adj: Vec<Adjustment<'tcx>>,
+    ) {
+        if adj.is_empty() {
+            return;
+        }
+
+        let mut expr_ty = self.typeck_results.borrow().node_ty_adjusted(hir_id);
 
         for a in &adj {
             match a.kind {
@@ -366,7 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Adjust::Deref(DerefAdjustKind::Overloaded(overloaded_deref)) => {
                     self.enforce_context_effects(
                         None,
-                        expr.span,
+                        span,
                         overloaded_deref.method_call(self.tcx),
                         self.tcx.mk_args(&[expr_ty.into()]),
                     );
@@ -391,17 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr_ty = a.target;
         }
 
-        let autoborrow_mut = adj.iter().any(|adj| {
-            matches!(
-                adj,
-                &Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
-                    ..
-                }
-            )
-        });
-
-        match self.typeck_results.borrow_mut().adjustments_mut().entry(expr.hir_id) {
+        match self.typeck_results.borrow_mut().adjustments_mut().entry(hir_id) {
             Entry::Vacant(entry) => {
                 entry.insert(adj);
             }
@@ -440,10 +460,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // FIXME: currently we never try to compose autoderefs
                         // and ReifyFnPointer/UnsafeFnPointer, but we could.
                         self.dcx().span_delayed_bug(
-                            expr.span,
+                            span,
                             format!(
                                 "while adjusting {:?}, can't compose {:?} and {:?}",
-                                expr,
+                                hir_id,
                                 entry.get(),
                                 adj
                             ),
@@ -453,13 +473,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-        }
-
-        // If there is an mutable auto-borrow, it is equivalent to `&mut <expr>`.
-        // In this case implicit use of `Deref` and `Index` within `<expr>` should
-        // instead be `DerefMut` and `IndexMut`, so fix those up.
-        if autoborrow_mut {
-            self.convert_place_derefs_to_mutable(expr);
         }
     }
 

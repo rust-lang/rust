@@ -11,11 +11,12 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, ByRef, Closure, ConstArg, ConstArgKind, ConstItemRhs,
-    Expr, ExprField, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericBounds,
-    GenericParam, GenericParamKind, GenericParamSource, Generics, HirId, HirIdMap, InlineAsmOperand, ItemId, ItemKind,
-    LetExpr, Lifetime, LifetimeKind, LifetimeParamKind, Node, ParamName, Pat, PatExpr, PatExprKind, PatField, PatKind,
-    Path, PathSegment, PreciseCapturingArgKind, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
-    TyFieldPath, TyKind, TyPat, TyPatKind, UseKind, UseTree, WherePredicate, WherePredicateKind,
+    Expr, ExprField, ExprKind, FieldProject, FieldProjectKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericArgs,
+    GenericBound, GenericBounds, GenericParam, GenericParamKind, GenericParamSource, Generics, HirId, HirIdMap,
+    InlineAsmOperand, ItemId, ItemKind, LetExpr, Lifetime, LifetimeKind, LifetimeParamKind, Node, ParamName, Pat,
+    PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PreciseCapturingArgKind, PrimTy, QPath, Stmt, StmtKind,
+    StructTailExpr, TraitBoundModifiers, Ty, TyFieldPath, TyKind, TyPat, TyPatKind, UseKind, UseTree, WherePredicate,
+    WherePredicateKind,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -659,6 +660,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | ExprKind::Type(..)
                 | ExprKind::Unary(..)
                 | ExprKind::Yield(..)
+                | ExprKind::RawHandle(..)
                 | ExprKind::UnsafeBinderCast(..)
 
                 // --- Special cases that do not have a positive branch.
@@ -1406,7 +1408,20 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                 }
             },
+            ExprKind::RawHandle(expr) => self.hash_field_project(expr),
             ExprKind::Err(_) => {},
+        }
+    }
+
+    pub fn hash_field_project(&mut self, fp: &FieldProject<'_>) {
+        mem::discriminant(&fp.kind).hash(&mut self.s);
+        match &fp.kind {
+            FieldProjectKind::Path(qpath) => self.hash_qpath(qpath),
+            FieldProjectKind::Field(base, ident) => {
+                self.hash_field_project(base);
+                self.hash_name(ident.name);
+            },
+            FieldProjectKind::Deref(base) => self.hash_field_project(base),
         }
     }
 

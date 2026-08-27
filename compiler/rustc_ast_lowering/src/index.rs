@@ -286,6 +286,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_field_project(&mut self, fp: &'hir FieldProject<'hir>) {
+        self.insert(fp.span, fp.hir_id, Node::FieldProject(fp));
+        self.with_parent(fp.hir_id, |this| {
+            intravisit::walk_field_project(this, fp);
+        });
+    }
+
     fn visit_const_arg_expr_field(&mut self, field: &'hir ConstArgExprField<'hir>) {
         self.insert(field.span, field.hir_id, Node::ConstArgExprField(field));
         self.with_parent(field.hir_id, |this| {

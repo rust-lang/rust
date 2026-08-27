@@ -104,6 +104,11 @@ pub struct TypeckResults<'tcx> {
     /// <https://rust-lang.github.io/rfcs/2005-match-ergonomics.html#definitions>
     pat_adjustments: ItemLocalMap<Vec<ty::adjustment::PatAdjustment<'tcx>>>,
 
+    /// Field projection raw handle mutability flags.
+    /// True if the root local handle must be borrowed out mutably.
+    /// This always maps a `raw_handle!(..)` expression to mutability level.
+    pub raw_handle_mutability: hir::HirIdSet,
+
     /// Set of reference patterns that match against a match-ergonomics inserted reference
     /// (as opposed to against a reference in the scrutinee type).
     skipped_ref_pats: ItemLocalSet,
@@ -244,6 +249,7 @@ impl<'tcx> TypeckResults<'tcx> {
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
+            raw_handle_mutability: Default::default(),
             rust_2024_migration_desugared_pats: Default::default(),
             skipped_ref_pats: Default::default(),
             closure_kind_origins: Default::default(),
@@ -407,15 +413,27 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.adjustments }
     }
 
+    pub fn node_adjustments(&self, hir_id: HirId) -> &[ty::adjustment::Adjustment<'tcx>] {
+        validate_hir_id_for_typeck_results(self.hir_owner, hir_id);
+        self.adjustments.get(&hir_id.local_id).map_or(&[], |a| &a[..])
+    }
+
     pub fn expr_adjustments(&self, expr: &hir::Expr<'_>) -> &[ty::adjustment::Adjustment<'tcx>] {
-        validate_hir_id_for_typeck_results(self.hir_owner, expr.hir_id);
-        self.adjustments.get(&expr.hir_id.local_id).map_or(&[], |a| &a[..])
+        self.node_adjustments(expr.hir_id)
+    }
+
+    /// Returns the type of `hir_id`, considering any `Adjustment`
+    /// entry recorded for that node.
+    pub fn node_ty_adjusted(&self, hir_id: HirId) -> Ty<'tcx> {
+        self.node_adjustments(hir_id)
+            .last()
+            .map_or_else(|| self.node_type(hir_id), |adj| adj.target)
     }
 
     /// Returns the type of `expr`, considering any `Adjustment`
     /// entry recorded for that expression.
     pub fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> Ty<'tcx> {
-        self.expr_adjustments(expr).last().map_or_else(|| self.expr_ty(expr), |adj| adj.target)
+        self.node_ty_adjusted(expr.hir_id)
     }
 
     pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr<'_>) -> Option<Ty<'tcx>> {

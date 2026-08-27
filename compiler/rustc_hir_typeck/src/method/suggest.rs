@@ -287,6 +287,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 ..
             })
+            | hir::Node::FieldProject(&hir::FieldProject {
+                kind: hir::FieldProjectKind::Path(QPath::TypeRelative(rcvr, segment)),
+                span,
+                ..
+            })
             | hir::Node::Pat(&hir::Pat {
                 kind:
                     hir::PatKind::Struct(QPath::TypeRelative(rcvr, segment), ..)

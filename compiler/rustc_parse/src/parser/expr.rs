@@ -1385,6 +1385,8 @@ impl<'a> Parser<'a> {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
             } else if this.eat_forced_keyword_noexpect(kw::OffsetOf) {
                 this.parse_expr_offset_of(lo)
+            } else if this.eat_forced_keyword_noexpect(kw::RawHandle) {
+                this.parse_expr_raw_handle(lo)
             } else if this.eat_forced_keyword_noexpect(kw::TypeAscribe) {
                 this.parse_expr_type_ascribe(lo)
             } else if this.eat_forced_keyword_noexpect(kw::WrapBinder) {
@@ -1865,6 +1867,15 @@ impl<'a> Parser<'a> {
         self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
 
         Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
+    }
+
+    pub(crate) fn parse_expr_raw_handle(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
+        let expr = self.parse_expr()?;
+        let span = lo.to(self.token.span);
+        self.expect(exp!(CloseParen))?;
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+        Ok(self.mk_expr(span, ExprKind::RawHandle(expr)))
     }
 
     pub(crate) fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
@@ -4220,6 +4231,7 @@ impl MutVisitor for CondChecker<'_> {
             }
             ExprKind::Cast(ref mut op, _)
             | ExprKind::Type(ref mut op, _)
+            | ExprKind::RawHandle(ref mut op)
             | ExprKind::UnsafeBinderCast(_, ref mut op, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason =

@@ -582,6 +582,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::InlineAsm(..)
         | ast::ExprKind::Move(..)
         | ast::ExprKind::OffsetOf(..)
+        | ast::ExprKind::RawHandle(..)
         | ast::ExprKind::UnsafeBinderCast(..)
         | ast::ExprKind::Let(..)
         | ast::ExprKind::Path(..)
