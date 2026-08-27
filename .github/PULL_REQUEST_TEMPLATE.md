@@ -30,6 +30,16 @@ checked during review or continuous integration.
 Note that you can skip the above if you are just opening a WIP PR in
 order to get feedback.
 
+---
+
+Please read our [LLM policy] before opening a PR,
+If you used an LLM to generate any part of this PR, including the PR description,
+please disclose that according to our [guidelines][disclosure guidelines].
+LLM contributions are not banned, but are held to a higher standard of review and correctness.
+
+[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html
+[disclosure guidelines]: https://rustc-dev-guide.rust-lang.org/llm-guidance/writing.html#disclosure-guidelines
+
 Delete this line and everything above before opening your PR.
 
 ---

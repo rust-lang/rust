@@ -117,10 +117,13 @@ Refer to the tools [README] for more details.
 
 [README]: https://github.com/rust-lang/rust-clippy/blob/master/lintcheck/README.md
 
-## PR
+## On PRs
 
 We follow a rustc no merge-commit policy. See
 <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
+
+Before opening your pull request, know that we follow an LLM policy. See
+<https://doc.rust-lang.org/stable/clippy/development/llm_usage.html>
 
 ## Common Abbreviations
 
