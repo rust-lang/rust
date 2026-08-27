@@ -90,7 +90,7 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
                 expanded_code.code.push('\n');
                 expanded_code.code.push_str(&f());
                 let lo = BytePos(expanded_code.expanded_span.lo().0.min(new_span.lo().0));
-                let hi = BytePos(expanded_code.expanded_span.hi().0.min(new_span.hi().0));
+                let hi = BytePos(expanded_code.expanded_span.hi().0.max(new_span.hi().0));
                 expanded_code.expanded_span = expanded_code.expanded_span.with_lo(lo).with_hi(hi);
             }
         } else {
