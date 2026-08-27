@@ -6,7 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{self as hir, find_attr};
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use tracing::debug;
 
 use crate::query::LocalCrate;

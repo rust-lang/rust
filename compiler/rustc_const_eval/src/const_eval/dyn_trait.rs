@@ -1,8 +1,8 @@
 use rustc_middle::mir::interpret::{CtfeProvenance, InterpResult, Scalar, interp_ok};
+use rustc_middle::ty;
 use rustc_middle::ty::{Region, Ty};
-use rustc_middle::{span_bug, ty};
 use rustc_span::def_id::DefId;
-use rustc_span::sym;
+use rustc_span::{span_bug, sym};
 
 use crate::const_eval::CompileTimeMachine;
 use crate::interpret::{Immediate, InterpCx, MPlaceTy, MemoryKind, Writeable};

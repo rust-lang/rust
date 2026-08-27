@@ -6,6 +6,7 @@ use std::{fs, io};
 use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_hir::Constness;
+use rustc_span::bug;
 use tracing::trace;
 use ty::print::PrettyPrinter;
 

@@ -3,8 +3,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{
     AdtDef, AdtKind, Const, ConstKind, GenericArgKind, GenericArgs, Region, Ty, VariantDef,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
 
 use crate::const_eval::CompileTimeMachine;
 use crate::interpret::{

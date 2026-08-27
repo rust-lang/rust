@@ -15,7 +15,7 @@ use rustc_hir::{
 use rustc_index::IndexVec;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::Canonical;
