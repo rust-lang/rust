@@ -1140,7 +1140,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
         let inner = &mut *self.inner.borrow_mut();
         let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
-        inner.opaque_type_storage.iter_hidden_types_of_opaques().any(|(hidden_ty, _)| {
+        inner.opaque_type_storage.iter_opaque_hidden_ty_bounds().any(|(hidden_ty, _)| {
             if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.kind() {
                 let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
                 if opaque_sub_vid == ty_sub_vid {
@@ -1205,7 +1205,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
         inner
             .opaque_type_storage
-            .iter_hidden_types_of_opaques()
+            .iter_opaque_hidden_ty_bounds()
             .filter_map(|(hidden_ty, bounds)| {
                 if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.kind() {
                     let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);

@@ -1111,7 +1111,7 @@ where
                 if ecx.typing_mode().should_add_hidden_types_of_opaques()
                     && let ty::AliasTermKind::ProjectionTy { def_id } = alias.kind
                 {
-                    ecx.add_hidden_type_of_opaque(
+                    ecx.add_hidden_type_of_opaque_in_storage(
                         term.expect_ty(),
                         ty::OpaqueHiddenTyBound::iter_self_bounds_for_alias_ty(
                             cx,

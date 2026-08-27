@@ -64,7 +64,7 @@ use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{
-    ExternalConstraints, ExternalConstraintsData, HiddenTypesOfOpaques, PredefinedOpaques,
+    ExternalConstraints, ExternalConstraintsData, OpaqueHiddenTyBounds, PredefinedOpaques,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::region::RegionExt;
@@ -159,7 +159,7 @@ pub struct CtxtInterners<'tcx> {
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
     predefined_opaques_in_body: InternedSet<'tcx, List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>>,
     hidden_types_of_opaques_in_body:
-        InternedSet<'tcx, List<(Ty<'tcx>, Option<ty::OpaqueHiddenTyBound<'tcx>>)>>,
+        InternedSet<'tcx, List<(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
@@ -2031,7 +2031,7 @@ slice_interners!(
     patterns: pub mk_patterns(Pattern<'tcx>),
     outlives: pub mk_outlives(ty::ArgOutlivesClause<'tcx>),
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body((ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)),
-    hidden_types_of_opaques_in_body: pub mk_hidden_types_of_opaques_in_body((Ty<'tcx>, Option<ty::OpaqueHiddenTyBound<'tcx>>)),
+    hidden_types_of_opaques_in_body: pub mk_opaque_hidden_ty_bounds_in_body((Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2430,15 +2430,12 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_predefined_opaques_in_body(xs))
     }
 
-    pub fn mk_hidden_types_of_opaques_in_body_from_iter<I, T>(self, iter: I) -> T::Output
+    pub fn mk_opaque_hidden_ty_bounds_in_body_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<
-                (Ty<'tcx>, Option<ty::OpaqueHiddenTyBound<'tcx>>),
-                HiddenTypesOfOpaques<'tcx>,
-            >,
+        T: CollectAndApply<(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>), OpaqueHiddenTyBounds<'tcx>>,
     {
-        T::collect_and_apply(iter, |xs| self.mk_hidden_types_of_opaques_in_body(xs))
+        T::collect_and_apply(iter, |xs| self.mk_opaque_hidden_ty_bounds_in_body(xs))
     }
 
     pub fn mk_clauses_from_iter<I, T>(self, iter: I) -> T::Output

@@ -22,8 +22,7 @@ pub type GoalStalledOnOpaques<'tcx> = ir::solve::GoalStalledOnOpaques<TyCtxt<'tc
 pub type SucceededInErased<'tcx> = ir::solve::SucceededInErased<TyCtxt<'tcx>>;
 
 pub type PredefinedOpaques<'tcx> = &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>;
-pub type HiddenTypesOfOpaques<'tcx> =
-    &'tcx ty::List<(Ty<'tcx>, Option<ty::OpaqueHiddenTyBound<'tcx>>)>;
+pub type OpaqueHiddenTyBounds<'tcx> = &'tcx ty::List<(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, StableHash)]
 pub struct ExternalConstraints<'tcx>(
@@ -122,6 +121,6 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(GoalStalledOn<'_>, 56);
+    static_assert_size!(GoalStalledOn<'_>, 64);
     // tidy-alphabetical-end
 }

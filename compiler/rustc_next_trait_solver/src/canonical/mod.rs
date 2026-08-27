@@ -57,7 +57,7 @@ pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
-    hidden_types_of_opaques: &[(I::Ty, Option<ty::OpaqueHiddenTyBound<I>>)],
+    hidden_types_of_opaques: &[(I::Ty, ty::OpaqueHiddenTyBound<I>)],
     typing_mode: TypingMode<I>,
 ) -> (ThinVec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
 where
@@ -71,7 +71,7 @@ where
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
             hidden_types_of_opaques_in_body: delegate
                 .cx()
-                .mk_hidden_types_of_opaques_in_body(hidden_types_of_opaques),
+                .mk_opaque_hidden_ty_bounds_in_body(hidden_types_of_opaques),
         },
     );
 
@@ -148,7 +148,7 @@ where
     for (hidden_ty, bounds) in hidden_types_of_opaques {
         let hidden_ty = delegate.resolve_vars_if_possible(*hidden_ty);
         if hidden_ty.is_ty_var() {
-            delegate.add_hidden_type_of_opaque(hidden_ty, bounds.iter().copied());
+            delegate.add_hidden_type_of_opaque_in_storage(hidden_ty, bounds.iter().copied());
         }
     }
 

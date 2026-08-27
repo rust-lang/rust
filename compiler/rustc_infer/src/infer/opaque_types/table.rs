@@ -28,24 +28,14 @@ pub struct OpaqueTypeStorageEntries<'tcx> {
 }
 
 impl rustc_type_ir::inherent::OpaqueTypeStorageEntries for OpaqueTypeStorageEntries<'_> {
-    fn needs_reevaluation(self, canonicalized: usize) -> bool {
+    fn needs_reevaluation(self, opaques: usize, hidden_bounds: usize) -> bool {
         let OpaqueTypeStorageEntries {
             opaque_types,
             duplicate_entries: _,
             ref hidden_types_of_opaques,
         } = self;
 
-        opaque_types
-            + hidden_types_of_opaques
-                .iter()
-                .map(|(_, &len)| {
-                    // FIXME: We flatten this in the call site, with `None` for empty bounds
-                    // and so this should be `1` for `0`. Should fix having those two representations
-                    // (the flattened one and the keyed one).
-                    len.max(1)
-                })
-                .sum::<usize>()
-            != canonicalized
+        opaque_types != opaques || hidden_types_of_opaques.values().sum::<usize>() != hidden_bounds
     }
 }
 
@@ -134,7 +124,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
             .chain(self.duplicate_entries.iter().skip(prev_entries.duplicate_entries).copied())
     }
 
-    pub fn hidden_types_of_opaques_added_since(
+    pub fn opaque_hidden_ty_bounds_added_since(
         &self,
         prev_entries: &OpaqueTypeStorageEntries<'tcx>,
     ) -> impl Iterator<Item = (Ty<'tcx>, Vec<ty::OpaqueHiddenTyBound<'tcx>>)> {
@@ -181,7 +171,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         opaque_types.iter().map(|(k, v)| (*k, *v)).chain(duplicate_entries.iter().copied())
     }
 
-    pub fn iter_hidden_types_of_opaques(
+    pub fn iter_opaque_hidden_ty_bounds(
         &self,
     ) -> impl Iterator<Item = (Ty<'tcx>, &FxIndexSet<ty::OpaqueHiddenTyBound<'tcx>>)> {
         let OpaqueTypeStorage { opaque_types: _, duplicate_entries: _, hidden_types_of_opaques } =

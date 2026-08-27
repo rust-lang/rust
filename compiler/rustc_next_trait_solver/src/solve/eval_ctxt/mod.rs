@@ -543,18 +543,13 @@ where
         }
 
         for chunk in input.hidden_types_of_opaques_in_body.as_slice().chunk_by(|a, b| a.0 == b.0) {
-            debug_assert!(chunk.iter().filter(|(_hidden_ty, bound)| bound.is_none()).count() <= 1);
-
-            let (hidden_ty, bound) = chunk.first().unwrap();
-
-            if bound.is_none() {
-                delegate.add_hidden_type_of_opaque(*hidden_ty, None);
-            } else {
-                delegate.add_hidden_type_of_opaque(
-                    *hidden_ty,
-                    chunk.iter().flat_map(|(_, bound)| *bound),
-                );
-            }
+            let Some((hidden_ty, _)) = chunk.first() else {
+                continue;
+            };
+            delegate.add_hidden_type_of_opaque_in_storage(
+                *hidden_ty,
+                chunk.iter().map(|(_, bound)| *bound),
+            );
         }
 
         let initial_opaque_types_storage_num_entries = delegate.opaque_types_storage_num_entries();
@@ -673,7 +668,7 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let hidden_types_of_opaques = self.delegate.clone_hidden_types_of_opaques();
+        let hidden_types_of_opaques = self.delegate.clone_opaque_hidden_ty_bounds();
         let (goal, opaque_types, hidden_types_of_opaques) =
             eager_resolve_vars(&**self.delegate, (goal, opaque_types, hidden_types_of_opaques));
         let typing_mode = self.typing_mode();
@@ -905,8 +900,9 @@ where
             .collect();
 
         let num_opaques_in_storage =
-            canonical_goal.canonical.value.predefined_opaques_in_body.len()
-                + canonical_goal.canonical.value.hidden_types_of_opaques_in_body.len();
+            canonical_goal.canonical.value.predefined_opaques_in_body.len();
+        let num_bounds_for_hidden_tys_in_storage =
+            canonical_goal.canonical.value.hidden_types_of_opaques_in_body.len();
 
         GoalStalledOn {
             stalled_vars,
@@ -915,6 +911,7 @@ where
             opaques: GoalStalledOnOpaques::Yes {
                 // FIXME: Need to change the field name
                 num_opaques_in_storage,
+                num_bounds_for_hidden_tys_in_storage,
                 previously_succeeded_in_erased,
             },
         }
@@ -1421,12 +1418,12 @@ where
         self.delegate.register_hidden_type_in_storage(opaque_type_key, hidden_ty, self.origin_span)
     }
 
-    pub(super) fn add_hidden_type_of_opaque(
+    pub(super) fn add_hidden_type_of_opaque_in_storage(
         &self,
         hidden_ty: I::Ty,
         bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<I>>,
     ) {
-        self.delegate.add_hidden_type_of_opaque(hidden_ty, bounds);
+        self.delegate.add_hidden_type_of_opaque_in_storage(hidden_ty, bounds);
     }
 
     pub(super) fn add_item_bounds_for_hidden_type(
@@ -1734,7 +1731,7 @@ where
         let initial_entries = &self.initial_opaque_types_storage_num_entries;
         let opaque_types = self.delegate.clone_opaque_types_added_since(initial_entries);
         let hidden_types_of_opaques =
-            self.delegate.clone_hidden_types_of_opaques_added_since(initial_entries);
+            self.delegate.clone_opaque_hidden_ty_bounds_added_since(initial_entries);
 
         if self.typing_mode().is_erased_not_coherence() {
             assert!(opaque_types.is_empty() && hidden_types_of_opaques.is_empty());
@@ -1911,7 +1908,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     root_depth: usize,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
-    let hidden_types_of_opaques = delegate.clone_hidden_types_of_opaques();
+    let hidden_types_of_opaques = delegate.clone_opaque_hidden_ty_bounds();
     let (goal, opaque_types, hidden_types_of_opaques) =
         eager_resolve_vars(&**delegate, (goal, opaque_types, hidden_types_of_opaques));
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
