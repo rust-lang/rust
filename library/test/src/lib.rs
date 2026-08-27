@@ -190,8 +190,8 @@ fn test_main_inner<F: FnOnce()>(
 /// when panic=unwind.
 pub fn test_main_static(tests: &[&TestDescAndFn]) {
     // This is supposed to be reasonably fast even in Miri. In particular, when invoked via `--exact
-    // test`, we want to aggressively minimize the amount of work we do with the list of all tests
-    // (as that list could be big).
+    // test`, we want the entire invocation to be `O(log n)` in the number of tests: never iterate
+    // the entire test list (as that list could be big)!
     let args = env::args().collect::<Vec<_>>();
     // Tests are sorted by name at compile time by mk_tests_slice.
     let tests = TestList::new(tests, TestListOrder::Sorted);
@@ -324,7 +324,8 @@ impl FilteredTests {
 
 pub fn run_tests<F>(
     opts: &TestOpts,
-    tests: TestList<'_>,
+    mut filtered_tests: Vec<TestDescAndFn>,
+    all_tests_len: usize,
     mut notify_about_test_event: F,
 ) -> io::Result<()>
 where
@@ -360,11 +361,8 @@ where
         timeout: Instant,
     }
 
-    let tests_len = tests.tests.len();
-
     let mut filtered = FilteredTests { tests: Vec::new(), benches: Vec::new(), next_id: 0 };
 
-    let mut filtered_tests = filter_tests(opts, tests);
     if !opts.bench_benchmarks {
         filtered_tests = convert_benchmarks_to_tests(filtered_tests);
     }
@@ -383,7 +381,7 @@ where
         };
     }
 
-    let filtered_out = tests_len - filtered.total_len();
+    let filtered_out = all_tests_len - filtered.total_len();
     let event = TestEvent::TeFilteredOut(filtered_out);
     notify_about_test_event(event)?;
 
