@@ -124,7 +124,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match method {
             SpecialAllocatorMethod::Alloc | SpecialAllocatorMethod::AllocZeroed => {
                 let [size, align] = this.check_shim_sig(
-                    shim_sig_nounwind!(extern "Rust" fn(usize, core::mem::Alignment) -> *_),
+                    shim_sig!(extern "Rust" fn(usize, core::mem::Alignment) -> *_),
                     (link_name, abi, args),
                 )?;
                 let size = this.read_target_usize(size)?;
@@ -147,7 +147,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             SpecialAllocatorMethod::Dealloc => {
                 let [ptr, old_size, align] = this.check_shim_sig(
-                    shim_sig_nounwind!(extern "Rust" fn(*_, usize, core::mem::Alignment) -> ()),
+                    shim_sig!(extern "Rust" fn(*_, usize, core::mem::Alignment) -> ()),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -163,7 +163,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             SpecialAllocatorMethod::Realloc => {
                 let [ptr, old_size, align, new_size] = this.check_shim_sig(
-                    shim_sig_nounwind!(extern "Rust" fn(*_, usize, core::mem::Alignment, usize) -> *_),
+                    shim_sig!(extern "Rust" fn(*_, usize, core::mem::Alignment, usize) -> *_),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
