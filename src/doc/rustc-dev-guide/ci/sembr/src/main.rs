@@ -147,12 +147,12 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             in_code_block = !in_code_block;
             continue;
         }
-        if line.trim_start().starts_with("<div") {
-            in_html_div = true;
+        if line.trim_end().ends_with("</div>") {
+            in_html_div = false;
             continue;
         }
-        if line.trim_start().starts_with("</div") {
-            in_html_div = false;
+        if line.trim_start().starts_with("<div") {
+            in_html_div = true;
             continue;
         }
         if in_html_div {
@@ -254,6 +254,7 @@ short sentences
 <div class='warning'>
 a bit of text inside
 </div>
+<div></div>
 preserve next line
 1. one
 
@@ -285,6 +286,7 @@ do not split short sentences
 <div class='warning'>
 a bit of text inside
 </div>
+<div></div>
 preserve next line
 1. one
 
