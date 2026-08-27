@@ -256,8 +256,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
             i.into_iter()
                 .collect::<IndexSet<_>>()
                 .into_iter()
-                .collect::<Vec<_>>()
-                .into_boxed_slice(),
+                .collect()
         )
     }
 
