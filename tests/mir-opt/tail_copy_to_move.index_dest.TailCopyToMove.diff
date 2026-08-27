@@ -2,6 +2,7 @@
 + // MIR for `index_dest` after TailCopyToMove
   
   fn index_dest(_1: [usize; 4], _2: usize) -> [usize; 4] {
+      debug a => _3;
       let mut _0: [usize; 4];
       let mut _3: [usize; 4];
   

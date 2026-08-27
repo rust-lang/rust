@@ -2,6 +2,7 @@
 + // MIR for `set_discriminant_indirect` after TailCopyToMove
   
   fn set_discriminant_indirect(_1: Choice) -> Choice {
+      debug p => _2;
       let mut _0: Choice;
       let mut _2: *mut Choice;
   

@@ -17,9 +17,11 @@ pub fn dse_guard() {
     // to `b`, because that write keeps `b`'s address-observed lifetime
     // overlapping with `a` and prevents the later move from being eliminated.
     // CHECK-LABEL: fn dse_guard(
-    // CHECK: StorageLive([[b:_.*]]);
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: StorageLive([[b]]);
     // CHECK: [[b]] = make_fields(const 0_u8)
-    // CHECK: StorageLive([[a:_.*]]);
+    // CHECK: StorageLive([[a]]);
     // CHECK: [[a]] = make_fields(const 1_u8)
     // CHECK: observe(move
     // CHECK: [[b]] = move [[a]]

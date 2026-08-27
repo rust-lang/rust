@@ -30,7 +30,8 @@ pub fn direct(x: u32) -> u32 {
 pub fn chain(x: u32) -> u32 {
     // Checks that the scan propagates through a temporary local.
     // CHECK-LABEL: fn chain(
-    // CHECK: [[TMP:_.*]] = move _1;
+    // CHECK: debug t => [[TMP:_.*]];
+    // CHECK: [[TMP]] = move _1;
     // CHECK: _0 = move [[TMP]];
     let t = x;
     t
@@ -102,10 +103,12 @@ pub fn set_discriminant(choice: Choice) -> Choice {
 pub fn set_discriminant_indirect(choice: Choice) -> Choice {
     // Checks that an indirect `SetDiscriminant` place stops the scan.
     // CHECK-LABEL: fn set_discriminant_indirect(
+    // CHECK: debug p => [[P:_.*]];
     // CHECK: _0 = copy _1;
-    // CHECK: discriminant((*[[P:_.*]])) = 1;
+    // CHECK: discriminant((*[[P]])) = 1;
     mir! {
         let p: *mut Choice;
+        debug p => p;
 
         {
             p = &raw mut choice;
@@ -121,11 +124,13 @@ pub fn set_discriminant_indirect(choice: Choice) -> Choice {
 pub fn set_discriminant_borrowed(input: Choice) -> Choice {
     // Checks that writing a borrowed local's discriminant stops the scan.
     // CHECK-LABEL: fn set_discriminant_borrowed(
+    // CHECK: debug local => [[LOCAL:_.*]];
     // CHECK: _0 = copy _1;
-    // CHECK: discriminant([[LOCAL:_.*]]) = 1;
+    // CHECK: discriminant([[LOCAL]]) = 1;
     mir! {
         let local: Choice;
         let p: *const Choice;
+        debug local => local;
 
         {
             p = &raw const local;
@@ -141,10 +146,13 @@ pub fn set_discriminant_borrowed(input: Choice) -> Choice {
 pub fn set_discriminant_index(arr: [Choice; 4], idx: usize) -> usize {
     // Checks that `SetDiscriminant` records projection locals such as indexes.
     // CHECK-LABEL: fn set_discriminant_index(
+    // CHECK: debug local => [[ARR:_.*]];
+    // CHECK: [[ARR]] = move _1;
     // CHECK: _0 = copy _2;
-    // CHECK: discriminant([[ARR:_.*]][_2]) = 1;
+    // CHECK: discriminant([[ARR]][_2]) = 1;
     mir! {
         let local: [Choice; 4];
+        debug local => local;
 
         {
             local = arr;
@@ -184,10 +192,12 @@ pub fn indirect_tail_read(x: u32) -> (u32, u32) {
 pub fn indirect_tail_write(x: u32, z: u32) -> u32 {
     // Checks that an indirect assignment destination stops the scan.
     // CHECK-LABEL: fn indirect_tail_write(
+    // CHECK: debug p => [[P:_.*]];
     // CHECK: _0 = copy _1;
-    // CHECK: (*[[P:_.*]]) = copy _2;
+    // CHECK: (*[[P]]) = copy _2;
     mir! {
         let p: *mut u32;
+        debug p => p;
 
         {
             p = &raw mut x;
@@ -224,11 +234,13 @@ pub fn aggregate_with_deref(x: u32) -> (u32, u32) {
 pub fn borrowed_dest_stops_tail(x: u32, z: u32) -> u32 {
     // Checks that writing to a borrowed local stops the scan.
     // CHECK-LABEL: fn borrowed_dest_stops_tail(
+    // CHECK: debug y => [[Y:_.*]];
     // CHECK: _0 = copy _1;
-    // CHECK: [[Y:_.*]] = copy _2;
+    // CHECK: [[Y]] = copy _2;
     mir! {
         let y: u32;
         let p: *const u32;
+        debug y => y;
 
         {
             p = &raw const y;
@@ -244,10 +256,12 @@ pub fn borrowed_dest_stops_tail(x: u32, z: u32) -> u32 {
 pub fn unrelated_tail_store(x: u32, z: u32) -> u32 {
     // Checks that writing to an unborrowed local remains in the tail.
     // CHECK-LABEL: fn unrelated_tail_store(
+    // CHECK: debug y => [[Y:_.*]];
     // CHECK: _0 = move _1;
-    // CHECK: [[Y:_.*]] = move _2;
+    // CHECK: [[Y]] = move _2;
     mir! {
         let y: u32;
+        debug y => y;
 
         {
             RET = x;
@@ -276,11 +290,13 @@ pub fn index_operand(arr: [u32; 4], idx: usize) -> (usize, u32) {
 pub fn index_dest(arr: [usize; 4], idx: usize) -> [usize; 4] {
     // Checks that index locals in destination projections are recorded.
     // CHECK-LABEL: fn index_dest(
-    // CHECK: [[ARR:_.*]] = move _1;
+    // CHECK: debug a => [[ARR:_.*]];
+    // CHECK: [[ARR]] = move _1;
     // CHECK: [[ARR]][_2] = copy _2;
     // CHECK: _0 = move [[ARR]];
     mir! {
         let a: [usize; 4];
+        debug a => a;
 
         {
             a = arr;
