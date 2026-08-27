@@ -146,6 +146,9 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             in_code_block = !in_code_block;
             continue;
         }
+        if in_code_block {
+            continue;
+        }
         if line.trim_end().ends_with("</div>") {
             in_html_div = false;
             continue;
@@ -160,7 +163,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if line.trim_end().ends_with("<br>") {
             continue;
         }
-        if in_code_block || ignore(line) || REGEX_SPLIT.is_match(line) {
+        if ignore(line) || REGEX_SPLIT.is_match(line) {
             continue;
         }
         let Some(next_line) = content.get(n + 1) else {
@@ -169,8 +172,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if next_line.trim_start().starts_with("```") {
             continue;
         }
-        if in_code_block
-            || ignore(next_line)
+        if ignore(next_line)
             || REGEX_LIST_ENTRY.is_match(next_line)
             || REGEX_IGNORE_END.is_match(line)
         {
