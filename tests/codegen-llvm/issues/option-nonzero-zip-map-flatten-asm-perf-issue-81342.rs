@@ -1,13 +1,12 @@
 // Regression tests for https://github.com/rust-lang/rust/issues/81342
 // foo and bar should generate the same, efficient assembly code
 //@ compile-flags: -O
-//@ only-64bit
 #![crate_type = "lib"]
 
 use std::num::NonZeroUsize;
 
 // CHECK-LABEL: @foo
-// CHECK-COUNT-2: icmp eq i64 %{{.*}}, 0
+// CHECK-COUNT-2: icmp eq i{{[0-9]+}} %{{.*}}, 0
 // CHECK: or i1
 // CHECK: select
 // CHECK-NOT: icmp
@@ -17,7 +16,7 @@ pub fn foo(x: Option<NonZeroUsize>, y: Option<NonZeroUsize>) -> Option<NonZeroUs
 }
 
 // CHECK-LABEL: @bar
-// CHECK-COUNT-2: icmp eq i64 %{{.*}}, 0
+// CHECK-COUNT-2: icmp eq i{{[0-9]+}} %{{.*}}, 0
 // CHECK: or i1
 // CHECK: select
 // CHECK-NOT: icmp
