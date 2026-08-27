@@ -1318,7 +1318,7 @@ pub fn rustc_cargo(
     rustc_cargo_env(builder, cargo, target);
 }
 
-pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
+fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo
@@ -1432,7 +1432,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 /// Pass down configuration from the LLVM build into the build of
 /// rustc_llvm and rustc_codegen_llvm.
 ///
-/// Note that this has the side-effect of _building LLVM_, which is sometimes
+/// Note that calling this function has the side-effect of _building LLVM_, which is sometimes
 /// unwanted (e.g. for check builds).
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     let llvm_output = builder.ensure(llvm::Llvm { target });
@@ -1730,7 +1730,6 @@ impl CommandLineStep for GccCodegenBackend {
             Kind::Build,
         );
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, host);
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
@@ -1801,7 +1800,6 @@ impl CommandLineStep for CraneliftCodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, target);
 
         let _guard = builder.msg(
             Kind::Build,
