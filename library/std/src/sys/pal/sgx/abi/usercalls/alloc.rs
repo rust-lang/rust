@@ -253,11 +253,9 @@ where
         unsafe {
             // Mustn't call alloc with size 0.
             let ptr = if size > 0 {
-                // `copy_to_userspace` is more efficient when data is 8-byte aligned
-                let alignment = cmp::max(T::align_of(), 8);
-                rtunwrap!(Ok, super::alloc(size, alignment)) as _
+                rtunwrap!(Ok, super::alloc(size, T::align_of())) as _
             } else {
-                T::align_of() as _ // dangling pointer ok for size 0
+                crate::ptr::dangling() // dangling pointer ok for size 0
             };
             if let Ok(v) = crate::panic::catch_unwind(|| T::from_raw_sized(ptr, size)) {
                 User(NonNull::new_userref(v))
