@@ -711,9 +711,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         error: Option<TypeError<'tcx>>,
     ) {
-        match (self.tcx.parent_hir_node(expr.hir_id), error) {
+        // Skip nested block to find the correct parent node to point at.
+        let mut current_hir_id = expr.hir_id;
+        let parent = self
+            .tcx
+            .hir_parent_iter(expr.hir_id)
+            .find_map(|(parent_hir_id, parent)| match parent {
+                hir::Node::Block(block)
+                    if block.expr.is_some_and(|expr| expr.hir_id == current_hir_id) =>
+                {
+                    current_hir_id = parent_hir_id;
+                    None
+                }
+                hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Block(block, _), .. })
+                    if block.hir_id == current_hir_id =>
+                {
+                    current_hir_id = parent_hir_id;
+                    None
+                }
+                parent => Some(parent),
+            })
+            .expect("an expression must have a non-block ancestor");
+
+        match (parent, error) {
             (hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), init: Some(init), .. }), _)
-                if init.hir_id == expr.hir_id && !ty.span.source_equal(init.span) =>
+                if init.hir_id == current_hir_id && !ty.span.source_equal(init.span) =>
             {
                 // Point at `let` assignment type.
                 err.span_label(ty.span, "expected due to this");
