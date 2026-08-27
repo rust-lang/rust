@@ -6,7 +6,7 @@ use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisit
 
 use crate::inherent::*;
 use crate::{
-    self as ty, Binder, Flags, Interner, Region, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self as ty, Binder, Interner, Region, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt, Upcast,
 };
 
@@ -53,6 +53,9 @@ impl<I: Interner> OpaqueTypeKey<I> {
     }
 }
 
+/// An item self bound for a hidden type(either an opaque or projection onto another hidden type).
+/// This is meant to be instantiated inside the solver into an assumption for a goal with the goal's
+/// self ty to support non-defining usages.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(
@@ -65,88 +68,59 @@ pub struct OpaqueHiddenTyBound<I: Interner> {
 
 impl<I: Interner> Eq for OpaqueHiddenTyBound<I> {}
 
-// FIXME: Just use `BottomUpFolder` for all those self type replacements below
 impl<I: Interner> OpaqueHiddenTyBound<I> {
-    pub fn iter_self_bounds_for_alias_ty(
+    /// Iterate through the item self bounds of a hidden type for either an opaque
+    /// or a projection onto another hidden ty.
+    pub fn iter_item_self_bounds_for_hidden_ty(
         cx: I,
         alias: ty::AliasTy<I>,
     ) -> impl Iterator<Item = Self> {
-        struct ReplaceAlias<I: Interner> {
-            cx: I,
-            alias: ty::AliasTy<I>,
-            self_ty: I::Ty,
-        }
-
-        impl<I: Interner> TypeFolder<I> for ReplaceAlias<I> {
-            fn cx(&self) -> I {
-                self.cx
-            }
-
-            fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                if !ty.has_non_rigid_aliases() {
-                    return ty;
-                }
-
-                if ty::Alias(ty::IsRigid::No, self.alias) == ty.kind() {
-                    self.self_ty
-                } else {
-                    ty.super_fold_with(self)
-                }
-            }
-        }
-
         let def_id = match alias.kind {
             ty::AliasTyKind::Projection { def_id } => def_id.into(),
             ty::AliasTyKind::Opaque { def_id } => def_id.into(),
-            ty::AliasTyKind::Inherent { .. } | ty::AliasTyKind::Free { .. } => unreachable!(),
+            ty::AliasTyKind::Inherent { .. } | ty::AliasTyKind::Free { .. } => unreachable!(
+                "Opaque hidden type should be either an opaque type or projection on another hidden type"
+            ),
         };
 
-        cx.item_self_bounds(def_id).iter_instantiated(cx, alias.args).map(move |bound| {
-            let bound = bound.skip_normalization();
-            let outermost = bound.outer_exclusive_binder().shifted_in(1);
+        let args = alias.args;
+        let alias = I::Ty::new_alias(cx, ty::IsRigid::No, alias);
+        cx.item_self_bounds(def_id).iter_instantiated(cx, args).map(move |bound| {
             let bound = Binder::bind_with_vars(
-                bound,
+                bound
+                    .skip_normalization()
+                    .fold_with(&mut ReplaceSelfTyWithAnonBound::new(cx, alias)),
                 I::BoundVarKinds::from_vars(cx, [ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon)]),
             );
-            OpaqueHiddenTyBound {
-                bound: bound.fold_with(&mut ReplaceAlias {
-                    cx,
-                    alias,
-                    self_ty: Ty::new_anon_bound(cx, outermost, ty::BoundVar::new(0)),
-                }),
-            }
+            OpaqueHiddenTyBound { bound }
         })
     }
 
-    // FIXME: Comment here with an example for the following case:
-    //
-    // fn move_forward() -> impl IntoIterator<Item = i32> {
-    //     std::iter::empty()
-    //         .map(|_: ()| move_forward())
-    //         .flatten()
-    //         .collect::<Vec<_>>()
-    // }
-    pub fn opt_unmentioned_projection(
+    /// If the given `projection` is not mentioned among the given `existing_bounds`,
+    /// create one for it.
+    ///
+    /// This is needed to support the non-defining usages like in the following case:
+    ///
+    /// ```no_run
+    /// fn argument_types() -> impl IntoIterator<Item = i32> {
+    ///     argument_types().into_iter().collect::<Vec<_>>()
+    /// //                 ^           ^
+    /// //                 |           |
+    /// //              `{opaque}`     |
+    /// //                           `<{opaque} as IntoIterator>::IntoIter`
+    /// }
+    /// ```
+    ///
+    /// We need to prove `<{opaque} as IntoIterator>::IntoIter: Iterator` to select the
+    /// method `collect()` on it. But as the given bounds in the scope don't mention the
+    /// assoc type `IntoIterator::IntoIter` at all, we can't assemble a candidate for
+    /// that trait goal. So, we have manually conjure a bound for such unmentioned
+    /// projections.
+    pub fn opt_unmentioned_projection_bound(
         cx: I,
         existing_bounds: impl IntoIterator<Item = Self>,
         proj: ty::ProjectionClause<I>,
     ) -> Option<Self> {
-        struct ReplaceTy<I: Interner> {
-            cx: I,
-            ty: I::Ty,
-            self_ty: I::Ty,
-        }
-
-        impl<I: Interner> TypeFolder<I> for ReplaceTy<I> {
-            fn cx(&self) -> I {
-                self.cx
-            }
-
-            fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                if ty == self.ty { self.self_ty } else { ty.super_fold_with(self) }
-            }
-        }
-
         let trait_def_id = proj.trait_def_id(cx);
         let mut mentions_trait = false;
         for bound in existing_bounds.into_iter() {
@@ -175,67 +149,111 @@ impl<I: Interner> OpaqueHiddenTyBound<I> {
         }
 
         let bound: I::Clause = proj.upcast(cx);
-        let outermost = bound.outer_exclusive_binder().shifted_in(1);
         let bound = Binder::bind_with_vars(
-            bound,
+            bound.fold_with(&mut ReplaceSelfTyWithAnonBound::new(cx, proj.self_ty())),
             I::BoundVarKinds::from_vars(cx, [ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon)]),
         );
-        Some(OpaqueHiddenTyBound {
-            bound: bound.fold_with(&mut ReplaceTy {
-                cx,
-                ty: proj.self_ty(),
-                self_ty: Ty::new_anon_bound(cx, outermost, ty::BoundVar::new(0)),
-            }),
-        })
+        Some(OpaqueHiddenTyBound { bound })
     }
 
     pub fn instantiate(self, cx: I, self_ty: I::Ty) -> I::Clause {
-        struct ReplaceAnonSelf<I: Interner> {
-            cx: I,
-            debrujin: ty::DebruijnIndex,
-            bound_ty: ty::BoundTy<I>,
-            self_ty: I::Ty,
-        }
-
-        impl<I: Interner> TypeFolder<I> for ReplaceAnonSelf<I> {
-            fn cx(&self) -> I {
-                self.cx
-            }
-
-            fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                if !ty.has_vars_bound_at_or_above(self.debrujin) {
-                    return ty;
-                }
-
-                if ty::Bound(ty::BoundVarIndexKind::Bound(self.debrujin), self.bound_ty)
-                    == ty.kind()
-                {
-                    self.self_ty
-                } else {
-                    ty.super_fold_with(self)
-                }
-            }
-        }
-
         let OpaqueHiddenTyBound { bound } = self;
 
         debug_assert_eq!(
             bound.bound_vars().as_slice(),
             &[ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon)]
         );
+        debug_assert!(bound.skip_binder().has_escaping_bound_vars());
 
-        let bound = bound.skip_binder();
-        debug_assert!(bound.has_escaping_bound_vars());
-
-        let outermost = bound.outer_exclusive_binder();
-        let bound = self.bound.skip_binder().fold_with(&mut ReplaceAnonSelf {
-            cx,
-            debrujin: outermost,
-            bound_ty: ty::BoundTy { var: ty::BoundVar::new(0), kind: ty::BoundTyKind::Anon },
-            self_ty,
-        });
+        let bound =
+            self.bound.skip_binder().fold_with(&mut ReplaceAnonBoundWithSelfTy::new(cx, self_ty));
         debug_assert!(!bound.has_escaping_bound_vars());
 
         bound
+    }
+}
+
+struct ReplaceSelfTyWithAnonBound<I: Interner> {
+    cx: I,
+    self_ty: I::Ty,
+    debruijn: ty::DebruijnIndex,
+    bound_var: ty::BoundVar,
+}
+
+impl<I: Interner> ReplaceSelfTyWithAnonBound<I> {
+    fn new(cx: I, self_ty: I::Ty) -> Self {
+        ReplaceSelfTyWithAnonBound {
+            cx,
+            self_ty,
+            debruijn: ty::INNERMOST,
+            bound_var: ty::BoundVar::new(0),
+        }
+    }
+}
+
+impl<I: Interner> TypeFolder<I> for ReplaceSelfTyWithAnonBound<I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+        if ty == self.self_ty {
+            I::Ty::new_anon_bound(self.cx, self.debruijn, self.bound_var)
+        } else {
+            ty.super_fold_with(self)
+        }
+    }
+
+    fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>
+    where
+        T: TypeFoldable<I>,
+    {
+        self.debruijn.shift_in(1);
+        let result = t.super_fold_with(self);
+        self.debruijn.shift_out(1);
+        result
+    }
+}
+
+struct ReplaceAnonBoundWithSelfTy<I: Interner> {
+    cx: I,
+    self_ty: I::Ty,
+    debruijn: ty::DebruijnIndex,
+    bound_ty: ty::BoundTy<I>,
+}
+
+impl<I: Interner> ReplaceAnonBoundWithSelfTy<I> {
+    fn new(cx: I, self_ty: I::Ty) -> Self {
+        ReplaceAnonBoundWithSelfTy {
+            cx,
+            self_ty,
+            debruijn: ty::INNERMOST,
+            bound_ty: ty::BoundTy { var: ty::BoundVar::new(0), kind: ty::BoundTyKind::Anon },
+        }
+    }
+}
+
+impl<I: Interner> TypeFolder<I> for ReplaceAnonBoundWithSelfTy<I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+        let ty = ty.super_fold_with(self);
+        if ty::Bound(ty::BoundVarIndexKind::Bound(self.debruijn), self.bound_ty) == ty.kind() {
+            self.self_ty
+        } else {
+            ty
+        }
+    }
+
+    fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>
+    where
+        T: TypeFoldable<I>,
+    {
+        self.debruijn.shift_in(1);
+        let result = t.super_fold_with(self);
+        self.debruijn.shift_out(1);
+        result
     }
 }
