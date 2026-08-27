@@ -763,11 +763,7 @@ fn check_function_clauses(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         for (clause, span) in clauses.clauses {
             wfcx.register_obligation(Obligation::new(
                 tcx,
-                ObligationCause::new(
-                    *span,
-                    def_id,
-                    ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id))),
-                ),
+                ObligationCause::new(*span, def_id, ObligationCauseCode::WellFormed(None)),
                 param_env,
                 *clause,
             ));
