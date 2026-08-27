@@ -170,7 +170,7 @@ impl ConsoleTestState {
 }
 
 // List the tests to console, and optionally to logfile. Filters are honored.
-pub(crate) fn list_tests_console(opts: &TestOpts, tests: TestList) -> io::Result<()> {
+pub(crate) fn list_tests_console(opts: &TestOpts, tests: TestList<'_>) -> io::Result<()> {
     let output = match term::stdout() {
         None => OutputLocation::Raw(io::stdout().lock()),
         Some(t) => OutputLocation::Pretty(t),
@@ -307,7 +307,7 @@ pub(crate) fn get_formatter(opts: &TestOpts, max_name_len: usize) -> Box<dyn Out
 
 /// A simple console test runner.
 /// Runs provided tests reporting process and results to the stdout.
-pub fn run_tests_console(opts: &TestOpts, tests: TestList) -> io::Result<bool> {
+pub fn run_tests_console(opts: &TestOpts, tests: TestList<'_>) -> io::Result<bool> {
     let max_name_len = tests
         .tests
         .iter()

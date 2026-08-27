@@ -301,13 +301,13 @@ pub enum TestListOrder {
 
 /// A list of tests, tagged with whether they are sorted by name.
 #[derive(Debug)]
-pub struct TestList {
-    pub tests: Vec<TestDescAndFn>,
+pub struct TestList<'a> {
+    pub tests: &'a [&'a TestDescAndFn],
     pub order: TestListOrder,
 }
 
-impl TestList {
-    pub fn new(tests: Vec<TestDescAndFn>, order: TestListOrder) -> Self {
+impl<'a> TestList<'a> {
+    pub fn new(tests: &'a [&'a TestDescAndFn], order: TestListOrder) -> Self {
         Self { tests, order }
     }
 }
