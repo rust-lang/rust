@@ -102,6 +102,7 @@ pub struct LocalHandle<T: ?Sized> {
 /// Creates a raw place handle to a place expression.
 #[unstable(feature = "field_projections", issue = "145383")]
 #[allow_internal_unstable(internal_syntax)]
+#[rustc_macro_transparency = "semiopaque"]
 pub macro raw_handle($place:expr) {
     k#raw_handle($place)
 }

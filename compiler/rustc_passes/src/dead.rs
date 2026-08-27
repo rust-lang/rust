@@ -432,6 +432,27 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
+    fn handle_raw_handle(&mut self, expr: &'tcx hir::Expr<'tcx>, pe: &'tcx hir::PlaceExpr<'tcx>) {
+        let typeck_results = self.typeck_results();
+        if let QPath::TypeRelative(..) = pe.path {
+            let res = typeck_results.qpath_res(&pe.path, expr.hir_id);
+            self.handle_res(res);
+        }
+        let data = typeck_results
+            .raw_handle_data()
+            .get(expr.hir_id)
+            .expect("no raw_handle_data for raw_handle");
+        for &ty::RawHandleField { adjusted_base_ty, field_idx, .. } in &data.fields {
+            match adjusted_base_ty.kind() {
+                ty::Adt(def, _) => {
+                    self.insert_def_id(def.non_enum_variant().fields[field_idx].did);
+                }
+                ty::Tuple(..) | ty::Error(_) => {}
+                kind => span_bug!(expr.span, "named field access on non-ADT: {kind:?}"),
+            }
+        }
+    }
+
     fn mark_live_symbols(&mut self) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
         while let Some(work) = self.worklist.pop() {
             let WorkItem { mut id, propagated, own, propagated_trivial_usage_site } = work;
@@ -844,6 +865,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             hir::ExprKind::OffsetOf(..) => {
                 self.handle_offset_of(expr);
+            }
+            hir::ExprKind::RawHandle(pe) => {
+                self.handle_raw_handle(expr, pe);
             }
             hir::ExprKind::Assign(ref lhs, ..) => {
                 self.handle_assign(lhs);

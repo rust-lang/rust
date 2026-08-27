@@ -630,6 +630,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 _ => span_bug!(expr.span, "unexpected type for pinned borrow: {:?}", expr_ty),
             },
 
+            hir::ExprKind::RawHandle(arg_pe) => self.mirror_raw_handle(expr, arg_pe),
+
             hir::ExprKind::Block(blk, _) => ExprKind::Block { block: self.mirror_block(blk) },
 
             hir::ExprKind::Assign(lhs, rhs, _) => {
@@ -1478,14 +1480,24 @@ impl<'tcx> ThirBuildCx<'tcx> {
     }
 
     fn convert_path_expr(&mut self, expr: &'tcx hir::Expr<'tcx>, res: Res) -> ExprKind<'tcx> {
-        let args = self.typeck_results.node_args(expr.hir_id);
+        self.convert_path(expr.hir_id, expr.hir_id.local_id, expr.span, res)
+    }
+
+    pub(super) fn convert_path(
+        &mut self,
+        hir_id: hir::HirId,
+        temp_scope_id: hir::ItemLocalId,
+        span: Span,
+        res: Res,
+    ) -> ExprKind<'tcx> {
+        let args = self.typeck_results.node_args(hir_id);
         match res {
             // A regular function, constructor function or a constant.
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
             | Res::SelfCtor(_) => {
-                let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
+                let user_ty = self.user_args_applied_to_res(hir_id, res);
                 ExprKind::ZstLiteral { user_ty }
             }
 
@@ -1494,7 +1506,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 let generics = self.tcx.generics_of(hir_id.owner);
                 let Some(&index) = generics.param_def_id_to_index.get(&def_id) else {
                     span_bug!(
-                        expr.span,
+                        span,
                         "Should have already errored about late bound consts: {def_id:?}"
                     );
                 };
@@ -1505,15 +1517,15 @@ impl<'tcx> ThirBuildCx<'tcx> {
             }
 
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
-                let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
+                let user_ty = self.user_args_applied_to_res(hir_id, res);
                 ExprKind::NamedConst { def_id, args, user_ty }
             }
 
             Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id) => {
                 let user_provided_types = self.typeck_results.user_provided_types();
-                let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
+                let user_ty = user_provided_types.get(hir_id).copied().map(Box::new);
                 debug!("convert_path_expr: user_ty={:?}", user_ty);
-                let ty = self.typeck_results.node_type(expr.hir_id);
+                let ty = self.typeck_results.node_type(hir_id);
                 match ty.kind() {
                     // A unit struct/variant which is used as a value.
                     // We return a completely different ExprKind here to account for this special case.
@@ -1542,18 +1554,13 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     ExprKind::StaticRef { alloc_id, ty, def_id: id }
                 };
                 ExprKind::Deref {
-                    arg: self.thir.exprs.push(Expr {
-                        ty,
-                        temp_scope_id: expr.hir_id.local_id,
-                        span: expr.span,
-                        kind,
-                    }),
+                    arg: self.thir.exprs.push(Expr { ty, temp_scope_id, span, kind }),
                 }
             }
 
             Res::Local(var_hir_id) => self.convert_var(var_hir_id),
 
-            _ => span_bug!(expr.span, "res `{:?}` not yet implemented", res),
+            _ => span_bug!(span, "res `{:?}` not yet implemented", res),
         }
     }
 

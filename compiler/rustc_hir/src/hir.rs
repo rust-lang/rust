@@ -2266,6 +2266,7 @@ impl Expr<'_> {
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::Path(..)
             | ExprKind::Repeat(..)
             | ExprKind::Struct(..)
@@ -2338,6 +2339,7 @@ impl Expr<'_> {
             | ExprKind::Assign(..)
             | ExprKind::InlineAsm(..)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Lit(_)
             | ExprKind::ConstBlock(..)
@@ -2429,6 +2431,7 @@ impl Expr<'_> {
             | ExprKind::Become(_)
             | ExprKind::InlineAsm(_)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::Struct(..)
             | ExprKind::Repeat(..)
             | ExprKind::Yield(..)
@@ -2486,9 +2489,11 @@ impl Expr<'_> {
 
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
-            ExprKind::Path(_) | ExprKind::Lit(_) | ExprKind::OffsetOf(..) | ExprKind::Use(..) => {
-                false
-            }
+            ExprKind::Path(_)
+            | ExprKind::Lit(_)
+            | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
+            | ExprKind::Use(..) => false,
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
@@ -2655,6 +2660,20 @@ pub fn expr_needs_parens(expr: &Expr<'_>) -> bool {
 }
 
 #[derive(Debug, Clone, Copy, StableHash)]
+pub struct PlaceExpr<'hir> {
+    pub path: QPath<'hir>,
+    pub path_span: Span,
+    /// Projections applied from innermost (directly on `path`) to outermost.
+    pub projections: &'hir [PlaceExprKind],
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
+pub enum PlaceExprKind {
+    Field(Ident, Span),
+    Deref(Span),
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
 pub enum ExprKind<'hir> {
     /// Allow anonymous constants from an inline `const` block
     ConstBlock(ConstBlock),
@@ -2769,6 +2788,9 @@ pub enum ExprKind<'hir> {
 
     /// Field offset (`offset_of!`)
     OffsetOf(&'hir Ty<'hir>, &'hir [Ident]),
+
+    /// Raw place handle (`raw_handle!`)
+    RawHandle(&'hir PlaceExpr<'hir>),
 
     /// A struct or struct-like variant literal expression.
     ///
@@ -5323,7 +5345,10 @@ impl<'hir> Node<'hir> {
     pub fn path(self) -> Option<&'hir QPath<'hir>> {
         match self {
             Node::Ty(Ty { kind: TyKind::Path(path), .. })
-            | Node::Expr(Expr { kind: ExprKind::Path(path), .. })
+            | Node::Expr(Expr {
+                kind: ExprKind::Path(path) | ExprKind::RawHandle(PlaceExpr { path, .. }),
+                ..
+            })
             | Node::PatExpr(PatExpr { kind: PatExprKind::Path(path), .. }) => Some(path),
             _ => None,
         }
@@ -5389,6 +5414,8 @@ mod size_asserts {
     static_assert_size!(PatKind<'_>, 56);
     static_assert_size!(Path<'_>, 40);
     static_assert_size!(PathSegment<'_>, 48);
+    static_assert_size!(PlaceExpr<'_>, 48);
+    static_assert_size!(PlaceExprKind, 20);
     static_assert_size!(QPath<'_>, 24);
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);

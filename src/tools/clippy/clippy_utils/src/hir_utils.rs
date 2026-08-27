@@ -14,8 +14,9 @@ use rustc_hir::{
     Expr, ExprField, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericBounds,
     GenericParam, GenericParamKind, GenericParamSource, Generics, HirId, HirIdMap, InlineAsmOperand, ItemId, ItemKind,
     LetExpr, Lifetime, LifetimeKind, LifetimeParamKind, Node, ParamName, Pat, PatExpr, PatExprKind, PatField, PatKind,
-    Path, PathSegment, PreciseCapturingArgKind, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
-    TyFieldPath, TyKind, TyPat, TyPatKind, UseKind, UseTree, WherePredicate, WherePredicateKind,
+    Path, PathSegment, PlaceExpr, PlaceExprKind, PreciseCapturingArgKind, PrimTy, QPath, Stmt, StmtKind, StructTailExpr,
+    TraitBoundModifiers, Ty, TyFieldPath, TyKind, TyPat, TyPatKind, UseKind, UseTree, WherePredicate,
+    WherePredicateKind,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -659,6 +660,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | ExprKind::Type(..)
                 | ExprKind::Unary(..)
                 | ExprKind::Yield(..)
+                | ExprKind::RawHandle(..)
                 | ExprKind::UnsafeBinderCast(..)
 
                 // --- Special cases that do not have a positive branch.
@@ -1406,7 +1408,20 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                 }
             },
+            ExprKind::RawHandle(expr) => self.hash_place_expr(expr),
             ExprKind::Err(_) => {},
+        }
+    }
+
+    pub fn hash_place_expr(&mut self, pe: &PlaceExpr<'_>) {
+        self.hash_qpath(&pe.path);
+        pe.projections.len().hash(&mut self.s);
+        for proj in pe.projections {
+            mem::discriminant(proj).hash(&mut self.s);
+            match *proj {
+                PlaceExprKind::Field(ident, _) => self.hash_name(ident.name),
+                PlaceExprKind::Deref(_) => {},
+            }
         }
     }
 

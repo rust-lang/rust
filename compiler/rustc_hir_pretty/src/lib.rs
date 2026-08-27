@@ -1374,6 +1374,34 @@ impl<'a> State<'a> {
         self.word("}");
     }
 
+    fn print_place_expr(&mut self, pe: &hir::PlaceExpr<'_>) {
+        self.print_place_expr_slice(&pe.path, pe.projections);
+    }
+
+    fn print_place_expr_slice(&mut self, path: &hir::QPath<'_>, projs: &[hir::PlaceExprKind]) {
+        let Some((last, rest)) = projs.split_last() else {
+            self.print_qpath(path, true);
+            return;
+        };
+        match *last {
+            hir::PlaceExprKind::Field(ident, _) => {
+                self.print_place_expr_slice(path, rest);
+                self.word(".");
+                self.print_ident(ident);
+            }
+            hir::PlaceExprKind::Deref(_) => {
+                self.word("(*");
+                let mut rem = rest;
+                while let Some((hir::PlaceExprKind::Deref(_), inner)) = rem.split_last() {
+                    self.word("*");
+                    rem = inner;
+                }
+                self.print_place_expr_slice(path, rem);
+                self.word(")");
+            }
+        }
+    }
+
     fn print_expr_field(&mut self, field: &hir::ExprField<'_>) {
         let cb = self.cbox(INDENT_UNIT);
         self.print_attrs(self.attrs(field.hir_id));
@@ -1798,6 +1826,11 @@ impl<'a> State<'a> {
                     }
                 }
 
+                self.word(")");
+            }
+            hir::ExprKind::RawHandle(expr) => {
+                self.word("raw_handle!(");
+                self.print_place_expr(expr);
                 self.word(")");
             }
             hir::ExprKind::UnsafeBinderCast(kind, expr, ty) => {

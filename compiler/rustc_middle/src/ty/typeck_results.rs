@@ -228,6 +228,9 @@ pub struct TypeckResults<'tcx> {
 
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
+
+    /// Resolved root and per-field step information for `raw_handle!` expressions.
+    raw_handle_data: ItemLocalMap<RawHandleData<'tcx>>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -261,6 +264,7 @@ impl<'tcx> TypeckResults<'tcx> {
             transmutes_to_check: Default::default(),
             offloads_to_check: Default::default(),
             offset_of_data: Default::default(),
+            raw_handle_data: Default::default(),
         }
     }
 
@@ -595,6 +599,14 @@ impl<'tcx> TypeckResults<'tcx> {
         &mut self,
     ) -> LocalTableInContextMut<'_, Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.offset_of_data }
+    }
+
+    pub fn raw_handle_data(&self) -> LocalTableInContext<'_, RawHandleData<'tcx>> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.raw_handle_data }
+    }
+
+    pub fn raw_handle_data_mut(&mut self) -> LocalTableInContextMut<'_, RawHandleData<'tcx>> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.raw_handle_data }
     }
 }
 
@@ -940,4 +952,20 @@ pub struct Rust2024IncompatiblePatInfo {
     pub bad_ref_pats: bool,
     /// If `true`, we can give a simpler suggestion solely by eliding explicit binding modifiers.
     pub suggest_eliding_modes: bool,
+}
+
+/// Resolved root and per-field step information for a `raw_handle!(..)` expression.
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
+pub struct RawHandleData<'tcx> {
+    pub root_ty: Ty<'tcx>,
+    pub mutability: Mutability,
+    /// One entry per `PlaceExprKind::Field` in `PlaceExpr::projections`, in inner-to-outer order.
+    pub fields: Vec<RawHandleField<'tcx>>,
+}
+
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash)]
+pub struct RawHandleField<'tcx> {
+    pub adjusted_base_ty: Ty<'tcx>,
+    pub field_idx: FieldIdx,
+    pub autoderefs: u32,
 }

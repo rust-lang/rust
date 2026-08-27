@@ -16,11 +16,12 @@ use rustc_session::diagnostics::report_lit_error;
 use rustc_span::{
     ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, span_bug, sym,
 };
+use smallvec::SmallVec;
 use thin_vec::ThinVec;
 mod closure;
 
 use crate::diagnostics::{
-    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks,
+    AddressOfTemporaryTaken, AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd,
     InvalidLegacyConstGenericArg, MatchArmWithNoBody, MoveExprOnlyInSupportedContexts,
     NestedMoveExprWithoutEnclosingContext, NeverPatternWithBody, NeverPatternWithGuard,
@@ -500,6 +501,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
             ),
+            ExprKind::RawHandle(place) => self.lower_place_expr(expr_hir_id, span, place),
             ExprKind::Struct(se) => {
                 let rest = match se.rest {
                     StructRest::Base(ref e) => hir::StructTailExpr::Base(self.lower_expr(e)),
@@ -551,6 +553,70 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         hir::Expr { hir_id: expr_hir_id, kind, span }
+    }
+
+    fn lower_place_expr(
+        &mut self,
+        expr_hir_id: HirId,
+        span: Span,
+        mut e: &Expr,
+    ) -> hir::ExprKind<'hir> {
+        let mut projs = SmallVec::<[_; 2]>::new();
+        let (qself, path, path_span, root_id) = loop {
+            match &e.kind {
+                ExprKind::Paren(inner) => e = inner,
+                ExprKind::Field(base, ident) => {
+                    projs.push(hir::PlaceExprKind::Field(
+                        self.lower_ident(*ident),
+                        self.lower_span(e.span),
+                    ));
+                    e = base;
+                }
+                ExprKind::Unary(UnOp::Deref, base) => {
+                    projs.push(hir::PlaceExprKind::Deref(self.lower_span(e.span)));
+                    e = base;
+                }
+                ExprKind::Path(qself, path) => {
+                    break (qself, path, self.lower_span(e.span), e.id);
+                }
+                ExprKind::Err(guar) => return hir::ExprKind::Err(*guar),
+                _ => {
+                    let guar = self.dcx().emit_err(AddressOfTemporaryTaken { span: e.span });
+                    let bad_expr = self.lower_expr(e);
+                    // Lower to `{ bad_expr; <error> }` so inner definitions (`Closure`,
+                    // `AnonConst`, local `Item`) are not orphaned from `curr_owner.children`.
+                    let stmt_id = self.next_id();
+                    let expr_err = self.expr(span, hir::ExprKind::Err(guar));
+                    return hir::ExprKind::Block(
+                        self.block_all(
+                            span,
+                            arena_vec![self; hir::Stmt {
+                                hir_id: stmt_id,
+                                kind: hir::StmtKind::Semi(bad_expr),
+                                span: bad_expr.span,
+                            }],
+                            Some(self.arena.alloc(expr_err)),
+                        ),
+                        None,
+                    );
+                }
+            }
+        };
+        if let Some(traits) = self.curr_owner.owner.trait_map.get(&root_id) {
+            self.curr_owner.trait_map.insert(expr_hir_id.local_id, *traits);
+        }
+        let path = self.lower_qpath(
+            root_id,
+            qself,
+            path,
+            ParamMode::Optional,
+            AllowReturnTypeNotation::No,
+            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+            None,
+        );
+        projs.reverse();
+        let projections = self.arena.alloc_from_iter(projs);
+        hir::ExprKind::RawHandle(self.arena.alloc(hir::PlaceExpr { path, path_span, projections }))
     }
 
     pub(crate) fn lower_const_block(&mut self, c: &AnonConst) -> hir::ConstBlock {

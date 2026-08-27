@@ -72,7 +72,8 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let res = match expr.kind {
-            hir::ExprKind::Path(ref qpath) => {
+            hir::ExprKind::Path(ref qpath)
+            | hir::ExprKind::RawHandle(&hir::PlaceExpr { path: ref qpath, .. }) => {
                 // This covers fn ptr casts but also "non-method" calls.
                 Some(self.typeck_results().qpath_res(qpath, expr.hir_id))
             }
