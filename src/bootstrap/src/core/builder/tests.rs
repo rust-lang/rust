@@ -2541,9 +2541,8 @@ mod snapshot {
             ctx.config("doc")
                 .path("compiler")
                 .stage(1)
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] rustdoc 0 <host>
-        [build] llvm <host>
         [doc] rustc 0 <host> -> rustc 1 <host>
         ");
     }
@@ -2643,10 +2642,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("clippy")
                 .path("compiler")
-                .render_steps(), @r"
-        [build] llvm <host>
-        [clippy] rustc 0 <host> -> rustc 1 <host>
-        ");
+                .render_steps(), @"[clippy] rustc 0 <host> -> rustc 1 <host>");
     }
 
     #[test]
@@ -3024,10 +3020,7 @@ mod snapshot {
     #[test]
     fn fix_compiler() {
         let ctx = TestCtx::new();
-        insta::assert_snapshot!(ctx.config("fix").path("compiler").render_steps(), @r"
-        [build] llvm <host>
-        [fix] rustc 0 <host> -> rustc 1 <host> (77 crates)
-        ");
+        insta::assert_snapshot!(ctx.config("fix").path("compiler").render_steps(), @"[fix] rustc 0 <host> -> rustc 1 <host> (77 crates)");
     }
 }
 
