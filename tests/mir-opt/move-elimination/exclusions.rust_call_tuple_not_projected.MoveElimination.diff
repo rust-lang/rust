@@ -48,9 +48,9 @@
 +         StorageLive(_6);
           _6 = (move _7, move _8);
 -         _4 = <F as FnOnce<([u8; 8], [u8; 8])>>::call_once(move _5, move _6) -> [return: bb1, unwind unreachable];
-+         StorageLive(_4);
 +         StorageDead(_7);
 +         StorageDead(_8);
++         StorageLive(_4);
 +         _4 = <F as FnOnce<([u8; 8], [u8; 8])>>::call_once(move _1, move _6) -> [return: bb1, unwind unreachable];
       }
   

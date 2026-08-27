@@ -27,8 +27,8 @@
 +         _4 = &mut _0;
 +         StorageLive(_3);
           _3 = &mut (*_4);
-+         StorageLive(_2);
 +         StorageDead(_4);
++         StorageLive(_2);
           _2 = init(move _3) -> [return: bb1, unwind unreachable];
       }
   

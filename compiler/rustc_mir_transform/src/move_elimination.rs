@@ -770,6 +770,7 @@ fn reconstruct_storage<'tcx>(
     let initialized_before_use = InitializedBeforeUse::compute(tcx, body);
     let mut patcher = MirPatch::new(body);
     let mut split_edges: FxHashMap<(BasicBlock, BasicBlock), BasicBlock> = Default::default();
+    let mut storage_lives = Vec::new();
 
     for local in body.local_decls.indices() {
         // Arguments and return values don't use storage statements.
@@ -787,6 +788,7 @@ fn reconstruct_storage<'tcx>(
         let mut emit_storage_live_in_preds =
             |body: &mut Body<'tcx>,
              patcher: &mut MirPatch<'tcx>,
+             storage_lives: &mut Vec<(Location, Local)>,
              local: Local,
              block: BasicBlock| {
                 if !initialized_before_use[block].contains(local) {
@@ -817,7 +819,7 @@ fn reconstruct_storage<'tcx>(
                         } else {
                             body.terminator_loc(pred)
                         };
-                        patcher.add_statement(loc, StatementKind::StorageLive(local));
+                        storage_lives.push((loc, local));
                     }
                 }
             };
@@ -862,11 +864,17 @@ fn reconstruct_storage<'tcx>(
             if range.start.effect() == SplitPointEffect::Early && start.statement_index == 0 {
                 // If the local is dead at the end of any predecessor block then
                 // emit a `StorageLive` before the terminator.
-                emit_storage_live_in_preds(body, &mut patcher, local, start.block);
+                emit_storage_live_in_preds(
+                    body,
+                    &mut patcher,
+                    &mut storage_lives,
+                    local,
+                    start.block,
+                );
             } else {
                 // Otherwise just add `StorageLive` before the statement that
                 // starts the live range.
-                patcher.add_statement(start, StatementKind::StorageLive(local));
+                storage_lives.push((start, local));
             }
 
             // The live range may span multiple blocks because
@@ -880,7 +888,13 @@ fn reconstruct_storage<'tcx>(
                     emit_storage_dead_in_succs(body, &mut patcher, local, current_block);
                 }
                 current_block = BasicBlock::from_usize(current_block.index() + 1);
-                emit_storage_live_in_preds(body, &mut patcher, local, current_block);
+                emit_storage_live_in_preds(
+                    body,
+                    &mut patcher,
+                    &mut storage_lives,
+                    local,
+                    current_block,
+                );
             }
 
             // We need to insert `StorageDead` after the last statement that
@@ -898,6 +912,13 @@ fn reconstruct_storage<'tcx>(
                 }
             }
         }
+    }
+
+    // Queue all `StorageLive` statements after `StorageDead` so that, when
+    // both are inserted at the same location, `StorageDead` always precedes
+    // `StorageLive` to avoid false overlaps.
+    for (loc, local) in storage_lives {
+        patcher.add_statement(loc, StatementKind::StorageLive(local));
     }
 
     patcher.apply(body);
