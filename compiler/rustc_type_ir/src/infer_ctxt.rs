@@ -278,8 +278,8 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
     pub fn should_add_hidden_types_of_opaques(&self) -> bool {
         match self {
             TypingMode::Typeck { .. } => true,
-            TypingMode::PostTypeckUntilBorrowck { .. } => false,
-            TypingMode::Coherence
+            TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::Coherence
             | TypingMode::PostBorrowck { .. }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis

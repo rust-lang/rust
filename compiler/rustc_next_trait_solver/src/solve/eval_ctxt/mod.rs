@@ -24,7 +24,7 @@ use rustc_type_ir::{
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
 
-use super::has_only_region_constraints;
+use super::has_only_region_constraints_or_opaques;
 use crate::canonical::{
     canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
     response_no_constraints_raw,
@@ -811,8 +811,8 @@ where
 
         drop(tracing_span);
 
-        let has_changed =
-            if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
+        let has_only_opaques = has_only_region_constraints_or_opaques(response);
+        let num_entries_before_normalization = self.delegate.opaque_types_storage_num_entries();
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
@@ -821,6 +821,21 @@ where
             response,
             self.origin_span,
         );
+
+        // `hidden_types_of_opaques` may vary modulo regions which might be able to be unified in
+        // the caller in the end. So, instead of the response has any, check whether the storage
+        // entries actually changed.
+        //
+        // FIXME: Add a test for this
+        let has_changed = if !has_only_opaques
+            // FIXME: Creating and comparing this is expensive. Should flatten
+            // `hidden_types_of_opaques` in the storage.
+            || self.delegate.opaque_types_storage_num_entries() != num_entries_before_normalization
+        {
+            HasChanged::Yes
+        } else {
+            HasChanged::No
+        };
 
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
