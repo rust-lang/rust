@@ -1082,6 +1082,14 @@ impl CommandLineStep for IntrinsicTest {
             builder.info(&format!("Skipping intrinsic-test, as it is not available for {host}"));
             return;
         }
+        // intrinsic-test shells out to `cargo` and `rustfmt` make bootstrap's
+        // managed binaries findable by prepending their dirs to PATH.
+        let Some(rustfmt_path) = builder.ensure(InternalRustfmt) else {
+            eprintln!(
+                "WARNING: intrinsic-test skipped because rustfmt is required but not available on this channel"
+            );
+            return;
+        };
 
         let (input_file, skip_file, cflags, sde_runner) = if host.contains("x86_64-unknown-linux") {
             let Some(sde) = &builder.config.sde else {
@@ -1152,14 +1160,6 @@ impl CommandLineStep for IntrinsicTest {
         cmd.arg("--cc-arg-style").arg("gcc");
         cmd.env("CC", builder.cc(host));
         cmd.env("CFLAGS", cflags);
-        // intrinsic-test shells out to `cargo` and `rustfmt` make bootstrap's
-        // managed binaries findable by prepending their dirs to PATH.
-        let Some(rustfmt_path) = builder.ensure(InternalRustfmt) else {
-            eprintln!(
-                "WARNING: intrinsic-test skipped because rustfmt is required but not available on this channel"
-            );
-            return;
-        };
 
         let mut path_dirs: Vec<PathBuf> = Vec::new();
         if let Some(cargo_dir) = builder.initial_cargo.parent() {
