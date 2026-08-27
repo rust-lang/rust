@@ -29,7 +29,7 @@ pub struct svfloat32x4_t(svfloat32_t, svfloat32_t, svfloat32_t, svfloat32_t);
 #[inline(never)]
 #[target_feature(enable = "sve")]
 pub fn svdup_n_f32(op: f32) -> svfloat32_t {
-    extern "C" {
+    extern "llvm-intrinsic" {
         #[link_name = "llvm.aarch64.sve.dup.x.nxv4f32"]
         fn _svdup_n_f32(op: f32) -> svfloat32_t;
     }

@@ -12,7 +12,7 @@ pub struct svint32_t(i32);
 #[inline(never)]
 #[target_feature(enable = "sve")]
 pub unsafe fn svdup_n_s32(op: i32) -> svint32_t {
-    extern "C" {
+    extern "llvm-intrinsic" {
         #[link_name = "llvm.aarch64.sve.dup.x.nxv4i32"]
         fn _svdup_n_s32(op: i32) -> svint32_t;
     }
@@ -22,7 +22,7 @@ pub unsafe fn svdup_n_s32(op: i32) -> svint32_t {
 #[inline]
 #[target_feature(enable = "sve,sve2")]
 pub unsafe fn svxar_n_s32<const IMM3: i32>(op1: svint32_t, op2: svint32_t) -> svint32_t {
-    extern "C" {
+    extern "llvm-intrinsic" {
         #[link_name = "llvm.aarch64.sve.xar.nxv4i32"]
         fn _svxar_n_s32(op1: svint32_t, op2: svint32_t, imm3: i32) -> svint32_t;
     }
