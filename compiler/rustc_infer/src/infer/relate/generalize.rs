@@ -258,17 +258,14 @@ impl<'tcx> InferCtxt<'tcx> {
             }
             (TermVid::Const(l), ty::TermKind::Const(r)) => {
                 if let Some(r) = r.ct_vid() {
-                    self.inner.borrow_mut().const_unification_table().union(l, r)
+                    self.inner.borrow_mut().equate_const_vids(l, r)
                 } else {
                     debug_assert!(
                         self.try_resolve_const_var(l)
                             .unwrap_err()
                             .can_name(ty::max_universe(self, r))
                     );
-                    self.inner
-                        .borrow_mut()
-                        .const_unification_table()
-                        .union_value(l, ConstVariableValue::Known { value: r })
+                    self.inner.borrow_mut().instantiate_const_var(l, r)
                 }
             }
             _ => bug!("mismatched term kinds in generalize: {l:?}, {r:?}"),
