@@ -14,7 +14,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::{Category, RvalueFunc};
-use crate::builder::matches::{DeclareLetBindings, Exhaustive, HasMatchGuard};
+use crate::builder::matches::{DeclareLetBindings, Exhaustive, HasMatchGuard, LowerIfCondArgs};
 use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 use crate::diagnostics::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
@@ -85,12 +85,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let (then_block, else_block) =
                             this.in_if_then_scope(condition_scope, then_span, |this| {
                                 let then_blk = this
-                                    .then_else_break(
+                                    .lower_if_condition(
                                         block,
                                         cond,
-                                        Some(condition_scope), // Temp scope
-                                        source_info,
-                                        DeclareLetBindings::Yes, // Declare `let` bindings normally
+                                        LowerIfCondArgs {
+                                            temp_scope_override: Some(condition_scope),
+                                            variable_source_info: source_info,
+                                            declare_let_bindings: DeclareLetBindings::Yes,
+                                        },
                                     )
                                     .into_block();
 
@@ -160,14 +162,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // We first evaluate the left-hand side of the predicate ...
                 let (then_block, else_block) =
                     this.in_if_then_scope(condition_scope, expr.span, |this| {
-                        this.then_else_break(
+                        this.lower_if_condition(
                             block,
                             lhs,
-                            Some(condition_scope), // Temp scope
-                            source_info,
-                            // This flag controls how inner `let` expressions are lowered,
-                            // but either way there shouldn't be any of those in here.
-                            DeclareLetBindings::LetNotPermitted,
+                            LowerIfCondArgs {
+                                temp_scope_override: Some(condition_scope),
+                                variable_source_info: source_info,
+                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                            },
                         )
                     });
                 let (short_circuit, continuation, constant) = match op {

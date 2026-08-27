@@ -40,18 +40,26 @@ mod test;
 mod user_ty;
 mod util;
 
-/// Arguments to [`Builder::then_else_break_inner`] that are usually forwarded
+/// Arguments to [`Builder::lower_if_condition`] that are usually forwarded
 /// to recursive invocations.
 #[derive(Clone, Copy)]
-struct ThenElseArgs {
+pub(crate) struct LowerIfCondArgs {
     /// Used as the temp scope for lowering `expr`. If absent (for match guards),
     /// `self.local_scope()` is used.
-    temp_scope_override: Option<region::Scope>,
-    variable_source_info: SourceInfo,
+    pub(crate) temp_scope_override: Option<region::Scope>,
+    pub(crate) variable_source_info: SourceInfo,
     /// Determines how bindings should be handled when lowering `let` expressions.
     ///
     /// Forwarded to [`Builder::lower_let_expr`] when lowering [`ExprKind::Let`].
-    declare_let_bindings: DeclareLetBindings,
+    pub(crate) declare_let_bindings: DeclareLetBindings,
+}
+
+impl LowerIfCondArgs {
+    /// Returns a copy of `self` with [`DeclareLetBindings::LetNotPermitted`].
+    /// Used when recursing into a sub-condition that does not permit `let` (e.g. `||` or `!`).
+    fn let_not_permitted(self) -> Self {
+        LowerIfCondArgs { declare_let_bindings: DeclareLetBindings::LetNotPermitted, ..self }
+    }
 }
 
 /// Should lowering a `let` expression also declare its bindings?
@@ -83,32 +91,19 @@ pub(crate) enum ScheduleDrops {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Lowers a condition in a way that ensures that variables bound in any let
-    /// expressions are definitely initialized in the if body.
+    /// Lowers the condition for an `if`-expression or similar construct
+    /// (including `&&` and `||` expressions, and match-guard conditions).
     ///
-    /// If `declare_let_bindings` is false then variables created in `let`
-    /// expressions will not be declared. This is for if let guards on arms with
-    /// an or pattern, where the guard is lowered multiple times.
-    pub(crate) fn then_else_break(
-        &mut self,
-        block: BasicBlock,
-        expr_id: ExprId,
-        temp_scope_override: Option<region::Scope>,
-        variable_source_info: SourceInfo,
-        declare_let_bindings: DeclareLetBindings,
-    ) -> BlockAnd<()> {
-        self.then_else_break_inner(
-            block,
-            expr_id,
-            ThenElseArgs { temp_scope_override, variable_source_info, declare_let_bindings },
-        )
-    }
-
-    fn then_else_break_inner(
+    /// Must be called within [`Builder::in_if_then_scope`], which keeps track
+    /// of drop scope and knows where to break to if the condition is false.
+    ///
+    /// Returns the block for the *true* arm of the condition check.
+    /// The *true* and *false* arms are returned by [`Builder::in_if_then_scope`].
+    pub(crate) fn lower_if_condition(
         &mut self,
         block: BasicBlock, // Block that the condition and branch will be lowered into
         expr_id: ExprId,   // Condition expression to lower
-        args: ThenElseArgs,
+        args: LowerIfCondArgs,
     ) -> BlockAnd<()> {
         let this = self; // See "LET_THIS_SELF".
         let expr = &this.thir[expr_id];
@@ -116,33 +111,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match expr.kind {
             ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
-                let lhs_then_block = this.then_else_break_inner(block, lhs, args).into_block();
+                let lhs_then_block = this.lower_if_condition(block, lhs, args).into_block();
                 let rhs_then_block =
-                    this.then_else_break_inner(lhs_then_block, rhs, args).into_block();
+                    this.lower_if_condition(lhs_then_block, rhs, args).into_block();
                 rhs_then_block.unit()
             }
             ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
                 let local_scope = this.local_scope();
                 let (lhs_success_block, failure_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
-                        this.then_else_break_inner(
-                            block,
-                            lhs,
-                            ThenElseArgs {
-                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                                ..args
-                            },
-                        )
+                        this.lower_if_condition(block, lhs, args.let_not_permitted())
                     });
                 let rhs_success_block = this
-                    .then_else_break_inner(
-                        failure_block,
-                        rhs,
-                        ThenElseArgs {
-                            declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                            ..args
-                        },
-                    )
+                    .lower_if_condition(failure_block, rhs, args.let_not_permitted())
                     .into_block();
 
                 // Make the LHS and RHS success arms converge to a common block.
@@ -169,14 +150,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         if this.tcx.sess.instrument_coverage() {
                             this.cfg.push_coverage_span_marker(block, this.source_info(expr_span));
                         }
-                        this.then_else_break_inner(
-                            block,
-                            arg,
-                            ThenElseArgs {
-                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                                ..args
-                            },
-                        )
+                        this.lower_if_condition(block, arg, args.let_not_permitted())
                     });
                 this.break_for_else(success_block, args.variable_source_info);
                 failure_block.unit()
@@ -184,10 +158,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, this.source_info(expr_span));
                 this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
-                    this.then_else_break_inner(block, value, args)
+                    this.lower_if_condition(block, value, args)
                 })
             }
-            ExprKind::Use { source } => this.then_else_break_inner(block, source, args),
+            ExprKind::Use { source } => this.lower_if_condition(block, source, args),
             ExprKind::Let { expr, ref pat } => this.lower_let_expr(
                 block,
                 expr,
@@ -2448,12 +2422,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let (post_guard_block, otherwise_post_guard_block) =
                 self.in_if_then_scope(match_scope, guard_span, |this| {
                     guard_span = this.thir[guard].span;
-                    this.then_else_break(
+                    this.lower_if_condition(
                         block,
                         guard,
-                        None, // Use `self.local_scope()` as the temp scope
-                        this.source_info(arm.span),
-                        DeclareLetBindings::No, // For guards, `let` bindings are declared separately
+                        LowerIfCondArgs {
+                            temp_scope_override: None, // Use `this.local_scope()`.
+                            variable_source_info: this.source_info(arm.span),
+                            // For guards, `let` bindings are declared separately.
+                            declare_let_bindings: DeclareLetBindings::No,
+                        },
                     )
                 });
 
