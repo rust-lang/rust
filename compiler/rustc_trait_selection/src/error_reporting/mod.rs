@@ -4,8 +4,8 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
-use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::bug;
 
 pub mod infer;
 pub mod traits;

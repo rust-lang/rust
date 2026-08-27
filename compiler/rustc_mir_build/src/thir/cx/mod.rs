@@ -8,9 +8,9 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, find_attr};
-use rustc_middle::bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::bug;
 
 /// Query implementation for [`TyCtxt::thir_body`].
 pub(crate) fn thir_body<'tcx>(

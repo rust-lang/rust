@@ -2,8 +2,7 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::*;
 use rustc_hir as hir;
 use rustc_hir::{HirId, Target, find_attr};
-use rustc_middle::span_bug;
-use rustc_span::Span;
+use rustc_span::{Span, span_bug};
 
 use super::{LoweringContext, MoveExprInitializerFinder, MoveExprState};
 use crate::FnDeclKind;

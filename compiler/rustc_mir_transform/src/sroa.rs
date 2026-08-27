@@ -3,11 +3,11 @@ use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
-use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::PassPolicy;

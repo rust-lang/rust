@@ -1,8 +1,8 @@
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Const, DelayedMap, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
+use rustc_span::bug;
 
 use super::{FixupError, FixupResult, InferCtxt};
 use crate::infer::TyOrConstInferVar;

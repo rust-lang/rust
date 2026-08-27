@@ -4,9 +4,9 @@
 // general routines.
 
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt};
+use rustc_span::bug;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,

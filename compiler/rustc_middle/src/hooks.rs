@@ -6,7 +6,7 @@
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
-use rustc_span::{ExpnHash, ExpnId};
+use rustc_span::{ExpnHash, ExpnId, bug};
 
 use crate::mir;
 use crate::query::on_disk_cache::CacheEncoder;

@@ -5,8 +5,8 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_middle::bug;
 use rustc_middle::ty::TypeVisitor;
+use rustc_span::bug;
 use tracing::debug;
 
 use crate::diagnostics::{

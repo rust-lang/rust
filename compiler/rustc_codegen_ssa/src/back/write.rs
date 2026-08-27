@@ -19,7 +19,6 @@ use rustc_hir::find_attr;
 use rustc_incremental::{copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir_sess};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
-use rustc_middle::bug;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{
@@ -27,7 +26,7 @@ use rustc_session::config::{
 };
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileName, InnerSpan, Span, SpanData};
+use rustc_span::{FileName, InnerSpan, Span, SpanData, bug};
 use rustc_structures::CrateType;
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 use tracing::debug;

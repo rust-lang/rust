@@ -13,7 +13,6 @@ use rustc_hir::{HirId, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::UNCONDITIONAL_PANIC;
-use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
@@ -21,7 +20,7 @@ use rustc_middle::ty::{
     self, ConstInt, GenericArgKind, GenericParamDefKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
     Unnormalized,
 };
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use tracing::{debug, instrument, trace};
 
 use crate::diagnostics::{AssertLint, AssertLintKind, ConstNIsZero};

@@ -18,8 +18,7 @@ use rustc_middle::ty::{
     TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
     Unnormalized, Upcast,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{BytePos, DUMMY_SP, Span};
+use rustc_span::{BytePos, DUMMY_SP, Span, bug, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;

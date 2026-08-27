@@ -10,7 +10,6 @@ use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mono::CodegenUnit;
-use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
     LayoutOfHelpers,
@@ -19,7 +18,7 @@ use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
 #[cfg(feature = "master")]
 use rustc_session::config::DebugInfo;
 use rustc_session::{PointerAuthSchema, Session};
-use rustc_span::{DUMMY_SP, Span, Symbol, respan};
+use rustc_span::{DUMMY_SP, Span, Symbol, respan, span_bug};
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
 
 #[cfg(feature = "master")]

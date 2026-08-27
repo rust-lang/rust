@@ -15,8 +15,8 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, Variance,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
+use rustc_span::{bug, span_bug};
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::PassPolicy;

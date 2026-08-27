@@ -1,7 +1,7 @@
-use rustc_middle::bug;
 use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext,
 };
+use rustc_span::bug;
 
 #[derive(Eq, PartialEq, Clone)]
 pub(crate) enum DefUse {

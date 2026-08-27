@@ -34,11 +34,11 @@
 
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::bug;
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, CallReturnPlaces, Location, TerminatorEdges,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_span::bug;
 use tracing::error;
 
 use self::graphviz::write_graphviz_results;

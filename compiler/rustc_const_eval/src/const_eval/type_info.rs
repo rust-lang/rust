@@ -5,10 +5,9 @@ use std::borrow::Cow;
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_ast::Mutability;
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Const, FnHeader, FnSigKind, FnSigTys, ScalarInt, Ty, TyCtxt};
-use rustc_span::{Symbol, sym};
+use rustc_span::{Symbol, span_bug, sym};
 
 use crate::const_eval::CompileTimeMachine;
 use crate::interpret::{
