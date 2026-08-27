@@ -43,8 +43,8 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res}
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::{self as hir, MissingLifetimeKind, attrs as attr, find_attr};
-use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
+use rustc_index::{IndexVec, static_assert_size};
 pub use rustc_lint_defs::RegisteredTools;
 use rustc_macros::{
     BlobDecodable, Decodable, Encodable, StableHash, TyDecodable, TyEncodable, TypeFoldable,
@@ -1155,8 +1155,13 @@ pub struct ParamEnv<'tcx> {
     caller_bounds: Clauses<'tcx>,
 }
 
+// Empty ParamEnv's are super common (like, 100x more common than nonempty pnes),
+// so we want to not carry around too much data in this common case.
+// Make sure that a ParamEnv is no bigger than a single pointer, always.
+static_assert_size!(ParamEnv<'_>, std::mem::size_of::<usize>());
+
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
+    fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> {
         self.caller_bounds()
     }
 }
@@ -1170,18 +1175,26 @@ impl<'tcx> ParamEnv<'tcx> {
     /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
     #[inline]
     pub fn empty() -> Self {
-        Self::new(ListWithCachedTypeInfo::empty())
+        Self { caller_bounds: ListWithCachedTypeInfo::empty() }
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> Clauses<'tcx> {
-        self.caller_bounds
+    pub fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> + Clone {
+        self.caller_bounds.iter()
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.caller_bounds.as_slice().is_empty()
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: Clauses<'tcx>) -> Self {
-        ParamEnv { caller_bounds }
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        caller_bounds: impl IntoIterator<Item = ty::Clause<'tcx>>,
+    ) -> Self {
+        ParamEnv { caller_bounds: tcx.mk_clauses_from_iter(caller_bounds.into_iter()) }
     }
 
     /// Creates a pair of param-env and value for use in queries.
@@ -1196,7 +1209,7 @@ impl<'tcx> ParamEnv<'tcx> {
         if tcx.next_trait_solver_globally() {
             self
         } else {
-            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds))
+            ParamEnv::new(tcx, tcx.reveal_opaque_types_in_bounds(self.caller_bounds).iter())
         }
     }
 }

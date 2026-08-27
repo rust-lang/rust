@@ -9,8 +9,8 @@ use rustc_middle::dep_graph::{
     DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
 };
 use rustc_middle::query::{
-    ActiveKeyStatus, Cycle, QueryCache, QueryJob, QueryJobId, QueryLatch, QueryMode, QueryState,
-    QueryVTable,
+    ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryMode,
+    QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
@@ -37,7 +37,7 @@ fn handle_cycle<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
-    cycle: Cycle<'tcx>,
+    cycle: QueryCycle<'tcx>,
 ) -> C::Value {
     let nested;
     {
