@@ -1,8 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
-use std::debug_assert_matches;
-use std::iter;
 use std::ops::Deref;
+use std::{debug_assert_matches, iter};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;

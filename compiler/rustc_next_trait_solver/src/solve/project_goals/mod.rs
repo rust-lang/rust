@@ -60,7 +60,7 @@ where
         {
             let hidden_bounds =
                 self.hidden_types_of_opaques_modulo_sub_unification(alias.self_ty());
-            if let Some(unmentioned) = ty::OpaqueHiddenTyBound::opt_unmentioned_projection(
+            if let Some(unmentioned) = ty::OpaqueHiddenTyBound::opt_unmentioned_projection_bound(
                 self.cx(),
                 hidden_bounds.iter().flat_map(|(_, bounds)| bounds).copied(),
                 goal.predicate,

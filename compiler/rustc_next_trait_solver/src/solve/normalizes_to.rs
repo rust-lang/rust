@@ -1113,7 +1113,7 @@ where
                 {
                     ecx.add_hidden_type_of_opaque_in_storage(
                         term.expect_ty(),
-                        ty::OpaqueHiddenTyBound::iter_self_bounds_for_alias_ty(
+                        ty::OpaqueHiddenTyBound::iter_item_self_bounds_for_hidden_ty(
                             cx,
                             ty::AliasTy::new_from_args(
                                 cx,
