@@ -88,5 +88,5 @@ fn a_test() {}
 #[doc(hidden)]
 pub fn main() -> () {
     extern crate test;
-    test::test_main_static(&[&a_test, &m_test, &z_test])
+    test::test_main_env_args(&[&a_test, &m_test, &z_test])
 }

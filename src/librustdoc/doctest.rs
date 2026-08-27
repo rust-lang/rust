@@ -413,6 +413,9 @@ pub(crate) fn run_tests(
     // `running 0 tests...`.
     if ran_edition_tests == 0 || !standalone_tests.is_empty() {
         standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(b.desc.name.as_slice()));
+        // We need a vector of `&TestDescAndFn`.
+        #[cfg(not(bootstrap))]
+        let standalone_tests = &standalone_tests.iter().collect::<Vec<_>>();
         test::test_main_with_exit_callback(&test_args, standalone_tests, None, || {
             let times = times.times_in_secs();
             // We ensure temp dir destructor is called.
@@ -547,13 +550,13 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
 /// (if multiple doctests are merged), `main` function,
 /// and everything needed to calculate the compiler's command-line arguments.
 /// The `# ` prefix on boring lines has also been stripped.
-pub(crate) struct RunnableDocTest {
+pub(crate) struct RunnableDocTest<'a> {
     /// In a merged test, this is the code for the "bundle" that contains the actual doctests.
     /// In a standalone test this is just the regular test code.
     full_test_code: String,
     full_test_line_offset: usize,
-    test_opts: IndividualTestOptions,
-    global_opts: GlobalTestOptions,
+    test_opts: &'a IndividualTestOptions,
+    global_opts: &'a GlobalTestOptions,
     langstr: LangString,
     line: usize,
     edition: Edition,
@@ -563,7 +566,7 @@ pub(crate) struct RunnableDocTest {
     merged_test_runner_code: Option<String>,
 }
 
-impl RunnableDocTest {
+impl RunnableDocTest<'_> {
     fn path_for_merged_doctest_bundle(&self) -> PathBuf {
         self.test_opts.outdir.path().join(format!("doctest_bundle_{}.rs", self.edition))
     }
@@ -582,7 +585,7 @@ impl RunnableDocTest {
 ///
 /// Returns a tuple containing the `Duration` of the compilation and the `Result` of the test.
 fn run_test(
-    doctest: RunnableDocTest,
+    doctest: RunnableDocTest<'_>,
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
     report_unused_externs: impl Fn(UnusedExterns),
@@ -1145,26 +1148,38 @@ fn generate_test_desc_and_fn(
             no_run: scraped_test.no_run(&rustdoc_options),
             test_type: test::TestType::DocTest,
         },
+        #[cfg(bootstrap)]
         testfn: test::DynTestFn(Box::new(move || {
             doctest_run_fn(
-                rustdoc_test_options,
-                opts,
-                test,
-                scraped_test,
-                rustdoc_options,
-                unused_externs,
+                &rustdoc_test_options,
+                &opts,
+                &test,
+                &scraped_test,
+                &rustdoc_options,
+                &unused_externs,
+            )
+        })),
+        #[cfg(not(bootstrap))]
+        testfn: test::DynTestFn(Arc::new(move || {
+            doctest_run_fn(
+                &rustdoc_test_options,
+                &opts,
+                &test,
+                &scraped_test,
+                &rustdoc_options,
+                &unused_externs,
             )
         })),
     }
 }
 
 fn doctest_run_fn(
-    test_opts: IndividualTestOptions,
-    global_opts: GlobalTestOptions,
-    doctest: DocTestBuilder,
-    scraped_test: ScrapedDocTest,
-    rustdoc_options: Arc<RustdocOptions>,
-    unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+    test_opts: &IndividualTestOptions,
+    global_opts: &GlobalTestOptions,
+    doctest: &DocTestBuilder,
+    scraped_test: &ScrapedDocTest,
+    rustdoc_options: &RustdocOptions,
+    unused_externs: &Mutex<Vec<UnusedExterns>>,
 ) -> Result<(), String> {
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);

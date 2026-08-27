@@ -14,6 +14,7 @@ use crate::html::markdown::{Ignore, LangString};
 pub(crate) struct DocTestRunner {
     crate_attrs: FxIndexSet<String>,
     global_crate_attrs: FxIndexSet<String>,
+    /// A comma-separated list of references to test descriptors.
     ids: String,
     output: String,
     output_merged_tests: String,
@@ -54,7 +55,7 @@ impl DocTestRunner {
             }
         }
         self.ids.push_str(&format!(
-            "tests.push({}::TEST);\n",
+            "&{}::TEST,\n",
             generate_mergeable_doctest(
                 doctest,
                 scraped_test,
@@ -166,11 +167,7 @@ mod __doctest_mod {{
 
 #[rustc_main]
 fn main() -> std::process::ExitCode {{
-let tests = {{
-    let mut tests = Vec::with_capacity({nb_tests});
-    {ids}
-    tests
-}};
+let tests = &[{ids}];
 let test_args = &[{test_args}];
 const ENV_BIN: &'static str = \"RUSTDOC_DOCTEST_BIN_PATH\";
 
@@ -193,7 +190,6 @@ eprintln!(\"WARNING: No rustdoc doctest environment variable provided so doctest
 the same process\");
 std::process::Termination::report(test::test_main(test_args, tests, None))
 }}",
-            nb_tests = self.nb_tests,
             output = self.output_merged_tests,
             ids = self.ids,
         )
@@ -201,8 +197,8 @@ std::process::Termination::report(test::test_main(test_args, tests, None))
         let runnable_test = RunnableDocTest {
             full_test_code: format!("{code_prefix}{code}", code = self.output),
             full_test_line_offset: 0,
-            test_opts: test_options,
-            global_opts: opts.clone(),
+            test_opts: &test_options,
+            global_opts: opts,
             langstr: LangString::default(),
             line: 0,
             edition,
