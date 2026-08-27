@@ -7,10 +7,8 @@ error: package `cargo-common-metadata-fail` is missing `either package.license o
 
 error: package `cargo-common-metadata-fail` is missing `package.repository` metadata
 
-error: package `cargo-common-metadata-fail` is missing `package.readme` metadata
-
 error: package `cargo-common-metadata-fail` is missing `package.keywords` metadata
 
 error: package `cargo-common-metadata-fail` is missing `package.categories` metadata
 
-error: could not compile `cargo-common-metadata-fail` (bin "cargo-common-metadata-fail") due to 6 previous errors
+error: could not compile `cargo-common-metadata-fail` (bin "cargo-common-metadata-fail") due to 5 previous errors
