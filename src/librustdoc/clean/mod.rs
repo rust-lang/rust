@@ -51,10 +51,9 @@ use rustc_middle::ty::{
     self, AdtKind, GenericArgsRef, RegionExt, Ty, TyCtxt, TypeVisitableExt, TypingMode,
     Unnormalized,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::ExpnKind;
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{ExpnKind, bug, span_bug};
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use tracing::{debug, instrument};
 use utils::*;
