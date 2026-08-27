@@ -707,6 +707,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(value);
                 self.const_arg(length);
             },
+            ExprKind::RawHandle(_) => kind!("RawHandle(_)"),
             ExprKind::Err(_) => kind!("Err(_)"),
             ExprKind::DropTemps(expr) => {
                 bind!(self, expr);

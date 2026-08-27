@@ -2273,6 +2273,7 @@ impl Expr<'_> {
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::Path(..)
             | ExprKind::Repeat(..)
             | ExprKind::Struct(..)
@@ -2345,6 +2346,7 @@ impl Expr<'_> {
             | ExprKind::Assign(..)
             | ExprKind::InlineAsm(..)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Lit(_)
             | ExprKind::ConstBlock(..)
@@ -2415,6 +2417,7 @@ impl Expr<'_> {
             | ExprKind::Index(base, _, _)
             | ExprKind::AddrOf(.., base)
             | ExprKind::Cast(base, _)
+            | ExprKind::RawHandle(base)
             | ExprKind::UnsafeBinderCast(_, base, _) => {
                 // This isn't exactly true for `Index` and all `Unary`, but we are using this
                 // method exclusively for diagnostics and there's a *cultural* pressure against
@@ -2689,6 +2692,9 @@ pub enum ExprKind<'hir> {
 
     /// Field offset (`offset_of!`)
     OffsetOf(&'hir Ty<'hir>, &'hir [Ident]),
+
+    /// Raw place handle (`raw_handle!`)
+    RawHandle(&'hir Expr<'hir>),
 
     /// A struct or struct-like variant literal expression.
     ///

@@ -659,6 +659,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | ExprKind::Type(..)
                 | ExprKind::Unary(..)
                 | ExprKind::Yield(..)
+                | ExprKind::RawHandle(..)
                 | ExprKind::UnsafeBinderCast(..)
 
                 // --- Special cases that do not have a positive branch.
@@ -1407,6 +1408,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                 }
             },
+            ExprKind::RawHandle(expr) => self.hash_expr(expr),
             ExprKind::Err(_) => {},
         }
     }

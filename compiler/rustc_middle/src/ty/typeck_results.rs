@@ -104,6 +104,11 @@ pub struct TypeckResults<'tcx> {
     /// <https://rust-lang.github.io/rfcs/2005-match-ergonomics.html#definitions>
     pat_adjustments: ItemLocalMap<Vec<ty::adjustment::PatAdjustment<'tcx>>>,
 
+    /// Field projection raw handle mutability flags.
+    /// True if the root local handle must be borrowed out mutably.
+    /// This always maps a `raw_handle!(..)` expression to mutability level.
+    pub raw_handle_mutability: hir::HirIdSet,
+
     /// Set of reference patterns that match against a match-ergonomics inserted reference
     /// (as opposed to against a reference in the scrutinee type).
     skipped_ref_pats: ItemLocalSet,
@@ -244,6 +249,7 @@ impl<'tcx> TypeckResults<'tcx> {
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
+            raw_handle_mutability: Default::default(),
             rust_2024_migration_desugared_pats: Default::default(),
             skipped_ref_pats: Default::default(),
             closure_kind_origins: Default::default(),

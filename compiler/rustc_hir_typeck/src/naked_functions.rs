@@ -157,6 +157,7 @@ impl CheckInlineAssembly {
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::Become(..)
             | ExprKind::Struct(..)
             | ExprKind::Repeat(..)

@@ -813,6 +813,14 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.pclose();
             }
+            ast::ExprKind::RawHandle(expr) => {
+                self.word("builtin # raw_handle");
+                self.popen();
+                let ib = self.ibox(0);
+                self.print_expr(expr, FixupContext::default());
+                self.end(ib);
+                self.pclose();
+            }
             ast::ExprKind::MacCall(m) => self.print_mac(m),
             ast::ExprKind::Paren(e) => {
                 self.popen();

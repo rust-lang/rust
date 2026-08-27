@@ -85,6 +85,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             mem::take(&mut self.typeck_results.borrow_mut().used_trait_imports);
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.typeck_results.used_trait_imports = used_trait_imports;
+        wbcx.typeck_results.raw_handle_mutability =
+            mem::take(&mut self.typeck_results.borrow_mut().raw_handle_mutability);
 
         debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
 

@@ -375,7 +375,7 @@ pub const trait Residual<O>: Sized {
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
 // needs to be `pub` to avoid `private type` errors
-#[expect(unreachable_pub)]
+#[allow(unreachable_pub)]
 #[inline] // FIXME: force would be nice, but fails -- see #148915
 #[lang = "into_try_type"]
 pub const fn residual_into_try_type<R: [const] Residual<O>, O>(
