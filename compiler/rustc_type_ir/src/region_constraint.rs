@@ -221,11 +221,9 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
         // I think this returns false if either a or b is false?
         let mut ands = Vec::new();
         for b_and in b.0 {
-            ands.extend(
-                a.0.clone()
-                    .into_iter()
-                    .map(|a_and| And::new(a_and.0.into_iter().chain(b_and.0.clone()))),
-            );
+            for a_and in a.0.clone().into_iter() {
+                ands.push(And::new(a_and.0.into_iter().chain(b_and.0.clone())))
+            }
         }
 
         Or::new(ands)
