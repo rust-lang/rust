@@ -1198,10 +1198,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // An unsizing coercion can change the local's type at the block tail.
         // It must ultimately target a nested type that is not trivially `Sized`
-        let contains_maybe_unsized_ty = expected_ty
-            .walk()
-            .filter_map(|arg| arg.as_type())
-            .any(|ty| !ty.has_trivial_sizedness(self.tcx, SizedTraitKind::Sized));
+        let contains_maybe_unsized_ty =
+            expected_ty.walk().filter_map(|arg| arg.as_type()).any(|ty| {
+                !ty.has_trivial_sizedness(self.tcx, SizedTraitKind::Sized)
+                    && !self.type_is_sized_modulo_regions(self.param_env, ty)
+            });
         let is_coerce_unsized_target = contains_maybe_unsized_ty
             && self.tcx.lang_items().coerce_unsized_trait().is_some_and(|trait_def_id| {
                 self.tcx.non_blanket_impls_for_ty(trait_def_id, expected_ty).next().is_some()
