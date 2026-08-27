@@ -188,6 +188,26 @@ impl StableHash for InferConst {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ReportedErrorInfo<I: Interner> {
+    pub error: I::ErrorGuaranteed,
+    /// Whether this error is allowed to show up even in otherwise "infallible" promoteds.
+    /// This is for things like overflows during size computation or resource exhaustion.
+    pub allowed_in_infallible: bool,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ErrorHandled<I: Interner> {
+    /// Already reported an error for this evaluation, and the compilation is
+    /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
+    Reported(ReportedErrorInfo<I>, I::Span),
+    /// Don't emit an error, the evaluation failed because the MIR was generic
+    /// and the args didn't fully monomorphize it.
+    TooGeneric(I::Span),
+}
+pub type ConstToValTreeResult<I> =
+    Result<Result<<I as Interner>::ValTree, <I as Interner>::Ty>, ErrorHandled<I>>;
+
 /// This datastructure is used to represent the value of constants used in the type system.
 ///
 /// We explicitly choose a different datastructure from the way values are processed within
