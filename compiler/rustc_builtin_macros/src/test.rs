@@ -3,7 +3,7 @@
 
 use std::{assert_matches, iter};
 
-use rustc_ast::{self as ast, GenericParamKind, attr, join_path_idents};
+use rustc_ast::{self as ast, GenericParamKind, Mutability, Safety, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
@@ -277,17 +277,21 @@ pub(crate) fn expand_test_or_bench(
                 // #[doc(hidden)]
                 cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
             ],
-            // const $ident: test::TestDescAndFn =
-            ast::ItemKind::Const(
-                ast::ConstItem {
-                    defaultness: ast::Defaultness::Implicit,
+            // static $ident: test::TestDescAndFn =
+            // We use a static because these things only exist to have references taken
+            // to them for the test case array. No reason to introduce tons of promoteds for that.
+            // Promoteds have the advantage that they can be merged to save space, but every one
+            // of these points to a different function so that will not happen.
+            ast::ItemKind::Static(
+                ast::StaticItem {
                     ident: Ident::new(fn_.ident.name, sp),
-                    generics: ast::Generics::default(),
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+                    safety: Safety::Default,
+                    mutability: Mutability::Not,
                     define_opaque: None,
-                    kind: ast::ConstItemKind::Body,
+                    eii_impl: None,
                     // test::TestDescAndFn {
-                    body: Some(
+                    expr: Some(
                         cx.expr_struct(
                             sp,
                             test_path("TestDescAndFn"),
