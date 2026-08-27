@@ -165,7 +165,6 @@ impl AttributeKind {
             RustcMustImplementOneOf { .. } => No,
             RustcMustMatchExhaustively(..) => Yes,
             RustcNeverReturnsNullPtr => Yes,
-            RustcNeverTypeOptions { .. } => No,
             RustcNoImplicitAutorefs => Yes,
             RustcNoImplicitBounds => No,
             RustcNoMirInline => Yes,
