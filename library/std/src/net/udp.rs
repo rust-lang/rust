@@ -48,7 +48,7 @@ use crate::time::Duration;
 ///
 /// fn main() -> std::io::Result<()> {
 ///     {
-///         let socket = UdpSocket::bind("127.0.0.1:34254")?;
+///         let socket = UdpSocket::bind("[::1]:34254")?;
 ///
 ///         // Receives a single datagram message on the socket. If `buf` is too small to hold
 ///         // the message, it will be cut off.
@@ -79,34 +79,34 @@ impl UdpSocket {
     ///
     /// # Examples
     ///
-    /// Creates a UDP socket bound to `127.0.0.1:3400`:
+    /// Creates a UDP socket bound to `[::1]:3400`:
     ///
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:3400").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:3400").expect("bind should succeed");
     /// ```
     ///
-    /// Creates a UDP socket bound to `127.0.0.1:3400`. If the socket cannot be
-    /// bound to that address, create a UDP socket bound to `127.0.0.1:3401`:
+    /// Creates a UDP socket bound to `[::1]:3400`. If the socket cannot be
+    /// bound to that address, create a UDP socket bound to `[::1]:3401`:
     ///
     /// ```no_run
     /// use std::net::{SocketAddr, UdpSocket};
     ///
     /// let addrs = [
-    ///     SocketAddr::from(([127, 0, 0, 1], 3400)),
-    ///     SocketAddr::from(([127, 0, 0, 1], 3401)),
+    ///     SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 3400)),
+    ///     SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 3401)),
     /// ];
     /// let socket = UdpSocket::bind(&addrs[..]).expect("bind should succeed");
     /// ```
     ///
     /// Creates a UDP socket bound to a port assigned by the operating system
-    /// at `127.0.0.1`.
+    /// at `[::1]`.
     ///
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    /// let socket = UdpSocket::bind("[::1]:0").unwrap();
     /// ```
     ///
     /// Note that `bind` declares the scope of your network connection.
@@ -117,7 +117,7 @@ impl UdpSocket {
     /// in your local network.
     ///
     /// In order to limit your view of the network the least, `bind` to
-    /// [`Ipv4Addr::UNSPECIFIED`] or [`Ipv6Addr::UNSPECIFIED`].
+    /// [`Ipv6Addr::UNSPECIFIED`] or [`Ipv4Addr::UNSPECIFIED`].
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
         net_imp::UdpSocket::bind(addr).map(UdpSocket)
@@ -139,7 +139,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// let mut buf = [0; 10];
     /// let (number_of_bytes, src_addr) = socket.recv_from(&mut buf)
     ///                                         .expect("recv_from should succeed");
@@ -168,7 +168,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// let mut buf = [0; 10];
     /// let (number_of_bytes, src_addr) = socket.peek_from(&mut buf)
     ///                                         .expect("recv_from should succeed");
@@ -200,8 +200,8 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
-    /// socket.send_to(&[0; 10], "127.0.0.1:4242").expect("send_to should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
+    /// socket.send_to(&[0; 10], "[::1]:4242").expect("send_to should succeed");
     /// ```
     ///
     /// [Issue #34202]: https://github.com/rust-lang/rust/issues/34202
@@ -218,12 +218,12 @@ impl UdpSocket {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+    /// use std::net::{Ipv6Addr, SocketAddr, SocketAddrV6, UdpSocket};
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
-    /// socket.connect("192.168.0.1:41203").expect("connect should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
+    /// socket.connect("[2001:db8::]:41203").expect("connect should succeed");
     /// assert_eq!(socket.peer_addr().unwrap(),
-    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 41203)));
+    ///            SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0), 41203)));
     /// ```
     ///
     /// If the socket isn't connected, it will return a [`NotConnected`] error.
@@ -233,7 +233,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// assert_eq!(socket.peer_addr().unwrap_err().kind(),
     ///            std::io::ErrorKind::NotConnected);
     /// ```
@@ -247,11 +247,11 @@ impl UdpSocket {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+    /// use std::net::{Ipv6Addr, SocketAddr, SocketAddrV6, UdpSocket};
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// assert_eq!(socket.local_addr().unwrap(),
-    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 34254)));
+    ///            SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 34254)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -269,7 +269,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// let socket_clone = socket.try_clone().expect("try_clone should succeed");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -298,7 +298,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_read_timeout(None).expect("set_read_timeout should succeed");
     /// ```
     ///
@@ -310,7 +310,7 @@ impl UdpSocket {
     /// use std::net::UdpSocket;
     /// use std::time::Duration;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").unwrap();
+    /// let socket = UdpSocket::bind("[::1]:34254").unwrap();
     /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
@@ -341,7 +341,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_write_timeout(None).expect("set_write_timeout should succeed");
     /// ```
     ///
@@ -353,7 +353,7 @@ impl UdpSocket {
     /// use std::net::UdpSocket;
     /// use std::time::Duration;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").unwrap();
+    /// let socket = UdpSocket::bind("[::1]:34254").unwrap();
     /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
@@ -374,7 +374,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_read_timeout(None).expect("set_read_timeout should succeed");
     /// assert_eq!(socket.read_timeout().unwrap(), None);
     /// ```
@@ -394,7 +394,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_write_timeout(None).expect("set_write_timeout should succeed");
     /// assert_eq!(socket.write_timeout().unwrap(), None);
     /// ```
@@ -413,7 +413,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_broadcast(false).expect("set_broadcast should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -430,7 +430,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_broadcast(false).expect("set_broadcast should succeed");
     /// assert_eq!(socket.broadcast().unwrap(), false);
     /// ```
@@ -560,7 +560,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_ttl(42).expect("set_ttl should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -577,7 +577,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.set_ttl(42).expect("set_ttl should succeed");
     /// assert_eq!(socket.ttl().unwrap(), 42);
     /// ```
@@ -635,7 +635,7 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// match socket.take_error() {
     ///     Ok(Some(error)) => println!("UdpSocket error: {error:?}"),
     ///     Ok(None) => println!("No error"),
@@ -661,14 +661,14 @@ impl UdpSocket {
     ///
     /// # Examples
     ///
-    /// Creates a UDP socket bound to `127.0.0.1:3400` and connect the socket to
-    /// `127.0.0.1:8080`:
+    /// Creates a UDP socket bound to `[::1]:3400` and connect the socket to
+    /// `[::1]:8080`:
     ///
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:3400").expect("bind should succeed");
-    /// socket.connect("127.0.0.1:8080").expect("connect should succeed");
+    /// let socket = UdpSocket::bind("[::1]:3400").expect("bind should succeed");
+    /// socket.connect("[::1]:8080").expect("connect should succeed");
     /// ```
     ///
     /// Unlike in the TCP case, passing an array of addresses to the `connect`
@@ -697,8 +697,8 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
-    /// socket.connect("127.0.0.1:8080").expect("connect should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
+    /// socket.connect("[::1]:8080").expect("connect should succeed");
     /// socket.send(&[0, 1, 2]).expect("send should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -725,8 +725,8 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
-    /// socket.connect("127.0.0.1:8080").expect("connect should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
+    /// socket.connect("[::1]:8080").expect("connect should succeed");
     /// let mut buf = [0; 10];
     /// match socket.recv(&mut buf) {
     ///     Ok(received) => println!("received {received} bytes {:?}", &buf[..received]),
@@ -765,8 +765,8 @@ impl UdpSocket {
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("bind should succeed");
-    /// socket.connect("127.0.0.1:8080").expect("connect should succeed");
+    /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
+    /// socket.connect("[::1]:8080").expect("connect should succeed");
     /// let mut buf = [0; 10];
     /// match socket.peek(&mut buf) {
     ///     Ok(received) => println!("received {received} bytes"),
@@ -793,14 +793,14 @@ impl UdpSocket {
     ///
     /// # Examples
     ///
-    /// Creates a UDP socket bound to `127.0.0.1:7878` and read bytes in
+    /// Creates a UDP socket bound to `[::1]:7878` and read bytes in
     /// nonblocking mode:
     ///
     /// ```no_run
     /// use std::io;
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:7878").unwrap();
+    /// let socket = UdpSocket::bind("[::1]:7878").unwrap();
     /// socket.set_nonblocking(true).unwrap();
     ///
     /// # fn wait_for_fd() { unimplemented!() }

@@ -46,7 +46,7 @@ use crate::time::Duration;
 /// use std::net::TcpStream;
 ///
 /// fn main() -> std::io::Result<()> {
-///     let mut stream = TcpStream::connect("127.0.0.1:34254")?;
+///     let mut stream = TcpStream::connect("[::1]:34254")?;
 ///
 ///     stream.write(&[1])?;
 ///     stream.read(&mut [0; 128])?;
@@ -86,7 +86,7 @@ pub struct TcpStream(net_imp::TcpStream);
 /// }
 ///
 /// fn main() -> std::io::Result<()> {
-///     let listener = TcpListener::bind("127.0.0.1:80")?;
+///     let listener = TcpListener::bind("[::1]:80")?;
 ///
 ///     // accept connections and process them serially
 ///     for stream in listener.incoming() {
@@ -137,20 +137,20 @@ impl TcpStream {
     ///
     /// # Examples
     ///
-    /// Open a TCP connection to `127.0.0.1:8080`:
+    /// Open a TCP connection to `[::1]:8080`:
     ///
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// if let Ok(stream) = TcpStream::connect("127.0.0.1:8080") {
+    /// if let Ok(stream) = TcpStream::connect("[::1]:8080") {
     ///     println!("Connected to the server!");
     /// } else {
     ///     println!("Couldn't connect to server...");
     /// }
     /// ```
     ///
-    /// Open a TCP connection to `127.0.0.1:8080`. If the connection fails, open
-    /// a TCP connection to `127.0.0.1:8081`:
+    /// Open a TCP connection to `[::1]:8080`. If the connection fails, open
+    /// a TCP connection to `[::1]:8081`:
     ///
     /// ```no_run
     /// use std::net::{SocketAddr, TcpStream};
@@ -191,12 +191,12 @@ impl TcpStream {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+    /// use std::net::{Ipv6Addr, SocketAddr, SocketAddrV6, TcpStream};
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// assert_eq!(stream.peer_addr().unwrap(),
-    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080)));
+    ///            SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -208,12 +208,12 @@ impl TcpStream {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::net::{IpAddr, Ipv4Addr, TcpStream};
+    /// use std::net::{IpAddr, Ipv6Addr, TcpStream};
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// assert_eq!(stream.local_addr().unwrap().ip(),
-    ///            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
+    ///            IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -238,7 +238,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::{Shutdown, TcpStream};
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.shutdown(Shutdown::Both).expect("shutdown should succeed");
     /// ```
@@ -259,7 +259,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// let stream_clone = stream.try_clone().expect("clone should succeed");
     /// ```
@@ -289,7 +289,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_read_timeout(None).expect("set_read_timeout should succeed");
     /// ```
@@ -302,7 +302,7 @@ impl TcpStream {
     /// use std::net::TcpStream;
     /// use std::time::Duration;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080").unwrap();
+    /// let stream = TcpStream::connect("[::1]:8080").unwrap();
     /// let result = stream.set_read_timeout(Some(Duration::new(0, 0)));
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
@@ -333,7 +333,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_write_timeout(None).expect("set_write_timeout should succeed");
     /// ```
@@ -346,7 +346,7 @@ impl TcpStream {
     /// use std::net::TcpStream;
     /// use std::time::Duration;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080").unwrap();
+    /// let stream = TcpStream::connect("[::1]:8080").unwrap();
     /// let result = stream.set_write_timeout(Some(Duration::new(0, 0)));
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
@@ -371,7 +371,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_read_timeout(None).expect("set_read_timeout should succeed");
     /// assert_eq!(stream.read_timeout().unwrap(), None);
@@ -396,7 +396,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_write_timeout(None).expect("set_write_timeout should succeed");
     /// assert_eq!(stream.write_timeout().unwrap(), None);
@@ -418,7 +418,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8000")
+    /// let stream = TcpStream::connect("[::1]:8000")
     ///                        .expect("Couldn't connect to the server...");
     /// let mut buf = [0; 10];
     /// let len = stream.peek(&mut buf).expect("peek should succeed");
@@ -444,7 +444,7 @@ impl TcpStream {
     /// use std::net::TcpStream;
     /// use std::time::Duration;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger should succeed");
     /// ```
@@ -465,7 +465,7 @@ impl TcpStream {
     /// use std::net::TcpStream;
     /// use std::time::Duration;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger should succeed");
     /// assert_eq!(stream.linger().unwrap(), Some(Duration::from_secs(0)));
@@ -497,7 +497,7 @@ impl TcpStream {
     ///
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_keepalive(true).expect("set_keepalive should succeed");
     #[unstable(feature = "tcp_keepalive", issue = "155889")]
@@ -516,7 +516,7 @@ impl TcpStream {
     ///
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_keepalive(true).expect("set_keepalive should succeed");
     /// assert_eq!(stream.keepalive().unwrap_or(false), true);
@@ -539,7 +539,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_nodelay(true).expect("set_nodelay should succeed");
     /// ```
@@ -557,7 +557,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_nodelay(true).expect("set_nodelay should succeed");
     /// assert_eq!(stream.nodelay().unwrap_or(false), true);
@@ -577,7 +577,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_ttl(100).expect("set_ttl should succeed");
     /// ```
@@ -595,7 +595,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_ttl(100).expect("set_ttl should succeed");
     /// assert_eq!(stream.ttl().unwrap_or(0), 100);
@@ -616,7 +616,7 @@ impl TcpStream {
     /// ```no_run
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.take_error().expect("No error was expected...");
     /// ```
@@ -646,7 +646,7 @@ impl TcpStream {
     /// use std::io::{self, Read};
     /// use std::net::TcpStream;
     ///
-    /// let mut stream = TcpStream::connect("127.0.0.1:7878")
+    /// let mut stream = TcpStream::connect("[::1]:7878")
     ///     .expect("Couldn't connect to the server...");
     /// stream.set_nonblocking(true).expect("set_nonblocking should succeed");
     ///
@@ -802,34 +802,34 @@ impl TcpListener {
     ///
     /// # Examples
     ///
-    /// Creates a TCP listener bound to `127.0.0.1:80`:
+    /// Creates a TCP listener bound to `[::1]:80`:
     ///
     /// ```no_run
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// let listener = TcpListener::bind("[::1]:80").unwrap();
     /// ```
     ///
-    /// Creates a TCP listener bound to `127.0.0.1:80`. If that fails, create a
-    /// TCP listener bound to `127.0.0.1:443`:
+    /// Creates a TCP listener bound to `[::1]:80`. If that fails, create a
+    /// TCP listener bound to `[::1]:443`:
     ///
     /// ```no_run
     /// use std::net::{SocketAddr, TcpListener};
     ///
     /// let addrs = [
-    ///     SocketAddr::from(([127, 0, 0, 1], 80)),
-    ///     SocketAddr::from(([127, 0, 0, 1], 443)),
+    ///     SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 80)),
+    ///     SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 443)),
     /// ];
     /// let listener = TcpListener::bind(&addrs[..]).unwrap();
     /// ```
     ///
     /// Creates a TCP listener bound to a port assigned by the operating system
-    /// at `127.0.0.1`.
+    /// at `[::1]`.
     ///
     /// ```no_run
     /// use std::net::TcpListener;
     ///
-    /// let socket = TcpListener::bind("127.0.0.1:0").unwrap();
+    /// let socket = TcpListener::bind("[::1]:0").unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
@@ -841,11 +841,11 @@ impl TcpListener {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpListener};
+    /// use std::net::{Ipv6Addr, SocketAddr, SocketAddrV6, TcpListener};
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+    /// let listener = TcpListener::bind("[::1]:8080").unwrap();
     /// assert_eq!(listener.local_addr().unwrap(),
-    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080)));
+    ///            SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -863,7 +863,7 @@ impl TcpListener {
     /// ```no_run
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+    /// let listener = TcpListener::bind("[::1]:8080").unwrap();
     /// let listener_clone = listener.try_clone().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -905,7 +905,7 @@ impl TcpListener {
     /// ```no_run
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+    /// let listener = TcpListener::bind("[::1]:8080").unwrap();
     /// match listener.accept() {
     ///     Ok((_socket, addr)) => println!("new client: {addr:?}"),
     ///     Err(e) => println!("couldn't get client: {e:?}"),
@@ -941,7 +941,7 @@ impl TcpListener {
     /// }
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let listener = TcpListener::bind("127.0.0.1:80")?;
+    ///     let listener = TcpListener::bind("[::1]:80")?;
     ///
     ///     for stream in listener.incoming() {
     ///         match stream {
@@ -978,7 +978,7 @@ impl TcpListener {
     /// use std::net::{TcpListener, TcpStream};
     ///
     /// fn listen_on(port: u16) -> impl Iterator<Item = TcpStream> {
-    ///     let listener = TcpListener::bind(("127.0.0.1", port)).unwrap();
+    ///     let listener = TcpListener::bind(("[::1]", port)).unwrap();
     ///     listener.into_incoming()
     ///         .filter_map(Result::ok) /* Ignore failed connections */
     /// }
@@ -1006,7 +1006,7 @@ impl TcpListener {
     /// ```no_run
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// let listener = TcpListener::bind("[::1]:80").unwrap();
     /// listener.set_ttl(100).expect("set_ttl should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -1023,7 +1023,7 @@ impl TcpListener {
     /// ```no_run
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// let listener = TcpListener::bind("[::1]:80").unwrap();
     /// listener.set_ttl(100).expect("set_ttl should succeed");
     /// assert_eq!(listener.ttl().unwrap_or(0), 100);
     /// ```
@@ -1057,7 +1057,7 @@ impl TcpListener {
     /// ```no_run
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// let listener = TcpListener::bind("[::1]:80").unwrap();
     /// listener.take_error().expect("`take_error` should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -1086,7 +1086,7 @@ impl TcpListener {
     /// use std::io;
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    /// let listener = TcpListener::bind("[::1]:7878").unwrap();
     /// listener.set_nonblocking(true).expect("set_nonblocking should succeed");
     ///
     /// # fn wait_for_fd() { unimplemented!() }

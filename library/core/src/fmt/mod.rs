@@ -2417,12 +2417,12 @@ impl<'a> Formatter<'a> {
     ///
     /// ```rust
     /// use std::fmt;
-    /// use std::net::Ipv4Addr;
+    /// use std::net::Ipv6Addr;
     ///
     /// struct Foo {
     ///     bar: i32,
     ///     baz: String,
-    ///     addr: Ipv4Addr,
+    ///     addr: Ipv6Addr,
     /// }
     ///
     /// impl fmt::Debug for Foo {
@@ -2436,11 +2436,11 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// assert_eq!(
-    ///     "Foo { bar: 10, baz: \"Hello World\", addr: 127.0.0.1 }",
+    ///     "Foo { bar: 10, baz: \"Hello World\", addr: ::1 }",
     ///     format!("{:?}", Foo {
     ///         bar: 10,
     ///         baz: "Hello World".to_string(),
-    ///         addr: Ipv4Addr::new(127, 0, 0, 1),
+    ///         addr: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
     ///     })
     /// );
     /// ```

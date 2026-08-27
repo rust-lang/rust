@@ -471,7 +471,7 @@ enum AddrKind {
 ///
 /// ```should_panic
 /// use std::net::IpAddr;
-/// let _foo: IpAddr = "127.0.0.1:8080".parse().expect("Cannot handle the socket port");
+/// let _foo: IpAddr = "[::1]:8080".parse().expect("Cannot handle the socket port");
 /// ```
 ///
 /// [`IpAddr`] doesn't handle the port. Use [`SocketAddr`] instead.
@@ -480,7 +480,7 @@ enum AddrKind {
 /// use std::net::SocketAddr;
 ///
 /// // No problem, the `panic!` message has disappeared.
-/// let _foo: SocketAddr = "127.0.0.1:8080".parse().expect("`parse` should succeed");
+/// let _foo: SocketAddr = "[::1]:8080".parse().expect("`parse` should succeed");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]

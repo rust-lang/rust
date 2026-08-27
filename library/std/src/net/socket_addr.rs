@@ -73,9 +73,9 @@ use crate::{io, iter, option, slice, vec};
 /// ```no_run
 /// use std::net::{SocketAddr, ToSocketAddrs};
 ///
-/// // assuming 'localhost' resolves to 127.0.0.1
+/// // assuming 'localhost' resolves to [::1]
 /// let mut addrs_iter = "localhost:443".to_socket_addrs().unwrap();
-/// assert_eq!(addrs_iter.next(), Some(SocketAddr::from(([127, 0, 0, 1], 443))));
+/// assert_eq!(addrs_iter.next(), Some(SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 443))));
 /// assert!(addrs_iter.next().is_none());
 ///
 /// // assuming 'foo' does not resolve
@@ -87,8 +87,8 @@ use crate::{io, iter, option, slice, vec};
 /// ```
 /// use std::net::{SocketAddr, ToSocketAddrs};
 ///
-/// let addr1 = SocketAddr::from(([0, 0, 0, 0], 80));
-/// let addr2 = SocketAddr::from(([127, 0, 0, 1], 443));
+/// let addr1 = SocketAddr::from(([0x2001, 0xdb8, 0, 0, 0, 0, 0, 1], 80));
+/// let addr2 = SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 443));
 /// let addrs = vec![addr1, addr2];
 ///
 /// let mut addrs_iter = (&addrs[..]).to_socket_addrs().unwrap();
@@ -105,7 +105,7 @@ use crate::{io, iter, option, slice, vec};
 /// use std::io;
 /// use std::net::ToSocketAddrs;
 ///
-/// let err = "127.0.0.1".to_socket_addrs().unwrap_err();
+/// let err = "[::1]".to_socket_addrs().unwrap_err();
 /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
 /// ```
 ///
@@ -114,13 +114,13 @@ use crate::{io, iter, option, slice, vec};
 /// different types:
 ///
 /// ```no_run
-/// use std::net::{TcpStream, Ipv4Addr};
+/// use std::net::{TcpStream, Ipv6Addr};
 ///
-/// let stream = TcpStream::connect(("127.0.0.1", 443));
+/// let stream = TcpStream::connect(("[::1]", 443));
 /// // or
-/// let stream = TcpStream::connect("127.0.0.1:443");
+/// let stream = TcpStream::connect("[::1]:443");
 /// // or
-/// let stream = TcpStream::connect((Ipv4Addr::new(127, 0, 0, 1), 443));
+/// let stream = TcpStream::connect((Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 443));
 /// ```
 ///
 /// [`TcpStream::connect`]: crate::net::TcpStream::connect

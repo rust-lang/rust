@@ -52,7 +52,7 @@ Of the two, `expect` is generally preferred since its `msg` field allows you
 to convey your intent and assumptions which makes tracking down the source
 of a panic easier. `unwrap` on the other hand can still be a good fit in
 situations where you can trivially show that a piece of code will never
-panic, such as `"127.0.0.1".parse::<std::net::IpAddr>().unwrap()` or early
+panic, such as `"[::1]".parse::<std::net::IpAddr>().unwrap()` or early
 prototyping.
 
 # Common Message Styles
