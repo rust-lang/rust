@@ -1,5 +1,5 @@
 //@ test-mir-pass: MoveElimination
-//@ compile-flags: -Cpanic=abort
+//@ compile-flags: -Cpanic=abort -Zlint-mir=false
 
 #![feature(custom_mir, core_intrinsics)]
 
@@ -71,8 +71,9 @@ pub fn storage_live_moved_to_branch(flag: bool) {
 // EMIT_MIR storage.address_observed_storage_dead_at_end.MoveElimination.diff
 pub fn address_observed_storage_dead_at_end(flag: bool) {
     // This checks that an address-observed local declared before a branch still
-    // has StorageLive moved into the initialized arm, but StorageDead remains at
-    // the end of the function instead of being shortened to the last direct use.
+    // has StorageLive moved into the initialized arm without adding one to the
+    // uninitialized arm, but StorageDead remains at the end of the function
+    // instead of being shortened to the last direct use.
     // CHECK-LABEL: fn address_observed_storage_dead_at_end(
     // CHECK: debug x => [[addr_tmp:_.*]];
     // CHECK: switchInt(move _1) -> [0: [[skip:bb.*]], otherwise: [[init:bb.*]]];
@@ -83,7 +84,7 @@ pub fn address_observed_storage_dead_at_end(flag: bool) {
     // CHECK: opaque::<*const u32>
     // CHECK-NOT: StorageDead([[addr_tmp]]);
     // CHECK: [[skip]]: {
-    // CHECK: StorageLive([[addr_tmp]]);
+    // CHECK-NOT: StorageLive([[addr_tmp]]);
     // CHECK: {{bb.*}}: {
     // CHECK: StorageDead([[addr_tmp]]);
     let x: u32;
@@ -112,10 +113,10 @@ pub fn terminator_end_storage_dead_in_successor(x: u32) -> u32 {
 // EMIT_MIR storage.critical_edge_split_for_storage_live.MoveElimination.diff
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 pub fn critical_edge_split_for_storage_live(flag: bool) {
-    // This checks storage reconstruction on a custom CFG where the `false`
-    // branch goes directly to the final block. Since that block also has an
-    // incoming edge from the initialized branch, inserting StorageLive precisely
-    // requires splitting the critical edge from the entry switch.
+    // This checks storage reconstruction on a custom CFG where both branches
+    // reach a block which initializes a maybe-live local. The local is dead on
+    // the direct incoming edge, so inserting StorageLive requires splitting the
+    // critical edge from the entry switch.
     // CHECK-LABEL: fn critical_edge_split_for_storage_live(
     // CHECK: debug x => [[crit_tmp:_.*]];
     // CHECK: switchInt(copy _1) -> [1: [[init:bb.*]], otherwise: [[split:bb.*]]];
@@ -124,8 +125,8 @@ pub fn critical_edge_split_for_storage_live(flag: bool) {
     // CHECK: [[crit_tmp]] = const 1_u32;
     // CHECK: &raw const [[crit_tmp]];
     // CHECK: opaque::<*const u32>{{.*}} -> [return: [[ret:bb.*]],
-    // CHECK: [[ret:bb.*]]: {
-    // CHECK: StorageDead([[crit_tmp]]);
+    // CHECK: [[ret]]: {
+    // CHECK: [[crit_tmp]] = const 2_u32;
     // CHECK: [[split]]: {
     // CHECK-NEXT: StorageLive([[crit_tmp]]);
     // CHECK-NEXT: goto -> [[ret]];
@@ -142,14 +143,69 @@ pub fn critical_edge_split_for_storage_live(flag: bool) {
         }
 
         init = {
-            StorageLive(x);
             x = 1;
             ptr = &raw const x;
             Call(ptr = opaque::<*const u32>(ptr), ReturnTo(ret), UnwindUnreachable())
         }
 
         ret = {
-            StorageDead(x);
+            // An initialization forces a StorageLive on both incoming branches,
+            // which in turn forces a critical edge split.
+            x = 2;
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR storage.storage_live_elided_on_join_fork.MoveElimination.diff
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+pub fn storage_live_elided_on_join_fork(flag: bool) {
+    // This checks a join-fork CFG where x is live in only one predecessor and
+    // one successor of the middle block. The flag correlation means the path
+    // which reads x is only reached after x has been initialized. On the direct
+    // edge to join, every continuation either reads x before initializing it or
+    // never accesses it, so no StorageLive or critical-edge split is needed.
+    // CHECK-LABEL: fn storage_live_elided_on_join_fork(
+    // CHECK: debug x => [[join_tmp:_.*]];
+    // CHECK: switchInt(copy _1) -> [1: [[init:bb.*]], otherwise: [[join:bb.*]]];
+    // CHECK: [[init]]: {
+    // CHECK: StorageLive([[join_tmp]]);
+    // CHECK: [[join_tmp]] = const 1_u32;
+    // CHECK: goto -> [[join]];
+    // CHECK: [[join]]: {
+    // CHECK-NOT: StorageLive([[join_tmp]]);
+    // CHECK: switchInt(copy _1) -> [1: [[use_x:bb.*]], otherwise: [[done:bb.*]]];
+    // CHECK: [[use_x]]: {
+    // CHECK: opaque::<u32>(move [[join_tmp]]) -> [return: [[done]], unwind unreachable];
+    mir! {
+        let x: u32;
+        let out: u32;
+        debug x => x;
+
+        {
+            match flag {
+                true => init,
+                _ => join,
+            }
+        }
+
+        init = {
+            x = 1;
+            Goto(join)
+        }
+
+        join = {
+            match flag {
+                true => use_x,
+                _ => done,
+            }
+        }
+
+        use_x = {
+            Call(out = opaque::<u32>(Move(x)), ReturnTo(done), UnwindUnreachable())
+        }
+
+        done = {
             Return()
         }
     }

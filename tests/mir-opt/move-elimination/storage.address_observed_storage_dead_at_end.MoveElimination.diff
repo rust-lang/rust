@@ -47,7 +47,6 @@
   
       bb3: {
           _0 = const ();
-+         StorageLive(_2);
           goto -> bb4;
       }
   

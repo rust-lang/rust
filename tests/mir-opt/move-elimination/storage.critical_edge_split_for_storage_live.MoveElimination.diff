@@ -13,8 +13,7 @@
       }
   
       bb1: {
-+         nop;
-          StorageLive(_2);
++         StorageLive(_2);
           _2 = const 1_u32;
 +         StorageLive(_3);
           _3 = &raw const _2;
@@ -23,8 +22,7 @@
   
       bb2: {
 +         StorageDead(_3);
-+         nop;
-          StorageDead(_2);
+          _2 = const 2_u32;
           return;
 +     }
 + 
