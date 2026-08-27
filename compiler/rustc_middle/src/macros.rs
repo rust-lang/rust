@@ -12,10 +12,10 @@
 #[macro_export]
 macro_rules! bug {
     () => (
-        $crate::bug!("impossible case reached")
+        rustc_span::bug!("impossible case reached")
     );
     ($($arg:tt)+) => (
-        $crate::util::bug::bug_fmt(::std::format_args!($($arg)+))
+        rustc_span::bug!($($arg)+)
     );
 }
 
@@ -31,7 +31,7 @@ macro_rules! bug {
 #[macro_export]
 macro_rules! span_bug {
     ($span:expr, $($arg:tt)+) => (
-        $crate::util::bug::span_bug_fmt($span, ::std::format_args!($($arg)+))
+        rustc_span::span_bug!($span, $($arg)+)
     );
 }
 
