@@ -206,15 +206,15 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid) {
-        self.inner.borrow_mut().int_unification_table().union(a, b);
+        self.inner.borrow_mut().equate_int_vids(a, b);
     }
 
     fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid) {
-        self.inner.borrow_mut().float_unification_table().union(a, b);
+        self.inner.borrow_mut().equate_float_vids(a, b);
     }
 
     fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid) {
-        self.inner.borrow_mut().const_unification_table().union(a, b);
+        self.inner.borrow_mut().equate_const_vids(a, b);
     }
 
     fn instantiate_ty_var_raw(&self, vid: ty::TyVid, ty: Ty<'tcx>) {
@@ -226,10 +226,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: ty::Const<'tcx>) {
         let ct = lower_universe(self, self.try_resolve_const_var(vid).unwrap_err(), ct);
 
-        self.inner
-            .borrow_mut()
-            .const_unification_table()
-            .union_value(vid, ConstVariableValue::Known { value: ct });
+        self.inner.borrow_mut().instantiate_const_var(vid, ct);
     }
 
     fn instantiate_ty_var<R: PredicateEmittingRelation<Self>>(
@@ -250,11 +247,11 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn instantiate_int_var_raw(&self, vid: ty::IntVid, value: ty::IntVarValue) {
-        self.inner.borrow_mut().int_unification_table().union_value(vid, value);
+        self.inner.borrow_mut().instantiate_int_var(vid, value);
     }
 
     fn instantiate_float_var_raw(&self, vid: ty::FloatVid, value: ty::FloatVarValue) {
-        self.inner.borrow_mut().float_unification_table().union_value(vid, value);
+        self.inner.borrow_mut().instantiate_float_var(vid, value);
     }
 
     fn instantiate_const_var<R: PredicateEmittingRelation<Self>>(
@@ -504,7 +501,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
                         })
                         .vid;
 
-                    self.infcx.inner.borrow_mut().const_unification_table().union(vid, new_var_id);
+                    self.infcx.inner.borrow_mut().equate_const_vids(vid, new_var_id);
 
                     ty::Const::new_var(self.cx(), new_var_id)
                 }

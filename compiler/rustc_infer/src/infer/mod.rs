@@ -168,9 +168,9 @@ pub struct InferCtxtInner<'tcx> {
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
-    fn new() -> InferCtxtInner<'tcx> {
+    fn new(next_trait_solver: bool) -> InferCtxtInner<'tcx> {
         InferCtxtInner {
-            undo_log: InferCtxtUndoLogs::default(),
+            undo_log: InferCtxtUndoLogs::new(next_trait_solver),
 
             projection_cache: Default::default(),
             type_variable_storage: Default::default(),
@@ -232,6 +232,44 @@ impl<'tcx> InferCtxtInner<'tcx> {
     #[inline]
     fn const_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ConstVidKey<'tcx>> {
         self.const_unification_storage.with_log(&mut self.undo_log)
+    }
+
+    // Keep mutations to non-type inference variables synchronized with the
+    // generation used by the stalled-goal fulfillment fast path.
+    #[inline]
+    fn equate_int_vids(&mut self, a: ty::IntVid, b: ty::IntVid) {
+        self.undo_log.bump_stalled_goal_generation();
+        self.int_unification_table().union(a, b);
+    }
+
+    #[inline]
+    fn equate_float_vids(&mut self, a: ty::FloatVid, b: ty::FloatVid) {
+        self.undo_log.bump_stalled_goal_generation();
+        self.float_unification_table().union(a, b);
+    }
+
+    #[inline]
+    fn equate_const_vids(&mut self, a: ty::ConstVid, b: ty::ConstVid) {
+        self.undo_log.bump_stalled_goal_generation();
+        self.const_unification_table().union(a, b);
+    }
+
+    #[inline]
+    fn instantiate_int_var(&mut self, vid: ty::IntVid, value: ty::IntVarValue) {
+        self.undo_log.bump_stalled_goal_generation();
+        self.int_unification_table().union_value(vid, value);
+    }
+
+    #[inline]
+    fn instantiate_float_var(&mut self, vid: ty::FloatVid, value: ty::FloatVarValue) {
+        self.undo_log.bump_stalled_goal_generation();
+        self.float_unification_table().union_value(vid, value);
+    }
+
+    #[inline]
+    fn instantiate_const_var(&mut self, vid: ty::ConstVid, value: ty::Const<'tcx>) {
+        self.undo_log.bump_stalled_goal_generation();
+        self.const_unification_table().union_value(vid, ConstVariableValue::Known { value });
     }
 
     #[inline]
@@ -681,7 +719,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             considering_regions,
             in_hir_typeck,
             skip_leak_check,
-            inner: RefCell::new(InferCtxtInner::new()),
+            inner: RefCell::new(InferCtxtInner::new(next_trait_solver)),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
@@ -1649,6 +1687,15 @@ impl<'tcx> InferCtxt<'tcx> {
         debug_assert!(!param_env.has_infer());
         debug_assert!(!param_env.has_placeholders());
         self.typing_env(param_env).as_query_input(value)
+    }
+
+    #[inline]
+    pub fn stalled_goal_generation(&self) -> u64 {
+        self.inner
+            .borrow()
+            .undo_log
+            .stalled_goal_generation()
+            .expect("stalled-goal generation requires the next trait solver")
     }
 
     /// The returned function is used in a fast path. If it returns `true` the variable is
