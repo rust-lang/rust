@@ -147,10 +147,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let old_constraint = inner.solver_region_constraint_storage.get_constraint();
         let new_constraint =
-            rustc_type_ir::region_constraint::CanonicalFormRegionConstraint::new_and(
-                c,
-                old_constraint.clone(),
-            );
+            rustc_type_ir::region_constraint::RegionConstraint::new_and(c, old_constraint.clone());
 
         use crate::infer::UndoLog;
         inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });

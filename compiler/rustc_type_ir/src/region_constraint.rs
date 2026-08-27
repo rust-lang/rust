@@ -252,12 +252,7 @@ impl<I: Interner> And<I> {
 }
 impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
     pub fn new(i: impl IntoIterator<Item = LeafRegionConstraint<I, S>>) -> Self {
-        Self(
-            i.into_iter()
-                .collect::<IndexSet<_>>()
-                .into_iter()
-                .collect()
-        )
+        Self(i.into_iter().collect::<IndexSet<_>>().into_iter().collect())
     }
 
     fn is_and_equivalent_to(&self, other: &And<I, S>) -> bool {
@@ -277,37 +272,35 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-/// CanonicalFormRegionConstraints always have constraints shared between every OR element moved
+/// RegionConstraints always have constraints shared between every OR element moved
 /// into the and_constraint. Additionally they are always in "OR of AND of LEAF" form instead of
 /// supporting arbitrary nesting of ORs/ANDs.
 ///
 /// We also guarantee that there are no duplicate constraints in any of the `And` or `Or`s, though,
-/// this is handled when constructing And/Ors rather than when constructing `CanonicalFormRegionConstraint`.
+/// this is handled when constructing And/Ors rather than when constructing `RegionConstraint`.
 ///
 /// It should also already be "evaluated", as in if `or_constraint` is `false` then `and_constraint` should be
 /// empty. Or if an element in the `or_constraint` is `true` then it should be the only constraint.
-pub struct CanonicalFormRegionConstraint<I: Interner, S: Clone + std::fmt::Debug = ()> {
+pub struct RegionConstraint<I: Interner, S: Clone + std::fmt::Debug = ()> {
     pub and_constraint: And<I, S>,
     pub or_constraint: Or<I, S>,
 }
 
-impl<I: Interner> CanonicalFormRegionConstraint<I> {
+impl<I: Interner> RegionConstraint<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
         self,
         span: S,
-    ) -> CanonicalFormRegionConstraint<I, S> {
-        CanonicalFormRegionConstraint {
+    ) -> RegionConstraint<I, S> {
+        RegionConstraint {
             and_constraint: self.and_constraint.with_spans(span.clone()),
             or_constraint: self.or_constraint.with_spans(span.clone()),
         }
     }
 }
-impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash>
-    CanonicalFormRegionConstraint<I, S>
-{
+impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConstraint<I, S> {
     pub fn new_from_or(or: Or<I, S>) -> Self {
         let Some(fst) = or.0.get(0).clone() else {
-            return CanonicalFormRegionConstraint::new_false();
+            return RegionConstraint::new_false();
         };
         let mut and_constraint = fst.0.to_vec();
 
@@ -332,10 +325,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash>
         }))
     }
 
-    pub fn new_and(
-        a: CanonicalFormRegionConstraint<I, S>,
-        b: CanonicalFormRegionConstraint<I, S>,
-    ) -> Self {
+    pub fn new_and(a: RegionConstraint<I, S>, b: RegionConstraint<I, S>) -> Self {
         let and_constraint = And::new(a.and_constraint.0.into_iter().chain(b.and_constraint.0));
         let or_constraint = Or::new_and(a.or_constraint, b.or_constraint);
 
@@ -345,10 +335,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash>
         }
     }
 
-    pub fn new_or(
-        a: CanonicalFormRegionConstraint<I, S>,
-        b: CanonicalFormRegionConstraint<I, S>,
-    ) -> Self {
+    pub fn new_or(a: RegionConstraint<I, S>, b: RegionConstraint<I, S>) -> Self {
         Self::new_from_or(Or::new_or(a.splatted_and_constraints(), b.splatted_and_constraints()))
     }
 
@@ -386,22 +373,19 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash>
         }
     }
 
-    pub fn without_spans(self) -> CanonicalFormRegionConstraint<I> {
-        CanonicalFormRegionConstraint {
+    pub fn without_spans(self) -> RegionConstraint<I> {
+        RegionConstraint {
             and_constraint: self.and_constraint.without_spans(),
             or_constraint: self.or_constraint.without_spans(),
         }
     }
 
     pub fn new_leaf(l: LeafRegionConstraint<I, S>) -> Self {
-        CanonicalFormRegionConstraint {
-            and_constraint: And(Box::new([l])),
-            or_constraint: Or::new_true(),
-        }
+        RegionConstraint { and_constraint: And(Box::new([l])), or_constraint: Or::new_true() }
     }
 }
 
-impl<I: Interner> Default for CanonicalFormRegionConstraint<I> {
+impl<I: Interner> Default for RegionConstraint<I> {
     fn default() -> Self {
         Self::new_true()
     }
@@ -429,9 +413,9 @@ impl<I: Interner, S: Clone + std::fmt::Debug> LeafRegionConstraint<I, S> {
 #[instrument(level = "debug", skip(infcx), ret)]
 pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
-    constraint: CanonicalFormRegionConstraint<I>,
+    constraint: RegionConstraint<I>,
     u: UniverseIndex,
-) -> CanonicalFormRegionConstraint<I> {
+) -> RegionConstraint<I> {
     let assumptions = infcx.get_placeholder_assumptions(u);
 
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
@@ -469,9 +453,9 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 #[instrument(level = "debug", skip(infcx), ret)]
 fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
-    constraint: CanonicalFormRegionConstraint<I>,
+    constraint: RegionConstraint<I>,
     u: UniverseIndex,
-) -> CanonicalFormRegionConstraint<I> {
+) -> RegionConstraint<I> {
     use LeafRegionConstraint::*;
 
     let extend_from_and = |builder: &mut TransitiveRelationBuilder<_>,
@@ -533,7 +517,7 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
         new_ands.push(Or::new([And::new(constraints)]))
     }
 
-    CanonicalFormRegionConstraint::new_from_or(
+    RegionConstraint::new_from_or(
         new_ands.into_iter().fold(Or::new_false(), |acc, c| Or::new_or(acc, c)),
     )
 }
@@ -557,10 +541,10 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
 /// matters at trait solver query boundaries. We currently call it in more than just that location
 #[instrument(level = "debug", ret)]
 pub fn propagate_ambiguity<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
-    constraint: CanonicalFormRegionConstraint<I, S>,
-) -> CanonicalFormRegionConstraint<I, S> {
+    constraint: RegionConstraint<I, S>,
+) -> RegionConstraint<I, S> {
     if let Some(ambig) = constraint.and_constraint.0.iter().find(|c| c.is_ambig()) {
-        return CanonicalFormRegionConstraint::new_leaf(ambig.clone());
+        return RegionConstraint::new_leaf(ambig.clone());
     }
 
     for and in constraint.or_constraint.0.iter() {
@@ -575,7 +559,7 @@ pub fn propagate_ambiguity<I: Interner, S: Clone + std::fmt::Debug + Eq + std::h
         //
         // `rust-lang/project-assumptions-on-binders#21`
         if let Some(ambig) = and.0.iter().find(|c| c.is_ambig()) {
-            return CanonicalFormRegionConstraint::new_leaf(ambig.clone());
+            return RegionConstraint::new_leaf(ambig.clone());
         }
     }
 
@@ -608,10 +592,10 @@ fn pull_region_outlives_constraints_out_of_universe<
     I: Interner,
 >(
     infcx: &Infcx,
-    constraint: CanonicalFormRegionConstraint<I>,
+    constraint: RegionConstraint<I>,
     u: UniverseIndex,
     assumptions: &Option<Assumptions<I>>,
-) -> CanonicalFormRegionConstraint<I> {
+) -> RegionConstraint<I> {
     assert!(max_universe(infcx, constraint.clone()) <= u);
 
     // FIXME(-Zassumptions-on-binders): we don't lower universes of region variables when exiting `u`
@@ -680,7 +664,7 @@ fn pull_region_outlives_constraints_out_of_universe<
         .0
         .into_iter()
         .fold(Or::new_false(), |acc, c| Or::new_or(acc, pull_and(c)));
-    CanonicalFormRegionConstraint::new_from_or(Or::new_and(and_constraint, or_constraint))
+    RegionConstraint::new_from_or(Or::new_and(and_constraint, or_constraint))
 }
 
 /// Converts type outlives constraints into region outlives constraints. This assumes the *complete* set of
@@ -694,9 +678,9 @@ pub fn destructure_type_outlives_constraints_in_root<
     S: Clone + std::fmt::Debug + Eq + std::hash::Hash,
 >(
     infcx: &Infcx,
-    constraint: CanonicalFormRegionConstraint<I, S>,
+    constraint: RegionConstraint<I, S>,
     assumptions: &Assumptions<I>,
-) -> CanonicalFormRegionConstraint<I, S> {
+) -> RegionConstraint<I, S> {
     use LeafRegionConstraint::*;
 
     let destructure_and = |and: &And<I, S>| {
@@ -740,7 +724,7 @@ pub fn destructure_type_outlives_constraints_in_root<
         .into_iter()
         .fold(Or::new_false(), |acc, c| Or::new_or(acc, destructure_and(&c)));
 
-    CanonicalFormRegionConstraint::new_from_or(Or::new_and(and_constraint, or_constraint))
+    RegionConstraint::new_from_or(Or::new_and(and_constraint, or_constraint))
 }
 
 /// Converts type outlives constraints into either region outlives constraints, or type outlives
@@ -759,10 +743,10 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
     I: Interner,
 >(
     infcx: &Infcx,
-    constraint: CanonicalFormRegionConstraint<I>,
+    constraint: RegionConstraint<I>,
     u: UniverseIndex,
     assumptions: &Option<Assumptions<I>>,
-) -> CanonicalFormRegionConstraint<I> {
+) -> RegionConstraint<I> {
     use LeafRegionConstraint::*;
 
     assert!(
@@ -795,7 +779,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
         .into_iter()
         .fold(Or::new_false(), |acc, c| Or::new_or(acc, rewrite_and(c)));
 
-    CanonicalFormRegionConstraint::new_from_or(Or::new_and(and_constraint, or_constraint))
+    RegionConstraint::new_from_or(Or::new_and(and_constraint, or_constraint))
 }
 
 fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling<
@@ -1087,7 +1071,7 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
         }
     });
 
-    let constraint = CanonicalFormRegionConstraint::new_from_or(Or::new(candidates));
+    let constraint = RegionConstraint::new_from_or(Or::new(candidates));
 
     let largest_universe = infcx.universe();
     debug!(?prev_universe, ?largest_universe);

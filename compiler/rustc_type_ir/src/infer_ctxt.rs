@@ -411,10 +411,10 @@ pub trait InferCtxtLike: Sized {
     ) -> Option<crate::region_constraint::Assumptions<Self::Interner>>;
     fn get_solver_region_constraint(
         &self,
-    ) -> crate::region_constraint::CanonicalFormRegionConstraint<Self::Interner>;
+    ) -> crate::region_constraint::RegionConstraint<Self::Interner>;
     fn overwrite_solver_region_constraint(
         &self,
-        constraint: crate::region_constraint::CanonicalFormRegionConstraint<Self::Interner>,
+        constraint: crate::region_constraint::RegionConstraint<Self::Interner>,
         span: <Self::Interner as Interner>::Span,
     );
 
@@ -536,7 +536,7 @@ pub trait InferCtxtLike: Sized {
 
     fn register_solver_region_constraint(
         &self,
-        c: crate::region_constraint::CanonicalFormRegionConstraint<Self::Interner>,
+        c: crate::region_constraint::RegionConstraint<Self::Interner>,
         span: <Self::Interner as Interner>::Span,
     );
 

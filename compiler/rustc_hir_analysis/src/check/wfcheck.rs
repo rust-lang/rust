@@ -2336,7 +2336,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
         let constraints = match validate(self.tcx(), &body.constraints) {
             Ok(()) => body.constraints,
-            Err(_guar) => ty::region_constraint::CanonicalFormRegionConstraint::new_true(),
+            Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
         };
 
         self.infcx.register_solver_region_constraint(constraints);

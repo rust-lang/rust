@@ -3,7 +3,7 @@ use rustc_span::Span;
 use tracing::instrument;
 
 pub type SolverRegionConstraint<'tcx> =
-    rustc_type_ir::region_constraint::CanonicalFormRegionConstraint<TyCtxt<'tcx>, Span>;
+    rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct SolverRegionConstraintStorage<'tcx>(SolverRegionConstraint<'tcx>);
