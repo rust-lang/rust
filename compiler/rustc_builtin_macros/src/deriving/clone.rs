@@ -77,7 +77,7 @@ pub(crate) fn expand_deriving_clone(
             document: false,
         };
 
-        trivial_def.expand_ext(cx, mitem, item, push, true);
+        trivial_def.expand(cx, mitem, item, push);
     }
 
     let trait_def = TraitDef {
