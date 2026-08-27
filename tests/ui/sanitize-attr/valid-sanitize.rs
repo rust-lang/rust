@@ -113,3 +113,6 @@ fn main() {
     #[sanitize(address = "off")] //~ ERROR attribute cannot be used on
     return ();
 }
+
+#[sanitize(safestack = "off")]
+fn safestack_fn() {}

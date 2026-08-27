@@ -1897,6 +1897,7 @@ symbols! {
         s390x_target_feature,
         s390x_target_feature_vector,
         safety,
+        safestack,
         sanitize,
         sanitizer_cfi_generalize_pointers,
         sanitizer_cfi_normalize_integers,
