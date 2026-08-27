@@ -65,6 +65,9 @@ impl<'tcx> Iterator for Prefixes<'tcx> {
                         | ProjectionElem::Index(_) => {
                             cursor = cursor_base;
                         }
+                        ProjectionElem::PhantomDeref => {
+                            unreachable!("PhantomDeref should not be present in prefixes")
+                        }
                         ProjectionElem::Deref => {
                             match self.kind {
                                 PrefixSet::Shallow => {

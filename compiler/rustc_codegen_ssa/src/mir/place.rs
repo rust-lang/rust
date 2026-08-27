@@ -360,6 +360,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         for elem in place_ref.projection[base..].iter() {
             cg_base = match *elem {
                 mir::ProjectionElem::Deref => bx.load_operand(cg_base).deref(bx.cx()),
+                mir::ProjectionElem::PhantomDeref => {
+                    bug!("encountered PhantomDeref in codegen")
+                }
                 mir::ProjectionElem::Field(ref field, _) => {
                     assert!(
                         !cg_base.layout.ty.is_any_ptr(),
