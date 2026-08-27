@@ -318,7 +318,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This is a no-op shim that only exists to prevent making the allocator shims
                 // instantly stable.
                 let [] = this.check_shim_sig(
-                    shim_sig_nounwind!(extern "Rust" fn() -> ()),
+                    shim_sig!(extern "Rust" fn() -> ()),
                     (link_name, abi, args),
                 )?;
             }
