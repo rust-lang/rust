@@ -178,6 +178,9 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub(crate) fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
+
+        self.undo_log.bump_stalled_goal_generation();
+
         self.eq_relations().union(a, b);
         self.sub_unification_table().union(a, b);
     }
@@ -189,6 +192,9 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub(crate) fn sub_unify(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
+
+        self.undo_log.bump_stalled_goal_generation();
+
         self.sub_unification_table().union(a, b);
     }
 
@@ -204,6 +210,9 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             "instantiating type variable `{vid:?}` twice: new-value = {ty:?}, old-value={:?}",
             self.eq_relations().probe_value(vid)
         );
+
+        self.undo_log.bump_stalled_goal_generation();
+
         self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
     }
 
