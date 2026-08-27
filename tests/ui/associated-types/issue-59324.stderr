@@ -11,6 +11,18 @@ help: consider further restricting type parameter `Bug` with trait `Foo`
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
+error[E0277]: the trait bound `(): Foo` is not satisfied
+  --> $DIR/issue-59324.rs:22:29
+   |
+LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
+   |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-59324.rs:3:1
+   |
+LL | pub trait Foo: NotFoo {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
   --> $DIR/issue-59324.rs:15:5
    |
@@ -32,6 +44,7 @@ help: this trait has no implementations, consider adding one
    |
 LL | pub trait Foo: NotFoo {
    | ^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
   --> $DIR/issue-59324.rs:15:5
@@ -79,6 +92,6 @@ help: function arguments must have a statically known size, borrowed types alway
 LL | fn with_factory<H>(factory: &dyn ThriftService<()>) {}
    |                             +
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
