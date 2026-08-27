@@ -257,7 +257,7 @@ fn main() {returns_result} {{
         output_merged_tests,
         "
 mod {test_id} {{
-pub const TEST: test::TestDescAndFn = test::TestDescAndFn::new_doctest(
+pub static TEST: test::TestDescAndFn = test::TestDescAndFn::new_doctest(
 {test_name:?}, {ignore}, {file:?}, {line}, {no_run}, {should_panic},
 test::StaticTestFn(
     || {{{runner}}},
