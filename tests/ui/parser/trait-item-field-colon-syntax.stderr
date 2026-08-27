@@ -1,0 +1,22 @@
+error: expected one of `!` or `::`, found `:`
+  --> $DIR/trait-item-field-colon-syntax.rs:4:15
+   |
+LL | trait Trait1 {
+   |              - while parsing this item list starting here
+LL |     field_name: String,
+   |               ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
+
+error: expected one of `!` or `::`, found `:`
+  --> $DIR/trait-item-field-colon-syntax.rs:8:9
+   |
+LL | trait Trait2 {
+   |              - while parsing this item list starting here
+LL |     self: String,
+   |         ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
+
+error: aborting due to 2 previous errors
+
