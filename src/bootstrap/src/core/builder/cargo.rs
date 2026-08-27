@@ -5,7 +5,6 @@ use std::{env, fs};
 
 use super::{Builder, Kind};
 use crate::core::build_steps::compile::is_lto_stage;
-use crate::core::build_steps::llvm::prebuilt_llvm_output;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::compiler::Compiler;
@@ -750,20 +749,6 @@ impl Builder<'_> {
         cargo.env("REAL_LIBRARY_PATH_VAR", helpers::dylib_path_var());
         if let Some(e) = env::var_os(helpers::dylib_path_var()) {
             cargo.env("REAL_LIBRARY_PATH", e);
-        }
-
-        // Set a flag for `check`/`clippy`/`fix`, so that certain build
-        // scripts can do less work (i.e. not building/requiring LLVM).
-        if matches!(cmd_kind, Kind::Check | Kind::Clippy | Kind::Fix) {
-            // If we've not yet built LLVM, or it's stale, then bust
-            // the rustc_llvm cache. That will always work, even though it
-            // may mean that on the next non-check build we'll need to rebuild
-            // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
-            // of work comparatively, and we'd likely need to rebuild it anyway,
-            // so that's okay.
-            if prebuilt_llvm_output(self, target).is_none() {
-                cargo.env("RUST_CHECK", "1");
-            }
         }
 
         // Forward `./x fix --allow-dirty` from bootstrap to cargo.
