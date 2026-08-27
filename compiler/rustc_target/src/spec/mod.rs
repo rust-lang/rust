@@ -2260,11 +2260,12 @@ pub struct TargetOptions {
     /// Extra arguments to pass to the external assembler (when used)
     pub asm_args: StaticCow<[StaticCow<str>]>,
 
-    /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
-    /// to "generic".
+    /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Must be a name the backend
+    /// accepts. Defaults to "generic" (which some backends won't accept).
     pub cpu: StaticCow<str>,
-    /// Whether a cpu needs to be explicitly set.
-    /// Set to true if there is no default cpu. Defaults to false.
+    /// Whether a cpu needs to be explicitly set via `-Ctarget-cpu` for codegen to run. (Even if
+    /// true, `cpu` is still consulted on non-codegen paths such as cfg/feature computation.)
+    /// Defaults to false.
     pub need_explicit_cpu: bool,
     /// Whether `-Ctarget-cpu` is treated as a target modifier. If this is set
     /// all crates that are linked together must have been compiled with the
