@@ -34,7 +34,6 @@ serde_json = "1.0"
 shim_utils = { path = "../../shim_utils" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.3", default-features = false, features = ["ansi", "env-filter", "fmt", "parking_lot", "smallvec"] }
-unified-diff = "0.2.1"
 walkdir = "2"
 # tidy-alphabetical-end
 
