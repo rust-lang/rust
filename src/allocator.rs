@@ -4,8 +4,8 @@ use gccjit::{Context, FunctionType, ToRValue, Type};
 use rustc_ast::expand::allocator::{
     AllocatorMethod, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, default_fn_name, global_fn_name,
 };
-use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::bug;
 use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::GccContext;
