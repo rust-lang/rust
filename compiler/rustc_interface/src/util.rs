@@ -42,52 +42,47 @@ type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 /// specific features (SSE, NEON etc.).
 ///
 /// This is performed by checking whether a set of permitted features
-/// is available on the target machine, by querying the codegen backend.
+/// is available on the target machine, by querying the `TargetConfig` from the codegen backend.
 pub(crate) fn add_configuration(
     cfg: &mut Cfg,
-    sess: &mut Session,
-    codegen_backend: &dyn CodegenBackend,
+    target_config: &TargetConfig,
+    target: &Target,
+    is_nightly_build: bool,
+    is_crt_static: bool,
 ) {
-    let tf = sym::target_feature;
-    let tf_cfg = codegen_backend.target_config(sess);
-
     // Add some of the target features to `cfg`.
     cfg.extend(
-        sess.target
+        target
             .rust_target_features()
             .iter()
             .filter_map(|(feature, gate, _)| {
                 if gate.in_cfg()
-                    && (sess.is_nightly_build()
-                        || gate.requires_nightly(/* in_cfg */ true).is_none())
+                    && (is_nightly_build || gate.requires_nightly(/* in_cfg */ true).is_none())
                 {
                     Some(Symbol::intern(feature))
                 } else {
                     None
                 }
             })
-            .filter(|feature| tf_cfg.internal_target_features.contains(&feature))
+            .filter(|feature| target_config.internal_target_features.contains(&feature))
             .map(|feature| (sym::target_feature, Some(feature))),
     );
 
-    // Store all of them in the session.
-    sess.internal_target_features.extend(tf_cfg.internal_target_features.into_sorted_stable_ord());
-
-    if tf_cfg.has_reliable_f16 {
+    if target_config.has_reliable_f16 {
         cfg.insert((sym::target_has_reliable_f16, None));
     }
-    if tf_cfg.has_reliable_f16_math {
+    if target_config.has_reliable_f16_math {
         cfg.insert((sym::target_has_reliable_f16_math, None));
     }
-    if tf_cfg.has_reliable_f128 {
+    if target_config.has_reliable_f128 {
         cfg.insert((sym::target_has_reliable_f128, None));
     }
-    if tf_cfg.has_reliable_f128_math {
+    if target_config.has_reliable_f128_math {
         cfg.insert((sym::target_has_reliable_f128_math, None));
     }
 
-    if sess.crt_static(None) {
-        cfg.insert((tf, Some(sym::crt_dash_static)));
+    if is_crt_static {
+        cfg.insert((sym::target_feature, Some(sym::crt_dash_static)));
     }
 }
 

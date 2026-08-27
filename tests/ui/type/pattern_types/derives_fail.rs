@@ -9,11 +9,11 @@ use std::pat::pattern_type;
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Ord, PartialOrd, Hash, Default)]
 #[repr(transparent)]
 struct Nanoseconds(NanoI32);
-//~^ ERROR: the trait bound `(i32) is 0..=999999999: Eq` is not satisfied
-//~| ERROR: `(i32) is 0..=999999999` doesn't implement `Debug`
-//~| ERROR: the trait bound `(i32) is 0..=999999999: Ord` is not satisfied
-//~| ERROR: the trait bound `(i32) is 0..=999999999: Hash` is not satisfied
-//~| ERROR: the trait bound `(i32) is 0..=999999999: Default` is not satisfied
+//~^ ERROR: the trait bound `pattern_type!(i32 is 0..=999999999): Eq` is not satisfied
+//~| ERROR: `pattern_type!(i32 is 0..=999999999)` doesn't implement `Debug`
+//~| ERROR: the trait bound `pattern_type!(i32 is 0..=999999999): Ord` is not satisfied
+//~| ERROR: the trait bound `pattern_type!(i32 is 0..=999999999): Hash` is not satisfied
+//~| ERROR: the trait bound `pattern_type!(i32 is 0..=999999999): Default` is not satisfied
 //~| ERROR: `==` cannot be applied
 
 type NanoI32 = crate::pattern_type!(i32 is 0..=999_999_999);
