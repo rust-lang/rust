@@ -223,7 +223,12 @@ impl UdpSocket {
     /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// socket.connect("[2001:db8::]:41203").expect("connect should succeed");
     /// assert_eq!(socket.peer_addr().unwrap(),
-    ///            SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0), 41203)));
+    ///            SocketAddr::V6(SocketAddrV6::new(
+    ///                 Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0),
+    ///                 41203,
+    ///                 0,
+    ///                 0
+    /// )));
     /// ```
     ///
     /// If the socket isn't connected, it will return a [`NotConnected`] error.
@@ -251,7 +256,12 @@ impl UdpSocket {
     ///
     /// let socket = UdpSocket::bind("[::1]:34254").expect("bind should succeed");
     /// assert_eq!(socket.local_addr().unwrap(),
-    ///            SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 34254)));
+    ///            SocketAddr::V6(SocketAddrV6::new(
+    ///                 Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
+    ///                 34254,
+    ///                 0,
+    ///                 0
+    /// )));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
