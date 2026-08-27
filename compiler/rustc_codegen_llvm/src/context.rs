@@ -19,13 +19,12 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_sanitizers::ignorelist::{SanitizerIgnoreList, typename_for_ignore_list};
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_session::{PointerAuthSchema, Session};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,

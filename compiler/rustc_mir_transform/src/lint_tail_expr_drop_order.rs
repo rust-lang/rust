@@ -14,7 +14,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_lint_defs::LintId;
 use rustc_lint_defs::builtin::TAIL_EXPR_DROP_ORDER;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::bug;
 use rustc_middle::mir::{
     self, BasicBlock, Body, ClearCrossCrate, Local, Location, MirDumper, Place, StatementKind,
     TerminatorKind,
@@ -26,7 +25,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor};
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug};
 use tracing::debug;
 
 fn place_has_common_prefix<'tcx>(left: &Place<'tcx>, right: &Place<'tcx>) -> bool {

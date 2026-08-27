@@ -1,7 +1,7 @@
-use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::bug;
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;

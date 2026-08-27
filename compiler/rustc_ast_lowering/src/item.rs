@@ -8,12 +8,11 @@ use rustc_hir::{
     self as hir, CRATE_OWNER_ID, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target,
     find_attr,
 };
-use rustc_middle::span_bug;
 use rustc_middle::ty::data_structures::IndexMap;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, span_bug, sym};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::instrument;

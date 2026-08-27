@@ -2,8 +2,7 @@
 
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
 
 use crate::{PassPolicy, take_array};
 

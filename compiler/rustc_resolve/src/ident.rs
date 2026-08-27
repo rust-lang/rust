@@ -6,11 +6,10 @@ use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_lint_defs::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
-use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, Span, bug, kw, span_bug, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 

@@ -115,9 +115,8 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
-use rustc_middle::bug;
 use rustc_session::{IncrCompSession, Session, StableCrateId};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, bug};
 use tracing::debug;
 
 use crate::diagnostics;

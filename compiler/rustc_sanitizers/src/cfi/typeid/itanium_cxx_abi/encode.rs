@@ -12,12 +12,12 @@ use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, CASE_INSENSITIVE, ToBaseN
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::find_attr;
-use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, Const, ExistentialPredicate, FloatTy, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
     IntTy, List, Region, RegionKind, TermKind, Ty, TyCtxt, TypeFoldable, UintTy,
 };
+use rustc_span::bug;
 use rustc_span::def_id::DefId;
 use rustc_target::spec::Arch;
 use tracing::instrument;

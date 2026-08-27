@@ -20,8 +20,7 @@ use rustc_middle::ty::{
     self, RegionExt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     Unnormalized,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, bug, span_bug};
 use rustc_trait_selection::diagnostics::{
     AddPreciseCapturingForOvercapture, impl_trait_overcapture_suggestion,
 };

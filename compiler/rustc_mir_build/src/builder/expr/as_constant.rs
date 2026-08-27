@@ -3,6 +3,7 @@
 use rustc_abi::Size;
 use rustc_ast as ast;
 use rustc_hir::attrs::lang_items::LangItem;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -10,7 +11,7 @@ use rustc_middle::ty::{
     self, CanonicalUserType, CanonicalUserTypeAnnotation, LitToConstInput, Ty, TyCtxt,
     TypeVisitableExt as _, UserTypeAnnotationIndex,
 };
-use rustc_middle::{bug, mir, span_bug};
+use rustc_span::{bug, span_bug};
 use tracing::{instrument, trace};
 
 use crate::builder::{Builder, parse_float_into_constval};

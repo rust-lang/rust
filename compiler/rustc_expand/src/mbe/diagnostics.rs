@@ -6,11 +6,10 @@ use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_macros::Subdiagnostic;
-use rustc_middle::bug;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, bug};
 use tracing::debug;
 
 use super::macro_rules::{MacroRule, NoopTracker, parser_from_cx};

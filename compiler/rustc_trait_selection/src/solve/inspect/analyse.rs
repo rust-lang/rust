@@ -14,11 +14,11 @@ use std::assert_matches;
 use rustc_infer::infer::InferCtxt;
 use rustc_macros::extension;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
+use rustc_middle::ty;
 use rustc_middle::ty::{RequiredDepth, TyCtxt, VisitorResult, eager_resolve_vars, try_visit};
-use rustc_middle::{bug, ty};
 use rustc_next_trait_solver::canonical::instantiate_canonical_state;
 use rustc_next_trait_solver::solve::{MaybeCause, MaybeInfo, SolverDelegateEvalExt as _, inspect};
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use thin_vec::ThinVec;
 use tracing::instrument;
 

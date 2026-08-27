@@ -4,10 +4,10 @@ use rustc_ast::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty;
 use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
-use rustc_middle::{bug, ty};
 use rustc_span::symbol::kw;
-use rustc_span::{ErrorGuaranteed, Ident, Span, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, bug, sym};
 
 use crate::LoweringContext;
 use crate::delegation::resolution::resolver::DelegationResolver;

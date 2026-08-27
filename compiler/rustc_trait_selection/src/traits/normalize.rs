@@ -7,12 +7,12 @@ use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_macros::extension;
-use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
     self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
     TypeVisitableExt, TypingMode, Unnormalized,
 };
+use rustc_span::span_bug;
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 

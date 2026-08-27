@@ -11,7 +11,6 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound, VerifyIfEq};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
-use rustc_middle::bug;
 use rustc_middle::mir::{
     AnnotationSource, BasicBlock, Body, ConstraintCategory, Local, Location, ReturnConstraint,
     TerminatorKind,
@@ -22,7 +21,7 @@ use rustc_middle::ty::{
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug};
 use tracing::{Level, debug, enabled, instrument, trace};
 
 use crate::constraints::graph::NormalConstraintGraph;

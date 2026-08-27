@@ -66,11 +66,10 @@ use rustc_hir::{
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::queries::Providers;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
 use rustc_session::diagnostics::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, DesugaringKind, Span};
+use rustc_span::{DUMMY_SP, DesugaringKind, Span, span_bug};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};

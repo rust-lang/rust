@@ -34,8 +34,7 @@ use rustc_middle::ty::{
     self, AssocContainer, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitor,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, bug, span_bug, sym};
 use tracing::debug;
 
 ////////////////////////////////////////////////////////////////////////////////

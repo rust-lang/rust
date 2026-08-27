@@ -14,12 +14,11 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{MaybeStorageLive, always_storage_live_locals};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, span_bug, sym};
 use rustc_trait_selection::traits::{
     Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };

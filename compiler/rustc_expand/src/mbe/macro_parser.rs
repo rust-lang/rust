@@ -80,9 +80,8 @@ pub(crate) use ParseResult::*;
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_middle::span_bug;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
-use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, span_bug};
 
 use crate::mbe::macro_rules::Tracker;
 use crate::mbe::{KleeneOp, TokenTree};

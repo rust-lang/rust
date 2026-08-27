@@ -14,7 +14,7 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, bug, sym};
 use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};

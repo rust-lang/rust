@@ -4,15 +4,14 @@ use rustc_abi::Primitive::Pointer;
 use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
-use rustc_middle::bug;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
 use rustc_middle::ty::{self, InstanceKind, ShimKind, Ty, TyCtxt, Unnormalized};
-use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
+use rustc_span::{DUMMY_SP, bug};
 use rustc_target::callconv::{AbiMap, ArgAbi, ArgAttribute, ArgAttributes, FnAbi, PassMode};
 use tracing::debug;
 

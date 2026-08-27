@@ -1,11 +1,11 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
+use rustc_span::bug;
 
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;

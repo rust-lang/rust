@@ -2,12 +2,12 @@ use rustc_abi::{Scalar, Size, TagEncoding, Variants, WrappingRange};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
-use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::PrimitiveExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingEnv};
 use rustc_session::Session;
+use rustc_span::bug;
 use tracing::debug;
 
 use crate::PassPolicy;

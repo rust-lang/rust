@@ -10,7 +10,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
-use rustc_middle::bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -22,7 +21,7 @@ use rustc_pattern_analysis::rustc::{
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{Ident, Span};
+use rustc_span::{Ident, Span, bug};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::instrument;
 
