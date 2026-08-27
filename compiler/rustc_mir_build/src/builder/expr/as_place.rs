@@ -645,9 +645,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         block = self.bounds_check(block, &base_place, idx, expr_span, source_info);
 
-        if is_outermost_index {
-            self.read_fake_borrows(block, fake_borrow_temps, source_info)
-        } else {
+        // Keep all fake borrows we've collected so far alive. If we only emitted fake reads at the
+        // end, diverging within an index expression could make them unreachable. This would allow
+        // bounds checks to perform out-of-bounds accesses (#161852).
+        self.read_fake_borrows(block, fake_borrow_temps, source_info);
+
+        if !is_outermost_index {
             self.add_fake_borrows_of_base(
                 base_place.to_place(self),
                 block,
