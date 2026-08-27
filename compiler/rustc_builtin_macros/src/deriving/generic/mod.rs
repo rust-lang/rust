@@ -177,14 +177,13 @@
 use std::ops::Not;
 use std::{iter, vec};
 
-pub(crate) use StaticFields::*;
 pub(crate) use SubstructureFields::*;
 pub(crate) use rustc_ast as ast;
 use rustc_ast::token::{IdentIsRaw, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
-    AnonConst, AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg,
-    GenericParamKind, Generics, Mutability, PatKind, Safety, SelfKind, VariantData,
+    AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
+    Mutability, PatKind, Safety, SelfKind, VariantData,
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
@@ -294,20 +293,6 @@ pub(crate) struct FieldInfo {
     pub maybe_scalar: bool,
 }
 
-#[derive(Copy, Clone)]
-pub(crate) enum IsTuple {
-    No,
-    Yes,
-}
-
-/// Fields for a static method
-pub(crate) enum StaticFields<'a> {
-    /// Tuple and unit structs/enum variants like this.
-    Unnamed(Vec<Span>, IsTuple),
-    /// Normal structs/struct variants.
-    Named(Vec<(Ident, Span, Option<&'a AnonConst>)>),
-}
-
 /// A summary of the possible sets of fields.
 pub(crate) enum SubstructureFields<'a> {
     /// A non-static method where `Self` is a struct.
@@ -329,7 +314,7 @@ pub(crate) enum SubstructureFields<'a> {
     EnumDiscr(FieldInfo, Option<Box<Expr>>),
 
     /// A static method where `Self` is a struct.
-    StaticStruct(&'a ast::VariantData, StaticFields<'a>),
+    StaticStruct(&'a ast::VariantData),
 
     /// A static method where `Self` is an enum.
     StaticEnum(&'a ast::EnumDef),
@@ -860,12 +845,12 @@ impl<'a> TraitDef<'a> {
                     method_def.extract_arg_details(cx, self, type_ident, generics);
 
                 let body = if from_scratch || method_def.is_static() {
-                    method_def.expand_static_struct_method_body(
+                    method_def.call_substructure_method(
                         cx,
                         self,
-                        struct_def,
                         type_ident,
                         &nonselflike_args,
+                        &StaticStruct(struct_def),
                     )
                 } else {
                     method_def.expand_struct_method_body(
@@ -1130,25 +1115,6 @@ impl<'a> MethodDef<'a> {
             type_ident,
             nonselflike_args,
             &Struct(struct_def, selflike_fields),
-        )
-    }
-
-    fn expand_static_struct_method_body(
-        &self,
-        cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'a>,
-        struct_def: &'a VariantData,
-        type_ident: Ident,
-        nonselflike_args: &[Box<Expr>],
-    ) -> BlockOrExpr {
-        let summary = trait_.summarise_struct(cx, struct_def);
-
-        self.call_substructure_method(
-            cx,
-            trait_,
-            type_ident,
-            nonselflike_args,
-            &StaticStruct(struct_def, summary),
         )
     }
 
@@ -1450,34 +1416,6 @@ impl<'a> MethodDef<'a> {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
-    fn summarise_struct(&self, cx: &ExtCtxt<'_>, struct_def: &'a VariantData) -> StaticFields<'a> {
-        let mut named_idents = Vec::new();
-        let mut just_spans = Vec::new();
-        for field in struct_def.fields() {
-            let sp = field.span.with_ctxt(self.span.ctxt());
-            match field.ident {
-                Some(ident) => named_idents.push((ident, sp, field.default_value())),
-                _ => just_spans.push(sp),
-            }
-        }
-
-        let is_tuple = match struct_def {
-            ast::VariantData::Tuple(..) => IsTuple::Yes,
-            _ => IsTuple::No,
-        };
-        match (just_spans.is_empty(), named_idents.is_empty()) {
-            (false, false) => cx
-                .dcx()
-                .span_bug(self.span, "a struct with named and unnamed fields in generic `derive`"),
-            // named fields
-            (_, false) => Named(named_idents),
-            // unnamed fields
-            (false, _) => Unnamed(just_spans, is_tuple),
-            // empty
-            _ => Named(Vec::new()),
-        }
-    }
-
     fn create_struct_patterns(
         &self,
         cx: &ExtCtxt<'_>,

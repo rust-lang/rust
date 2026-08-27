@@ -38,7 +38,7 @@ pub(crate) fn expand_deriving_default(
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, trait_span, substr| {
                 match substr.fields {
-                    StaticStruct(variant_data, _) => {
+                    StaticStruct(variant_data) => {
                         default_struct_substructure(cx, trait_span, substr, variant_data)
                     }
                     StaticEnum(enum_def) => {
