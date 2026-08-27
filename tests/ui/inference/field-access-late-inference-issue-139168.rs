@@ -34,6 +34,20 @@ fn boxed() -> Box<Vec<i32>> {
     value
 }
 
+fn primitive() -> usize {
+    let value = Default::default();
+    let _ = value.count_ones();
+    value
+}
+
+fn tuple() -> (i32,) {
+    let value = Default::default();
+    let _ = value.0.abs();
+    value
+}
+
 fn main() {
     let _ = later_known();
+    let _ = primitive();
+    let _ = tuple();
 }

@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/returned-local-inference-boundaries-issue-139168.rs:14:9
+  --> $DIR/returned-local-inference-boundaries-issue-139168.rs:16:9
    |
 LL |     let value = Default::default();
    |         ^^^^^
@@ -13,7 +13,49 @@ LL |     let value: /* Type */ = Default::default();
    |              ++++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/returned-local-inference-boundaries-issue-139168.rs:25:9
+  --> $DIR/returned-local-inference-boundaries-issue-139168.rs:23:9
+   |
+LL |     let value = Default::default();
+   |         ^^^^^
+LL |
+LL |     let _ = value.field;
+   |             ----- type must be known at this point
+   |
+help: consider giving `value` an explicit type
+   |
+LL |     let value: /* Type */ = Default::default();
+   |              ++++++++++++
+
+error[E0282]: type annotations needed for `&mut _`
+  --> $DIR/returned-local-inference-boundaries-issue-139168.rs:30:9
+   |
+LL |     let value = Box::leak(Box::new(Default::default()));
+   |         ^^^^^
+LL |
+LL |     let _ = value.field;
+   |             ----------- type must be known at this point
+   |
+help: consider giving `value` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let value: &mut T = Box::leak(Box::new(Default::default()));
+   |              ++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/returned-local-inference-boundaries-issue-139168.rs:37:9
+   |
+LL |     let value = Default::default();
+   |         ^^^^^
+LL |
+LL |     let _ = value.field;
+   |             ----- type must be known at this point
+   |
+help: consider giving `value` an explicit type
+   |
+LL |     let value: /* Type */ = Default::default();
+   |              ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/returned-local-inference-boundaries-issue-139168.rs:48:9
    |
 LL |     let receiver = Default::default();
    |         ^^^^^^^^
@@ -27,7 +69,7 @@ LL |     let receiver: /* Type */ = Default::default();
    |                 ++++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/returned-local-inference-boundaries-issue-139168.rs:32:9
+  --> $DIR/returned-local-inference-boundaries-issue-139168.rs:55:9
    |
 LL |     let receiver = Default::default();
    |         ^^^^^^^^
@@ -40,6 +82,6 @@ help: consider giving `receiver` an explicit type
 LL |     let receiver: /* Type */ = Default::default();
    |                 ++++++++++++
 
-error: aborting due to 3 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0282`.

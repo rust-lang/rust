@@ -32,13 +32,6 @@ use rustc_trait_selection::traits::{
 use crate::coercion::CoerceMany;
 use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 
-#[derive(Clone, Copy)]
-struct DirectTailLocalConstraint<'tcx> {
-    binding_hir_id: HirId,
-    declaration_hir_id: HirId,
-    expected_ty: Ty<'tcx>,
-}
-
 /// The `FnCtxt` stores type-checking context needed to type-check bodies of
 /// functions, closures, and `const`s, including performing type inference
 /// with [`InferCtxt`].
@@ -72,10 +65,6 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// like `expected_ty` to access the declared return type (if
     /// any).
     pub(super) ret_coercion: Option<RefCell<CoerceMany<'tcx>>>,
-
-    /// A block expectation to apply to the local used as its direct tail expression.
-    /// Nested blocks temporarily replace this state while they are checked.
-    direct_tail_local_constraint: Cell<Option<DirectTailLocalConstraint<'tcx>>>,
 
     /// First span of a return site that we find. Used in error messages.
     pub(super) ret_coercion_span: Cell<Option<Span>>,
@@ -158,7 +147,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             body_def_id,
             param_env,
             ret_coercion: None,
-            direct_tail_local_constraint: Cell::new(None),
             ret_coercion_span: Cell::new(None),
             coroutine_types: None,
             diverges: Cell::new(Diverges::Maybe),

@@ -36,7 +36,6 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, S
 use smallvec::SmallVec;
 use tracing::debug;
 
-use super::DirectTailLocalConstraint;
 use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
 use crate::callee::SplatLoweringInfo;
@@ -57,6 +56,12 @@ rustc_index::newtype_index! {
     #[orderable]
     #[debug_format = "GenericIdx({})"]
     pub(crate) struct GenericIdx {}
+}
+
+struct LocalConstraint<'tcx> {
+    binding_hir_id: HirId,
+    declaration_hir_id: HirId,
+    expected_ty: Ty<'tcx>,
 }
 
 /// Outcome of checking arguments that are tupled by "rust-call" or `#[rustc_splat]`.
@@ -1173,18 +1178,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn constrain_direct_tail_local(&self, decl: &Declaration<'tcx>) {
-        let Some(constraint) = self.direct_tail_local_constraint.get() else {
+    fn constrain_direct_tail_local(
+        &self,
+        local: &'tcx hir::LetStmt<'tcx>,
+        constraint: &Option<LocalConstraint<'tcx>>,
+    ) {
+        let Some(constraint) = constraint else {
             return;
         };
-        if constraint.declaration_hir_id != decl.hir_id {
+        if local.hir_id != constraint.declaration_hir_id {
             return;
         }
-
-        self.direct_tail_local_constraint.set(None);
-
         let local_ty =
-            self.resolve_vars_if_possible(self.local_ty(decl.span, constraint.binding_hir_id));
+            self.resolve_vars_if_possible(self.local_ty(local.span, constraint.binding_hir_id));
         if !local_ty.has_non_region_infer() {
             return;
         }
@@ -1204,7 +1210,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let cause = self.misc(decl.span);
+        let cause = self.misc(local.span);
         if let Ok(ok) = self.commit_if_ok(|_| {
             self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, expected_ty, local_ty)
         }) {
@@ -1256,15 +1262,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             self.diverges.set(previous_diverges);
         }
-        self.constrain_direct_tail_local(&decl);
         decl_ty
     }
 
     /// Type check a `let` statement.
-    fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
+    fn check_decl_local(
+        &self,
+        local: &'tcx hir::LetStmt<'tcx>,
+        constraint: &Option<LocalConstraint<'tcx>>,
+    ) {
         GatherLocalsVisitor::gather_from_local(self, local);
 
         let ty = self.check_decl(local.into());
+        self.constrain_direct_tail_local(local, constraint);
+
         self.write_ty(local.hir_id, ty);
         if local.pat.is_never_pattern() {
             self.diverges.set(Diverges::Always {
@@ -1274,7 +1285,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
+    fn check_stmt(
+        &self,
+        stmt: &'tcx hir::Stmt<'tcx>,
+        local_constraint: &Option<LocalConstraint<'tcx>>,
+    ) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
@@ -1288,7 +1303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match stmt.kind {
             hir::StmtKind::Let(l) => {
-                self.check_decl_local(l);
+                self.check_decl_local(l, local_constraint);
             }
             // Ignore for now.
             hir::StmtKind::Item(_) => {}
@@ -1356,39 +1371,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let prev_diverges = self.diverges.get();
         let ctxt = BreakableCtxt { coerce: Some(coerce), may_break: false };
 
-        let direct_tail_local_constraint = expected
+        // Make a block expectation available when checking an initialized local used as the
+        // direct tail. For example:
+        //
+        //     fn vector() -> Vec<i32> {
+        //         let mut value = Default::default();
+        //         value.push(1);
+        //         value
+        //     }
+        //
+        // The tail expectation would tell us that `value` is a `Vec<i32>`,
+        // and we can use that to constrain the type of the local.
+        let local_constraint = expected
             .only_has_type(self)
-            .filter(|expected_ty| {
-                !expected_ty.is_ty_var() && matches!(expected_ty.kind(), ty::Adt(..))
-            })
+            .filter(|expected_ty| expected_ty.is_known_rigid())
             .and_then(|expected_ty| {
                 let tail = blk.expr?.peel_drop_temps().peel_blocks().peel_drop_temps();
-                let ExprKind::Path(QPath::Resolved(
+                if let ExprKind::Path(QPath::Resolved(
                     None,
                     hir::Path { res: Res::Local(binding_hir_id), .. },
                 )) = tail.kind
-                else {
-                    return None;
-                };
-                let (_, Node::LetStmt(local)) = self
-                    .tcx
-                    .hir_parent_iter(*binding_hir_id)
-                    .find(|(_, node)| matches!(node, Node::LetStmt(_)))?
-                else {
-                    return None;
-                };
-                Some(DirectTailLocalConstraint {
-                    binding_hir_id: *binding_hir_id,
-                    declaration_hir_id: local.hir_id,
-                    expected_ty,
-                })
+                    && let Some((_, Node::LetStmt(local))) = self
+                        .tcx
+                        .hir_parent_iter(*binding_hir_id)
+                        .find(|(_, node)| matches!(node, Node::LetStmt(_)))
+                    && local.init.is_some()
+                {
+                    Some(LocalConstraint {
+                        binding_hir_id: *binding_hir_id,
+                        declaration_hir_id: local.hir_id,
+                        expected_ty,
+                    })
+                } else {
+                    None
+                }
             });
 
-        let previous_direct_tail_local_constraint =
-            self.direct_tail_local_constraint.replace(direct_tail_local_constraint);
         let (ctxt, ()) = self.with_breakable_ctxt(blk.hir_id, ctxt, || {
             for s in blk.stmts {
-                self.check_stmt(s);
+                self.check_stmt(s, &local_constraint);
             }
 
             // check the tail expression **without** holding the
@@ -1533,8 +1554,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         });
-        self.direct_tail_local_constraint.set(previous_direct_tail_local_constraint);
-
         if ctxt.may_break {
             // If we can break from the block, then the block's exit is always reachable
             // (... as long as the entry is reachable) - regardless of the tail of the block.
