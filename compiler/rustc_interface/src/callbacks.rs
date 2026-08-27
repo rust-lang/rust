@@ -10,11 +10,13 @@
 //! origin crate when the `TyCtxt` is not present in TLS.
 
 use std::fmt;
+use std::fmt::Arguments;
+use std::panic::Location;
 
 use rustc_errors::DiagInner;
 use rustc_middle::dep_graph::{QuerySideEffect, TaskDepsRef};
 use rustc_middle::ty::tls;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 
 fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
     tls::with_context_opt(|icx| {
@@ -84,6 +86,20 @@ fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) ->
     write!(f, ")")
 }
 
+fn emit_bug_diagnostic(span: Option<Span>, args: Arguments<'_>, location: &Location<'_>) {
+    tls::with_opt(move |tcx| {
+        if let Some(tcx) = tcx {
+            let message = format!("{location}: {args}");
+            if let Some(span) = span {
+                tcx.dcx().struct_span_bug(span, message)
+            } else {
+                tcx.dcx().struct_bug(message)
+            }
+            .emit_producing_nothing();
+        }
+    })
+}
+
 /// Sets up the callbacks in prior crates which we want to refer to the
 /// TyCtxt in.
 pub fn setup_callbacks() {
@@ -91,5 +107,6 @@ pub fn setup_callbacks() {
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     rustc_errors::TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
     rustc_feature::TRACK_FEATURE.swap(&(track_feature as _));
+    rustc_span::macros::EMIT_BUG_DIAGNOSTIC.swap(&(emit_bug_diagnostic as _));
     rustc_expand_queries::setup_callbacks();
 }
