@@ -1055,12 +1055,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         return self.cfg.start_new_block().unit();
     }
 
-    /// Sets up the drops for breaking from `block` due to an `if` condition
-    /// that turned out to be false.
+    /// Breaks out of the enclosing [`Builder::in_if_then_scope`] due to a
+    /// condition being false.
+    ///
+    /// This adds relevant drops in the drop tree, and adds a dummy terminator
+    /// that will become a real `goto` when the scope's drop tree is built.
     ///
     /// Must be called in the context of [`Builder::in_if_then_scope`], so that
     /// there is an if-then scope to tell us what the target scope is.
-    pub(crate) fn break_for_else(&mut self, block: BasicBlock, source_info: SourceInfo) {
+    pub(crate) fn break_from_if_then_scope(&mut self, block: BasicBlock, source_info: SourceInfo) {
         let if_then_scope = self
             .scopes
             .if_then_scope
@@ -1970,7 +1973,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     /// Build a drop tree for a breakable scope.
     ///
     /// If `continue_block` is `Some`, then the tree is for `continue` inside a
-    /// loop. Otherwise this is for `break` or `return`.
+    /// loop. Otherwise this is for `break`, `return`, or `if`.
     fn build_exit_tree(
         &mut self,
         mut drops: DropTree,
@@ -2119,7 +2122,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
     fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         // There should be an existing terminator with real source info and a
         // dummy TerminatorKind. Replace it with a proper goto.
-        // (The dummy is added by `break_scope` and `break_for_else`.)
+        // (The dummy is added by `break_scope` and `break_from_if_then_scope`.)
         let term = cfg.block_data_mut(from).terminator_mut();
         if let TerminatorKind::UnwindResume = term.kind {
             term.kind = TerminatorKind::Goto { target: to };

@@ -163,7 +163,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.lower_if_condition(block, arg, args.let_not_permitted())
                     });
                 // Break if the condition was true; proceed if the condition was false.
-                this.break_for_else(true_block, args.variable_source_info);
+                this.break_from_if_then_scope(true_block, args.variable_source_info);
                 false_block.unit()
             }
             ExprKind::Scope { region_scope, hir_id, value } => {
@@ -213,7 +213,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let source_info = this.source_info(expr_span);
                 this.cfg.terminate(block, source_info, term);
-                this.break_for_else(false_block, source_info);
+                this.break_from_if_then_scope(false_block, source_info);
 
                 true_block.unit()
             }
@@ -2324,6 +2324,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Use [`DeclareLetBindings`] to control whether the `let` bindings are
     /// declared or not.
+    ///
+    /// Must be called within a [`Builder::in_if_then_scope`], to indicate where
+    /// to break to if the `let` fails to match.
     pub(crate) fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
@@ -2345,7 +2348,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         let [branch] = built_tree.branches.try_into().unwrap();
 
-        self.break_for_else(built_tree.otherwise_block, self.source_info(expr_span));
+        // If pattern-matching failed, break out of the enclosing if-then scope.
+        self.break_from_if_then_scope(built_tree.otherwise_block, self.source_info(expr_span));
 
         match declare_let_bindings {
             DeclareLetBindings::Yes => {
