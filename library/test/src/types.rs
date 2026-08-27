@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 use std::fmt;
+use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
 pub use NamePadding::*;
@@ -81,13 +82,14 @@ impl fmt::Display for TestName {
 // then the test fails. We may need to come up with a more clever
 // definition of test in order to support isolation of tests into
 // threads.
+#[derive(Clone)]
 pub enum TestFn {
     StaticTestFn(fn() -> Result<(), String>),
     StaticBenchFn(fn(&mut Bencher) -> Result<(), String>),
     StaticBenchAsTestFn(fn(&mut Bencher) -> Result<(), String>),
-    DynTestFn(Box<dyn FnOnce() -> Result<(), String> + Send>),
-    DynBenchFn(Box<dyn Fn(&mut Bencher) -> Result<(), String> + Send>),
-    DynBenchAsTestFn(Box<dyn Fn(&mut Bencher) -> Result<(), String> + Send>),
+    DynTestFn(Arc<dyn Fn() -> Result<(), String> + Send + Sync>),
+    DynBenchFn(Arc<dyn Fn(&mut Bencher) -> Result<(), String> + Send + Sync>),
+    DynBenchAsTestFn(Arc<dyn Fn(&mut Bencher) -> Result<(), String> + Send + Sync>),
 }
 
 impl TestFn {
@@ -134,16 +136,16 @@ pub(crate) enum Runnable {
 
 pub(crate) enum RunnableTest {
     Static(fn() -> Result<(), String>),
-    Dynamic(Box<dyn FnOnce() -> Result<(), String> + Send>),
+    Dynamic(Arc<dyn Fn() -> Result<(), String> + Send + Sync>),
     StaticBenchAsTest(fn(&mut Bencher) -> Result<(), String>),
-    DynamicBenchAsTest(Box<dyn Fn(&mut Bencher) -> Result<(), String> + Send>),
+    DynamicBenchAsTest(Arc<dyn Fn(&mut Bencher) -> Result<(), String> + Send + Sync>),
 }
 
 impl RunnableTest {
     pub(crate) fn run(self) -> Result<(), String> {
         match self {
             RunnableTest::Static(f) => __rust_begin_short_backtrace(f),
-            RunnableTest::Dynamic(f) => __rust_begin_short_backtrace(f),
+            RunnableTest::Dynamic(f) => __rust_begin_short_backtrace(|| f()),
             RunnableTest::StaticBenchAsTest(f) => {
                 crate::bench::run_once(|b| __rust_begin_short_backtrace(|| f(b)))
             }
@@ -165,7 +167,7 @@ impl RunnableTest {
 
 pub(crate) enum RunnableBench {
     Static(fn(&mut Bencher) -> Result<(), String>),
-    Dynamic(Box<dyn Fn(&mut Bencher) -> Result<(), String> + Send>),
+    Dynamic(Arc<dyn Fn(&mut Bencher) -> Result<(), String> + Send + Sync>),
 }
 
 impl RunnableBench {
@@ -181,7 +183,7 @@ impl RunnableBench {
                 crate::bench::benchmark(id, desc.clone(), monitor_ch.clone(), nocapture, f)
             }
             RunnableBench::Dynamic(f) => {
-                crate::bench::benchmark(id, desc.clone(), monitor_ch.clone(), nocapture, f)
+                crate::bench::benchmark(id, desc.clone(), monitor_ch.clone(), nocapture, |b| f(b))
             }
         }
     }
@@ -245,7 +247,7 @@ impl TestDesc {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TestDescAndFn {
     pub desc: TestDesc,
     pub testfn: TestFn,
