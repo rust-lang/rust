@@ -310,6 +310,12 @@ fn test_pointers() {
         _ => unreachable!(),
     }
 
+    const {
+        let ty = TypeId::of::<*const u8>();
+        assert!(ty.points_to() == Some(TypeId::of::<u8>()));
+        assert!(!ty.points_mutably());
+    }
+
     // Mutable pointer.
     match const { Type::of::<*mut u64>() }.kind {
         TypeKind::Pointer(pointer) => {
@@ -319,6 +325,12 @@ fn test_pointers() {
         _ => unreachable!(),
     }
 
+    const {
+        let ty = TypeId::of::<*mut u64>();
+        assert!(ty.points_to() == Some(TypeId::of::<u64>()));
+        assert!(ty.points_mutably());
+    }
+
     // Wide pointer.
     match const { Type::of::<*const dyn Any>() }.kind {
         TypeKind::Pointer(pointer) => {
@@ -326,6 +338,12 @@ fn test_pointers() {
             assert!(!pointer.mutable);
         }
         _ => unreachable!(),
+    }
+
+    const {
+        let ty = TypeId::of::<*const dyn Any>();
+        assert!(ty.points_to() == Some(TypeId::of::<dyn Any>()));
+        assert!(!ty.points_mutably());
     }
 }
 

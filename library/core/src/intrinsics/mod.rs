@@ -3111,6 +3111,26 @@ pub fn non_exhaustive(_id: crate::any::TypeId) -> bool;
 #[rustc_comptime]
 pub fn type_id_generics(_id: crate::any::TypeId) -> &'static [crate::mem::type_info::Generic];
 
+// FIXME(reflection): Pick a consistent naming scheme for the intrinsics. Right now we got
+// type_id_<something>, <something>_type_id and intrinsics not mentioning type_id at all.
+/// Given a `TypeId` that represents a pointer this returns the `TypeId` which that pointer
+/// points to. When called on anything else this returns None.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::points_to`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_points_to(_id: crate::any::TypeId) -> Option<crate::any::TypeId>;
+
+/// Given a `TypeId` that represents a pointer returns whether that pointer is mutable.
+/// When called on anything else this returns `false`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::points_mutably`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_points_mutably(_id: crate::any::TypeId) -> bool;
+
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
 /// This is used to implement functions like `slice::from_raw_parts_mut` and

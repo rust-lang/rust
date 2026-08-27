@@ -612,6 +612,16 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_bool(ty.is_signed()), dest)?;
             }
 
+            sym::type_id_points_mutably => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let ret = if let ty::RawPtr(_, mutability) = ty.kind() {
+                    mutability.is_mut()
+                } else {
+                    false
+                };
+                ecx.write_scalar(Scalar::from_bool(ret), dest)?;
+            }
+
             sym::size_of_type_id => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let layout = ecx.layout_of(ty)?;
@@ -690,6 +700,19 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     FieldIdx::from_usize(field_idx),
                 );
                 ecx.write_type_id(frt, dest)?;
+            }
+
+            sym::type_id_points_to => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let variant_index = if let ty::RawPtr(pointee_ty, _) = ty.kind() {
+                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
+                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    ecx.write_type_id(*pointee_ty, &field_place)?;
+                    variant
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+                ecx.write_discriminant(variant_index, dest)?;
             }
 
             sym::type_id_variants => {

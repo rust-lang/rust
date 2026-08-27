@@ -567,6 +567,43 @@ impl TypeId {
     pub fn generics(self) -> &'static [Generic] {
         intrinsics::type_id_generics(self)
     }
+
+    /// Given a `TypeId` that represents a pointer this returns the `TypeId`
+    /// which that pointer points to. When called on anything else this returns
+    /// None.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(
+    ///     const { TypeId::of::<*const i32>().points_to() },
+    ///     const { Some(TypeId::of::<i32>()) },
+    /// );
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn points_to(self) -> Option<TypeId> {
+        intrinsics::type_id_points_to(self)
+    }
+
+    /// Given a `TypeId` that represents a pointer returns whether that pointer is mutable.
+    /// When called on anything else this returns `false`.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert!(!const { TypeId::of::<*const i32>().points_mutably() });
+    /// assert!(const { TypeId::of::<*mut i32>().points_mutably() });
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn points_mutably(self) -> bool {
+        intrinsics::type_id_points_mutably(self)
+    }
 }
 
 /// Variant representing type ID. Representing a variant of an enum.
