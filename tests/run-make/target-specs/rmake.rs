@@ -95,5 +95,10 @@ fn main() {
         .crate_type("lib")
         .arg("-Ctarget-cpu=generic")
         .run();
-    rustc().arg("-Zunstable-options").target("require-explicit-cpu").print("target-cpus").run();
+    rustc()
+        .arg("-Zunstable-options")
+        .target("require-explicit-cpu")
+        .print("target-cpus")
+        .run()
+        .assert_stdout_contains("default target CPU");
 }
