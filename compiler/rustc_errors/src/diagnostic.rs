@@ -1286,7 +1286,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     }
 
     /// Most `emit_producing_guarantee` functions use this as a starting point.
-    fn emit_producing_nothing(mut self) {
+    pub fn emit_producing_nothing(mut self) {
         let diag = self.take_diag();
         self.dcx.emit_diagnostic(diag);
     }
