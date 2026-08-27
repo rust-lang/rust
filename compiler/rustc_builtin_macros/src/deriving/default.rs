@@ -38,8 +38,8 @@ pub(crate) fn expand_deriving_default(
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, trait_span, substr| {
                 match substr.fields {
-                    StaticStruct(_, fields) => {
-                        default_struct_substructure(cx, trait_span, substr, fields)
+                    StaticStruct(variant_data, _) => {
+                        default_struct_substructure(cx, trait_span, substr, variant_data)
                     }
                     StaticEnum(enum_def) => {
                         default_enum_substructure(cx, trait_span, enum_def, item.span)
@@ -66,27 +66,35 @@ fn default_struct_substructure(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
-    summary: &StaticFields<'_>,
+    variant_data: &VariantData,
 ) -> BlockOrExpr {
-    let expr = match summary {
-        Unnamed(_, IsTuple::No) => cx.expr_ident(trait_span, substr.type_ident),
-        Unnamed(fields, IsTuple::Yes) => {
-            let exprs = fields.iter().map(|sp| default_call(cx, *sp)).collect();
+    let expr = match variant_data {
+        VariantData::Unit(_) => cx.expr_ident(trait_span, substr.type_ident),
+        VariantData::Tuple(fields, _) => {
+            let exprs = fields
+                .iter()
+                .map(|field| default_call(cx, field.span.with_ctxt(trait_span.ctxt())))
+                .collect();
             cx.expr_call_ident(trait_span, substr.type_ident, exprs)
         }
-        Named(fields) => {
+        VariantData::Struct { fields, .. } => {
             let default_fields = fields
                 .iter()
-                .map(|&(ident, span, default_val)| {
-                    let value = match default_val {
-                        // We use `Default::default()`.
-                        None => default_call(cx, span),
+                .map(|field| {
+                    let span = field.span.with_ctxt(trait_span.ctxt());
+                    let value = if let Some(extras) = &field.extras
+                        && let Some(default_val) = &extras.default
+                    {
                         // We use the field default const expression.
-                        Some(val) => {
-                            cx.expr(val.value.span, ast::ExprKind::ConstBlock(val.clone()))
-                        }
+                        cx.expr(
+                            default_val.value.span,
+                            ast::ExprKind::ConstBlock(default_val.clone()),
+                        )
+                    } else {
+                        // We use `Default::default()`.
+                        default_call(cx, span)
                     };
-                    cx.field_imm(span, ident, value)
+                    cx.field_imm(span, field.ident.unwrap(), value)
                 })
                 .collect();
             cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
