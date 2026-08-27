@@ -18,8 +18,8 @@ When reading the policy in the context of Clippy:
 * The Clippy team will over time more precisely define what we mean by "critical" areas.
   We expect to adopt whatever tooling `rust-lang/rust` adopts to specify this more precisely.
 * When in doubt,
-  the Clippy team will provide any and all Clippy-specific interpretations of the policy,
-  until such time as the policy itself is updated to encompass Clippy.
+  the Clippy team will provide any and all Clippy-specific interpretations of the policy, until
+  the policy itself is updated to include Clippy.
 
 For suggestions about how to use LLMs *well*,
 and how to review LLM-created PRs,
