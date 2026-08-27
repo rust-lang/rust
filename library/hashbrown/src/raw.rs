@@ -185,6 +185,9 @@ fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
         // Keep in mind that the bucket mask is one less than the bucket count.
         bucket_mask
     } else {
+        // `bucket_mask` is bounded by the maximum allocation size, so it can
+        // never be `usize::MAX` and the `+ 1` below cannot overflow.
+        debug_assert!(bucket_mask != usize::MAX);
         // For larger tables we reserve 12.5% of the slots as empty.
         ((bucket_mask + 1) / 8) * 7
     }
