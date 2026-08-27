@@ -569,7 +569,7 @@ pub fn propagate_ambiguity<I: Interner, S: Clone + std::fmt::Debug + Eq + std::h
     for and in constraint.or_constraint.0.iter() {
         // FIXME(-Zassumptions-on-binders): This is overly conservative. If we have:
         // `'a: 'b OR ambig` we don't necessarily want to propagate ambiguity here
-        // as we might end up with `'a: 'b` being satisfied in which case we unncessarily
+        // as we might end up with `'a: 'b` being satisfied in which case we unnecessarily
         // errored here.
         //
         // It's fine if the `ambig` wound up being `false` as that wouldn't cause a goal to
