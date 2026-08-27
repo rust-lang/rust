@@ -187,6 +187,8 @@ pub use core::sync::atomic;
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 pub use alloc_crate::sync::UniqueArc;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // This re-export has its own stability.
 pub use alloc_crate::sync::{Arc, Weak};
 
 #[unstable(feature = "mpmc_channel", issue = "126840")]
@@ -198,6 +200,8 @@ pub mod oneshot;
 pub(crate) mod once; // `pub(crate)` for the `sys::sync::once` implementations and `LazyLock`.
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // This re-export has its own stability.
 pub use self::once::{Once, OnceState};
 
 #[stable(feature = "rust1", since = "1.0.0")]

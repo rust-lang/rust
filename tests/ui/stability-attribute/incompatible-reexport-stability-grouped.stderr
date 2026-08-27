@@ -1,0 +1,25 @@
+error: stability annotation on this re-export does not match the re-exported item
+  --> $DIR/incompatible-reexport-stability-grouped.rs:14:5
+   |
+LL |     stable as grouped_stable_a,
+   |     ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/incompatible-reexport-stability-grouped.rs:6:9
+   |
+LL | #![deny(incompatible_reexport_stability)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: stability annotation on this re-export does not match the re-exported item
+  --> $DIR/incompatible-reexport-stability-grouped.rs:22:5
+   |
+LL |     stable as grouped_mixed_stable,
+   |     ^^^^^^
+
+error: stability annotation on this re-export does not match the re-exported item
+  --> $DIR/incompatible-reexport-stability-grouped.rs:31:5
+   |
+LL |     stable as grouped_mismatching_second,
+   |     ^^^^^^
+
+error: aborting due to 3 previous errors

@@ -49,9 +49,15 @@ pub mod prelude {
     pub use super::fs::FileExt;
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // Prelude stability differs here.
     pub use super::fs::{MetadataExt, OpenOptionsExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // Prelude stability differs here.
     pub use super::io::{
         AsHandle, AsSocket, BorrowedHandle, BorrowedSocket, FromRawHandle, FromRawSocket,
         HandleOrInvalid, IntoRawHandle, IntoRawSocket, OwnedHandle, OwnedSocket,

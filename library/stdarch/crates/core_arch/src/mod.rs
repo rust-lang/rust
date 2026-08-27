@@ -37,6 +37,8 @@ pub mod arch {
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub mod x86 {
         #[stable(feature = "simd_x86", since = "1.27.0")]
+        #[allow(clippy::useless_attribute)]
+        #[allow(incompatible_reexport_stability)] // Keep the facade's stability.
         pub use crate::core_arch::x86::*;
     }
 
@@ -48,8 +50,12 @@ pub mod arch {
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub mod x86_64 {
         #[stable(feature = "simd_x86", since = "1.27.0")]
+        #[allow(clippy::useless_attribute)]
+        #[allow(incompatible_reexport_stability)] // Keep the facade's stability.
         pub use crate::core_arch::x86::*;
         #[stable(feature = "simd_x86", since = "1.27.0")]
+        #[allow(clippy::useless_attribute)]
+        #[allow(incompatible_reexport_stability)] // Keep the facade's stability.
         pub use crate::core_arch::x86_64::*;
     }
 
@@ -72,6 +78,8 @@ pub mod arch {
     #[stable(feature = "neon_intrinsics", since = "1.59.0")]
     pub mod aarch64 {
         #[stable(feature = "neon_intrinsics", since = "1.59.0")]
+        #[allow(clippy::useless_attribute)]
+        #[allow(incompatible_reexport_stability)] // Keep the facade's stability.
         pub use crate::core_arch::aarch64::*;
     }
 
@@ -204,6 +212,8 @@ pub mod arch {
     #[stable(feature = "simd_wasm32", since = "1.33.0")]
     pub mod wasm32 {
         #[stable(feature = "simd_wasm32", since = "1.33.0")]
+        #[allow(clippy::useless_attribute)]
+        #[allow(incompatible_reexport_stability)] // Keep the facade's stability.
         pub use crate::core_arch::wasm32::*;
     }
 
@@ -215,6 +225,8 @@ pub mod arch {
     #[unstable(feature = "simd_wasm64", issue = "90599")]
     pub mod wasm64 {
         #[unstable(feature = "simd_wasm64", issue = "90599")]
+        #[allow(clippy::useless_attribute)]
+        #[allow(incompatible_reexport_stability)] // Keep the facade's stability.
         pub use crate::core_arch::wasm32::*;
     }
 
@@ -226,6 +238,8 @@ pub mod arch {
     #[unstable(feature = "simd_wasm64", issue = "90599")]
     pub mod wasm {
         #[unstable(feature = "simd_wasm64", issue = "90599")]
+        #[allow(clippy::useless_attribute)]
+        #[allow(incompatible_reexport_stability)] // Keep the facade's stability.
         pub use crate::core_arch::wasm32::*;
     }
 

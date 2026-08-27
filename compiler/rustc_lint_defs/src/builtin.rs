@@ -54,6 +54,7 @@ pub mod hardwired {
             FUNCTION_ITEM_REFERENCES,
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
+            INCOMPATIBLE_REEXPORT_STABILITY,
             INCOMPLETE_INCLUDE,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
@@ -152,7 +153,6 @@ pub mod hardwired {
             UNUSED_MUT,
             UNUSED_QUALIFICATIONS,
             UNUSED_UNSAFE,
-            UNUSED_UNSTABLE_REEXPORT_ATTRIBUTES,
             UNUSED_VARIABLES,
             UNUSED_VISIBILITIES,
             USELESS_DEPRECATED,
@@ -2793,8 +2793,9 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unused_unstable_reexport_attributes` lint detects `#[unstable]` attributes
-    /// on re-exports where the attribute does not make the re-exported path unstable.
+    /// The `incompatible_reexport_stability` lint detects stability
+    /// annotations on re-exports that are incompatible with the stability
+    /// metadata of the re-exported item.
     ///
     /// ### Example
     ///
@@ -2802,11 +2803,11 @@ declare_lint! {
     /// #![feature(staged_api)]
     /// #![stable(feature = "test", since = "1.0.0")]
     ///
-    /// #[stable(feature = "test", since = "1.0.0")]
+    /// #[stable(feature = "original", since = "1.0.0")]
     /// pub struct S;
     ///
-    /// #[unstable(feature = "reexport", issue = "none")]
-    /// pub use crate::S as T;
+    /// #[stable(feature = "different", since = "1.0.0")]
+    /// pub use self::S as T;
     ///
     /// fn main() {}
     /// ```
@@ -2815,11 +2816,14 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Stability attributes on re-exports do not currently change the
-    /// stability of an otherwise stable re-exported item.
-    pub UNUSED_UNSTABLE_REEXPORT_ATTRIBUTES,
+    /// Stability annotations on re-exports should be compatible with the
+    /// stability metadata of the item being re-exported. Stable metadata is
+    /// compared by feature and `since`, while unstable metadata is compared by
+    /// feature and issue. Stable re-exports of unstable definitions remain
+    /// handled by the existing stability machinery.
+    pub INCOMPATIBLE_REEXPORT_STABILITY,
     Deny,
-    "detects ineffective `#[unstable]` attributes on re-exports",
+    "detects incompatible stability annotations on re-exports",
     @feature_gate = staged_api;
 }
 

@@ -1,0 +1,13 @@
+error: stability annotation on this re-export does not match the re-exported item
+  --> $DIR/incompatible-reexport-stability-glob.rs:15:9
+   |
+LL | pub use stable_glob_source::*;
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/incompatible-reexport-stability-glob.rs:7:9
+   |
+LL | #![deny(incompatible_reexport_stability)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error

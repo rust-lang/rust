@@ -5,6 +5,8 @@ mod generated;
 #[rustfmt::skip]
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::generated::*;
 
 use crate::{core_arch::simd::*, intrinsics::simd::*, mem::transmute};

@@ -57,5 +57,8 @@ pub mod prelude {
     pub use super::fs::{DirEntryExt, FileExt, MetadataExt, OpenOptionsExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // This re-export has its own stability.
     pub use super::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 }

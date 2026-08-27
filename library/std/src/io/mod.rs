@@ -307,6 +307,9 @@ pub use alloc_crate::io::const_error;
 #[stable(feature = "io_read_to_string", since = "1.65.0")]
 pub use alloc_crate::io::read_to_string;
 #[unstable(feature = "read_buf", issue = "78485")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use alloc_crate::io::{BorrowedBuf, BorrowedCursor};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::io::{

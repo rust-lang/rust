@@ -23,6 +23,8 @@ pub use self::rand::*;
 
 mod neon;
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::neon::*;
 
 // The rest of `core_arch::aarch64` is available on `arm64ec` but SVE is not supported on `arm64ec`.
@@ -44,6 +46,8 @@ mod prefetch;
 pub use self::prefetch::*;
 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use super::arm_shared::*;
 
 #[cfg(test)]

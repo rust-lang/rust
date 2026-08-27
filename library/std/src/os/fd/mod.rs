@@ -25,8 +25,14 @@ mod tests;
 
 // Export the types and traits for the public API.
 #[stable(feature = "os_fd", since = "1.66.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use owned::*;
 #[stable(feature = "os_fd", since = "1.66.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use raw::*;
 #[unstable(feature = "stdio_fd_consts", issue = "150836")]
 pub use stdio::*;

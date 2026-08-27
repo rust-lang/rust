@@ -6,6 +6,8 @@
 mod generated;
 #[rustfmt::skip]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::generated::*;
 
 // FIXME: replace neon with asimd

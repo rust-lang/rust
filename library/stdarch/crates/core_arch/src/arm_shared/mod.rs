@@ -88,6 +88,8 @@ pub(crate) mod neon;
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Keep the facade's stability.
 pub use self::neon::*;
 
 #[cfg(test)]

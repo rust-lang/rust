@@ -20,6 +20,8 @@ pub mod btree_map {
     //! An ordered map based on a B-Tree.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(not(test))]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Public facade over internal B-tree items.
     pub use super::btree::map::*;
 }
 
@@ -29,6 +31,8 @@ pub mod btree_set {
     //! An ordered set based on a B-Tree.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(not(test))]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)] // Public facade over internal B-tree items.
     pub use super::btree::set::*;
 }
 

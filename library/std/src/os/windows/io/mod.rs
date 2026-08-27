@@ -61,6 +61,9 @@ mod socket;
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub use handle::*;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use raw::*;
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub use socket::*;

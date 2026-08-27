@@ -157,7 +157,7 @@ pub use self::arith::{Add, Div, Mul, Neg, Rem, Sub};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::arith::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
 #[allow(clippy::useless_attribute)]
-#[allow(unused_unstable_reexport_attributes)] // FIXME(#161153)
+#[allow(incompatible_reexport_stability)] // FIXME(#161153)
 #[unstable(feature = "async_fn_traits", issue = "none")]
 pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -188,6 +188,8 @@ pub(crate) use self::index_range::IndexRange;
 #[unstable(feature = "range_into_bounds", issue = "136903")]
 pub use self::range::IntoBounds;
 #[stable(feature = "inclusive_range", since = "1.26.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Path stability is tracked separately.
 pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 #[unstable(feature = "one_sided_range", issue = "69780")]
 pub use self::range::{OneSidedRange, OneSidedRangeBound};

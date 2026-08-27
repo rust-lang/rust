@@ -372,6 +372,9 @@ impl Default for TokenStream {
 }
 
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
+#[cfg_attr(not(bootstrap), allow(clippy::useless_attribute))]
+#[cfg_attr(not(bootstrap), allow(incompatible_reexport_stability))]
+// These helpers are exposed through this unstable API.
 pub use quote::{HasIterator, RepInterp, ThereIsNoIteratorInRepetition, ext, quote, quote_span};
 
 fn tree_to_bridge_tree(

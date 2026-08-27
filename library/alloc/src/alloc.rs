@@ -4,6 +4,8 @@
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // This facade has its own path stability.
 pub use core::alloc::*;
 use core::mem::Alignment;
 use core::ptr::{self, NonNull};

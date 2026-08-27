@@ -28,6 +28,9 @@ pub use core::net::AddrParseError;
 #[unstable(feature = "gethostname", issue = "135142")]
 pub use self::hostname::hostname;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use self::ip_addr::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::socket_addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};

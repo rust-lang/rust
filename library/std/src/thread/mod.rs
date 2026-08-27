@@ -200,6 +200,9 @@ pub use id::ThreadId;
 pub use join_handle::JoinHandle;
 pub(crate) use lifecycle::ThreadInit;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use local::{AccessError, LocalKey};
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 pub use scoped::{Scope, ScopedJoinHandle, scope};

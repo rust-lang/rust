@@ -23,6 +23,9 @@ pub use core::num::Wrapping;
 )]
 pub use core::num::ZeroablePrimitive;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use core::num::{FpCategory, ParseFloatError, ParseIntError, TryFromIntError};
 #[stable(feature = "signed_nonzero", since = "1.34.0")]
 pub use core::num::{NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize};

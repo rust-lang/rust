@@ -23,5 +23,8 @@ pub mod fs {
 pub mod raw {
     #[doc(inline)]
     #[stable(feature = "raw_ext", since = "1.1.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // This re-export has its own stability.
     pub use crate::os::darwin::raw::*;
 }

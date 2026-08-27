@@ -41,6 +41,8 @@ use crate::iter::Step;
 use crate::ops::{IntoBounds, OneSidedRange, OneSidedRangeBound, RangeBounds};
 #[doc(inline)]
 #[stable(feature = "new_range_api_exports", since = "1.98.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Path stability is tracked separately.
 pub use crate::ops::{RangeFull, RangeTo};
 
 /// A (half-open) range bounded inclusively below and exclusively above.

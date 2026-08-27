@@ -436,6 +436,9 @@ pub use self::hash_set::HashSet;
 // FIXME(#82080) The deprecation here is only theoretical, and does not actually produce a warning.
 #[deprecated(note = "moved to `std::ops::Bound`", since = "1.26.0")]
 #[doc(hidden)]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use crate::ops::Bound;
 
 mod hash;
@@ -444,6 +447,9 @@ mod hash;
 pub mod hash_map {
     //! A hash map implemented with quadratic probing and SIMD lookup.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // This re-export has its own stability.
     pub use super::hash::map::*;
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub use crate::hash::random::DefaultHasher;
@@ -455,5 +461,8 @@ pub mod hash_map {
 pub mod hash_set {
     //! A hash set implemented as a `HashMap` where the value is `()`.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(clippy::useless_attribute)]
+    #[allow(incompatible_reexport_stability)]
+    // This re-export has its own stability.
     pub use super::hash::set::*;
 }

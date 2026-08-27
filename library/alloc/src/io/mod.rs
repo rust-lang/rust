@@ -195,7 +195,7 @@ pub use core::io::const_error;
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 pub use core::io::{BorrowedBuf, BorrowedCursor};
 #[allow(clippy::useless_attribute)]
-#[allow(unused_unstable_reexport_attributes)] // FIXME(#161153)
+#[allow(incompatible_reexport_stability)] // FIXME(#161153)
 #[unstable(feature = "alloc_io", issue = "154046")]
 pub use core::io::{
     Chain, Cursor, Empty, Error, ErrorKind, IoSlice, IoSliceMut, Repeat, Result, Seek, SeekFrom,
@@ -212,7 +212,7 @@ use core::io::{
 use self::read::{append_to_string, default_read_buf_exact, default_read_exact};
 use self::util::{bytes, lines, split, uninlined_slow_read_byte};
 #[allow(clippy::useless_attribute)]
-#[allow(unused_unstable_reexport_attributes)] // FIXME(#161153)
+#[allow(incompatible_reexport_stability)] // FIXME(#161153)
 #[unstable(feature = "alloc_io", issue = "154046")]
 pub use self::{
     buf_read::BufRead,
