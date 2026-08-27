@@ -76,7 +76,8 @@ fn display(header: &str, paths: &[PathBuf]) {
 }
 
 fn ignore(line: &str) -> bool {
-    line.to_lowercase().contains("e.g.")
+    REGEX_IGNORE_LINK_TARGETS.is_match(line)
+        || line.to_lowercase().contains("e.g.")
         || line.to_lowercase().contains("n.b.")
         || line.contains(" etc.")
         || line.contains("i.e.")
@@ -87,7 +88,6 @@ fn ignore(line: &str) -> bool {
         || line.trim_start().starts_with('>')
         || line.starts_with('#')
         || line.trim().is_empty()
-        || REGEX_IGNORE_LINK_TARGETS.is_match(line)
 }
 
 fn comply(content: &str) -> String {
