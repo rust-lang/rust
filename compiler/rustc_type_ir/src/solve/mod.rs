@@ -456,7 +456,7 @@ pub enum GoalSource {
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
-    pub hidden_types_of_opaques_in_body: I::HiddenTypesOfOpaques,
+    pub hidden_types_of_opaques_in_body: I::OpaqueHiddenTyBounds,
 }
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
@@ -1005,6 +1005,7 @@ pub enum GoalStalledOnOpaques<I: Interner> {
     No,
     Yes {
         num_opaques_in_storage: usize,
+        num_bounds_for_hidden_tys_in_storage: usize,
         previously_succeeded_in_erased: SucceededInErased<I>,
     },
 }
