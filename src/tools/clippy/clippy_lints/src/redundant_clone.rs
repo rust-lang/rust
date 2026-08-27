@@ -7,7 +7,7 @@ use clippy_utils::{fn_has_unsatisfiable_clauses, sym};
 use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl, def_id};
+use rustc_hir::{Body, ConstContext, FnDecl, def_id};
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
@@ -64,6 +64,13 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
         _: Span,
         def_id: LocalDefId,
     ) {
+        // Building MIR for `#[rustc_comptime]` functions causes ICE.
+        if !matches!(
+            cx.tcx.hir_body_const_context(def_id),
+            None | Some(ConstContext::ConstFn)
+        ) {
+            return;
+        }
         // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
         if fn_has_unsatisfiable_clauses(cx, def_id.to_def_id()) {
             return;

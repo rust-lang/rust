@@ -5,6 +5,7 @@ use std::{fs, io};
 
 use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
+use rustc_hir::ConstContext;
 use tracing::trace;
 use ty::print::PrettyPrinter;
 
@@ -338,14 +339,22 @@ pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::R
             Ok(())
         };
 
-        // For `const fn` we want to render both the optimized MIR and the MIR for ctfe.
-        if tcx.is_const_fn(def_id) {
+        // For `const fn` we want to render both the optimized MIR and the MIR for ctfe,
+        // but need to check whether comptime function, which do not have optimized MIR
+        let is_const_fn = tcx.is_const_fn(def_id);
+        let mir_is_optimizable =
+            matches!(tcx.hir_body_const_context(def_id), None | Some(ConstContext::ConstFn));
+        if is_const_fn && mir_is_optimizable {
             render_body(w, tcx.optimized_mir(def_id))?;
             writeln!(w)?;
             writeln!(w, "// MIR FOR CTFE")?;
             // Do not use `render_body`, as that would render the promoteds again, but these
             // are shared between mir_for_ctfe and optimized_mir
             writer.write_mir_fn(tcx.mir_for_ctfe(def_id), w)?;
+        } else if is_const_fn {
+            // In case where comptime const fn, should only render the MIR for ctfe,
+            // without attempting to optimize.
+            render_body(w, tcx.mir_for_ctfe(def_id))?;
         } else {
             if let Some((val, ty)) = tcx.trivial_const(def_id) {
                 ty::print::with_forced_impl_filename_line! {
