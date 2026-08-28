@@ -65,3 +65,5 @@ fn first_union() {
 }
 
 fn main() {}
+
+//@ reference: items.union.ref.borrow
