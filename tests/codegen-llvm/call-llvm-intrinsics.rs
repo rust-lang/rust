@@ -14,7 +14,7 @@ impl Drop for A {
     }
 }
 
-extern "C" {
+extern "llvm-intrinsic" {
     #[link_name = "llvm.sqrt.f32"]
     fn sqrt(x: f32) -> f32;
 }
