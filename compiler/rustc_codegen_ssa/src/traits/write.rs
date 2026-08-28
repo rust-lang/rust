@@ -32,7 +32,6 @@ pub trait WriteBackendMethods: Clone + 'static {
         &self,
         sess: &Session,
         opt_level: config::OptLevel,
-        target_features: &[String],
     ) -> TargetMachineFactoryFn<Self>;
     /// Performs fat LTO by merging all modules into a single one, running autodiff
     /// if necessary and running any further optimizations

@@ -318,7 +318,6 @@ impl WriteBackendMethods for AotDriver {
         &self,
         _sess: &Session,
         _opt_level: OptLevel,
-        _target_features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
         Arc::new(|_, _| ())
     }

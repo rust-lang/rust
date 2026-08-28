@@ -337,7 +337,6 @@ pub struct CodegenContext {
     pub output_filenames: Arc<OutputFilenames>,
     pub module_config: Arc<ModuleConfig>,
     pub opt_level: OptLevel,
-    pub backend_features: Vec<String>,
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
     pub target_can_use_split_dwarf: bool,
@@ -1277,8 +1276,7 @@ fn start_executing_work<B: WriteBackendMethods>(
     });
 
     let opt_level = tcx.backend_optimization_level(());
-    let backend_features = tcx.global_backend_features(()).clone();
-    let tm_factory = backend.target_machine_factory(tcx.sess, opt_level, &backend_features);
+    let tm_factory = backend.target_machine_factory(tcx.sess, opt_level);
 
     let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {
         let result = fs::create_dir_all(dir).and_then(|_| dir.canonicalize());
@@ -1308,7 +1306,6 @@ fn start_executing_work<B: WriteBackendMethods>(
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,
         opt_level,
-        backend_features,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
@@ -2169,11 +2166,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                 compiled_modules
             }
             MaybeLtoModules::FatLto { cgcx, needs_fat_lto } => {
-                let tm_factory = self.backend.target_machine_factory(
-                    sess,
-                    cgcx.opt_level,
-                    &cgcx.backend_features,
-                );
+                let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
 
                 CompiledModules {
                     modules: vec![do_fat_lto(
@@ -2189,11 +2182,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                 }
             }
             MaybeLtoModules::ThinLto { cgcx, needs_thin_lto } => {
-                let tm_factory = self.backend.target_machine_factory(
-                    sess,
-                    cgcx.opt_level,
-                    &cgcx.backend_features,
-                );
+                let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
 
                 CompiledModules {
                     modules: do_thin_lto::<B>(

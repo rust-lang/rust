@@ -91,7 +91,6 @@ use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
@@ -188,6 +187,8 @@ impl CodegenBackend for GccCodegenBackend {
                 .join("libgccjit.so")
         }
 
+        let global_backend_features = gcc_util::global_gcc_features(sess);
+
         // We use all_paths() instead of only path() in case the path specified by --sysroot is
         // invalid.
         // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
@@ -250,15 +251,11 @@ impl CodegenBackend for GccCodegenBackend {
         }
 
         CodegenBackendInit {
+            global_backend_features,
             replaced_intrinsics: vec![],
             fallback_intrinsics: vec![sym::type_id_eq],
             thin_lto_supported: false,
         }
-    }
-
-    fn provide(&self, providers: &mut Providers) {
-        providers.queries.global_backend_features =
-            |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
     }
 
     fn target_cpu(&self, sess: &Session) -> String {
@@ -396,7 +393,6 @@ impl WriteBackendMethods for GccCodegenBackend {
         &self,
         _sess: &Session,
         _opt_level: OptLevel,
-        _features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
         // FIXME(antoyo): set opt level.
         Arc::new(|_, _| ())

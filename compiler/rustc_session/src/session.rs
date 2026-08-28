@@ -426,15 +426,16 @@ impl EarlySession {
 /// Some info about the backend, returned by `CodegenBackend::init` and put into the `Session`.
 #[derive(Default)]
 pub struct CodegenBackendInit {
-    /// A list of all intrinsics that this backend definitely replaces, which means their fallback
-    /// bodies do not need to be monomorphized.
+    /// See `Session::global_backend_features`.
+    pub global_backend_features: Vec<String>,
+
+    /// See `Session::replaced_intrinsics`.
     pub replaced_intrinsics: Vec<Symbol>,
 
-    /// A list of all intrinsics that this backend definitely does *not* replace, which means their
-    /// fallback bodies can be MIR-inlined.
+    /// See `Session::fallback_intrinsics`.
     pub fallback_intrinsics: Vec<Symbol>,
 
-    /// Is ThinLTO supported by this backend?
+    /// See `Session::thin_lto_supported`.
     pub thin_lto_supported: bool = true,
 }
 
@@ -493,8 +494,14 @@ pub struct Session {
     /// Set of actually enabled features for the current target, including ones that are not
     /// in `cfg(target_feature)` because they are unstable or internal-only.
     /// This is used by the compiler itself when it needs to know which target features are actually
-    /// going to be enabled in the backend.
+    /// going to be enabled in the backend (e.g. for knowing which registers inline asm can use).
     pub internal_target_features: FxIndexSet<Symbol>,
+
+    /// The list of backend target features for this session. Not used by Rust itself because the
+    /// concrete feature names can be backend-specific. This is computed from the target's base
+    /// features, `-Ctarget-cpu`, `-Ctarget-feature`, and other flags that the current backend
+    /// models as target features (but that are not considered target features in Rust).
+    pub global_backend_features: Vec<String>,
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
@@ -515,11 +522,12 @@ pub struct Session {
     host_filesearch: Arc<FileSearch>,
     wasm_proc_macro_filesearch: Option<Arc<FileSearch>>,
 
-    /// The names of intrinsics that the current codegen backend replaces
-    /// with its own implementations.
+    /// A list of all intrinsics that the current codegen backend definitely replaces with its own
+    /// implementations, which means their fallback bodies do not need to be monomorphized.
     pub replaced_intrinsics: FxHashSet<Symbol>,
-    /// The names of intrinsics that the current codegen backend does *not* replace
-    /// with its own implementations.
+
+    /// A list of all intrinsics that the current codegen backend definitely does *not* replace
+    /// with its own implementations, which means their fallback bodies can be MIR-inlined.
     pub fallback_intrinsics: FxHashSet<Symbol>,
 
     /// Does the codegen backend support ThinLTO?
@@ -1446,8 +1454,12 @@ pub fn build_session(
     let pointer_auth_config: Option<PointerAuthConfig> =
         PointerAuthConfig::from_raw(&sopts.unstable_opts.pointer_authentication, &target);
 
-    let CodegenBackendInit { replaced_intrinsics, fallback_intrinsics, thin_lto_supported } =
-        codegen_backend_init;
+    let CodegenBackendInit {
+        global_backend_features,
+        replaced_intrinsics,
+        fallback_intrinsics,
+        thin_lto_supported,
+    } = codegen_backend_init;
 
     let sess = Session {
         early_sess,
@@ -1468,6 +1480,7 @@ pub fn build_session(
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
         internal_target_features: Default::default(),
+        global_backend_features,
         cfg_version,
         using_internal_features,
         env_depinfo: Default::default(),

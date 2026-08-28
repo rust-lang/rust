@@ -2731,14 +2731,6 @@ rustc_queries! {
         desc { "performing HIR wf-checking for predicate `{:?}` at item `{:?}`", key.0, key.1 }
     }
 
-    /// The list of backend features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
-    /// `--target` and similar).
-    query global_backend_features(_: ()) -> &'tcx Vec<String> {
-        arena_cache
-        eval_always
-        desc { "computing the backend features for CLI flags" }
-    }
-
     query check_validity_requirement(key: (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>)) -> Result<bool, &'tcx ty::layout::LayoutError<'tcx>> {
         desc { "checking validity requirement for `{}`: {}", key.1.value, key.0 }
     }

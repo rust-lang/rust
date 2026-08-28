@@ -37,7 +37,6 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
@@ -130,9 +129,8 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         &self,
         sess: &Session,
         optlvl: OptLevel,
-        target_features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
-        back::write::target_machine_factory(sess, optlvl, target_features)
+        back::write::target_machine_factory(sess, optlvl)
     }
     fn optimize_and_codegen_fat_lto(
         sess: &Session,
@@ -222,6 +220,9 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
         llvm_util::init(sess); // Make sure llvm is inited
 
+        let global_backend_features =
+            llvm_util::global_llvm_features(sess, /* for_cfg */ false);
+
         // autodiff is based on Enzyme, a library which we might not have available, when it was
         // neither build, nor downloaded via rustup. If autodiff is used, but not available we emit
         // an early error here and abort compilation.
@@ -288,12 +289,12 @@ impl CodegenBackend for LlvmCodegenBackend {
         // cranelift/GCC even if they have dedicated implementations.
         let fallback_intrinsics = vec![sym::type_id_eq];
 
-        CodegenBackendInit { replaced_intrinsics, fallback_intrinsics, thin_lto_supported: true }
-    }
-
-    fn provide(&self, providers: &mut Providers) {
-        providers.queries.global_backend_features =
-            |tcx, ()| llvm_util::global_llvm_features(tcx.sess, false)
+        CodegenBackendInit {
+            global_backend_features,
+            replaced_intrinsics,
+            fallback_intrinsics,
+            thin_lto_supported: true,
+        }
     }
 
     fn print(&self, req: &PrintRequest, out: &mut String, sess: &Session) {
