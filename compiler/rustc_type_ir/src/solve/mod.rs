@@ -438,6 +438,8 @@ pub enum GoalSource {
     /// 2. for rigid projections's trait goal,
     /// 3. for GAT where clauses.
     AliasWellFormed,
+    /// Predicate required while proving the item bounds of an opaque's hidden type.
+    OpaqueTypeBound,
     /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
     /// aliases in the context of the parent may incorrectly change the cycle kind.
     /// Normalizing aliases in goals therefore tracks the original path kind for this

@@ -1,0 +1,24 @@
+error[E0275]: overflow evaluating the requirement `<() as Trait>::Assoc<()> == _`
+  --> $DIR/alias-well-formed-not-coinductive.rs:26:1
+   |
+LL | / impl Bound for ()
+LL | |
+LL | | where
+LL | |     <() as Trait>::Assoc<()>: Needs,
+   | |____________________________________^
+
+error[E0275]: overflow evaluating the requirement `(): Bound`
+  --> $DIR/alias-well-formed-not-coinductive.rs:35:21
+   |
+LL |     require_bound::<()>();
+   |                     ^^
+   |
+note: required by a bound in `require_bound`
+  --> $DIR/alias-well-formed-not-coinductive.rs:32:21
+   |
+LL | fn require_bound<T: Bound>() {}
+   |                     ^^^^^ required by this bound in `require_bound`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.
