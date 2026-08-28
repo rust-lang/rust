@@ -112,6 +112,11 @@ impl<I: Interner> AliasTyKind<I> {
 /// with `IsRigid::Yes`. At this point we no longer have to try and renormalize this alias
 /// later on.
 ///
+/// Rigidness is shared across inference contexts and compiler phases. For example, aliases
+/// normalized during HIR typeck can remain rigid when the resulting type is later used by
+/// borrowck. They must be made non-rigid again if they enter a typing mode or parameter
+/// environment in which further normalization may be possible.
+///
 /// FIXME(#155345): Alias handling is currently still in flux for the new trait
 /// solver and this is currently somewhat messy. Please reach out on
 /// #t-types/trait-system-refactor-initiative if you encounter this and it isn't
