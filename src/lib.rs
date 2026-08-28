@@ -3,7 +3,6 @@
 #![warn(unreachable_pub)]
 #![recursion_limit = "256"]
 #![allow(clippy::match_like_matches_macro)]
-#![allow(unreachable_pub)]
 
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;
@@ -464,7 +463,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
     }
 
     /// The main entry point for Rustfmt. Formats the given input according to the
-    /// given config. `out` is only necessary if required by the configuration.
+    /// session's config.
     pub fn format(&mut self, input: Input) -> Result<FormatReport, ErrorKind> {
         self.format_input_inner(input, false)
     }

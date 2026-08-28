@@ -87,7 +87,7 @@ fn main() -> Result<ExitCode, Error> {
         args.rustfmt_config.as_deref(),
     );
 
-    let check_diff_runners = match compilation_result {
+    let diff_checker = match compilation_result {
         Ok(runner) => runner,
         Err(e) => {
             error!("Failed to compile rustfmt:\n{e:?}");
@@ -99,7 +99,7 @@ fn main() -> Result<ExitCode, Error> {
     let repositories = clone_repositories_for_diff_check(REPOS);
 
     info!("Starting the Diff Check");
-    let errors = check_diff(&check_diff_runners, &repositories, args.worker_threads);
+    let errors = check_diff(&diff_checker, &repositories, args.worker_threads);
 
     if errors.is_empty() {
         info!("No diff found 😊");
