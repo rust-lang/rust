@@ -31,8 +31,10 @@ extern crate minicore;
 use minicore::ffi::VaList;
 use minicore::*;
 
+// Using the `"C"` ABI for the test function here would make the ASM significantly more verbose on
+// 32-bit x86; and this test is testing `next_arg`, not the C return ABI.
 #[unsafe(no_mangle)]
-unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
+unsafe fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // CHECK-LABEL: read_f64:
     //
     // X86_64: mov rax, qword ptr [rcx]
@@ -45,7 +47,7 @@ unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // I686-NEXT: mov ecx, dword ptr [eax]
     // I686-NEXT: lea edx, [ecx + 8]
     // I686-NEXT: mov dword ptr [eax], edx
-    // I686-NEXT: fld qword ptr [ecx]
+    // I686-NEXT: movsd xmm0, qword ptr [ecx]
     // I686-NEXT: pop ebp
     // I686-NEXT: ret
     ap.next_arg()
