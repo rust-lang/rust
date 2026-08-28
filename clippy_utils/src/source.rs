@@ -33,7 +33,7 @@ impl<'sm> HasSourceMap<'sm> for &'sm SourceMap {
 impl<'sm> HasSourceMap<'sm> for &'sm Session {
     #[inline]
     fn source_map(self) -> &'sm SourceMap {
-        self.source_map()
+        self.early_sess.source_map()
     }
 }
 impl<'sm> HasSourceMap<'sm> for TyCtxt<'sm> {
