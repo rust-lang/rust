@@ -1,5 +1,5 @@
 [package]
-name = "clippy_dev"
+name = "clippy-dev"
 description = "Clippy developer tooling"
 version = "0.0.1"
 edition = "2024"

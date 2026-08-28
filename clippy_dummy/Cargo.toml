@@ -12,5 +12,9 @@ license = "MIT OR Apache-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
 
+[[bin]]
+name = "clippy"
+path = "src/main.rs"
+
 [build-dependencies]
 term = "1"

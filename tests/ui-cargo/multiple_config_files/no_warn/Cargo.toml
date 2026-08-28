@@ -1,5 +1,5 @@
 [package]
-name = "no_warn"
+name = "no-warn"
 version = "0.1.0"
 edition = "2021"
 publish = false
