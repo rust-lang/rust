@@ -18,6 +18,9 @@ use crate::universal_regions::UniversalRegions;
 mod local_use_map;
 mod trace;
 
+pub(crate) use local_use_map::LocalUseMap;
+pub(crate) use trace::LivenessCalculation;
+
 /// Combines liveness analysis with initialization analysis to
 /// determine which variables are live at which points, both due to
 /// ordinary uses and drops. Returns a set of (ty, location) pairs
@@ -67,7 +70,13 @@ pub(super) fn generate<'tcx>(
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
 
-    trace::trace(typeck, location_map, move_data, &relevant_live_locals, &boring_locals);
+    let (deferred_locals, local_use_map) =
+        trace::trace(typeck, location_map, move_data, &relevant_live_locals, &boring_locals);
+
+    if let Some(polonius_context) = &mut typeck.polonius_context {
+        polonius_context.deferred_locals_for_liveness = deferred_locals;
+        polonius_context.local_use_map = Some(local_use_map);
+    }
 
     // Mark regions that should be live where they appear within rvalues or within a call: like
     // args, regions, and types.
@@ -152,7 +161,7 @@ fn record_regular_live_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     liveness_constraints: &mut LivenessValues,
     universal_regions: &UniversalRegions<'tcx>,
-    polonius_context: &mut Option<PoloniusContext>,
+    polonius_context: &mut Option<PoloniusContext<'tcx>>,
     body: &Body<'tcx>,
 ) {
     let mut visitor =
@@ -167,7 +176,7 @@ struct LiveVariablesVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     liveness_constraints: &'a mut LivenessValues,
     universal_regions: &'a UniversalRegions<'tcx>,
-    polonius_context: &'a mut Option<PoloniusContext>,
+    polonius_context: &'a mut Option<PoloniusContext<'tcx>>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'a, 'tcx> {
