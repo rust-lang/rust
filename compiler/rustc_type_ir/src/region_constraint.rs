@@ -220,7 +220,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
         Or(Box::new([And(Box::new([l]))]))
     }
 
-    pub fn new_and(a: Or<I, S>, b: Or<I, S>) -> Self {
+    pub fn build_and(a: Or<I, S>, b: Or<I, S>) -> Self {
         // I think this returns false if either a or b is false?
         let mut ands = Vec::new();
         for b_and in b.0 {
@@ -232,7 +232,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
         Or::new(ands)
     }
 
-    pub fn new_or(a: Or<I, S>, b: Or<I, S>) -> Self {
+    pub fn build_or(a: Or<I, S>, b: Or<I, S>) -> Self {
         Or::new(a.0.into_iter().chain(b.0))
     }
 
@@ -330,9 +330,9 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
         }))
     }
 
-    pub fn new_and(a: RegionConstraint<I, S>, b: RegionConstraint<I, S>) -> Self {
+    pub fn build_and(a: RegionConstraint<I, S>, b: RegionConstraint<I, S>) -> Self {
         let and_constraint = And::new(a.and_constraint.0.into_iter().chain(b.and_constraint.0));
-        let or_constraint = Or::new_and(a.or_constraint, b.or_constraint);
+        let or_constraint = Or::build_and(a.or_constraint, b.or_constraint);
 
         Self {
             and_constraint: if or_constraint.is_false() { And::new([]) } else { and_constraint },
@@ -340,8 +340,8 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
         }
     }
 
-    pub fn new_or(a: RegionConstraint<I, S>, b: RegionConstraint<I, S>) -> Self {
-        Self::new_from_or(Or::new_or(a.splatted_and_constraints(), b.splatted_and_constraints()))
+    pub fn build_or(a: RegionConstraint<I, S>, b: RegionConstraint<I, S>) -> Self {
+        Self::new_from_or(Or::build_or(a.splatted_and_constraints(), b.splatted_and_constraints()))
     }
 
     pub fn new_true() -> Self {
@@ -523,7 +523,7 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
     }
 
     RegionConstraint::new_from_or(
-        new_ands.into_iter().fold(Or::new_false(), |acc, c| Or::new_or(acc, c)),
+        new_ands.into_iter().fold(Or::new_false(), |acc, c| Or::build_or(acc, c)),
     )
 }
 
@@ -660,7 +660,7 @@ fn pull_region_outlives_constraints_out_of_universe<
             };
         }
 
-        pulled_constraints.into_iter().fold(Or::new_true(), |acc, c| Or::new_and(acc, c))
+        pulled_constraints.into_iter().fold(Or::new_true(), |acc, c| Or::build_and(acc, c))
     };
 
     let and_constraint = pull_and(constraint.and_constraint);
@@ -668,8 +668,8 @@ fn pull_region_outlives_constraints_out_of_universe<
         .or_constraint
         .0
         .into_iter()
-        .fold(Or::new_false(), |acc, c| Or::new_or(acc, pull_and(c)));
-    RegionConstraint::new_from_or(Or::new_and(and_constraint, or_constraint))
+        .fold(Or::new_false(), |acc, c| Or::build_or(acc, pull_and(c)));
+    RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint))
 }
 
 /// Converts type outlives constraints into region outlives constraints. This assumes the *complete* set of
@@ -716,8 +716,9 @@ pub fn destructure_type_outlives_constraints_in_root<
             }
         }
         debug!(?destructured_constraints);
-        let merged_constraints =
-            destructured_constraints.into_iter().fold(Or::new_true(), |acc, c| Or::new_and(acc, c));
+        let merged_constraints = destructured_constraints
+            .into_iter()
+            .fold(Or::new_true(), |acc, c| Or::build_and(acc, c));
         debug!(?merged_constraints);
         merged_constraints
     };
@@ -727,9 +728,9 @@ pub fn destructure_type_outlives_constraints_in_root<
         .or_constraint
         .0
         .into_iter()
-        .fold(Or::new_false(), |acc, c| Or::new_or(acc, destructure_and(&c)));
+        .fold(Or::new_false(), |acc, c| Or::build_or(acc, destructure_and(&c)));
 
-    RegionConstraint::new_from_or(Or::new_and(and_constraint, or_constraint))
+    RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint))
 }
 
 /// Converts type outlives constraints into either region outlives constraints, or type outlives
@@ -774,7 +775,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
                 }
             }
         }
-        rewritten_constraints.into_iter().fold(Or::new_true(), |acc, c| Or::new_and(acc, c))
+        rewritten_constraints.into_iter().fold(Or::new_true(), |acc, c| Or::build_and(acc, c))
     };
 
     let and_constraint = rewrite_and(constraint.and_constraint);
@@ -782,9 +783,9 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
         .or_constraint
         .0
         .into_iter()
-        .fold(Or::new_false(), |acc, c| Or::new_or(acc, rewrite_and(c)));
+        .fold(Or::new_false(), |acc, c| Or::build_or(acc, rewrite_and(c)));
 
-    RegionConstraint::new_from_or(Or::new_and(and_constraint, or_constraint))
+    RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint))
 }
 
 fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling<
@@ -895,7 +896,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
         Some(assumptions) => assumptions,
         None => {
             candidates.push(Or::new_ambig(()));
-            return candidates.into_iter().fold(Or::new_false(), |acc, c| Or::new_or(acc, c));
+            return candidates.into_iter().fold(Or::new_false(), |acc, c| Or::build_or(acc, c));
         }
     };
 
@@ -958,7 +959,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
         | TypingMode::Codegen => (),
     };
 
-    candidates.into_iter().fold(Or::new_false(), |acc, c| Or::new_or(acc, c))
+    candidates.into_iter().fold(Or::new_false(), |acc, c| Or::build_or(acc, c))
 }
 
 /// Returns all regions `r2` for which `r: r2` is known to hold in

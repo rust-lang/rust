@@ -164,7 +164,7 @@ where
     fn destructure_components(&mut self, components: &[Component<I>], r: Region<I>) -> Or<I> {
         components
             .into_iter()
-            .fold(Or::new_true(), |acc, c| Or::new_and(acc, self.destructure_component(c, r)))
+            .fold(Or::new_true(), |acc, c| Or::build_and(acc, self.destructure_component(c, r)))
     }
 
     fn destructure_component(&mut self, c: &Component<I>, r: Region<I>) -> Or<I> {
@@ -209,7 +209,7 @@ where
         );
         let components_outlives = self.destructure_components(&components, r);
 
-        let assumption_outlives = Or::new_or(item_bound_outlives, where_clause_outlives);
-        Or::new_or(assumption_outlives, components_outlives)
+        let assumption_outlives = Or::build_or(item_bound_outlives, where_clause_outlives);
+        Or::build_or(assumption_outlives, components_outlives)
     }
 }

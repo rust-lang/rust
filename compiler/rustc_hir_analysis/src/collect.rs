@@ -436,12 +436,12 @@ impl<'tcx> ItemCtxt<'tcx> {
             hir::TestBinderConstraint::And { items } => items
                 .into_iter()
                 .map(|item| self.lower_test_binder_constraint(item))
-                .reduce(SolverRegionConstraint::new_and)
+                .reduce(SolverRegionConstraint::build_and)
                 .unwrap_or(SolverRegionConstraint::new_true()),
             hir::TestBinderConstraint::Or { items } => items
                 .into_iter()
                 .map(|item| self.lower_test_binder_constraint(item))
-                .reduce(SolverRegionConstraint::new_or)
+                .reduce(SolverRegionConstraint::build_or)
                 .unwrap_or(SolverRegionConstraint::new_false()),
             hir::TestBinderConstraint::Lifetime { lhs, rhs } => {
                 let span = lhs.ident.span.to(rhs.ident.span);
