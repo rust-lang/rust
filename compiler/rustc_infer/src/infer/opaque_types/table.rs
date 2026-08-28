@@ -4,7 +4,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::indexmap::map::Entry;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
-use rustc_middle::ty::{self as ty, OpaqueTypeKey, ProvisionalHiddenType, Ty, TyVid};
+use rustc_middle::ty::{self as ty, OpaqueTypeKey, ProvisionalHiddenType, Ty};
 use tracing::instrument;
 
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};
@@ -177,12 +177,6 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         let OpaqueTypeStorage { opaque_types: _, duplicate_entries: _, hidden_types_of_opaques } =
             self;
         hidden_types_of_opaques.iter().map(|(hidden, bounds)| (*hidden, bounds))
-    }
-
-    pub(super) fn has_hidden_type_of_opaque_for_exact_vid(&self, vid: TyVid) -> bool {
-        self.hidden_types_of_opaques
-            .keys()
-            .any(|ty| matches!(*ty.kind(), ty::Infer(ty::TyVar(ty_vid)) if ty_vid == vid))
     }
 
     #[inline]
