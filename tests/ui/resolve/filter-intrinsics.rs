@@ -1,10 +1,11 @@
-fn main() {
-    // Should suggest only `std::mem::transmute`
-    let _ = transmute::<usize>();
-    //~^ ERROR cannot find
+//@ revisions: gate_off gate_on
 
-    // Should suggest `std::intrinsics::fabs`,
-    // since there is no non-intrinsic to suggest.
+#![cfg_attr(gate_on, feature(core_intrinsics))]
+fn main() {
+    let _ = transmute::<usize>();
+    //~^ ERROR cannot find function `transmute` in this scope
+
     let _ = fabs(1.0);
-    //~^ ERROR cannot find
+    //~^ ERROR cannot find function `fabs` in this scope
+    //[gate_on]~| HELP consider importing this function
 }

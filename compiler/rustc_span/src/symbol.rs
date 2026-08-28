@@ -726,6 +726,7 @@ symbols! {
         copysignf64,
         copysignf128,
         core,
+        core_intrinsics,
         core_panic,
         core_panic_2015_macro,
         core_panic_macro,
