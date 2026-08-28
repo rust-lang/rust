@@ -99,17 +99,22 @@ impl QueryRegionConstraints<'_> {
     /// discharge a requirement from another query, which is a potential problem if we did throw
     /// away these assumptions because there were no constraints.
     pub fn is_empty(&self) -> bool {
-        self.constraints.is_empty()
-            && self.assumptions.is_empty()
-            && self.solver_constraints.is_true()
+        let QueryRegionConstraints { constraints, assumptions, solver_constraints } = self;
+        constraints.is_empty() && assumptions.is_empty() && solver_constraints.is_true()
     }
 
     pub fn extend(&mut self, other: &Self) {
-        self.constraints.extend(other.constraints.iter().cloned());
-        self.assumptions.extend(other.assumptions.iter().cloned());
-        self.solver_constraints = ir::region_constraint::RegionConstraint::build_and(
-            std::mem::take(&mut self.solver_constraints),
-            other.solver_constraints.clone(),
+        let QueryRegionConstraints { constraints, assumptions, solver_constraints } = self;
+        let QueryRegionConstraints {
+            constraints: other_constraints,
+            assumptions: other_assumptions,
+            solver_constraints: other_solver_constraints,
+        } = other;
+        constraints.extend(other_constraints.iter().cloned());
+        assumptions.extend(other_assumptions.iter().cloned());
+        *solver_constraints = ir::region_constraint::RegionConstraint::build_and(
+            std::mem::take(solver_constraints),
+            other_solver_constraints.clone(),
         );
     }
 }
