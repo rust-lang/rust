@@ -148,6 +148,9 @@ impl<'tcx> InferCtxt<'tcx> {
         let new_constraint =
             rustc_type_ir::region_constraint::RegionConstraint::new_and(c, old_constraint.clone());
 
+        // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
+        // changes to the region constraints, instead we just rewrite the entire thing every time
+        // and store the old version.
         inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
         inner.solver_region_constraint_storage.overwrite(new_constraint);
     }
