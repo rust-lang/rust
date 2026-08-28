@@ -46,10 +46,14 @@ pub(super) fn trace<'tcx>(
     move_data: &MoveData<'tcx>,
     relevant_live_locals: &[Local],
     boring_locals: &[Local],
+    deferred: &FxIndexSet<Local>,
 ) {
     let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness_trace");
 
-    let local_use_map = LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
+    // The use map must also cover the deferred locals: their liveness is computed later, from
+    // this same map, when the loan liveness traversal first reaches one of their regions.
+    let use_map_locals: Vec<Local> = relevant_live_locals.iter().chain(deferred).copied().collect();
+    let local_use_map = LocalUseMap::build(&use_map_locals, location_map, typeck.body);
     let comp = LivenessComputation::new(
         typeck.infcx,
         typeck.body,
@@ -60,13 +64,13 @@ pub(super) fn trace<'tcx>(
 
     let mut results = LivenessResults::new(typeck, comp);
 
-    let deferred_locals = DeferredLocals::default();
+    let mut deferred_locals = DeferredLocals::default();
 
-    results.record_legacy_polonius_drop_facts(relevant_live_locals);
+    results.record_legacy_polonius_drop_facts(relevant_live_locals, &deferred);
 
     results.compute_for_all_locals(relevant_live_locals);
 
-    results.dropck_boring_locals(boring_locals);
+    results.dropck_boring_locals(boring_locals, &deferred, &mut deferred_locals);
 
     if let Some(polonius_context) = &mut typeck.polonius_context {
         polonius_context.deferred_locals_for_liveness = deferred_locals;
@@ -190,19 +194,94 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
     /// These are all the locals which do not potentially reference a region local
     /// to this body. Locals which only reference free regions are always drop-live
     /// and can therefore safely be dropped.
-    fn dropck_boring_locals(&mut self, boring_locals: &[Local]) {
+    fn dropck_boring_locals(
+        &mut self,
+        boring_locals: &[Local],
+        deferred: &FxIndexSet<Local>,
+        deferred_locals: &mut DeferredLocals<'tcx>,
+    ) {
         for &local in boring_locals {
-            let local_ty = self.comp.body.local_decls[local].ty;
-            let local_span = self.comp.body.local_decls[local].source_info.span;
-            dropck_local(&self.typeck.infcx, &mut self.drop_data, local_ty, local_span);
+            self.dropck_boring_local(local, deferred, deferred_locals);
         }
+    }
+
+    fn dropck_boring_local(
+        &mut self,
+        local: Local,
+        deferred: &FxIndexSet<Local>,
+        deferred_locals: &mut DeferredLocals<'tcx>,
+    ) {
+        let typeck = &mut *self.typeck;
+        let local_ty = self.comp.body.local_decls[local].ty;
+        let local_span = self.comp.body.local_decls[local].source_info.span;
+
+        // If we had treated this as "relevant", we would have run `compute_for_local`. This
+        // in turn would have skipped calculating dropck *at all* for locals without drop-liveness.
+        // Calculating drop-liveness is expensive, but we can skip it when we know that there
+        // are *no* drops (which is relatively cheap).
+        if deferred.contains(&local) && self.comp.local_use_map.drops(local).next().is_none() {
+            deferred_locals.defer_local(
+                typeck.infcx,
+                typeck.universal_regions,
+                local,
+                local_ty,
+                &[],
+            );
+            return;
+        }
+
+        // We need to compute dropck for *all* boring locals because we report overflows.
+        //
+        // FIXME: there is an argument to be made that we don't need to do this for boring locals
+        // without drop-liveness, because we skip it for *relevant* locals without drop-liveness.
+        // But, this is preexisting even on NLL, so leaving it for now.
+        let drop_data = dropck_local(&typeck.infcx, &mut self.drop_data, local_ty, local_span);
+
+        // We are done with *truly* boring locals.
+        if !deferred.contains(&local) {
+            return;
+        }
+
+        // If this local is deferred and has drop region constraints, we need to register
+        // them, but *only if the local is drop-live*.
+        // It doesn't really make sense to only check drop-liveness but defer use-liveness,
+        // so we just treat this as eager.
+        if drop_data.region_constraint_data.is_some() {
+            self.compute_for_local(local);
+            return;
+        }
+
+        // The only other thing we need to do *eagerly* for deferred locals is to register
+        // legacy drop facts (because these facts are on `typeck`).
+        for &kind in &drop_data.dropck_result.kinds {
+            polonius::legacy::emit_drop_facts(
+                typeck.tcx(),
+                local,
+                &kind,
+                typeck.universal_regions,
+                typeck.polonius_facts,
+            );
+        }
+
+        // Finally, we mark that this local is deferred, including the drop kinds.
+        deferred_locals.defer_local(
+            typeck.infcx,
+            typeck.universal_regions,
+            local,
+            local_ty,
+            &drop_data.dropck_result.kinds,
+        );
     }
 
     /// Add extra drop facts needed for Polonius Legacy.
     ///
     /// Add facts for all locals with free regions, since regions may outlive
     /// the function body only at certain nodes in the CFG.
-    fn record_legacy_polonius_drop_facts(&mut self, relevant_live_locals: &[Local]) {
+    fn record_legacy_polonius_drop_facts(
+        &mut self,
+        relevant_live_locals: &[Local],
+        deferred: &FxIndexSet<Local>,
+    ) {
         // This is *all wonky* because this used to call a shared
         // `add_drop_live_facts_for` function that was also used for regular
         // relevant locals. Presumably, this can be cleaned up quite a bit.
@@ -221,7 +300,10 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
                 .iter()
                 .filter_map(|&(local, location_index)| {
                     let local_ty = self.comp.body.local_decls[local].ty;
-                    if relevant_live_locals.contains(&local) || !local_ty.has_free_regions() {
+                    if relevant_live_locals.contains(&local)
+                        || deferred.contains(&local)
+                        || !local_ty.has_free_regions()
+                    {
                         return None;
                     }
 
