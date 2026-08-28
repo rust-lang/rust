@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `a`
-  --> $DIR/option_mut.rs:6:20
+  --> $DIR/option_mut.rs:11:20
    |
 LL |     let a = Some(&mut ());
    |         - move occurs because `a` has type `Option<&mut ()>`, which does not implement the `Copy` trait
@@ -9,7 +9,7 @@ LL |     let _ = method(a);
    |                    ^ value used here after move
    |
 note: consider changing this parameter type in function `method` to borrow instead if owning the value isn't necessary
-  --> $DIR/option_mut.rs:1:14
+  --> $DIR/option_mut.rs:6:14
    |
 LL | fn method(a: Option<&mut ()>) {}
    |    ------    ^^^^^^^^^^^^^^^ this parameter takes ownership of the value

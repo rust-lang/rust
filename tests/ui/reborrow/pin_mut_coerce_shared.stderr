@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/pin_mut_coerce_shared.rs:8:12
+  --> $DIR/pin_mut_coerce_shared.rs:13:12
    |
 LL |     method(a);
    |     ------ ^ types differ in mutability
@@ -9,7 +9,7 @@ LL |     method(a);
    = note: expected struct `Pin<&()>`
               found struct `Pin<&mut ()>`
 note: function defined here
-  --> $DIR/pin_mut_coerce_shared.rs:3:4
+  --> $DIR/pin_mut_coerce_shared.rs:8:4
    |
 LL | fn method(a: Pin<&()>) {}
    |    ^^^^^^ -----------

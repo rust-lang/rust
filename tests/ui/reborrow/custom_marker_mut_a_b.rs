@@ -1,3 +1,6 @@
+//! Test that a custom marker type (containing no references) can implement Reborrow and multiple
+//! overlapping reborrows conflict with one another.
+
 #![feature(reborrow)]
 use std::marker::{Reborrow, PhantomData};
 
