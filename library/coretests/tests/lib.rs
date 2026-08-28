@@ -123,6 +123,7 @@
 #![feature(try_from_int_error_kind)]
 #![feature(try_trait_v2)]
 #![feature(type_info)]
+#![feature(u8_split_ascii_whitespace)]
 #![feature(uint_carryless_mul)]
 #![feature(uint_gather_scatter_bits)]
 #![feature(unicode_internals)]
