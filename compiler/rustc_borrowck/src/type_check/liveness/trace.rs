@@ -48,10 +48,14 @@ pub(super) fn trace<'tcx>(
     move_data: &MoveData<'tcx>,
     relevant_live_locals: &[Local],
     boring_locals: &[Local],
+    deferred: &[Local],
 ) -> (DeferredLocals<'tcx>, LocalUseMap) {
     let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness_trace");
 
-    let local_use_map = LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
+    // The use map must also cover the deferred locals: their liveness is computed later, from
+    // this same map, when the loan liveness traversal first reaches one of their regions.
+    let use_map_locals: Vec<Local> = relevant_live_locals.iter().chain(deferred).copied().collect();
+    let local_use_map = LocalUseMap::build(&use_map_locals, location_map, typeck.body);
     let calc = LivenessCalculation::new(
         typeck.tcx(),
         typeck.body,
@@ -61,13 +65,14 @@ pub(super) fn trace<'tcx>(
     );
     let mut results = LivenessResults::new(typeck, calc);
 
-    let deferred_locals = DeferredLocals::default();
+    let deferred: FxIndexSet<Local> = deferred.iter().copied().collect();
+    let mut deferred_locals = DeferredLocals::default();
 
-    results.add_extra_drop_facts(relevant_live_locals);
+    results.add_extra_drop_facts(relevant_live_locals, &deferred);
 
     results.compute_for_all_locals(relevant_live_locals);
 
-    results.dropck_boring_locals(boring_locals);
+    results.dropck_boring_locals(boring_locals, &deferred, &mut deferred_locals);
 
     (deferred_locals, local_use_map)
 }
@@ -174,19 +179,72 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
     /// These are all the locals which do not potentially reference a region local
     /// to this body. Locals which only reference free regions are always drop-live
     /// and can therefore safely be dropped.
-    fn dropck_boring_locals(&mut self, boring_locals: &[Local]) {
+    fn dropck_boring_locals(
+        &mut self,
+        boring_locals: &[Local],
+        deferred: &FxIndexSet<Local>,
+        deferred_locals: &mut DeferredLocals<'tcx>,
+    ) {
         for &local in boring_locals {
-            let local_ty = self.calc.body.local_decls[local].ty;
-            let local_span = self.calc.body.local_decls[local].source_info.span;
-            dropck_local(&self.typeck.infcx, &mut self.calc.drop_data, local_ty, local_span);
+            self.dropck_boring_local(local, deferred, deferred_locals);
         }
+    }
+
+    fn dropck_boring_local(
+        &mut self,
+        local: Local,
+        deferred: &FxIndexSet<Local>,
+        deferred_locals: &mut DeferredLocals<'tcx>,
+    ) {
+        let typeck = &mut *self.typeck;
+        let local_ty = self.calc.body.local_decls[local].ty;
+        let local_span = self.calc.body.local_decls[local].source_info.span;
+        let drop_data = dropck_local(&typeck.infcx, &mut self.calc.drop_data, local_ty, local_span);
+
+        if !deferred.contains(&local) {
+            return;
+        }
+
+        if let Some(data) = drop_data.region_constraint_data {
+            let drop_locations =
+                self.calc.local_use_map.drops(local).map(|p| self.calc.location_map.to_location(p));
+            for drop_location in drop_locations {
+                typeck.push_region_constraints(
+                    drop_location.to_locations(),
+                    ConstraintCategory::Boring,
+                    data,
+                );
+            }
+        }
+
+        for &kind in &drop_data.dropck_result.kinds {
+            polonius::legacy::emit_drop_facts(
+                typeck.tcx(),
+                local,
+                &kind,
+                typeck.universal_regions,
+                typeck.polonius_facts,
+            );
+        }
+
+        deferred_locals.defer_local(
+            typeck.infcx,
+            typeck.universal_regions,
+            local,
+            local_ty,
+            &drop_data.dropck_result.kinds,
+        );
     }
 
     /// Add extra drop facts needed for Polonius.
     ///
     /// Add facts for all locals with free regions, since regions may outlive
     /// the function body only at certain nodes in the CFG.
-    fn add_extra_drop_facts(&mut self, relevant_live_locals: &[Local]) {
+    fn add_extra_drop_facts(
+        &mut self,
+        relevant_live_locals: &[Local],
+        deferred: &FxIndexSet<Local>,
+    ) {
         // This collect is more necessary than immediately apparent
         // because these facts go into `add_drop_live_facts_for()`,
         // which also writes to `polonius_facts`, and so this is genuinely
@@ -206,7 +264,10 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
                 .iter()
                 .filter_map(|&(local, location_index)| {
                     let local_ty = self.calc.body.local_decls[local].ty;
-                    if relevant_live_locals.contains(&local) || !local_ty.has_free_regions() {
+                    if relevant_live_locals.contains(&local)
+                        || deferred.contains(&local)
+                        || !local_ty.has_free_regions()
+                    {
                         return None;
                     }
 

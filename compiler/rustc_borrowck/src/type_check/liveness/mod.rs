@@ -42,38 +42,57 @@ pub(super) fn generate<'tcx>(
         typeck.constraints.liveness_constraints.add_all_points(region);
     }
 
-    let mut free_regions = regions_that_outlive_free_regions(
+    let free_regions = regions_that_outlive_free_regions(
         typeck.infcx.num_region_vars(),
         &typeck.universal_regions,
         &typeck.constraints.outlives_constraints,
     );
 
-    // NLLs can avoid computing some liveness data here because its constraints are
-    // location-insensitive, but that doesn't work in polonius: locals whose type contains a region
-    // that outlives a free region are not necessarily live everywhere in a flow-sensitive setting,
-    // unlike NLLs.
-    // We do record these regions in the polonius context, since they're used to differentiate
-    // relevant and boring locals, which is a key distinction used later in diagnostics.
-    // This additional liveness information is ultimately used for *loan* liveness,
-    // so we don't need to compute it when there are no loans.
-    // FIXME: this NLL optimization idea, to reduce work to relevant locals only, still makes sense
-    // for polonius, and should be investigated to improve liveness performance.
-    if typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled()
-        && typeck.borrow_set.len() > 0
-    {
-        let (_, boring_locals) =
-            compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
-        typeck.polonius_context.as_mut().unwrap().boring_nll_locals =
-            boring_locals.into_iter().collect();
-        free_regions = typeck.universal_regions.universal_regions_iter().collect();
-    }
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
 
-    let (deferred_locals, local_use_map) =
-        trace::trace(typeck, location_map, move_data, &relevant_live_locals, &boring_locals);
+    // Under Polonius Alpha, a larger set of locals are considered relevant: specifically,
+    // locals containing regions *outliving* universal regions are relevant and only
+    // locals containing solely universal regions are considered boring.
+    //
+    // However, we don't actually need liveness information for *all* these locals,
+    // only when actually computing loans. So, we can defer computing the liveness
+    // until we try to compute the loan, which is gated on `LocalizedConstraintGraph`
+    // traversal.
+    //
+    // Potentially in theory, we could defer computing liveness for *all* locals,
+    // but that's a much bigger refactor (many things rely on liveness of
+    // NLL-relevant locals). So, we only defer NLL-boring/Polonius-relevant locals
+    // for now.
+    let deferred_locals = 'deferred: {
+        // If we aren't going to be using the additional liveness information,
+        // don't even bother computing the larger relevant set.
+        // Similarly, since this liveness information is ultimately used for *loan*
+        // liveness, we don't need to compute it when there are no loans.
+        if typeck.polonius_context.is_none() || typeck.borrow_set.len() == 0 {
+            break 'deferred vec![];
+        }
+
+        let free_regions: FxHashSet<RegionVid> =
+            typeck.universal_regions.universal_regions_iter().collect();
+        let (polonius_relevant, _) =
+            compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
+
+        let boring: FxHashSet<Local> = boring_locals.iter().copied().collect();
+        polonius_relevant.into_iter().filter(|local| boring.contains(local)).collect()
+    };
+
+    let (deferred_locals, local_use_map) = trace::trace(
+        typeck,
+        location_map,
+        move_data,
+        &relevant_live_locals,
+        &boring_locals,
+        &deferred_locals,
+    );
 
     if let Some(polonius_context) = &mut typeck.polonius_context {
+        polonius_context.boring_nll_locals = boring_locals.into_iter().collect();
         polonius_context.deferred_locals_for_liveness = deferred_locals;
         polonius_context.local_use_map = Some(local_use_map);
     }

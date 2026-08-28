@@ -87,7 +87,7 @@ mod nll;
 mod path_utils;
 mod place_ext;
 mod places_conflict;
-pub(crate) mod polonius;
+mod polonius;
 mod prefixes;
 mod region_infer;
 mod renumber;
