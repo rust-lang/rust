@@ -2,7 +2,9 @@ use rustc_abi::{
     AddressSpace, Align, BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
 };
 
-use crate::callconv::{ArgAbi, ArgAttribute, FnAbi, PassMode, TyAbiInterface};
+use crate::callconv::{
+    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, FnAbi, PassMode, TyAbiInterface,
+};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
 /// Is this a struct with a single float field?
@@ -41,7 +43,30 @@ where
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Flavor {
     General { regparam: Option<u32> },
-    FastcallOrVectorcall,
+    Fastcall,
+    Vectorcall,
+}
+
+pub(crate) fn pass_on_x87_floating_point_stack<'a, C, Ty>(cx: &C, arg_abi: &mut ArgAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    let mut cast: CastTarget = match arg_abi.layout.size.bytes() {
+        4 => Reg::f32().into(),
+        8 => Reg::f64().into(),
+        _ => unreachable!("arg must be the size of a `f32` or `f64`"),
+    };
+    cast.x87_floating_point_stack = true;
+    // Forward whether the argument is `NoUndef` or not to improve codegen.
+    cast.attrs = if let PassMode::Direct(attrs) = arg_abi.mode {
+        attrs
+    } else if super::layout_is_noundef(arg_abi.layout, cx) {
+        ArgAttribute::NoUndef.into()
+    } else {
+        ArgAttributes::new()
+    };
+    arg_abi.mode = PassMode::Cast { pad_i32_count: 0, cast: Box::new(cast) };
 }
 
 #[derive(Clone, Copy)]
@@ -55,6 +80,9 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
+    // "vectorcall" returns floats in `xmm0`, and soft float also does not use the x87 stack.
+    let uses_x87_return = cx.target_spec().rustc_abi != Some(RustcAbi::Softfloat)
+        && opts.flavor != Flavor::Vectorcall;
     if ret.layout.is_aggregate() && ret.layout.is_sized() {
         // Returning a structure. Most often, this will use
         // a hidden first argument. On some platforms, though,
@@ -77,6 +105,10 @@ where
             if is_single_fp_element(ret.layout, cx) {
                 match ret.layout.size.bytes() {
                     2 => ret.cast_to(Reg::f16()),
+                    // The calling convention passes `f32`/`f64` returns via the x87 stack. Tell
+                    // the backend to convert to an `x86_fp80` manually to avoid LLVM quieting
+                    // signalling NaNs when loading/storing to/from the x87 stack.
+                    4 | 8 if uses_x87_return => pass_on_x87_floating_point_stack(cx, ret),
                     4 => ret.cast_to(Reg::f32()),
                     8 => ret.cast_to(Reg::f64()),
                     _ => ret.make_indirect(),
@@ -93,6 +125,11 @@ where
         } else {
             ret.make_indirect();
         }
+    } else if uses_x87_return
+        && let BackendRepr::Scalar(scalar) = ret.layout.backend_repr
+        && matches!(scalar.primitive(), Primitive::Float(Float::F32 | Float::F64))
+    {
+        pass_on_x87_floating_point_stack(cx, ret);
     } else {
         ret.extend_integer_width_to(32);
     }
@@ -212,7 +249,7 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     // arguments on the stack.
     let mut free_regs = match opts.flavor {
         _ if fn_abi.c_variadic => 0,
-        Flavor::FastcallOrVectorcall => 2,
+        Flavor::Fastcall | Flavor::Vectorcall => 2,
         Flavor::General { regparam } => u64::from(regparam.unwrap_or(0)),
     };
 

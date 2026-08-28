@@ -187,14 +187,14 @@ pub mod tests {
         FooFloat1 { x: 1.0, y: 1.0 }
     }
 
-    // ENABLED: double @f15()
+    // ENABLED: x86_fp80 @f15()
     // DISABLED: void @f15(ptr {{.*}}sret
     #[no_mangle]
     pub extern "C" fn f15() -> FooFloat2 {
         FooFloat2 { x: 1.0 }
     }
 
-    // ENABLED: float @f16()
+    // ENABLED: x86_fp80 @f16()
     // DISABLED: void @f16(ptr {{.*}}sret
     #[no_mangle]
     pub extern "C" fn f16() -> FooFloat3 {
