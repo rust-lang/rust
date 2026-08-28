@@ -231,3 +231,9 @@ fn thing() {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.cold.syntax
+//@ reference: attributes.codegen.inline.syntax
+//@ reference: attributes.codegen.instruction_set.syntax
+//@ reference: attributes.codegen.naked.syntax
+//@ reference: attributes.codegen.target_feature.intro

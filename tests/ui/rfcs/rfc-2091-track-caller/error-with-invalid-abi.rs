@@ -34,3 +34,5 @@ pub extern fn extern_missing_abi() {}
 //~^ WARN `extern` declarations without an explicit ABI are deprecated
 
 fn main() {}
+
+//@ reference: attributes.codegen.track_caller.allowed-positions

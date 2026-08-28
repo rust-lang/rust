@@ -8,3 +8,5 @@ pub fn main() {
     let _y = #[inline(never)] || {};
     let _z = #[inline] || {};
 }
+
+//@ reference: attributes.codegen.inline.allowed-positions

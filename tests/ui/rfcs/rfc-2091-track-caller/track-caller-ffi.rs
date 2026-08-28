@@ -51,3 +51,5 @@ fn main() {
     assert_eq!(indirect.line(), 7);
     assert_eq!(indirect.column(), 5);
 }
+
+//@ reference: attributes.codegen.track_caller.extern

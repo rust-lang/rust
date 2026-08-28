@@ -101,3 +101,5 @@ pub mod naked {
         }
     }
 }
+
+//@ reference: attributes.codegen.naked.unused-variables

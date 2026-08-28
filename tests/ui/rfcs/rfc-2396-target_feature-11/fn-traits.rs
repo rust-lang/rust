@@ -38,3 +38,5 @@ fn main() {
     call_once(foo_unsafe);
     //~^ ERROR expected `FnOnce()` signature, found `unsafe fn() {foo_unsafe}`
 }
+
+//@ reference: attributes.codegen.target_feature.fn-traits

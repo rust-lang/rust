@@ -14,3 +14,5 @@ fn test(f: impl AsyncFn()) {}
 fn main() {
     test(target_feature); //~ ERROR the trait bound
 }
+
+//@ reference: attributes.codegen.target_feature.fn-traits

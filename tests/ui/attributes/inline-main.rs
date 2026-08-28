@@ -4,3 +4,5 @@
 
 #[inline(always)]
 fn main() {}
+
+//@ reference: attributes.codegen.inline.allowed-positions

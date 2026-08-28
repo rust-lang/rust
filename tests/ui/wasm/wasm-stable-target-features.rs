@@ -51,3 +51,5 @@ fn main() {
     foo10();
     foo11();
 }
+
+//@ reference: attributes.codegen.target_feature.wasm

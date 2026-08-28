@@ -109,3 +109,7 @@ pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
 
 #[lang = "pin"]
 pub struct Pin<T>(T);
+
+//@ reference: attributes.codegen.instruction_set.allowed-positions
+//@ reference: attributes.codegen.instruction_set.arm
+//@ reference: attributes.codegen.instruction_set.syntax

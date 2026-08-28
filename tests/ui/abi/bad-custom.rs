@@ -168,3 +168,5 @@ pub fn main() {
         //~^ ERROR functions with the "custom" ABI cannot be called
     }
 }
+
+//@ reference: attributes.codegen.cold.extern-custom

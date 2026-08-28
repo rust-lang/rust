@@ -29,3 +29,5 @@ unsafe fn multi_arch_feature_on_s390x() {}
 //~| NOTE `nonesuch` is not valid for this target
 //~| HELP valid names are:
 unsafe fn bogus_feature_on_s390x() {}
+
+//@ reference: attributes.codegen.target_feature.arch

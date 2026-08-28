@@ -22,3 +22,5 @@ fn weak_linkage() {}
 
 #[inline]
 fn normal() {}
+
+//@ reference: attributes.codegen.inline.externally-exported

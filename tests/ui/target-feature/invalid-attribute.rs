@@ -122,3 +122,8 @@ unsafe fn typo_sse() {}
 //~^ ERROR `avx512` is not valid for this target
 //~| NOTE `avx512` is not valid for this target
 unsafe fn typo_avx512() {}
+
+//@ reference: attributes.codegen.target_feature.allowed-positions
+//@ reference: attributes.codegen.target_feature.arch
+//@ reference: attributes.codegen.target_feature.inline
+//@ reference: attributes.codegen.target_feature.intro

@@ -4,3 +4,5 @@
 //~^ ERROR target `x86_64-unknown-linux-gnu` does not support `#[instruction_set(arm::*)]`
 fn main() {
 }
+
+//@ reference: attributes.codegen.instruction_set.target-limits

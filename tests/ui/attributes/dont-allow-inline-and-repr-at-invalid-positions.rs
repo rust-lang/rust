@@ -3,3 +3,5 @@ fn main() {
     #[inline] struct Foo;  //~ ERROR attribute cannot be used on
     #[repr(C)] fn foo() {} //~ ERROR attribute cannot be used on
 }
+
+//@ reference: attributes.codegen.inline.allowed-positions

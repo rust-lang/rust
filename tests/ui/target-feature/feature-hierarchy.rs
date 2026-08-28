@@ -93,3 +93,5 @@ fn check_hvxv66_implies_hvx_and_zreg() {
     assert!(cfg!(target_feature = "zreg"));
     assert!(cfg!(not(target_feature = "hvxv67")));
 }
+
+//@ reference: attributes.codegen.target_feature.aarch64

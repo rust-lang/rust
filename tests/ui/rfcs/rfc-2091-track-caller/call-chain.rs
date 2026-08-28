@@ -28,3 +28,5 @@ fn main() {
         check_loc(line!(), 9).check_loc(line!(), 31)
         .check_loc(line!(), 10);
 }
+
+//@ reference: attributes.codegen.track_caller.behavior

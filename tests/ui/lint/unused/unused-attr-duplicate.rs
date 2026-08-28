@@ -117,3 +117,7 @@ static FOO: u32 = 0;
 pub extern "C" fn example() {}
 
 fn main() {}
+
+//@ reference: attributes.codegen.cold.duplicates
+//@ reference: attributes.codegen.inline.duplicates
+//@ reference: attributes.codegen.no_builtins.duplicates

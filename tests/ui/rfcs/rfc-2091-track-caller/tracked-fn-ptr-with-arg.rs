@@ -60,3 +60,5 @@ fn main() {
     pass_to_ptr_call(<() as TrackedTrait>::trait_tracked_unit_default, ());
     pass_to_ptr_call(<() as BlanketTrackedTrait>::tracked_blanket, ());
 }
+
+//@ reference: attributes.codegen.track_caller.decay
