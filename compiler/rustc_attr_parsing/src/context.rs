@@ -246,7 +246,6 @@ attribute_parsers!(
         Single<RustcLintOptDenyFieldAccessParser>,
         Single<RustcMacroTransparencyParser>,
         Single<RustcMustImplementOneOfParser>,
-        Single<RustcNeverTypeOptionsParser>,
         Single<RustcObjcClassParser>,
         Single<RustcObjcSelectorParser>,
         Single<RustcScalableVectorParser>,
