@@ -65,6 +65,7 @@ use tracing::{debug, info};
 
 pub(crate) use self::context::*;
 pub(crate) use self::write_shared::*;
+use crate::clean::paths::ItemPath;
 use crate::clean::{self, Defaultness, Item, ItemId, RenderedLink};
 use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::error::Error;
@@ -159,12 +160,12 @@ impl IndexItemInfo {
 pub(crate) struct IndexItem {
     pub(crate) defid: Option<DefId>,
     pub(crate) name: Symbol,
-    pub(crate) module_path: Vec<Symbol>,
+    pub(crate) module_path: ItemPath,
     pub(crate) parent: Option<DefId>,
     pub(crate) parent_idx: Option<usize>,
     pub(crate) trait_parent: Option<DefId>,
     pub(crate) trait_parent_idx: Option<usize>,
-    pub(crate) exact_module_path: Option<Vec<Symbol>>,
+    pub(crate) exact_module_path: Option<ItemPath>,
     pub(crate) impl_id: Option<DefId>,
     pub(crate) info: IndexItemInfo,
 }
