@@ -174,7 +174,7 @@ const ENV_BIN: &'static str = \"RUSTDOC_DOCTEST_BIN_PATH\";
 if let Ok(binary) = std::env::var(ENV_BIN) {{
     let _ = crate::__doctest_mod::BINARY_PATH.set(binary.into());
     unsafe {{ std::env::remove_var(ENV_BIN); }}
-    return std::process::Termination::report(test::test_main(test_args, tests, None));
+    return test::test_main(test_args, tests);
 }} else if let Ok(nb_test) = std::env::var(__doctest_mod::RUN_OPTION) {{
     if let Ok(nb_test) = nb_test.parse::<usize>() {{
         if let Some(test) = tests.get(nb_test) {{
@@ -188,7 +188,7 @@ if let Ok(binary) = std::env::var(ENV_BIN) {{
 
 eprintln!(\"WARNING: No rustdoc doctest environment variable provided so doctests will be run in \
 the same process\");
-std::process::Termination::report(test::test_main(test_args, tests, None))
+test::test_main(test_args, tests)
 }}",
             output = self.output_merged_tests,
             ids = self.ids,
