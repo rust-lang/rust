@@ -236,8 +236,6 @@ declare_features! (
     // -------------------------------------------------------------------------
     // no-tracking-issue-start
 
-    /// Allows using the `unadjusted` ABI; perma-unstable.
-    (internal, abi_unadjusted, "1.16.0", None),
     /// Allows using `#![needs_allocator]`, an implementation detail of `#[global_allocator]`.
     (internal, allocator_internals, "1.20.0", None),
     /// Allows using `#[allow_internal_unsafe]`. This is an

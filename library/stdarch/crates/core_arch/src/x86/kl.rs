@@ -40,7 +40,7 @@ struct WideAesOutput(
 );
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.loadiwkey"]
     fn loadiwkey(integrity_key: __m128i, key_lo: __m128i, key_hi: __m128i, control: u32);
 

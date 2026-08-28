@@ -2445,7 +2445,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         error.root_obligation.cause.span,
                                         format!(
                                             "unsatisfied requirement introduced here: `{}`",
-                                            error.root_obligation.predicate,
+                                            self.tcx.short_string(
+                                                error.root_obligation.predicate,
+                                                err.long_ty_path()
+                                            ),
                                         ),
                                     );
                                 }

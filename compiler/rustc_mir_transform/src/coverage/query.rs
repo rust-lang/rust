@@ -14,12 +14,12 @@ use crate::coverage::counters::{CoverageCounters, transcribe_counters};
 
 /// Registers query/hook implementations related to coverage.
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.hooks.is_eligible_for_coverage = is_eligible_for_coverage;
+    providers.queries.is_eligible_for_coverage = is_eligible_for_coverage;
     providers.queries.coverage_attr_on = coverage_attr_on;
     providers.queries.coverage_ids_info = coverage_ids_info;
 }
 
-/// Hook implementation for [`TyCtxt::is_eligible_for_coverage`].
+/// Query implementation for [`TyCtxt::is_eligible_for_coverage`].
 fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // Only instrument functions, methods, and closures (not constants since they are evaluated
     // at compile time by Miri).

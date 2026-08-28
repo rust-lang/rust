@@ -1585,7 +1585,7 @@ impl CommandLineStep for RustdocGUI {
             cmd.arg("--out-dir").arg(out_dir);
         }
 
-        if let Some(initial_cargo) = builder.config.initial_cargo.to_str() {
+        if let Some(initial_cargo) = builder.sess.initial_cargo.to_str() {
             cmd.arg("--initial-cargo").arg(initial_cargo);
         }
 

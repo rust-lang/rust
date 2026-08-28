@@ -879,7 +879,6 @@ dependencies = [
  "shim_utils",
  "tracing",
  "tracing-subscriber",
- "unified-diff",
  "walkdir",
  "windows 0.61.3",
 ]
@@ -6207,15 +6206,6 @@ name = "unicode-xid"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
-
-[[package]]
-name = "unified-diff"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "496a3d395ed0c30f411ceace4a91f7d93b148fb5a9b383d5d4cff7850f048d5f"
-dependencies = [
- "diff",
-]
 
 [[package]]
 name = "unit-prefix"

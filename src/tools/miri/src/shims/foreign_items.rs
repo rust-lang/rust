@@ -317,10 +317,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             name if name == this.mangle_internal_symbol(NO_ALLOC_SHIM_IS_UNSTABLE) => {
                 // This is a no-op shim that only exists to prevent making the allocator shims
                 // instantly stable.
-                let [] = this.check_shim_sig(
-                    shim_sig_nounwind!(extern "Rust" fn() -> ()),
-                    (link_name, abi, args),
-                )?;
+                let [] = this
+                    .check_shim_sig(shim_sig!(extern "Rust" fn() -> ()), (link_name, abi, args))?;
             }
 
             // Miri-specific extern functions

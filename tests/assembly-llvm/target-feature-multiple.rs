@@ -16,7 +16,7 @@
 // > In function: foo
 //
 // See also tests/codegen-llvm/target-feature-overrides.rs
-#![feature(no_core, lang_items, link_llvm_intrinsics, abi_unadjusted)]
+#![feature(no_core, lang_items, link_llvm_intrinsics)]
 #![crate_type = "lib"]
 #![no_core]
 
@@ -24,7 +24,7 @@ extern crate minicore;
 use minicore::*;
 
 // Use of these requires target features to be enabled
-extern "unadjusted" {
+extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.rdrand.32"]
     fn x86_rdrand32_step() -> (u32, i32);
     #[link_name = "llvm.x86.rdseed.32"]
