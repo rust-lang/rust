@@ -174,7 +174,7 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     }
     if enabled.contains(SanitizerSet::MEMTAG) {
         // Check to make sure the mte target feature is actually enabled.
-        let features = tcx.global_backend_features(());
+        let features = &tcx.sess.global_backend_features;
         let mte_feature =
             features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
         if let None | Some("-mte") = mte_feature {
@@ -441,7 +441,7 @@ pub(crate) fn target_features_attr<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     function_features: Vec<String>,
 ) -> Option<&'ll Attribute> {
-    let global_features = tcx.global_backend_features(()).iter().map(String::as_str);
+    let global_features = tcx.sess.global_backend_features.iter().map(String::as_str);
     let function_features = function_features.iter().map(String::as_str);
     let target_features =
         global_features.chain(function_features).intersperse(",").collect::<String>();

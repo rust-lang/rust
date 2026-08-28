@@ -97,6 +97,8 @@ pub trait CodegenBackend {
         Box::new(crate::back::metadata::DefaultMetadataLoader)
     }
 
+    /// Allows queries to be overridden. Not used by any in-tree backends, but rustc_codegen_spirv
+    /// and rustc_codegen_nvvm use it.
     fn provide(&self, _providers: &mut Providers) {}
 
     fn target_cpu(&self, sess: &Session) -> String;
