@@ -14,3 +14,5 @@ fn main() {
     }
     assert_eq!(a, 435);
 }
+
+//@ reference: asm.operand-type.supported-operands-inout-arrow
