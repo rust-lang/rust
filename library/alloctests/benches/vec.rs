@@ -28,14 +28,17 @@ fn bench_push_10000(b: &mut Bencher) {
     do_bench_push(b, 10000);
 }
 
+#[inline(never)]
+fn push_preallocated(n: usize) -> Vec<usize> {
+    let mut v = Vec::with_capacity(n);
+    for i in 0..n {
+        v.push(i);
+    }
+    v
+}
+
 fn do_bench_push_preallocated(b: &mut Bencher, n: usize) {
-    b.iter(|| {
-        let mut v = Vec::with_capacity(n);
-        for i in 0..n {
-            v.push(i);
-        }
-        black_box(v.as_slice());
-    });
+    b.iter(|| push_preallocated(n));
 }
 
 #[bench]

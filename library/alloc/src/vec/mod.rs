@@ -971,10 +971,7 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
     }
-}
 
-#[cfg(not(no_global_oom_handling))]
-impl<T, A: Allocator> Vec<T, A> {
     /// Appends an element to the back of a collection.
     ///
     /// # Panics
@@ -1531,7 +1528,14 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.buf.try_reserve(self.len, additional)
+        let len = self.len;
+        let result = self.buf.try_reserve(len, additional);
+        unsafe {
+            // The buffer and its allocator cannot change the vector's length.
+            // Keep that fact visible when allocator operations are type-erased.
+            hint::assert_unchecked(self.len == len);
+        }
+        result
     }
 
     /// Tries to reserve the minimum capacity for at least `additional`
@@ -1574,7 +1578,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.buf.try_reserve_exact(self.len, additional)
+        let len = self.len;
+        let result = self.buf.try_reserve_exact(len, additional);
+        unsafe {
+            hint::assert_unchecked(self.len == len);
+        }
+        result
     }
 
     /// Shrinks the capacity of the vector as much as possible.
