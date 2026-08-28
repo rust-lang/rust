@@ -141,8 +141,9 @@ fn get_substructure_equality_expr(
             // with logical AND.
             fields
                 .iter()
-                .filter(|field| !field.maybe_scalar)
-                .fold(fields.iter().filter(|field| field.maybe_scalar).fold(None, combine), combine)
+                .filter(|field| field.maybe_scalar)
+                .chain(fields.iter().filter(|field| !field.maybe_scalar))
+                .fold(None, combine)
                 // If there are no fields, treat as always equal.
                 .unwrap_or_else(|| cx.expr_bool(span, true))
         }

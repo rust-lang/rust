@@ -903,12 +903,12 @@ impl<'a> TraitDef<'a> {
                     method_def.extract_arg_details(cx, self, type_ident, generics);
 
                 let body = if from_scratch || method_def.is_static() {
-                    method_def.expand_static_enum_method_body(
+                    method_def.call_substructure_method(
                         cx,
                         self,
-                        enum_def,
                         type_ident,
                         &nonselflike_args,
+                        &StaticEnum(enum_def),
                     )
                 } else {
                     method_def.expand_enum_method_body(
@@ -1395,23 +1395,6 @@ impl<'a> MethodDef<'a> {
             BlockOrExpr(ThinVec::new(), Some(get_match_expr(selflike_args)))
         }
     }
-
-    fn expand_static_enum_method_body(
-        &self,
-        cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'_>,
-        enum_def: &EnumDef,
-        type_ident: Ident,
-        nonselflike_args: &[Box<Expr>],
-    ) -> BlockOrExpr {
-        self.call_substructure_method(
-            cx,
-            trait_,
-            type_ident,
-            nonselflike_args,
-            &StaticEnum(enum_def),
-        )
-    }
 }
 
 // general helper methods.
@@ -1433,7 +1416,6 @@ impl<'a> TraitDef<'a> {
                         let ident = self.mk_pattern_ident(prefix, i);
                         let path = ident.with_span_pos(sp);
                         (
-                            sp,
                             struct_field.ident,
                             cx.pat(
                                 path.span,
@@ -1446,28 +1428,21 @@ impl<'a> TraitDef<'a> {
                 match *struct_def {
                     VariantData::Struct { .. } => {
                         let field_pats = pieces_iter
-                            .map(|(sp, ident, pat)| {
-                                if ident.is_none() {
-                                    cx.dcx().span_bug(
-                                        sp,
-                                        "a braced struct with unnamed fields in `derive`",
-                                    );
-                                }
-                                ast::PatField {
-                                    ident: ident.unwrap(),
-                                    is_shorthand: false,
-                                    attrs: ast::AttrVec::new(),
-                                    id: ast::DUMMY_NODE_ID,
-                                    span: pat.span.with_ctxt(self.span.ctxt()),
-                                    pat: Box::new(pat),
-                                    is_placeholder: false,
-                                }
+                            .map(|(ident, pat)| ast::PatField {
+                                ident: ident
+                                    .expect("a braced struct with unnamed fields in `derive`"),
+                                is_shorthand: false,
+                                attrs: ast::AttrVec::new(),
+                                id: ast::DUMMY_NODE_ID,
+                                span: pat.span.with_ctxt(self.span.ctxt()),
+                                pat: Box::new(pat),
+                                is_placeholder: false,
                             })
                             .collect();
                         cx.pat_struct(self.span, struct_path, field_pats)
                     }
                     VariantData::Tuple(..) => {
-                        let subpats = pieces_iter.map(|(_, _, subpat)| subpat).collect();
+                        let subpats = pieces_iter.map(|(_, subpat)| subpat).collect();
                         cx.pat_tuple_struct(self.span, struct_path, subpats)
                     }
                     VariantData::Unit(..) => cx.pat_path(self.span, struct_path),
