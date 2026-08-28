@@ -14,7 +14,7 @@ mod wstr;
 mod tests;
 
 #[cfg_attr(not(target_os = "netbsd"), allow(unused))] // Not used on all platforms.
-pub use c_opaque::COpaque;
+pub(crate) use c_opaque::COpaque;
 #[cfg_attr(not(target_os = "linux"), allow(unused))] // Not used on all platforms.
 pub(crate) use small_c_string::{run_path_with_cstr, run_with_cstr};
 #[cfg_attr(not(target_os = "windows"), allow(unused))] // Not used on all platforms.

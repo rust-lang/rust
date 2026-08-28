@@ -45,7 +45,7 @@ use crate::pin::{Pin, UnsafePinned};
 /// a pointer which should be directly passed to the platform functions.
 ///
 /// In effect, a pinned instance of this wrapper acts very much like a C variable.
-pub struct COpaque<T> {
+pub(crate) struct COpaque<T> {
     inner: UnsafePinned<MaybeUninit<T>>,
 }
 
@@ -60,7 +60,7 @@ impl<T> COpaque<T> {
     /// ```ignore (for-illustration-purposes-only)
     /// let var = pin!(COpaque::uninit());
     /// ```
-    pub fn uninit() -> COpaque<T> {
+    pub(crate) fn uninit() -> COpaque<T> {
         COpaque { inner: UnsafePinned::new(MaybeUninit::uninit()) }
     }
 
@@ -74,7 +74,7 @@ impl<T> COpaque<T> {
     /// ```ignore (for-illustration-purposes-only)
     /// let var = pin!(COpaque::zeroed());
     /// ```
-    pub fn zeroed() -> COpaque<T> {
+    pub(crate) fn zeroed() -> COpaque<T> {
         COpaque { inner: UnsafePinned::new(MaybeUninit::zeroed()) }
     }
 
@@ -88,14 +88,14 @@ impl<T> COpaque<T> {
     /// ```ignore (for-illustration-purposes-only)
     /// let var = pin!(COpaque::new(T_INITIALIZER));
     /// ```
-    pub fn new(initializer: T) -> COpaque<T> {
+    pub(crate) fn new(initializer: T) -> COpaque<T> {
         COpaque { inner: UnsafePinned::new(MaybeUninit::new(initializer)) }
     }
 
     /// Gets a pointer to the value.
     ///
     /// Use this as a replacement for C's ampersand operator.
-    pub fn get(self: Pin<&Self>) -> *mut T {
+    pub(crate) fn get(self: Pin<&Self>) -> *mut T {
         self.inner.get().cast_init()
     }
 }
