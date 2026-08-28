@@ -1317,6 +1317,8 @@ macro_rules! tool_doc {
             , crates: $crates:expr
             // Subset of nightly features that are allowed to be used when documenting
             $(, allow_features: $allow_features:expr )?
+            // Pass `--all-features` to document all non-default features.
+            $(, all_features: $all_features:literal )?
             $(,)?
         }
     ) => {
@@ -1332,6 +1334,7 @@ macro_rules! tool_doc {
             const IS_LIBRARY: bool = false $( || $is_library )?;
             const CRATES: &[&str] = &$crates;
             const ALLOW_FEATURES: Option<&str> = [$( $allow_features )?].first().copied();
+            const ALL_FEATURES: bool = true $( && $all_features )?;
 
             fn new(builder: &Builder<'_>, target: TargetSelection) -> $tool {
                 let build_compiler = compiler_for_tool_doc(builder, $tool::MODE, target);
@@ -1369,6 +1372,7 @@ macro_rules! tool_doc {
                     $tool::IS_LIBRARY,
                     $tool::CRATES,
                     $tool::ALLOW_FEATURES,
+                    $tool::ALL_FEATURES,
                 )
             }
 
@@ -1409,6 +1413,7 @@ fn document_tool(
     is_library: bool,
     crates: &[&str],
     allow_features: Option<&str>,
+    all_features: bool,
 ) -> BuiltDocs {
     let mut source_type = SourceType::InTree;
 
@@ -1443,6 +1448,15 @@ fn document_tool(
     for krate in crates {
         cargo.arg("-p").arg(krate);
     }
+
+    // Tell rustdoc to document which items require feature flags.
+    if all_features {
+        cargo.arg("--all-features");
+    }
+    if allow_features.is_some() {
+        cargo.allow_features("doc_cfg");
+    }
+    cargo.rustdocflag("-Zcrate-attr=feature(doc_cfg)");
 
     cargo.rustdocflag("--document-private-items");
     // Since we always pass --document-private-items, there's no need to warn about linking to private items.
@@ -1491,13 +1505,19 @@ tool_doc!(Rustfmt {
     path: "src/tools/rustfmt",
     mode: Mode::ToolRustcPrivate,
     crates: ["rustfmt-nightly", "rustfmt-config_proc_macro"],
+    all_features: false,
 });
 tool_doc!(Clippy {
     path: "src/tools/clippy",
     mode: Mode::ToolRustcPrivate,
     crates: ["clippy_config", "clippy_utils"],
 });
-tool_doc!(Miri { path: "src/tools/miri", mode: Mode::ToolRustcPrivate, crates: ["miri"] });
+tool_doc!(Miri {
+    path: "src/tools/miri",
+    mode: Mode::ToolRustcPrivate,
+    crates: ["miri"],
+    all_features: false,
+});
 tool_doc!(Cargo {
     path: "src/tools/cargo",
     mode: Mode::ToolTarget,
