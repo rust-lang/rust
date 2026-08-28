@@ -1673,6 +1673,11 @@ unsafe extern "C" {
         Index: c_uint,
         Name: *const c_char,
     ) -> Value<'ll>;
+    pub(crate) fn LLVMBuildFreeze<'ll>(
+        B: &Builder<'ll>,
+        Val: Value<'ll>,
+        Name: *const c_char,
+    ) -> Value<'ll>;
 
     // Atomic Operations
     pub(crate) fn LLVMBuildAtomicCmpXchg<'ll>(
