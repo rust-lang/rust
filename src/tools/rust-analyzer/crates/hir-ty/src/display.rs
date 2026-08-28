@@ -1709,11 +1709,13 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 write!(f, "?c.{}", ty.var.as_usize())?
             }
             TyKind::Dynamic(bounds, region) => {
+                let self_ty = interner.default_types().types.dyn_trait_dummy_self;
+
                 // We want to put auto traits after principal traits, regardless of their written order.
                 let mut bounds_to_display = SmallVec::<[_; 4]>::new();
                 let mut auto_trait_bounds = SmallVec::<[_; 4]>::new();
                 for bound in bounds.iter() {
-                    let clause = bound.with_self_ty(interner, *self);
+                    let clause = bound.with_self_ty(interner, self_ty);
                     match bound.skip_binder() {
                         ExistentialPredicate::Trait(_) | ExistentialPredicate::Projection(_) => {
                             bounds_to_display.push(clause);
@@ -1725,13 +1727,13 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
 
                 if f.render_region(region) {
                     bounds_to_display
-                        .push(rustc_type_ir::OutlivesPredicate(*self, region).upcast(interner));
+                        .push(rustc_type_ir::OutlivesPredicate(self_ty, region).upcast(interner));
                 }
 
                 write_bounds_like_dyn_trait_with_prefix(
                     f,
                     "dyn",
-                    Either::Left(*self),
+                    Either::Left(self_ty),
                     &bounds_to_display,
                     SizedByDefault::NotSized,
                     trait_bounds_need_parens,
