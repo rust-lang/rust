@@ -510,7 +510,7 @@ macro_rules! options {
                 $( { TARGET_MODIFIER: $tmod_variant:ident } )?
                 $( { MITIGATION: $mitigation_variant:ident } )?
                 ,
-                $desc:literal
+                $desc:expr
                 $(, removed: $removed:ident )?
             ),
         )*
@@ -2350,6 +2350,12 @@ options! {
     // - src/doc/rustc/src/codegen-options/index.md
 }
 
+const POLONIUS_HELP: &str = match Polonius::DEFAULT {
+    Polonius::Off => "enable polonius-based borrow-checker (default: no)",
+    Polonius::Next => "enable polonius-based borrow-checker (default: next)",
+    Polonius::Legacy => panic!("Polonius::Legacy is not a valid default value"),
+};
+
 options! {
     UnstableOptions, UnstableOptionsTargetModifiers, Z_OPTIONS, dbopts, "Z", "unstable",
 
@@ -2750,7 +2756,7 @@ options! {
         `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
         Example: `-Zpointer-authentication=+calls,-init-fini`."),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
-        "enable polonius-based borrow-checker (default: no)"),
+        POLONIUS_HELP),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to prepend the linker invocation (can be used several times)"),
     pre_link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
