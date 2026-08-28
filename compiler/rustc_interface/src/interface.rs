@@ -421,7 +421,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let early_sess =
                 rustc_session::build_early_session(config.opts, target, config.ice_file);
 
-            let codegen_backend = match config.make_codegen_backend {
+            let mut codegen_backend = match config.make_codegen_backend {
                 None => util::get_codegen_backend(
                     &early_dcx,
                     &early_sess.opts.sysroot,
