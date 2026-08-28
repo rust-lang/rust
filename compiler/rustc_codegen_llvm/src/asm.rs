@@ -508,7 +508,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         // These need to be translated to the LLVM format.
         let function_features: Vec<_> = extra_rust_target_features
             .iter()
-            .flat_map(|feat| llvm_util::to_llvm_features(self.tcx.sess, feat))
+            .flat_map(|feat| llvm_util::to_llvm_features(&self.tcx.sess.target, feat))
             .flat_map(|feat| feat.into_iter().map(|f| format!("+{f}")))
             .collect();
 
