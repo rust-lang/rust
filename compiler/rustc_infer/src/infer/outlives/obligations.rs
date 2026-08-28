@@ -143,13 +143,11 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
         let mut inner = self.inner.borrow_mut();
-        use rustc_data_structures::undo_log::UndoLogs;
 
         let old_constraint = inner.solver_region_constraint_storage.get_constraint();
         let new_constraint =
             rustc_type_ir::region_constraint::RegionConstraint::new_and(c, old_constraint.clone());
 
-        use crate::infer::UndoLog;
         inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
         inner.solver_region_constraint_storage.overwrite(new_constraint);
     }
