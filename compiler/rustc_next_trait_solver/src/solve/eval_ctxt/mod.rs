@@ -909,7 +909,6 @@ where
             sub_roots,
             stalled_maybe_info: maybe_info,
             opaques: GoalStalledOnOpaques::Yes {
-                // FIXME: Need to change the field name
                 num_opaques_in_storage,
                 num_bounds_for_hidden_tys_in_storage,
                 previously_succeeded_in_erased,
