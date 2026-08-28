@@ -7,7 +7,7 @@ use clippy_utils::{fn_has_unsatisfiable_clauses, sym};
 use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, ConstContext, FnDecl, def_id};
+use rustc_hir::{Body, Constness, FnDecl, def_id};
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
@@ -64,19 +64,18 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
         _: Span,
         def_id: LocalDefId,
     ) {
-        // Building MIR for `#[rustc_comptime]` functions causes ICE.
-        if !matches!(
-            cx.tcx.hir_body_const_context(def_id),
-            None | Some(ConstContext::ConstFn)
-        ) {
-            return;
-        }
         // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
         if fn_has_unsatisfiable_clauses(cx, def_id.to_def_id()) {
             return;
         }
 
-        let mir = cx.tcx.optimized_mir(def_id.to_def_id());
+        // Optimizing MIR for `#[rustc_comptime]` functions causes ICE,
+        // so giving MIR for CTFE for comptime functions instead
+        let mir = if matches!(cx.tcx.constness(def_id.to_def_id()), Constness::Const { always: true }) {
+            cx.tcx.mir_for_ctfe(def_id.to_def_id())
+        } else {
+            cx.tcx.optimized_mir(def_id.to_def_id())
+        };
 
         let mut possible_borrower = PossibleBorrowerMap::new(cx, mir);
 
