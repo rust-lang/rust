@@ -46,6 +46,7 @@ pub(crate) struct ExpandedCode {
 /// As we go through the HIR visitor, if any span overlaps with another, they will
 /// both be merged.
 struct ExpandedCodeInfo {
+    original_span: Span,
     /// Callsite of the macro.
     span: Span,
     /// Expanded macro source code (HTML escaped).
@@ -73,7 +74,12 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
             self.expanded_codes.iter().position(|info| info.span.overlaps(callsite_span))
         {
             let info = &mut self.expanded_codes[index];
-            if new_span.contains(info.expanded_span) {
+            // If the new span we got has the exact same span information as a span already in the
+            // list, it means it's generated from the same macro but is a different item, so we need
+            // to add it as well.
+            let has_same_macro_origin =
+                new_span == info.original_span && callsite_span == info.span;
+            if !has_same_macro_origin && new_span.contains(info.expanded_span) {
                 // New macro expansion recursively contains the old one, so replace it.
                 info.span = callsite_span;
                 info.expanded_span = new_span;
@@ -84,12 +90,13 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
                 expanded_code.code.push('\n');
                 expanded_code.code.push_str(&f());
                 let lo = BytePos(expanded_code.expanded_span.lo().0.min(new_span.lo().0));
-                let hi = BytePos(expanded_code.expanded_span.hi().0.min(new_span.hi().0));
+                let hi = BytePos(expanded_code.expanded_span.hi().0.max(new_span.hi().0));
                 expanded_code.expanded_span = expanded_code.expanded_span.with_lo(lo).with_hi(hi);
             }
         } else {
             // We add a new item.
             self.expanded_codes.push(ExpandedCodeInfo {
+                original_span: new_span,
                 span: callsite_span,
                 code: f(),
                 expanded_span: new_span,
