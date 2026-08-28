@@ -12,7 +12,7 @@ LL | #![warn(raw_borrows_via_references)]
 help: consider using `&raw const` for a safer and more explicit raw pointer
    |
 LL -     let y = (&x as *const i32).read_volatile();
-LL +     let y = &raw const x).read_volatile();
+LL +     let y = (&raw const x).read_volatile();
    |
 
 warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
@@ -24,8 +24,20 @@ LL |     (&mut x as *mut i32).write_volatile(13);
 help: consider using `&raw mut` for a safer and more explicit raw pointer
    |
 LL -     (&mut x as *mut i32).write_volatile(13);
-LL +     &raw mut x).write_volatile(13);
+LL +     (&raw mut x).write_volatile(13);
    |
 
-warning: 2 warnings emitted
+warning: creating an intermediate reference implies aliasing requirements even when immediately cast to a raw pointers
+  --> $DIR/raw-borrows-via-references-parenthesized-issue-161693.rs:31:13
+   |
+LL |     let _ = make_borrow!(value) as *const i32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     let _ = make_borrow!(value) as *const i32;
+LL +     let _ = &raw const value;
+   |
+
+warning: 3 warnings emitted
 
