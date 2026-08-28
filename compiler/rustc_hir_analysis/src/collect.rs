@@ -442,7 +442,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                 .into_iter()
                 .map(|item| self.lower_test_binder_constraint(item))
                 .reduce(SolverRegionConstraint::new_or)
-                .unwrap_or(SolverRegionConstraint::new_true()),
+                .unwrap_or(SolverRegionConstraint::new_false()),
             hir::TestBinderConstraint::Lifetime { lhs, rhs } => {
                 let span = lhs.ident.span.to(rhs.ident.span);
                 let lhs = self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);
