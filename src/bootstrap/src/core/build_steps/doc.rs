@@ -1443,6 +1443,11 @@ fn document_tool(
         cargo.arg("-p").arg(krate);
     }
 
+    // Tell rustdoc to document which items require feature flags.
+    cargo.arg("--all-features");
+    cargo.allow_features("doc_cfg");
+    cargo.rustdocflag("-Zcrate-attr=feature(doc_cfg)");
+
     cargo.rustdocflag("--document-private-items");
     // Since we always pass --document-private-items, there's no need to warn about linking to private items.
     cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
