@@ -111,6 +111,24 @@ where
                     }
                 }
 
+                let current_opaque = self.resolve_vars_if_possible((opaque_type_key, expected));
+
+                let already_scheduled = self
+                    .opaque_bounds_scheduled
+                    .iter()
+                    .copied()
+                    .any(|entry| self.resolve_vars_if_possible(entry) == current_opaque);
+
+                if already_scheduled {
+                    return self
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        .map_err(Into::into);
+                }
+
+                // Mark this before adding the item bounds: eager normalization while
+                // adding those goals may recursively normalize this same opaque.
+                self.opaque_bounds_scheduled.push(current_opaque);
+
                 self.add_item_bounds_for_hidden_type(
                     def_id.into(),
                     normalized_args,

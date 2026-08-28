@@ -143,6 +143,14 @@ where
     pub(super) initial_opaque_types_storage_num_entries:
         <D::Infcx as InferCtxtLike>::OpaqueTypeStorageEntries,
 
+    /// Opaque equations whose item-bound obligations are already part of
+    /// the current proof.
+    ///
+    /// This must remain separate from opaque storage, since an opaque
+    /// equation can be imported without its item bounds being part of
+    /// the current proof.
+    pub(super) opaque_bounds_scheduled: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+
     pub(super) search_graph: &'a mut SearchGraph<D>,
 
     nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>, Option<GoalStalledOn<I>>)>,
@@ -489,6 +497,7 @@ where
             // which we don't do within this evaluation context.
             max_input_universe: ty::UniverseIndex::ROOT,
             initial_opaque_types_storage_num_entries: Default::default(),
+            opaque_bounds_scheduled: Default::default(),
             var_kinds: Default::default(),
             var_values: CanonicalVarValues::dummy(),
             current_goal_kind: CurrentGoalKind::Misc,
@@ -554,6 +563,7 @@ where
             current_goal_kind: CurrentGoalKind::from_query_input(cx, input),
             max_input_universe: canonical_input.canonical.max_universe,
             initial_opaque_types_storage_num_entries,
+            opaque_bounds_scheduled: input.opaque_bounds_scheduled.iter().collect(),
             search_graph,
             nested_goals: Default::default(),
             origin_span: I::Span::dummy(),
@@ -658,7 +668,9 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let (goal, opaque_types) = eager_resolve_vars(&**self.delegate, (goal, opaque_types));
+        let opaque_bounds_scheduled = self.opaque_bounds_scheduled.clone();
+        let (goal, opaque_types, opaque_bounds_scheduled) =
+            eager_resolve_vars(&**self.delegate, (goal, opaque_types, opaque_bounds_scheduled));
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
@@ -715,6 +727,7 @@ where
                     self.delegate,
                     goal,
                     &[],
+                    &[],
                     TypingMode::ErasedNotCoherence(MayBeErased),
                 );
 
@@ -755,8 +768,13 @@ where
                 }
             }
 
-            let (orig_values, canonical_goal) =
-                canonicalize_goal(self.delegate, goal, &opaque_types, typing_mode);
+            let (orig_values, canonical_goal) = canonicalize_goal(
+                self.delegate,
+                goal,
+                &opaque_types,
+                &opaque_bounds_scheduled,
+                typing_mode,
+            );
 
             let (canonical_result, accessed_opaques) = self.search_graph.evaluate_goal(
                 self.cx(),
@@ -1859,7 +1877,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
 
     let (orig_values, canonical_goal) =
-        canonicalize_goal(delegate, goal, &opaque_types, typing_mode.into());
+        canonicalize_goal(delegate, goal, &opaque_types, &[], typing_mode.into());
 
     let (canonical_result, final_revision, required_depth) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal, root_depth);

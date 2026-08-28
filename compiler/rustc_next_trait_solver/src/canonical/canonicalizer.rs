@@ -219,7 +219,14 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 predefined_opaques_in_body
             };
 
-        let value = QueryInput { goal, predefined_opaques_in_body };
+        let opaque_bounds_scheduled = input.opaque_bounds_scheduled;
+        let opaque_bounds_scheduled = if opaque_bounds_scheduled.has_type_flags(NEEDS_CANONICAL) {
+            opaque_bounds_scheduled.fold_with(&mut rest_canonicalizer)
+        } else {
+            opaque_bounds_scheduled
+        };
+
+        let value = QueryInput { goal, predefined_opaques_in_body, opaque_bounds_scheduled };
 
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");

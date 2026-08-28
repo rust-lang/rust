@@ -57,6 +57,7 @@ pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
+    opaque_bounds_scheduled: &[(ty::OpaqueTypeKey<I>, I::Ty)],
     typing_mode: TypingMode<I>,
 ) -> (ThinVec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
 where
@@ -68,6 +69,9 @@ where
         QueryInput {
             goal,
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
+            opaque_bounds_scheduled: delegate
+                .cx()
+                .mk_predefined_opaques_in_body(opaque_bounds_scheduled),
         },
     );
 
