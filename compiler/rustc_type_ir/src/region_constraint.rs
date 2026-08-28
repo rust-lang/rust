@@ -309,7 +309,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
         };
         let mut and_constraint = fst.0.to_vec();
 
-        for and in or.0.clone() {
+        for and in or.0.split_first().unwrap().1 {
             and_constraint.retain(|c| and.0.iter().any(|c2| c == c2));
         }
         let and_constraint = And::new(and_constraint);
