@@ -782,7 +782,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     // Backward compatibility for default auto traits & `Move`.
                     // Test: ui/traits/default_auto_traits/extern-types.rs
-                    if self.tcx().is_implicit_trait(def_id, false) {
+                    if self.tcx().is_implicit_trait(def_id, ty::IncludingSized::No) {
                         check_impls()
                     }
                 }

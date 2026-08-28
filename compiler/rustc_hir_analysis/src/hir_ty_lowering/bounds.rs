@@ -316,7 +316,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         if let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res
-            && (tcx.is_lang_item(def_id, LangItem::Sized) || tcx.is_implicit_trait(def_id, false))
+            && (tcx.is_lang_item(def_id, LangItem::Sized)
+                || tcx.is_implicit_trait(def_id, ty::IncludingSized::No))
         // nia: todo: is metasized ok to include so we can simplify this?
         {
             return;
