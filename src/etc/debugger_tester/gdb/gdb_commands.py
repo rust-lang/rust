@@ -12,8 +12,8 @@ class ReprCommand(gdb.Command):
         super().__init__("repr", gdb.COMMAND_OBSCURE)
 
     def invoke(self, argument: str, from_tty: bool):
+        from ..common import Result
         from .check_gdb import check
-        from .common import Result
 
         print(f"(gdb) repr {argument}")
 
@@ -41,7 +41,7 @@ class ReprFinalize(gdb.Command):
         if not REPR_COMMAND_RUN:
             return
 
-        from .common import (
+        from ..common import (
             BLESS,
             INPUT_DATA,
             BlessMetadata,

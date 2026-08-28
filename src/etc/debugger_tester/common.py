@@ -69,7 +69,7 @@ class Target(Enum):
 
 def get_target() -> Target:
     # set by compiletest when launching LLDB
-    t: str = os.environ["LLDB_BATCHMODE_TARGET_TRIPLE"]
+    t: str = os.environ["DEBUGGER_TESTER_TARGET_TRIPLE"]
 
     if t.endswith("windows-msvc"):
         return Target.WindowsMsvc
@@ -79,7 +79,7 @@ def get_target() -> Target:
     return Target.NonWindows
 
 
-BLESS: Final[bool] = os.environ["LLDB_BATCHMODE_BLESS_TEST_DATA"] == "1"
+BLESS: Final[bool] = os.environ["DEBUGGER_TESTER_BLESS_TEST_DATA"] == "1"
 """Global constant set by `compiletest` that determines whether or not we are blessing the test
 data."""
 
@@ -490,7 +490,7 @@ class TargetData:
     Additionally, since there are differences in the internals of some structs based on OS (e.g.
     `PathBuf`/`OsString`), we need to be aware of whether we're on Windows or not.
 
-    A global var `TARGET` is set to the current variant upon `lldb_batchmode`'s instantiation using
+    A global var `TARGET` is set to the current variant upon `debugger_tester`'s instantiation using
     an env var passed from `compiletest` and is not expected to change afterwards.
     """
 
@@ -513,7 +513,7 @@ class TargetData:
     @staticmethod
     def initialize() -> "TargetData":
         result = TargetData()
-        path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
+        path = os.environ["DEBUGGER_TESTER_INPUT_DATA_PATH"]
         if not os.path.isfile(path):
             if BLESS:
                 return result
@@ -535,12 +535,12 @@ generated for this test yet, consider using the `--bless` option."
         return result
 
     def save_blessing(self, metadata: BlessMetadata):
-        """Writes the entirety of `self` to the env var `LLDB_BATCHMODE_INPUT_DATA_PATH`, which is
-        set by `compiletest` before running `lldb_batchmode. Used to finalize changes made by one or
-        more `from_lldb.bless_variable` calls.
+        """Writes the entirety of `self` to the env var `DEBUGGER_TESTER_INPUT_DATA_PATH`, which is
+        set by `compiletest` before running `debugger_tester`. Used to finalize changes made by one
+        or more `from_lldb.bless_variable` calls.
 
         This function should be called exactly once, right before
-        `lldb_batchmode.runner.main` exits if the following conditions are met:
+        `debugger_tester.lldb.batchmode.main` exits if the following conditions are met:
 
         1. No other exceptions or error states occurred
         2. `BLESS == True`
@@ -551,7 +551,7 @@ generated for this test yet, consider using the `--bless` option."
         """
 
         self.bless_metadata = metadata
-        path = os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"]
+        path = os.environ["DEBUGGER_TESTER_INPUT_DATA_PATH"]
         # dumping directly to a file is somewhat unsafe. If the `Variable`/`Type` data ends up in a
         # state that cannot be serialized correctly, the json ends up malformed, and we could end up
         # overwriting valid test data with a complete mess. Since the in-memory data is typically

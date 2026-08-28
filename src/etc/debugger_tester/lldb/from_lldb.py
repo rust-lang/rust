@@ -15,7 +15,7 @@ from typing import Optional, Union
 import lldb
 import lldb_lookup
 
-from .common import (
+from ..common import (
     BLESS,
     TARGET,
     Child,
