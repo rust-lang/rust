@@ -157,6 +157,42 @@ pub trait ArgAbiBuilderMethods<'tcx>: BackendTypes {
         val: Self::Value,
         dst: PlaceRef<'tcx, Self::Value>,
     );
+    /// Losslessly convert a `f32` or `f64` to a float to be returned on the x87 floating point
+    /// stack. Because `MaybeUninit` `f32`s/`f64`s are also returned on the floating point stack,
+    /// `value` being uninitialized must not cause undefined behaviour unless `true` is passed in
+    /// the `no_undef` argument. This method is used to avoid an LLVM bug where signalling NaNs get
+    /// quietened when being returned on the x87 stack on 32-bit x86. For more details, see:
+    /// * <https://github.com/rust-lang/rust/issues/115567>
+    /// * <https://github.com/llvm/llvm-project/issues/66803>
+    fn x87_lossless_float_to_fp_stack(
+        &mut self,
+        value: Self::Value,
+        no_undef: bool,
+    ) -> Self::Value {
+        let _ = no_undef;
+        // Default to leaving the value unchanged. The backend can override this method if it needs
+        // extra codegen to avoid quietening signalling NaNs.
+        value
+    }
+    /// Losslessly convert a `f32` or `f64` from a float that was returned on the x87 floating point
+    /// stack. Because `MaybeUninit` `f32`s/`f64`s are also returned on the floating point stack,
+    /// `value` being uninitialized must not cause undefined behaviour unless `true` is passed in
+    /// the `no_undef` argument. This method is used to avoid an LLVM bug where signalling NaNs get
+    /// quietened when being returned on the x87 stack on 32-bit x86. For more details, see:
+    /// * <https://github.com/rust-lang/rust/issues/115567>
+    /// * <https://github.com/llvm/llvm-project/issues/66803>
+    fn x87_lossless_fp_stack_to_float(
+        &mut self,
+        value: Self::Value,
+        float_type: Self::Type,
+        no_undef: bool,
+    ) -> Self::Value {
+        let _ = float_type;
+        let _ = no_undef;
+        // Default to leaving the value unchanged. The backend can override this method if it needs
+        // extra codegen to avoid quietening signalling NaNs.
+        value
+    }
 }
 
 pub trait TypeCodegenMethods<'tcx> = DerivedTypeCodegenMethods<'tcx>

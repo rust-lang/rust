@@ -1555,6 +1555,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
+impl<'ll> Builder<'_, 'll, '_> {
+    pub(crate) fn freeze(&mut self, value: &'ll Value) -> &'ll Value {
+        unsafe { llvm::LLVMBuildFreeze(self.llbuilder, value, UNNAMED) }
+    }
+}
+
 impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
     fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
