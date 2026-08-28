@@ -1,0 +1,36 @@
+error[E0425]: cannot find type `BorrowedBuf` in this scope
+  --> $DIR/filter-intrinsics-note-for-unstable-suggestion.rs:9:10
+   |
+LL |   let _: BorrowedBuf;
+   |          ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::io::BorrowedBuf;
+   |
+
+error[E0425]: cannot find type `HashMap` in this scope
+  --> $DIR/filter-intrinsics-note-for-unstable-suggestion.rs:13:10
+   |
+LL |   let _: HashMap;
+   |          ^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::collections::HashMap;
+   |
+
+error[E0425]: cannot find type `S` in this scope
+  --> $DIR/filter-intrinsics-note-for-unstable-suggestion.rs:16:10
+   |
+LL |   let _: S;
+   |          ^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use extern_prelude::S;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
