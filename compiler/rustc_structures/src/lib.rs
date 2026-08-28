@@ -13,3 +13,6 @@ pub use crate_type::CrateType;
 pub use limit::Limit;
 pub use native_lib_kind::NativeLibKind;
 pub use sanitizer_set::SanitizerSet;
+
+#[cfg(test)]
+mod tests;

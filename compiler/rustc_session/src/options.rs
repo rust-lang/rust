@@ -95,13 +95,15 @@ mod target_modifier_consistency_check {
         l: &TargetModifier,
         r: Option<&TargetModifier>,
     ) -> bool {
-        let mut lparsed: SanitizerSet = sess.target.options.default_sanitizers;
+        let mut lparsed: SanitizerSet = SanitizerSet::empty();
         let lval = if l.value_name.is_empty() { None } else { Some(l.value_name.as_str()) };
         parse::parse_sanitizers(&mut lparsed, lval);
+        let lparsed = lparsed.combine_with_defaults(sess.target.options.default_sanitizers);
 
-        let mut rparsed: SanitizerSet = sess.target.options.default_sanitizers;
+        let mut rparsed: SanitizerSet = SanitizerSet::empty();
         let rval = r.filter(|v| !v.value_name.is_empty()).map(|v| v.value_name.as_str());
         parse::parse_sanitizers(&mut rparsed, rval);
+        let rparsed = rparsed.combine_with_defaults(sess.target.options.default_sanitizers);
 
         // Some sanitizers need to be target modifiers, and some do not.
         // For now, we should mark all sanitizers as target modifiers except for these:
