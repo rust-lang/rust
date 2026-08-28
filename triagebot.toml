@@ -226,6 +226,10 @@ new_issue = true
 exclude_labels = [
     "C-tracking-issue",
     "A-diagnostics",
+    "relnotes",
+    "relnotes-perf",
+    "relnotes-tracking-issue",
+    "relnotes-blogpost",
 ]
 
 [autolabel."I-prioritize"]
