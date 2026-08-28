@@ -568,14 +568,14 @@ pub trait Interner:
 /// Specify if and how the sized hierarchy should be included
 #[derive(Clone, Copy, Default)]
 pub enum IncludingSized {
-    /// Include the whole size hierarchy
-    Yes,
-    // just as an example, to implement if needed
-    // /// Include only `MetaSized`, not `Sized`
-    // JustMetaSized,
     /// Skip the entire hierarchy
     #[default]
     No,
+    // just as an example, to implement if needed
+    // /// Include only `MetaSized`, not `Sized`
+    // JustMetaSized,
+    /// Include the whole size hierarchy
+    Yes,
 }
 
 macro_rules! declare_lift_into {
