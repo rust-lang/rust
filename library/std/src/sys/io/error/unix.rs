@@ -1,7 +1,7 @@
 use crate::ffi::c_int;
 #[cfg(not(target_os = "teeos"))]
 use crate::ffi::{CStr, c_char};
-use crate::io;
+use crate::{fmt, io};
 
 unsafe extern "C" {
     #[cfg(not(any(
@@ -195,7 +195,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
 
 /// Gets a detailed string description for the given error number.
 #[cfg(any(target_family = "unix", target_os = "wasi"))]
-pub fn error_string(errno: i32) -> String {
+pub fn format_error(errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     const TMPBUF_SZ: usize = if cfg!(target_os = "wasi") { 1024 } else { 128 };
 
     unsafe extern "C" {
@@ -226,11 +226,11 @@ pub fn error_string(errno: i32) -> String {
         let p = p as *const _;
         // We can't always expect a UTF-8 environment. When we don't get that luxury,
         // it's better to give a low-quality error message than none at all.
-        String::from_utf8_lossy(CStr::from_ptr(p).to_bytes()).into()
+        write!(f, "{}", CStr::from_ptr(p).display())
     }
 }
 
 #[cfg(target_os = "teeos")]
-pub fn error_string(_errno: i32) -> String {
-    "error string unimplemented".to_string()
+pub fn format_error(_errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.write_str("error string unimplemented")
 }
