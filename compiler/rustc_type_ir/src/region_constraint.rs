@@ -162,6 +162,9 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
 #[derive_where(Clone, Hash, PartialEq, Eq, Debug; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+/// An OR of AND of LEAF constraints. Always in "canonical form" meaning:
+/// - No two ANDs are equivalent
+/// - All ANDs are in canonical form
 pub struct Or<I: Interner, S: Clone + std::fmt::Debug = ()>(pub Box<[And<I, S>]>);
 impl<I: Interner> Or<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
@@ -241,6 +244,8 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
 #[derive_where(Clone, Hash, PartialEq, Eq, Debug; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+/// An AND of leaf constraints. Always in "canonical form", meaning:
+/// - No leaf constraints are present twice in this AND
 pub struct And<I: Interner, S: Clone + std::fmt::Debug = ()>(pub Box<[LeafRegionConstraint<I, S>]>);
 impl<I: Interner> And<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
@@ -272,15 +277,15 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-/// RegionConstraints always have constraints shared between every OR element moved
-/// into the and_constraint. Additionally they are always in "OR of AND of LEAF" form instead of
-/// supporting arbitrary nesting of ORs/ANDs.
+/// An `And` and an `Or` constraint both in canonical forms, with two additional constraints:
+/// - If the `or_constraint` is false then the `and_constraint` is empty
+/// - The `or_constraint` does not have any constraints present in all of its inner `And`s
+///    - i.e. `OR ( AND ('a: 'b, 'b: 'c), AND ('a: 'b, 'b: 'd))` is not a thing
+/// - The OR constraint is in canonical form
+/// - The AND constraint is in canonical form
 ///
-/// We also guarantee that there are no duplicate constraints in any of the `And` or `Or`s, though,
-/// this is handled when constructing And/Ors rather than when constructing `RegionConstraint`.
-///
-/// It should also already be "evaluated", as in if `or_constraint` is `false` then `and_constraint` should be
-/// empty. Or if an element in the `or_constraint` is `true` then it should be the only constraint.
+/// This should be thought of as an AND consisting of a set of LEAF constraints as well
+/// as a single OR constraint.
 pub struct RegionConstraint<I: Interner, S: Clone + std::fmt::Debug = ()> {
     pub and_constraint: And<I, S>,
     pub or_constraint: Or<I, S>,
