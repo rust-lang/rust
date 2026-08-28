@@ -688,6 +688,28 @@ impl Kind {
         }
         .to_owned()
     }
+
+    /// Is this a command similar to check, which only runs the compiler frontend and doesn't
+    /// build code for the target? (it can still build code for the host, i.e. proc macros).
+    pub fn is_check_like(&self) -> bool {
+        match self {
+            Kind::Check | Kind::Clippy | Kind::Fix | Kind::Doc => true,
+            Kind::Build
+            | Kind::Format
+            | Kind::Test
+            | Kind::Miri
+            | Kind::MiriSetup
+            | Kind::MiriTest
+            | Kind::Bench
+            | Kind::Clean
+            | Kind::Dist
+            | Kind::Install
+            | Kind::Run
+            | Kind::Setup
+            | Kind::Vendor
+            | Kind::Perf => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

@@ -4418,7 +4418,6 @@ impl CommandLineStep for CodegenCranelift {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/build_system/Cargo.toml"));
-        compile::rustc_cargo_env(builder, &mut cargo, target);
 
         // Avoid incremental cache issues when changing rustc
         cargo.env("CARGO_BUILD_INCREMENTAL", "false");
@@ -4544,7 +4543,6 @@ impl CommandLineStep for CodegenGCC {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_gcc/build_system/Cargo.toml"));
-        compile::rustc_cargo_env(builder, &mut cargo, target);
         add_cg_gcc_cargo_flags(&mut cargo, &gcc);
 
         // Avoid incremental cache issues when changing rustc
