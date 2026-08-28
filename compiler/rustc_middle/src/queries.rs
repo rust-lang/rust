@@ -747,13 +747,11 @@ rustc_queries! {
     /// intrinsics, and the expression tables to be embedded in the function's
     /// coverage metadata.
     ///
-    /// FIXME(Zalathar): This query's purpose has drifted a bit and should
-    /// probably be renamed, but that can wait until after the potential
-    /// follow-ups to #136053 have settled down.
-    ///
     /// Returns `None` for functions that were not instrumented.
-    query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> Option<&'tcx mir::coverage::CoverageIdsInfo> {
-        desc { "retrieving coverage IDs info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
+    query coverage_codegen_info(key: ty::InstanceKind<'tcx>)
+        -> Option<&'tcx mir::coverage::CoverageCodegenInfo>
+    {
+        desc { "retrieving coverage codegen info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
         arena_cache
     }
 

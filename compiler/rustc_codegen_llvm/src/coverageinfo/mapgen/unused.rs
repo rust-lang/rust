@@ -145,7 +145,7 @@ fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
             }
         }
 
-        if !saw_own_coverage && body.function_coverage_info.is_some() {
+        if !saw_own_coverage && body.coverage_mir_info.is_some() {
             missing_own_coverage.insert(def_id);
         }
     }
