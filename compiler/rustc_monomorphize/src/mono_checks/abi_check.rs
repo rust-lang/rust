@@ -160,9 +160,9 @@ fn do_check_unsized_params<'tcx>(
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let ty = instance.ty(tcx, typing_env);
-    if ty.is_fn() && ty.fn_sig(tcx).abi() == ExternAbi::Unadjusted {
-        // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
-        // intrinsics
+    if ty.is_fn() && ty.fn_sig(tcx).abi() == ExternAbi::LlvmIntrinsic {
+        // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
+        // LLVM intrinsics
         return;
     }
     let Ok(abi) = tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
@@ -196,11 +196,11 @@ fn check_call_site_abi<'tcx>(
     loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
     let extern_abi = callee.fn_sig(tcx).abi();
-    if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::Unadjusted {
+    if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::LlvmIntrinsic {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.
-        // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
-        // intrinsics
+        // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
+        // LLVM intrinsics
         return;
     }
     let typing_env = ty::TypingEnv::fully_monomorphized();

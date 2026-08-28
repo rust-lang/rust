@@ -75,7 +75,7 @@ pub enum InstanceKind<'tcx> {
     /// "magically" evaluate calls to intrinsics purely in the caller.
     Intrinsic(DefId),
 
-    /// An LLVM intrinsic `fn` item (with `extern "unadjusted"`).
+    /// An LLVM intrinsic `fn` item (with `extern "llvm-intrinsic"`).
     ///
     /// Alongside `Intrinsic` and `Virtual`, this is the only `InstanceKind`
     /// that does not have its own callable MIR. Instead, codegen and const eval

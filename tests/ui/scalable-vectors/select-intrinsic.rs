@@ -2,7 +2,7 @@
 //@ only-aarch64
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features, improper_ctypes)]
-#![feature(abi_unadjusted, core_intrinsics, link_llvm_intrinsics, rustc_attrs)]
+#![feature(core_intrinsics, rustc_attrs)]
 
 use std::intrinsics::simd::simd_select;
 
