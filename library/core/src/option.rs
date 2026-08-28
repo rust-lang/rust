@@ -2456,6 +2456,8 @@ const impl<T: [const] PartialEq> PartialEq for Option<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<T: [const] PartialOrd> PartialOrd for Option<T> {
+    /// See [the documentation](https://doc.rust-lang.org/std/option/#comparison-operators) for details.
+    /// [`None`] always compares less than any [`Some`]
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         match (self, other) {
