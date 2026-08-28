@@ -2354,17 +2354,13 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         ) -> Result<(), ErrorGuaranteed> {
             let mut r = Ok(());
 
-            let mut validate_and = |and: &And<_, _>| {
+            let mut validate_and = |and: &And<TyCtxt<'_>, _>| {
                 for c in and.0.iter() {
                     match c {
                         LeafRegionConstraint::Ambiguity(_)
                         | LeafRegionConstraint::RegionOutlives(..)
                         | LeafRegionConstraint::AliasTyOutlivesViaEnv(..) => (), // OK
                         LeafRegionConstraint::PlaceholderTyOutlives(ty, _, span) => {
-                            // I couldn't tell you why without this line `ty.kind()` is an error
-                            // because of not being able to infer the type of `ty`... Lmao
-                            // - BoxyUwU
-                            let ty: Ty<'_> = *ty;
                             // we can't check this during lowering, because the ty is a ty::Bound that gets
                             // instantiated with a placeholder when entering the containing forall.
                             if let ty::Placeholder(_) | ty::Param(_) = ty.kind() {
