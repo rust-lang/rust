@@ -46,6 +46,7 @@ use core::error::Error;
 use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
+use core::mem::DropGuard;
 #[cfg(not(no_global_oom_handling))]
 use core::num::Saturating;
 #[cfg(not(no_global_oom_handling))]
@@ -1680,20 +1681,6 @@ impl String {
             return;
         }
 
-        struct PanicGuard<'a> {
-            s: &'a mut String,
-            write: usize,
-        }
-
-        impl Drop for PanicGuard<'_> {
-            fn drop(&mut self) {
-                debug_assert!(self.write <= self.s.len());
-                debug_assert!(str::from_utf8(&self.s.vec[..self.write]).is_ok());
-                // SAFETY: Restore the string length to the number of bytes written so far.
-                unsafe { self.s.vec.set_len(self.write) }
-            }
-        }
-
         // Fast path: find the first character that should be removed or return early.
         let mut chars = self.char_indices();
         let (mut read, write) = loop {
@@ -1705,26 +1692,32 @@ impl String {
         drop(chars);
 
         // Slow path: at least one character is going to be removed.
-        let mut g = PanicGuard { s: self, write };
+        let mut guard = DropGuard::new((self, write), |(s, write)| {
+            debug_assert!(write <= s.len());
+            debug_assert!(str::from_utf8(&s.vec[..write]).is_ok());
+            // SAFETY: Restore the string length to the number of bytes written so far.
+            unsafe { s.vec.set_len(write) }
+        });
+        let (s, write) = &mut *guard;
         while read < len {
             // SAFETY: `read` is within bound because `read` < `len`, so taking
             // a slice with `len` is safe.
-            let ch = unsafe { g.s.get_unchecked(read..len).chars().next().unwrap_unchecked() };
+            let ch = unsafe { s.get_unchecked(read..len).chars().next().unwrap_unchecked() };
             let ch_len = ch.len_utf8();
             if f(ch) {
                 // SAFETY: `read` is on a char boundary, as guaranteed above; `g.write` is
                 // within bounds because it is always behind `read`.
                 unsafe {
-                    let ptr = g.s.vec.as_mut_ptr();
-                    ptr::copy(ptr.add(read), ptr.add(g.write), ch_len);
+                    let ptr = s.vec.as_mut_ptr();
+                    ptr::copy(ptr.add(read), ptr.add(*write), ch_len);
                 }
-                g.write += ch_len;
+                *write += ch_len;
             }
             read += ch_len;
         }
 
         // All bytes processed; commit the final length by dropping the guard.
-        drop(g);
+        drop(guard);
     }
 
     /// Inserts a character into this `String` at byte position `idx`.
