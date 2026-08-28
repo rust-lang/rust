@@ -7,10 +7,8 @@ error: package `cargo-common-metadata-fail-publish` is missing `either package.l
 
 error: package `cargo-common-metadata-fail-publish` is missing `package.repository` metadata
 
-error: package `cargo-common-metadata-fail-publish` is missing `package.readme` metadata
-
 error: package `cargo-common-metadata-fail-publish` is missing `package.keywords` metadata
 
 error: package `cargo-common-metadata-fail-publish` is missing `package.categories` metadata
 
-error: could not compile `cargo-common-metadata-fail-publish` (bin "cargo-common-metadata-fail-publish") due to 6 previous errors
+error: could not compile `cargo-common-metadata-fail-publish` (bin "cargo-common-metadata-fail-publish") due to 5 previous errors
