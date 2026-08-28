@@ -635,6 +635,7 @@ symbols! {
         cmpxchg16b_target_feature,
         cmse_nonsecure_entry,
         code,
+        codeview_annotation,
         coerce_pointee_validated,
         coerce_shared,
         coerce_shared_target,

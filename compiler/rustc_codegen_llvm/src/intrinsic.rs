@@ -18,7 +18,8 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::DEPRECATED_LLVM_INTRINSIC;
-use rustc_middle::mir::BinOp;
+use rustc_middle::mir::interpret::{AllocId, Allocation, ErrorHandled, GlobalAlloc, alloc_range};
+use rustc_middle::mir::{self, BinOp};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
@@ -46,7 +47,7 @@ use crate::diagnostics::{
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
 use crate::intrinsic::ty::typetree::fnc_typetrees;
-use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
+use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -892,6 +893,13 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         self.call_intrinsic("llvm.returnaddress", type_params, &[val])
                     }
                 }
+            }
+
+            sym::codeview_annotation => {
+                if self.sess().target.uses_pdb_debuginfo() {
+                    codegen_codeview_annotation(self, instance, span);
+                }
+                return IntrinsicResult::Operand(OperandValue::ZeroSized);
             }
 
             _ => {
@@ -3416,4 +3424,142 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     span_bug!(span, "unknown SIMD intrinsic");
+}
+
+fn codegen_codeview_annotation<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    instance: ty::Instance<'tcx>,
+    span: Span,
+) {
+    // This function lowers the `codeview_annotation` intrinsic,
+    // which is declared like this:
+    //
+    // trait CodeViewAnnotationArgs {
+    //     const ARGS: &[&str];
+    // }
+    //
+    // fn codeview_annotation<T: CodeViewAnnotationArgs>() {}
+    //
+    // It finds the `T: CodeViewAnnotationArgs` trait bound, locates
+    // `ARGS`, const evaluates it, reads the strings off the resulting
+    // allocation and lowers them.
+
+    const ARGS_CONST_NAME: &str = "`CodeViewAnnotationArgs::ARGS`";
+
+    let tcx = bx.tcx();
+
+    // Locate `ARGS`
+    let Some((args_const_def_id, generic_args)) = tcx
+        .explicit_clauses_of(instance.def_id())
+        .instantiate_own(tcx, instance.args)
+        .filter_map(|(clause, _)| clause.skip_norm_wip().as_trait_clause())
+        .filter_map(|trait_clause| {
+            let trait_ref = trait_clause.skip_binder().trait_ref;
+            tcx.associated_items(trait_ref.def_id)
+                .in_definition_order()
+                .find(|item| {
+                    item.tag() == ty::AssocTag::Const
+                        && tcx.item_name(item.def_id).as_str() == "ARGS"
+                })
+                .map(|item| (item.def_id, trait_ref.args))
+        })
+        .next()
+    else {
+        span_bug!(span, "could not find {ARGS_CONST_NAME}");
+    };
+
+    // Const evaluate `ARGS`
+    let args_const_val = match tcx.const_eval_resolve(
+        bx.typing_env(),
+        mir::UnevaluatedConst::new(args_const_def_id, generic_args),
+        span,
+    ) {
+        Ok(val) => val,
+        Err(ErrorHandled::Reported(..)) => return,
+        Err(ErrorHandled::TooGeneric(_)) => {
+            span_bug!(span, "{ARGS_CONST_NAME} is too generic")
+        }
+    };
+
+    // Read the strings
+    let array_alloc = match args_const_val {
+        mir::ConstValue::Slice { alloc_id, meta } => Some((alloc_id, Size::ZERO, meta)),
+        mir::ConstValue::Indirect { alloc_id, offset } => read_slice_pointer(tcx, alloc_id, offset)
+            .unwrap_or_else(|_| span_bug!(span, "invalid {ARGS_CONST_NAME} slice pointer")),
+        _ => span_bug!(span, "unexpected {ARGS_CONST_NAME} value: {args_const_val:?}"),
+    };
+
+    let strings = array_alloc.into_iter().flat_map(|(array_alloc_id, array_offset, array_len)| {
+        (0..array_len).map(move |index| {
+            let elem_size = tcx.data_layout.pointer_size().bytes() * 2; // Multiplying by 2 for fat pointers
+            let elem_offset = array_offset + Size::from_bytes(index * elem_size);
+
+            let (string_alloc_id, string_offset, string_len) =
+                match read_slice_pointer(tcx, array_alloc_id, elem_offset) {
+                    Ok(Some(slice)) => slice,
+                    Ok(None) => return &[] as &[u8],
+                    Err(()) => span_bug!(span, "invalid {ARGS_CONST_NAME} string pointer"),
+                };
+
+            resolve_alloc(tcx, string_alloc_id)
+                .unwrap_or_else(|_| span_bug!(span, "invalid {ARGS_CONST_NAME} string allocation"))
+                .get_bytes_strip_provenance(
+                    &tcx,
+                    alloc_range(string_offset, Size::from_bytes(string_len)),
+                )
+                .unwrap_or_else(|_| span_bug!(span, "invalid {ARGS_CONST_NAME} string bytes"))
+        })
+    });
+
+    // Lower the strings
+    let md_strings: Vec<&Metadata> = strings.map(|s| bx.cx.create_metadata(s)).collect();
+    let md_tuple = bx.cx.md_node_in_context(&md_strings);
+    let md_value = bx.cx.get_metadata_value(md_tuple);
+    let (fn_ty, intrinsic_fn) = bx.cx.get_intrinsic("llvm.codeview.annotation".into(), &[]);
+
+    bx.call(fn_ty, None, None, intrinsic_fn, &[md_value], None, None);
+}
+
+// Reads the slice pointer stored at `offset` in `alloc_id` and
+// returns its pointee's allocation ID, relative byte offset
+// and slice length. Returns `None` for an empty slice.
+fn read_slice_pointer<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    alloc_id: AllocId,
+    offset: Size,
+) -> Result<Option<(AllocId, Size, u64)>, ()> {
+    let alloc = resolve_alloc(tcx, alloc_id)?;
+    let pointer_size = tcx.data_layout.pointer_size();
+
+    let pointer = alloc
+        .read_scalar(&tcx, alloc_range(offset, pointer_size), true)
+        .map_err(|_| ())?
+        .to_pointer(&tcx);
+
+    let len = alloc
+        .read_scalar(&tcx, alloc_range(offset + pointer_size, pointer_size), false)
+        .map_err(|_| ())?
+        .to_target_usize(&tcx)
+        .discard_err()
+        .ok_or(())?;
+
+    if len == 0 {
+        return Ok(None);
+    }
+
+    let (provenance, offset) =
+        pointer.into_pointer_or_addr().map_err(|_| ())?.prov_and_relative_offset();
+
+    Ok(Some((provenance.alloc_id(), offset, len)))
+}
+
+fn resolve_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId) -> Result<&'tcx Allocation, ()> {
+    let alloc = match tcx.global_alloc(alloc_id) {
+        GlobalAlloc::Memory(alloc) => alloc,
+        GlobalAlloc::Static(def_id) => tcx.eval_static_initializer(def_id).map_err(|_| ())?,
+        _ => return Err(()),
+    }
+    .inner();
+
+    Ok(alloc)
 }

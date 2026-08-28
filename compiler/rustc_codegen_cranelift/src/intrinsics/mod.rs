@@ -535,6 +535,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             fx.bcx.ins().debugtrap();
         }
+        sym::codeview_annotation => {
+            intrinsic_args!(fx, args => (); intrinsic);
+        }
         sym::copy => {
             intrinsic_args!(fx, args => (src, dst, count); intrinsic);
             let src = src.load_scalar(fx);

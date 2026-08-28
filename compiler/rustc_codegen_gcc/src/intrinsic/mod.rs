@@ -360,6 +360,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             sym::breakpoint => {
                 unimplemented!();
             }
+            sym::codeview_annotation => {
+                return IntrinsicResult::Operand(OperandValue::ZeroSized);
+            }
             sym::va_arg => {
                 unimplemented!();
             }

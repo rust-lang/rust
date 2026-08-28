@@ -1028,3 +1028,41 @@ pub const fn prefetch_read_instruction<T>(ptr: *const T, locality: Locality) {
         Locality::L1 => intrinsics::prefetch_read_instruction::<T, { Locality::L1.to_llvm() }>(ptr),
     }
 }
+
+/// A container for the string arguments passed to [`codeview_annotation`].
+#[unstable(feature = "codeview_annotation", issue = "none")]
+pub trait CodeViewAnnotationArgs {
+    /// The string arguments to `codeview_annotation`.
+    const ARGS: &[&str];
+}
+
+/// Writes [`T::ARGS`](CodeViewAnnotationArgs::ARGS) to the PDB as an `S_ANNOTATION` record using
+/// [`llvm.codeview.annotation`](https://llvm.org/docs/LangRef.html#llvm-codeview-annotation-intrinsic).
+///
+/// This function works only on targets that use PDB debug information (such as `msvc`) and the LLVM
+/// backend. It is a no-op on other targets and backends.
+///
+/// # Examples
+///
+/// To call `codeview_annotation`, the caller must declare a type
+/// implementing [`CodeViewAnnotationArgs`] and pass it as the type
+/// parameter to `codeview_annotation`. The string arguments must be
+/// specified in `CodeViewAnnotationArgs::ARGS`.
+///
+/// ```
+/// #![feature(codeview_annotation)]
+/// use std::hint::{codeview_annotation, CodeViewAnnotationArgs};
+///
+/// struct Args;
+///
+/// impl CodeViewAnnotationArgs for Args {
+///     const ARGS: &[&str] = &["Hello", "World"];
+/// }
+///
+/// codeview_annotation::<Args>();
+/// ```
+#[inline(always)]
+#[unstable(feature = "codeview_annotation", issue = "none")]
+pub fn codeview_annotation<T: CodeViewAnnotationArgs>() {
+    crate::intrinsics::codeview_annotation::<T>();
+}

@@ -126,6 +126,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::cold_path
                 | sym::gpu_launch_sized_workgroup_mem
                 | sym::breakpoint
+                | sym::codeview_annotation
                 | sym::amdgpu_dispatch_ptr
                 | sym::assert_zero_valid
                 | sym::assert_mem_uninitialized_valid
