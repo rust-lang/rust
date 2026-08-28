@@ -45,7 +45,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
-use rustc_type_ir::{CollectAndApply, WithCachedTypeInfo, elaborate, search_graph};
+use rustc_type_ir::{CollectAndApply, IncludingSized, WithCachedTypeInfo, elaborate, search_graph};
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
@@ -933,10 +933,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.default_traits().iter().any(|&default_trait| self.is_lang_item(def_id, default_trait))
     }
 
-    pub fn is_implicit_trait(self, def_id: DefId, including_sized: bool) -> bool {
+    pub fn is_implicit_trait(self, def_id: DefId, including_sized: IncludingSized) -> bool {
         self.is_default_trait(def_id)
             || self.is_move_trait(def_id)
-            || (including_sized && self.is_sizedness_trait(def_id))
+            || match including_sized {
+                IncludingSized::Yes => self.is_sizedness_trait(def_id),
+                IncludingSized::No => false,
+            }
     }
 
     pub fn is_move_trait(self, def_id: DefId) -> bool {
