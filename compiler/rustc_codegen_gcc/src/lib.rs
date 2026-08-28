@@ -95,7 +95,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_session::{IncrCompSession, Session};
+use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
@@ -195,8 +195,8 @@ impl CodegenBackend for GccCodegenBackend {
         "gcc"
     }
 
-    fn init(&self, sess: &Session) {
-        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
+    fn init(&self, sess: &EarlySession) -> CodegenBackendInit {
+        fn file_path(sysroot_path: &Path, sess: &EarlySession) -> PathBuf {
             let rustlib_path =
                 rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
             sysroot_path
@@ -274,10 +274,12 @@ impl CodegenBackend for GccCodegenBackend {
                 .supports_128bit_integers
                 .store(check_context.get_last_error() == Ok(None), Ordering::SeqCst);
         }
-    }
 
-    fn thin_lto_supported(&self) -> bool {
-        false
+        CodegenBackendInit {
+            replaced_intrinsics: vec![],
+            fallback_intrinsics: vec![sym::type_id_eq],
+            thin_lto_supported: false,
+        }
     }
 
     fn provide(&self, providers: &mut Providers) {
@@ -307,12 +309,8 @@ impl CodegenBackend for GccCodegenBackend {
             .join(sess, incr_comp_session, crate_info)
     }
 
-    fn target_config(&self, sess: &Session) -> TargetConfig {
+    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
         target_config(sess, &self.target_info)
-    }
-
-    fn fallback_intrinsics(&self) -> Vec<Symbol> {
-        vec![sym::type_id_eq]
     }
 }
 
@@ -531,10 +529,10 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 }
 
 /// Returns the features that should be set in `cfg(target_feature)`.
-fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig {
+fn target_config(sess: &EarlySession, target_info: &LockedTargetInfo) -> TargetConfig {
     let internal_target_features = internal_target_features(
         sess,
-        |feature| to_gcc_features(sess, feature),
+        |feature| to_gcc_features(&sess.target, feature),
         |feature| {
             // FIXME: we disable Neon for now since we don't support the LLVM intrinsics for it.
             if feature == "neon" {

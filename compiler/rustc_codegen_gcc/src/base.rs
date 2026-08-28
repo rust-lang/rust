@@ -162,7 +162,7 @@ pub fn compile_codegen_unit(
 
         add_pic_option(&context, tcx.sess.relocation_model());
 
-        let target_cpu = gcc_util::target_cpu(tcx.sess);
+        let target_cpu = gcc_util::target_cpu(&tcx.sess);
         if target_cpu != "generic" {
             context.add_command_line_option(format!("-march={}", target_cpu));
         }

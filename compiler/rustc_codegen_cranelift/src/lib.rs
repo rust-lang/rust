@@ -43,7 +43,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::WorkProductMap;
 use rustc_session::config::{NATIVE_CPU, OutputFilenames};
-use rustc_session::{IncrCompSession, Session};
+use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, CfgAbi, Env, Os};
 
@@ -126,13 +126,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
         "cranelift"
     }
 
-    fn init(&self, sess: &Session) {
-        use rustc_session::config::{InstrumentCoverage, Lto};
-        match sess.lto() {
-            Lto::No | Lto::ThinLocal => {}
-            Lto::Thin | Lto::Fat => {
-                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift");
+    fn init(&self, sess: &EarlySession) -> CodegenBackendInit {
+        use rustc_session::config::{InstrumentCoverage, LtoCli};
+
+        match (sess.target.requires_lto, sess.early_lto()) {
+            (true, _) | (false, LtoCli::Yes | LtoCli::Fat | LtoCli::NoParam | LtoCli::Thin) => {
+                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift")
             }
+            (false, LtoCli::Unspecified | LtoCli::No) => {}
         }
 
         if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
@@ -148,13 +149,15 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if config.jit_mode && !sess.opts.output_types.should_codegen() {
             sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
+
+        CodegenBackendInit {
+            replaced_intrinsics: vec![],
+            fallback_intrinsics: vec![sym::type_id_eq],
+            thin_lto_supported: false,
+        }
     }
 
-    fn thin_lto_supported(&self) -> bool {
-        false
-    }
-
-    fn target_config(&self, sess: &Session) -> TargetConfig {
+    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
         let target_features = match sess.target.arch {
             Arch::X86_64 if sess.target.os != Os::None => {
@@ -239,10 +242,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<driver::aot::AotDriver>>()
             .unwrap()
             .join(sess, incr_comp_session, crate_info)
-    }
-
-    fn fallback_intrinsics(&self) -> Vec<Symbol> {
-        vec![sym::type_id_eq]
     }
 }
 

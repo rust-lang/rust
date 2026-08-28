@@ -1366,9 +1366,9 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         bx.const_bool(false)
-    } else if wants_msvc_seh(bx.sess()) {
+    } else if wants_msvc_seh(&bx.sess().target) {
         codegen_msvc_try(bx, try_func, data, catch_func)
-    } else if wants_wasm_eh(bx.sess()) {
+    } else if wants_wasm_eh(&bx.sess().target) {
         codegen_wasm_try(bx, try_func, data, catch_func)
     } else {
         codegen_gnu_try(bx, try_func, data, catch_func)
