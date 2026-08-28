@@ -21,7 +21,7 @@ use rustc_trait_selection::traits::query::dropck_outlives;
 use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOpOutput};
 use tracing::debug;
 
-use crate::polonius::{ConstraintDirection, record_live_region_variance};
+use crate::polonius::{ConstraintDirection, DeferredLocals, record_live_region_variance};
 use crate::region_infer::values::{self, LivenessValues};
 use crate::type_check::liveness::local_use_map::LocalUseMap;
 use crate::type_check::{NormalizeLocation, TypeChecker};
@@ -48,7 +48,7 @@ pub(super) fn trace<'tcx>(
     move_data: &MoveData<'tcx>,
     relevant_live_locals: &[Local],
     boring_locals: &[Local],
-) {
+) -> (DeferredLocals<'tcx>, LocalUseMap) {
     let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness_trace");
 
     let local_use_map = LocalUseMap::build(&relevant_live_locals, location_map, typeck.body);
@@ -61,11 +61,15 @@ pub(super) fn trace<'tcx>(
     );
     let mut results = LivenessResults::new(typeck, calc);
 
+    let deferred_locals = DeferredLocals::default();
+
     results.add_extra_drop_facts(relevant_live_locals);
 
     results.compute_for_all_locals(relevant_live_locals);
 
     results.dropck_boring_locals(boring_locals);
+
+    (deferred_locals, local_use_map)
 }
 
 pub(crate) struct LivenessCalculation<'a, 'tcx> {
