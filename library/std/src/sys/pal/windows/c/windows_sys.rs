@@ -54,6 +54,7 @@ windows_link::link!("kernel32.dll" "system" fn GetFileType(hfile : HANDLE) -> FI
 windows_link::link!("kernel32.dll" "system" fn GetFinalPathNameByHandleW(hfile : HANDLE, lpszfilepath : PWSTR, cchfilepath : u32, dwflags : GETFINALPATHNAMEBYHANDLE_FLAGS) -> u32);
 windows_link::link!("kernel32.dll" "system" fn GetFullPathNameW(lpfilename : PCWSTR, nbufferlength : u32, lpbuffer : PWSTR, lpfilepart : *mut PWSTR) -> u32);
 windows_link::link!("kernel32.dll" "system" fn GetLastError() -> WIN32_ERROR);
+windows_link::link!("kernel32.dll" "system" fn GetLogicalDrives() -> u32);
 windows_link::link!("kernel32.dll" "system" fn GetModuleFileNameW(hmodule : HMODULE, lpfilename : PWSTR, nsize : u32) -> u32);
 windows_link::link!("kernel32.dll" "system" fn GetModuleHandleA(lpmodulename : PCSTR) -> HMODULE);
 windows_link::link!("kernel32.dll" "system" fn GetModuleHandleExW(dwflags : u32, lpmodulename : PCWSTR, phmodule : *mut HMODULE) -> BOOL);
@@ -83,6 +84,7 @@ windows_link::link!("ntdll.dll" "system" fn NtReadFile(filehandle : HANDLE, even
 windows_link::link!("ntdll.dll" "system" fn NtSetInformationFile(filehandle : HANDLE, iostatusblock : *mut IO_STATUS_BLOCK, fileinformation : *const core::ffi::c_void, length : u32, fileinformationclass : FILE_INFORMATION_CLASS) -> NTSTATUS);
 windows_link::link!("ntdll.dll" "system" fn NtWriteFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *const core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
 windows_link::link!("advapi32.dll" "system" fn OpenProcessToken(processhandle : HANDLE, desiredaccess : TOKEN_ACCESS_MASK, tokenhandle : *mut HANDLE) -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn QueryDosDeviceW(lpdevicename : PCWSTR, lptargetpath : PWSTR, ucchmax : u32) -> u32);
 windows_link::link!("kernel32.dll" "system" fn QueryPerformanceCounter(lpperformancecount : *mut i64) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn QueryPerformanceFrequency(lpfrequency : *mut i64) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn ReadConsoleW(hconsoleinput : HANDLE, lpbuffer : *mut core::ffi::c_void, nnumberofcharstoread : u32, lpnumberofcharsread : *mut u32, pinputcontrol : *const CONSOLE_READCONSOLE_CONTROL) -> BOOL);
@@ -3411,6 +3413,7 @@ impl Default for UNICODE_STRING {
 pub const VOLUME_NAME_DOS: GETFINALPATHNAMEBYHANDLE_FLAGS = 0u32;
 pub const VOLUME_NAME_GUID: GETFINALPATHNAMEBYHANDLE_FLAGS = 1u32;
 pub const VOLUME_NAME_NONE: GETFINALPATHNAMEBYHANDLE_FLAGS = 4u32;
+pub const VOLUME_NAME_NT: GETFINALPATHNAMEBYHANDLE_FLAGS = 2u32;
 pub const WAIT_ABANDONED: WAIT_EVENT = 128u32;
 pub const WAIT_ABANDONED_0: WAIT_EVENT = 128u32;
 pub type WAIT_EVENT = u32;
@@ -3701,4 +3704,4 @@ pub struct WSADATA {
 }
 #[cfg(target_arch = "arm")]
 pub enum CONTEXT {}
-// ignore-tidy-file-filelength
+// ignore-tidy-filelength
