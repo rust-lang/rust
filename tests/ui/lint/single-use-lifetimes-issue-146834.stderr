@@ -1,3 +1,9 @@
+error: `ensures` attribute requires an argument, e.g., `#[ensures(|result: &T| condition)]`
+  --> $DIR/single-use-lifetimes-issue-146834.rs:9:1
+   |
+LL | #[core::contracts::ensures]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0106]: missing lifetime specifiers
   --> $DIR/single-use-lifetimes-issue-146834.rs:11:42
    |
@@ -44,20 +50,6 @@ LL - fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
 LL + fn f<'a>(a: &'a i32, b: &i32) -> (&i32, &i32) {
    |
 
-error[E0277]: expected an `Fn(&_)` closure, found `()`
-  --> $DIR/single-use-lifetimes-issue-146834.rs:9:1
-   |
-LL | #[core::contracts::ensures]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected an `Fn(&_)` closure, found `()`
-   | required by a bound introduced by this call
-   |
-   = help: the trait `for<'a> Fn(&'a _)` is not implemented for `()`
-note: required by a bound in `build_check_ensures`
-  --> $SRC_DIR/core/src/contracts.rs:LL:COL
-
 error: aborting due to 2 previous errors; 2 warnings emitted
 
-Some errors have detailed explanations: E0106, E0277.
-For more information about an error, try `rustc --explain E0106`.
+For more information about this error, try `rustc --explain E0106`.

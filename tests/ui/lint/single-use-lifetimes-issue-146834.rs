@@ -7,7 +7,7 @@
 #![feature(contracts)]
 
 #[core::contracts::ensures]
-//~^ ERROR expected an `Fn(&_)` closure, found `()`
+//~^ ERROR `ensures` attribute requires an argument
 fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
     //~^ ERROR missing lifetime specifiers
     //~| WARN lifetime parameter `'a` only used once
