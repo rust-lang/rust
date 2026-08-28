@@ -313,19 +313,14 @@ fn rewrite_segment(
     Ok(result)
 }
 
-fn format_function_type<'a, I>(
-    inputs: I,
+fn format_function_type(
+    inputs: &[ast::Param],
     output: &FnRetTy,
     variadic: bool,
     span: Span,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> RewriteResult
-where
-    I: ExactSizeIterator,
-    <I as Iterator>::Item: Deref,
-    <I::Item as Deref>::Target: Rewrite + Spanned + 'a,
-{
+) -> RewriteResult {
     debug!("format_function_type {:#?}", shape);
 
     let ty_shape = match context.config.indent_style() {
@@ -381,7 +376,7 @@ where
     } else {
         let items = itemize_list(
             context.snippet_provider,
-            inputs,
+            inputs.iter(),
             ")",
             ",",
             |arg| arg.span().lo(),
@@ -563,14 +558,9 @@ fn rewrite_generic_args(
                 overflow::rewrite_with_angle_brackets(context, "", args.iter(), shape, span)
             }
         }
-        ast::GenericArgs::Parenthesized(ref data) => format_function_type(
-            data.inputs.iter().map(|x| &**x),
-            &data.output,
-            false,
-            data.span,
-            context,
-            shape,
-        ),
+        ast::GenericArgs::Parenthesized(ref data) => {
+            format_function_type(&data.inputs, &data.output, false, data.span, context, shape)
+        }
         ast::GenericArgs::ParenthesizedElided(..) => Ok("(..)".to_owned()),
     }
 }
@@ -1129,7 +1119,7 @@ fn rewrite_fn_ptr(
     };
 
     let rewrite = format_function_type(
-        fn_ptr.decl.inputs.iter(),
+        &fn_ptr.decl.inputs,
         &fn_ptr.decl.output,
         fn_ptr.decl.c_variadic(),
         fn_ptr.decl_span,

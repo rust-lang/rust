@@ -10,7 +10,7 @@ use crate::macros::MacroArg;
 use crate::rewrite::RewriteContext;
 
 pub(crate) mod cfg_if;
-pub(crate) mod cfg_match;
+pub(crate) mod cfg_select;
 pub(crate) mod lazy_static;
 
 fn build_stream_parser<'a>(psess: &'a ParseSess, tokens: TokenStream) -> Parser<'a> {
