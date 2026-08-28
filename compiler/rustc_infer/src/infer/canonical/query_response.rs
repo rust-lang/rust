@@ -221,9 +221,7 @@ impl<'tcx> InferCtxt<'tcx> {
             &result_args,
             query_response.value.region_constraints.solver_constraints.clone(),
         );
-        if !solver_constraints.is_true() {
-            self.register_solver_region_constraint(solver_constraints.with_spans(cause.span));
-        }
+        self.register_solver_region_constraint(solver_constraints.with_spans(cause.span));
 
         let user_result: R =
             query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());

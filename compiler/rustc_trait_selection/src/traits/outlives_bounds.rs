@@ -84,9 +84,7 @@ fn implied_outlives_bounds<'a, 'tcx>(
         // outlives bound required proving some higher-ranked coroutine obl.
         let QueryRegionConstraints { constraints, assumptions: _, solver_constraints } =
             constraints;
-        if !solver_constraints.is_true() {
-            infcx.register_solver_region_constraint(solver_constraints.with_span(span));
-        }
+        infcx.register_solver_region_constraint(solver_constraints.with_spans(span));
 
         let cause = ObligationCause::misc(span, body_def_id);
         for &QueryRegionConstraint { constraint, visible_for_leak_check: vis, .. } in &constraints {

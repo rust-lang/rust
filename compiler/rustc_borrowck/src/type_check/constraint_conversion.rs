@@ -79,11 +79,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             });
         }
 
-        if !solver_constraints.is_true() {
-            self.infcx.register_solver_region_constraint(
-                solver_constraints.clone().with_spans(self.span),
-            );
-        }
+        self.infcx
+            .register_solver_region_constraint(solver_constraints.clone().with_spans(self.span));
     }
 
     /// Given an instance of the closure type, this method instantiates the "extra" requirements

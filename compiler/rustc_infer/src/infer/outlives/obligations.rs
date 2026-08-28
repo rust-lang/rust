@@ -142,6 +142,12 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
+        // Anding in a trivially true constraint leaves the store unchanged, so don't
+        // bother rewriting it and pushing an undo entry.
+        if c.is_true() {
+            return;
+        }
+
         let mut inner = self.inner.borrow_mut();
 
         let old_constraint = inner.solver_region_constraint_storage.get_constraint();
