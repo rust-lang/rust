@@ -156,7 +156,7 @@ impl DocParser {
                 }
 
                 cx.check_target(
-                    &sym::no_crate_inject.to_string(),
+                    sym::no_crate_inject.as_str(),
                     &AllowedTargets::AllowList(&[Allow(Target::Crate)]),
                 );
 
@@ -542,10 +542,7 @@ impl DocParser {
                     return;
                 };
 
-                cx.check_target(
-                    &s.to_string(),
-                    &AllowedTargets::AllowList(&[Allow(Target::Crate)]),
-                );
+                cx.check_target(s.as_str(), &AllowedTargets::AllowList(&[Allow(Target::Crate)]));
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
                 // line.
