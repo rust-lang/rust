@@ -1,5 +1,5 @@
 use crate::io::{Error, ErrorKind, const_error};
-use crate::sys::io::{decode_error_kind, error_string};
+use crate::sys::io::{decode_error_kind, format_error};
 use crate::{assert_matches, error, fmt};
 
 #[test]
@@ -10,7 +10,7 @@ fn test_size() {
 #[test]
 fn test_debug_error() {
     let code = 6;
-    let msg = error_string(code);
+    let msg = fmt::from_fn(|f| format_error(code, f)).to_string();
     let kind = decode_error_kind(code);
     let err = Error::new(ErrorKind::InvalidInput, Error::from_raw_os_error(code));
     let expected = format!(
