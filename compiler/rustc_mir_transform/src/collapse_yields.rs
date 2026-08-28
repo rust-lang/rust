@@ -6,8 +6,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::Successors;
 use rustc_data_structures::indexmap::{IndexMap, IndexSet};
 use rustc_middle::mir::{
-    AssertKind, BasicBlock, Body, Local, MirDumper, NonDivergingIntrinsic, OUTERMOST_SOURCE_SCOPE,
-    Operand, Place, Rvalue, SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
+    AssertKind, BasicBlock, BasicBlockData, Body, Local, MirDumper, NonDivergingIntrinsic,
+    OUTERMOST_SOURCE_SCOPE, Operand, Place, Rvalue, SourceInfo, Statement, StatementKind,
+    Terminator, TerminatorKind, WithRetag,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::Analysis;
@@ -245,7 +246,27 @@ impl TranslationMap {
             // So we insert the translations into the predecessor and change the successor to 'to'
 
             for predecessor in predecessors {
+                let inbetween = body.basic_blocks_mut().push(BasicBlockData::new(
+                    Some(Terminator {
+                        source_info: SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
+                        kind: TerminatorKind::Goto { target: *to },
+                        attributes: Default::default(),
+                    }),
+                    false,
+                ));
+
                 let predecessor_data = &mut body.basic_blocks_mut()[*predecessor];
+
+                // Change the terminator to go to the 'to' block
+                predecessor_data.terminator_mut().successors_mut(|successor| {
+                    if *successor == *from {
+                        *successor = inbetween;
+                    }
+                });
+                let is_cleanup = body.basic_blocks_mut()[*from].is_cleanup;
+
+                let inbetween_data = &mut body.basic_blocks_mut()[inbetween];
+                inbetween_data.is_cleanup = is_cleanup;
 
                 let live_locals = &from_live_locals[from];
                 for from_local in live_locals.iter() {
@@ -255,12 +276,12 @@ impl TranslationMap {
                         }
 
                         if !always_live_locals.contains(*to_local) {
-                            predecessor_data.statements.push(Statement::new(
+                            inbetween_data.statements.push(Statement::new(
                                 SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
                                 StatementKind::StorageLive(*to_local),
                             ));
                         }
-                        predecessor_data.statements.push(Statement::new(
+                        inbetween_data.statements.push(Statement::new(
                             SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
                             StatementKind::Assign(Box::new((
                                 Place::from(*to_local),
@@ -268,20 +289,13 @@ impl TranslationMap {
                             ))),
                         ));
                         if !always_live_locals.contains(from_local) {
-                            predecessor_data.statements.push(Statement::new(
+                            inbetween_data.statements.push(Statement::new(
                                 SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
                                 StatementKind::StorageDead(from_local),
                             ));
                         }
                     }
                 }
-
-                // Change the terminator to go to the 'to' block
-                predecessor_data.terminator_mut().successors_mut(|successor| {
-                    if *successor == *from {
-                        *successor = *to
-                    }
-                });
             }
         }
     }
