@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::mem::discriminant;
 
-use rustc_data_structures::fx::FxHashMap;
+use itertools::Itertools;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::Successors;
 use rustc_data_structures::indexmap::{IndexMap, IndexSet};
 use rustc_middle::mir::{
@@ -31,7 +32,7 @@ impl<'tcx> MirPass<'tcx> for CollapseIdenticalYields {
             dumper.dump_mir(body);
         }
 
-        tracing::debug!("running pass for {}", tcx.def_path_str(body.source.def_id()));
+        tracing::debug!("running pass for {}", tcx.def_path_debug_str(body.source.def_id()));
 
         let mut yields = body
             .basic_blocks
@@ -47,34 +48,43 @@ impl<'tcx> MirPass<'tcx> for CollapseIdenticalYields {
         // Sort so we always translate from high bbs to low bbs
         yields.sort_unstable_by(|y1, y2| y1.basic_block.cmp(&y2.basic_block).reverse());
 
-        while let Some(base_yield) = yields.pop() {
-            tracing::trace!("Comparing base yield {:?} to others:", base_yield.basic_block);
-            for i in (0..yields.len()).rev() {
-                let compare_yield = &yields[i];
+        let mut collapsed_yields = FxHashSet::default();
 
-                let Some(translation) = compare_yield.try_find_translation(&base_yield, body)
-                else {
-                    // No translation, so these yields aren't equivalent
-                    continue;
-                };
-                let Some(translation) = translation.check_local_types(body) else {
-                    // The translated locals don't have the same types, so yields are not equivalent
-                    continue;
-                };
+        for compare_yields in yields.iter().combinations(2) {
+            let base_yield = compare_yields[0];
+            let compare_yield = compare_yields[1];
 
-                tracing::trace!(
-                    "Successfully translated yield {:?} to yield {:?}:\n{:?}",
-                    compare_yield.basic_block,
-                    base_yield.basic_block,
-                    translation
-                );
-
-                yields.remove(i);
-
-                translation.redirect_entry_points(tcx, body);
-                remove_dead_blocks(body);
+            if collapsed_yields.contains(&compare_yield) {
+                continue;
             }
+
+            tracing::trace!(
+                "Comparing yield {:?} to yield {:?}",
+                base_yield.basic_block,
+                compare_yield.basic_block
+            );
+
+            let Some(translation) = compare_yield.try_find_translation(&base_yield, body) else {
+                // No translation, so these yields aren't equivalent
+                continue;
+            };
+            let Some(translation) = translation.check_local_types(body) else {
+                // The translated locals don't have the same types, so yields are not equivalent
+                continue;
+            };
+
+            tracing::trace!(
+                "Successfully translated yield {:?} to yield {:?}:\n{:?}",
+                compare_yield.basic_block,
+                base_yield.basic_block,
+                translation
+            );
+
+            collapsed_yields.insert(compare_yield);
+
+            translation.redirect_entry_points(tcx, body);
         }
+        remove_dead_blocks(body);
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
@@ -82,7 +92,7 @@ impl<'tcx> MirPass<'tcx> for CollapseIdenticalYields {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 struct Yield {
     basic_block: BasicBlock,
 }
