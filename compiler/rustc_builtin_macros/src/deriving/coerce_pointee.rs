@@ -328,10 +328,8 @@ fn contains_maybe_sized_bound_on_pointee(predicates: &[WherePredicate], pointee:
         if let ast::WherePredicateKind::BoundPredicate(bound) = &bound.kind
             && bound.bounded_ty.kind.is_simple_path().is_some_and(|name| name == pointee)
         {
-            for bound in &bound.bounds {
-                if is_maybe_sized_bound(bound) {
-                    return true;
-                }
+            if contains_maybe_sized_bound(&bound.bounds) {
+                return true;
             }
         }
     }
