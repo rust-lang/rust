@@ -3,6 +3,7 @@
 use rustc_abi::{BackendRepr, CanonAbi, ExternAbi, RegKind, X86Call};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -196,12 +197,45 @@ fn check_call_site_abi<'tcx>(
     loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
     let extern_abi = callee.fn_sig(tcx).abi();
-    if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::LlvmIntrinsic {
+    if extern_abi.is_rustic_abi() {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.
+        return;
+    }
+    if extern_abi == ExternAbi::LlvmIntrinsic {
         // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
         // LLVM intrinsics
-        return;
+        let typing_env = ty::TypingEnv::fully_monomorphized();
+        match *callee.kind() {
+            ty::FnDef(def_id, args) => {
+                let instance = ty::Instance::expect_resolve(
+                    tcx,
+                    typing_env,
+                    def_id,
+                    args.no_bound_vars().unwrap(),
+                    DUMMY_SP,
+                );
+                if let InstanceKind::LlvmIntrinsic(..) = instance.def {
+                    let name = tcx
+                        .codegen_fn_attrs(def_id)
+                        .symbol_name
+                        .expect("llvm-intrinsic must be foreign function");
+                    assert!(
+                        name.as_str().starts_with("llvm."),
+                        "llvm-intrinsic name must start with llvm."
+                    );
+                    return;
+                } else {
+                    span_bug!(
+                        loc().0,
+                        "`extern \"llvm-intrinsic\"` may only be used for LLVM intrinsics"
+                    );
+                }
+            }
+            _ => {
+                span_bug!(loc().0, "`extern \"llvm-intrinsic\"` may only be used for direct calls")
+            }
+        };
     }
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let callee_abi = match *callee.kind() {
@@ -221,8 +255,7 @@ fn check_call_site_abi<'tcx>(
                 DUMMY_SP,
             );
             if let InstanceKind::LlvmIntrinsic(..) = instance.def {
-                // LLVM intrinsics don't have an ABI, so there is nothing to check.
-                return;
+                span_bug!(loc().0, "llvm.* function must use `extern \"llvm-intrinsic\"`");
             }
             tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
         }
