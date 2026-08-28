@@ -130,8 +130,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .partition(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
         // We don't support empty trait objects.
-        if regular_traits.iter().all(|t| tcx.is_implicit_trait(t.0.skip_binder().def_id(), false))
-            && auto_traits.iter().all(|t| tcx.is_implicit_trait(t.0.skip_binder().def_id(), false))
+        if regular_traits
+            .iter()
+            .chain(auto_traits.iter())
+            .all(|t| tcx.is_implicit_trait(t.0.skip_binder().def_id(), false))
         {
             let guar =
                 self.report_trait_object_with_no_traits(span, user_written_bounds.iter().copied());
