@@ -192,7 +192,6 @@ impl AttributeKind {
             RustcSpecializationTrait => No,
             RustcStdInternalSymbol => No,
             RustcStrictCoherence(..) => Yes,
-            RustcTestEntrypointMarker => No,
             RustcTestMarker(..) => No,
             RustcThenThisWouldNeed(..) => No,
             RustcTrivialFieldReads => Yes,

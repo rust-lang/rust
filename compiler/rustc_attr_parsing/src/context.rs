@@ -354,7 +354,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcSpecializationTraitParser>>,
         Single<WithoutArgs<RustcStdInternalSymbolParser>>,
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
-        Single<WithoutArgs<RustcTestEntrypointMarkerParser>>,
         Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
         Single<WithoutArgs<SplatParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
