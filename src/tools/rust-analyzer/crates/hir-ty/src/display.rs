@@ -1974,12 +1974,12 @@ impl<'db> HirDisplay<'db> for PolyFnSig<'db> {
         if let Safety::Unsafe = fn_sig_kind.safety() {
             write!(f, "unsafe ")?;
         }
-        // FIXME: Enable this when the FIXME on FnAbi regarding PartialEq is fixed.
-        // if !matches!(abi, FnAbi::Rust) {
-        //     f.write_str("extern \"")?;
-        //     f.write_str(abi.as_str())?;
-        //     f.write_str("\" ")?;
-        // }
+        let abi = self.abi();
+        if !matches!(abi, ExternAbi::Rust) {
+            f.write_str("extern \"")?;
+            f.write_str(abi.as_str())?;
+            f.write_str("\" ")?;
+        }
         write!(f, "fn(")?;
         f.write_joined(inputs_and_output.inputs(), ", ")?;
         if fn_sig_kind.c_variadic() {
