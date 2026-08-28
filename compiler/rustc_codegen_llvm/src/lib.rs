@@ -219,7 +219,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         "llvm"
     }
 
-    fn init(&self, sess: &EarlySession) -> CodegenBackendInit {
+    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
         llvm_util::init(sess); // Make sure llvm is inited
 
         // autodiff is based on Enzyme, a library which we might not have available, when it was

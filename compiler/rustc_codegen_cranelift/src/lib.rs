@@ -31,7 +31,6 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::cell::OnceCell;
 use std::env;
 use std::sync::Arc;
 
@@ -118,7 +117,8 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: OnceCell<BackendConfig>,
+    // Set by `init` if not already set. (E.g. by cg_clif.)
+    pub config: Option<BackendConfig>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -126,7 +126,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         "cranelift"
     }
 
-    fn init(&self, sess: &EarlySession) -> CodegenBackendInit {
+    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
         use rustc_session::config::{InstrumentCoverage, LtoCli};
 
         match (sess.target.requires_lto, sess.early_lto()) {
@@ -141,12 +141,15 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
         }
 
-        let config = self.config.get_or_init(|| {
-            BackendConfig::from_opts(&sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| sess.dcx().fatal(err))
-        });
+        // Set `config` if not already set.
+        if self.config.is_none() {
+            self.config = Some(
+                BackendConfig::from_opts(&sess.opts.cg.llvm_args)
+                    .unwrap_or_else(|err| sess.dcx().fatal(err)),
+            );
+        }
 
-        if config.jit_mode && !sess.opts.output_types.should_codegen() {
+        if self.config.as_ref().unwrap().jit_mode && !sess.opts.output_types.should_codegen() {
             sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
 
@@ -218,7 +221,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
-        let config = self.config.get().unwrap();
+        let config = self.config.as_ref().unwrap();
         if config.jit_mode {
             #[cfg(feature = "jit")]
             driver::jit::run_jit(tcx, self.target_cpu(tcx.sess), config.jit_args.clone());
@@ -374,5 +377,5 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend { config: OnceCell::new() })
+    Box::new(CraneliftCodegenBackend { config: None })
 }
