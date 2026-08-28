@@ -841,7 +841,7 @@ impl<'a> TraitDef<'a> {
             .methods
             .iter()
             .map(|method_def| {
-                let (explicit_self, selflike_args, nonselflike_args, nonself_arg_tys) =
+                let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
                     method_def.extract_arg_details(cx, self, type_ident, generics);
 
                 let body = if from_scratch || method_def.is_static() {
@@ -899,7 +899,7 @@ impl<'a> TraitDef<'a> {
             .methods
             .iter()
             .map(|method_def| {
-                let (explicit_self, selflike_args, nonselflike_args, nonself_arg_tys) =
+                let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
                     method_def.extract_arg_details(cx, self, type_ident, generics);
 
                 let body = if from_scratch || method_def.is_static() {
@@ -938,6 +938,18 @@ impl<'a> TraitDef<'a> {
     }
 }
 
+struct ArgDetails {
+    /// The `&self` arg, if present.
+    explicit_self: Option<ast::ExplicitSelf>,
+    /// Expressions for `&self` (if present) and also any other
+    /// args with the same type (e.g. the `other` arg in `PartialEq::eq`).
+    selflike_args: ThinVec<Box<Expr>>,
+    /// Expressions for all the remaining args.
+    nonselflike_args: Vec<Box<Expr>>,
+    /// Additional information about all the args other than `&self`.
+    nonself_arg_tys: Vec<(Ident, Box<ast::Ty>)>,
+}
+
 impl<'a> MethodDef<'a> {
     fn call_substructure_method(
         &self,
@@ -957,21 +969,13 @@ impl<'a> MethodDef<'a> {
         !self.explicit_self
     }
 
-    // The return value includes:
-    // - explicit_self: The `&self` arg, if present.
-    // - selflike_args: Expressions for `&self` (if present) and also any other
-    //   args with the same type (e.g. the `other` arg in `PartialEq::eq`).
-    // - nonselflike_args: Expressions for all the remaining args.
-    // - nonself_arg_tys: Additional information about all the args other than
-    //   `&self`.
     fn extract_arg_details(
         &self,
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
-    ) -> (Option<ast::ExplicitSelf>, ThinVec<Box<Expr>>, Vec<Box<Expr>>, Vec<(Ident, Box<ast::Ty>)>)
-    {
+    ) -> ArgDetails {
         let mut selflike_args = ThinVec::new();
         let mut nonselflike_args = Vec::new();
         let mut nonself_arg_tys = Vec::new();
@@ -998,7 +1002,7 @@ impl<'a> MethodDef<'a> {
             }
         }
 
-        (explicit_self, selflike_args, nonselflike_args, nonself_arg_tys)
+        ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys }
     }
 
     fn create_method(
