@@ -231,6 +231,8 @@ pub trait Interner:
         + SliceLike<Item = ty::OutlivesClause<Self, Self::GenericArg>>
         + TypeFoldable<Self>;
 
+    type TypingEnv: TypingEnv<Self>;
+
     // Predicates
     type ParamEnv: ParamEnv<Self>;
     type Predicate: Predicate<Self>;
@@ -286,7 +288,7 @@ pub trait Interner:
 
     fn const_eval_resolve_for_typeck(
         self,
-        typing_env: ty::TypingEnv<Self>,
+        typing_env: Self::TypingEnv,
         ct: ty::AliasConst<Self>,
         span: Self::Span,
     ) -> ty::ConstToValTreeResult<Self>;

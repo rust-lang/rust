@@ -6,13 +6,14 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 
 use crate::data_structures::DelayedMap;
+// use rustc_data_structures::stable_hash::StableHash;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
     self as ty, Interner, Region, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    /* TypeVisitable */ TypeVisitableExt,
 };
 
 mod private {
@@ -34,30 +35,6 @@ pub struct MayBeErased;
 
 impl TypingModeErasedStatus for CantBeErased {}
 impl TypingModeErasedStatus for MayBeErased {}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TypingEnv<I: Interner> {
-    typing_mode: TypingModeEqWrapper<I>,
-    pub param_env: I::ParamEnv,
-}
-
-impl<I: Interner> TypingEnv<I> {
-    pub fn typing_mode(&self) -> TypingMode<I> {
-        self.typing_mode.0
-    }
-
-    pub fn new(param_env: I::ParamEnv, typing_mode: TypingMode<I>) -> Self {
-        Self { typing_mode: TypingModeEqWrapper(typing_mode), param_env }
-    }
-
-    pub fn fully_monomorphized() -> Self {
-        Self::new(I::ParamEnv::empty(), TypingMode::Codegen)
-    }
-
-    pub fn post_analysis(cx: I, def_id: I::DefId) -> Self {
-        TypingEnv::new(cx.param_env_normalized_for_post_analysis(def_id), TypingMode::PostAnalysis)
-    }
-}
 
 /// The current typing mode of an inference context. We unfortunately have some
 /// slightly different typing rules depending on the current context. See the

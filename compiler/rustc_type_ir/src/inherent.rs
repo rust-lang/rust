@@ -14,7 +14,8 @@ use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, Region, UpcastFrom,
+    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, Region,
+    TypingMode, UpcastFrom,
 };
 
 #[rust_analyzer::prefer_underscore_import]
@@ -629,6 +630,19 @@ pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     ///
     /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
     fn empty() -> Self;
+}
+
+#[rust_analyzer::prefer_underscore_import]
+pub trait TypingEnv<I: Interner>:
+    Copy + Clone + Debug + PartialEq + Eq + Hash + TypeFoldable<I> + TypeVisitable<I>
+{
+    fn typing_mode(&self) -> TypingMode<I>;
+
+    fn new(param_env: I::ParamEnv, typing_mode: TypingMode<I>) -> Self;
+
+    fn fully_monomorphized() -> Self;
+
+    fn post_analysis(cx: I, def_id: I::DefId) -> Self;
 }
 
 #[rust_analyzer::prefer_underscore_import]

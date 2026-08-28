@@ -1461,7 +1461,7 @@ where
                 // To prevent this we discard all the generic arguments and evalaute with identity args
                 // and in its own environment instead of the current environment we are normalizing in.
                 let args = GenericArgs::identity_for_item(cx, def_id.into());
-                let typing_env = ty::TypingEnv::post_analysis(cx, def_id.into());
+                let typing_env = TypingEnv::post_analysis(cx, def_id.into());
 
                 (args, typing_env)
             }
@@ -1493,7 +1493,7 @@ where
 
                 // Since there is no generic parameter, we can just drop the environment
                 // to prevent query cycle.
-                let typing_env = ty::TypingEnv::fully_monomorphized();
+                let typing_env = TypingEnv::fully_monomorphized();
 
                 (alias_const.args, typing_env)
             }

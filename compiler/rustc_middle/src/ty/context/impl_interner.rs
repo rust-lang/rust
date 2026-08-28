@@ -122,6 +122,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>;
 
+    type TypingEnv = ty::TypingEnv<'tcx>;
+
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
 
@@ -166,12 +168,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn const_eval_resolve_for_typeck(
         self,
-        typing_env: rustc_type_ir::TypingEnv<Self>,
+        typing_env: Self::TypingEnv,
         ct: rustc_type_ir::AliasConst<Self>,
         span: Self::Span,
     ) -> rustc_type_ir::ConstToValTreeResult<Self> {
-        let typing_env = ty::TypingEnv::new(typing_env.param_env, typing_env.typing_mode());
-
+        // still not happy with this
         match self.const_eval_resolve_for_typeck(typing_env, ct, span) {
             Ok(Ok(vt)) => Ok(Ok(vt)),
             Ok(Err(ty)) => Ok(Err(ty)),
