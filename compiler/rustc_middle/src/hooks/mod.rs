@@ -58,12 +58,6 @@ declare_hooks! {
     /// Getting a &core::panic::Location referring to a span.
     hook const_caller_location(file: rustc_span::Symbol, line: u32, col: u32) -> mir::ConstValue;
 
-    /// Returns `true` if this def is a function-like thing that is eligible for
-    /// coverage instrumentation under `-Cinstrument-coverage`.
-    ///
-    /// (Eligible functions might nevertheless be skipped for other reasons.)
-    hook is_eligible_for_coverage(key: LocalDefId) -> bool;
-
     /// Imports all `SourceFile`s from the given crate into the current session.
     /// This normally happens automatically when we decode a `Span` from
     /// that crate's metadata - however, the incr comp cache needs

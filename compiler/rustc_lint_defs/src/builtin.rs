@@ -5533,10 +5533,10 @@ declare_lint! {
     ///
     /// ```rust,ignore (requires x86)
     /// #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    /// #![feature(link_llvm_intrinsics, abi_unadjusted)]
+    /// #![feature(link_llvm_intrinsics)]
     /// #![deny(deprecated_llvm_intrinsic)]
     ///
-    /// unsafe extern "unadjusted" {
+    /// unsafe extern "llvm-intrinsic" {
     ///     #[link_name = "llvm.x86.addcarryx.u32"]
     ///     fn foo(a: u8, b: u32, c: u32, d: &mut u32) -> u8;
     /// }

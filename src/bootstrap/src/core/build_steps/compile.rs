@@ -778,7 +778,6 @@ impl Step for StdLink {
 
         let is_downloaded_beta_stage0 = builder
             .sess
-            .config
             .initial_rustc
             .starts_with(builder.out.join(compiler.host).join("stage0/bin"));
 

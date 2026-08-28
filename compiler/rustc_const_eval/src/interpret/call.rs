@@ -455,8 +455,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // compile time.
         M::check_fn_target_features(self, instance)?;
 
+        // If the signature says this cannot unwind, reflect this in the unwind destination so that
+        // we don't have to check this later. (`init_fn_call` already did this for the caller so
+        // here we only have to check the callee.)
         if !callee_fn_abi.can_unwind {
-            // The callee cannot unwind, so force the `Unreachable` unwind handling.
             match &mut cont {
                 ReturnContinuation::Stop { .. } => {}
                 ReturnContinuation::Goto { unwind, .. } => {
@@ -677,11 +679,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         with_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
         target: Option<mir::BasicBlock>,
-        unwind: mir::UnwindAction,
+        mut unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
         let _trace =
             enter_trace_span!(M, step::init_fn_call, tracing_separate_thread = Empty, ?fn_val)
                 .or_if_tracing_disabled(|| trace!("init_fn_call: {:#?}", fn_val));
+
+        // If the signature says this cannot unwind, reflect this in the unwind destination
+        // so that we don't have to check this later.
+        if caller_fn_abi.is_some_and(|abi| !abi.can_unwind) {
+            unwind = mir::UnwindAction::Unreachable;
+        }
 
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,

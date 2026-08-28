@@ -12,7 +12,6 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
     pub abi: ExternAbi,
     pub args: [Ty<'tcx>; ARGS],
     pub ret: Ty<'tcx>,
-    pub nounwind: bool,
     pub c_variadic: bool,
 }
 
@@ -36,24 +35,6 @@ macro_rules! shim_sig {
                 abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
                 args,
                 ret: shim_sig_arg!(this, $($ret)*),
-                nounwind: false,
-                c_variadic,
-            }
-        }
-    };
-}
-
-/// Same as `shim_sig!` but promises that this function will not unwind, even if the ABI allows it.
-#[macro_export]
-macro_rules! shim_sig_nounwind {
-    (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
-        |this| {
-            let (args, c_variadic) = shim_sig_args_sep!(this, [$($args)*]);
-            $crate::shims::sig::ShimSig {
-                abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
-                args,
-                ret: shim_sig_arg!(this, $($ret)*),
-                nounwind: true,
                 c_variadic,
             }
         }
@@ -213,7 +194,6 @@ fn check_shim_abi<'tcx>(
     this: &MiriInterpCx<'tcx>,
     link_name: Symbol,
     callee_abi: &FnAbi<'tcx, Ty<'tcx>>,
-    callee_nounwind: bool,
     caller_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> InterpResult<'tcx> {
     if callee_abi.conv != caller_abi.conv {
@@ -223,12 +203,9 @@ fn check_shim_abi<'tcx>(
             caller = caller_abi.conv,
         );
     }
-    // FIXME: is this needed? Or is it enough to just check this if/when an actual unwind happens?
-    if callee_abi.can_unwind && !callee_nounwind && !caller_abi.can_unwind {
-        throw_ub_format!(
-            "ABI mismatch: callee may unwind, but caller asumes that no unwinding will occur",
-        );
-    }
+    // No need to check unwinding: if the caller signature forbids unwinding, that's already
+    // reflected in the unwind destination so if an unwind occurs it will be reported as UB.
+
     if caller_abi.c_variadic && !callee_abi.c_variadic {
         throw_ub_format!(
             "ABI mismatch: `{link_name}` is a non-variadic function, but the caller is using a variadic signature"
@@ -352,7 +329,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let callee_fn_abi = shim_sig.as_abi(this);
 
         // Check everything.
-        check_shim_abi(this, link_name, callee_fn_abi, shim_sig.nounwind, caller_fn_abi)?;
+        check_shim_abi(this, link_name, callee_fn_abi, caller_fn_abi)?;
         this.check_shim_symbol_clash(link_name)?;
 
         // Return arguments.
@@ -378,7 +355,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let callee_fn_abi = shim_sig.as_abi(this);
 
         // Check everything.
-        check_shim_abi(this, link_name, callee_fn_abi, shim_sig.nounwind, caller_fn_abi)?;
+        check_shim_abi(this, link_name, callee_fn_abi, caller_fn_abi)?;
         this.check_shim_symbol_clash(link_name)?;
 
         // Return arguments.
@@ -423,8 +400,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Check that the given function has the expected amount of arguments, and then
     /// return the list of arguments.
     ///
-    /// This may only be used for `extern "unadjusted"` LLVM intrinsics.
-    fn check_shim_sig_unadjusted<'a, const N: usize>(
+    /// This may only be used for `extern "llvm-intrinsic"` LLVM intrinsics.
+    fn check_shim_sig_llvm_intrinsic<'a, const N: usize>(
         &mut self,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
