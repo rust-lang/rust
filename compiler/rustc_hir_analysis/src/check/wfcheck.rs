@@ -2446,15 +2446,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         }
 
         let span_of_and = |c: &And<_, _>| {
-            let mut spans = c.0.iter().map(|leaf| leaf.span());
-            let fst = spans.next()?;
-            Some(spans.fold(fst, |snd, acc: rustc_span::Span| acc.to(snd)))
+            c.0.iter().map(|leaf| leaf.span()).reduce(|span: Span, acc| acc.to(span))
         };
 
         let span_of_or = |c: &Or<_, _>| {
-            let mut spans = c.0.iter().flat_map(|and| span_of_and(and));
-            let fst = spans.next()?;
-            Some(spans.fold(fst, |snd, acc| acc.to(snd)))
+            c.0.iter().flat_map(|and| span_of_and(and)).reduce(|span, acc| acc.to(span))
         };
 
         let check_leaf_constraint =
