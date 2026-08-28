@@ -82,7 +82,7 @@ impl<'a> Iterator for AppearancesIter<'a> {
 
 impl LocalUseMap {
     pub(crate) fn build(
-        live_locals: &[Local],
+        live_locals: &DenseBitSet<Local>,
         location_map: &DenseLocationMap,
         body: &Body<'_>,
     ) -> Self {
@@ -98,11 +98,7 @@ impl LocalUseMap {
             return local_use_map;
         }
 
-        let mut locals_with_use_data: DenseBitSet<Local> =
-            DenseBitSet::new_empty(body.local_decls.len());
-        live_locals.iter().for_each(|&local| {
-            locals_with_use_data.insert(local);
-        });
+        let locals_with_use_data: DenseBitSet<Local> = live_locals.clone();
 
         LocalUseMapBuild { local_use_map: &mut local_use_map, location_map, locals_with_use_data }
             .visit_body(body);
