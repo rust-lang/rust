@@ -131,7 +131,7 @@ impl TestCx<'_> {
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
-            script_str.push_str("source ./src/etc/lldb_batchmode/check_gdb.py\n");
+            script_str.push_str("source ./src/etc/debugger_tester/gdb/check_gdb.py\n");
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
             script_str.push_str(&format!("set sysroot {android_cross_path}\n"));
             script_str.push_str(&format!("file {}\n", exe_file));
@@ -235,7 +235,7 @@ impl TestCx<'_> {
             let rust_pp_module_abs_path = self.config.src_root.join("src").join("etc");
             // write debugger script
             let mut script_str = String::with_capacity(2048);
-            script_str.push_str("py import lldb_batchmode\n");
+            script_str.push_str("py import debugger_tester\n");
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
             script_str.push_str("show version\n");
 
@@ -339,10 +339,10 @@ impl TestCx<'_> {
             let pythonpath = with_pythonpath_prepended(&rust_pp_module_abs_path);
             gdb.args(debugger_opts)
                 .env("PYTHONPATH", pythonpath)
-                .env("BATCHMODE_DEBUGGER", "gdb")
-                .env("LLDB_BATCHMODE_BLESS_TEST_DATA", if self.config.bless { "1" } else { "0" })
-                .env("LLDB_BATCHMODE_TARGET_TRIPLE", &self.config.target)
-                .env("LLDB_BATCHMODE_INPUT_DATA_PATH", lldb_input_data_path);
+                .env("DEBUGGER_TESTER_DEBUGGER", "gdb")
+                .env("DEBUGGER_TESTER_BLESS_TEST_DATA", if self.config.bless { "1" } else { "0" })
+                .env("DEBUGGER_TESTER_TARGET_TRIPLE", &self.config.target)
+                .env("DEBUGGER_TESTER_INPUT_DATA_PATH", lldb_input_data_path);
 
             debugger_run_result =
                 self.compose_and_run(gdb, self.config.target_run_lib_path.as_path(), None, None);
@@ -464,7 +464,7 @@ impl TestCx<'_> {
         self.dump_output_file(&script_str, "debugger.script");
         let debugger_script = self.make_out_name("debugger.script");
 
-        // Let LLDB execute the script via lldb_batchmode.py
+        // Let LLDB execute the script via `debugger_tester`
         let debugger_run_result = self.run_lldb(lldb, &exe_file, &debugger_script);
 
         if !debugger_run_result.status.success() {
@@ -482,7 +482,7 @@ impl TestCx<'_> {
         test_executable: &Utf8Path,
         debugger_script: &Utf8Path,
     ) -> ProcRes {
-        // Path containing `lldb_batchmode.py`, so that the `script` command can import it.
+        // Path containing `debugger_tester`, so that the `script` command can import it.
         let rust_pp_module_abs_path = self.config.src_root.join("src/etc");
         let pythonpath = with_pythonpath_prepended(&rust_pp_module_abs_path);
         // make sure `PATH` points to all the dlls necessary to run the debugee
@@ -498,13 +498,13 @@ impl TestCx<'_> {
         let mut cmd = ArgFileCommand::new(lldb);
         cmd.arg("--batch") // --batch executes our script from --one-line and kills lldb afterwards
             .arg("--one-line")
-            .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
-            .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
-            .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
-            .env("LLDB_BATCHMODE_INPUT_DATA_PATH", lldb_input_data_path)
-            .env("LLDB_BATCHMODE_BLESS_TEST_DATA", if self.config.bless { "1" } else { "0" })
-            .env("LLDB_BATCHMODE_TARGET_TRIPLE", &self.config.target)
-            .env("BATCHMODE_DEBUGGER", "lldb")
+            .arg("script --language python -- import debugger_tester; debugger_tester.main()")
+            .env("DEBUGGER_TESTER_TARGET_PATH", test_executable)
+            .env("DEBUGGER_TESTER_SCRIPT_PATH", debugger_script)
+            .env("DEBUGGER_TESTER_INPUT_DATA_PATH", lldb_input_data_path)
+            .env("DEBUGGER_TESTER_BLESS_TEST_DATA", if self.config.bless { "1" } else { "0" })
+            .env("DEBUGGER_TESTER_TARGET_TRIPLE", &self.config.target)
+            .env("DEBUGGER_TESTER_DEBUGGER", "lldb")
             .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
             .env("PYTHONPATH", pythonpath)
             .env("PATH", path);
@@ -545,7 +545,7 @@ fn prepend_to_path(some_path: &Utf8Path) -> String {
 }
 
 /// Converts the given target name into the appropriate input file name based on the
-/// targets defined in `lldb_batchmode.common.Target`
+/// targets defined in `debugger_tester.common.Target`
 fn get_target_file_name(target_name: &str) -> &'static str {
     if target_name.ends_with("windows-msvc") {
         "windows_msvc"

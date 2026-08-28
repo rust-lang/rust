@@ -4,7 +4,7 @@ from typing import Callable, List, Tuple
 
 import gdb
 
-from .common import (
+from ..common import (
     INPUT_DATA,
     Child,
     Field,

@@ -3,7 +3,7 @@ import traceback
 
 import gdb
 
-from .common import (
+from ..common import (
     BLESS,
     INPUT_DATA,
     TYPES_TESTED,

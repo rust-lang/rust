@@ -229,8 +229,8 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(&path);
     }
 
+    stamp.add_dir(&src_root.join("src/etc/debugger_tester"));
     stamp.add_dir(&src_root.join("src/etc/natvis"));
-    stamp.add_dir(&src_root.join("src/etc/lldb_batchmode"));
 
     stamp.add_dir(&config.target_run_lib_path);
 

@@ -93,7 +93,7 @@ def execute_command(command_interpreter: lldb.SBCommandInterpreter, command: str
                     "registering breakpoint callback, id = " + str(breakpoint_id)
                 )
                 callback_command = f"breakpoint command add -s python {breakpoint_id!s} -o \
-'import lldb_batchmode; lldb_batchmode.runner.breakpoint_callback'"
+'import debugger_tester; debugger_tester.lldb.batchmode.breakpoint_callback'"
 
                 command_interpreter.HandleCommand(callback_command, res)
                 if res.Succeeded():
@@ -158,7 +158,7 @@ def start_watchdog():
     def watchdog():
         while clock() < watchdog_max_time:
             time.sleep(1)
-        print("TIMEOUT: lldb_batchmode has been running for too long. Aborting!")
+        print("TIMEOUT: lldb.batchmode has been running for too long. Aborting!")
         thread.interrupt_main()
 
     # Start the listener and let it run as a daemon
@@ -179,7 +179,7 @@ def dispatch_repr(var_name: str, breakpoint_index: int, frame: lldb.SBFrame) -> 
     # We save importing the check until we actually see a repr command. This prevents us from trying
     # to load input data from tests that don't use `repr` commands.
     from .check_lldb import check
-    from .common import Result
+    from ..common import Result
 
     return check(var_name, breakpoint_index, frame) == Result.Ok
 
@@ -190,8 +190,8 @@ def dispatch_repr(var_name: str, breakpoint_index: int, frame: lldb.SBFrame) -> 
 
 
 def main():
-    target_path = get_env_arg("LLDB_BATCHMODE_TARGET_PATH")
-    script_path = get_env_arg("LLDB_BATCHMODE_SCRIPT_PATH")
+    target_path = get_env_arg("DEBUGGER_TESTER_TARGET_PATH")
+    script_path = get_env_arg("DEBUGGER_TESTER_SCRIPT_PATH")
 
     print("LLDB batch-mode script")
     print("----------------------")
@@ -294,7 +294,7 @@ def main():
         if repr_cmd_run:
             # We save importing these until we actually see a repr command. This prevents us
             # from trying to load input data from tests that don't use `repr` commands.
-            from .common import (
+            from ..common import (
                 BLESS,
                 BlessMetadata,
                 INPUT_DATA,
@@ -317,7 +317,7 @@ def main():
             ):
                 from lldb_providers import FEATURE_FLAGS
 
-                path = os.path.relpath(os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"])
+                path = os.path.relpath(os.environ["DEBUGGER_TESTER_INPUT_DATA_PATH"])
 
                 print(f"[repr] If you do not have access to this target, you can manually update \
 the test data by overwriting the data in {path} with the following:")
