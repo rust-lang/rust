@@ -133,7 +133,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if regular_traits
             .iter()
             .chain(auto_traits.iter())
-            .all(|t| tcx.is_implicit_trait(t.0.skip_binder().def_id(), false))
+            .all(|t| tcx.is_implicit_trait(t.0.skip_binder().def_id(), ty::IncludingSized::No))
         {
             let guar =
                 self.report_trait_object_with_no_traits(span, user_written_bounds.iter().copied());

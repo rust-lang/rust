@@ -1338,7 +1338,12 @@ where
 
             // Backward compatibility for default auto traits.
             // Test: ui/traits/default_auto_traits/extern-types.rs
-            ty::Foreign(..) if self.cx().is_implicit_trait(goal.predicate.def_id(), false) => {
+            ty::Foreign(..)
+                if self.cx().is_implicit_trait(
+                    goal.predicate.def_id(),
+                    rustc_type_ir::IncludingSized::No,
+                ) =>
+            {
                 check_impls()
             }
 

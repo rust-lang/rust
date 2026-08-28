@@ -406,7 +406,7 @@ fn bounds_from_generic_clauses<'tcx>(
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
                 // nia: fixme: metasized
-                if !tcx.is_implicit_trait(def_id, false)
+                if !tcx.is_implicit_trait(def_id, ty::IncludingSized::No)
                     && !tcx.is_lang_item(def_id, LangItem::Sized)
                 {
                     // Do not add that restriction to the list if it is a positive requirement.

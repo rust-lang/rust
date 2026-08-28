@@ -435,7 +435,7 @@ pub trait Interner:
 
     fn is_default_trait(self, def_id: Self::TraitId) -> bool;
 
-    fn is_implicit_trait(self, def_id: Self::TraitId, including_sized: bool) -> bool;
+    fn is_implicit_trait(self, def_id: Self::TraitId, including_sized: IncludingSized) -> bool;
 
     fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
 
@@ -542,6 +542,19 @@ pub trait Interner:
 
     type CanonicalInput: Copy + Debug + Hash + Eq + Deref<Target = CanonicalInputData<Self>>;
     fn mk_canonical_input(self, data: CanonicalInputData<Self>) -> Self::CanonicalInput;
+}
+
+/// Specify if and how the sized hierarchy should be included
+#[derive(Clone, Copy, Default)]
+pub enum IncludingSized {
+    /// Include the whole size hierarchy
+    Yes,
+    // just as an example, to implement if needed
+    // /// Include only `MetaSized`, not `Sized`
+    // JustMetaSized,
+    /// Skip the entire hierarchy
+    #[default]
+    No,
 }
 
 macro_rules! declare_lift_into {
