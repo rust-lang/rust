@@ -11,7 +11,7 @@ use tracing::debug;
 
 use super::TypeChecker;
 use crate::constraints::OutlivesConstraintSet;
-use crate::polonius::PoloniusContext;
+use crate::polonius::{PoloniusContext, record_live_region_variance};
 use crate::region_infer::values::LivenessValues;
 use crate::universal_regions::UniversalRegions;
 
@@ -220,7 +220,12 @@ impl<'a, 'tcx> LiveVariablesVisitor<'a, 'tcx> {
 
         // When using `-Zpolonius=next`, we record the variance of each live region.
         if let Some(polonius_context) = self.polonius_context {
-            polonius_context.record_live_region_variance(self.tcx, self.universal_regions, value);
+            record_live_region_variance(
+                self.tcx,
+                &mut polonius_context.live_region_variances,
+                self.universal_regions,
+                value,
+            );
         }
     }
 }

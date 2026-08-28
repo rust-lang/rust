@@ -19,7 +19,7 @@ use rustc_trait_selection::traits::query::dropck_outlives;
 use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOpOutput};
 use tracing::debug;
 
-use crate::polonius;
+use crate::polonius::{self, record_live_region_variance};
 use crate::region_infer::values;
 use crate::type_check::liveness::local_use_map::LocalUseMap;
 use crate::type_check::{NormalizeLocation, TypeChecker};
@@ -627,8 +627,9 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
 
         // When using `-Zpolonius=next`, we record the variance of each live region.
         if let Some(polonius_context) = typeck.polonius_context.as_mut() {
-            polonius_context.record_live_region_variance(
+            record_live_region_variance(
                 typeck.infcx.tcx,
+                &mut polonius_context.live_region_variances,
                 typeck.universal_regions,
                 value,
             );
