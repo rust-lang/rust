@@ -49,3 +49,9 @@ global_asm!("", options(nostack));
 //~^ ERROR the `nostack` option cannot be used with `global_asm!`
 global_asm!("", options(preserves_flags));
 //~^ ERROR the `preserves_flags` option cannot be used with `global_asm!`
+
+//@ reference: asm.abi-clobbers.must-specify
+//@ reference: asm.options.checks-mutually-exclusive
+//@ reference: asm.options.checks-noreturn
+//@ reference: asm.options.checks-pure
+//@ reference: asm.options.global_asm-restriction

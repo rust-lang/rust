@@ -91,3 +91,11 @@ fn main() {
         asm!("/* {:z} */", out(zmm_reg) xmmword);
     }
 }
+
+//@ reference: asm.operand-type.supported-operands-lateout
+//@ reference: asm.register-names.not-for-io
+//@ reference: asm.register-operands.equivalence-to-base-register
+//@ reference: asm.register-operands.error-two-operands
+//@ reference: asm.register-operands.register-or-class
+//@ reference: asm.register-operands.supported-register-classes
+//@ reference: asm.template-modifiers.supported-modifiers

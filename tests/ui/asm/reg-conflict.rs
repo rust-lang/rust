@@ -16,3 +16,5 @@ fn main() {
         //~^ ERROR register `s1` conflicts with register `d0`
     }
 }
+
+//@ reference: asm.register-operands.error-overlapping

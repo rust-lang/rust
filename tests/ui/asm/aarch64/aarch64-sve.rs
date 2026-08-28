@@ -19,3 +19,5 @@ fn f(x: f64) {
         asm!("", out("ffr") _);
     }
 }
+
+//@ reference: asm.register-operands.supported-register-classes

@@ -82,3 +82,5 @@ fn main() {
     .join()
     .unwrap();
 }
+
+//@ reference: asm.operand-type.supported-operands-sym

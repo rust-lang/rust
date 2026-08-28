@@ -137,3 +137,6 @@ fn main() {
         //~^^ ERROR: invalid instruction mnemonic 'invalid_instruction'
     }
 }
+
+//@ reference: asm.ts-args.one-or-more
+//@ reference: asm.validity.non-exhaustive
