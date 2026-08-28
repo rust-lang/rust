@@ -364,3 +364,42 @@ pub macro unicode_str {
         )
     }
 }
+
+/// Returns a list of enabled drive letters.
+///
+/// This is a wrapper around [`GetLogicalDrives`].
+/// Each letter is returned as an ascii byte.
+///
+/// [`GetLogicalDrives`]: (https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getlogicaldrives)
+pub fn get_logical_drives() -> impl Iterator<Item = u8> {
+    // SAFETY: `GetLogicalDrives` only returns information.
+    let drives = unsafe { c::GetLogicalDrives() };
+    (b'A'..=b'Z').filter(move |letter| drives >> (letter - b'A') & 1 == 1)
+}
+
+/// Get the NT path a device name points to.
+///
+/// # Safety
+///
+/// `device_name` must be null-terminated.
+// FIXME: Use a null-terminated wide string type to assert validity, similar to CStr.
+// Then this function can be safe.
+pub unsafe fn query_dos_device<'a>(
+    device_name: &[u16],
+    buffer: &'a mut [u16],
+) -> Option<&'a [u16]> {
+    let device_ptr = device_name.as_ptr();
+    let buffer_ptr = buffer.as_mut_ptr();
+    let buffer_len = buffer.len().try_into().ok()?;
+    // SAFETY: `device_ptr` points to a null-terminated u16 string.
+    // `buffer_ptr` is writeable up to buffer_len u16s.
+    let result = unsafe { c::QueryDosDeviceW(device_ptr, buffer_ptr, buffer_len) } as usize;
+    if result > 0 {
+        // QueryDosDeviceW returns a list of null-terminated strings where the list itself is also null-terminated
+        // In the case where you pass a device name (which we always) it only returns one string.
+        // Therefore to get the string we trim off both the list null termination and the string null termination.
+        Some(buffer[..result].trim_suffix(&[0, 0]))
+    } else {
+        None
+    }
+}
