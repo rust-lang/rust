@@ -98,7 +98,7 @@ impl LocalUseMap {
             return local_use_map;
         }
 
-        let locals_with_use_data: DenseBitSet<Local> = live_locals.clone();
+        let locals_with_use_data = live_locals;
 
         LocalUseMapBuild { local_use_map: &mut local_use_map, location_map, locals_with_use_data }
             .visit_body(body);
@@ -133,7 +133,7 @@ struct LocalUseMapBuild<'me> {
     // obtained the same information from `live_locals` but we want to
     // avoid repeatedly calling `Vec::contains()` (see `LocalUseMap` for
     // the rationale on the time-memory trade-off we're favoring here).
-    locals_with_use_data: DenseBitSet<Local>,
+    locals_with_use_data: &'me DenseBitSet<Local>,
 }
 
 impl Visitor<'_> for LocalUseMapBuild<'_> {
