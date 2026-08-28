@@ -74,11 +74,13 @@ impl EnvKey {
 impl Ord for EnvKey {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         unsafe {
+            // Note that keys will only be compared up to lengths of i32::MAX.
+            // Larger keys are not supported by the OS.
             let result = c::CompareStringOrdinal(
                 self.utf16.as_ptr(),
-                self.utf16.len() as _,
+                self.utf16.len().saturating_cast(),
                 other.utf16.as_ptr(),
-                other.utf16.len() as _,
+                other.utf16.len().saturating_cast(),
                 c::TRUE,
             );
             match result {
@@ -124,7 +126,11 @@ impl PartialEq<str> for EnvKey {
 // they are compared using a caseless string mapping.
 impl From<OsString> for EnvKey {
     fn from(k: OsString) -> Self {
-        EnvKey { utf16: k.encode_wide().collect(), os_string: k }
+        let utf16 = k.encode_wide().collect();
+        // We only support keys up to lengths of i32::MAX.
+        // Keys beyond that size will error on spawn in any case.
+        debug_assert!(self.utf16.len() <= i32::MAX as usize);
+        EnvKey { utf16, os_string: k }
     }
 }
 
@@ -930,6 +936,7 @@ fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut 
         }
 
         for (k, v) in env {
+            debug_assert!(k.utf16.len() <= i32::MAX as usize);
             ensure_no_nuls(k.os_string)?;
             blk.extend(k.utf16);
             blk.push('=' as u16);
