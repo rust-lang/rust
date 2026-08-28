@@ -4,10 +4,9 @@ error[E0597]: `n` does not live long enough
 LL |     let n = 42;
    |         - binding `n` declared here
 LL |     FOO(&n);
-   |     ----^^-
-   |     |   |
-   |     |   borrowed value does not live long enough
-   |     argument requires that `n` is borrowed for `'static`
+   |     --- ^^ borrowed value does not live long enough
+   |     |
+   |     closure requires that `n` is borrowed for `'static`
 LL |
 LL | }
    | - `n` dropped here while still borrowed

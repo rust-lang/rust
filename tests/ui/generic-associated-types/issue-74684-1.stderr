@@ -6,10 +6,10 @@ LL | fn bug<'a, T: ?Sized + Fun<F<'a> = [u8]>>(_ : Box<T>) -> &'static T::F<'a> 
 LL |     let a = [0; 1];
    |         - binding `a` declared here
 LL |     let _x = T::identity(&a);
-   |              ------------^^-
-   |              |           |
-   |              |           borrowed value does not live long enough
-   |              argument requires that `a` is borrowed for `'a`
+   |                          ^^
+   |                          |
+   |                          borrowed value does not live long enough
+   |                          argument requires that `a` is borrowed for `'a`
 ...
 LL | }
    | - `a` dropped here while still borrowed

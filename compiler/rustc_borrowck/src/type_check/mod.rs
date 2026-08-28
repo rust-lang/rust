@@ -8,7 +8,7 @@ use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::{FN_TRAITS, LangItem};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::{IndexSlice, IndexVec};
@@ -435,6 +435,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Use this order of parameters because the sup type is usually the
         // "expected" type in diagnostics.
         self.relate_types(sup, ty::Contravariant, sub, locations, category)
+    }
+
+    fn sub_types_spanned(
+        &mut self,
+        sub: Ty<'tcx>,
+        sup: Ty<'tcx>,
+        locations: Locations,
+        span: Option<Span>,
+        category: ConstraintCategory<'tcx>,
+    ) -> Result<(), NoSolution> {
+        // Use this order of parameters because the sup type is usually the
+        // "expected" type in diagnostics.
+        self.relate_types_spanned(sup, ty::Contravariant, sub, locations, span, category)
     }
 
     #[instrument(skip(self, category), level = "debug")]
@@ -1639,7 +1652,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty_left,
                             common_ty,
                             location.to_locations(),
-                            ConstraintCategory::CallArgument(None),
+                            ConstraintCategory::CallArgument(None, CallArgumentKind::Normal),
                         )
                         .unwrap_or_else(|err| {
                             bug!("Could not equate type variable with {:?}: {:?}", ty_left, err)
@@ -1648,7 +1661,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty_right,
                             common_ty,
                             location.to_locations(),
-                            ConstraintCategory::CallArgument(None),
+                            ConstraintCategory::CallArgument(None, CallArgumentKind::Normal),
                         ) {
                             span_mirbug!(
                                 self,
@@ -2056,16 +2069,40 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let op_arg_ty = op_arg.node.ty(self.body, self.tcx());
 
             let op_arg_ty = self.normalize(ty::Unnormalized::new_wip(op_arg_ty), term_location);
-            let category = if call_source.from_hir_call() {
-                ConstraintCategory::CallArgument(Some(
-                    self.infcx.tcx.erase_and_anonymize_regions(func_ty),
-                ))
+            let is_closure = n == 0
+                && matches!(func_ty.kind(), ty::FnDef(def_id, _) if {
+                    let tcx = self.tcx();
+                    let trait_id = tcx.trait_item_of(*def_id).unwrap_or(*def_id);
+                    tcx.trait_of_assoc(trait_id).is_some_and(|trait_id| {
+                        FN_TRAITS.iter().any(|&lang_item| tcx.is_lang_item(trait_id, lang_item))
+                    })
+                });
+            let is_receiver = n == 0
+                && matches!(&term.kind, TerminatorKind::Call { fn_span, .. } if term.source_info.span != *fn_span);
+            let (category, span) = if call_source.from_hir_call() {
+                (
+                    ConstraintCategory::CallArgument(
+                        Some(self.infcx.tcx.erase_and_anonymize_regions(func_ty)),
+                        if is_closure {
+                            CallArgumentKind::Closure
+                        } else if is_receiver {
+                            CallArgumentKind::Receiver
+                        } else {
+                            CallArgumentKind::Normal
+                        },
+                    ),
+                    Some(op_arg.span),
+                )
             } else {
-                ConstraintCategory::Boring
+                (ConstraintCategory::Boring, None)
             };
-            if let Err(terr) =
-                self.sub_types(op_arg_ty, *fn_arg, term_location.to_locations(), category)
-            {
+            if let Err(terr) = self.sub_types_spanned(
+                op_arg_ty,
+                *fn_arg,
+                term_location.to_locations(),
+                span,
+                category,
+            ) {
                 span_mirbug!(
                     self,
                     term,
