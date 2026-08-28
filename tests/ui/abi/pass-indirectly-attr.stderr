@@ -139,6 +139,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
                                pointee_size: Size(0 bytes),
                                pointee_align: None,
                            },
+                           x87_floating_point_stack: false,
                        },
                    },
                },
