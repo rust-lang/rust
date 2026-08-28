@@ -124,7 +124,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         .target_features
         .iter()
         .map(|features| features.name.as_str())
-        .flat_map(|feat| to_gcc_features(cx.tcx.sess, feat).into_iter())
+        .flat_map(|feat| to_gcc_features(&cx.tcx.sess.target, feat).into_iter())
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match *x {
             InstructionSetAttr::ArmA32 => "-thumb-mode", // FIXME(antoyo): support removing feature.
             InstructionSetAttr::ArmT32 => "thumb-mode",
