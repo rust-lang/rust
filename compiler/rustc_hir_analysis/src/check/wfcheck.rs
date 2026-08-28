@@ -2407,12 +2407,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 u,
             )
             .with_spans(forall.span);
-            if let Some(assert_on_exit) = forall.assert_on_exit {
-                self.check_test_binder_region_constraints(
-                    forall.span,
-                    &assert_on_exit.clone(),
-                    &constraint.clone(),
-                );
+            if let Some(assert_on_exit) = &forall.assert_on_exit {
+                self.check_test_binder_region_constraints(forall.span, assert_on_exit, &constraint);
             }
             self.infcx.overwrite_solver_region_constraint(constraint);
         });
