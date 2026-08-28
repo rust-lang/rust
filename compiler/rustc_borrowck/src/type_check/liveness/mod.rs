@@ -67,7 +67,7 @@ pub(super) fn generate<'tcx>(
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
 
-    trace::trace(typeck, location_map, move_data, relevant_live_locals, boring_locals);
+    trace::trace(typeck, location_map, move_data, &relevant_live_locals, &boring_locals);
 
     // Mark regions that should be live where they appear within rvalues or within a call: like
     // args, regions, and types.
