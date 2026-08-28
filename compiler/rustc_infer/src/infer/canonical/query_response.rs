@@ -146,14 +146,15 @@ impl<'tcx> InferCtxt<'tcx> {
         let region_obligations = self.take_registered_region_obligations();
         let region_assumptions = self.take_registered_region_assumptions();
         debug!(?region_obligations);
-        let mut region_constraints = self.with_region_constraints(|region_constraints| {
+        let solver_constraints = self.clone_solver_region_constraints();
+        let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 region_obligations,
                 region_constraints,
                 region_assumptions,
+                solver_constraints,
             )
         });
-        region_constraints.solver_constraints = self.clone_solver_region_constraints();
         debug!(?region_constraints);
 
         let opaque_types = self
@@ -640,6 +641,7 @@ pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
     assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
+    solver_constraints: ty::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 
@@ -684,5 +686,5 @@ pub fn make_query_region_constraints<'tcx>(
         ))
         .collect();
 
-    QueryRegionConstraints { constraints, assumptions, solver_constraints: Default::default() }
+    QueryRegionConstraints { constraints, assumptions, solver_constraints }
 }
