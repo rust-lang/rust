@@ -22,6 +22,12 @@ fn main() {
     // Check that all help options can be invoked at once
     let codegen_help = bare_rustc().arg("-Chelp").run().stdout_utf8();
     let unstable_help = bare_rustc().arg("-Zhelp").run().stdout_utf8();
+    let polonius_help =
+        format!("{}\n", unstable_help.lines().find(|line| line.contains("polonius=val")).unwrap());
+    diff()
+        .expected_file("polonius-help.stdout")
+        .actual_text("rustc -Zhelp (polonius)", &polonius_help)
+        .run();
     let lints_help = bare_rustc().arg("-Whelp").run().stdout_utf8();
     let expected_all = format!("{help}{codegen_help}{unstable_help}{lints_help}");
     let all_help = bare_rustc().args(["--help", "-Chelp", "-Zhelp", "-Whelp"]).run().stdout_utf8();
