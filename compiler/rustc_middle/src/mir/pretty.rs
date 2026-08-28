@@ -1364,6 +1364,9 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             ProjectionElem::UnwrapUnsafeBinder(_) => {
                 write!(fmt, "unwrap_binder!(")?;
             }
+            ProjectionElem::PhantomDeref => {
+                write!(fmt, "reborrow!(")?;
+            }
         }
     }
 
@@ -1382,7 +1385,7 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             ProjectionElem::Downcast(None, index) => {
                 write!(fmt, " as variant#{index:?})")?;
             }
-            ProjectionElem::Deref => {
+            ProjectionElem::Deref | ProjectionElem::PhantomDeref => {
                 write!(fmt, ")")?;
             }
             ProjectionElem::Field(field, ty) => {

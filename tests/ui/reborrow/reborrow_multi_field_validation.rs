@@ -1,3 +1,5 @@
+//! Check that Reborrow errors on non-Copy/Reborrow fields beyond the first.
+
 #![feature(reborrow)]
 
 use std::marker::Reborrow;

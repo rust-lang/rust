@@ -1,3 +1,6 @@
+//! Test that reborrowing a custom marker type does not conflict with a later reborrow if the result
+//! is immediately dropped, and that the later reborrow conflicts with moving the type.
+
 #![feature(reborrow)]
 use std::marker::{Reborrow, PhantomData};
 
