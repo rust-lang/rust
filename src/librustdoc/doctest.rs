@@ -413,19 +413,36 @@ pub(crate) fn run_tests(
     // `running 0 tests...`.
     if ran_edition_tests == 0 || !standalone_tests.is_empty() {
         standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(b.desc.name.as_slice()));
-        // We need a vector of `&TestDescAndFn`.
-        #[cfg(not(bootstrap))]
-        let standalone_tests = &standalone_tests.iter().collect::<Vec<_>>();
-        test::test_main_with_exit_callback(&test_args, standalone_tests, None, || {
-            let times = times.times_in_secs();
-            // We ensure temp dir destructor is called.
-            std::mem::drop(temp_dir.take());
-            if let Some((total_time, compilation_time)) = times {
-                test::print_merged_doctests_times(&test_args, total_time, compilation_time);
+        cfg_select! {
+            bootstrap => {
+                test::test_main_with_exit_callback(&test_args, standalone_tests, None, || {
+                    let times = times.times_in_secs();
+                    // We ensure temp dir destructor is called.
+                    std::mem::drop(temp_dir.take());
+                    if let Some((total_time, compilation_time)) = times {
+                        test::print_merged_doctests_times(&test_args, total_time, compilation_time);
+                    }
+                });
             }
-        });
+            _ => {
+                // We need a vector of `&TestDescAndFn`.
+                let standalone_test_refs = &standalone_tests.iter().collect::<Vec<_>>();
+                let exit = test::test_main(&test_args, standalone_test_refs);
+                let times = times.times_in_secs();
+                // We ensure temp dir destructor is called.
+                std::mem::drop(standalone_tests);
+                std::mem::drop(temp_dir.take());
+                if let Some((total_time, compilation_time)) = times {
+                    test::print_merged_doctests_times(&test_args, total_time, compilation_time);
+                }
+                // Fall through on success, the caller may want to do more stuff.
+                if exit != std::process::ExitCode::SUCCESS {
+                    exit.exit_process();
+                }
+            }
+        }
     } else {
-        // If the first condition branch exited successfully, `test_main_with_exit_callback` will
+        // If the first condition branch exited successfully, it will
         // not exit the process. So to prevent displaying the times twice, we put it behind an
         // `else` condition.
         if let Some((total_time, compilation_time)) = times.times_in_secs() {
@@ -435,7 +452,7 @@ pub(crate) fn run_tests(
     // We ensure temp dir destructor is called.
     std::mem::drop(temp_dir);
     if nb_errors != 0 {
-        std::process::exit(test::ERROR_EXIT_CODE);
+        std::process::exit(test::ERROR_EXIT_CODE.into());
     }
 }
 
