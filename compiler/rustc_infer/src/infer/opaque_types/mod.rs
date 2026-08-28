@@ -217,26 +217,33 @@ impl<'tcx> InferCtxt<'tcx> {
             return;
         };
 
-        // Since we lookup `hidden_types_of_opaques` modulo sub roots,
-        // it's okay to save them as sub roots.
+        let ty_sub_vid = self.sub_unification_table_root_var(vid);
+        let inner = &mut *self.inner.borrow_mut();
+        // This is iffy, can't call `type_variables()` as we're already
+        // borrowing the `opaque_type_storage` here.
+        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
+
+        // Since we lookup `hidden_types_of_opaques` modulo sub-roots,
+        // it's okay to save them with the preexisting key that
+        // sub-unified with the given `hidden_ty`.
         //
         // And doing so helps avoiding possibly duplicates (modulo sub roots)
         // which is not so good for caching and goal evaluation progress
         // heuristics.
-        let sub_root = self.sub_unification_table_root_var(vid);
-        let hidden_ty = if sub_root != vid
-            && self
-                .inner
-                .borrow_mut()
-                .opaque_types()
-                .has_hidden_type_of_opaque_for_exact_vid(sub_root)
-        {
-            Ty::new_var(self.tcx, sub_root)
-        } else {
-            hidden_ty
-        };
+        let hidden_ty = inner
+            .opaque_type_storage
+            .iter_opaque_hidden_ty_bounds()
+            .map(|(hidden_ty, _)| hidden_ty)
+            .find(|hidden_ty| {
+                if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.kind() {
+                    type_variables.sub_unification_table_root_var(hidden_vid) == ty_sub_vid
+                } else {
+                    false
+                }
+            })
+            .unwrap_or(hidden_ty);
 
-        self.inner.borrow_mut().opaque_types().add_hidden_type_of_opaque(hidden_ty, bounds);
+        inner.opaque_types().add_hidden_type_of_opaque(hidden_ty, bounds);
     }
 
     /// Insert a hidden type into the opaque type storage, equating it
