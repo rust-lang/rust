@@ -372,7 +372,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcMir(_) => (),
             AttributeKind::RustcMustMatchExhaustively(..) => (),
             AttributeKind::RustcNeverReturnsNullPtr => (),
-            AttributeKind::RustcNeverTypeOptions { .. } => (),
             AttributeKind::RustcNoImplicitAutorefs => (),
             AttributeKind::RustcNoImplicitBounds => (),
             AttributeKind::RustcNoMirInline => (),

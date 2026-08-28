@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
-  --> $DIR/coerce-shared-omitted-reborrow-field-after-dead.rs:31:1
+  --> $DIR/coerce-shared-omitted-reborrow-field-after-dead.rs:35:1
    |
 LL | impl<'a, T> CoerceShared<OmitRef<'a, T>> for OmitMut<'a, T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^--------------^^^^^^--------------^^^

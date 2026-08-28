@@ -5,6 +5,7 @@ use std::{fs, io};
 
 use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
+use rustc_hir::Constness;
 use tracing::trace;
 use ty::print::PrettyPrinter;
 
@@ -340,12 +341,18 @@ pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::R
 
         // For `const fn` we want to render both the optimized MIR and the MIR for ctfe.
         if tcx.is_const_fn(def_id) {
-            render_body(w, tcx.optimized_mir(def_id))?;
-            writeln!(w)?;
-            writeln!(w, "// MIR FOR CTFE")?;
-            // Do not use `render_body`, as that would render the promoteds again, but these
-            // are shared between mir_for_ctfe and optimized_mir
-            writer.write_mir_fn(tcx.mir_for_ctfe(def_id), w)?;
+            // In case where comptime const fn, should only render the MIR for ctfe,
+            // since comptime functions cannot have their MIR optimized
+            if matches!(tcx.constness(def_id), Constness::Const { always: true }) {
+                render_body(w, tcx.mir_for_ctfe(def_id))?;
+            } else {
+                render_body(w, tcx.optimized_mir(def_id))?;
+                writeln!(w)?;
+                writeln!(w, "// MIR FOR CTFE")?;
+                // Do not use `render_body`, as that would render the promoteds again, but these
+                // are shared between mir_for_ctfe and optimized_mir
+                writer.write_mir_fn(tcx.mir_for_ctfe(def_id), w)?;
+            }
         } else {
             if let Some((val, ty)) = tcx.trivial_const(def_id) {
                 ty::print::with_forced_impl_filename_line! {
@@ -1364,6 +1371,9 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             ProjectionElem::UnwrapUnsafeBinder(_) => {
                 write!(fmt, "unwrap_binder!(")?;
             }
+            ProjectionElem::PhantomDeref => {
+                write!(fmt, "reborrow!(")?;
+            }
         }
     }
 
@@ -1382,7 +1392,7 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             ProjectionElem::Downcast(None, index) => {
                 write!(fmt, " as variant#{index:?})")?;
             }
-            ProjectionElem::Deref => {
+            ProjectionElem::Deref | ProjectionElem::PhantomDeref => {
                 write!(fmt, ")")?;
             }
             ProjectionElem::Field(field, ty) => {

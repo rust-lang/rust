@@ -1,4 +1,7 @@
 //@ check-pass
+
+//! Check that reborrowing happens successfully (without an ICE) with typed let-assignments.
+
 #![feature(reborrow)]
 
 use std::marker::Reborrow;

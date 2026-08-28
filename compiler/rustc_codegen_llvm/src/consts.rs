@@ -544,8 +544,9 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
 
         // Wasm statics with custom link sections get special treatment as they
-        // go into custom sections of the wasm executable. The exception to this
-        // is the `.init_array` section which are treated specially by the wasm linker.
+        // also go into custom sections of the wasm executable. The exception to
+        // this is the `.init_array` section for which we can't emit a custom
+        // section as it contains relocations.
         if self.tcx.sess.target.is_like_wasm
             && attrs
                 .link_section
@@ -564,10 +565,9 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let data = [section, alloc];
                 self.module_add_named_metadata_node(self.llmod(), c"wasm.custom_sections", &data);
             }
-        } else {
-            base::set_link_section(g, attrs);
         }
 
+        base::set_link_section(g, attrs);
         base::set_variable_sanitizer_attrs(g, attrs);
 
         if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {

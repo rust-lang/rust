@@ -1,3 +1,6 @@
+//! Test that deriving CoerceShared errors on missing target attribute, multiple target attributes,
+//! missing target types, and multiple target types.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};
