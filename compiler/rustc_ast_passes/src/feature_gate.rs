@@ -46,10 +46,6 @@ macro_rules! gate_multi {
     }};
 }
 
-pub fn check_attribute(attr: &ast::Attribute, sess: &Session, features: &Features) {
-    PostExpansionVisitor { sess, features }.visit_attribute(attr)
-}
-
 struct PostExpansionVisitor<'a> {
     sess: &'a Session,
 
@@ -152,33 +148,9 @@ impl<'a> PostExpansionVisitor<'a> {
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
-    fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        // Check unstable flavors of the `#[doc]` attribute.
-        if attr.has_name(sym::doc) {
-            for meta_item_inner in attr.meta_item_list().unwrap_or_default() {
-                macro_rules! gate_doc { ($($s:literal { $($name:ident => $feature:ident)* })*) => {
-                    $($(if meta_item_inner.has_name(sym::$name) {
-                        let msg = concat!("`#[doc(", stringify!($name), ")]` is ", $s);
-                        gate!(self, $feature, attr.span, msg);
-                    })*)*
-                }}
-
-                gate_doc!(
-                    "experimental" {
-                        cfg => doc_cfg
-                        auto_cfg => doc_cfg
-                        masked => doc_masked
-                        notable_trait => doc_notable_trait
-                    }
-                    "meant for internal use only" {
-                        attribute => rustdoc_internals
-                        keyword => rustdoc_internals
-                        fake_variadic => rustdoc_internals
-                        search_unbox => rustdoc_internals
-                    }
-                );
-            }
-        }
+    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
+        // Checked in attribute parsers, do NOT add checks here
+        visit::walk_attribute(self, attr)
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {
