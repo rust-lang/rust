@@ -12,3 +12,5 @@ fn main() {
     a();
     b();
 }
+
+//@ reference: attributes.codegen.inline.syntax

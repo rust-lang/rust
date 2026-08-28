@@ -11,3 +11,5 @@ extern "C" fn naked() {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.naked.target_feature

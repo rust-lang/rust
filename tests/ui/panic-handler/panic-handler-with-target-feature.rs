@@ -12,3 +12,5 @@ use core::panic::PanicInfo;
 fn panic(info: &PanicInfo) -> ! {
     unimplemented!();
 }
+
+//@ reference: attributes.codegen.target_feature.allowed-positions

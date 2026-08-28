@@ -12,3 +12,5 @@ fn main() {
     //~| WARN previously accepted
     5;
 }
+
+//@ reference: attributes.codegen.cold.allowed-positions

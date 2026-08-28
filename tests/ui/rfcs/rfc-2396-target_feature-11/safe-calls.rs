@@ -69,3 +69,5 @@ unsafe fn needs_unsafe_block() {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.target_feature.safety-restrictions

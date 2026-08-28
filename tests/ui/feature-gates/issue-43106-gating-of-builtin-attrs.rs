@@ -967,3 +967,6 @@ mod type_length_limit {
 }
 
 fn main() {}
+
+//@ reference: attributes.codegen.cold.allowed-positions
+//@ reference: attributes.codegen.no_builtins.allowed-positions

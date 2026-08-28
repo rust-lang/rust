@@ -81,3 +81,9 @@ fn valid_none() {}
 async fn async_fn_none() {
     ()
 }
+
+//@ reference: attributes.codegen.inline.optimize
+//@ reference: attributes.codegen.optimize.allowed-positions
+//@ reference: attributes.codegen.optimize.duplicates
+//@ reference: attributes.codegen.optimize.inline
+//@ reference: attributes.codegen.optimize.modes
