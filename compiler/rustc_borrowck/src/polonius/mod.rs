@@ -221,7 +221,7 @@ impl LivenessSource for DeferredLivenessSource<'_, '_> {
                         param_env: self.calc.infcx.param_env,
                         op: |live_region| {
                             let region = self.universal_regions.to_region_vid(live_region);
-                            self.liveness.add_points(region, &self.calc.drop_live_at);
+                            self.liveness.add_points(region, &self.calc.drop_live_at());
                         },
                     });
                 }
