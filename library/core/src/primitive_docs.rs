@@ -1667,7 +1667,7 @@ const _: () = ();
 ///
 /// Unsafe code is allowed to temporarily violate type validity invariants on internal data that
 /// cannot be otherwise observed; that is, arbitrary data can be written into the pointed-to bytes
-/// of a `&mut T` even if it would constitute an invalid value of `T` or set the disriminant of a
+/// of a `&mut T` even if it would constitute an invalid value of `T` or set the discriminant of a
 /// wrapping enum to an invalid value, so long as everything is restored before the code returns.
 ///
 /// [allocation]: ptr#allocation
