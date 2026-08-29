@@ -47,7 +47,8 @@ async fn bar() {
 }
 
 async fn foo() {
-    bar().await
+    let future = bar();
+    future.await;
 }
 
 #[track_caller]
@@ -57,7 +58,8 @@ async fn bar_track_caller() {
 }
 
 async fn foo_track_caller() {
-    bar_track_caller().await
+    let future = bar_track_caller();
+    future.await;
 }
 
 struct Foo;
@@ -71,29 +73,31 @@ impl Foo {
 }
 
 async fn foo_assoc() {
-    Foo::bar_assoc().await
+    let future = Foo::bar_assoc();
+    future.await;
 }
 
 // Since compilation is expected to fail for this fn when `closure_track_caller`
 // is disabled, we test that separately in `async-closure-gate.rs`
 #[cfg(any(cls, afn_cls))]
 async fn foo_closure() {
-    let c = #[track_caller]
+    let closure = #[track_caller]
     async || {
         panic!();
     };
-    c().await
+    let future = closure();
+    future.await;
 }
 
 // Since compilation is expected to fail for this fn when `closure_track_caller`
 // is disabled, we test that separately in `async-closure-gate.rs`
 #[cfg(any(cls, afn_cls))]
 async fn foo_block() {
-    let a = #[track_caller]
+    let future = #[track_caller]
     async {
         panic!();
     };
-    a.await
+    future.await;
 }
 
 fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
@@ -112,28 +116,31 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
     x
 }
 
+// FIXME(async_fn_track_caller): Currently, #[track_caller] on an async function
+// uses the location where the future is awaited.
+// The correct behavior as per T-lang is to use the location where the function is called.
 fn main() {
     assert_eq!(panicked_at(|| block_on(foo())), 46);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 60);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 62);
     #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 56);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 57);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 74);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 77);
     #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 69);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 71);
 
     // FIXME(closure_track_caller): if closure_track_caller is enabled, but
     // async_fn_track_caller is disabled, then #[track_caller] on async closures
     // silently do nothing. Either it should function, or we should emit a warning.
     // See #161961
     #[cfg(cls)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 83);
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 86);
     #[cfg(afn_cls)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 85);
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 89);
 
     #[cfg(any(cls, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_block())), 96);
+    assert_eq!(panicked_at(|| block_on(foo_block())), 100);
 }

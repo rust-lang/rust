@@ -1,5 +1,5 @@
 warning: `#[track_caller]` on async functions is a no-op
-  --> $DIR/panic-track-caller.rs:53:1
+  --> $DIR/panic-track-caller.rs:54:1
    |
 LL |   #[track_caller]
    |   ^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | | }
    = note: `#[warn(ungated_async_fn_track_caller)]` on by default
 
 warning: `#[track_caller]` on async functions is a no-op
-  --> $DIR/panic-track-caller.rs:66:5
+  --> $DIR/panic-track-caller.rs:68:5
    |
 LL |       #[track_caller]
    |       ^^^^^^^^^^^^^^^
