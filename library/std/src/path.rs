@@ -3424,6 +3424,8 @@ impl Path {
     ///
     /// </div>
     ///
+    /// On Windows this will convert all `/` to `\` unless a [verbatim](Prefix::is_verbatim()) path is given.
+    ///
     /// [`path::absolute`](absolute) is an alternative that preserves `..`.
     /// Or [`Path::canonicalize`] can be used to resolve any `..` by querying the filesystem.
     #[unstable(feature = "normalize_lexically", issue = "134694")]
