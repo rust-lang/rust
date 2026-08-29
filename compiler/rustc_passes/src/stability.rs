@@ -561,7 +561,7 @@ struct ReexportStability {
     hir_id: HirId,
     span: Span,
     has_target: bool,
-    all_targets_compatible: bool,
+    mismatch: Option<(String, String)>,
 }
 
 struct Checker<'tcx> {
@@ -606,19 +606,21 @@ impl<'tcx> Checker<'tcx> {
         &self,
         own_stability: &Stability,
         targets: impl IntoIterator<Item = Res<Id>>,
-    ) -> (bool, bool) {
+    ) -> (bool, Option<(String, String)>) {
         let mut has_target = false;
-        let mut all_targets_compatible = true;
+        let mut mismatch = None;
 
         for res in targets {
             match res {
                 Res::Def(_, def_id) => {
                     has_target = true;
 
-                    if let Some(target_stability) = self.tcx.lookup_stability(def_id)
+                    if mismatch.is_none()
+                        && let Some(target_stability) = self.tcx.lookup_stability(def_id)
                         && !Self::stability_is_compatible(own_stability, &target_stability)
                     {
-                        all_targets_compatible = false;
+                        mismatch =
+                            Some((format!("{own_stability:?}"), format!("{target_stability:?}")));
                     }
                 }
 
@@ -626,8 +628,9 @@ impl<'tcx> Checker<'tcx> {
                     has_target = true;
 
                     // Primitives are stable and have no DefId.
-                    if own_stability.level.is_unstable() {
-                        all_targets_compatible = false;
+                    if own_stability.level.is_unstable() && mismatch.is_none() {
+                        mismatch =
+                            Some((format!("{own_stability:?}"), "stable primitive".to_string()));
                     }
                 }
 
@@ -636,7 +639,7 @@ impl<'tcx> Checker<'tcx> {
             }
         }
 
-        (has_target, all_targets_compatible)
+        (has_target, mismatch)
     }
 
     fn record_reexport_stability(
@@ -645,23 +648,22 @@ impl<'tcx> Checker<'tcx> {
         attr_span: Span,
         span: Span,
         has_target: bool,
-        all_targets_compatible: bool,
+        mismatch: Option<(String, String)>,
     ) {
         let entry = self.reexport_stability.entry(attr_span).or_insert(ReexportStability {
             hir_id: item.hir_id(),
             span,
             has_target: false,
-            all_targets_compatible: true,
+            mismatch: None,
         });
 
         entry.has_target |= has_target;
 
-        // Keep the first bad path for the diagnostic.
-        if entry.all_targets_compatible && !all_targets_compatible {
+        // Keep the first mismatch for the diagnostic.
+        if entry.mismatch.is_none() && mismatch.is_some() {
             entry.span = span;
+            entry.mismatch = mismatch;
         }
-
-        entry.all_targets_compatible &= all_targets_compatible;
     }
 
     fn check_single_reexport_stability(
@@ -673,16 +675,10 @@ impl<'tcx> Checker<'tcx> {
             return;
         };
 
-        let (has_target, all_targets_compatible) =
+        let (has_target, mismatch) =
             self.classify_reexport_targets(&own_stability, path.res.present_items());
 
-        self.record_reexport_stability(
-            item,
-            attr_span,
-            path.span,
-            has_target,
-            all_targets_compatible,
-        );
+        self.record_reexport_stability(item, attr_span, path.span, has_target, mismatch);
     }
 
     fn check_glob_reexport_stability(
@@ -710,26 +706,24 @@ impl<'tcx> Checker<'tcx> {
             })
             .map(|child| child.res);
 
-        let (has_target, all_targets_compatible) =
-            self.classify_reexport_targets(&own_stability, targets);
+        let (has_target, mismatch) = self.classify_reexport_targets(&own_stability, targets);
 
-        self.record_reexport_stability(
-            item,
-            attr_span,
-            path.span,
-            has_target,
-            all_targets_compatible,
-        );
+        self.record_reexport_stability(item, attr_span, path.span, has_target, mismatch);
     }
 
     fn emit_incompatible_reexport_stability(&self) {
         for reexport in self.reexport_stability.values() {
-            if reexport.has_target && !reexport.all_targets_compatible {
+            if reexport.has_target
+                && let Some((reexport_stability, target_stability)) = &reexport.mismatch
+            {
                 self.tcx.emit_node_span_lint(
                     INCOMPATIBLE_REEXPORT_STABILITY,
                     reexport.hir_id,
                     reexport.span,
-                    diagnostics::IncompatibleReexportStability,
+                    diagnostics::IncompatibleReexportStability {
+                        reexport_stability: reexport_stability.as_str(),
+                        target_stability: target_stability.as_str(),
+                    },
                 );
             }
         }

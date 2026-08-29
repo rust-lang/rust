@@ -2818,8 +2818,8 @@ declare_lint! {
     ///
     /// Stability annotations on re-exports should be compatible with the
     /// stability metadata of the item being re-exported. Stable metadata is
-    /// compared by feature and `since`, while unstable metadata is compared by
-    /// feature and issue. Stable re-exports of unstable definitions remain
+    /// compared by `feature` and `since`, while unstable metadata is compared by
+    /// `feature` and `issue`. Stable re-exports of unstable definitions remain
     /// handled by the existing stability machinery.
     pub INCOMPATIBLE_REEXPORT_STABILITY,
     Deny,

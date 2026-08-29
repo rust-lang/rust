@@ -4,6 +4,8 @@ error: stability annotation on this re-export does not match the re-exported ite
 LL | pub use lint_stability::stable as supposedly_unstable;
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: re-export stability: Stability { level: Unstable { reason: None, issue: None, implied_by: None, old_name: None }, feature: "reexport_test_unstable" }
+   = note: re-exported item stability: Stability { level: Stable { since: Version(RustcVersion { major: 1, minor: 0, patch: 0 }), allowed_through_unstable_modules: None }, feature: "rust1" }
 note: the lint level is defined here
   --> $DIR/incompatible-reexport-stability.rs:6:9
    |
@@ -15,23 +17,35 @@ error: stability annotation on this re-export does not match the re-exported ite
    |
 LL | pub use lint_stability::stable as different_stable_feature;
    |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: re-export stability: Stability { level: Stable { since: Version(RustcVersion { major: 1, minor: 0, patch: 0 }), allowed_through_unstable_modules: None }, feature: "different_stable_feature" }
+   = note: re-exported item stability: Stability { level: Stable { since: Version(RustcVersion { major: 1, minor: 0, patch: 0 }), allowed_through_unstable_modules: None }, feature: "rust1" }
 
 error: stability annotation on this re-export does not match the re-exported item
   --> $DIR/incompatible-reexport-stability.rs:32:9
    |
 LL | pub use lint_stability::unstable as different_unstable_feature;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: re-export stability: Stability { level: Unstable { reason: None, issue: None, implied_by: None, old_name: None }, feature: "different_unstable_feature" }
+   = note: re-exported item stability: Stability { level: Unstable { reason: None, issue: None, implied_by: None, old_name: None }, feature: "unstable_test_feature" }
 
 error: stability annotation on this re-export does not match the re-exported item
   --> $DIR/incompatible-reexport-stability.rs:37:9
    |
 LL | pub use lint_stability::unstable as different_unstable_issue;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: re-export stability: Stability { level: Unstable { reason: None, issue: Some(12345), implied_by: None, old_name: None }, feature: "unstable_test_feature" }
+   = note: re-exported item stability: Stability { level: Unstable { reason: None, issue: None, implied_by: None, old_name: None }, feature: "unstable_test_feature" }
 
 error: stability annotation on this re-export does not match the re-exported item
   --> $DIR/incompatible-reexport-stability.rs:42:9
    |
 LL | pub use core::primitive::bool as supposedly_unstable_bool;
    |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: re-export stability: Stability { level: Unstable { reason: None, issue: None, implied_by: None, old_name: None }, feature: "primitive_reexport" }
+   = note: re-exported item stability: stable primitive
 
 error: aborting due to 5 previous errors

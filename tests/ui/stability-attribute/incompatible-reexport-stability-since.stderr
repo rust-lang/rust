@@ -4,6 +4,8 @@ error: stability annotation on this re-export does not match the re-exported ite
 LL | pub use lint_stability::stable as different_stable_since;
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: re-export stability: Stability { level: Stable { since: Version(RustcVersion { major: 1, minor: 1, patch: 0 }), allowed_through_unstable_modules: None }, feature: "rust1" }
+   = note: re-exported item stability: Stability { level: Stable { since: Version(RustcVersion { major: 1, minor: 0, patch: 0 }), allowed_through_unstable_modules: None }, feature: "rust1" }
 note: the lint level is defined here
   --> $DIR/incompatible-reexport-stability-since.rs:6:9
    |
