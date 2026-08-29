@@ -1,11 +1,11 @@
 //@ run-pass
 //@ edition:2021
-//@ revisions: afn cls nofeat
+//@ revisions: afn cls afn_cls nofeat
 //@ needs-unwind
 // gate-test-async_fn_track_caller
 #![feature(stmt_expr_attributes)]
-#![cfg_attr(afn, feature(async_fn_track_caller))]
-#![cfg_attr(cls, feature(closure_track_caller))]
+#![cfg_attr(any(afn, afn_cls), feature(async_fn_track_caller))]
+#![cfg_attr(any(cls, afn_cls), feature(closure_track_caller))]
 #![allow(unused)]
 
 use std::future::Future;
@@ -51,8 +51,7 @@ async fn foo() {
 }
 
 #[track_caller]
-//[cls]~^ WARN `#[track_caller]` on async functions is a no-op
-//[nofeat]~^^ WARN `#[track_caller]` on async functions is a no-op
+//[cls,nofeat]~^ WARN `#[track_caller]` on async functions is a no-op
 async fn bar_track_caller() {
     panic!()
 }
@@ -65,8 +64,7 @@ struct Foo;
 
 impl Foo {
     #[track_caller]
-    //[cls]~^ WARN `#[track_caller]` on async functions is a no-op
-    //[nofeat]~^^ WARN `#[track_caller]` on async functions is a no-op
+    //[cls,nofeat]~^ WARN `#[track_caller]` on async functions is a no-op
     async fn bar_assoc() {
         panic!();
     }
@@ -76,21 +74,23 @@ async fn foo_assoc() {
     Foo::bar_assoc().await
 }
 
-// Since compilation is expected to fail for this fn when using
-// `nofeat`, we test that separately in `async-closure-gate.rs`
-#[cfg(cls)]
+// Since compilation is expected to fail for this fn when `closure_track_caller`
+// is disabled, we test that separately in `async-closure-gate.rs`
+#[cfg(any(cls, afn_cls))]
 async fn foo_closure() {
-    let c = #[track_caller] async || {
+    let c = #[track_caller]
+    async || {
         panic!();
     };
     c().await
 }
 
-// Since compilation is expected to fail for this fn when using
-// `nofeat`, we test that separately in `async-block.rs`
-#[cfg(cls)]
+// Since compilation is expected to fail for this fn when `closure_track_caller`
+// is disabled, we test that separately in `async-closure-gate.rs`
+#[cfg(any(cls, afn_cls))]
 async fn foo_block() {
-    let a = #[track_caller] async {
+    let a = #[track_caller]
+    async {
         panic!();
     };
     a.await
@@ -113,22 +113,27 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 }
 
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 46
-);
+    assert_eq!(panicked_at(|| block_on(foo())), 46);
 
-    #[cfg(afn)]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 61);
+    #[cfg(any(afn, afn_cls))]
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 60);
     #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 57);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 56);
 
-    #[cfg(afn)]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 76);
+    #[cfg(any(afn, afn_cls))]
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 74);
     #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 71);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 69);
 
+    // FIXME(closure_track_caller): if closure_track_caller is enabled, but
+    // async_fn_track_caller is disabled, then #[track_caller] on async closures
+    // silently do nothing. Either it should function, or we should emit a warning.
+    // See #161961
     #[cfg(cls)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 84);
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 83);
+    #[cfg(afn_cls)]
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 85);
 
-    #[cfg(cls)]
+    #[cfg(any(cls, afn_cls))]
     assert_eq!(panicked_at(|| block_on(foo_block())), 96);
 }

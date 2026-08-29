@@ -3,7 +3,7 @@ warning: `#[track_caller]` on async functions is a no-op
    |
 LL |   #[track_caller]
    |   ^^^^^^^^^^^^^^^
-...
+LL |
 LL | / async fn bar_track_caller() {
 LL | |     panic!()
 LL | | }
@@ -15,11 +15,11 @@ LL | | }
    = note: `#[warn(ungated_async_fn_track_caller)]` on by default
 
 warning: `#[track_caller]` on async functions is a no-op
-  --> $DIR/panic-track-caller.rs:67:5
+  --> $DIR/panic-track-caller.rs:66:5
    |
 LL |       #[track_caller]
    |       ^^^^^^^^^^^^^^^
-...
+LL |
 LL | /     async fn bar_assoc() {
 LL | |         panic!();
 LL | |     }
