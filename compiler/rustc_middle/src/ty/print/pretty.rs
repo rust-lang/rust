@@ -1222,7 +1222,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         let using_sized_hierarchy = self.tcx().features().sized_hierarchy();
-        let add_sized = has_sized_bound && (sep.is_first() || has_negative_sized_bound);
+        let add_sized = has_sized_bound && (sep.nothing_printed() || has_negative_sized_bound);
         let add_maybe_sized =
             has_meta_sized_bound && !has_negative_sized_bound && !using_sized_hierarchy;
         // Set `has_pointee_sized_bound` if there were no `Sized` or `MetaSized` bounds.
@@ -1245,15 +1245,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let using_move_trait = self.tcx().features().move_trait();
         let add_maybe_move = using_move_trait && !has_move_bound;
         if add_maybe_move {
-            if !sep.is_first() {
-                write!(self, " + ")?;
-            }
+            sep.print_separator(&mut *self)?;
             write!(self, "?Move")?;
         }
 
         if !with_forced_trimmed_paths() {
             for re in lifetimes {
-                write!(self, " + ")?;
+                sep.print_separator(&mut *self)?;
                 self.print_region(re)?;
             }
         }
@@ -1501,9 +1499,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         if !has_move_bound && let Some(move_trait) = self.tcx().lang_items().move_trait() {
-            if !sep.is_first() {
-                write!(self, " + ")?;
-            }
+            sep.print_separator(&mut *self)?;
             write!(self, "?")?;
 
             self.print_def_path(move_trait, &[])?;
