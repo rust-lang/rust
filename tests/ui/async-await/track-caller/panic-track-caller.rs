@@ -100,6 +100,20 @@ async fn foo_block() {
     future.await;
 }
 
+#[track_caller]
+//[cls,nofeat]~^ WARN `#[track_caller]` on async functions is a no-op
+async fn bar_manual_poll() {
+    panic!();
+}
+
+fn foo_manual_poll() {
+    let future = bar_manual_poll();
+    let future = std::pin::pin!(future);
+    let mut cx = std::task::Context::from_waker(std::task::Waker::noop());
+    let res = future.poll(&mut cx);
+    assert_eq!(res, std::task::Poll::Ready(()));
+}
+
 fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
     let loc = Arc::new(Mutex::new(None));
 
@@ -117,7 +131,7 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 }
 
 // FIXME(async_fn_track_caller): Currently, #[track_caller] on an async function
-// uses the location where the future is awaited.
+// uses the location where the future is awaited or polled.
 // The correct behavior as per T-lang is to use the location where the function is called.
 fn main() {
     assert_eq!(panicked_at(|| block_on(foo())), 46);
@@ -143,4 +157,9 @@ fn main() {
 
     #[cfg(any(cls, afn_cls))]
     assert_eq!(panicked_at(|| block_on(foo_block())), 100);
+
+    #[cfg(any(afn, afn_cls))]
+    assert_eq!(panicked_at(|| foo_manual_poll()), 113);
+    #[cfg(any(cls, nofeat))]
+    assert_eq!(panicked_at(|| foo_manual_poll()), 106);
 }
