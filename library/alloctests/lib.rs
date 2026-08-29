@@ -52,6 +52,7 @@
 #![feature(trusted_random_access)]
 #![feature(try_reserve_kind)]
 #![feature(try_trait_v2)]
+#![feature(tuple_trait)]
 #![feature(unwrap_infallible)]
 #![feature(wtf8_internals)]
 // tidy-alphabetical-end
@@ -61,12 +62,14 @@
 #![feature(const_closures)]
 #![feature(const_trait_impl)]
 #![feature(dropck_eyepatch)]
+#![feature(intrinsics)]
 #![feature(min_specialization)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
 #![feature(staged_api)]
 #![feature(test)]
+#![feature(unboxed_closures)]
 #![rustc_preserve_ub_checks]
 // tidy-alphabetical-end
 
