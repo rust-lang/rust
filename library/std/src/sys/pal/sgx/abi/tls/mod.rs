@@ -14,7 +14,7 @@ mod sync_bitset;
 use self::sync_bitset::*;
 use crate::cell::Cell;
 use crate::num::NonZero;
-use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
+use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::{mem, ptr};
 
 #[cfg(target_pointer_width = "64")]
@@ -29,7 +29,8 @@ static TLS_KEY_IN_USE: SyncBitset = SYNC_BITSET_INIT;
 // Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
 #[unsafe(export_name = "_ZN16__rust_internals3std3sys3pal3sgx3abi3tls14TLS_DESTRUCTORE")]
-static TLS_DESTRUCTOR: [Atomic<usize>; TLS_KEYS] = [const { AtomicUsize::new(0) }; TLS_KEYS];
+static TLS_DESTRUCTOR: [AtomicPtr<()>; TLS_KEYS] =
+    [const { AtomicPtr::new(ptr::null_mut()) }; TLS_KEYS];
 
 unsafe extern "C" {
     fn get_tls_ptr() -> *const u8;
@@ -71,7 +72,10 @@ impl<'a> Drop for ActiveTls<'a> {
     fn drop(&mut self) {
         let value_with_destructor = |key: usize| {
             let ptr = TLS_DESTRUCTOR[key].load(Ordering::Relaxed);
-            unsafe { mem::transmute::<_, Option<unsafe extern "C" fn(*mut u8)>>(ptr) }
+            // SAFETY:
+            // - Matches the transmute+store below in `Tls::create`.
+            // - SGX/x86-64: `Option<fn(..)>` is layout compatible with `*mut ()`.
+            unsafe { mem::transmute::<*mut (), Option<unsafe extern "C" fn(*mut u8)>>(ptr) }
                 .map(|dtor| (self.tls.data_index(key), dtor))
         };
 
@@ -115,8 +119,11 @@ impl Tls {
         } else {
             rtabort!("TLS limit exceeded")
         };
-        rtunwrap!(Some, TLS_DESTRUCTOR.get(index))
-            .store(dtor.map_or(0, |f| f as usize), Ordering::Relaxed);
+        // SAFETY:
+        // - Matches the load+transmute above in `ActiveTls::drop`.
+        // - SGX/x86-64: `Option<fn(..)>` is layout compatible with `*mut ()`.
+        let ptr = unsafe { mem::transmute::<Option<unsafe extern "C" fn(*mut u8)>, *mut ()>(dtor) };
+        rtunwrap!(Some, TLS_DESTRUCTOR.get(index)).store(ptr, Ordering::Relaxed);
         unsafe { Self::current() }.data_index(index).set(ptr::null_mut());
         Key::from_index(index)
     }
