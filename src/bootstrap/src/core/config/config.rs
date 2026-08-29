@@ -1752,7 +1752,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                     // `has_changes_from_upstream` explicitly
                     if llvm_ci_requested && self.has_changes_from_upstream(LLVM_INVALIDATION_PATHS) {
                         // download-ci-rustc should not be used on CI at the moment
-                        assert!(self.is_running_on_ci());
+                        assert!(!self.is_running_on_ci());
                         panic!("ERROR: LLVM submodule has changes, `download-rustc` can't be used.");
                     }
 
