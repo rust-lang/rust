@@ -45,7 +45,7 @@ use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, *};
-use rustc_attr_parsing::{AttributeParser, OmitDoc, Recovery, ShouldEmit};
+use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
@@ -1231,7 +1231,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             attrs,
             target_span,
             target,
-            OmitDoc::Lower,
             |s| l.lower(s),
             |lint_id, span, kind| {
                 self.delayed_lints.push(DelayedLint {
