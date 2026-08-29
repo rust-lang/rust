@@ -22,10 +22,13 @@ jobs:
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # linkcheck needs the base commit.
           fetch-depth: 0
+
+      - name: Test CI scripts
+        run: ci/tests/report-scheduled-linkcheck-failure.sh
 
       - name: Cache binaries
         id: mdbook-cache
@@ -88,3 +91,33 @@ jobs:
         run: |
           # using split_inclusive that uses regex feature that uses an unstable feature
           RUSTC_BOOTSTRAP=1 cargo run --release --manifest-path ci/sembr/Cargo.toml src
+
+  notify-scheduled-failure:
+    name: Open an issue if links are broken
+    needs: ci
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Open an issue or comment on an existing one
+        run: ci/report-scheduled-linkcheck-failure.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  close-scheduled-failure:
+    name: Close linkcheck issue if no links are broken
+    needs: ci
+    if: success() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Close issue
+        run: ci/close-scheduled-linkcheck-issues.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
