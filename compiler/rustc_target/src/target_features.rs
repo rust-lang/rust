@@ -627,6 +627,8 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const MIPS_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("fp64", Unstable(sym::mips_target_feature), &[]),
+    // FIXME(#150253): msa requires either fp64 or no hard float support at all: LLVM requires fp64
+    // FIXME(#150253): msa requires revision 5 or greater (mips32r5/mips64r5 in LLVM)
     ("msa", Unstable(sym::mips_target_feature), &[]),
     ("virt", Unstable(sym::mips_target_feature), &[]),
     // tidy-alphabetical-end
