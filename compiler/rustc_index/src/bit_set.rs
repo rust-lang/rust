@@ -107,6 +107,18 @@ impl<T: Idx> DenseBitSet<T> {
         result
     }
 
+    /// Replaces this bitset with one having the same elements, but a larger domain size.
+    #[inline]
+    pub fn enlarge(self, new_domain_size: usize) -> DenseBitSet<T> {
+        // We could also support shrinking, but it's hard to imagine a real use-case for it.
+        assert!(self.domain_size <= new_domain_size);
+        let new_num_words = num_words(new_domain_size);
+
+        let DenseBitSet { domain_size: _, mut words, marker } = self;
+        words.resize(new_num_words, 0);
+        DenseBitSet { domain_size: new_domain_size, words, marker }
+    }
+
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
