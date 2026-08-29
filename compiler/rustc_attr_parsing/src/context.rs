@@ -864,12 +864,6 @@ impl<'p, 'sess: 'p> DerefMut for SharedContext<'p, 'sess> {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum OmitDoc {
-    Lower,
-    Skip,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum ShouldEmit {
     /// The operations will emit errors, and lints, and errors are fatal.
