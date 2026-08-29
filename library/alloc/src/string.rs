@@ -802,6 +802,7 @@ impl String {
         let (chunks, []) = v.as_chunks::<2>() else {
             return Err(FromUtf16Error { kind: FromUtf16ErrorKind::OddBytes });
         };
+        // ignore-tidy-undocumented-unsafe
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
             _ => {
@@ -837,6 +838,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "str_from_utf16_endian", since = "1.98.0")]
     pub fn from_utf16le_lossy(v: &[u8]) -> String {
+        // ignore-tidy-undocumented-unsafe
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
             (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
@@ -875,6 +877,7 @@ impl String {
         let (chunks, []) = v.as_chunks::<2>() else {
             return Err(FromUtf16Error { kind: FromUtf16ErrorKind::OddBytes });
         };
+        // ignore-tidy-undocumented-unsafe
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
             _ => {
@@ -910,6 +913,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "str_from_utf16_endian", since = "1.98.0")]
     pub fn from_utf16be_lossy(v: &[u8]) -> String {
+        // ignore-tidy-undocumented-unsafe
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
             (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
@@ -994,6 +998,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
+        // SAFETY: Upheld by caller.
         unsafe { String { vec: Vec::from_raw_parts(buf, length, capacity) } }
     }
 
@@ -1138,6 +1143,7 @@ impl String {
         let additional: Saturating<usize> = slice.iter().map(|x| Saturating(x.len())).sum();
         self.reserve(additional.0);
         let (ptr, len, cap) = core::mem::take(self).into_raw_parts();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let mut dst = ptr.add(len);
             for new in slice {
@@ -1526,6 +1532,7 @@ impl String {
     pub fn pop(&mut self) -> Option<char> {
         let ch = self.chars().rev().next()?;
         let newlen = self.len() - ch.len_utf8();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             self.vec.set_len(newlen);
         }
@@ -1564,6 +1571,7 @@ impl String {
 
         let next = idx + ch.len_utf8();
         let len = self.len();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             ptr::copy(self.vec.as_ptr().add(next), self.vec.as_mut_ptr().add(idx), len - next);
             self.vec.set_len(len - (next - idx));
@@ -1637,6 +1645,7 @@ impl String {
             len += count;
         }
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             self.vec.set_len(len);
         }
@@ -1945,6 +1954,7 @@ impl String {
     pub fn split_off(&mut self, at: usize) -> String {
         assert!(self.is_char_boundary(at));
         let other = self.vec.split_off(at);
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(other) }
     }
 
@@ -2121,6 +2131,7 @@ impl String {
             "end of range should be a character boundary"
         );
 
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.as_mut_vec() }.splice(checked_range, replace_with.bytes());
     }
 
@@ -2206,6 +2217,7 @@ impl String {
     #[inline]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
+        // ignore-tidy-undocumented-unsafe
         unsafe { from_boxed_utf8_unchecked(slice) }
     }
 
@@ -2237,6 +2249,7 @@ impl String {
     #[inline]
     pub fn leak<'a>(self) -> &'a mut str {
         let slice = self.vec.leak();
+        // ignore-tidy-undocumented-unsafe
         unsafe { from_utf8_unchecked_mut(slice) }
     }
 }
@@ -3471,7 +3484,7 @@ impl IntoChars {
     #[unstable(feature = "string_into_chars", issue = "133125")]
     #[inline]
     pub fn into_string(self) -> String {
-        // Safety: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
+        // SAFETY: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
         unsafe { String::from_utf8_unchecked(self.bytes.collect()) }
     }
 
@@ -3568,6 +3581,7 @@ unsafe impl Send for Drain<'_> {}
 #[stable(feature = "drain", since = "1.6.0")]
 impl Drop for Drain<'_> {
     fn drop(&mut self) {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             // Use Vec::drain. "Reaffirm" the bounds checks to avoid
             // panic code being inserted again.

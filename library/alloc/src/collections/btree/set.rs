@@ -2303,6 +2303,7 @@ impl<'a, T, A> CursorMut<'a, T, A> {
     /// * All elements in the tree must remain in sorted order.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub unsafe fn with_mutable_key(self) -> CursorMutKey<'a, T, A> {
+        // ignore-tidy-undocumented-unsafe
         CursorMutKey { inner: unsafe { self.inner.with_mutable_key() } }
     }
 }
@@ -2372,6 +2373,7 @@ impl<'a, T: Ord, A: AllocatorClone> CursorMut<'a, T, A> {
     /// * All elements in the tree must remain in sorted order.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub unsafe fn insert_after_unchecked(&mut self, value: T) {
+        // SAFETY: Upheld by caller.
         unsafe { self.inner.insert_after_unchecked(value, SetValZST) }
     }
 
@@ -2390,6 +2392,7 @@ impl<'a, T: Ord, A: AllocatorClone> CursorMut<'a, T, A> {
     /// * All elements in the tree must remain in sorted order.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub unsafe fn insert_before_unchecked(&mut self, value: T) {
+        // SAFETY: Upheld by caller.
         unsafe { self.inner.insert_before_unchecked(value, SetValZST) }
     }
 
@@ -2458,6 +2461,7 @@ impl<'a, T: Ord, A: AllocatorClone> CursorMutKey<'a, T, A> {
     /// * All elements in the tree must remain in sorted order.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub unsafe fn insert_after_unchecked(&mut self, value: T) {
+        // SAFETY: Upheld by caller.
         unsafe { self.inner.insert_after_unchecked(value, SetValZST) }
     }
 
@@ -2476,6 +2480,7 @@ impl<'a, T: Ord, A: AllocatorClone> CursorMutKey<'a, T, A> {
     /// * All elements in the tree must remain in sorted order.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub unsafe fn insert_before_unchecked(&mut self, value: T) {
+        // SAFETY: Upheld by caller.
         unsafe { self.inner.insert_before_unchecked(value, SetValZST) }
     }
 

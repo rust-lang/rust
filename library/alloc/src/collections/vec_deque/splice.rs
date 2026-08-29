@@ -64,6 +64,7 @@ impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
         // At this point draining is done and the only remaining tasks are splicing
         // and moving things into the final place.
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let tail_len = self.drain.tail_len; // #elements behind the drain
 
@@ -114,6 +115,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
     /// self.deque must be valid. self.deque.len and self.deque.len + self.drain_len must be less
     /// than twice the deque's capacity.
     unsafe fn fill<I: Iterator<Item = T>>(&mut self, replace_with: &mut I) -> bool {
+        // ignore-tidy-undocumented-unsafe
         let deque = unsafe { self.deque.as_mut() };
         let range_start = deque.len;
         let range_end = range_start + self.drain_len;
@@ -121,6 +123,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
         for idx in range_start..range_end {
             if let Some(new_item) = replace_with.next() {
                 let index = deque.to_wrapped_index(idx);
+                // ignore-tidy-undocumented-unsafe
                 unsafe { deque.buffer_write(index, new_item) };
                 deque.len += 1;
                 self.drain_len -= 1;
@@ -137,6 +140,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
     ///
     /// self.deque must be valid.
     unsafe fn move_tail(&mut self, additional: usize) {
+        // SAFETY: Upheld by caller.
         let deque = unsafe { self.deque.as_mut() };
 
         // `Drain::new` modifies the deque's len (so does `Drain::fill` here)
@@ -182,6 +186,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
         }
 
         let new_tail_start = tail_start + additional;
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             deque.wrap_copy(
                 deque.to_wrapped_index(tail_start),
