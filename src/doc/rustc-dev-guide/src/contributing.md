@@ -338,36 +338,6 @@ in [#132356][#132356].
 
 This section has moved to ["Using External Repositories"](./external-repos.md).
 
-## Writing documentation
-
-Documentation improvements are very welcome.
-The source of `doc.rust-lang.org`
-is located in [`src/doc`] in the tree, and standard API documentation is generated
-from the source code itself (e.g. [`library/std/src/lib.rs`][std-root]). Documentation pull requests
-function in the same way as other pull requests.
-
-[`src/doc`]: https://github.com/rust-lang/rust/tree/HEAD/src/doc
-[std-root]: https://github.com/rust-lang/rust/blob/HEAD/library/std/src/lib.rs#L1
-
-To find documentation-related issues, use the [A-docs label].
-
-You can find documentation style guidelines in [RFC 1574].
-
-To build the standard library documentation, use `x doc --stage 1 library --open`.
-To build the documentation for a book (e.g. the unstable book), use `x doc src/doc/unstable-book`.
-Results should appear in `build/host/doc`, as well as automatically open in your default browser.
-See [Building Documentation](./building/compiler-documenting.md#building-documentation) for more
-information.
-
-You can also use `rustdoc` directly to check small fixes.
-For example, `rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
-The CSS might be messed up, but you can verify that the HTML is right.
-
-Please notice that we don't accept typography/spellcheck fixes to **internal documentation**
-as it's usually not worth the churn or the review time.
-Examples of internal documentation are code comments and rustc API docs.
-However, feel free to fix those if accompanied by other improvements in the same PR.
-
 ## Issue triage
 
 Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
