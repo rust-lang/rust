@@ -27,6 +27,7 @@ error[E0425]: cannot find type `Type` in this scope
 LL |         let _: Type;
    |                ^^^^
    |
+   = note: 'std::mem::type_info::Type' is unstable in nightly Rust and is only available with the `#![feature(type_info)]` attribute
 help: you might have meant to use the associated type
    |
 LL |         let _: Self::Type;
@@ -42,6 +43,7 @@ error[E0531]: cannot find tuple struct or tuple variant `Type` in this scope
 LL |         let Type(..);
    |             ^^^^ not found in this scope
    |
+   = note: 'std::mem::type_info::Generic::Type' is unstable in nightly Rust and is only available with the `#![feature(type_info)]` attribute
 help: consider importing this tuple variant
    |
 LL + use std::mem::type_info::Generic::Type;
@@ -53,6 +55,7 @@ error[E0425]: cannot find value `Type` in this scope
 LL |         Type;
    |         ^^^^ not found in this scope
    |
+   = note: 'std::mem::type_info::Generic::Type' is unstable in nightly Rust and is only available with the `#![feature(type_info)]` attribute
 help: consider importing this tuple variant
    |
 LL + use std::mem::type_info::Generic::Type;

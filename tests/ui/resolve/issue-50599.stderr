@@ -4,6 +4,8 @@ error[E0425]: cannot find value `LOG10_2` in module `std::f64`
 LL |     const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize;
    |                                                ^^^^^^^ not found in `std::f64`
    |
+   = note: 'std::f128::consts::LOG10_2' is unstable in nightly Rust and is only available with the `#![feature(f128)]` attribute
+   = note: 'std::f16::consts::LOG10_2' is unstable in nightly Rust and is only available with the `#![feature(f16)]` attribute
 help: consider importing one of these constants
    |
 LL + use std::f128::consts::LOG10_2;
