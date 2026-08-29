@@ -17,7 +17,9 @@ LL | struct Dealigned<T>(u8, T);
    |                         ^
 
 
-Box<dyn Any>
+builtin derive created an unaligned reference
+error: the compiler unexpectedly panicked. This is a bug
+
 query stack during panic:
 #0 [mir_built] building MIR for `<impl at $DIR/multiple_definitions_attribute_merging.rs:16:10: 16:19>::eq`
 #1 [check_unsafety] unsafety-checking `<impl at $DIR/multiple_definitions_attribute_merging.rs:16:10: 16:19>::eq`
