@@ -8,7 +8,7 @@ use crate::num::{NonZero, NonZeroI32};
 use crate::path::{Path, PathBuf};
 use crate::process::StdioPipes;
 use crate::sys::fs::File;
-use crate::sys::io::error_string;
+use crate::sys::io::format_error;
 use crate::sys::pal::helpers;
 use crate::sys::unsupported;
 use crate::{fmt, io};
@@ -264,8 +264,7 @@ impl ExitStatus {
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let err_str = error_string(self.0.as_usize());
-        write!(f, "{}", err_str)
+        format_error(self.0.as_usize(), f)
     }
 }
 
@@ -280,8 +279,7 @@ pub struct ExitStatusError(r_efi::efi::Status);
 
 impl fmt::Debug for ExitStatusError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let err_str = error_string(self.0.as_usize());
-        write!(f, "{}", err_str)
+        format_error(self.0.as_usize(), f)
     }
 }
 
