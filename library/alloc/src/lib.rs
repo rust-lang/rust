@@ -206,6 +206,7 @@
 #![feature(impl_restriction)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
+#![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(multiple_supertrait_upcastable)]
 #![feature(negative_impls)]
