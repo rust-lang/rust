@@ -274,4 +274,6 @@
 
 [Appendix E: Bibliography](./appendix/bibliography.md)
 
+[Appendix F: Reading club sessions](./appendix/reading-club.md)
+
 [Appendix Z: HumorRust](./appendix/humorust.md)
