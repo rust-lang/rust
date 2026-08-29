@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
