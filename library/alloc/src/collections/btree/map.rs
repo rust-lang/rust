@@ -205,7 +205,11 @@ pub struct BTreeMap<
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V, A: AllocatorClone> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
-        drop(unsafe { ptr::read(self) }.into_iter())
+        if self.root.is_some() {
+            drop(unsafe { ptr::read(self) }.into_iter())
+        } else {
+            unsafe { ManuallyDrop::drop(&mut self.alloc) }
+        }
     }
 }
 
