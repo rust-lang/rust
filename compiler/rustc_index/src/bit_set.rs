@@ -1320,11 +1320,6 @@ impl<T: Idx> GrowableBitSet<T> {
     pub fn iter(&self) -> BitIter<'_, T> {
         self.bit_set.iter()
     }
-
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.bit_set.count()
-    }
 }
 
 /// A fixed-size 2D bit matrix type with a dense representation.
