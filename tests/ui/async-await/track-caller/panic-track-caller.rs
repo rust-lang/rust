@@ -92,6 +92,19 @@ async fn foo_block() {
     a.await
 }
 
+#[track_caller]
+async fn bar_manual_poll() {
+    panic!();
+}
+
+fn foo_manual_poll() {
+    let future = bar_manual_poll();
+    let future = std::pin::pin!(future);
+    let mut cx = std::task::Context::from_waker(std::task::Waker::noop());
+    let res = future.poll(&mut cx);
+    assert_eq!(res, std::task::Poll::Ready(()));
+}
+
 fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
     let loc = Arc::new(Mutex::new(None));
 
@@ -120,4 +133,7 @@ fn main() {
 
     #[cfg(cls)]
     assert_eq!(panicked_at(|| block_on(foo_block())), 92);
+
+    // This should be 101 (call site), not 104 (poll site)
+    assert_eq!(panicked_at(|| foo_manual_poll()), 104);
 }
