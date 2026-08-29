@@ -352,6 +352,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 tooltip.as_ref(),
                 playground_button.as_deref(),
                 &added_classes,
+                edition,
             )
         );
         Some(Event::Html(s.into()))
