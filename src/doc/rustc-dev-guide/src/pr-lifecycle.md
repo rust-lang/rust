@@ -63,6 +63,13 @@ See the [Testing with CI] chapter for using Rust's CI to test your changes.
 
 ## PR review
 
+When you open a PR on the [rust-lang/rust], a bot will assign your PR to a reviewer.
+If there is a particular Rust team member you are working with, you can
+request that reviewer by leaving a comment on the thread with `r?
+@reviewer-github-id` (e.g. `r? @eddyb`). If you don't know who to request,
+don't request anyone;
+the bot will assign someone automatically based on which files you changed.
+
 ### r?
 
 Your PR will be automatically assigned a reviewer.
@@ -142,6 +149,31 @@ The reviewer may request some changes using the GitHub code review interface.
 They may also request special procedures for some PRs.
 See [Crater] and [Breaking Changes] chapters for some examples of such procedures.
 
+Feel free to ask questions or discuss things you don't understand or disagree with.
+However, recognize that the PR won't be merged unless someone on the Rust team approves it.
+If a reviewer leave a comment like `r=me after fixing ...`, that means they approve the PR and
+you can merge it with comment with `@bors r=reviewer-github-id`(e.g. `@bors r=eddyb`) to merge it 
+after fixing trivial issues.
+Note that `r=someone` requires permission and bors could say
+something like "🔑 Insufficient privileges..." when commenting `r=someone`.
+In that case, you have to ask the reviewer to revisit your PR.
+
+There are a couple of things that may happen for some PRs during the review process
+
+- If the change is substantial enough, the reviewer may request an FCP on the PR.
+  This gives all members of the appropriate team a chance to review the changes.
+- If the change may cause breakage, the reviewer may request a [crater] run.
+  This compiles the compiler with your changes and then attempts to compile all
+  crates on crates.io with your modified compiler.
+  This is a great smoke test
+  to check if you introduced a change to compiler behavior that affects a large
+  portion of the ecosystem.
+- If the diff of your PR is large or the reviewer is busy, your PR may have
+  some merge conflicts with other PRs that happen to get merged first.
+  You should fix these merge conflicts using the normal git procedures.
+
+[crater]: ./tests/crater.md
+
 [r?]: https://github.com/rust-lang/rust/pull/78133#issuecomment-712692371
 [#t-release/triage]: https://rust-lang.zulipchat.com/#narrow/stream/242269-t-release.2Ftriage
 [Crater]: tests/crater.md
@@ -157,7 +189,6 @@ It will look something like this:
 This tells [@bors], our lovable integration bot, that your pull request has been approved.
 The PR then enters the [merge queue], where [@bors]
 will run *all* the tests on *every* platform we support.
-If it all works out, [@bors] will merge your code into `main` and close the pull request.
 
 Depending on the scale of the change, you may see a slightly different form of `r+`:
 
@@ -171,6 +202,9 @@ with one another are marked as "always roll up".
 Be patient;
 this can take a while and the queue can sometimes be long.
 Also, note that PRs are never merged by hand.
+
+If it all works out, [@bors] will merge your code into `main` and close the pull request.
+Your code will be in the next nightly compiler :)
 
 [@rustbot]: https://github.com/rustbot
 [@bors]: https://github.com/rust-lang/bors
