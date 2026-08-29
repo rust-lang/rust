@@ -81,7 +81,7 @@ You may use an LLM for generating the instructions for that tool, but you should
 
 Consider [performance] as you write.
 
-[performance]: ../contributing.md#performance
+[performance]: ../tests/perf.md#performance-considerations
 
 Think before adding dependencies;
 consult our [guidance for new dependencies][crates-io].

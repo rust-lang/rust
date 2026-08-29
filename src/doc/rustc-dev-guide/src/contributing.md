@@ -31,27 +31,6 @@ Trait in return position**.
 Opening an issue is as easy as following [this link][create an issue] and filling out the fields
 in the appropriate provided template.
 
-### Performance
-
-Compiler performance is important.
-We have put a lot of effort over the last few years into [gradually improving it][perfdash].
-
-[perfdash]: https://perf.rust-lang.org/dashboard.html
-
-If you suspect that your change may cause a performance regression (or
-improvement), you can request a "perf run" (and your reviewer may also request one
-before approving).
-This is yet another bot that will compile a collection of
-benchmarks on a compiler with your changes.
-The numbers are reported
-[here][perf], and you can see a comparison of your changes against the latest `main`.
-
-> For an introduction to the performance of Rust code in general
-> which would also be useful in rustc development, see [The Rust Performance Book].
-
-[perf]: https://perf.rust-lang.org
-[The Rust Performance Book]: https://nnethercote.github.io/perf-book/
-
 ### Keeping your branch up-to-date
 
 The CI in rust-lang/rust applies your patches directly against current `main`,
