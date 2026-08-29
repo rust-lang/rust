@@ -1,11 +1,9 @@
 use std::assert_matches;
-use std::sync::Arc;
 
 use itertools::Itertools;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{FileName, RemapPathScopeComponents, SourceFile, StableSourceFileId};
 use tracing::debug;
@@ -188,34 +186,6 @@ rustc_index::newtype_index! {
     /// of local-to-global mappings will be embedded in the function's record in
     /// the `__llvm_covfun` linker section.
     struct LocalFileId {}
-}
-
-/// Holds a mapping from "local" (per-function) file IDs to their corresponding
-/// source files.
-#[derive(Debug, Default)]
-struct VirtualFileMapping {
-    local_file_table: IndexVec<LocalFileId, Arc<SourceFile>>,
-}
-
-impl VirtualFileMapping {
-    fn push_file(&mut self, source_file: &Arc<SourceFile>) -> LocalFileId {
-        self.local_file_table.push(Arc::clone(source_file))
-    }
-
-    /// Resolves all of the filenames in this local file mapping to a list of
-    /// global file IDs in its CGU, for inclusion in this function's
-    /// `__llvm_covfun` record.
-    ///
-    /// The global file IDs are returned as `u32` to make FFI easier.
-    fn resolve_all(&self, global_file_table: &GlobalFileTable) -> Option<Vec<u32>> {
-        self.local_file_table
-            .iter()
-            .map(|file| try {
-                let id = global_file_table.get_existing_id(file)?;
-                GlobalFileId::as_u32(id)
-            })
-            .collect::<Option<Vec<_>>>()
-    }
 }
 
 /// Generates and emits the covmap record for this CGU, which mostly
