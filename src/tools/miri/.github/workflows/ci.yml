@@ -232,7 +232,7 @@ jobs:
       - name: Install nightly toolchain
         run: rustup toolchain install nightly --profile minimal
       - name: Install rustup-toolchain-install-master
-        run: cargo install -f rustup-toolchain-install-master
+        run: cargo install --locked -f rustup-toolchain-install-master
       # Create a token for the next step so it can create a PR that actually runs CI.
       - uses: actions/create-github-app-token@v3
         id: app-token
