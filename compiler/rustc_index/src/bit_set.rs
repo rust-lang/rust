@@ -345,12 +345,6 @@ impl<T: Idx> DenseBitSet<T> {
     }
 }
 
-impl<T: Idx> From<GrowableBitSet<T>> for DenseBitSet<T> {
-    fn from(bit_set: GrowableBitSet<T>) -> Self {
-        bit_set.bit_set
-    }
-}
-
 impl<T> Clone for DenseBitSet<T> {
     fn clone(&self) -> Self {
         DenseBitSet {
@@ -1330,12 +1324,6 @@ impl<T: Idx> GrowableBitSet<T> {
     #[inline]
     pub fn len(&self) -> usize {
         self.bit_set.count()
-    }
-}
-
-impl<T: Idx> From<DenseBitSet<T>> for GrowableBitSet<T> {
-    fn from(bit_set: DenseBitSet<T>) -> Self {
-        Self { bit_set }
     }
 }
 
