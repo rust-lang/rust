@@ -5,6 +5,8 @@
 //@ revisions: afn cls afn_cls nofeat
 //
 //
+//
+//
 // Padding comment so that the line numbers are the same as panic-track-caller.rs
 #![feature(stmt_expr_attributes)]
 #![cfg_attr(any(afn, afn_cls), feature(async_fn_track_caller))]
@@ -137,32 +139,32 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 // uses the location where the future is awaited or polled.
 // The correct behavior as per T-lang is to use the location where the function is called.
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 49);
+    assert_eq!(panicked_at(|| block_on(foo())), 51);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 65);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 67);
     #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 60);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 62);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 80);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 82);
     #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 74);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 76);
 
     // FIXME(closure_track_caller): if closure_track_caller is enabled, but
     // async_fn_track_caller is disabled, then #[track_caller] on async closures
     // silently do nothing. Either it should function, or we should emit a warning.
     // See #161961
     #[cfg(cls)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 89);
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 91);
     #[cfg(afn_cls)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 92);
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 94);
 
     #[cfg(any(cls, afn_cls))]
-    assert_eq!(panicked_at(|| block_on(foo_block())), 103);
+    assert_eq!(panicked_at(|| block_on(foo_block())), 105);
 
     #[cfg(any(afn, afn_cls))]
-    assert_eq!(panicked_at(|| foo_manual_poll()), 116);
+    assert_eq!(panicked_at(|| foo_manual_poll()), 118);
     #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| foo_manual_poll()), 109);
+    assert_eq!(panicked_at(|| foo_manual_poll()), 111);
 }
