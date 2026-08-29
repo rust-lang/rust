@@ -81,7 +81,7 @@ The build files are found in the `book/html` directory.
 
 See the guide itself for instructions on [writing new docs].
 
-[writing new docs]: src/contributing.md#contributing-to-rustc-dev-guide
+[writing new docs]: src/contributing-to-guide.md
 
 ## Maintaining the guide
 
