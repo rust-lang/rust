@@ -474,7 +474,19 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     let padded_size = 8;
     let padding = padded_size - unpadded_size;
 
-    let gpr_type = indirect || !layout.is_single_fp_element(bx.cx);
+    // NOTE: if we ever allow aggregate types, this should handle structs with a single fp element.
+    let is_single_fp_element = |layout: TyAndLayout<'_>| -> bool {
+        match layout.layout.backend_repr() {
+            BackendRepr::Scalar(scalar) => match scalar.primitive() {
+                Primitive::Float(Float::F32 | Float::F64) => true,
+                Primitive::Float(Float::F16 | Float::F128) => false,
+                Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+            },
+            _ => false,
+        }
+    };
+
+    let gpr_type = indirect || !is_single_fp_element(layout);
     let (max_regs, reg_count, reg_save_index, reg_padding) =
         if gpr_type { (5, gpr, 2, padding) } else { (4, fpr, 16, 0) };
 
