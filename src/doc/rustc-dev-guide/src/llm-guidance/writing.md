@@ -63,7 +63,7 @@ For example:
 
 - Search for related issues and PRs.
 - Find relevant code, tests, git history, and Zulip discussion.
-- If this is a cross-cutting change, consult the "cross-cutting" section of [the contributing docs](../contributing.md#pull-requests).
+- If this is a cross-cutting change, consult the [pull request guidance](../getting-started.md#pull-requests).
 - [Make the smallest change that fixes the problem][small-cls].
   Do not combine it with unrelated refactors or cleanups.
 

@@ -31,22 +31,6 @@ Trait in return position**.
 Opening an issue is as easy as following [this link][create an issue] and filling out the fields
 in the appropriate provided template.
 
-## Bug fixes or "normal" code changes
-
-For most PRs, no special procedures are needed.
-You can just [open a PR], and it will be reviewed, approved, and merged.
-This includes most bug fixes, refactorings, and other user-invisible changes.
-The next few sections talk about exceptions to this rule.
-
-Also, note that it is perfectly acceptable to open WIP PRs or GitHub [Draft PRs].
-Some people prefer to do this so they can get feedback along the
-way or share their code with a collaborator.
-Others do this so they can utilize
-the CI to build and test their PR (e.g. when developing on a slow machine).
-
-[open a PR]: #pull-requests
-[Draft PRs]: https://github.blog/2019-02-14-introducing-draft-pull-requests/
-
 ## New features
 
 Rust has strong backwards-compatibility guarantees.
@@ -100,52 +84,6 @@ The numbers are reported
 
 [perf]: https://perf.rust-lang.org
 [The Rust Performance Book]: https://nnethercote.github.io/perf-book/
-
-## Pull requests
-
-Pull requests (or PRs for short) are the primary mechanism we use to change Rust.
-GitHub itself has some [great documentation][about-pull-requests] on using the Pull Request feature.
-We use the ["fork and pull" model][development-models],
-where contributors push changes to their personal fork and create pull requests to
-bring those changes into the source repository.
-We have [a chapter](git.md) on how to use Git when contributing to Rust.
-
-> **Advice for potentially large, complex, cross-cutting and/or very domain-specific changes**
->
-> The compiler reviewers on rotation usually each have areas of the compiler that they know well,
-> but also have areas that they are not very familiar with. If your PR contains changes that are
-> large, complex, cross-cutting and/or highly domain-specific, it becomes very difficult to find a
-> suitable reviewer who is comfortable in reviewing all of the changes in such a PR. This is also
-> true if the changes are not only compiler-specific but also contain changes which fall under the
-> purview of reviewers from other teams, like the standard library team. [There's a bot][triagebot]
-> which notifies the relevant teams and pings people who have set up specific alerts based on the
-> files modified.
->
-> Before making such changes, you are strongly encouraged to **discuss your proposed changes with
-> the compiler team beforehand** (and with other teams that the changes would require approval
-> from), and work with the compiler team to see if we can help you **break down a large potentially
-> unreviewable PR into a series of smaller more individually reviewable PRs**.
->
-> You can communicate with the compiler team by creating a [#t-compiler thread on Zulip][t-compiler]
-> to discuss your proposed changes.
->
-> Communicating with the compiler team beforehand helps in several ways:
->
-> 1. It increases the likelihood of your PRs being reviewed in a timely manner.
->     - We can help you identify suitable reviewers *before* you open actual PRs, or help find
->       advisors and liaisons to help you navigate the change procedures, or help with running
->       try-jobs, perf runs and crater runs as suitable.
-> 2. It helps the compiler team track your changes.
-> 3. The compiler team can perform vibe checks on your changes early and often, to see if the
->    direction of the changes align with what the compiler team prefers to see.
-> 4. Helps to avoid situations where you may have invested significant time and effort into large
->   changes that the compiler team might not be willing to accept, or finding out very late that the
->   changes are in a direction that the compiler team disagrees with.
-
-[about-pull-requests]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests
-[development-models]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/getting-started/about-collaborative-development-models#fork-and-pull-model
-[t-compiler]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
-[triagebot]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
 
 ### Keeping your branch up-to-date
 
@@ -337,10 +275,6 @@ in [#132356][#132356].
 ## External dependencies
 
 This section has moved to ["Using External Repositories"](./external-repos.md).
-
-## Issue triage
-
-Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 
 ## LLM policy
 

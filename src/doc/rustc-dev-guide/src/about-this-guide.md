@@ -35,7 +35,7 @@ There are several parts to this guide:
    There are a few of these with different information, including a glossary.
 
 [p1]: ./building/how-to-build-and-run.md
-[p2]: ./contributing.md
+[p2]: ./getting-started.md
 [p3]: ./building/bootstrapping/intro.md
 [p4]: ./part-2-intro.md
 [p5]: ./part-3-intro.md
