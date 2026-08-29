@@ -2552,6 +2552,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
         impl<T, A: Allocator> Drop for PanicGuard<'_, T, A> {
             #[cold]
+            #[inline(never)]
             fn drop(&mut self) {
                 let remaining = self.original_len - self.read;
                 // SAFETY: Trailing unchecked items must be valid since we never touch them.
@@ -2720,7 +2721,7 @@ impl<T, A: Allocator> Vec<T, A> {
         }
 
         /* INVARIANT: vec.len() > read > write > write-1 >= 0 */
-        struct FillGapOnDrop<'a, T, A: core::alloc::Allocator> {
+        struct PanicGuard<'a, T, A: core::alloc::Allocator> {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
@@ -2732,7 +2733,9 @@ impl<T, A: Allocator> Vec<T, A> {
             vec: &'a mut Vec<T, A>,
         }
 
-        impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
+        impl<'a, T, A: core::alloc::Allocator> Drop for PanicGuard<'a, T, A> {
+            #[cold]
+            #[inline(never)]
             fn drop(&mut self) {
                 /* This code gets executed when `same_bucket` panics */
 
@@ -2768,31 +2771,31 @@ impl<T, A: Allocator> Vec<T, A> {
         /* Drop items while going through Vec, it should be more efficient than
          * doing slice partition_dedup + truncate */
 
-        // Construct gap first and then drop item to avoid memory corruption if `T::drop` panics.
-        let mut gap =
-            FillGapOnDrop { read: first_duplicate_idx + 1, write: first_duplicate_idx, vec: self };
+        // Construct guard first and then drop item to avoid memory corruption if `T::drop` panics.
+        let mut g =
+            PanicGuard { read: first_duplicate_idx + 1, write: first_duplicate_idx, vec: self };
         unsafe {
             // SAFETY: we checked that first_duplicate_idx in bounds before.
-            // If drop panics, `gap` would remove this item without drop.
+            // If drop panics, `g` would remove this item without drop.
             ptr::drop_in_place(start.add(first_duplicate_idx));
         }
 
         /* SAFETY: Because of the invariant, read_ptr, prev_ptr and write_ptr
          * are always in-bounds and read_ptr never aliases prev_ptr */
         unsafe {
-            while gap.read < len {
-                let read_ptr = start.add(gap.read);
-                let prev_ptr = start.add(gap.write.wrapping_sub(1));
+            while g.read < len {
+                let read_ptr = start.add(g.read);
+                let prev_ptr = start.add(g.write.wrapping_sub(1));
 
                 // We explicitly say in docs that references are reversed.
                 let found_duplicate = same_bucket(&mut *read_ptr, &mut *prev_ptr);
                 if found_duplicate {
-                    // Increase `gap.read` now since the drop may panic.
-                    gap.read += 1;
+                    // Increase `g.read` now since the drop may panic.
+                    g.read += 1;
                     /* We have found duplicate, drop it in-place */
                     ptr::drop_in_place(read_ptr);
                 } else {
-                    let write_ptr = start.add(gap.write);
+                    let write_ptr = start.add(g.write);
 
                     /* read_ptr cannot be equal to write_ptr because at this point
                      * we guaranteed to skip at least one element (before loop starts).
@@ -2800,16 +2803,16 @@ impl<T, A: Allocator> Vec<T, A> {
                     ptr::copy_nonoverlapping(read_ptr, write_ptr, 1);
 
                     /* We have filled that place, so go further */
-                    gap.write += 1;
-                    gap.read += 1;
+                    g.write += 1;
+                    g.read += 1;
                 }
             }
 
-            /* Technically we could let `gap` clean up with its Drop, but
+            /* Technically we could let `g` clean up with its Drop, but
              * when `same_bucket` is guaranteed to not panic, this bloats a little
              * the codegen, so we just do it manually */
-            gap.vec.set_len(gap.write);
-            mem::forget(gap);
+            g.vec.set_len(g.write);
+            mem::forget(g);
         }
     }
 
