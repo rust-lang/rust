@@ -176,3 +176,9 @@ We don't care which model you used, but we do care whether you used the LLM to i
 > 🤖 Generated with Claude Code
 
 > `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>`
+
+## LLM policy
+
+See [Forge][LLM policy].
+
+[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html

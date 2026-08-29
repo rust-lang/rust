@@ -31,6 +31,9 @@ Trait in return position**.
 Opening an issue is as easy as following [this link][create an issue] and filling out the fields
 in the appropriate provided template.
 
+[search existing issues]: https://github.com/rust-lang/rust/issues?q=is%3Aissue
+[create an issue]: https://github.com/rust-lang/rust/issues/new/choose
+
 ### Keeping your branch up-to-date
 
 The CI in rust-lang/rust applies your patches directly against current `main`,
@@ -205,7 +208,7 @@ leave a comment on the original PR asking the reviewer to close it for you.
 [labeling]: ./rustbot.md#issue-relabeling
 [closing-keywords]: https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue
 
-### Reverting a PR
+## Reverting a PR
 
 See ["Reverts"](https://forge.rust-lang.org/compiler/reviews.html#reverts) on Forge.
 
@@ -214,34 +217,53 @@ problematic code, as shown in [#128271][#128271].
 For MIR optimizations, we can also use the `-Zunsound-mir-opt` option to gate the mir-opt, as shown
 in [#132356][#132356].
 
-[revert policy]: https://forge.rust-lang.org/compiler/reviews.html?highlight=revert#reverts
 [#128271]: https://github.com/rust-lang/rust/pull/128271
 [#132356]: https://github.com/rust-lang/rust/pull/132356
 
-## External dependencies
-
-This section has moved to ["Using External Repositories"](./external-repos.md).
-
-## LLM policy
-
-See [Forge][LLM policy].
-
-[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html
-
-## Helpful links and information
-
-This section has moved to the ["About this guide"] chapter.
-
-["About this guide"]: about-this-guide.md#other-places-to-find-information
-[search existing issues]: https://github.com/rust-lang/rust/issues?q=is%3Aissue
 [Breaking Changes]: bug-fix-procedure.md
-[triagebot.toml config file]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
-[rust-lang teams database]: https://github.com/rust-lang/team/tree/HEAD/teams
 [compiler test suite]: tests/intro.md
 [merge queue]: https://bors.rust-lang.org/queue/rust
 [git hooks]: https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks
-[A-docs label]: https://github.com/rust-lang/rust/issues?q=is%3Aopen%20is%3Aissue%20label%3AA-docs
-[RFC 1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
-[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
-[rdgrepo]: https://github.com/rust-lang/rustc-dev-guide
-[create an issue]: https://github.com/rust-lang/rust/issues/new/choose
+
+## Other procedures
+
+Other contribution procedures are documented with the parts of the guide that own them:
+
+<a id="bug-fixes-or-normal-code-changes"></a>
+<a id="pull-requests"></a>
+
+- For routine changes or large, cross-cutting pull requests, see [normal code changes](getting-started.md#bug-fixes-or-normal-code-changes) and [pull request guidance](getting-started.md#pull-requests).
+
+<a id="new-features"></a>
+<a id="breaking-changes"></a>
+<a id="major-changes"></a>
+
+- For new features, major changes, and breaking changes, see [Implementing new language features](implementing-new-features.md) and [Procedures for breaking changes](bug-fix-procedure.md).
+
+<a id="performance"></a>
+
+- For performance-sensitive changes, see [Performance testing](tests/perf.md#performance-considerations).
+
+<a id="writing-documentation"></a>
+
+- For compiler documentation, see [Contributing documentation](building/compiler-documenting.md#contributing-documentation).
+
+<a id="issue-triage"></a>
+
+- For issue triage, see [Issue triage](getting-started.md#issue-triage).
+
+<a id="llm-guidance"></a>
+
+- For guidance on LLM usage, see [Running LLMs](llm-guidance.md).
+
+<a id="contributing-to-rustc-dev-guide"></a>
+
+- For changes to this guide itself, see [Writing rustc-dev-guide documentation](contributing-to-guide.md).
+
+<a id="external-dependencies"></a>
+
+- For external dependencies, see [Using external repositories](external-repos.md).
+
+<a id="helpful-links-and-information"></a>
+
+- For further resources, see [About this guide](about-this-guide.md#other-places-to-find-information).
