@@ -1,0 +1,13 @@
+// Regression test for <https://github.com/rust-lang/rust/issues/161837>.
+
+//@ run-rustfix
+
+#![deny(rustdoc::redundant_explicit_links)]
+
+//! [queue](macro.queue.html)
+//~^ ERROR redundant explicit link target
+
+#[macro_export]
+macro_rules! queue {
+    () => {};
+}
