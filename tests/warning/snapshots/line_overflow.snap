@@ -1,0 +1,11 @@
+---
+source: src/test/mod.rs
+---
+error[internal]: line formatted, but exceeded maximum width (maximum: 100 (see `max_width` option), found: 109)
+ --> tests/warning/source/line_overflow.rs:1:1:101
+  |
+1 | fn this_function_name_is_intentionally_long_enough_to_exceed_the_default_one_hundred_character_maximum_width(
+  |                                                                                                     ^^^^^^^^^
+  |
+
+warning: rustfmt has failed to format. See previous 1 errors.

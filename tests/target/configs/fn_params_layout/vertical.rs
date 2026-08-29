@@ -2,6 +2,10 @@
 // Function arguments density
 
 trait Lorem {
+    fn lorem(ipsum: Ipsum);
+
+    fn lorem(ipsum: Ipsum) -> Dolor;
+
     fn lorem(
         ipsum: Ipsum,
         dolor: Dolor,
@@ -39,4 +43,30 @@ trait Lorem {
     ) {
         // body
     }
+
+    fn long_param_name(
+        lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_sed_do_eiusmod: Tempor
+    );
+
+    fn long_param_type(
+        lorem: IpsumDolorSitAmetConsecteturAdipiscingElitSedDoEiusmodTemporIncididuntUtLabore
+    );
+
+    fn long_return_type(
+        lorem: Lorem
+    ) -> IpsumDolorSitAmetConsecteturAdipiscingElitSedDoEiusmodTemporIncididuntUtLabore;
+
+    fn lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_sed_do_eiusmod_tempor_incididunt(
+        lorem: Lorem
+    );
+
+    fn lorem<T: IpsumDolorSitAmetConsecteturAdipiscingElitSedDoEiusmodTemporIncididuntUtLaboreEt>(
+        t: T
+    );
+
+    fn lorem<
+        T: IpsumDolorSitAmetConsecteturAdipiscingElitSedDoEiusmodTemporIncididuntUtLaboreEtDolore,
+    >(
+        t: T
+    );
 }

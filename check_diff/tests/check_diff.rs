@@ -1,6 +1,6 @@
 use check_diff::{
-    CheckDiffError, CheckDiffRunners, CodeFormatter, FormatCodeError, Repository,
-    RustFmtFileFinder, check_diff,
+    CheckDiffError, CodeFormatter, DiffChecker, FormatCodeError, Repository, RustFmtFileFinder,
+    check_diff,
 };
 use std::fs::File;
 use tempfile::Builder;
@@ -67,7 +67,7 @@ fn search_for_files_correctly_nested() -> Result<(), Box<dyn std::error::Error>>
 
 #[test]
 fn check_diff_test_no_formatting_difference() -> Result<(), CheckDiffError> {
-    let runners = CheckDiffRunners::new(DoNothingFormatter, DoNothingFormatter);
+    let diff_checker = DiffChecker::new(DoNothingFormatter, DoNothingFormatter);
 
     let dir = Builder::new().tempdir_in("").unwrap();
     let file_path = dir.path().join("test.rs");
@@ -76,14 +76,14 @@ fn check_diff_test_no_formatting_difference() -> Result<(), CheckDiffError> {
     let repos = [repo];
     let workers = std::num::NonZeroU8::new(1).unwrap();
 
-    let errors = check_diff(&runners, &repos, workers);
+    let errors = check_diff(&diff_checker, &repos, workers);
     assert_eq!(errors.len(), 0);
     Ok(())
 }
 
 #[test]
 fn check_diff_test_formatting_difference() -> Result<(), CheckDiffError> {
-    let runners = CheckDiffRunners::new(DoNothingFormatter, AddWhiteSpaceFormatter);
+    let diff_checker = DiffChecker::new(DoNothingFormatter, AddWhiteSpaceFormatter);
     let dir = Builder::new().tempdir_in("").unwrap();
     let file_path = dir.path().join("test.rs");
     let _tmp_file = File::create(file_path)?;
@@ -91,7 +91,7 @@ fn check_diff_test_formatting_difference() -> Result<(), CheckDiffError> {
     let repos = [repo];
     let workers = std::num::NonZeroU8::new(1).unwrap();
 
-    let errors = check_diff(&runners, &repos, workers);
+    let errors = check_diff(&diff_checker, &repos, workers);
     assert_ne!(errors.len(), 0);
     Ok(())
 }

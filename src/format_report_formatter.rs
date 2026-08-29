@@ -1,6 +1,6 @@
 use crate::formatting::FormattingError;
 use crate::{ErrorKind, FormatReport};
-use annotate_snippets::{Annotation, Level, Renderer, Snippet};
+use annotate_snippets::{Annotation, AnnotationKind, Group, Level, Padding, Renderer, Snippet};
 use std::fmt::{self, Display};
 
 /// A builder for [`FormatReportFormatter`].
@@ -57,26 +57,23 @@ impl<'a> Display for FormatReportFormatter<'a> {
         for (file, errors) in errors_by_file {
             for error in errors {
                 let error_kind = error.kind.to_string();
-                let mut message =
-                    error_kind_to_snippet_annotation_level(&error.kind).title(&error_kind);
+                let mut title =
+                    error_kind_to_snippet_annotation_level(&error.kind).primary_title(error_kind);
                 if error.is_internal() {
-                    message = message.id("internal");
+                    title = title.id("internal");
                 }
-
-                let message_suffix = error.msg_suffix();
-                if !message_suffix.is_empty() {
-                    message = message.footer(Level::Note.title(&message_suffix));
-                }
-
-                let origin = format!("{}:{}", file, error.line);
                 let snippet = Snippet::source(&error.line_buffer)
                     .line_start(error.line)
-                    .origin(&origin)
+                    .path(format!("{file}:{}", error.line))
                     .fold(false)
                     .annotations(annotation(error));
-                message = message.snippet(snippet);
-
-                writeln!(f, "{}\n", renderer.render(message))?;
+                let mut group = title.element(snippet);
+                if let Some(message_suffix) = error.msg_suffix() {
+                    group = group.element(Level::NOTE.message(message_suffix));
+                } else {
+                    group = group.element(Padding);
+                }
+                writeln!(f, "{}\n", renderer.render(&[group]))?;
             }
         }
 
@@ -85,26 +82,21 @@ impl<'a> Display for FormatReportFormatter<'a> {
                 "rustfmt has failed to format. See previous {} errors.",
                 self.report.warning_count()
             );
-            let message = Level::Warning.title(&label);
-            writeln!(f, "{}", renderer.render(message))?;
+            let group = Group::with_title(Level::WARNING.primary_title(label));
+            writeln!(f, "{}\n", renderer.render(&[group]))?;
         }
-
         Ok(())
     }
 }
 
 fn annotation(error: &FormattingError) -> Option<Annotation<'_>> {
-    let (range_start, range_length) = error.format_len();
-    let range_end = range_start + range_length;
-
-    if range_length > 0 {
-        Some(Level::Error.span(range_start..range_end))
-    } else {
-        None
-    }
+    error
+        .highlight
+        .clone()
+        .map(|range| AnnotationKind::Primary.span(range))
 }
 
-fn error_kind_to_snippet_annotation_level(error_kind: &ErrorKind) -> Level {
+fn error_kind_to_snippet_annotation_level(error_kind: &ErrorKind) -> Level<'_> {
     match error_kind {
         ErrorKind::LineOverflow(..)
         | ErrorKind::TrailingWhitespace
@@ -114,7 +106,7 @@ fn error_kind_to_snippet_annotation_level(error_kind: &ErrorKind) -> Level {
         | ErrorKind::LostComment
         | ErrorKind::BadAttr
         | ErrorKind::InvalidGlobPattern(_)
-        | ErrorKind::VersionMismatch => Level::Error,
-        ErrorKind::DeprecatedAttr => Level::Warning,
+        | ErrorKind::VersionMismatch => Level::ERROR,
+        ErrorKind::DeprecatedAttr => Level::WARNING,
     }
 }
