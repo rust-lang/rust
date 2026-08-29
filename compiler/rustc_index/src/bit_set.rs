@@ -1221,9 +1221,6 @@ impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
 ///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
-///
-/// All operations that involve an element will panic if the element is equal
-/// to or greater than the domain size.
 #[derive(Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
     bit_set: DenseBitSet<T>,
@@ -1275,24 +1272,6 @@ impl<T: Idx> GrowableBitSet<T> {
     }
 
     #[inline]
-    pub fn insert_range(&mut self, elems: Range<T>) {
-        self.ensure(elems.end.index());
-        self.bit_set.insert_range(elems);
-    }
-
-    /// Returns `true` if the set has changed.
-    #[inline]
-    pub fn remove(&mut self, elem: T) -> bool {
-        self.ensure(elem.index() + 1);
-        self.bit_set.remove(elem)
-    }
-
-    #[inline]
-    pub fn clear(&mut self) {
-        self.bit_set.clear();
-    }
-
-    #[inline]
     pub fn count(&self) -> usize {
         self.bit_set.count()
     }
@@ -1306,14 +1285,6 @@ impl<T: Idx> GrowableBitSet<T> {
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
         self.bit_set.words.get(word_index).is_some_and(|word| (word & mask) != 0)
-    }
-
-    #[inline]
-    pub fn contains_any(&self, elems: Range<T>) -> bool {
-        elems.start.index() < self.bit_set.domain_size
-            && self
-                .bit_set
-                .contains_any(elems.start..T::new(elems.end.index().min(self.bit_set.domain_size)))
     }
 
     #[inline]
