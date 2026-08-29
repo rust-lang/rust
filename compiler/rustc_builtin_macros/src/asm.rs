@@ -437,7 +437,7 @@ fn expand_preparsed_asm(
 
                                 let positional_args = args.operands.len()
                                     - args.named_args.len()
-                                    - args.reg_args.len();
+                                    - args.reg_args.count();
                                 let positional = if positional_args != args.operands.len() {
                                     "positional "
                                 } else {

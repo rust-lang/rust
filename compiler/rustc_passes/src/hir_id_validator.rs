@@ -59,7 +59,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
             .max()
             .expect("owning item has no entry");
 
-        if max != self.hir_ids_seen.len() - 1 {
+        if max != self.hir_ids_seen.count() - 1 {
             let pretty_owner = self.tcx.hir_def_path(owner.def_id).to_string_no_crate_verbose();
 
             let missing_items: Vec<_> = (0..=max as u32)
