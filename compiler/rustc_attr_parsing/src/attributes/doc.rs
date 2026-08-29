@@ -5,10 +5,9 @@ use rustc_attr_ir::{
     DocInline, HideOrShow,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
-use rustc_errors::{Applicability, msg};
+use rustc_errors::Applicability;
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
-use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
@@ -526,19 +525,15 @@ impl DocParser {
         }
         macro_rules! no_args_and_crate_level {
             ($ident: ident) => {{
-                no_args_and_crate_level!($ident, |span| {});
-            }};
-            ($ident: ident, |$span:ident| $extra_validation:block) => {{
                 if let Err(span) = args.as_no_args() {
                     expected_no_args(cx, span);
                     return;
                 }
-                let $span = path.span();
-                if !check_attr_crate_level(cx, $span) {
+                let span = path.span();
+                if !check_attr_crate_level(cx, span) {
                     return;
                 }
-                $extra_validation
-                self.attribute.$ident = Some($span);
+                self.attribute.$ident = Some(span);
             }};
         }
         macro_rules! string_arg_and_crate_level {
@@ -569,6 +564,12 @@ impl DocParser {
                 self.attribute.$ident = Some((s, path.span()));
             }};
         }
+        macro_rules! gated {
+            ($feature:ident $(,$notes:expr)*) => {
+                let stability = $crate::unstable!($feature $(, $notes)*);
+                cx.shared.cx.check_attribute_stability(&cx.attr_path, path.span(), stability);
+            };
+        }
 
         match path.word_sym() {
             Some(sym::alias) => self.parse_alias(cx, path, args),
@@ -583,37 +584,60 @@ impl DocParser {
             }
             Some(sym::inline) => self.parse_inline(cx, path, args, DocInline::Inline),
             Some(sym::no_inline) => self.parse_inline(cx, path, args, DocInline::NoInline),
-            Some(sym::masked) => no_args!(masked),
-            Some(sym::cfg) => self.parse_cfg(cx, args),
-            Some(sym::notable_trait) => no_args!(notable_trait),
-            Some(sym::keyword) => parse_keyword_and_attribute(
-                cx,
-                path,
-                args,
-                &mut self.attribute.keyword,
-                sym::keyword,
-            ),
-            Some(sym::attribute) => parse_keyword_and_attribute(
-                cx,
-                path,
-                args,
-                &mut self.attribute.attribute,
-                sym::attribute,
-            ),
-            Some(sym::fake_variadic) => no_args_and_not_crate_level!(fake_variadic),
-            Some(sym::search_unbox) => no_args_and_not_crate_level!(search_unbox),
-            Some(sym::rust_logo) => no_args_and_crate_level!(rust_logo, |span| {
-                if !cx.features().rustdoc_internals() {
-                    feature_err(
-                        cx.sess(),
-                        sym::rustdoc_internals,
-                        span,
-                        msg!("the `#[doc(rust_logo)]` attribute is used for Rust branding"),
-                    )
-                    .emit();
+            Some(sym::masked) => {
+                gated!(doc_masked);
+                no_args!(masked)
+            }
+            Some(sym::cfg) => {
+                gated!(doc_cfg);
+                self.parse_cfg(cx, args)
+            }
+            Some(sym::notable_trait) => {
+                gated!(doc_notable_trait);
+                no_args!(notable_trait)
+            }
+            Some(sym::keyword) => {
+                gated!(rustdoc_internals);
+                parse_keyword_and_attribute(
+                    cx,
+                    path,
+                    args,
+                    &mut self.attribute.keyword,
+                    sym::keyword,
+                )
+            }
+            Some(sym::attribute) => {
+                gated!(rustdoc_internals);
+                parse_keyword_and_attribute(
+                    cx,
+                    path,
+                    args,
+                    &mut self.attribute.attribute,
+                    sym::attribute,
+                )
+            }
+            Some(sym::fake_variadic) => {
+                gated!(rustdoc_internals);
+                no_args_and_not_crate_level!(fake_variadic)
+            }
+            Some(sym::search_unbox) => {
+                gated!(rustdoc_internals);
+                no_args_and_not_crate_level!(search_unbox)
+            }
+            Some(sym::rust_logo) => {
+                // FIXME: Only feature gated at the crate level (!!)
+                if cx.target == Target::Crate {
+                    gated!(
+                        rustdoc_internals,
+                        "the `#[doc(rust_logo)]` attribute is used for Rust branding"
+                    );
                 }
-            }),
-            Some(sym::auto_cfg) => self.parse_auto_cfg(cx, path, args),
+                no_args_and_crate_level!(rust_logo)
+            }
+            Some(sym::auto_cfg) => {
+                gated!(doc_cfg);
+                self.parse_auto_cfg(cx, path, args)
+            }
             Some(sym::test) => {
                 let Some(list) = args.as_list() else {
                     cx.emit_lint(

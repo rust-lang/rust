@@ -110,4 +110,15 @@ fn main() {
     #[register_tool(xyz)]
     //~^ ERROR crate-level attribute should be an inner attribute
     unreachable!();
+    #[deprecated = concat!("woah", "dude")]
+    //~^ ERROR attribute value must be a literal
+    #[doc = concat!("woah", "dude")]
+    unreachable!();
+    #[doc = {
+        let a = 1;
+        let b = 1;
+        let sum = a + b;
+        assert_eq!(sum, 2);
+    }]
+    unreachable!();
 }
