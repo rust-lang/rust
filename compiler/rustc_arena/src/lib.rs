@@ -13,7 +13,7 @@
 #![cfg_attr(bootstrap, feature(never_type))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![doc(test(no_crate_inject, attr(deny(warnings), allow(internal_features))))]
+#![doc(test(no_crate_inject, attr(deny(warnings))))]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(rustc_attrs)]
