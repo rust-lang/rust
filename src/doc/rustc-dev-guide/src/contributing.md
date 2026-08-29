@@ -31,39 +31,6 @@ Trait in return position**.
 Opening an issue is as easy as following [this link][create an issue] and filling out the fields
 in the appropriate provided template.
 
-## New features
-
-Rust has strong backwards-compatibility guarantees.
-Thus, new features can't just be implemented directly in stable Rust.
-Instead, we have 3 release channels: stable, beta, and nightly.
-See [The Rust Book] for more details on Rust’s train release model.
-
-- **Stable**: this is the latest stable release for general usage.
-- **Beta**: this is the next release (will be stable within 6 weeks).
-- **Nightly**: follows the `main` branch of the repo.
-  This is the only channel where unstable features are intended to be used,
-  which happens via opt-in feature gates.
-
-See [this chapter on implementing new features](./implementing-new-features.md) for more
-information.
-
-[The Rust Book]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
-
-### Breaking changes
-
-Breaking changes have a [dedicated section][Breaking Changes] in the dev-guide.
-
-### Major changes
-
-See ["What proposal approval do I need?"](https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#what-proposalapproval-do-i-need)
-For a definition of the terms there, see
-["Proposals"](https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#proposals).
-
-**When in doubt, ask [on Zulip].
-It would be a shame to put a lot of work into a PR that ends up not getting merged!**
-
-[on Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
-
 ### Performance
 
 Compiler performance is important.
