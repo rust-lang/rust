@@ -78,7 +78,7 @@ fn inclusive_start_end<T: Idx>(
 #[derive(Eq, PartialEq, Hash)]
 pub struct DenseBitSet<T> {
     domain_size: usize,
-    words: Vec<Word>,
+    words: Box<[Word]>,
     marker: PhantomData<T>,
 }
 
@@ -94,15 +94,22 @@ impl<T: Idx> DenseBitSet<T> {
     #[inline]
     pub fn new_empty(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
-        DenseBitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
+        DenseBitSet {
+            domain_size,
+            words: vec![0; num_words].into_boxed_slice(),
+            marker: PhantomData,
+        }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> DenseBitSet<T> {
         let num_words = num_words(domain_size);
-        let mut result =
-            DenseBitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
+        let mut result = DenseBitSet {
+            domain_size,
+            words: vec![!0; num_words].into_boxed_slice(),
+            marker: PhantomData,
+        };
         result.clear_excess_bits();
         result
     }
@@ -115,7 +122,13 @@ impl<T: Idx> DenseBitSet<T> {
         let new_num_words = num_words(new_domain_size);
 
         let DenseBitSet { domain_size: _, mut words, marker } = self;
-        words.resize(new_num_words, 0);
+
+        if new_num_words != words.len() {
+            let mut words_vec = words.into_vec();
+            words_vec.resize(new_num_words, 0);
+            words = words_vec.into_boxed_slice()
+        }
+
         DenseBitSet { domain_size: new_domain_size, words, marker }
     }
 
