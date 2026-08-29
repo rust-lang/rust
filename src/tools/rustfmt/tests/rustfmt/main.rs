@@ -5,7 +5,7 @@ use std::fs::{File, remove_file};
 use std::path::Path;
 use std::process::Command;
 
-use rustfmt_config_proc_macro::{nightly_only_test, rustfmt_only_ci_test};
+use rustfmt_config_proc_macro::{nightly_only_test, rustfmt_only_ci_test, stable_only_test};
 
 /// Run the rustfmt executable with environment vars set and return its output.
 fn rustfmt_with_extra(
@@ -117,11 +117,112 @@ fn inline_config() {
     );
 }
 
+#[stable_only_test]
 #[test]
 fn rustfmt_usage_text() {
     let args = ["--help"];
     let (stdout, _) = rustfmt(&args);
-    assert!(stdout.contains("Format Rust code\n\nusage: rustfmt [options] <file>..."));
+    insta::assert_snapshot!(stdout, @"
+    Format Rust code
+
+    usage: rustfmt [options] <file>...
+
+    Options:
+            --check         Run in 'check' mode. Exits with 0 if input is
+                            formatted correctly. Exits with 1 and prints a diff if
+                            formatting is required.
+            --emit [files|stdout]
+                            What data to emit and how
+            --backup        Backup any modified files.
+            --config-path [Path for the configuration file]
+                            Recursively searches the given path for the
+                            rustfmt.toml config file. If not found reverts to the
+                            input file path
+            --edition [2015|2018|2021|2024]
+                            Rust edition to use
+            --color [always|never|auto]
+                            Use colored output (if supported)
+            --print-config [default|minimal|current] PATH
+                            Dumps a default or minimal config to PATH. A minimal
+                            config is the subset of the current config file used
+                            for formatting the current program. `current` writes
+                            to stdout current config as if formatting the file at
+                            PATH.
+        -l, --files-with-diff 
+                            Prints the names of mismatched files that were
+                            formatted. Prints the names of files that would be
+                            formatted when used with `--check` mode.
+            --config [key1=val1,key2=val2...]
+                            Set options from command line. These settings take
+                            priority over .rustfmt.toml
+            --style-edition [2015|2018|2021|2024]
+                            The edition of the Style Guide.
+        -v, --verbose       Print verbose output
+        -q, --quiet         Print less output
+        -V, --version       Show version information
+        -h, --help [=TOPIC] Show this message or help about a specific topic:
+                            `config`
+    ");
+}
+
+#[nightly_only_test]
+#[test]
+fn rustfmt_nightly_usage_text() {
+    let args = ["--help"];
+    let (stdout, _) = rustfmt(&args);
+    insta::assert_snapshot!(stdout, @"
+    Format Rust code
+
+    usage: rustfmt [options] <file>...
+
+    Options:
+            --check         Run in 'check' mode. Exits with 0 if input is
+                            formatted correctly. Exits with 1 and prints a diff if
+                            formatting is required.
+            --emit [files|stdout|coverage|checkstyle|json]
+                            What data to emit and how
+            --backup        Backup any modified files.
+            --config-path [Path for the configuration file]
+                            Recursively searches the given path for the
+                            rustfmt.toml config file. If not found reverts to the
+                            input file path
+            --edition [2015|2018|2021|2024]
+                            Rust edition to use
+            --color [always|never|auto]
+                            Use colored output (if supported)
+            --print-config [default|minimal|current] PATH
+                            Dumps a default or minimal config to PATH. A minimal
+                            config is the subset of the current config file used
+                            for formatting the current program. `current` writes
+                            to stdout current config as if formatting the file at
+                            PATH.
+        -l, --files-with-diff 
+                            Prints the names of mismatched files that were
+                            formatted. Prints the names of files that would be
+                            formatted when used with `--check` mode.
+            --config [key1=val1,key2=val2...]
+                            Set options from command line. These settings take
+                            priority over .rustfmt.toml
+            --style-edition [2015|2018|2021|2024]
+                            The edition of the Style Guide.
+            --unstable-features 
+                            Enables unstable features. Only available on nightly
+                            channel.
+            --file-lines JSON
+                            Format specified line ranges. Run with
+                            `--help=file-lines` for more detail (unstable).
+            --error-on-unformatted 
+                            Error if unable to get comments or string literals
+                            within max_width, or they are left with trailing
+                            whitespaces (unstable).
+            --skip-children 
+                            Don't reformat child modules (unstable).
+        -v, --verbose       Print verbose output
+        -q, --quiet         Print less output
+        -V, --version       Show version information
+        -h, --help [=TOPIC] Show this message or help about a specific topic:
+                            `config` or `file-lines`
+    ");
 }
 
 #[test]

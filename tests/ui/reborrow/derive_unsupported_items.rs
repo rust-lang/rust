@@ -1,3 +1,5 @@
+//! Test that deriving Reborrow and CoerceShared errors on enums and unions.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};

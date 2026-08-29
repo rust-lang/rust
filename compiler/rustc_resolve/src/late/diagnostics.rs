@@ -4273,7 +4273,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // we identified that the return expression references only one argument, we
                     // would suggest borrowing only that argument, and we'd skip the prior
                     // "use `'static`" suggestion entirely.
-                    let mut lifetime_refs = lifetime_refs.clone().into_iter();
+                    let mut lifetime_refs = lifetime_refs.into_iter();
                     if let Some(lt) = lifetime_refs.next()
                         && lifetime_refs.next().is_none()
                         && (lt.kind == MissingLifetimeKind::Ampersand

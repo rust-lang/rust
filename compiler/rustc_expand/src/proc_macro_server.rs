@@ -473,10 +473,6 @@ impl server::Server for Rustc<'_, '_> {
         f(symbol.as_str())
     }
 
-    fn injected_env_var(&mut self, var: &str) -> Option<String> {
-        self.ecx.sess.opts.logical_env.get(var).cloned()
-    }
-
     fn track_env_var(&mut self, var: &str, value: Option<&str>) {
         self.ecx
             .sess

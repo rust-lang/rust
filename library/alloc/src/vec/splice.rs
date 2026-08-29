@@ -61,6 +61,7 @@ impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
         // the ptr.offset_from_unsigned contract.
         self.drain.iter = [].iter();
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             if self.drain.tail_len == 0 {
                 self.drain.vec.as_mut().extend(self.replace_with.by_ref());
@@ -104,6 +105,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
     /// Returns `true` if we filled the entire range. (`replace_with.next()` didn’t return `None`.)
     unsafe fn fill<I: Iterator<Item = T>>(&mut self, replace_with: &mut I) -> bool {
+        // SAFETY: Pointer is valid.
         let vec = unsafe { self.vec.as_mut() };
         let range_start = vec.len;
         let range_end = self.tail_start;
@@ -113,6 +115,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
             let Some(new_item) = replace_with.next() else {
                 return false;
             };
+            // ignore-tidy-undocumented-unsafe
             unsafe { vec.as_mut_ptr().add(idx).write(new_item) };
             vec.len += 1;
         }
@@ -121,11 +124,13 @@ impl<T, A: Allocator> Drain<'_, T, A> {
 
     /// Makes room for inserting more elements before the tail.
     unsafe fn move_tail(&mut self, additional: usize) {
+        // SAFETY: Pointer is valid.
         let vec = unsafe { self.vec.as_mut() };
         let len = self.tail_start + self.tail_len;
         vec.buf.reserve(len, additional);
 
         let new_tail_start = self.tail_start + additional;
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let src = vec.as_ptr().add(self.tail_start);
             let dst = vec.as_mut_ptr().add(new_tail_start);

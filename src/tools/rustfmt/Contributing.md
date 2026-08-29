@@ -63,6 +63,11 @@ would need a configuration file named `test-indent.toml` in that directory. As a
 example, the `issue-1111.rs` test file is configured by the file
 `./tests/config/issue-1111.toml`.
 
+### Updating snapshots
+
+Some tests that test rustfmt-specific output (e.g. `--help` output and formatting-specific errors) use [insta](https://insta.rs/) to snapshot their output.
+To update these tests, install [`cargo-insta`](https://insta.rs/docs/cli/) and run `cargo insta test --review`.
+
 ## Debugging
 
 Some `rewrite_*` methods use the `debug!` macro for printing useful information.

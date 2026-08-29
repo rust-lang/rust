@@ -828,7 +828,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "system" fn(winapi::HMODULE, *_) -> winapi::FARPROC),
                     (link_name, abi, args),
                 )?;
-                this.read_target_isize(module)?;
+                this.read_target_isize(module)?; // FIXME validate the module!
                 let name = this.read_c_str(this.read_pointer(proc_name)?)?;
                 if let Ok(name) = str::from_utf8(name)
                     && is_dyn_sym(name)

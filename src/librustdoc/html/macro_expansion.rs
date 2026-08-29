@@ -46,6 +46,7 @@ pub(crate) struct ExpandedCode {
 /// As we go through the HIR visitor, if any span overlaps with another, they will
 /// both be merged.
 struct ExpandedCodeInfo {
+    original_span: Span,
     /// Callsite of the macro.
     span: Span,
     /// Expanded macro source code (HTML escaped).
@@ -69,27 +70,31 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
             return;
         }
         let callsite_span = new_span.source_callsite();
-        if let Some(index) =
-            self.expanded_codes.iter().position(|info| info.span.overlaps(callsite_span))
+        if let Some(info) =
+            self.expanded_codes.iter_mut().find(|info| info.span.overlaps(callsite_span))
         {
-            let info = &mut self.expanded_codes[index];
-            if new_span.contains(info.expanded_span) {
+            // If the new span we got has the exact same span information as a span already in the
+            // list, it means it's generated from the same macro but is a different item, so we need
+            // to add it as well.
+            let has_same_macro_origin =
+                new_span == info.original_span && callsite_span == info.span;
+            if !has_same_macro_origin && new_span.contains(info.expanded_span) {
                 // New macro expansion recursively contains the old one, so replace it.
                 info.span = callsite_span;
                 info.expanded_span = new_span;
                 info.code = f();
             } else {
                 // We push the new item after the existing one.
-                let expanded_code = &mut self.expanded_codes[index];
-                expanded_code.code.push('\n');
-                expanded_code.code.push_str(&f());
-                let lo = BytePos(expanded_code.expanded_span.lo().0.min(new_span.lo().0));
-                let hi = BytePos(expanded_code.expanded_span.hi().0.min(new_span.hi().0));
-                expanded_code.expanded_span = expanded_code.expanded_span.with_lo(lo).with_hi(hi);
+                info.code.push('\n');
+                info.code.push_str(&f());
+                let lo = BytePos(info.expanded_span.lo().0.min(new_span.lo().0));
+                let hi = BytePos(info.expanded_span.hi().0.max(new_span.hi().0));
+                info.expanded_span = info.expanded_span.with_lo(lo).with_hi(hi);
             }
         } else {
             // We add a new item.
             self.expanded_codes.push(ExpandedCodeInfo {
+                original_span: new_span,
                 span: callsite_span,
                 code: f(),
                 expanded_span: new_span,
@@ -100,12 +105,48 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
     fn compute_expanded(mut self) -> FxHashMap<BytePos, Vec<ExpandedCode>> {
         self.expanded_codes.sort_unstable_by(|item1, item2| item1.span.cmp(&item2.span));
         let mut expanded: FxHashMap<BytePos, Vec<ExpandedCode>> = FxHashMap::default();
-        for ExpandedCodeInfo { span, code, .. } in self.expanded_codes {
+        for ExpandedCodeInfo { span, code, original_span, .. } in self.expanded_codes {
             if let Ok(lines) = self.source_map.span_to_lines(span)
                 && !lines.lines.is_empty()
             {
                 let mut out = String::new();
-                super::highlight::write_code(&mut out, &code, None, None, None);
+                super::highlight::write_code(
+                    &mut out,
+                    &code,
+                    None,
+                    None,
+                    // NOTE: This is only "an approximation" or "best effort" since the edition of
+                    // individual tokens contained in the expansion can differ from the the edition
+                    // of the entire expansion. And we can't fix that since code is just a `String`
+                    // that was produced by `rustc_ast_pretty` meaning more precise edition
+                    // information has been lost.
+                    //
+                    // Here is an example:
+                    //
+                    // ```edition2015
+                    // #[macro_export]
+                    // macro_rules! generate {
+                    //     ($kw:ident) => {
+                    //         pub fn host() {
+                    //             let _ = $kw {};
+                    //         }
+                    //     };
+                    // }
+                    // ```
+                    //
+                    // ```edition2024
+                    // dependency::generate!(async);
+                    // ```
+                    //
+                    // Here, the `async` keyword wouldn't be highlighted in the rendered expansion
+                    // `let _ = async {}` since it uses the edition of the entire expansion (which
+                    // is Rust 2015) but the `async` in the Rust 2015 expansion does actually refer
+                    // to Rust 2024 `async` keyword and thus contains an `async` block, not a struct
+                    // expression! That's because the keyword `async` originates from a Rust 2024
+                    // crate (root expansion).
+                    original_span.edition(),
+                    None,
+                );
                 let first = lines.lines.first().unwrap();
                 let end = lines.lines.last().unwrap();
                 expanded.entry(lines.file.start_pos).or_default().push(ExpandedCode {

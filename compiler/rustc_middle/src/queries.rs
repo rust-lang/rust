@@ -53,6 +53,8 @@ use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_attr_ir::lang_items::{LangItem, LanguageItems};
+use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_crate_store::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
@@ -63,8 +65,6 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::{LangItem, LanguageItems};
-use rustc_hir::attrs::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
@@ -747,13 +747,11 @@ rustc_queries! {
     /// intrinsics, and the expression tables to be embedded in the function's
     /// coverage metadata.
     ///
-    /// FIXME(Zalathar): This query's purpose has drifted a bit and should
-    /// probably be renamed, but that can wait until after the potential
-    /// follow-ups to #136053 have settled down.
-    ///
     /// Returns `None` for functions that were not instrumented.
-    query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> Option<&'tcx mir::coverage::CoverageIdsInfo> {
-        desc { "retrieving coverage IDs info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
+    query coverage_codegen_info(key: ty::InstanceKind<'tcx>)
+        -> Option<&'tcx mir::coverage::CoverageCodegenInfo>
+    {
+        desc { "retrieving coverage codegen info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
         arena_cache
     }
 
@@ -1526,8 +1524,12 @@ rustc_queries! {
 
     /// Returns the attributes on the item at `def_id`.
     ///
-    /// Do not use this directly, use `tcx.get_attrs` instead.
-    query attrs_for_def(def_id: DefId) -> &'tcx [hir::Attribute] {
+    /// <div class="warning">
+    ///
+    /// Do not use this directly, use [`rustc_attr_ir::find_attr`] instead.
+    ///
+    /// </div>
+    query attrs_for_def(def_id: DefId) -> &'tcx [rustc_attr_ir::Attribute] {
         desc { "collecting attributes of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }

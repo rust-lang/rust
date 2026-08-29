@@ -83,8 +83,8 @@ runner_group_id = 8
 label_prefix = "ec2"
 region = "us-east-2"
 images = {
-    "x86_64ami" = "latest-gha-runner-ami"
-    "arm64ami" = "latest-gha-runner-ami-arm64"
+    "x86_64ami" = "latest-gha-runner-ami",
+    "arm64ami" = "latest-gha-runner-ami-arm64",
 }
 jit_runner = "organization"
 allowed_instances = [

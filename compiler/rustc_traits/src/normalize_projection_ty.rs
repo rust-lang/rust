@@ -59,12 +59,6 @@ fn normalize_canonicalized_projection<'tcx>(
                 0,
                 &mut obligations,
             );
-            obligations.extend(const_arg_has_type_obligation(
-                tcx,
-                param_env,
-                normalized_term,
-                goal,
-            ));
             ocx.register_obligations(obligations);
             // #112047: With projections and opaques, we are able to create opaques that
             // are recursive (given some generic parameters of the opaque's type variables).
@@ -147,12 +141,6 @@ fn normalize_canonicalized_inherent_projection<'tcx>(
                 0,
                 &mut obligations,
             );
-            obligations.extend(const_arg_has_type_obligation(
-                tcx,
-                param_env,
-                normalized_term,
-                goal,
-            ));
             ocx.register_obligations(obligations);
 
             Ok(NormalizationResult { normalized_term })

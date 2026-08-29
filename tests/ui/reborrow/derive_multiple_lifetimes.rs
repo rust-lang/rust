@@ -1,12 +1,13 @@
 //@ normalize-stderr: "\n\n$" -> "\n"
 
+//! This test mirrors manual and derived impls with multiple lifetimes. The derive
+//! layer preserves both lifetimes; the current underlying trait validation rejects
+//! both forms with the same experimental one-lifetime limitation.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};
 
-// This test mirrors manual and derived impls with multiple lifetimes. The derive
-// layer preserves both lifetimes; the current underlying trait validation rejects
-// both forms with the same experimental one-lifetime limitation.
 
 struct ManualPair<'a, 'b, T> {
     left: &'a mut T,

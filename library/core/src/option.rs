@@ -465,7 +465,7 @@
 //! [`Option`] of a collection of each contained value of the original
 //! [`Option`] values, or [`None`] if any of the elements was [`None`].
 //!
-//! [impl-FromIterator]: Option#impl-FromIterator%3COption%3CA%3E%3E-for-Option%3CV%3E
+//! [impl-FromIterator]: Option#impl-FromIterator%3COption%3CT%3E%3E-for-Option%3CV%3E
 //!
 //! ```
 //! let v = [Some(2), Some(4), None, Some(8)];
@@ -2456,6 +2456,8 @@ const impl<T: [const] PartialEq> PartialEq for Option<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<T: [const] PartialOrd> PartialOrd for Option<T> {
+    /// See [the documentation](https://doc.rust-lang.org/std/option/#comparison-operators) for details.
+    /// [`None`] always compares less than any [`Some`]
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         match (self, other) {
@@ -2791,7 +2793,7 @@ unsafe impl<A: TrustedLen> TrustedLen for OptionFlatten<A> {}
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
+impl<T, V: FromIterator<T>> FromIterator<Option<T>> for Option<V> {
     /// Takes each element in the [`Iterator`]: if it is [`None`][Option::None],
     /// no further elements are taken, and the [`None`][Option::None] is
     /// returned. Should no [`None`][Option::None] occur, a container of type
@@ -2853,7 +2855,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Since the third element caused an underflow, no further elements were taken,
     /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
     #[inline]
-    fn from_iter<I: IntoIterator<Item = Option<A>>>(iter: I) -> Option<V> {
+    fn from_iter<I: IntoIterator<Item = Option<T>>>(iter: I) -> Option<V> {
         iter::try_process(iter.into_iter(), |i| i.collect())
     }
 }

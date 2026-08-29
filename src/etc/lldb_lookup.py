@@ -39,6 +39,7 @@ from lldb_providers import (
     MSVCTupleSyntheticProvider,
     ClangEncodedEnumSummaryProvider,
     StructSummaryProvider,
+    f16SummaryProvider,
     # re-exports
     get_template_args as get_template_args,
     resolve_msvc_template_arg as resolve_msvc_template_arg,
@@ -136,6 +137,16 @@ def register_providers_compatibility():
             lldb.eTypeOptionCascade
             | lldb.eTypeOptionHideEmptyAggregates
             | lldb.eTypeOptionHideChildren,
+        )
+
+        # Force f16 summary on windows-msvc since PDB does not have a node for f16
+        register_summary(
+            f16SummaryProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_msvc_f16.__name__,
+                lldb.eFormatterMatchCallback,
+            ),
+            DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
         )
 
         # Tuple-structs
@@ -450,6 +461,11 @@ def is_gnu_enum(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
 def is_tuple_type(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
     fields = type.fields
     return len(fields) != 0 and is_tuple_fields(fields)
+
+
+def is_msvc_f16(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    # DWARF has a proper tag for f16, PDB does not.
+    return type.GetName() == "f16" and type.IsAggregateType()
 
 
 def classify_rust_type(type: lldb.SBType, is_msvc: bool) -> RustType:

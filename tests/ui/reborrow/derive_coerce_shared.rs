@@ -1,5 +1,7 @@
 //@ run-pass
 
+//! Test that CoerceShared can be derived for various kinds of ADTs.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 

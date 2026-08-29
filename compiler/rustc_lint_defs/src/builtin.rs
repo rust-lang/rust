@@ -823,7 +823,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// #![deny(dead_code_pub_in_binary)]
     ///
     /// pub fn unused_pub_fn() {}
@@ -1132,9 +1132,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// #![deny(warnings)]
-    /// fn foo() {}
+    /// struct non_standard_name;
     /// ```
     ///
     /// {{produces}}
@@ -3657,7 +3657,7 @@ declare_lint! {
     Allow,
     "identifiers that will be parsed as a prefix in Rust 2021",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2021 "reserving-syntax"),
+        reason: fcw!(EditionSemanticsChange 2021 "reserving-syntax"),
     };
     crate_level_only
 }

@@ -408,35 +408,30 @@ impl<T> [T] {
         impl<T: Clone> ConvertVec for T {
             #[inline]
             default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
-                struct DropGuard<'a, T, A: Allocator> {
-                    vec: &'a mut Vec<T, A>,
-                    num_init: usize,
-                }
-                impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
-                    #[inline]
-                    fn drop(&mut self) {
+                use core::mem::DropGuard;
+
+                let mut guard = DropGuard::new(
+                    (0, Vec::with_capacity_in(s.len(), alloc)),
+                    |(num_init, mut vec)| {
                         // SAFETY:
                         // items were marked initialized in the loop below
-                        unsafe {
-                            self.vec.set_len(self.num_init);
-                        }
-                    }
-                }
-                let mut vec = Vec::with_capacity_in(s.len(), alloc);
-                let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
-                let slots = guard.vec.spare_capacity_mut();
+                        unsafe { vec.set_len(num_init) }
+                    },
+                );
+                let (num_init, vec) = &mut *guard;
+
+                let slots = vec.spare_capacity_mut();
                 // .take(slots.len()) is necessary for LLVM to remove bounds checks
                 // and has better codegen than zip.
                 for (i, b) in s.iter().enumerate().take(slots.len()) {
-                    guard.num_init = i;
+                    *num_init = i;
                     slots[i].write(b.clone());
                 }
-                core::mem::forget(guard);
+
+                let (_, mut vec) = DropGuard::dismiss(guard);
                 // SAFETY:
                 // the vec was allocated and initialized above to at least this length.
-                unsafe {
-                    vec.set_len(s.len());
-                }
+                unsafe { vec.set_len(s.len()) };
                 vec
             }
         }
@@ -446,10 +441,10 @@ impl<T> [T] {
             fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
                 let len = s.len();
                 let mut v = Vec::with_capacity_in(len, alloc);
-                // SAFETY:
-                // allocated above with the capacity of `s`, and initialize to `s.len()` in
-                // ptr::copy_to_non_overlapping below.
                 if len > 0 {
+                    // SAFETY:
+                    // allocated above with the capacity of `s`, and initialize to `s.len()` in
+                    // ptr::copy_to_non_overlapping below.
                     unsafe {
                         s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), len);
                         v.set_len(len);
@@ -479,6 +474,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
     pub const fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let len = self.len();
             let (b, alloc) = Box::into_raw_with_allocator(self);
@@ -531,6 +527,7 @@ impl<T> [T] {
             // If `m > 0`, there are remaining bits up to the leftmost '1'.
             while m > 0 {
                 // `buf.extend(buf)`:
+                // ignore-tidy-undocumented-unsafe
                 unsafe {
                     ptr::copy_nonoverlapping::<T>(
                         buf.as_ptr(),
@@ -551,6 +548,7 @@ impl<T> [T] {
         let rem_len = capacity - buf.len(); // `self.len() * rem`
         if rem_len > 0 {
             // `buf.extend(buf[0 .. rem_len])`:
+            // ignore-tidy-undocumented-unsafe
             unsafe {
                 // This is non-overlapping since `2^expn > rem`.
                 ptr::copy_nonoverlapping::<T>(

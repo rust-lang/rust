@@ -145,7 +145,7 @@
 
 use core::alloc::Allocator;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
-use core::mem::{self, ManuallyDrop, swap};
+use core::mem::{DropGuard, ManuallyDrop, swap};
 use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
@@ -326,7 +326,7 @@ impl<T: Ord, A: Allocator> Deref for PeekMut<'_, T, A> {
     type Target = T;
     fn deref(&self) -> &T {
         debug_assert!(!self.heap.is_empty());
-        // SAFE: PeekMut is only instantiated for non-empty heaps
+        // SAFETY: PeekMut is only instantiated for non-empty heaps
         unsafe { self.heap.data.get_unchecked(0) }
     }
 }
@@ -346,16 +346,14 @@ impl<T: Ord, A: Allocator> DerefMut for PeekMut<'_, T, A> {
             //
             // This is technique is described throughout several other places in
             // the standard library as "leak amplification".
-            unsafe {
-                // SAFETY: len > 1 so len != 0.
-                self.original_len = Some(NonZero::new_unchecked(len));
-                // SAFETY: len > 1 so all this does for now is leak elements,
-                // which is safe.
-                self.heap.data.set_len(1);
-            }
+            // SAFETY: len > 1 so len != 0.
+            self.original_len = Some(unsafe { NonZero::new_unchecked(len) });
+            // SAFETY: len > 1 so all this does for now is leak elements,
+            // which is safe.
+            unsafe { self.heap.data.set_len(1) };
         }
 
-        // SAFE: PeekMut is only instantiated for non-empty heaps
+        // SAFETY: PeekMut is only instantiated for non-empty heaps
         unsafe { self.heap.data.get_unchecked_mut(0) }
     }
 }
@@ -1532,11 +1530,13 @@ struct Hole<'a, T: 'a> {
 impl<'a, T> Hole<'a, T> {
     /// Creates a new `Hole` at index `pos`.
     ///
-    /// Unsafe because pos must be within the data slice.
+    /// # Safety
+    ///
+    /// `pos` must be within the data slice.
     #[inline]
     unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
         debug_assert!(pos < data.len());
-        // SAFE: pos should be inside the slice
+        // SAFETY: Caller ensures pos is inside the slice.
         let elt = unsafe { ptr::read(data.get_unchecked(pos)) };
         Hole { data, elt: ManuallyDrop::new(elt), pos }
     }
@@ -1554,21 +1554,27 @@ impl<'a, T> Hole<'a, T> {
 
     /// Returns a reference to the element at `index`.
     ///
-    /// Unsafe because index must be within the data slice and not equal to pos.
+    /// # Safety
+    ///
+    /// `index` must be within the data slice and not equal to the current position.
     #[inline]
     unsafe fn get(&self, index: usize) -> &T {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
+        // SAFETY: Upheld by caller.
         unsafe { self.data.get_unchecked(index) }
     }
 
     /// Move hole to new location
     ///
-    /// Unsafe because index must be within the data slice and not equal to pos.
+    /// # Safety
+    ///
+    /// `index` must be within the data slice and not equal to the current position.
     #[inline]
     unsafe fn move_to(&mut self, index: usize) {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let ptr = self.data.as_mut_ptr();
             let index_ptr: *const _ = ptr.add(index);
@@ -1583,6 +1589,7 @@ impl<T> Drop for Hole<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // fill the hole again
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let pos = self.pos;
             ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut(pos), 1);
@@ -1907,18 +1914,10 @@ impl<'a, T: Ord, A: Allocator> DrainSorted<'a, T, A> {
 impl<'a, T: Ord, A: Allocator> Drop for DrainSorted<'a, T, A> {
     /// Removes heap elements in heap order.
     fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T: Ord, A: Allocator>(&'r mut DrainSorted<'a, T, A>);
-
-        impl<'r, 'a, T: Ord, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
-            fn drop(&mut self) {
-                while self.0.inner.pop().is_some() {}
-            }
-        }
-
         while let Some(item) = self.inner.pop() {
-            let guard = DropGuard(self);
+            let guard = DropGuard::new(&mut *self, |this| while this.inner.pop().is_some() {});
             drop(item);
-            mem::forget(guard);
+            DropGuard::dismiss(guard);
         }
     }
 }

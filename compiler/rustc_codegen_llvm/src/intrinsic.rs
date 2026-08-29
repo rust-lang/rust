@@ -476,6 +476,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::ctpop
             | sym::bswap
             | sym::bitreverse
+            | sym::integer_max
+            | sym::integer_min
             | sym::saturating_add
             | sym::saturating_sub
             | sym::unchecked_funnel_shl
@@ -519,6 +521,18 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                     sym::bitreverse => {
                         self.call_intrinsic("llvm.bitreverse", &[llty], &[args[0].immediate()])
+                    }
+                    sym::integer_min | sym::integer_max => {
+                        let lhs = args[0].immediate();
+                        let rhs = args[1].immediate();
+                        let llvm_name = match (name, signed) {
+                            (sym::integer_max, false) => "llvm.umax",
+                            (sym::integer_max, true) => "llvm.smax",
+                            (sym::integer_min, false) => "llvm.umin",
+                            (sym::integer_min, true) => "llvm.smin",
+                            _ => bug!(),
+                        };
+                        self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs])
                     }
                     sym::unchecked_funnel_shl | sym::unchecked_funnel_shr => {
                         let is_left = name == sym::unchecked_funnel_shl;

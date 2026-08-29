@@ -5,7 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![doc(test(attr(deny(warnings), allow(internal_features))))]
+#![doc(test(attr(deny(warnings))))]
 #![feature(associated_type_defaults)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]

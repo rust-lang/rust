@@ -50,9 +50,6 @@ impl server::Server for SpanIdServer<'_> {
         f(symbol.as_str())
     }
 
-    fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
-        None
-    }
     fn track_env_var(&mut self, _: &str, _: Option<&str>) {}
 
     fn track_path(&mut self, _: &str) {}
