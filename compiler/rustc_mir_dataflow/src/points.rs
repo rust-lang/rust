@@ -6,10 +6,6 @@ pub struct DenseLocationMap {
     /// For each basic block, how many points are contained within?
     statements_before_block: IndexVec<BasicBlock, usize>,
 
-    /// Map backward from each point to the basic block that it
-    /// belongs to.
-    basic_blocks: IndexVec<PointIndex, BasicBlock>,
-
     num_points: usize,
 }
 
@@ -26,14 +22,9 @@ impl DenseLocationMap {
                 v
             })
             .collect();
-
-        let mut basic_blocks = IndexVec::with_capacity(num_points);
-        for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
-            basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
-        }
         // Invariant: no block is preceded by more than all statements.
         debug_assert!(*statements_before_block.iter().max().unwrap() < num_points);
-        Self { statements_before_block, basic_blocks, num_points }
+        Self { statements_before_block, num_points }
     }
 
     /// Total number of point indices
@@ -64,17 +55,24 @@ impl DenseLocationMap {
     /// Return the PointIndex for the block start of this index.
     #[inline]
     pub fn to_block_start(&self, index: PointIndex) -> PointIndex {
-        PointIndex::new(self.statements_before_block[self.basic_blocks[index]])
+        PointIndex::new(self.statements_before_block[self.find_basic_block(index)])
     }
 
     /// Converts a `PointIndex` back to a location. O(1).
     #[inline]
     pub fn to_location(&self, index: PointIndex) -> Location {
         assert!(index.index() < self.num_points);
-        let block = self.basic_blocks[index];
+        let block = self.find_basic_block(index);
         let start_index = self.statements_before_block[block];
         let statement_index = index.index() - start_index;
         Location { block, statement_index }
+    }
+
+    #[inline]
+    fn find_basic_block(&self, index: PointIndex) -> BasicBlock {
+        self.statements_before_block
+            .binary_search(&index.index())
+            .unwrap_or_else(|i| BasicBlock::new(i.index() - 1))
     }
 
     /// Sometimes we get point-indices back from bitsets that may be
