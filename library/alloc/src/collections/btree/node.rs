@@ -75,6 +75,7 @@ impl<K, V> LeafNode<K, V> {
     unsafe fn init(this: *mut Self) {
         // As a general policy, we leave fields uninitialized if they can be, as this should
         // be both slightly faster and easier to track in Valgrind.
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             // parent_idx, keys, and vals are all MaybeUninit
             (&raw mut (*this).parent).write(None);
@@ -85,12 +86,11 @@ impl<K, V> LeafNode<K, V> {
     /// Creates a new boxed `LeafNode`.
     fn new<A: AllocatorClone>(alloc: A) -> Box<Self, A> {
         let mut leaf = Box::new_uninit_in(alloc);
-        unsafe {
-            // SAFETY: `leaf` points to a `LeafNode`
-            LeafNode::init(leaf.as_mut_ptr());
-            // SAFETY: `leaf` was just initialized
-            leaf.assume_init()
-        }
+
+        // SAFETY: `leaf` points to a `LeafNode`.
+        unsafe { LeafNode::init(leaf.as_mut_ptr()) };
+        // SAFETY: `leaf` was just initialized.
+        unsafe { leaf.assume_init() }
     }
 }
 
@@ -119,12 +119,11 @@ impl<K, V> InternalNode<K, V> {
     /// such an edge.
     unsafe fn new<A: AllocatorClone>(alloc: A) -> Box<Self, A> {
         let mut node = Box::<Self, _>::new_uninit_in(alloc);
-        unsafe {
-            // SAFETY: argument points to the `node.data` `LeafNode`
-            LeafNode::init(&raw mut (*node.as_mut_ptr()).data);
-            // SAFETY: `node.data` was just initialized and `node.edges` is MaybeUninit.
-            node.assume_init()
-        }
+
+        // SAFETY: argument points to the `node.data` `LeafNode`.
+        unsafe { LeafNode::init(&raw mut (*node.as_mut_ptr()).data) };
+        // SAFETY: `node.data` was just initialized and `node.edges` is MaybeUninit.
+        unsafe { node.assume_init() }
     }
 }
 
@@ -235,6 +234,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
     /// Creates a new internal (height > 0) `NodeRef`
     fn new_internal<A: AllocatorClone>(child: Root<K, V>, alloc: A) -> Self {
+        // ignore-tidy-undocumented-unsafe
         let mut new_node = unsafe { InternalNode::new(alloc) };
         new_node.edges[0].write(child.node);
         NodeRef::from_new_internal(new_node, NonZero::new(child.height + 1).unwrap())
@@ -275,6 +275,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// Borrows exclusive access to the data of an internal node.
     fn as_internal_mut(&mut self) -> &mut InternalNode<K, V> {
         let ptr = Self::as_internal_ptr(self);
+        // ignore-tidy-undocumented-unsafe
         unsafe { &mut *ptr }
     }
 }
@@ -285,7 +286,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Note that, despite being safe, calling this function can have the side effect
     /// of invalidating mutable references that unsafe code has created.
     pub(super) fn len(&self) -> usize {
-        // Crucially, we only access the `len` field here. If BorrowType is marker::ValMut,
+        // SAFETY: We only access the `len` field here. If BorrowType is marker::ValMut,
         // there might be outstanding mutable references to values that we must not invalidate.
         unsafe { usize::from((*Self::as_leaf_ptr(self)).len) }
     }
@@ -335,10 +336,12 @@ impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type>
         // We need to use raw pointers to nodes because, if BorrowType is marker::ValMut,
         // there might be outstanding mutable references to values that we must not invalidate.
         let leaf_ptr: *const _ = Self::as_leaf_ptr(&self);
+        // ignore-tidy-undocumented-unsafe
         unsafe { (*leaf_ptr).parent }
             .as_ref()
             .map(|parent| Handle {
                 node: NodeRef::from_internal(*parent, self.height + 1),
+                // ignore-tidy-undocumented-unsafe
                 idx: unsafe { usize::from((*leaf_ptr).parent_idx.assume_init()) },
                 _marker: PhantomData,
             })
@@ -346,11 +349,13 @@ impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type>
     }
 
     pub(super) fn first_edge(self) -> Handle<Self, marker::Edge> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_edge(self, 0) }
     }
 
     pub(super) fn last_edge(self) -> Handle<Self, marker::Edge> {
         let len = self.len();
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_edge(self, len) }
     }
 
@@ -358,6 +363,7 @@ impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type>
     pub(super) fn first_kv(self) -> Handle<Self, marker::KV> {
         let len = self.len();
         assert!(len > 0);
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_kv(self, 0) }
     }
 
@@ -365,6 +371,7 @@ impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type>
     pub(super) fn last_kv(self) -> Handle<Self, marker::KV> {
         let len = self.len();
         assert!(len > 0);
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_kv(self, len - 1) }
     }
 }
@@ -393,6 +400,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     /// Borrows a view into the keys stored in the node.
     pub(super) fn keys(&self) -> &[K] {
         let leaf = self.into_leaf();
+        // ignore-tidy-undocumented-unsafe
         unsafe { leaf.keys.get_unchecked(..usize::from(leaf.len)).assume_init_ref() }
     }
 }
@@ -408,6 +416,7 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
         let height = self.height;
         let node = self.node;
         let ret = self.ascend().ok();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             alloc.deallocate(
                 node.cast(),
@@ -533,12 +542,16 @@ impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
         // to avoid aliasing with outstanding references to other elements,
         // in particular, those returned to the caller in earlier iterations.
         let leaf = Self::as_leaf_ptr(&mut self);
+        // ignore-tidy-undocumented-unsafe
         let keys = unsafe { &raw const (*leaf).keys };
+        // ignore-tidy-undocumented-unsafe
         let vals = unsafe { &raw mut (*leaf).vals };
         // We must coerce to unsized array pointers because of Rust issue #74679.
         let keys: *const [_] = keys;
         let vals: *mut [_] = vals;
+        // ignore-tidy-undocumented-unsafe
         let key = unsafe { (&*keys.get_unchecked(idx)).assume_init_ref() };
+        // ignore-tidy-undocumented-unsafe
         let val = unsafe { (&mut *vals.get_unchecked_mut(idx)).assume_init_mut() };
         (key, val)
     }
@@ -557,12 +570,14 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     unsafe fn correct_childrens_parent_links<R: Iterator<Item = usize>>(&mut self, range: R) {
         for i in range {
             debug_assert!(i <= self.len());
+            // ignore-tidy-undocumented-unsafe
             unsafe { Handle::new_edge(self.reborrow_mut(), i) }.correct_parent_link();
         }
     }
 
     fn correct_all_childrens_parent_links(&mut self) {
         let len = self.len();
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.correct_childrens_parent_links(0..=len) };
     }
 }
@@ -572,7 +587,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// without invalidating other references to the node.
     fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {
         let leaf = Self::as_leaf_ptr(self);
+        // ignore-tidy-undocumented-unsafe
         unsafe { (*leaf).parent = Some(parent) };
+        // ignore-tidy-undocumented-unsafe
         unsafe { (*leaf).parent_idx.write(parent_idx as u16) };
     }
 }
@@ -627,6 +644,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         self.height -= 1;
         self.clear_parent_link();
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             alloc.deallocate(top.cast(), Layout::new::<InternalNode<K, V>>());
         }
@@ -669,6 +687,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         let idx = usize::from(*len);
         assert!(idx < CAPACITY);
         *len += 1;
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             self.key_area_mut(idx).write(key);
             self.val_area_mut(idx).write(val);
@@ -697,6 +716,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         let idx = usize::from(*len);
         assert!(idx < CAPACITY);
         *len += 1;
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             self.key_area_mut(idx).write(key);
             self.val_area_mut(idx).write(val);
@@ -805,10 +825,12 @@ impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, mar
     }
 
     pub(super) fn left_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_edge(self.node, self.idx) }
     }
 
     pub(super) fn right_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_edge(self.node, self.idx + 1) }
     }
 }
@@ -844,6 +866,7 @@ impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeT
         &mut self,
     ) -> Handle<NodeRef<marker::Mut<'_>, K, V, NodeType>, HandleType> {
         // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
+        // ignore-tidy-undocumented-unsafe
         Handle { node: unsafe { self.node.reborrow_mut() }, idx: self.idx, _marker: PhantomData }
     }
 
@@ -867,6 +890,7 @@ impl<K, V, NodeType, HandleType> Handle<NodeRef<marker::DormantMut, K, V, NodeTy
     pub(super) unsafe fn awaken<'a>(
         self,
     ) -> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
+        // ignore-tidy-undocumented-unsafe
         Handle { node: unsafe { self.node.awaken() }, idx: self.idx, _marker: PhantomData }
     }
 }
@@ -884,6 +908,7 @@ impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, mar
         self,
     ) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
         if self.idx > 0 {
+            // ignore-tidy-undocumented-unsafe
             Ok(unsafe { Handle::new_kv(self.node, self.idx - 1) })
         } else {
             Err(self)
@@ -894,6 +919,7 @@ impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, mar
         self,
     ) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
         if self.idx < self.node.len() {
+            // ignore-tidy-undocumented-unsafe
             Ok(unsafe { Handle::new_kv(self.node, self.idx) })
         } else {
             Err(self)
@@ -934,6 +960,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         debug_assert!(self.node.len() < CAPACITY);
         let new_len = self.node.len() + 1;
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
             slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
@@ -965,12 +992,15 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
             (None, handle.dormant())
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
+            // ignore-tidy-undocumented-unsafe
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let mut result = middle.split(alloc);
             let insertion_edge = match insertion {
+                // ignore-tidy-undocumented-unsafe
                 LeftOrRight::Left(insert_idx) => unsafe {
                     Handle::new_edge(result.left.reborrow_mut(), insert_idx)
                 },
+                // ignore-tidy-undocumented-unsafe
                 LeftOrRight::Right(insert_idx) => unsafe {
                     Handle::new_edge(result.right.borrow_mut(), insert_idx)
                 },
@@ -988,6 +1018,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     /// links to. This is useful when the ordering of edges has been changed,
     fn correct_parent_link(self) {
         // Create backpointer without invalidating other references to the node.
+        // ignore-tidy-undocumented-unsafe
         let ptr = unsafe { NonNull::new_unchecked(NodeRef::as_internal_ptr(&self.node)) };
         let idx = self.idx;
         let mut child = self.descend();
@@ -1004,6 +1035,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         debug_assert!(edge.height == self.node.height - 1);
         let new_len = self.node.len() + 1;
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
             slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
@@ -1031,12 +1063,15 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             None
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
+            // ignore-tidy-undocumented-unsafe
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let mut result = middle.split(alloc);
             let mut insertion_edge = match insertion {
+                // ignore-tidy-undocumented-unsafe
                 LeftOrRight::Left(insert_idx) => unsafe {
                     Handle::new_edge(result.left.reborrow_mut(), insert_idx)
                 },
+                // ignore-tidy-undocumented-unsafe
                 LeftOrRight::Right(insert_idx) => unsafe {
                     Handle::new_edge(result.right.borrow_mut(), insert_idx)
                 },
@@ -1112,6 +1147,7 @@ impl<BorrowType: marker::BorrowType, K, V>
         // reference (Rust issue #73987) and invalidate any other references
         // to or inside the array, should any be around.
         let parent_ptr = NodeRef::as_internal_ptr(&self.node);
+        // ignore-tidy-undocumented-unsafe
         let node = unsafe { (*parent_ptr).edges.get_unchecked(self.idx).assume_init_read() };
         NodeRef { node, height: self.node.height - 1, _marker: PhantomData }
     }
@@ -1121,7 +1157,9 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeTyp
     pub(super) fn into_kv(self) -> (&'a K, &'a V) {
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.into_leaf();
+        // ignore-tidy-undocumented-unsafe
         let k = unsafe { leaf.keys.get_unchecked(self.idx).assume_init_ref() };
+        // ignore-tidy-undocumented-unsafe
         let v = unsafe { leaf.vals.get_unchecked(self.idx).assume_init_ref() };
         (k, v)
     }
@@ -1129,19 +1167,23 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeTyp
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     pub(super) fn key_mut(&mut self) -> &mut K {
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.node.key_area_mut(self.idx).assume_init_mut() }
     }
 
     pub(super) fn into_val_mut(self) -> &'a mut V {
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.into_leaf_mut();
+        // ignore-tidy-undocumented-unsafe
         unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() }
     }
 
     pub(super) fn into_kv_mut(self) -> (&'a mut K, &'a mut V) {
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.into_leaf_mut();
+        // ignore-tidy-undocumented-unsafe
         let k = unsafe { leaf.keys.get_unchecked_mut(self.idx).assume_init_mut() };
+        // ignore-tidy-undocumented-unsafe
         let v = unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() };
         (k, v)
     }
@@ -1149,6 +1191,7 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
 
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::ValMut<'a>, K, V, NodeType>, marker::KV> {
     pub(super) fn into_kv_valmut(self) -> (&'a K, &'a mut V) {
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.node.into_key_val_mut_at(self.idx) }
     }
 }
@@ -1158,6 +1201,7 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
         debug_assert!(self.idx < self.node.len());
         // We cannot call separate key and value methods, because calling the second one
         // invalidates the reference returned by the first.
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let leaf = self.node.as_leaf_mut();
             let key = leaf.keys.get_unchecked_mut(self.idx).assume_init_mut();
@@ -1180,6 +1224,7 @@ impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> 
     pub(super) unsafe fn into_key_val(mut self) -> (K, V) {
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.as_leaf_dying();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let key = leaf.keys.get_unchecked_mut(self.idx).assume_init_read();
             let val = leaf.vals.get_unchecked_mut(self.idx).assume_init_read();
@@ -1197,6 +1242,7 @@ impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> 
         impl<T> Drop for Dropper<'_, T> {
             #[inline]
             fn drop(&mut self) {
+                // ignore-tidy-undocumented-unsafe
                 unsafe {
                     self.0.assume_init_drop();
                 }
@@ -1205,6 +1251,7 @@ impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> 
 
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.as_leaf_dying();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let key = leaf.keys.get_unchecked_mut(self.idx);
             let val = leaf.vals.get_unchecked_mut(self.idx);
@@ -1223,6 +1270,7 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
         let old_len = self.node.len();
         let new_len = old_len - self.idx - 1;
         new_node.len = new_len as u16;
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let k = self.node.key_area_mut(self.idx).assume_init_read();
             let v = self.node.val_area_mut(self.idx).assume_init_read();
@@ -1268,6 +1316,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         mut self,
     ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
         let old_len = self.node.len();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let k = slice_remove(self.node.key_area_mut(..old_len), self.idx);
             let v = slice_remove(self.node.val_area_mut(..old_len), self.idx);
@@ -1290,6 +1339,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         alloc: A,
     ) -> SplitResult<'a, K, V, marker::Internal> {
         let old_len = self.node.len();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let mut new_node = InternalNode::new(alloc);
             let kv = self.split_leaf_data(&mut new_node.data);
@@ -1318,7 +1368,9 @@ pub(super) struct BalancingContext<'a, K, V> {
 
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
     pub(super) fn consider_for_balancing(self) -> BalancingContext<'a, K, V> {
+        // ignore-tidy-undocumented-unsafe
         let self1 = unsafe { ptr::read(&self) };
+        // ignore-tidy-undocumented-unsafe
         let self2 = unsafe { ptr::read(&self) };
         BalancingContext {
             parent: self,
@@ -1344,15 +1396,18 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// the right, instead of shifting at least N of the sibling's elements to
     /// the left.
     pub(super) fn choose_parent_kv(self) -> Result<LeftOrRight<BalancingContext<'a, K, V>>, Self> {
+        // ignore-tidy-undocumented-unsafe
         match unsafe { ptr::read(&self) }.ascend() {
             Ok(parent_edge) => match parent_edge.left_kv() {
                 Ok(left_parent_kv) => Ok(LeftOrRight::Left(BalancingContext {
+                    // ignore-tidy-undocumented-unsafe
                     parent: unsafe { ptr::read(&left_parent_kv) },
                     left_child: left_parent_kv.left_edge().descend(),
                     right_child: self,
                 })),
                 Err(parent_edge) => match parent_edge.right_kv() {
                     Ok(right_parent_kv) => Ok(LeftOrRight::Right(BalancingContext {
+                        // ignore-tidy-undocumented-unsafe
                         parent: unsafe { ptr::read(&right_parent_kv) },
                         left_child: self,
                         right_child: right_parent_kv.right_edge().descend(),
@@ -1413,6 +1468,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
         assert!(new_left_len <= CAPACITY);
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             *left_node.len_mut() = new_left_len as u16;
 
@@ -1497,6 +1553,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
             LeftOrRight::Left(idx) => idx,
             LeftOrRight::Right(idx) => old_left_len + 1 + idx,
         };
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_edge(child, new_idx) }
     }
 
@@ -1509,6 +1566,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
         track_right_edge_idx: usize,
     ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
         self.bulk_steal_left(1);
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_edge(self.right_child, 1 + track_right_edge_idx) }
     }
 
@@ -1521,12 +1579,14 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
         track_left_edge_idx: usize,
     ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
         self.bulk_steal_right(1);
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_edge(self.left_child, track_left_edge_idx) }
     }
 
     /// This does stealing similar to `steal_left` but steals multiple elements at once.
     pub(super) fn bulk_steal_left(&mut self, count: usize) {
         assert!(count > 0);
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let left_node = &mut self.left_child;
             let old_left_len = left_node.len();
@@ -1590,6 +1650,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     /// The symmetric clone of `bulk_steal_left`.
     pub(super) fn bulk_steal_right(&mut self, count: usize) {
         assert!(count > 0);
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let left_node = &mut self.left_child;
             let old_left_len = left_node.len();
@@ -1656,6 +1717,7 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::E
     pub(super) fn forget_node_type(
         self,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_edge(self.node.forget_type(), self.idx) }
     }
 }
@@ -1664,6 +1726,7 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
     pub(super) fn forget_node_type(
         self,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_edge(self.node.forget_type(), self.idx) }
     }
 }
@@ -1672,6 +1735,7 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::K
     pub(super) fn forget_node_type(
         self,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { Handle::new_kv(self.node.forget_type(), self.idx) }
     }
 }
@@ -1700,6 +1764,7 @@ impl<'a, K, V, Type> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInterna
     pub(super) unsafe fn cast_to_leaf_unchecked(
         self,
     ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, Type> {
+        // ignore-tidy-undocumented-unsafe
         let node = unsafe { self.node.cast_to_leaf_unchecked() };
         Handle { node, idx: self.idx, _marker: PhantomData }
     }
@@ -1712,6 +1777,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
         &mut self,
         right: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
     ) {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let new_left_len = self.idx;
             let mut left_node = self.reborrow_mut().into_node();
@@ -1820,6 +1886,7 @@ pub(super) mod marker {
 /// # Safety
 /// The slice has more than `idx` elements.
 unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
+    // ignore-tidy-undocumented-unsafe
     unsafe {
         let len = slice.len();
         debug_assert!(len > idx);
@@ -1837,6 +1904,7 @@ unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
 /// # Safety
 /// The slice has more than `idx` elements.
 unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
+    // ignore-tidy-undocumented-unsafe
     unsafe {
         let len = slice.len();
         debug_assert!(idx < len);
@@ -1852,6 +1920,7 @@ unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
 /// # Safety
 /// The slice has at least `distance` elements.
 unsafe fn slice_shl<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
+    // ignore-tidy-undocumented-unsafe
     unsafe {
         let slice_ptr = slice.as_mut_ptr();
         ptr::copy(slice_ptr.add(distance), slice_ptr, slice.len() - distance);
@@ -1863,6 +1932,7 @@ unsafe fn slice_shl<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
 /// # Safety
 /// The slice has at least `distance` elements.
 unsafe fn slice_shr<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
+    // ignore-tidy-undocumented-unsafe
     unsafe {
         let slice_ptr = slice.as_mut_ptr();
         ptr::copy(slice_ptr, slice_ptr.add(distance), slice.len() - distance);
@@ -1874,6 +1944,7 @@ unsafe fn slice_shr<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
 /// Works like `dst.copy_from_slice(src)` but does not require `T` to be `Copy`.
 fn move_to_slice<T>(src: &mut [MaybeUninit<T>], dst: &mut [MaybeUninit<T>]) {
     assert!(src.len() == dst.len());
+    // ignore-tidy-undocumented-unsafe
     unsafe {
         ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), src.len());
     }

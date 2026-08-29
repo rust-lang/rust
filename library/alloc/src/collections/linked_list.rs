@@ -172,8 +172,8 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// This method takes ownership of the node, so the pointer should not be used again.
     #[inline]
     unsafe fn push_front_node(&mut self, node: NonNull<Node<T>>) {
-        // This method takes care not to create mutable references to whole nodes,
-        // to maintain validity of aliasing pointers into `element`.
+        // SAFETY: This method takes care not to create mutable references to
+        // whole nodes, to maintain validity of aliasing pointers into `element`.
         unsafe {
             (*node.as_ptr()).next = self.head;
             (*node.as_ptr()).prev = None;
@@ -193,8 +193,8 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// Removes and returns the node at the front of the list.
     #[inline]
     fn pop_front_node(&mut self) -> Option<Box<Node<T>, &A>> {
-        // This method takes care not to create mutable references to whole nodes,
-        // to maintain validity of aliasing pointers into `element`.
+        // SAFETY: This method takes care not to create mutable references to
+        // whole nodes, to maintain validity of aliasing pointers into `element`.
         self.head.map(|node| unsafe {
             let node = Box::from_raw_in(node.as_ptr(), &self.alloc);
             self.head = node.next;
@@ -217,8 +217,8 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// This method takes ownership of the node, so the pointer should not be used again.
     #[inline]
     unsafe fn push_back_node(&mut self, node: NonNull<Node<T>>) {
-        // This method takes care not to create mutable references to whole nodes,
-        // to maintain validity of aliasing pointers into `element`.
+        // SAFETY: This method takes care not to create mutable references to
+        // whole nodes, to maintain validity of aliasing pointers into `element`.
         unsafe {
             (*node.as_ptr()).next = None;
             (*node.as_ptr()).prev = self.tail;
@@ -238,8 +238,8 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// Removes and returns the node at the back of the list.
     #[inline]
     fn pop_back_node(&mut self) -> Option<Box<Node<T>, &A>> {
-        // This method takes care not to create mutable references to whole nodes,
-        // to maintain validity of aliasing pointers into `element`.
+        // SAFETY: This method takes care not to create mutable references to
+        // whole nodes, to maintain validity of aliasing pointers into `element`.
         self.tail.map(|node| unsafe {
             let node = Box::from_raw_in(node.as_ptr(), &self.alloc);
             self.tail = node.prev;
@@ -263,16 +263,19 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// maintain validity of aliasing pointers.
     #[inline]
     unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {
-        let node = unsafe { node.as_mut() }; // this one is ours now, we can create an &mut.
+        // SAFETY: This is ours now, we can create a &mut.
+        let node = unsafe { node.as_mut() };
 
         // Not creating new mutable (unique!) references overlapping `element`.
         match node.prev {
+            // ignore-tidy-undocumented-unsafe
             Some(prev) => unsafe { (*prev.as_ptr()).next = node.next },
             // this node is the head node
             None => self.head = node.next,
         };
 
         match node.next {
+            // ignore-tidy-undocumented-unsafe
             Some(next) => unsafe { (*next.as_ptr()).prev = node.prev },
             // this node is the tail node
             None => self.tail = node.prev,
@@ -296,6 +299,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
         // This method takes care not to create multiple mutable references to whole nodes at the same time,
         // to maintain validity of aliasing pointers into `element`.
         if let Some(mut existing_prev) = existing_prev {
+            // ignore-tidy-undocumented-unsafe
             unsafe {
                 existing_prev.as_mut().next = Some(splice_start);
             }
@@ -303,12 +307,14 @@ impl<T, A: Allocator> LinkedList<T, A> {
             self.head = Some(splice_start);
         }
         if let Some(mut existing_next) = existing_next {
+            // ignore-tidy-undocumented-unsafe
             unsafe {
                 existing_next.as_mut().prev = Some(splice_end);
             }
         } else {
             self.tail = Some(splice_end);
         }
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             splice_start.as_mut().prev = existing_prev;
             splice_end.as_mut().next = existing_next;
@@ -347,10 +353,12 @@ impl<T, A: Allocator> LinkedList<T, A> {
         if let Some(mut split_node) = split_node {
             let first_part_head;
             let first_part_tail;
+            // ignore-tidy-undocumented-unsafe
             unsafe {
                 first_part_tail = split_node.as_mut().prev.take();
             }
             if let Some(mut tail) = first_part_tail {
+                // ignore-tidy-undocumented-unsafe
                 unsafe {
                     tail.as_mut().next = None;
                 }
@@ -391,10 +399,12 @@ impl<T, A: Allocator> LinkedList<T, A> {
         if let Some(mut split_node) = split_node {
             let second_part_head;
             let second_part_tail;
+            // ignore-tidy-undocumented-unsafe
             unsafe {
                 second_part_head = split_node.as_mut().next.take();
             }
             if let Some(mut head) = second_part_head {
+                // ignore-tidy-undocumented-unsafe
                 unsafe {
                     head.as_mut().prev = None;
                 }
@@ -483,9 +493,9 @@ impl<T> LinkedList<T> {
         match self.tail {
             None => mem::swap(self, other),
             Some(mut tail) => {
-                // `as_mut` is okay here because we have exclusive access to the entirety
-                // of both lists.
                 if let Some(mut other_head) = other.head.take() {
+                    // SAFETY: `as_mut` is okay here because we have exclusive
+                    // access to the entirety of both lists.
                     unsafe {
                         tail.as_mut().next = Some(other_head);
                         other_head.as_mut().prev = Some(tail);
@@ -743,6 +753,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("first")]
     pub fn front(&self) -> Option<&T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.head.as_ref().map(|node| &node.as_ref().element) }
     }
 
@@ -772,6 +783,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.head.as_mut().map(|node| &mut node.as_mut().element) }
     }
 
@@ -795,6 +807,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back(&self) -> Option<&T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.tail.as_ref().map(|node| &node.as_ref().element) }
     }
 
@@ -823,6 +836,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.tail.as_mut().map(|node| &mut node.as_mut().element) }
     }
 
@@ -1024,6 +1038,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
             }
             iter.tail
         };
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.split_off_after_node(split_node, at) }
     }
 
@@ -1427,6 +1442,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
                 self.index = 0;
             }
             // We had a previous element, so let's go to its next
+            // ignore-tidy-undocumented-unsafe
             Some(current) => unsafe {
                 self.current = current.as_ref().next;
                 self.index += 1;
@@ -1448,6 +1464,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
                 self.index = self.list.len().saturating_sub(1);
             }
             // Have a prev. Yield it and go to the previous element.
+            // ignore-tidy-undocumented-unsafe
             Some(current) => unsafe {
                 self.current = current.as_ref().prev;
                 self.index = self.index.checked_sub(1).unwrap_or_else(|| self.list.len());
@@ -1463,6 +1480,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn current(&self) -> Option<&'a T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.current.map(|current| &(*current.as_ptr()).element) }
     }
 
@@ -1474,6 +1492,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_next(&self) -> Option<&'a T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let next = match self.current {
                 None => self.list.head,
@@ -1491,6 +1510,7 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_prev(&self) -> Option<&'a T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let prev = match self.current {
                 None => self.list.tail,
@@ -1554,6 +1574,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
                 self.index = 0;
             }
             // We had a previous element, so let's go to its next
+            // ignore-tidy-undocumented-unsafe
             Some(current) => unsafe {
                 self.current = current.as_ref().next;
                 self.index += 1;
@@ -1575,6 +1596,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
                 self.index = self.list.len().saturating_sub(1);
             }
             // Have a prev. Yield it and go to the previous element.
+            // ignore-tidy-undocumented-unsafe
             Some(current) => unsafe {
                 self.current = current.as_ref().prev;
                 self.index = self.index.checked_sub(1).unwrap_or_else(|| self.list.len());
@@ -1590,6 +1612,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn current(&mut self) -> Option<&mut T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.current.map(|current| &mut (*current.as_ptr()).element) }
     }
 
@@ -1600,6 +1623,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_next(&mut self) -> Option<&mut T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let next = match self.current {
                 None => self.list.head,
@@ -1616,6 +1640,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_prev(&mut self) -> Option<&mut T> {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let prev = match self.current {
                 None => self.list.tail,
@@ -1658,6 +1683,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// inserted at the start of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn splice_after(&mut self, list: LinkedList<T>) {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let Some((splice_head, splice_tail, splice_len)) = list.detach_all_nodes() else {
                 return;
@@ -1680,6 +1706,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn splice_before(&mut self, list: LinkedList<T>) {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let (splice_head, splice_tail, splice_len) = match list.detach_all_nodes() {
                 Some(parts) => parts,
@@ -1702,6 +1729,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// inserted at the front of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_after(&mut self, item: T) {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let spliced_node =
                 Box::into_non_null_with_allocator(Box::new_in(Node::new(item), &self.list.alloc)).0;
@@ -1723,6 +1751,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_before(&mut self, item: T) {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let spliced_node =
                 Box::into_non_null_with_allocator(Box::new_in(Node::new(item), &self.list.alloc)).0;
@@ -1745,6 +1774,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn remove_current(&mut self) -> Option<T> {
         let unlinked_node = self.current?;
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             self.current = unlinked_node.as_ref().next;
             self.list.unlink_node(unlinked_node);
@@ -1766,6 +1796,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
         A: AllocatorClone,
     {
         let mut unlinked_node = self.current?;
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             self.current = unlinked_node.as_ref().next;
             self.list.unlink_node(unlinked_node);
@@ -1798,6 +1829,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
             // The "ghost" non-element's index has changed to 0.
             self.index = 0;
         }
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.list.split_off_after_node(self.current, split_off_idx) }
     }
 
@@ -1814,6 +1846,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     {
         let split_off_idx = self.index;
         self.index = 0;
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.list.split_off_before_node(self.current, split_off_idx) }
     }
 
@@ -1985,6 +2018,7 @@ where
 
     fn next(&mut self) -> Option<T> {
         while let Some(mut node) = self.it {
+            // ignore-tidy-undocumented-unsafe
             unsafe {
                 self.it = node.as_ref().next;
                 self.idx += 1;
@@ -2012,6 +2046,7 @@ where
     A: Allocator,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // ignore-tidy-undocumented-unsafe
         let peek = self.it.map(|node| unsafe { &node.as_ref().element });
         f.debug_struct("ExtractIf").field("peek", &peek).finish_non_exhaustive()
     }

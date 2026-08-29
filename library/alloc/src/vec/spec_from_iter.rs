@@ -46,6 +46,7 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         // But it is a conservative choice.
         let has_advanced = iterator.buf != iterator.ptr;
         if !has_advanced || iterator.len() >= iterator.cap / 2 {
+            // ignore-tidy-undocumented-unsafe
             unsafe {
                 let it = ManuallyDrop::new(iterator);
                 if has_advanced {
