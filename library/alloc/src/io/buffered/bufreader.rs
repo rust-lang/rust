@@ -456,6 +456,7 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
             // bytes but also modify existing bytes and render them invalid. On the other hand,
             // if `buf` is empty then by definition any writes must be appends and
             // `append_to_string` will validate all of the new bytes.
+            // ignore-tidy-undocumented-unsafe
             unsafe { crate::io::append_to_string(buf, |b| self.read_to_end(b)) }
         } else {
             // We cannot append our byte buffer directly onto the `buf` String as there could
