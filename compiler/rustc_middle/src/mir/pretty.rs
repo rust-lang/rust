@@ -17,6 +17,7 @@ use crate::mir::interpret::{
 use crate::mir::visit::Visitor;
 use crate::mir::*;
 use crate::ty::CoroutineArgsExt;
+use crate::util::separator::SeparatorPrinter;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -1907,13 +1908,10 @@ fn comma_sep<'tcx>(
     fmt: &mut Formatter<'_>,
     elems: Vec<(ConstValue, Ty<'tcx>)>,
 ) -> fmt::Result {
-    let mut first = true;
+    let mut sep = SeparatorPrinter::new(", ");
     for (ct, ty) in elems {
-        if !first {
-            fmt.write_str(", ")?;
-        }
+        sep.print_separator(fmt)?;
         pretty_print_const_value_tcx(tcx, ct, ty, fmt)?;
-        first = false;
     }
     Ok(())
 }
@@ -2013,15 +2011,12 @@ fn pretty_print_const_value_tcx<'tcx>(
                             }
                             None => {
                                 fmt.write_str(" {{ ")?;
-                                let mut first = true;
+                                let mut sep = SeparatorPrinter::new(", ");
                                 for (field_def, (ct, ty)) in iter::zip(&variant_def.fields, fields)
                                 {
-                                    if !first {
-                                        fmt.write_str(", ")?;
-                                    }
+                                    sep.print_separator(fmt)?;
                                     write!(fmt, "{}: ", field_def.name)?;
                                     pretty_print_const_value_tcx(tcx, ct, ty, fmt)?;
-                                    first = false;
                                 }
                                 fmt.write_str(" }}")?;
                             }
