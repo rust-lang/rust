@@ -129,7 +129,7 @@ pub fn exit(code: i32) -> ! {
             }
             crate::intrinsics::abort()
         }
-        any(target_family = "unix", target_os = "wasi") => unsafe {
+        any(target_family = "unix", target_os = "qurt", target_os = "wasi") => unsafe {
             libc::exit(code as crate::ffi::c_int)
         },
         target_os = "vexos" => {
