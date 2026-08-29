@@ -1161,6 +1161,15 @@ pub(crate) struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[non_exhaustive]` can't be used to annotate items with default field values")]
+pub(crate) struct NonExhaustiveWithDefaultFieldValues {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("this struct has default field values")]
+    pub defn_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("expected single version literal")]
 pub(crate) struct ExpectedSingleVersionLiteral {
     #[primary_span]

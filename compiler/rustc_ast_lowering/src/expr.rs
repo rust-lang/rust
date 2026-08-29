@@ -174,7 +174,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 if !e.attrs.is_empty() {
                     let old_attrs = self.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
                     let new_attrs = self
-                        .lower_attrs_vec(&e.attrs, e.span, ex.hir_id, Target::from_expr(e))
+                        .lower_attrs_vec(&e.attrs, e.span, ex.hir_id, Target::from_expr(e), None)
                         .into_iter()
                         .chain(old_attrs.iter().cloned());
                     let new_attrs = &*self.arena.alloc_from_iter(new_attrs);

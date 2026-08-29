@@ -161,6 +161,7 @@ impl<'sess> AttributeParser<'sess> {
             attrs,
             target_span,
             target,
+            None,
             OmitDoc::Skip,
             std::convert::identity,
             |lint_id, span, kind| {
@@ -317,6 +318,7 @@ impl<'sess> AttributeParser<'sess> {
         attrs: &[ast::Attribute],
         target_span: Span,
         target: Target,
+        target_item: Option<&ast::Item>,
         omit_doc: OmitDoc,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
@@ -524,6 +526,7 @@ impl<'sess> AttributeParser<'sess> {
                     },
                     all_attrs: &attr_paths,
                     parsed_attrs: &attributes,
+                    target_item,
                 },
                 attr_span,
             );
