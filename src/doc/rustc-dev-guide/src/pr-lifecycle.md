@@ -63,13 +63,6 @@ See the [Testing with CI] chapter for using Rust's CI to test your changes.
 
 ## PR review
 
-When you open a PR on the [rust-lang/rust], a bot will assign your PR to a reviewer.
-If there is a particular Rust team member you are working with, you can
-request that reviewer by leaving a comment on the thread with `r?
-@reviewer-github-id` (e.g. `r? @eddyb`). If you don't know who to request,
-don't request anyone;
-the bot will assign someone automatically based on which files you changed.
-
 ### r?
 
 Your PR will be automatically assigned a reviewer.
@@ -131,7 +124,7 @@ After rebasing, it's recommended to [run the relevant tests locally](tests/intro
 >   the review is finished,
 >   and PR author should check the comments and take action accordingly.
 >
-> - `@rustbot review`:
+> - `@rustbot ready`:
 >   the author is ready for a review,
 >   and this PR will be queued again in the reviewer's queue.
 

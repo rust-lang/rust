@@ -132,4 +132,4 @@ git push --set-upstream personal issue-59333-test
 
 ## Review and feedback
 
-See [Opening a PR](../git.md#opening-a-pr).
+See [PR lifecycle](../pr-lifecycle.md) for information about review and merging.
