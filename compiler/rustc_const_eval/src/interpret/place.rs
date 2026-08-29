@@ -643,6 +643,19 @@ where
         interp_ok(place)
     }
 
+    /// Computes a destination place, allocating its base local if it is currently live but without
+    /// an allocation.
+    pub fn eval_place_for_write(
+        &mut self,
+        mir_place: mir::Place<'tcx>,
+        skip_validity_for_simple_deref: bool,
+    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
+        if M::move_elimination_semantics(self) && !mir_place.is_indirect_first_projection() {
+            self.allocate_local_for_write(mir_place.local)?;
+        }
+        self.eval_place(mir_place, skip_validity_for_simple_deref)
+    }
+
     /// Given a place, returns either the underlying mplace or a reference to where the value of
     /// this place is stored.
     #[inline(always)]

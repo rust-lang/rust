@@ -40,6 +40,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
+        caller_moved_locals: &mut Vec<mir::Local>,
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -53,7 +54,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
 
-        let res = this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)?;
+        let res = this.emulate_intrinsic_by_name(
+            intrinsic_name,
+            instance.args,
+            args,
+            caller_moved_locals,
+            dest,
+            ret,
+        )?;
         res.jump_to_next_block(this, dest, ret, Some(unwind), |this| {
             // We haven't handled the intrinsic, let's see if we can use a fallback body.
             if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
@@ -84,6 +92,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         intrinsic_name: &str,
         generic_args: ty::GenericArgsRef<'tcx>,
         args: &[OpTy<'tcx>],
+        caller_moved_locals: &mut Vec<mir::Local>,
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -102,7 +111,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "catch_unwind" => {
                 let [try_fn, data, catch_fn] = check_intrinsic_arg_count(args)?;
-                this.handle_catch_unwind(try_fn, data, catch_fn, dest, ret)?;
+                this.handle_catch_unwind(
+                    try_fn,
+                    data,
+                    catch_fn,
+                    std::mem::take(caller_moved_locals),
+                    dest,
+                    ret,
+                )?;
                 // This pushed a stack frame, don't jump to `ret`.
                 return interp_ok(EmulateItemResult::AlreadyJumped);
             }

@@ -782,7 +782,11 @@ pub enum TerminatorKind<'tcx> {
     /// The evaluation order is currently "first compute destination place, then `func` operand,
     /// then the arguments in left-to-right order".
     ///
+    /// RFC 3943 semantics (enabled with -Z mir-move-elimination) changes the
+    /// evaluation order to evaluate the destination place last instead.
+    ///
     /// [#71117]: https://github.com/rust-lang/rust/issues/71117
+    /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
     Call {
         /// The function that’s being called.
         func: Operand<'tcx>,

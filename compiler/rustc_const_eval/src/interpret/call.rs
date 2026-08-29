@@ -1,8 +1,8 @@
 //! Manages calling a concrete function (with known MIR body) with argument passing,
 //! and returning the return value to the caller.
 
-use std::assert_matches;
 use std::borrow::Cow;
+use std::{assert_matches, debug_assert_matches};
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
@@ -385,8 +385,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.storage_live_dyn(local, meta)?;
         }
         // Now we can finally actually evaluate the callee place.
-        let callee_arg =
-            self.eval_place(*callee_arg, /* skip_validity_for_simple_deref */ false)?;
+        let callee_arg = self
+            .eval_place_for_write(*callee_arg, /* skip_validity_for_simple_deref */ false)?;
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
@@ -550,6 +550,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let (callee_arg_idx, callee_abi) = callee_args_abis.next().unwrap();
                     assert!(callee_abi.layout.is_1zst() && callee_abi.is_ignore());
                     ecx.storage_live(local)?;
+                    ecx.allocate_local_for_write(local)?;
                     // And skip it in the caller, if present. We can tell whether it is present by
                     // comparing the number of arguments on the caller and callee side.
                     if caller_fn_abi.args.len() == callee_fn_abi.args.len() {
@@ -569,8 +570,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // This argument is a VaList holding the remaining caller-side arguments.
                     ecx.storage_live(local)?;
 
-                    let place =
-                        ecx.eval_place(dest, /* skip_validity_for_simple_deref */ false)?;
+                    let place = ecx.eval_place_for_write(
+                        dest, /* skip_validity_for_simple_deref */ false,
+                    )?;
                     let mplace = ecx.force_allocation(&place)?;
 
                     // Consume the remaining arguments by putting them into the variable argument
@@ -596,6 +598,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.
                     ecx.storage_live(local)?;
+                    // Function arguments start allocated, including an empty spread tuple for
+                    // which the loop below has no fields to initialize.
+                    ecx.allocate_local_for_write(local)?;
                     // Must be a tuple
                     let ty::Tuple(fields) = ty.kind() else {
                         span_bug!(ecx.cur_span(), "non-tuple type for `spread_arg`: {ty}")
@@ -673,6 +678,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
         (caller_abi, caller_fn_abi): (ExternAbi, Option<&FnAbi<'tcx, Ty<'tcx>>>),
         args: &[FnArg<'tcx, M::Provenance>],
+        mut caller_moved_locals: Vec<mir::Local>,
         with_caller_location: bool,
         destination: &PlaceTy<'tcx, M::Provenance>,
         target: Option<mir::BasicBlock>,
@@ -687,15 +693,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             FnVal::Other(extra) => {
                 let caller_fn_abi =
                     caller_fn_abi.expect("FnAbi should have been computed for this call");
-                return M::call_extra_fn(
-                    self,
-                    extra,
-                    caller_fn_abi,
-                    args,
-                    destination,
-                    target,
-                    unwind,
-                );
+                M::call_extra_fn(self, extra, caller_fn_abi, args, destination, target, unwind)?;
+                return self.deallocate_moved_locals(caller_moved_locals);
             }
         };
 
@@ -707,6 +706,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     self,
                     instance,
                     &Self::copy_fn_args(args),
+                    &mut caller_moved_locals,
                     destination,
                     target,
                     unwind,
@@ -717,13 +717,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         FnVal::Instance(fallback),
                         (caller_abi, caller_fn_abi),
                         args,
+                        caller_moved_locals,
                         with_caller_location,
                         destination,
                         target,
                         unwind,
                     );
                 } else {
-                    interp_ok(())
+                    self.deallocate_moved_locals(caller_moved_locals)
                 }
             }
             ty::InstanceKind::LlvmIntrinsic(_) => {
@@ -734,7 +735,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     &Self::copy_fn_args(args),
                     destination,
                     target,
-                )
+                )?;
+                self.deallocate_moved_locals(caller_moved_locals)
             }
             ty::InstanceKind::Shim(ty::ShimKind::VTable(..))
             | ty::InstanceKind::Shim(ty::ShimKind::Reify(..))
@@ -764,7 +766,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     unwind,
                 )?
                 else {
-                    return interp_ok(());
+                    return self.deallocate_moved_locals(caller_moved_locals);
                 };
 
                 // Special handling for the closure ABI: untuple the last argument.
@@ -799,7 +801,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     &args,
                     with_caller_location,
                     destination,
-                    ReturnContinuation::Goto { ret: target, unwind },
+                    ReturnContinuation::Goto { ret: target, unwind, caller_moved_locals },
                 )
             }
             // `InstanceKind::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
@@ -887,6 +889,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     FnVal::Instance(fn_inst),
                     (caller_abi, Some(&caller_fn_abi)),
                     &args,
+                    caller_moved_locals,
                     with_caller_location,
                     destination,
                     target,
@@ -942,16 +945,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // as that "executes" the goto to the return block, but we don't want to,
         // only the tail called function should return to the current return block.
 
-        // The arguments need to all be copied since the current stack frame will be removed
-        // before the callee even starts executing.
-        // FIXME(explicit_tail_calls,#144855): does this match what codegen does?
-        let args = args.iter().map(|fn_arg| FnArg::Copy(fn_arg.copy_fn_arg())).collect::<Vec<_>>();
+        // Tail-call arguments are evaluated as ordinary operands, so none of them may donate a
+        // place in the frame that is about to be destroyed.
+        for arg in args {
+            debug_assert_matches!(arg, FnArg::Copy(_));
+        }
         // Remove the frame from the stack.
         let frame = self.pop_stack_frame_raw()?;
         // Remember where this frame would have returned to.
-        let ReturnContinuation::Goto { ret, unwind } = frame.return_cont() else {
+        let ReturnContinuation::Goto { ret, unwind, caller_moved_locals } = frame.return_cont()
+        else {
             bug!("can't tailcall as root of the stack");
         };
+        let (ret, unwind, caller_moved_locals) = (*ret, *unwind, caller_moved_locals.clone());
         // There's no return value to deal with! Instead, we forward the old return place
         // to the new function.
         // FIXME(explicit_tail_calls):
@@ -962,7 +968,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.init_fn_call(
             fn_val,
             (caller_abi, caller_fn_abi),
-            &*args,
+            args,
+            caller_moved_locals,
             with_caller_location,
             frame.return_place(),
             ret,
@@ -1027,6 +1034,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             FnVal::Instance(instance),
             (ExternAbi::Rust, Some(fn_abi)),
             &[FnArg::Copy(arg.into())],
+            vec![],
             false,
             &ret.into(),
             Some(target),
@@ -1080,7 +1088,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.copy_op_allow_transmute(&return_op, frame.return_place())?;
             trace!("return value: {:?}", self.dump_place(frame.return_place()));
         }
-        let return_cont = frame.return_cont();
+        let return_to = match frame.return_cont() {
+            ReturnContinuation::Goto { ret, unwind, caller_moved_locals } => {
+                for &local in caller_moved_locals {
+                    self.deallocate_moved_local(local)?;
+                }
+                Some((*ret, *unwind))
+            }
+            ReturnContinuation::Stop { .. } => None,
+        };
         // Finish popping the stack frame.
         let return_action = self.cleanup_stack_frame(unwinding, frame)?;
         // Jump to the next block.
@@ -1102,20 +1118,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            match return_cont {
-                ReturnContinuation::Goto { unwind, .. } => {
+            match return_to {
+                Some((_, unwind)) => {
                     // This must be the very last thing that happens, since it can in fact push a new stack frame.
                     self.unwind_to_block(unwind)
                 }
-                ReturnContinuation::Stop { .. } => {
+                None => {
                     panic!("encountered ReturnContinuation::Stop when unwinding!")
                 }
             }
         } else {
             // Follow the normal return edge.
-            match return_cont {
-                ReturnContinuation::Goto { ret, .. } => self.return_to_block(ret),
-                ReturnContinuation::Stop { .. } => {
+            match return_to {
+                Some((ret, _)) => self.return_to_block(ret),
+                None => {
                     assert!(
                         self.stack().is_empty(),
                         "only the bottommost frame can have ReturnContinuation::Stop"

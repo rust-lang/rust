@@ -165,6 +165,12 @@ pub trait Machine<'tcx>: Sized {
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'tcx, Self>) -> bool;
 
+    /// Whether to enforce the local allocation semantics required by MIR move elimination.
+    #[inline(always)]
+    fn move_elimination_semantics(ecx: &InterpCx<'tcx, Self>) -> bool {
+        ecx.tcx.sess.opts.unstable_opts.mir_move_elimination
+    }
+
     /// Gives the machine a chance to detect more misalignment than the built-in checks would catch.
     #[inline(always)]
     fn alignment_check(
@@ -243,6 +249,7 @@ pub trait Machine<'tcx>: Sized {
         ecx: &mut InterpCx<'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::Provenance>],
+        caller_moved_locals: &mut Vec<mir::Local>,
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,

@@ -829,7 +829,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// by passing it in here.
     #[inline]
     pub fn eval_operand(
-        &self,
+        &mut self,
         mir_op: &mir::Operand<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
@@ -838,8 +838,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         use rustc_middle::mir::Operand::*;
         let op = match mir_op {
-            // FIXME: do some more logic on `move` to invalidate the old location
-            &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
+            &Copy(place) => self.eval_place_to_op(place, layout)?,
+            &Move(place) if M::move_elimination_semantics(self) && place.projection.is_empty() => {
+                self.move_out_local(place.local, layout)?
+            }
+            &Move(place) => self.eval_place_to_op(place, layout)?,
 
             &RuntimeChecks(checks) => {
                 let val = M::runtime_checks(self, checks)?;

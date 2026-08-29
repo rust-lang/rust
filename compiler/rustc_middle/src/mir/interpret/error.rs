@@ -410,6 +410,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidUninitBytes(Option<(AllocId, BadBytesAccess)>),
     /// Working with a local that is not currently live.
     DeadLocal,
+    /// Working with a local that is live but does not currently have an allocation.
+    UnallocatedLocal,
     /// A discriminant of an uninhabited enum variant is written.
     UninhabitedEnumVariantWritten(VariantIdx),
     /// An uninhabited enum variant is projected.
@@ -616,6 +618,7 @@ impl<'tcx> fmt::Display for UndefinedBehaviorInfo<'tcx> {
                 uninit = info.bad,
             ),
             DeadLocal => write!(f, "accessing a dead local variable"),
+            UnallocatedLocal => write!(f, "accessing a live but unallocated local variable"),
             UninhabitedEnumVariantWritten(_) => {
                 write!(f, "writing discriminant of an uninhabited enum variant")
             }

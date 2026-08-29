@@ -62,6 +62,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         try_fn: &OpTy<'tcx>,
         data: &OpTy<'tcx>,
         catch_fn: &OpTy<'tcx>,
+        caller_moved_locals: Vec<mir::Local>,
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
@@ -94,7 +95,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &[data.clone()],
             None,
             // Directly return to caller.
-            ReturnContinuation::Goto { ret, unwind: mir::UnwindAction::Continue },
+            ReturnContinuation::Goto {
+                ret,
+                unwind: mir::UnwindAction::Continue,
+                caller_moved_locals,
+            },
         )?;
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
@@ -149,6 +154,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ret: catch_unwind.ret,
                     // `catch_fn` must not unwind.
                     unwind: mir::UnwindAction::Unreachable,
+                    caller_moved_locals: vec![],
                 },
             )?;
 

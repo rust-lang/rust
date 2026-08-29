@@ -470,6 +470,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         ecx: &mut InterpCx<'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
+        _caller_moved_locals: &mut Vec<mir::Local>,
         dest: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
@@ -879,8 +880,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::AssertKind::*;
         // Convert `AssertKind<Operand>` to `AssertKind<Scalar>`.
-        let eval_to_int =
-            |op| ecx.read_immediate(&ecx.eval_operand(op, None)?).map(|x| x.to_const_int());
+        let mut eval_to_int = |op| {
+            let op = ecx.eval_operand(op, None)?;
+            ecx.read_immediate(&op).map(|x| x.to_const_int())
+        };
         let err = match msg {
             BoundsCheck { len, index } => {
                 let len = eval_to_int(len)?;

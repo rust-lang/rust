@@ -22,7 +22,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ExternAbi::Rust,
             &[this.mplace_to_imm_ptr(&msg, None)?],
             None,
-            ReturnContinuation::Goto { ret: None, unwind },
+            ReturnContinuation::Goto { ret: None, unwind, caller_moved_locals: vec![] },
         )
     }
 
@@ -41,7 +41,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ExternAbi::Rust,
             &[this.mplace_to_imm_ptr(&msg, None)?],
             None,
-            ReturnContinuation::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+            ReturnContinuation::Goto {
+                ret: None,
+                unwind: mir::UnwindAction::Unreachable,
+                caller_moved_locals: vec![],
+            },
         )
     }
 
@@ -58,9 +62,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Forward to `panic_bounds_check` lang item.
 
                 // First arg: index.
-                let index = this.read_immediate(&this.eval_operand(index, None)?)?;
+                let index = this.eval_operand(index, None)?;
+                let index = this.read_immediate(&index)?;
                 // Second arg: len.
-                let len = this.read_immediate(&this.eval_operand(len, None)?)?;
+                let len = this.eval_operand(len, None)?;
+                let len = this.read_immediate(&len)?;
 
                 // Call the lang item.
                 let panic_bounds_check = this.tcx.lang_items().panic_bounds_check_fn().unwrap();
@@ -70,16 +76,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ExternAbi::Rust,
                     &[index, len],
                     None,
-                    ReturnContinuation::Goto { ret: None, unwind },
+                    ReturnContinuation::Goto { ret: None, unwind, caller_moved_locals: vec![] },
                 )?;
             }
             MisalignedPointerDereference { required, found } => {
                 // Forward to `panic_misaligned_pointer_dereference` lang item.
 
                 // First arg: required.
-                let required = this.read_immediate(&this.eval_operand(required, None)?)?;
+                let required = this.eval_operand(required, None)?;
+                let required = this.read_immediate(&required)?;
                 // Second arg: found.
-                let found = this.read_immediate(&this.eval_operand(found, None)?)?;
+                let found = this.eval_operand(found, None)?;
+                let found = this.read_immediate(&found)?;
 
                 // Call the lang item.
                 let panic_misaligned_pointer_dereference =
@@ -91,7 +99,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ExternAbi::Rust,
                     &[required, found],
                     None,
-                    ReturnContinuation::Goto { ret: None, unwind },
+                    ReturnContinuation::Goto { ret: None, unwind, caller_moved_locals: vec![] },
                 )?;
             }
 
@@ -104,7 +112,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ExternAbi::Rust,
                     &[],
                     None,
-                    ReturnContinuation::Goto { ret: None, unwind },
+                    ReturnContinuation::Goto { ret: None, unwind, caller_moved_locals: vec![] },
                 )?;
             }
         }

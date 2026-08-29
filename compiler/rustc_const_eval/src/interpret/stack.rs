@@ -18,7 +18,7 @@ use tracing::{info_span, instrument, trace};
 
 use super::{
     AllocId, CtfeProvenance, FnArg, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar,
+    MemPlaceMeta, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar,
     from_known_layout, interp_ok, throw_ub, throw_unsup,
 };
 use crate::{diagnostics, enter_trace_span};
@@ -113,13 +113,19 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
 }
 
 /// Where and how to continue when returning/unwinding from the current function.
-#[derive(Clone, Copy, Eq, PartialEq, Debug)] // Miri debug-prints these
+#[derive(Eq, PartialEq, Debug)] // Miri debug-prints these
 pub enum ReturnContinuation {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return).
     /// `ret` stores the block we jump to on a normal return, while `unwind`
     /// stores the block used for cleanup during unwinding.
-    Goto { ret: Option<mir::BasicBlock>, unwind: mir::UnwindAction },
+    Goto {
+        ret: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
+        /// Locals in the caller that were donated to a callee. They are
+        /// deallocated when the callee returns or unwinds.
+        caller_moved_locals: Vec<mir::Local>,
+    },
     /// The root frame of the stack: nowhere else to jump to, so we stop.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
@@ -153,6 +159,8 @@ impl<Prov: Provenance> std::fmt::Debug for LocalState<'_, Prov> {
 pub(super) enum LocalValue<Prov: Provenance = CtfeProvenance> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
+    /// This local is alive, but does not currently have an allocation.
+    LiveUnallocated,
     /// A normal, live local.
     /// Mostly for convenience, we re-use the `Operand` type here.
     /// This is an optimization over just always having a pointer here;
@@ -173,7 +181,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
         &self,
     ) -> Option<Either<(Pointer<Option<Prov>>, MemPlaceMeta<Prov>), Immediate<Prov>>> {
         match self.value {
-            LocalValue::Dead => None,
+            LocalValue::Dead | LocalValue::LiveUnallocated => None,
             LocalValue::Live(Operand::Indirect(mplace)) => Some(Left((mplace.ptr, mplace.meta))),
             LocalValue::Live(Operand::Immediate(imm)) => Some(Right(imm)),
         }
@@ -184,6 +192,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     pub(super) fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
         match &self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
+            LocalValue::LiveUnallocated => throw_ub!(UnallocatedLocal),
             LocalValue::Live(val) => interp_ok(val),
         }
     }
@@ -194,6 +203,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     pub(super) fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
+            LocalValue::LiveUnallocated => throw_ub!(UnallocatedLocal),
             LocalValue::Live(val) => interp_ok(val),
         }
     }
@@ -289,8 +299,8 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
         &self.return_place
     }
 
-    pub fn return_cont(&self) -> ReturnContinuation {
-        self.return_cont
+    pub fn return_cont(&self) -> &ReturnContinuation {
+        &self.return_cont
     }
 
     /// Return the `SourceInfo` of the current instruction.
@@ -378,7 +388,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // We can push a `Root` frame if and only if the stack is empty.
         debug_assert_eq!(
             self.stack().is_empty(),
-            matches!(return_cont, ReturnContinuation::Stop { .. })
+            matches!(&return_cont, ReturnContinuation::Stop { .. })
         );
 
         // First push a stack frame so we have access to `instantiate_from_current_frame` and other
@@ -443,14 +453,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         unwinding: bool,
         frame: Frame<'tcx, M::Provenance, M::FrameExtra>,
     ) -> InterpResult<'tcx, ReturnAction> {
-        let return_cont = frame.return_cont;
-
         // Cleanup: deallocate locals.
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
         // We do this while the frame is still on the stack, so errors point to the callee.
-        let cleanup = match return_cont {
+        let cleanup = match &frame.return_cont {
             ReturnContinuation::Goto { .. } => true,
-            ReturnContinuation::Stop { cleanup, .. } => cleanup,
+            ReturnContinuation::Stop { cleanup, .. } => *cleanup,
         };
 
         if cleanup {
@@ -542,36 +550,49 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         }
 
-        // This is a hot function, we avoid computing the layout when possible.
-        // `unsized_` will be `None` for sized types and `Some(layout)` for unsized types.
-        let unsized_ = if is_very_trivially_sized(self.body().local_decls[local].ty) {
+        // This is a hot function, so normally we avoid computing the layout when possible. Under
+        // move-elimination semantics we need the layout of every local to identify ZSTs: unlike
+        // other sized locals, these don't use the LiveUnallocated state..
+        let layout = if M::move_elimination_semantics(self)
+            || !is_very_trivially_sized(self.body().local_decls[local].ty)
+        {
+            Some(self.layout_of_local(self.frame(), local, None)?)
+        } else {
             None
-        } else {
-            // We need the layout.
-            let layout = self.layout_of_local(self.frame(), local, None)?;
-            if layout.is_sized() { None } else { Some(layout) }
         };
+        // `unsized_` will be `None` for sized types and `Some(layout)` for unsized types.
+        let unsized_ = layout.filter(|layout| layout.is_unsized());
+        let is_zst = layout.is_some_and(|layout| layout.is_zst());
 
-        let local_val = LocalValue::Live(if let Some(layout) = unsized_ {
-            if !meta.has_meta() {
-                throw_unsup!(UnsizedLocal);
-            }
-            // Need to allocate some memory, since `Immediate::Uninit` cannot be unsized.
-            let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
-            Operand::Indirect(*dest_place.mplace())
+        // `LiveUnallocated` cannot preserve the metadata needed to allocate an unsized local
+        // later. Unsized locals are only supported as function arguments, where the metadata is
+        // available here and the local is initialized immediately after being made live, so keep
+        // allocating them eagerly.
+        let local_val = if M::move_elimination_semantics(self) && unsized_.is_none() && !is_zst {
+            assert!(!meta.has_meta());
+            LocalValue::LiveUnallocated
         } else {
-            // Just make this an efficient immediate.
-            assert!(!meta.has_meta()); // we're dropping the metadata
-            // Make sure the machine knows this "write" is happening. (This is important so that
-            // races involving local variable allocation can be detected by Miri.)
-            M::after_local_write(self, local, /*storage_live*/ true)?;
-            // Note that not calling `layout_of` here does have one real consequence:
-            // if the type is too big, we'll only notice this when the local is actually initialized,
-            // which is a bit too late -- we should ideally notice this already here, when the memory
-            // is conceptually allocated. But given how rare that error is and that this is a hot function,
-            // we accept this downside for now.
-            Operand::Immediate(Immediate::Uninit)
-        });
+            LocalValue::Live(if let Some(layout) = unsized_ {
+                if !meta.has_meta() {
+                    throw_unsup!(UnsizedLocal);
+                }
+                // Need to allocate some memory, since `Immediate::Uninit` cannot be unsized.
+                let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
+                Operand::Indirect(*dest_place.mplace())
+            } else {
+                // Just make this an efficient immediate.
+                assert!(!meta.has_meta()); // we're dropping the metadata
+                // Make sure the machine knows this "write" is happening. (This is important so that
+                // races involving local variable allocation can be detected by Miri.)
+                M::after_local_write(self, local, /*storage_live*/ true)?;
+                // Note that not calling `layout_of` here does have one real consequence:
+                // if the type is too big, we'll only notice this when the local is actually initialized,
+                // which is a bit too late -- we should ideally notice this already here, when the memory
+                // is conceptually allocated. But given how rare that error is and that this is a hot function,
+                // we accept this downside for now.
+                Operand::Immediate(Immediate::Uninit)
+            })
+        };
 
         // If the local is already live, deallocate its old memory.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
@@ -592,6 +613,76 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // If the local is already dead, this is a NOP.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead);
         self.deallocate_local(old)?;
+        interp_ok(())
+    }
+
+    /// Ensure that a direct destination local has an allocation.
+    pub(super) fn allocate_local_for_write(&mut self, local: mir::Local) -> InterpResult<'tcx> {
+        let local_value = &mut self.frame_mut().locals[local].value;
+        if matches!(local_value, LocalValue::LiveUnallocated) {
+            *local_value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
+            M::after_local_write(self, local, /*storage_live*/ true)?;
+        }
+        interp_ok(())
+    }
+
+    /// Move an entire local into a detached value and leave the local live but unallocated.
+    pub(super) fn move_out_local(
+        &mut self,
+        local: mir::Local,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let op = self.local_to_op(local, layout)?;
+        // ZST storage remains allocated until `StorageDead`.
+        if op.layout.is_zst() {
+            return interp_ok(op);
+        }
+        let moved_op = match *op.op() {
+            Operand::Immediate(_) => op,
+            Operand::Indirect(_) => {
+                // We need to free the local's allocation immediately to catch
+                // any use-after-move, so move the contents to a temporary
+                // allocation for the duration of the statement.
+                let temp = self.allocate(op.layout, MemoryKind::Stack)?;
+                self.copy_op_no_validate(&op, &temp, /*allow_transmute*/ false)?;
+                self.move_out_temps.push(temp.clone());
+                temp.into()
+            }
+        };
+
+        let old =
+            mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::LiveUnallocated);
+        self.deallocate_local(old)?;
+        interp_ok(moved_op)
+    }
+
+    /// Deallocate a local that was donated to a callee for the duration of a call.
+    pub(super) fn deallocate_moved_local(&mut self, local: mir::Local) -> InterpResult<'tcx> {
+        let old =
+            mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::LiveUnallocated);
+        match old {
+            LocalValue::Live(_) => self.deallocate_local(old),
+            LocalValue::Dead | LocalValue::LiveUnallocated => {
+                bug!("call argument local was not allocated")
+            }
+        }
+    }
+
+    pub(super) fn deallocate_moved_locals(
+        &mut self,
+        locals: Vec<mir::Local>,
+    ) -> InterpResult<'tcx> {
+        for local in locals {
+            self.deallocate_moved_local(local)?;
+        }
+        interp_ok(())
+    }
+
+    /// Deallocate temporary allocations created by whole-local moves in the current MIR step.
+    pub(super) fn clear_move_out_temps(&mut self) -> InterpResult<'tcx> {
+        for temp in mem::take(&mut self.move_out_temps) {
+            self.deallocate_ptr(temp.ptr(), None, MemoryKind::Stack)?;
+        }
         interp_ok(())
     }
 
@@ -697,6 +788,7 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
     ) -> std::fmt::Result {
         match self.value {
             LocalValue::Dead => write!(fmt, " is dead")?,
+            LocalValue::LiveUnallocated => write!(fmt, " is live but unallocated")?,
             LocalValue::Live(Operand::Immediate(Immediate::Uninit)) => {
                 write!(fmt, " is uninitialized")?
             }
