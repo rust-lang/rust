@@ -1,14 +1,7 @@
-# Walkthrough: a typical contribution
+# Walkthrough: a new language feature, from design to stabilization
 
-There are _a lot_ of ways to contribute to the Rust compiler, including fixing
-bugs, improving performance, helping design features, providing feedback on existing features, etc.
-This chapter does not claim to scratch the surface.
-Instead, it walks through the design and implementation of a new feature.
-Not all of the steps and processes described here are needed for every
-contribution, and I will try to point those out as they arise.
-
-In general, if you are interested in making a contribution and aren't sure
-where to start, please feel free to ask!
+This chapter walks through the design and implementation of a new language feature.
+Some of these steps are specific to language features, but many also extend to library features.
 
 ## Overview
 
@@ -244,7 +237,7 @@ There are a couple of things that may happen for some PRs during the review proc
   some merge conflicts with other PRs that happen to get merged first.
   You should fix these merge conflicts using the normal git procedures.
 
-[crater]: ./tests/crater.md
+[crater]: ../tests/crater.md
 
 If you are not doing a new feature or something like that (e.g. if you are
 fixing a bug), then that's it!
@@ -293,6 +286,6 @@ A note is added to the [Release notes][relnotes] about the feature.
 
 [stab]: https://github.com/rust-lang/rust/pull/56245
 
-Steps to stabilize the feature can be found at [Stabilizing Features](./stabilization-guide.md).
+Steps to stabilize the feature can be found at [Stabilizing Features](../stabilization-guide.md).
 
 [relnotes]: https://github.com/rust-lang/rust/blob/HEAD/RELEASES.md
