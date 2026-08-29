@@ -329,7 +329,7 @@ pub(crate) fn print_src(
     mut writer: impl fmt::Write,
     s: &str,
     file_span: rustc_span::Span,
-    context: &Context<'_>,
+    cx: &Context<'_>,
     root_path: &str,
     decoration_info: &highlight::DecorationInfo,
     source_context: &SourceContext<'_>,
@@ -349,20 +349,20 @@ pub(crate) fn print_src(
         let current_href = if let SourceContext::Embedded(info) = source_context {
             info.url.to_string()
         } else {
-            context
-                .href_from_span(clean::Span::new(file_span), false)
+            cx.href_from_span(clean::Span::new(file_span), false)
                 .expect("only local crates should have sources emitted")
         };
         highlight::write_code(
             fmt,
             s,
             Some(highlight::HrefContext {
-                context,
+                context: cx,
                 file_span: file_span.into(),
                 root_path,
                 current_href,
             }),
             Some(decoration_info),
+            cx.tcx().sess.edition(),
             Some(line_info),
         );
         Ok(())
