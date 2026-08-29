@@ -31,7 +31,7 @@ use tt::{TextRange, TextSize};
 use crate::{macro_call_as_call_id, nameres::MacroSubNs, resolver::Resolver};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct DocsSourceMapLine {
+struct DocsSourceMapLine {
     /// The offset in [`Docs::docs`].
     string_offset: TextSize,
     /// The offset in the AST of the text. `None` for macro-expanded doc strings
@@ -60,6 +60,20 @@ pub struct Docs {
     outline_inner_docs_start: Option<TextSize>,
     /// All macro calls in `#[doc = ...]` attributes, recursively.
     macro_calls: ThinVec<(AstId<ast::MacroCall>, MacroCallId)>,
+}
+
+#[derive(Clone, Copy)]
+enum DocCommentKind {
+    /// `///` etc..
+    Sugared(ast::CommentShape),
+    /// `#[doc = ""]`.
+    Desugared,
+}
+
+#[derive(Default)]
+struct Indent {
+    lines: Vec<Option<(usize, DocCommentKind)>>,
+    seen_sugared: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -199,36 +213,37 @@ impl Docs {
         ));
     }
 
-    fn extend_with_doc_comment(&mut self, comment: ast::Comment, indent: &mut usize) {
+    fn extend_with_doc_comment(&mut self, comment: ast::Comment, indent: &mut Indent) {
         let Some((doc, offset)) = comment.doc_comment() else { return };
         let offset = comment.syntax().text_range().start() + offset;
-        self.extend_with_doc_str(doc, offset, indent, comment.kind().shape);
+        self.extend_with_doc_str(
+            doc,
+            offset,
+            DocCommentKind::Sugared(comment.kind().shape),
+            indent,
+        );
     }
 
-    fn extend_with_doc_attr(&mut self, value: ast::String, indent: &mut usize) {
+    fn extend_with_doc_attr(&mut self, value: ast::String, indent: &mut Indent) {
         let Some(value_offset) = value.text_range_between_quotes() else { return };
         let value_offset = value_offset.start();
         let Ok(value) = value.value() else { return };
         // FIXME: Handle source maps for escaped text.
-        //
-        // rustc passes `CommentKind::Line` for desugared `#[doc = "..."]` attributes.
-        self.extend_with_doc_str(&value, value_offset, indent, ast::CommentShape::Line);
+        self.extend_with_doc_str(&value, value_offset, DocCommentKind::Desugared, indent);
     }
 
-    pub(crate) fn extend_with_doc_str(
+    fn extend_with_doc_str(
         &mut self,
         doc: &str,
         offset_in_ast: TextSize,
-        indent: &mut usize,
-        shape: ast::CommentShape,
+        comment_kind: DocCommentKind,
+        indent: &mut Indent,
     ) {
-        self.push_doc_lines(doc, Some(offset_in_ast), indent, shape);
+        self.push_doc_lines(doc, Some(offset_in_ast), comment_kind, indent);
     }
 
-    fn extend_with_unmapped_doc_str(&mut self, doc: &str, indent: &mut usize) {
-        // Macro-expanded doc strings are desugared, so pass `CommentShape::Line` matching
-        // rustc's `CommentKind::Line`.
-        self.push_doc_lines(doc, None, indent, ast::CommentShape::Line);
+    fn extend_with_unmapped_doc_str(&mut self, doc: &str, indent: &mut Indent) {
+        self.push_doc_lines(doc, None, DocCommentKind::Desugared, indent);
     }
 
     /// Beautifies `doc` and appends the result to `self.docs`, one line at a time via
@@ -250,11 +265,21 @@ impl Docs {
         &mut self,
         doc: &str,
         ast_offset: Option<TextSize>,
-        indent: &mut usize,
-        shape: ast::CommentShape,
+        comment_kind: DocCommentKind,
+        indent: &mut Indent,
     ) {
+        // Note: this is pushed even if there are only empty lines here, because that's what rustdoc does.
+        let shape = match comment_kind {
+            DocCommentKind::Sugared(shape) => {
+                indent.seen_sugared = true;
+                shape
+            }
+            // rustc uses `Line` for desugared comments.
+            DocCommentKind::Desugared => ast::CommentShape::Line,
+        };
+
         if !doc.contains('\n') {
-            self.push_doc_line(doc, ast_offset, indent);
+            self.push_doc_line(doc, ast_offset, comment_kind, indent);
             return;
         }
 
@@ -291,25 +316,35 @@ impl Docs {
         }
 
         for (line, line_offset) in lines.iter().copied() {
-            self.push_doc_line(line, ast_offset.map(|it| it + line_offset), indent);
+            self.push_doc_line(line, ast_offset.map(|it| it + line_offset), comment_kind, indent);
         }
     }
 
     /// Appends a single beautified line to `self.docs` and records its source-map row.
-    fn push_doc_line(&mut self, line: &str, ast_offset: Option<TextSize>, indent: &mut usize) {
+    fn push_doc_line(
+        &mut self,
+        line: &str,
+        ast_offset: Option<TextSize>,
+        comment_kind: DocCommentKind,
+        indent: &mut Indent,
+    ) {
         self.docs_source_map
             .push(DocsSourceMapLine { string_offset: TextSize::of(&self.docs), ast_offset });
 
         let line = line.trim_end();
-        if let Some(line_indent) = line.chars().position(|ch| !ch.is_whitespace()) {
-            // Empty lines are handled because `position()` returns `None` for them.
-            *indent = std::cmp::min(*indent, line_indent);
-        }
+        let line_indent = if line.chars().any(|ch| !ch.is_whitespace()) {
+            // Empty lines are handled because `any()` returns `false` for them.
+            let line_indent = line.bytes().take_while(|c| *c == b' ' || *c == b'\t').count();
+            Some((line_indent, comment_kind))
+        } else {
+            None
+        };
+        indent.lines.push(line_indent);
         self.docs.push_str(line);
         self.docs.push('\n');
     }
 
-    fn remove_indent(&mut self, indent: usize, start_source_map_index: usize) {
+    fn remove_indent(&mut self, indent: &Indent) {
         /// In case of panics, we want to avoid corrupted UTF-8 in `self.docs`, so we clear it.
         struct Guard<'a>(&'a mut Docs);
         impl Drop for Guard<'_> {
@@ -337,8 +372,38 @@ impl Docs {
             return;
         }
 
+        // `add` is used in case the most common sugared doc syntax is used ("/// "). The other
+        // fragments kind's lines are never starting with a whitespace unless they are using some
+        // markdown formatting requiring it. Therefore, if the doc block have a mix between the two,
+        // we need to take into account the fact that the minimum indent minus one (to take this
+        // whitespace into account).
+        //
+        // For example:
+        //
+        // /// hello!
+        // #[doc = "another"]
+        //
+        // In this case, you want "hello! another" and not "hello!  another".
+        let add_indent = if indent.seen_sugared { 1 } else { 0 };
+
+        let Some(min_indent) = indent
+            .lines
+            .iter()
+            .filter_map(|it| *it)
+            .map(|(line_indent, line_kind)| {
+                line_indent
+                    + match line_kind {
+                        DocCommentKind::Sugared(_) => 0,
+                        DocCommentKind::Desugared => add_indent,
+                    }
+            })
+            .min()
+        else {
+            return;
+        };
+
         let guard = Guard(self);
-        let source_map = &mut guard.0.docs_source_map[start_source_map_index..];
+        let source_map = guard.0.docs_source_map.as_mut_slice();
         let Some(&DocsSourceMapLine { string_offset: mut copy_into, .. }) = source_map.first()
         else {
             return;
@@ -355,7 +420,14 @@ impl Docs {
             let line_docs =
                 &guard.0.docs[TextRange::new(line_source.string_offset, string_end_offset)];
             let line_docs_len = TextSize::of(line_docs);
-            let indent_size = line_docs.char_indices().nth(indent).map_or_else(
+            let indent_size = if let Some((_, DocCommentKind::Desugared)) = indent.lines[idx]
+                && min_indent > 0
+            {
+                min_indent - add_indent
+            } else {
+                min_indent
+            };
+            let indent_size = line_docs.char_indices().nth(indent_size).map_or_else(
                 || TextSize::of(line_docs) - TextSize::of("\n"),
                 |(offset, _)| TextSize::new(offset as u32),
             );
@@ -581,7 +653,7 @@ fn extend_with_attrs<'a, 'db>(
     node: &SyntaxNode,
     file_id: HirFileId,
     expect_inner_attrs: bool,
-    indent: &mut usize,
+    indent: &mut Indent,
     get_cfg_options: &dyn Fn() -> &'a CfgOptions,
     cfg_options: &mut Option<&'a CfgOptions>,
     make_resolver: &dyn Fn() -> Resolver<'db>,
@@ -664,8 +736,8 @@ pub(crate) fn extract_docs<'a, 'db>(
 
     let mut cfg_options = None;
 
+    let mut indent = Indent::default();
     if let Some(outer_mod_decl) = outer_mod_decl {
-        let mut indent = usize::MAX;
         // For outer docs (the `mod foo;` declaration), use the module's own resolver.
         extend_with_attrs(
             &mut result,
@@ -679,12 +751,9 @@ pub(crate) fn extract_docs<'a, 'db>(
             &mut cfg_options,
             resolver,
         );
-        result.remove_indent(indent, 0);
         result.outline_mod = Some((outer_mod_decl.file_id, result.docs_source_map.len()));
     }
 
-    let inline_source_map_start = result.docs_source_map.len();
-    let mut indent = usize::MAX;
     // For inline docs, use the item's own resolver.
     extend_with_attrs(
         &mut result,
@@ -713,7 +782,7 @@ pub(crate) fn extract_docs<'a, 'db>(
             resolver,
         );
     }
-    result.remove_indent(indent, inline_source_map_start);
+    result.remove_indent(&indent);
 
     result.remove_last_newline();
 
@@ -733,7 +802,7 @@ mod tests {
 
     use crate::test_db::TestDB;
 
-    use super::{Docs, IsInnerDoc};
+    use super::{DocCommentKind, Docs, Indent, IsInnerDoc};
 
     #[test]
     fn docs() {
@@ -748,12 +817,17 @@ mod tests {
             outline_inner_docs_start: None,
             macro_calls: ThinVec::new(),
         };
-        let mut indent = usize::MAX;
+        let mut indent = Indent::default();
 
         let outer = " foo\n\tbar  baz";
         let mut ast_offset = TextSize::new(123);
         for line in outer.split('\n') {
-            docs.extend_with_doc_str(line, ast_offset, &mut indent, ast::CommentShape::Line);
+            docs.extend_with_doc_str(
+                line,
+                ast_offset,
+                DocCommentKind::Sugared(ast::CommentShape::Line),
+                &mut indent,
+            );
             ast_offset += TextSize::of(line) + TextSize::of("\n");
         }
 
@@ -761,11 +835,15 @@ mod tests {
         ast_offset += TextSize::new(123);
         let inner = " bar \n baz";
         for line in inner.split('\n') {
-            docs.extend_with_doc_str(line, ast_offset, &mut indent, ast::CommentShape::Line);
+            docs.extend_with_doc_str(
+                line,
+                ast_offset,
+                DocCommentKind::Sugared(ast::CommentShape::Line),
+                &mut indent,
+            );
             ast_offset += TextSize::of(line) + TextSize::of("\n");
         }
 
-        assert_eq!(indent, 1);
         expect![[r#"
             [
                 DocsSourceMapLine {
@@ -796,7 +874,7 @@ mod tests {
         "#]]
         .assert_debug_eq(&docs.docs_source_map);
 
-        docs.remove_indent(indent, 0);
+        docs.remove_indent(&indent);
 
         assert_eq!(docs.inline_inner_docs_start, Some(TextSize::new(13)));
 
@@ -903,6 +981,34 @@ mod tests {
         );
     }
 
+    #[test]
+    fn sugared_desugared_mix() {
+        let (_db, file_id) = TestDB::with_single_file("");
+        let mut docs = Docs {
+            docs: String::new(),
+            docs_source_map: Vec::new(),
+            outline_mod: None,
+            inline_file: file_id.into(),
+            prefix_len: TextSize::new(0),
+            inline_inner_docs_start: None,
+            outline_inner_docs_start: None,
+            macro_calls: ThinVec::new(),
+        };
+        let mut indent = Indent::default();
+
+        docs.push_doc_lines(
+            " hello!",
+            None,
+            DocCommentKind::Sugared(ast::CommentShape::Line),
+            &mut indent,
+        );
+        docs.push_doc_lines("another", None, DocCommentKind::Desugared, &mut indent);
+        docs.remove_indent(&indent);
+        docs.remove_last_newline();
+
+        assert_eq!(docs.docs(), "hello!\nanother");
+    }
+
     /// Extracts the docs of the first comment in `source`, running the same normalization as
     /// [`super::extract_docs`] does for inline docs.
     fn comment_docs(source: &str) -> Docs {
@@ -923,9 +1029,9 @@ mod tests {
             outline_inner_docs_start: None,
             macro_calls: ThinVec::new(),
         };
-        let mut indent = usize::MAX;
+        let mut indent = Indent::default();
         docs.extend_with_doc_comment(comment, &mut indent);
-        docs.remove_indent(indent, 0);
+        docs.remove_indent(&indent);
         docs.remove_last_newline();
         docs
     }
