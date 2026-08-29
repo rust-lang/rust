@@ -2,23 +2,27 @@
 
 These are videos where various experts explain different parts of the compiler:
 
-## General
-- [January 2019: Tom Tromey discusses debugging support in rustc](https://www.youtube.com/watch?v=elBxMRSNYr4)
-- [June 2019: Responsive compilers - Nicholas Matsakis - PLISS 2019](https://www.youtube.com/watch?v=N6b44kMS6OM)
-- [June 2019: Things I Learned (TIL) - Nicholas Matsakis - PLISS 2019](https://www.youtube.com/watch?v=LIYkT3p5gTs)
-- [May 2021: Peeking at compiler-internal data (for fun and profit)](https://www.youtube.com/watch?v=SKmd5A-1cSE)
-- [September 2021: Hacking rustc: Contributing to the compiler](https://www.youtube.com/watch?v=9H9SO2u6Q20)
+## Compiler architecture
 - [September 2022: Bootstrapping: The once and future compiler](https://www.youtube.com/watch?v=oUIjG-y4zaA)
-- [October 2022: Rustc Explore](https://www.youtube.com/playlist?list=PL85XCvVPmGQj3-MujOJ0jcoSqQ6Yi6Rkk)
 - [November 2024: Rust compiler overview](https://www.youtube.com/watch?v=8E7I0EGRXo0)
-- [November 2024: The current state and future of Rust compiler performance](https://www.youtube.com/watch?v=Lye2xeJ3O5w)
-- [March 2025: Rustlantis: Randomized differential testing of the Rust compiler](https://www.youtube.com/watch?v=0jqI8M1xzj4)
 - [June 2025: (Almost) everything you should know about the compiler frontend](https://www.youtube.com/watch?v=aFG5KtpEynk)
-- [September 2025: How doctests work](https://www.youtube.com/watch?v=NmgNi6kFXZI)
 - [October 2025: Stable MIR: Fork the Rust compiler pipeline and go beyond](https://www.youtube.com/watch?v=lfi2pCOaGGk)
 - [November 2025: How Rust compiles](https://www.youtube.com/watch?v=G1g6Me1FHmE)
+
+## Contributing and compiler tooling
+- [January 2019: Tom Tromey discusses debugging support in rustc](https://www.youtube.com/watch?v=elBxMRSNYr4)
+- [May 2021: Peeking at compiler-internal data (for fun and profit)](https://www.youtube.com/watch?v=SKmd5A-1cSE)
+- [September 2021: Hacking rustc: Contributing to the compiler](https://www.youtube.com/watch?v=9H9SO2u6Q20)
+- [October 2022: Rustc Explore](https://www.youtube.com/playlist?list=PL85XCvVPmGQj3-MujOJ0jcoSqQ6Yi6Rkk)
+- [September 2025: How doctests work](https://www.youtube.com/watch?v=NmgNi6kFXZI)
 - [June 2026: Compilers are just programs: Fixing a bug in the Rust compiler](https://www.youtube.com/watch?v=osTwwllrgeA)
 - [June 2026: Out-of-tree access to compiler state](https://www.youtube.com/watch?v=ExxxtADP-t8)
+
+## Performance and compiler testing
+- [June 2019: Responsive compilers - Nicholas Matsakis - PLISS 2019](https://www.youtube.com/watch?v=N6b44kMS6OM)
+- [June 2019: Things I Learned (TIL) - Nicholas Matsakis - PLISS 2019](https://www.youtube.com/watch?v=LIYkT3p5gTs)
+- [November 2024: The current state and future of Rust compiler performance](https://www.youtube.com/watch?v=Lye2xeJ3O5w)
+- [March 2025: Rustlantis: Randomized differential testing of the Rust compiler](https://www.youtube.com/watch?v=0jqI8M1xzj4)
 - [June 2026: Precise, consistent, and reliable code coverage](https://www.youtube.com/watch?v=P9lmSc4oLFs)
 - [June 2026: Rethinking the incremental system in between compilation types](https://www.youtube.com/watch?v=aRwK5dbJy3Y)
 
