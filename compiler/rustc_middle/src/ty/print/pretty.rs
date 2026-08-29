@@ -29,6 +29,7 @@ use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitClause,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
+use crate::util::separator::SeparatorPrinter;
 
 thread_local! {
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = const { Cell::new(false) };
@@ -1116,49 +1117,18 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         write!(self, "impl ")?;
 
-        let mut first = true;
+        let mut sep = SeparatorPrinter::new(" + ");
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
         let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !has_sized_bound;
 
         for ((bound_args_and_self_ty, is_async), entry) in fn_traits {
-            write!(self, "{}", if first { "" } else { " + " })?;
-            write!(self, "{}", if paren_needed { "(" } else { "" })?;
-
             let trait_def_id = if is_async {
                 tcx.async_fn_trait_kind_to_def_id(entry.kind).expect("expected AsyncFn lang items")
             } else {
                 tcx.fn_trait_kind_to_def_id(entry.kind).expect("expected Fn lang items")
             };
 
-            if let Some(return_ty) = entry.return_ty {
-                self.wrap_binder(
-                    &bound_args_and_self_ty,
-                    WrapBinderMode::ForAll,
-                    |(args, _), p| {
-                        write!(p, "{}", tcx.item_name(trait_def_id))?;
-                        write!(p, "(")?;
-
-                        for (idx, ty) in args.iter().enumerate() {
-                            if idx > 0 {
-                                write!(p, ", ")?;
-                            }
-                            ty.print(p)?;
-                        }
-
-                        write!(p, ")")?;
-                        if let Some(ty) = return_ty.skip_binder().as_type() {
-                            if !ty.is_unit() {
-                                write!(p, " -> ")?;
-                                return_ty.print(p)?;
-                            }
-                        }
-                        write!(p, "{}", if paren_needed { ")" } else { "" })?;
-
-                        first = false;
-                        Ok(())
-                    },
-                )?;
-            } else {
+            let Some(return_ty) = entry.return_ty else {
                 // Otherwise, render this like a regular trait.
                 traits.insert(
                     bound_args_and_self_ty.map_bound(|(args, self_ty)| ty::TraitClause {
@@ -1171,12 +1141,39 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }),
                     FxIndexMap::default(),
                 );
-            }
+                continue;
+            };
+
+            sep.print_separator(&mut *self)?;
+            write!(self, "{}", if paren_needed { "(" } else { "" })?;
+
+            self.wrap_binder(&bound_args_and_self_ty, WrapBinderMode::ForAll, |(args, _), p| {
+                write!(p, "{}", tcx.item_name(trait_def_id))?;
+                write!(p, "(")?;
+
+                for (idx, ty) in args.iter().enumerate() {
+                    if idx > 0 {
+                        write!(p, ", ")?;
+                    }
+                    ty.print(p)?;
+                }
+
+                write!(p, ")")?;
+                if let Some(ty) = return_ty.skip_binder().as_type() {
+                    if !ty.is_unit() {
+                        write!(p, " -> ")?;
+                        return_ty.print(p)?;
+                    }
+                }
+                write!(p, "{}", if paren_needed { ")" } else { "" })?;
+
+                Ok(())
+            })?;
         }
 
         // Print the rest of the trait types (that aren't Fn* family of traits)
         for (trait_pred, assoc_items) in traits {
-            write!(self, "{}", if first { "" } else { " + " })?;
+            sep.print_separator(&mut *self)?;
 
             self.wrap_binder(&trait_pred, WrapBinderMode::ForAll, |trait_pred, p| {
                 if trait_pred.polarity == ty::ClausePolarity::Negative {
@@ -1221,45 +1218,35 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                 }
 
-                first = false;
                 Ok(())
             })?;
         }
 
         let using_sized_hierarchy = self.tcx().features().sized_hierarchy();
-        let add_sized = has_sized_bound && (first || has_negative_sized_bound);
+        let add_sized = has_sized_bound && (sep.is_first() || has_negative_sized_bound);
         let add_maybe_sized =
             has_meta_sized_bound && !has_negative_sized_bound && !using_sized_hierarchy;
         // Set `has_pointee_sized_bound` if there were no `Sized` or `MetaSized` bounds.
         let has_pointee_sized_bound =
             !has_sized_bound && !has_meta_sized_bound && !has_negative_sized_bound;
         if add_sized || add_maybe_sized {
-            if !first {
-                write!(self, " + ")?;
-            }
-            first = false;
+            sep.print_separator(&mut *self)?;
             if add_maybe_sized {
                 write!(self, "?")?;
             }
             write!(self, "Sized")?;
         } else if has_meta_sized_bound && using_sized_hierarchy {
-            if !first {
-                write!(self, " + ")?;
-            }
-            first = false;
+            sep.print_separator(&mut *self)?;
             write!(self, "MetaSized")?;
         } else if has_pointee_sized_bound && using_sized_hierarchy {
-            if !first {
-                write!(self, " + ")?;
-            }
-            first = false;
+            sep.print_separator(&mut *self)?;
             write!(self, "PointeeSized")?;
         }
 
         let using_move_trait = self.tcx().features().move_trait();
         let add_maybe_move = using_move_trait && !has_move_bound;
         if add_maybe_move {
-            if !first {
+            if !sep.is_first() {
                 write!(self, " + ")?;
             }
             write!(self, "?Move")?;
@@ -1397,9 +1384,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<(), PrintError> {
         // Generate the main trait ref, including associated types.
-        let mut first = true;
+        let mut sep = SeparatorPrinter::new(" + ");
 
         if let Some(bound_principal) = predicates.principal() {
+            sep.print_separator(&mut *self)?;
             self.wrap_binder(&bound_principal, WrapBinderMode::ForAll, |principal, p| {
                 p.print_def_path(principal.def_id, &[])?;
 
@@ -1485,8 +1473,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 Ok(())
             })?;
-
-            first = false;
         }
 
         // Builtin bounds.
@@ -1510,16 +1496,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 continue;
             }
 
-            if !first {
-                write!(self, " + ")?;
-            }
-            first = false;
+            sep.print_separator(&mut *self)?;
 
             self.print_def_path(def_id, &[])?;
         }
 
         if !has_move_bound && let Some(move_trait) = self.tcx().lang_items().move_trait() {
-            if !first {
+            if !sep.is_first() {
                 write!(self, " + ")?;
             }
             write!(self, "?")?;
@@ -2002,14 +1985,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         }
                         None => {
                             write!(self, " {{ ")?;
-                            let mut first = true;
+                            let mut sep = SeparatorPrinter::new(", ");
                             for (field_def, field) in iter::zip(&variant_def.fields, fields) {
-                                if !first {
-                                    write!(self, ", ")?;
-                                }
+                                sep.print_separator(&mut *self)?;
                                 write!(self, "{}: ", field_def.name)?;
                                 field.print(self)?;
-                                first = false;
                             }
                             write!(self, " }}")?;
                         }
