@@ -174,19 +174,14 @@ impl<T: Idx> DenseBitSet<T> {
 
     /// Insert `elem`. Returns whether the set has changed.
     #[inline]
-    pub fn insert(&mut self, elem: T) -> bool {
+    pub fn insert(&mut self, value: T) -> bool {
         assert!(
-            elem.index() < self.domain_size,
+            value.index() < self.domain_size,
             "inserting element at index {} but domain size is {}",
-            elem.index(),
+            value.index(),
             self.domain_size,
         );
-        let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
-        let word = *word_ref;
-        let new_word = word | mask;
-        *word_ref = new_word;
-        new_word != word
+        insert(&mut self.words, value)
     }
 
     #[inline]
@@ -1223,17 +1218,23 @@ impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
 /// just be `usize`.
 #[derive(Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
-    bit_set: DenseBitSet<T>,
+    domain_size: usize,
+    words: Vec<Word>,
+    marker: PhantomData<T>,
 }
 
-// Manually implemented to forward `clone_from`, and to avoid the `T: Clone` bound.
+// Manually implemented to provide `clone_from`.
 impl<T: Idx> Clone for GrowableBitSet<T> {
     fn clone(&self) -> Self {
-        Self { bit_set: self.bit_set.clone() }
+        let &GrowableBitSet { domain_size, ref words, marker } = self;
+        GrowableBitSet { domain_size, words: words.clone(), marker }
     }
 
     fn clone_from(&mut self, source: &Self) {
-        self.bit_set.clone_from(&source.bit_set);
+        let GrowableBitSet { domain_size, words, marker } = source;
+        self.domain_size.clone_from(domain_size);
+        self.words.clone_from(words);
+        self.marker.clone_from(marker);
     }
 }
 
@@ -1246,50 +1247,54 @@ impl<T: Idx> Default for GrowableBitSet<T> {
 impl<T: Idx> GrowableBitSet<T> {
     /// Ensure that the set can hold at least `min_domain_size` elements.
     pub fn ensure(&mut self, min_domain_size: usize) {
-        if self.bit_set.domain_size < min_domain_size {
-            self.bit_set.domain_size = min_domain_size;
+        if self.domain_size < min_domain_size {
+            self.domain_size = min_domain_size;
         }
 
         let min_num_words = num_words(min_domain_size);
-        if self.bit_set.words.len() < min_num_words {
-            self.bit_set.words.resize(min_num_words, 0)
+        if self.words.len() < min_num_words {
+            self.words.resize(min_num_words, 0)
         }
     }
 
     pub fn new_empty() -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: DenseBitSet::new_empty(0) }
+        GrowableBitSet { domain_size: 0, words: vec![], marker: PhantomData }
     }
 
     pub fn with_capacity(capacity: usize) -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: DenseBitSet::new_empty(capacity) }
+        GrowableBitSet {
+            domain_size: capacity,
+            words: vec![0; num_words(capacity)],
+            marker: PhantomData,
+        }
     }
 
     /// Returns `true` if the set has changed.
     #[inline]
-    pub fn insert(&mut self, elem: T) -> bool {
-        self.ensure(elem.index() + 1);
-        self.bit_set.insert(elem)
+    pub fn insert(&mut self, value: T) -> bool {
+        self.ensure(value.index() + 1);
+        insert(&mut self.words, value)
     }
 
     #[inline]
     pub fn count(&self) -> usize {
-        self.bit_set.count()
+        count_ones(&self.words)
     }
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.bit_set.is_empty()
+        self.words.iter().all(|&w| w == 0)
     }
 
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        self.bit_set.words.get(word_index).is_some_and(|word| (word & mask) != 0)
+        self.words.get(word_index).is_some_and(|word| (word & mask) != 0)
     }
 
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
-        self.bit_set.iter()
+        BitIter::new(&self.words)
     }
 }
 
@@ -1625,4 +1630,14 @@ fn max_bit(word: Word) -> usize {
 #[inline]
 fn count_ones(words: &[Word]) -> usize {
     words.iter().map(|word| word.count_ones() as usize).sum()
+}
+
+#[inline]
+fn insert<T: Idx>(words: &mut [Word], value: T) -> bool {
+    let (word_index, mask) = word_index_and_mask(value);
+    let word_ref = &mut words[word_index];
+    let word = *word_ref;
+    let new_word = word | mask;
+    *word_ref = new_word;
+    new_word != word
 }
