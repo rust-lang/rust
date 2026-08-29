@@ -1220,9 +1220,10 @@ pub fn rustc_cargo(
     build_compiler: &Compiler,
     crates: &[String],
 ) {
+    let kind = cargo.kind();
     cargo
         .arg("--features")
-        .arg(builder.rustc_features(builder.kind, target, crates))
+        .arg(builder.rustc_features(kind, target, crates))
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
 
@@ -1316,7 +1317,7 @@ pub fn rustc_cargo(
     rustc_cargo_env(builder, cargo, target);
 }
 
-pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
+fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo
@@ -1385,18 +1386,29 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     //   variables, requiring LLVM to have been built.
     // - For check builds, we want to avoid building LLVM if possible.
     // - Check builds and non-check builds should have the same environment if
-    //   possible, to avoid unnecessary rebuilds due to cache-busting.
+    //   possible, to avoid unnecessary rebuilds due to cache-busting (in the same stage).
     //
-    // Therefore we try to avoid building LLVM for check builds, but only if
-    // building LLVM would be expensive. If "building" LLVM is cheap
-    // (i.e. it's already built or is downloadable), we prefer to maintain a
-    // consistent environment between check and non-check builds.
+    // If we have either:
+    // - LLVM already locally built
+    // - download-ci-llvm enabled
+    // - LLVM provided externally through a llvm-config
+    //
+    // and we do a check-like build, we run rustc_llvm as normally, to maintain a
+    // consistent environment between check and non-check builds
+    //
+    // However, if neither from the above three bullet points is true, and we do a check-like build,
+    // we skip running rustc_llvm by setting the RUST_CHECK environment variable.
+    //
+    // Note that if download-ci-llvm is enabled, `prebuilt_llvm_output` will *eagerly* download
+    // LLVM from CI, thus making it locally available.
     if builder.config.llvm_enabled(target) {
         let building_llvm_is_expensive = prebuilt_llvm_output(builder, target).is_none();
 
-        let skip_llvm = (cargo.kind() == Kind::Check) && building_llvm_is_expensive;
-        if !skip_llvm {
-            rustc_llvm_env(builder, cargo, target)
+        let skip_llvm = cargo.kind().is_check_like() && building_llvm_is_expensive;
+        if skip_llvm {
+            cargo.env("RUST_CHECK", "1");
+        } else {
+            rustc_llvm_env(builder, cargo, target);
         }
     }
 
@@ -1419,7 +1431,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 /// Pass down configuration from the LLVM build into the build of
 /// rustc_llvm and rustc_codegen_llvm.
 ///
-/// Note that this has the side-effect of _building LLVM_, which is sometimes
+/// Note that calling this function has the side-effect of _building LLVM_, which is sometimes
 /// unwanted (e.g. for check builds).
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     let llvm_output = builder.ensure(llvm::Llvm { target });
@@ -1717,7 +1729,6 @@ impl CommandLineStep for GccCodegenBackend {
             Kind::Build,
         );
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, host);
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
@@ -1788,7 +1799,6 @@ impl CommandLineStep for CraneliftCodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, target);
 
         let _guard = builder.msg(
             Kind::Build,
@@ -2189,10 +2199,17 @@ impl CommandLineStep for Assemble {
                     let tool_exe = exe(tool, target_compiler.host);
                     let src_path = llvm_bin_dir.join(&tool_exe);
 
-                    // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
-                    if !src_path.exists() && builder.config.llvm_ci_mode.download_from_ci() {
-                        eprintln!("{} does not exist; skipping copy", src_path.display());
-                        continue;
+                    if !src_path.exists() {
+                        // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
+                        if builder.config.llvm_ci_mode.download_from_ci() {
+                            eprintln!("{} does not exist; skipping copy", src_path.display());
+                            continue;
+                        }
+                        // On older LLVM versions, llubi isn't in the default tools. Remove this
+                        // code when LLVM 23 is the minimum version.
+                        if *tool == "llubi" {
+                            continue;
+                        }
                     }
 
                     // There is a chance that these tools are being installed from an external LLVM.

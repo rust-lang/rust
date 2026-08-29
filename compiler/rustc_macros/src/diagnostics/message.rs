@@ -133,6 +133,7 @@ const ALLOWED_CAPITALIZED_WORDS: &[&str] = &[
     "Cargo",
     "Ferris",
     "GCC",
+    "LLVM",
     "MIR",
     "NaNs",
     "OK",

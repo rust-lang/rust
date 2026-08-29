@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::io::{self, Write};
+use std::ops::Range;
 use std::time::{Duration, Instant};
 
 use rustc_ast::ast;
@@ -318,6 +319,8 @@ pub(crate) struct FormattingError {
     is_comment: bool,
     is_string: bool,
     pub(crate) line_buffer: String,
+    /// The byte range within `line_buffer` that the error should highlight
+    pub(crate) highlight: Option<Range<usize>>,
 }
 
 impl FormattingError {
@@ -328,6 +331,7 @@ impl FormattingError {
             kind,
             is_string: false,
             line_buffer: psess.span_to_first_line_string(span),
+            highlight: None,
         }
     }
 
@@ -342,34 +346,14 @@ impl FormattingError {
         }
     }
 
-    pub(crate) fn msg_suffix(&self) -> &str {
+    pub(crate) fn msg_suffix(&self) -> Option<&str> {
         if self.is_comment || self.is_string {
-            "set `error_on_unformatted = false` to suppress \
-             the warning against comments or string literals\n"
+            Some(
+                "set `error_on_unformatted = false` to suppress \
+             the warning against comments or string literals",
+            )
         } else {
-            ""
-        }
-    }
-
-    // (space, target)
-    pub(crate) fn format_len(&self) -> (usize, usize) {
-        match self.kind {
-            ErrorKind::LineOverflow(found, max) => (max, found - max),
-            ErrorKind::TrailingWhitespace
-            | ErrorKind::DeprecatedAttr
-            | ErrorKind::BadAttr
-            | ErrorKind::LostComment => {
-                let trailing_ws_start = self
-                    .line_buffer
-                    .rfind(|c: char| !c.is_whitespace())
-                    .map(|pos| pos + 1)
-                    .unwrap_or(0);
-                (
-                    trailing_ws_start,
-                    self.line_buffer.len() - trailing_ws_start,
-                )
-            }
-            _ => unreachable!(),
+            None
         }
     }
 }
@@ -500,7 +484,8 @@ fn format_lines(
 struct FormatLines<'a> {
     name: &'a FileName,
     skipped_range: &'a [(usize, usize)],
-    last_was_space: bool,
+    whitespace_start: Option<usize>,
+    overflow_start: Option<usize>,
     line_len: usize,
     cur_line: usize,
     newline_count: usize,
@@ -520,7 +505,8 @@ impl<'a> FormatLines<'a> {
         FormatLines {
             name,
             skipped_range,
-            last_was_space: false,
+            whitespace_start: None,
+            overflow_start: None,
             line_len: 0,
             cur_line: 1,
             newline_count: 0,
@@ -550,7 +536,7 @@ impl<'a> FormatLines<'a> {
     fn new_line(&mut self, kind: FullCodeCharKind) {
         if self.format_line {
             // Check for (and record) trailing whitespace.
-            if self.last_was_space {
+            if let Some(whitespace_start) = self.whitespace_start {
                 if self.should_report_error(kind, &ErrorKind::TrailingWhitespace)
                     && !self.is_skipped_line()
                 {
@@ -558,9 +544,10 @@ impl<'a> FormatLines<'a> {
                         ErrorKind::TrailingWhitespace,
                         kind.is_comment(),
                         kind.is_string(),
+                        self.line_buffer.trim_end().len()..self.line_buffer.len(),
                     );
                 }
-                self.line_len -= 1;
+                self.line_len = whitespace_start;
             }
 
             // Check for any line width errors we couldn't correct.
@@ -570,7 +557,11 @@ impl<'a> FormatLines<'a> {
                 && self.should_report_error(kind, &error_kind)
             {
                 let is_string = self.current_line_contains_string_literal;
-                self.push_err(error_kind, kind.is_comment(), is_string);
+                let overflow_start = self
+                    .overflow_start
+                    .expect("overflow_start is set whenever the line exceeds max_width");
+                let highlight = overflow_start..self.line_buffer.trim_end().len();
+                self.push_err(error_kind, kind.is_comment(), is_string, highlight);
             }
         }
 
@@ -581,32 +572,47 @@ impl<'a> FormatLines<'a> {
             .file_lines()
             .contains_line(self.name, self.cur_line);
         self.newline_count += 1;
-        self.last_was_space = false;
+        self.whitespace_start = None;
+        self.overflow_start = None;
         self.line_buffer.clear();
         self.current_line_contains_string_literal = false;
     }
 
     fn char(&mut self, c: char, kind: FullCodeCharKind) {
         self.newline_count = 0;
+        if !c.is_whitespace() {
+            self.whitespace_start = None;
+        } else if self.whitespace_start.is_none() {
+            self.whitespace_start = Some(self.line_len);
+        }
         self.line_len += if c == '\t' {
             self.config.tab_spaces()
         } else {
             1
         };
-        self.last_was_space = c.is_whitespace();
+        if self.line_len > self.config.max_width() && self.overflow_start.is_none() {
+            self.overflow_start = Some(self.line_buffer.len());
+        }
         self.line_buffer.push(c);
         if kind.is_string() {
             self.current_line_contains_string_literal = true;
         }
     }
 
-    fn push_err(&mut self, kind: ErrorKind, is_comment: bool, is_string: bool) {
+    fn push_err(
+        &mut self,
+        kind: ErrorKind,
+        is_comment: bool,
+        is_string: bool,
+        highlight: Range<usize>,
+    ) {
         self.errors.push(FormattingError {
             line: self.cur_line,
             kind,
             is_comment,
             is_string,
             line_buffer: self.line_buffer.clone(),
+            highlight: Some(highlight),
         });
     }
 

@@ -7,7 +7,7 @@ mod tests;
 )]
 use crate::{
     io::{Error, OsFunctions, RawOsError},
-    sys::io::{decode_error_kind, errno, error_string, is_interrupted},
+    sys::io::{decode_error_kind, errno, format_error, is_interrupted},
 };
 
 // Because std is linked in during testing, these incoherent implementations would
@@ -74,11 +74,8 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn from_raw_os_error(code: RawOsError) -> Error {
-        const FUNCTIONS: &'static OsFunctions = &OsFunctions {
-            format_os_error: |code, fmt| fmt.write_str(&error_string(code)),
-            decode_error_kind,
-            is_interrupted,
-        };
+        const FUNCTIONS: &'static OsFunctions =
+            &OsFunctions { format_os_error: format_error, decode_error_kind, is_interrupted };
 
         // SAFETY: `FUNCTIONS` is a constant and not created at runtime.
         unsafe { Error::from_raw_os_error_with_functions(code, FUNCTIONS) }

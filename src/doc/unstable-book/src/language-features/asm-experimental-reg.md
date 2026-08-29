@@ -19,8 +19,8 @@ This tracks support for additional registers in architectures where inline assem
 
 | Architecture | Register class | Target feature | Allowed types |
 | ------------ | -------------- | -------------- | ------------- |
-| LoongArch | `vreg` | `lsx` | `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2` |
-| LoongArch | `xreg` | `lasx` | `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2`, <br> `i8x32`, `i16x16`, `i32x8`, `i64x4`, `f32x8`, `f64x4` |
+| LoongArch | `vreg` | `lsx` | `i128`, `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2` |
+| LoongArch | `xreg` | `lasx` | `i128`, `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2`, <br> `i8x32`, `i16x16`, `i32x8`, `i64x4`, `f32x8`, `f64x4` |
 
 ## Register aliases
 

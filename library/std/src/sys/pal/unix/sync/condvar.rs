@@ -1,6 +1,6 @@
 use super::Mutex;
-use crate::cell::UnsafeCell;
 use crate::pin::Pin;
+use crate::sys::helpers::COpaque;
 #[cfg(not(any(target_os = "nto", target_os = "qnx")))]
 use crate::sys::pal::time::TIMESPEC_MAX;
 #[cfg(any(target_os = "nto", target_os = "qnx"))]
@@ -8,17 +8,18 @@ use crate::sys::pal::time::TIMESPEC_MAX_CAPPED;
 use crate::time::Duration;
 
 pub struct Condvar {
-    inner: UnsafeCell<libc::pthread_cond_t>,
+    inner: COpaque<libc::pthread_cond_t>,
 }
 
 impl Condvar {
     pub fn new() -> Condvar {
-        Condvar { inner: UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER) }
+        Condvar { inner: COpaque::new(libc::PTHREAD_COND_INITIALIZER) }
     }
 
     #[inline]
-    fn raw(&self) -> *mut libc::pthread_cond_t {
-        self.inner.get()
+    fn raw(self: Pin<&Self>) -> *mut libc::pthread_cond_t {
+        let inner = unsafe { self.map_unchecked(|c| &c.inner) };
+        inner.get()
     }
 
     /// # Safety
@@ -54,7 +55,7 @@ impl Condvar {
     /// * `init` must have been called on this instance.
     /// * `mutex` must be locked by the current thread.
     /// * This condition variable may only be used with the same mutex.
-    pub unsafe fn wait_timeout(&self, mutex: Pin<&Mutex>, dur: Duration) -> bool {
+    pub unsafe fn wait_timeout(self: Pin<&Self>, mutex: Pin<&Mutex>, dur: Duration) -> bool {
         use crate::sys::pal::time::Timespec;
 
         let mutex = mutex.raw();
@@ -91,7 +92,7 @@ impl Condvar {
     /// * `init` must have been called on this instance.
     /// * `mutex` must be locked by the current thread.
     /// * This condition variable may only be used with the same mutex.
-    pub unsafe fn wait_timeout(&self, mutex: Pin<&Mutex>, dur: Duration) -> bool {
+    pub unsafe fn wait_timeout(self: Pin<&Self>, mutex: Pin<&Mutex>, dur: Duration) -> bool {
         let mutex = mutex.raw();
 
         // The macOS implementation of `pthread_cond_timedwait` internally
@@ -150,26 +151,23 @@ impl Condvar {
     /// # Safety
     /// May only be called once per instance of `Self`.
     pub unsafe fn init(self: Pin<&mut Self>) {
-        use crate::mem::MaybeUninit;
-
-        struct AttrGuard<'a>(pub &'a mut MaybeUninit<libc::pthread_condattr_t>);
-        impl Drop for AttrGuard<'_> {
-            fn drop(&mut self) {
-                unsafe {
-                    let result = libc::pthread_condattr_destroy(self.0.as_mut_ptr());
-                    assert_eq!(result, 0);
-                }
-            }
-        }
+        use crate::mem::DropGuard;
+        use crate::pin::pin;
 
         unsafe {
-            let mut attr = MaybeUninit::<libc::pthread_condattr_t>::uninit();
-            let r = libc::pthread_condattr_init(attr.as_mut_ptr());
+            let attr = pin!(COpaque::<libc::pthread_condattr_t>::uninit());
+
+            // FIXME(pin-ergonomics): remove the next line.
+            let attr = attr.into_ref();
+            let r = libc::pthread_condattr_init(attr.get());
             assert_eq!(r, 0);
-            let attr = AttrGuard(&mut attr);
-            let r = libc::pthread_condattr_setclock(attr.0.as_mut_ptr(), Self::CLOCK);
+            let attr = DropGuard::new(attr, |attr| {
+                let result = libc::pthread_condattr_destroy(attr.get());
+                assert_eq!(result, 0);
+            });
+            let r = libc::pthread_condattr_setclock(attr.get(), Self::CLOCK);
             assert_eq!(r, 0);
-            let r = libc::pthread_cond_init(self.raw(), attr.0.as_ptr());
+            let r = libc::pthread_cond_init(self.as_ref().raw(), attr.get());
             assert_eq!(r, 0);
         }
     }
@@ -210,7 +208,7 @@ impl Condvar {
             // So on that platform, init() should always be called.
             //
             // Similar story for the 3DS (horizon) and for TEEOS.
-            let r = unsafe { libc::pthread_cond_init(self.raw(), crate::ptr::null()) };
+            let r = unsafe { libc::pthread_cond_init(self.as_ref().raw(), crate::ptr::null()) };
             assert_eq!(r, 0);
         }
     }
@@ -224,7 +222,8 @@ unsafe impl Send for Condvar {}
 impl Drop for Condvar {
     #[inline]
     fn drop(&mut self) {
-        let r = unsafe { libc::pthread_cond_destroy(self.raw()) };
+        let inner = unsafe { Pin::new_unchecked(&self.inner) };
+        let r = unsafe { libc::pthread_cond_destroy(inner.get()) };
         if cfg!(target_os = "dragonfly") {
             // On DragonFly pthread_cond_destroy() returns EINVAL if called on
             // a condvar that was just initialized with

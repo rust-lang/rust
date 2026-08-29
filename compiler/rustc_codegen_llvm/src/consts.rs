@@ -544,8 +544,9 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
 
         // Wasm statics with custom link sections get special treatment as they
-        // go into custom sections of the wasm executable. The exception to this
-        // is the `.init_array` section which are treated specially by the wasm linker.
+        // also go into custom sections of the wasm executable. The exception to
+        // this is the `.init_array` section for which we can't emit a custom
+        // section as it contains relocations.
         if self.tcx.sess.target.is_like_wasm
             && attrs
                 .link_section
@@ -564,11 +565,85 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let data = [section, alloc];
                 self.module_add_named_metadata_node(self.llmod(), c"wasm.custom_sections", &data);
             }
-        } else {
-            base::set_link_section(g, attrs);
         }
 
+        base::set_link_section(g, attrs);
         base::set_variable_sanitizer_attrs(g, attrs);
+
+        if let Some(ignorelist) = &self.sanitizer_ignorelist {
+            let instance = ty::Instance::mono(self.tcx, def_id);
+            let sym_name = self.tcx.symbol_name(instance).name;
+            let span = self.tcx.def_span(def_id);
+            let source_map = self.tcx.sess.source_map();
+            let filename =
+                source_map.span_to_filename(span).prefer_local_unconditionally().to_string();
+            let ty_name = rustc_middle::ty::print::with_no_trimmed_paths!(
+                self.tcx.type_of(def_id).skip_binder().to_string()
+            );
+            let mainfile = self
+                .tcx
+                .sess
+                .local_crate_source_file()
+                .and_then(|path| path.local_path().map(|p| p.display().to_string()))
+                .unwrap_or_default();
+
+            let demangled =
+                rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
+
+            let global_blame = |section| -> (
+                rustc_sanitizers::ignorelist::Blame,
+                rustc_sanitizers::ignorelist::Blame,
+            ) {
+                let mut no_san = rustc_sanitizers::ignorelist::Blame::NONE;
+                let mut san = rustc_sanitizers::ignorelist::Blame::NONE;
+                let mut update = |prefix, query| {
+                    let (ns, s) = ignorelist.in_section_blame(section, prefix, query);
+                    no_san = no_san.max(ns);
+                    san = san.max(s);
+                };
+                update(c"global", sym_name);
+                update(c"global", &demangled);
+                update(c"src", &filename);
+                if !mainfile.is_empty() {
+                    update(c"mainfile", &mainfile);
+                }
+                update(c"type", &ty_name);
+                (no_san, san)
+            };
+
+            let sanitizers = self.tcx.sess.sanitizers();
+            let (address_nosan, address_san) = global_blame(c"address");
+            let (kaddress_nosan, kaddress_san) = global_blame(c"kernel-address");
+            let (hwaddress_nosan, hwaddress_san) = global_blame(c"hwaddress");
+            let (khwaddress_nosan, khwaddress_san) = global_blame(c"kernel-hwaddress");
+
+            let ignore_address =
+                rustc_sanitizers::ignorelist::is_blame_ignored(address_nosan, address_san);
+            let ignore_kernel_address = rustc_sanitizers::ignorelist::is_blame_ignored(
+                address_nosan.max(kaddress_nosan),
+                address_san.max(kaddress_san),
+            );
+            let ignore_hwaddress =
+                rustc_sanitizers::ignorelist::is_blame_ignored(hwaddress_nosan, hwaddress_san);
+            let ignore_kernel_hwaddress = rustc_sanitizers::ignorelist::is_blame_ignored(
+                hwaddress_nosan.max(khwaddress_nosan),
+                hwaddress_san.max(khwaddress_san),
+            );
+
+            if (sanitizers.contains(rustc_target::spec::SanitizerSet::ADDRESS) && ignore_address)
+                || (sanitizers.contains(rustc_target::spec::SanitizerSet::KERNELADDRESS)
+                    && ignore_kernel_address)
+            {
+                unsafe { llvm::LLVMRustSetNoSanitizeAddress(g) };
+            }
+            if (sanitizers.contains(rustc_target::spec::SanitizerSet::HWADDRESS)
+                && ignore_hwaddress)
+                || (sanitizers.contains(rustc_target::spec::SanitizerSet::KERNELHWADDRESS)
+                    && ignore_kernel_hwaddress)
+            {
+                unsafe { llvm::LLVMRustSetNoSanitizeHWAddress(g) };
+            }
+        }
 
         if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
             // `USED` and `USED_LINKER` can't be used together.

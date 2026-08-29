@@ -135,6 +135,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::frem_algebraic
         | sym::fsub_algebraic
         | sym::gpu_launch_sized_workgroup_mem
+        | sym::integer_max
+        | sym::integer_min
         | sym::is_val_statically_known
         | sym::log2f16
         | sym::log2f32
@@ -602,6 +604,7 @@ pub(crate) fn check_intrinsic_type(
             vec![Ty::new_imm_ptr(tcx, param(0)), Ty::new_imm_ptr(tcx, param(0))],
             tcx.types.usize,
         ),
+        sym::integer_max | sym::integer_min => (1, 0, vec![param(0), param(0)], param(0)),
         sym::unchecked_div | sym::unchecked_rem | sym::exact_div | sym::disjoint_bitor => {
             (1, 0, vec![param(0), param(0)], param(0))
         }

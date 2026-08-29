@@ -2377,7 +2377,7 @@ pub struct NormalizeError;
 impl Path {
     // The following (private!) function allows construction of a path from a u8
     // slice, which is only safe when it is known to follow the OsStr encoding.
-    unsafe fn from_u8_slice(s: &[u8]) -> &Path {
+    pub(crate) unsafe fn from_u8_slice(s: &[u8]) -> &Path {
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
@@ -3423,6 +3423,8 @@ impl Path {
     /// In particular, `a/c` and `a/b/../c` are distinct on many systems because `b` may be a symbolic link, so its parent isn't `a`.
     ///
     /// </div>
+    ///
+    /// On Windows this will convert all `/` to `\` unless a [verbatim](Prefix::is_verbatim()) path is given.
     ///
     /// [`path::absolute`](absolute) is an alternative that preserves `..`.
     /// Or [`Path::canonicalize`] can be used to resolve any `..` by querying the filesystem.

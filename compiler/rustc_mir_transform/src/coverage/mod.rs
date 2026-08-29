@@ -1,4 +1,4 @@
-use rustc_middle::mir::coverage::{CoverageKind, FunctionCoverageInfo};
+use rustc_middle::mir::coverage::{CoverageKind, CoverageMirInfo};
 use rustc_middle::mir::{self, BasicBlock, Statement, StatementKind, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, debug_span, trace};
@@ -87,7 +87,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     // Inject coverage statements into MIR.
     inject_coverage_statements(mir_body, &graph);
 
-    mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
+    mir_body.coverage_mir_info = Some(Box::new(CoverageMirInfo {
         function_source_hash: hir_info.function_source_hash,
 
         node_flow_data,

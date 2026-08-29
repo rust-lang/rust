@@ -65,7 +65,10 @@ fn main() {
     if let Some(crate_name) = parse_value_from_args(&args, "--crate-name") {
         // Add rust logo and set html root for all rustc crates.
         if crate_name.starts_with("rustc_") {
-            cmd.arg("-Ainternal_features")
+            // We use `-Zcrate-attr=allow` instead of `-A` to force rustdoc to forward this flag to
+            // the actual doctests. Otherwise those tests all receive the
+            // `feature(rustdoc_internals)` without receiving the `-A` which leads to errors.
+            cmd.arg("-Zcrate-attr=allow(internal_features)")
                 .arg("-Zcrate-attr=doc(rust_logo)")
                 .arg("-Zcrate-attr=doc(html_root_url = \"https://doc.rust-lang.org/nightly/nightly-rustc/\")");
 

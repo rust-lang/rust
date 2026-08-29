@@ -1,6 +1,6 @@
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, CoverageInfoHi, CoverageKind, Mapping, MappingKind,
+    BlockMarkerId, BranchSpan, CoverageEarlyInfo, CoverageKind, Mapping, MappingKind,
 };
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
@@ -48,12 +48,12 @@ pub(crate) fn extract_mappings_from_mir<'tcx>(
 }
 
 fn resolve_block_markers(
-    coverage_info_hi: &CoverageInfoHi,
+    early_info: &CoverageEarlyInfo,
     mir_body: &mir::Body<'_>,
 ) -> IndexVec<BlockMarkerId, Option<BasicBlock>> {
     let mut block_markers = IndexVec::<BlockMarkerId, Option<BasicBlock>>::from_elem_n(
         None,
-        coverage_info_hi.num_block_markers,
+        early_info.num_block_markers,
     );
 
     // Fill out the mapping from block marker IDs to their enclosing blocks.
@@ -75,8 +75,8 @@ fn extract_branch_mappings(
     expn_tree: &ExpnTree,
     mappings: &mut Vec<Mapping>,
 ) {
-    let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return };
-    let block_markers = resolve_block_markers(coverage_info_hi, mir_body);
+    let Some(early_info) = mir_body.coverage_early_info.as_deref() else { return };
+    let block_markers = resolve_block_markers(early_info, mir_body);
 
     // For now, ignore any branch span that was introduced by
     // expansion. This makes things like assert macros less noisy.

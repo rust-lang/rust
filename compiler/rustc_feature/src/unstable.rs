@@ -536,7 +536,7 @@ declare_features! (
     /// Allows using `#[export_stable]` which indicates that an item is exportable.
     (incomplete, export_stable, "1.88.0", Some(139939)),
     /// Externally implementable items
-    (unstable, extern_item_impls, "1.94.0", Some(125418)),
+    (incomplete, extern_item_impls, "1.94.0", Some(125418)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
     /// Allow using 128-bit (quad precision) floating point numbers.

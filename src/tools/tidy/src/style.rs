@@ -543,13 +543,16 @@ fn check_file_style(base_path: &Path, check: &mut RunningCheck, file: &Path, con
                 err("Don't use magic numbers that spell things (consider 0x12345678)");
             }
         }
-        // for now we just check libcore
+        // Only check core & alloc for now; to be expanded to (parts of)
+        // std in the future as well.
         if trimmed.contains("unsafe {")
             && !trimmed.starts_with("//")
             && !last_safety_comment
             && !is_test
             && base_path.ends_with("library")
-            && file.strip_prefix(base_path).is_ok_and(|rel| rel.starts_with("core"))
+            && file
+                .strip_prefix(base_path)
+                .is_ok_and(|rel| rel.starts_with("core") || rel.starts_with("alloc"))
         {
             suppressible_tidy_err!(err, ignore.undocumented_unsafe, "undocumented unsafe");
         }

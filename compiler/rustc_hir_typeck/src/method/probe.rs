@@ -1087,7 +1087,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits.iter() {
                 let trait_did = trait_candidate.def_id;
-                if duplicates.insert(trait_did) {
+                // If we have the same trait in scope but one of them is ambiguous and the other
+                // is not, we should treat them differently and then handle them later on.
+                if duplicates.insert((trait_did, trait_candidate.lint_ambiguous)) {
                     self.assemble_extension_candidates_for_trait(
                         &trait_candidate.import_ids,
                         trait_did,
@@ -2381,10 +2383,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        let lint_ambiguous = match probes[0].0.kind {
+        // They are all the same, so if any of them is ambiguous, we report the pick as ambiguous.
+        let lint_ambiguous = probes.iter().any(|(p, _)| match p.kind {
             TraitCandidate(_, lint) => lint,
             _ => false,
-        };
+        });
 
         // FIXME: check the return type here somehow.
         // If so, just use this trait and call it a day.
@@ -2465,7 +2468,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        let lint_ambiguous = match probes[0].0.kind {
+        let lint_ambiguous = match child_candidate.kind {
             TraitCandidate(_, lint) => lint,
             _ => false,
         };

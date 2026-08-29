@@ -16,12 +16,12 @@ use rustc_target::spec::HasTargetSpec;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::attributes;
 use crate::builder::Builder;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, ToLlvmBool, Type, Value};
 use crate::type_of::LayoutLlvmExt;
+use crate::{attributes, llvm_util};
 
 impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_inline_asm(
@@ -499,7 +499,15 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             template_str.push_str("\n.att_syntax\n");
         }
 
-        llvm::append_module_inline_asm(self.llmod, template_str.as_bytes());
+        let target_features = self.tcx.global_backend_features(()).join(",");
+        let target_cpu = llvm_util::target_cpu(self.tcx.sess);
+
+        llvm::append_module_inline_asm(
+            self.llmod,
+            template_str.as_bytes(),
+            &target_features,
+            target_cpu,
+        );
     }
 
     fn mangled_name(&self, instance: Instance<'tcx>) -> String {
@@ -776,7 +784,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             | LoongArch(LoongArchInlineAsmRegClass::vreg)
             | LoongArch(LoongArchInlineAsmRegClass::xreg) => "f",
             Mips(MipsInlineAsmRegClass::reg) => "r",
-            Mips(MipsInlineAsmRegClass::freg) => "f",
+            Mips(MipsInlineAsmRegClass::freg | MipsInlineAsmRegClass::wreg) => "f",
             Nvptx(NvptxInlineAsmRegClass::reg16) => "h",
             Nvptx(NvptxInlineAsmRegClass::reg32) => "r",
             Nvptx(NvptxInlineAsmRegClass::reg64) => "l",
@@ -897,7 +905,9 @@ fn modifier_to_llvm(
                 modifier
             }
         }
-        Mips(_) => None,
+        Mips(MipsInlineAsmRegClass::reg) => None,
+        Mips(MipsInlineAsmRegClass::freg) => modifier,
+        Mips(MipsInlineAsmRegClass::wreg) => Some('w'),
         Nvptx(_) => None,
         PowerPC(PowerPCInlineAsmRegClass::vsreg) => {
             // The documentation for the 'x' modifier is missing for llvm, and the gcc
@@ -1003,6 +1013,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         LoongArch(LoongArchInlineAsmRegClass::xreg) => cx.type_vector(cx.type_i32(), 8),
         Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
         Mips(MipsInlineAsmRegClass::freg) => cx.type_f32(),
+        Mips(MipsInlineAsmRegClass::wreg) => cx.type_vector(cx.type_i32(), 4),
         Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
         Nvptx(NvptxInlineAsmRegClass::reg32) => cx.type_i32(),
         Nvptx(NvptxInlineAsmRegClass::reg64) => cx.type_i64(),
@@ -1241,11 +1252,23 @@ fn llvm_fixup_input<'ll, 'tcx>(
         (Mips(MipsInlineAsmRegClass::reg), BackendRepr::Scalar(s)) => {
             match s.primitive() {
                 // MIPS only supports register-length arithmetics.
-                Primitive::Int(Integer::I8 | Integer::I16, _) => bx.zext(value, bx.cx.type_i32()),
-                Primitive::Float(Float::F32) => bx.bitcast(value, bx.cx.type_i32()),
-                Primitive::Float(Float::F64) => bx.bitcast(value, bx.cx.type_i64()),
+                Primitive::Int(Integer::I8 | Integer::I16, _) => bx.zext(value, bx.type_i32()),
+                Primitive::Float(Float::F16) => {
+                    let value = bx.bitcast(value, bx.type_i16());
+                    bx.zext(value, bx.type_i32())
+                }
+                Primitive::Float(Float::F32) => bx.bitcast(value, bx.type_i32()),
+                Primitive::Float(Float::F64) => bx.bitcast(value, bx.type_i64()),
                 _ => value,
             }
+        }
+        (
+            Mips(MipsInlineAsmRegClass::freg | MipsInlineAsmRegClass::wreg),
+            BackendRepr::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F16) => {
+            let value = bx.bitcast(value, bx.type_i16());
+            let value = bx.zext(value, bx.type_i32());
+            bx.bitcast(value, bx.type_f32())
         }
         (RiscV(RiscVInlineAsmRegClass::freg), BackendRepr::Scalar(s))
             if s.primitive() == Primitive::Float(Float::F16)
@@ -1406,12 +1429,24 @@ fn llvm_fixup_output<'ll, 'tcx>(
         (Mips(MipsInlineAsmRegClass::reg), BackendRepr::Scalar(s)) => {
             match s.primitive() {
                 // MIPS only supports register-length arithmetics.
-                Primitive::Int(Integer::I8, _) => bx.trunc(value, bx.cx.type_i8()),
-                Primitive::Int(Integer::I16, _) => bx.trunc(value, bx.cx.type_i16()),
-                Primitive::Float(Float::F32) => bx.bitcast(value, bx.cx.type_f32()),
-                Primitive::Float(Float::F64) => bx.bitcast(value, bx.cx.type_f64()),
+                Primitive::Int(Integer::I8, _) => bx.trunc(value, bx.type_i8()),
+                Primitive::Int(Integer::I16, _) => bx.trunc(value, bx.type_i16()),
+                Primitive::Float(Float::F16) => {
+                    let value = bx.trunc(value, bx.type_i16());
+                    bx.bitcast(value, bx.type_f16())
+                }
+                Primitive::Float(Float::F32) => bx.bitcast(value, bx.type_f32()),
+                Primitive::Float(Float::F64) => bx.bitcast(value, bx.type_f64()),
                 _ => value,
             }
+        }
+        (
+            Mips(MipsInlineAsmRegClass::freg | MipsInlineAsmRegClass::wreg),
+            BackendRepr::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F16) => {
+            let value = bx.bitcast(value, bx.type_i32());
+            let value = bx.trunc(value, bx.type_i16());
+            bx.bitcast(value, bx.type_f16())
         }
         (RiscV(RiscVInlineAsmRegClass::freg), BackendRepr::Scalar(s))
             if s.primitive() == Primitive::Float(Float::F16)
@@ -1559,11 +1594,16 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
             match s.primitive() {
                 // MIPS only supports register-length arithmetics.
                 Primitive::Int(Integer::I8 | Integer::I16, _) => cx.type_i32(),
-                Primitive::Float(Float::F32) => cx.type_i32(),
+                Primitive::Float(Float::F16 | Float::F32) => cx.type_i32(),
                 Primitive::Float(Float::F64) => cx.type_i64(),
                 _ => layout.llvm_type(cx),
             }
         }
+
+        (
+            Mips(MipsInlineAsmRegClass::freg | MipsInlineAsmRegClass::wreg),
+            BackendRepr::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F16) => cx.type_f32(),
         (RiscV(RiscVInlineAsmRegClass::freg), BackendRepr::Scalar(s))
             if s.primitive() == Primitive::Float(Float::F16)
                 && !any_target_feature_enabled(cx, instance, &[sym::zfhmin, sym::zfh]) =>

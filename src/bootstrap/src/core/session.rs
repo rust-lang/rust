@@ -697,7 +697,7 @@ impl Session {
         {
             features.push(allocator_feature_name);
         }
-        if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
+        if self.config.llvm_enabled(target) && check("llvm") {
             features.push("llvm");
         }
         if self.config.llvm_offload {
@@ -707,7 +707,7 @@ impl Session {
         if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
             features.push("rustc_randomized_layouts");
         }
-        if self.config.compile_time_deps && kind == Kind::Check {
+        if self.config.compile_time_deps && kind.is_check_like() {
             features.push("check_only");
         }
 

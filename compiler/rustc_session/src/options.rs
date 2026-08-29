@@ -5,7 +5,6 @@ use std::str;
 
 use rustc_abi::Align;
 use rustc_ast::attr::version::RustcVersion;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::{ColorConfig, TerminalUrl};
@@ -354,9 +353,6 @@ top_level_options!(
 
         target_triple: TargetTuple [TRACKED],
 
-        /// Effective logical environment used by `env!`/`option_env!` macros
-        logical_env: FxIndexMap<String, String> [TRACKED],
-
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
         diagnostic_width: Option<usize> [UNTRACKED],
@@ -510,7 +506,7 @@ macro_rules! options {
                 $( { TARGET_MODIFIER: $tmod_variant:ident } )?
                 $( { MITIGATION: $mitigation_variant:ident } )?
                 ,
-                $desc:literal
+                $desc:expr
                 $(, removed: $removed:ident )?
             ),
         )*
@@ -2350,6 +2346,12 @@ options! {
     // - src/doc/rustc/src/codegen-options/index.md
 }
 
+const POLONIUS_HELP: &str = match Polonius::DEFAULT {
+    Polonius::Off => "enable polonius-based borrow-checker (default: no)",
+    Polonius::Next => "enable polonius-based borrow-checker (default: next)",
+    Polonius::Legacy => panic!("Polonius::Legacy is not a valid default value"),
+};
+
 options! {
     UnstableOptions, UnstableOptionsTargetModifiers, Z_OPTIONS, dbopts, "Z", "unstable",
 
@@ -2750,7 +2752,7 @@ options! {
         `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
         Example: `-Zpointer-authentication=+calls,-init-fini`."),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
-        "enable polonius-based borrow-checker (default: no)"),
+        POLONIUS_HELP),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to prepend the linker invocation (can be used several times)"),
     pre_link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
@@ -2809,6 +2811,8 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED] { TARGET_MODIFIER: Sanitizer },
         "use a sanitizer"),
+    sanitizer_ignorelist: Vec<String> = (vec![], parse_list, [TRACKED],
+        "list of files providing ignorelists for sanitizers"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
         "enable canonical jump tables (default: yes)"),
     sanitizer_cfi_generalize_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],

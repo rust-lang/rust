@@ -4272,6 +4272,13 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                             }
                             StorageDeadOrDrop::Destructor(_) => kind,
                         },
+                        ProjectionElem::PhantomDeref => match kind {
+                            StorageDeadOrDrop::LocalStorageDead
+                            | StorageDeadOrDrop::BoxedStorageDead => {
+                                StorageDeadOrDrop::BoxedStorageDead
+                            }
+                            StorageDeadOrDrop::Destructor(_) => kind,
+                        },
                         ProjectionElem::OpaqueCast { .. }
                         | ProjectionElem::Field(..)
                         | ProjectionElem::Downcast(..) => {

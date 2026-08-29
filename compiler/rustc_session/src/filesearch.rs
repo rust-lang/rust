@@ -146,86 +146,78 @@ pub fn make_target_bin_path(sysroot: &Path, target_triple: &str) -> PathBuf {
     sysroot.join(rustlib_path).join("bin")
 }
 
+/// Attempts to find the path to the dynamic library containing a function.
+///
+/// SAFETY: `function` must be a valid pointer to some function.
 #[cfg(unix)]
-fn current_dll_path() -> Result<PathBuf, String> {
-    use std::sync::OnceLock;
+pub unsafe fn dll_path(function: *mut std::ffi::c_void) -> Result<PathBuf, String> {
+    use std::ffi::{CStr, OsStr};
+    use std::os::unix::prelude::*;
 
-    // This is somewhat expensive relative to other work when compiling `fn main() {}` as `dladdr`
-    // needs to iterate over the symbol table of librustc_driver.so until it finds a match.
-    // As such cache this to avoid recomputing if we try to get the sysroot in multiple places.
-    static CURRENT_DLL_PATH: OnceLock<Result<PathBuf, String>> = OnceLock::new();
-    CURRENT_DLL_PATH
-        .get_or_init(|| {
-            use std::ffi::{CStr, OsStr};
-            use std::os::unix::prelude::*;
+    #[cfg(not(target_os = "aix"))]
+    unsafe {
+        let mut info = std::mem::zeroed();
+        if libc::dladdr(function, &mut info) == 0 {
+            return Err("dladdr failed".into());
+        }
+        #[cfg(target_os = "cygwin")]
+        let fname_ptr = info.dli_fname.as_ptr();
+        #[cfg(not(target_os = "cygwin"))]
+        let fname_ptr = {
+            assert!(!info.dli_fname.is_null(), "dli_fname cannot be null");
+            info.dli_fname
+        };
+        let bytes = CStr::from_ptr(fname_ptr).to_bytes();
+        let os = OsStr::from_bytes(bytes);
+        try_canonicalize(Path::new(os)).map_err(|e| e.to_string())
+    }
 
-            #[cfg(not(target_os = "aix"))]
-            unsafe {
-                let addr = current_dll_path as fn() -> Result<PathBuf, String> as *mut _;
-                let mut info = std::mem::zeroed();
-                if libc::dladdr(addr, &mut info) == 0 {
-                    return Err("dladdr failed".into());
+    #[cfg(target_os = "aix")]
+    unsafe {
+        // On AIX, the symbol references a function descriptor.
+        // A function descriptor is consisted of (See https://reviews.llvm.org/D62532)
+        // * The address of the entry point of the function.
+        // * The TOC base address for the function.
+        // * The environment pointer.
+        // The function descriptor is in the data section.
+        let addr = function as u64;
+        let mut buffer = vec![std::mem::zeroed::<libc::ld_info>(); 64];
+        loop {
+            if libc::loadquery(
+                libc::L_GETINFO,
+                buffer.as_mut_ptr() as *mut libc::c_void,
+                (size_of::<libc::ld_info>() * buffer.len()) as u32,
+            ) >= 0
+            {
+                break;
+            } else {
+                if std::io::Error::last_os_error().raw_os_error().unwrap() != libc::ENOMEM {
+                    return Err("loadquery failed".into());
                 }
-                #[cfg(target_os = "cygwin")]
-                let fname_ptr = info.dli_fname.as_ptr();
-                #[cfg(not(target_os = "cygwin"))]
-                let fname_ptr = {
-                    assert!(!info.dli_fname.is_null(), "dli_fname cannot be null");
-                    info.dli_fname
-                };
-                let bytes = CStr::from_ptr(fname_ptr).to_bytes();
+                buffer.resize(buffer.len() * 2, std::mem::zeroed::<libc::ld_info>());
+            }
+        }
+        let mut current = buffer.as_mut_ptr() as *mut libc::ld_info;
+        loop {
+            let data_base = (*current).ldinfo_dataorg as u64;
+            let data_end = data_base + (*current).ldinfo_datasize;
+            if (data_base..data_end).contains(&addr) {
+                let bytes = CStr::from_ptr(&(*current).ldinfo_filename[0]).to_bytes();
                 let os = OsStr::from_bytes(bytes);
-                try_canonicalize(Path::new(os)).map_err(|e| e.to_string())
+                return try_canonicalize(Path::new(os)).map_err(|e| e.to_string());
             }
-
-            #[cfg(target_os = "aix")]
-            unsafe {
-                // On AIX, the symbol `current_dll_path` references a function descriptor.
-                // A function descriptor is consisted of (See https://reviews.llvm.org/D62532)
-                // * The address of the entry point of the function.
-                // * The TOC base address for the function.
-                // * The environment pointer.
-                // The function descriptor is in the data section.
-                let addr = current_dll_path as u64;
-                let mut buffer = vec![std::mem::zeroed::<libc::ld_info>(); 64];
-                loop {
-                    if libc::loadquery(
-                        libc::L_GETINFO,
-                        buffer.as_mut_ptr() as *mut libc::c_void,
-                        (size_of::<libc::ld_info>() * buffer.len()) as u32,
-                    ) >= 0
-                    {
-                        break;
-                    } else {
-                        if std::io::Error::last_os_error().raw_os_error().unwrap() != libc::ENOMEM {
-                            return Err("loadquery failed".into());
-                        }
-                        buffer.resize(buffer.len() * 2, std::mem::zeroed::<libc::ld_info>());
-                    }
-                }
-                let mut current = buffer.as_mut_ptr() as *mut libc::ld_info;
-                loop {
-                    let data_base = (*current).ldinfo_dataorg as u64;
-                    let data_end = data_base + (*current).ldinfo_datasize;
-                    if (data_base..data_end).contains(&addr) {
-                        let bytes = CStr::from_ptr(&(*current).ldinfo_filename[0]).to_bytes();
-                        let os = OsStr::from_bytes(bytes);
-                        return try_canonicalize(Path::new(os)).map_err(|e| e.to_string());
-                    }
-                    if (*current).ldinfo_next == 0 {
-                        break;
-                    }
-                    current = (current as *mut i8).offset((*current).ldinfo_next as isize)
-                        as *mut libc::ld_info;
-                }
-                return Err(format!("current dll's address {} is not in the load map", addr));
+            if (*current).ldinfo_next == 0 {
+                break;
             }
-        })
-        .clone()
+            current =
+                (current as *mut i8).offset((*current).ldinfo_next as isize) as *mut libc::ld_info;
+        }
+        return Err(format!("current dll's address {} is not in the load map", addr));
+    }
 }
 
 #[cfg(windows)]
-fn current_dll_path() -> Result<PathBuf, String> {
+pub unsafe fn dll_path(function: *mut std::ffi::c_void) -> Result<PathBuf, String> {
     use std::ffi::OsString;
     use std::io;
     use std::os::windows::prelude::*;
@@ -240,10 +232,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
     unsafe {
         GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-            PCWSTR(
-                current_dll_path as fn() -> Result<std::path::PathBuf, std::string::String>
-                    as *mut u16,
-            ),
+            PCWSTR(function as *mut u16),
             &mut module,
         )
     }
@@ -269,8 +258,20 @@ fn current_dll_path() -> Result<PathBuf, String> {
 }
 
 #[cfg(target_os = "wasi")]
+pub unsafe fn dll_path(_function: *mut std::ffi::c_void) -> Result<PathBuf, String> {
+    Err("dll_path is not supported on WASI".to_string())
+}
+
 fn current_dll_path() -> Result<PathBuf, String> {
-    Err("current_dll_path is not supported on WASI".to_string())
+    use std::sync::OnceLock;
+
+    // This is somewhat expensive relative to other work when compiling `fn main() {}` as `dladdr`
+    // needs to iterate over the symbol table of librustc_driver.so until it finds a match.
+    // As such cache this to avoid recomputing if we try to get the sysroot in multiple places.
+    static CURRENT_DLL_PATH: OnceLock<Result<PathBuf, String>> = OnceLock::new();
+    CURRENT_DLL_PATH
+        .get_or_init(|| unsafe { dll_path(current_dll_path as fn() -> _ as *mut _) })
+        .clone()
 }
 
 /// This function checks if sysroot is found using env::args().next(), and if it

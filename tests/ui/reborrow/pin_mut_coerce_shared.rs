@@ -1,3 +1,8 @@
+//! Test that Pin<&mut ()> can be coerced into a shared Pin<&()>.
+//! This should pass eventually.
+
+#![feature(reborrow)]
+
 use std::pin::Pin;
 
 fn method(a: Pin<&()>) {}  //~NOTE function defined here
