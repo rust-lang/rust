@@ -94,6 +94,10 @@ fn main() {
 Most of the details here don't matter too much, but note the `//@ check-pass` and `#![deny(dead_code)]` at the top.
 Together, those ensure that the compiler doesn't emit a `dead_code` lint when compiling this file.
 
+Also note the "Regression test for ..." comment.
+This is *very* helpful for your reviewer, since it helps them understand what the test is doing and whether there's a simpler way to test the behavior.
+Please do your best to write a complete description for the test.
+
 Run your test.
 [rust#161442] named its test `tests/ui/lint/dead-code/type-alias-used-in-impl-59333.rs`,
 so you could run:
