@@ -1,10 +1,8 @@
 //@ run-pass
 //@ edition:2021
-//@ revisions: afn cls nofeat
+//@ revisions: cls nofeat
 //@ needs-unwind
-// gate-test-async_fn_track_caller
 #![feature(stmt_expr_attributes)]
-#![cfg_attr(afn, feature(async_fn_track_caller))]
 #![cfg_attr(cls, feature(closure_track_caller))]
 #![allow(unused)]
 
@@ -111,21 +109,15 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 }
 
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 46);
+    assert_eq!(panicked_at(|| block_on(foo())), 44);
 
-    #[cfg(afn)]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 59);
-    #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 55);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 57);
 
-    #[cfg(afn)]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 72);
-    #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 67);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 70);
 
     #[cfg(cls)]
     assert_eq!(panicked_at(|| block_on(foo_closure())), 81);
 
     #[cfg(cls)]
-    assert_eq!(panicked_at(|| block_on(foo_block())), 94);
+    assert_eq!(panicked_at(|| block_on(foo_block())), 92);
 }

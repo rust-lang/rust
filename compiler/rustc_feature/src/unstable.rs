@@ -410,8 +410,6 @@ declare_features! (
     (incomplete, async_drop, "1.88.0", Some(126482)),
     /// Allows async functions to be called from `dyn Trait`.
     (incomplete, async_fn_in_dyn_trait, "1.85.0", Some(133119)),
-    /// Allows `#[track_caller]` on async functions.
-    (unstable, async_fn_track_caller, "1.73.0", Some(110011)),
     /// Allows `for await` loops.
     (unstable, async_for_loop, "1.77.0", Some(118898)),
     /// Allows `async` trait bound modifier.

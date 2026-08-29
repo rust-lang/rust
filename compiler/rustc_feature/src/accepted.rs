@@ -79,6 +79,8 @@ declare_features! (
     (accepted, async_closure, "1.85.0", Some(62290)),
     /// Allows async functions to be declared, implemented, and used in traits.
     (accepted, async_fn_in_trait, "1.75.0", Some(91611)),
+    /// Allows `#[track_caller]` on async functions.
+    (accepted, async_fn_track_caller, "CURRENT_RUSTC_VERSION", Some(110011)),
     /// Allows all literals in attribute lists and values of key-value pairs.
     (accepted, attr_literals, "1.30.0", Some(34981)),
     /// Allows overloading augmented assignment operations like `a += b`.
