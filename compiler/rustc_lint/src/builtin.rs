@@ -28,8 +28,7 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
+use rustc_hir::{self as hir, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
@@ -55,10 +54,9 @@ use crate::diagnostics::{
     BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
     BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
     BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
-    BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-    BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
-    BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
-    EqInternalMethodImplemented, InvalidAsmLabel,
+    BuiltinTypeAliasBounds, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
+    BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
+    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -1038,62 +1036,6 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
             for feature in features {
                 cx.emit_span_lint(UNSTABLE_FEATURES, feature.span, BuiltinUnstableFeatures);
             }
-        }
-    }
-}
-
-declare_lint! {
-    /// The `ungated_async_fn_track_caller` lint warns when the
-    /// `#[track_caller]` attribute is used on an async function
-    /// without enabling the corresponding unstable feature flag.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #[track_caller]
-    /// async fn foo() {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The attribute must be used in conjunction with the
-    /// [`async_fn_track_caller` feature flag]. Otherwise, the `#[track_caller]`
-    /// annotation will function as a no-op.
-    ///
-    /// [`async_fn_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/async-fn-track-caller.html
-    UNGATED_ASYNC_FN_TRACK_CALLER,
-    Warn,
-    "enabling track_caller on an async fn is a no-op unless the async_fn_track_caller feature is enabled"
-}
-
-declare_lint_pass!(
-    /// Explains corresponding feature flag must be enabled for the `#[track_caller]` attribute to
-    /// do anything
-    UngatedAsyncFnTrackCaller => [UNGATED_ASYNC_FN_TRACK_CALLER]
-);
-
-impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
-    fn check_fn(
-        &mut self,
-        cx: &LateContext<'_>,
-        fn_kind: HirFnKind<'_>,
-        _: &'tcx FnDecl<'_>,
-        _: &'tcx Body<'_>,
-        span: Span,
-        def_id: LocalDefId,
-    ) {
-        if fn_kind.asyncness().is_async()
-            && !cx.tcx.features().async_fn_track_caller()
-            // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr_span) = find_attr!(cx.tcx, def_id, TrackCaller(span) => *span)
-        {
-            cx.emit_span_lint(
-                UNGATED_ASYNC_FN_TRACK_CALLER,
-                attr_span,
-                BuiltinUngatedAsyncFnTrackCaller { label: span, session: &cx.tcx.sess },
-            );
         }
     }
 }

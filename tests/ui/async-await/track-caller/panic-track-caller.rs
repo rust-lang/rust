@@ -51,8 +51,6 @@ async fn foo() {
 }
 
 #[track_caller]
-//[cls]~^ WARN `#[track_caller]` on async functions is a no-op
-//[nofeat]~^^ WARN `#[track_caller]` on async functions is a no-op
 async fn bar_track_caller() {
     panic!()
 }
@@ -65,8 +63,6 @@ struct Foo;
 
 impl Foo {
     #[track_caller]
-    //[cls]~^ WARN `#[track_caller]` on async functions is a no-op
-    //[nofeat]~^^ WARN `#[track_caller]` on async functions is a no-op
     async fn bar_assoc() {
         panic!();
     }
@@ -80,7 +76,8 @@ async fn foo_assoc() {
 // `nofeat`, we test that separately in `async-closure-gate.rs`
 #[cfg(cls)]
 async fn foo_closure() {
-    let c = #[track_caller] async || {
+    let c = #[track_caller]
+    async || {
         panic!();
     };
     c().await
@@ -90,7 +87,8 @@ async fn foo_closure() {
 // `nofeat`, we test that separately in `async-block.rs`
 #[cfg(cls)]
 async fn foo_block() {
-    let a = #[track_caller] async {
+    let a = #[track_caller]
+    async {
         panic!();
     };
     a.await
@@ -113,22 +111,21 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 }
 
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 46
-);
+    assert_eq!(panicked_at(|| block_on(foo())), 46);
 
     #[cfg(afn)]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 61);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 59);
     #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 57);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 55);
 
     #[cfg(afn)]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 76);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 72);
     #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 71);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 67);
 
     #[cfg(cls)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 84);
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 81);
 
     #[cfg(cls)]
-    assert_eq!(panicked_at(|| block_on(foo_block())), 96);
+    assert_eq!(panicked_at(|| block_on(foo_block())), 94);
 }
