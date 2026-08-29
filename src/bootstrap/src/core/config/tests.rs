@@ -172,7 +172,7 @@ fn override_toml() {
             .collect(),
         "setting dictionary value"
     );
-    assert!(matches!(config.llvm_ci_mode, LlvmCiMode::BuildLocally));
+    std::assert_matches!(config.llvm_ci_mode, LlvmCiMode::BuildLocally);
     assert!(!config.download_rustc());
 }
 

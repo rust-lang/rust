@@ -1746,7 +1746,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                     self.download_ci_rustc(commit);
 
                     let llvm_ci_requested = self.llvm_ci_mode.requests_download_from_ci();
-                    // CI-rustc can't be used without CI-LLVM. If LLVM Ci is requested, but the
+                    // CI-rustc can't be used without CI-LLVM. If CI LLVM is requested, but the
                     // LLVM submodule has changes, it is an error.
                     // FIXME: this whole logic should be refactored to not use
                     // `has_changes_from_upstream` explicitly

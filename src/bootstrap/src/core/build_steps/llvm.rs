@@ -425,7 +425,7 @@ impl Step for LlvmFromCi {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let llvm_ci = try_download_ci_llvm(builder, self.target)?;
 
-        // Sanity check
+        // Sanity check (we execute the llvm-config, so we can only do it on the host target).
         if builder.host_target == self.target {
             check_llvm_version(builder, llvm_ci.output.llvm_config());
         }
