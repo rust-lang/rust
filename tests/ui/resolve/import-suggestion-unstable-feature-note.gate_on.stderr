@@ -1,20 +1,19 @@
 error[E0425]: cannot find type `BorrowedBuf` in this scope
-  --> $DIR/filter-intrinsics-note-for-unstable-suggestion.rs:9:10
+  --> $DIR/import-suggestion-unstable-feature-note.rs:9:12
    |
-LL |   let _: BorrowedBuf;
-   |          ^^^^^^^^^^^ not found in this scope
+LL |     let _: BorrowedBuf;
+   |            ^^^^^^^^^^^ not found in this scope
    |
-   = note: 'std::io::BorrowedBuf' is unstable in nightly Rust and is only available with the `#![feature(core_io_borrowed_buf)]` attribute
 help: consider importing this struct
    |
 LL + use std::io::BorrowedBuf;
    |
 
 error[E0425]: cannot find type `HashMap` in this scope
-  --> $DIR/filter-intrinsics-note-for-unstable-suggestion.rs:13:10
+  --> $DIR/import-suggestion-unstable-feature-note.rs:13:12
    |
-LL |   let _: HashMap;
-   |          ^^^^^^^ not found in this scope
+LL |     let _: HashMap;
+   |            ^^^^^^^ not found in this scope
    |
 help: consider importing this struct
    |
@@ -22,10 +21,10 @@ LL + use std::collections::HashMap;
    |
 
 error[E0425]: cannot find type `S` in this scope
-  --> $DIR/filter-intrinsics-note-for-unstable-suggestion.rs:16:10
+  --> $DIR/import-suggestion-unstable-feature-note.rs:16:12
    |
-LL |   let _: S;
-   |          ^ not found in this scope
+LL |     let _: S;
+   |            ^ not found in this scope
    |
 help: consider importing this struct
    |
