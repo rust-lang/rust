@@ -12,6 +12,7 @@ use core::{cmp, hint};
 // Unlike the public declaration in `core`, this accepts a conditionally-const
 // callback. That lets a conditionally-const allocator stay generic during
 // const evaluation while the runtime callback erases its concrete type.
+#[cfg(not(no_global_oom_handling))]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[rustc_intrinsic]
 const fn const_eval_select<ARG: core::marker::Tuple, F, G, RET>(
@@ -202,6 +203,7 @@ const impl<T, A: [const] Allocator + [const] Destruct> RawVec<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 struct CaptureLocally<'a, T> {
     value: ManuallyDrop<T>,
     old: *mut T,
@@ -209,6 +211,7 @@ struct CaptureLocally<'a, T> {
 }
 
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[cfg(not(no_global_oom_handling))]
 const impl<'a, T: [const] Destruct> Drop for CaptureLocally<'a, T> {
     fn drop(&mut self) {
         // SAFETY: We have sole ownership of `self.old` during the lifetime of
@@ -220,6 +223,7 @@ const impl<'a, T: [const] Destruct> Drop for CaptureLocally<'a, T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<'a, T> CaptureLocally<'a, T> {
     const fn new(old: &'a mut T) -> Self {
         // SAFETY: We are taking ownership of the value at `old`, given that we
@@ -971,7 +975,6 @@ impl RawVecInner {
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
     /// - `cap` must be less than or equal to `self.capacity(elem_layout.size())`
-    #[cfg(not(no_global_oom_handling))]
     #[inline]
     unsafe fn shrink<A: Allocator>(
         &mut self,
