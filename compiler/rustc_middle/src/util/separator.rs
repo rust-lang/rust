@@ -24,7 +24,7 @@ impl SeparatorPrinter {
     }
 
     /// Check if no element was printed before
-    pub(crate) fn is_first(&self) -> bool {
+    pub(crate) fn nothing_printed(&self) -> bool {
         self.first
     }
 }
