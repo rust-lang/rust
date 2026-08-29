@@ -1,5 +1,95 @@
 # PR lifecycle
 
+## Before review
+
+### Opening a PR
+
+You are now ready to file a pull request (PR)?
+Great!
+Here are a few points you should be aware of.
+
+All pull requests should be filed against the `main` branch,
+unless you know for sure that you should target a different branch.
+
+Run some style checks before you submit the PR:
+
+    ./x test tidy --bless
+
+We recommend to make this check before every pull request (and every new commit in a pull request);
+you can add [git hooks] before every push to make sure you never forget to make this check.
+The CI will also run tidy and will fail if tidy fails.
+
+### PR description
+
+GitHub allows [closing issues using keywords][closing-keywords].
+This feature should be used to keep the issue tracker tidy.
+However, it is generally preferred
+to put the "closes #123" text in the PR description rather than the commit message;
+particularly during rebasing, citing the issue number in the commit can "spam"
+the issue in question.
+
+However, if your PR fixes a stable-to-beta or stable-to-stable regression and has
+been accepted for a beta and/or stable backport (i.e., it is marked `beta-accepted`
+and/or `stable-accepted`), please do *not* use any such keywords since we don't
+want the corresponding issue to get auto-closed once the fix lands on `main`.
+Please update the PR description while still mentioning the issue somewhere.
+For example, you could write `Fixes (after beta backport) #NNN.`.
+
+[labeling]: ./rustbot.md#issue-relabeling
+[closing-keywords]: https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue
+
+### CI
+
+In addition to being reviewed by a human, pull requests are automatically tested,
+thanks to continuous integration (CI).
+Basically, every time you open and update
+a pull request, CI builds the compiler and tests it against the
+[compiler test suite], and also performs other tests such as checking that
+your pull request is in compliance with Rust's style guidelines.
+
+Running continuous integration tests allows PR authors to catch mistakes early
+without going through a first review cycle, and also helps reviewers stay aware
+of the status of a particular pull request.
+
+Rust has plenty of CI capacity, and you should never have to worry about wasting
+computational resources each time you push a change.
+It is also perfectly fine
+(and even encouraged!) to use the CI to test your changes if it can help your productivity.
+In particular, we don't recommend running the full `./x test` suite locally,
+since it takes a very long time to execute.
+See the [Testing with CI] chapter for using Rust's CI to test your changes.
+
+[Testing with CI]: tests/ci.md#testing-with-ci
+
+## PR review
+
+### r?
+
+Your PR will be automatically assigned a reviewer.
+You can override the reviewer using `r? @username`.
+See [PR assignment](https://forge.rust-lang.org/triagebot/pr-assignment.html#usage) for details.
+
+### Rebasing
+
+Rust follows a _no merge-commit policy_,
+meaning that when you encounter merge conflicts,
+you are expected to always rebase instead of merging.
+For example,
+always use rebase when bringing the latest changes from the `main` branch to your feature branch.
+If your PR contains merge commits, it will get marked as `has-merge-commits`.
+Once you have removed the merge commits, e.g., through an interactive rebase, you
+should remove the label again:
+
+    @rustbot label -has-merge-commits
+
+See [this chapter][labeling] for more details.
+
+If you encounter merge conflicts or when a reviewer asks you to perform some
+changes, your PR will get marked as `S-waiting-on-author`.
+When you resolve them, you should use `@rustbot` to mark it as `S-waiting-on-review`:
+
+    @rustbot ready
+
 ### Keeping your branch up-to-date
 
 The CI in rust-lang/rust applies your patches directly against current `main`,
@@ -18,12 +108,6 @@ follow the project's conventions.
 See [keeping things up to date](git.md#keeping-things-up-to-date) for detailed instructions.
 
 After rebasing, it's recommended to [run the relevant tests locally](tests/intro.md) to catch any issues before CI runs.
-
-### r?
-
-Your PR will be automatically assigned a reviewer.
-You can override the reviewer using `r? @username`.
-See [PR assignment](https://forge.rust-lang.org/triagebot/pr-assignment.html#usage) for details.
 
 ### Waiting for reviews
 
@@ -62,29 +146,6 @@ See [Crater] and [Breaking Changes] chapters for some examples of such procedure
 [#t-release/triage]: https://rust-lang.zulipchat.com/#narrow/stream/242269-t-release.2Ftriage
 [Crater]: tests/crater.md
 
-### CI
-
-In addition to being reviewed by a human, pull requests are automatically tested,
-thanks to continuous integration (CI).
-Basically, every time you open and update
-a pull request, CI builds the compiler and tests it against the
-[compiler test suite], and also performs other tests such as checking that
-your pull request is in compliance with Rust's style guidelines.
-
-Running continuous integration tests allows PR authors to catch mistakes early
-without going through a first review cycle, and also helps reviewers stay aware
-of the status of a particular pull request.
-
-Rust has plenty of CI capacity, and you should never have to worry about wasting
-computational resources each time you push a change.
-It is also perfectly fine
-(and even encouraged!) to use the CI to test your changes if it can help your productivity.
-In particular, we don't recommend running the full `./x test` suite locally,
-since it takes a very long time to execute.
-See the [Testing with CI] chapter for using Rust's CI to test your changes.
-
-[Testing with CI]: tests/ci.md#testing-with-ci
-
 ### r+
 
 After someone has reviewed your pull request, they will leave an annotation
@@ -114,55 +175,9 @@ Also, note that PRs are never merged by hand.
 [@rustbot]: https://github.com/rustbot
 [@bors]: https://github.com/rust-lang/bors
 
-### Opening a PR
+## After merge
 
-You are now ready to file a pull request (PR)?
-Great!
-Here are a few points you should be aware of.
-
-All pull requests should be filed against the `main` branch,
-unless you know for sure that you should target a different branch.
-
-Run some style checks before you submit the PR:
-
-    ./x test tidy --bless
-
-We recommend to make this check before every pull request (and every new commit in a pull request);
-you can add [git hooks] before every push to make sure you never forget to make this check.
-The CI will also run tidy and will fail if tidy fails.
-
-Rust follows a _no merge-commit policy_,
-meaning that when you encounter merge conflicts,
-you are expected to always rebase instead of merging.
-For example,
-always use rebase when bringing the latest changes from the `main` branch to your feature branch.
-If your PR contains merge commits, it will get marked as `has-merge-commits`.
-Once you have removed the merge commits, e.g., through an interactive rebase, you
-should remove the label again:
-
-    @rustbot label -has-merge-commits
-
-See [this chapter][labeling] for more details.
-
-If you encounter merge conflicts or when a reviewer asks you to perform some
-changes, your PR will get marked as `S-waiting-on-author`.
-When you resolve them, you should use `@rustbot` to mark it as `S-waiting-on-review`:
-
-    @rustbot ready
-
-GitHub allows [closing issues using keywords][closing-keywords].
-This feature should be used to keep the issue tracker tidy.
-However, it is generally preferred
-to put the "closes #123" text in the PR description rather than the commit message;
-particularly during rebasing, citing the issue number in the commit can "spam"
-the issue in question.
-
-However, if your PR fixes a stable-to-beta or stable-to-stable regression and has
-been accepted for a beta and/or stable backport (i.e., it is marked `beta-accepted`
-and/or `stable-accepted`), please do *not* use any such keywords since we don't
-want the corresponding issue to get auto-closed once the fix lands on `main`.
-Please update the PR description while still mentioning the issue somewhere.
-For example, you could write `Fixes (after beta backport) #NNN.`.
+### Backports
 
 As for further actions, please keep a sharp look-out for a PR whose title begins with
 `[beta]` or `[stable]` and which backports the PR in question.
@@ -171,10 +186,7 @@ The closing comment should mention all PRs that were involved.
 If you don't have the permissions to close the issue, please
 leave a comment on the original PR asking the reviewer to close it for you.
 
-[labeling]: ./rustbot.md#issue-relabeling
-[closing-keywords]: https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue
-
-## Reverting a PR
+### Reverting a PR
 
 See ["Reverts"](https://forge.rust-lang.org/compiler/reviews.html#reverts) on Forge.
 
