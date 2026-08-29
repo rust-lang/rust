@@ -371,6 +371,10 @@ impl Segment {
         path.segments.iter().map(|s| s.into()).collect()
     }
 
+    fn from_path_smallvec(path: &Path) -> SmallVec<[Segment; 4]> {
+        path.segments.iter().map(|s| s.into()).collect()
+    }
+
     fn from_ident(ident: Ident) -> Segment {
         Segment {
             ident,

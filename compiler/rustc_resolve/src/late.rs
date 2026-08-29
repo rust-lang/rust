@@ -4556,7 +4556,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     ) {
         self.smart_resolve_path_fragment(
             qself,
-            &Segment::from_path(path),
+            &Segment::from_path_smallvec(path),
             source,
             Finalize::new(id, path.span),
             RecordPartialRes::Yes,
