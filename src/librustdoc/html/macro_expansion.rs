@@ -70,10 +70,9 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
             return;
         }
         let callsite_span = new_span.source_callsite();
-        if let Some(index) =
-            self.expanded_codes.iter().position(|info| info.span.overlaps(callsite_span))
+        if let Some(info) =
+            self.expanded_codes.iter_mut().find(|info| info.span.overlaps(callsite_span))
         {
-            let info = &mut self.expanded_codes[index];
             // If the new span we got has the exact same span information as a span already in the
             // list, it means it's generated from the same macro but is a different item, so we need
             // to add it as well.
@@ -86,12 +85,11 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
                 info.code = f();
             } else {
                 // We push the new item after the existing one.
-                let expanded_code = &mut self.expanded_codes[index];
-                expanded_code.code.push('\n');
-                expanded_code.code.push_str(&f());
-                let lo = BytePos(expanded_code.expanded_span.lo().0.min(new_span.lo().0));
-                let hi = BytePos(expanded_code.expanded_span.hi().0.max(new_span.hi().0));
-                expanded_code.expanded_span = expanded_code.expanded_span.with_lo(lo).with_hi(hi);
+                info.code.push('\n');
+                info.code.push_str(&f());
+                let lo = BytePos(info.expanded_span.lo().0.min(new_span.lo().0));
+                let hi = BytePos(info.expanded_span.hi().0.max(new_span.hi().0));
+                info.expanded_span = info.expanded_span.with_lo(lo).with_hi(hi);
             }
         } else {
             // We add a new item.
