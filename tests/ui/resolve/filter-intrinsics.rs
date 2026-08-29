@@ -1,4 +1,5 @@
 //@ revisions: gate_off gate_on
+//@ dont-require-annotations: HELP
 
 #![cfg_attr(gate_on, feature(core_intrinsics))]
 fn main() {

@@ -4,6 +4,7 @@ error[E0432]: unresolved import `Trait`
 LL |     use Trait;
    |         ^^^^^ no `Trait` in the root
    |
+   = note: 'std::mem::type_info::Trait' is unstable in nightly Rust and is only available with the `#![feature(type_info)]` attribute
 help: consider importing one of these items instead
    |
 LL |     use std::mem::type_info::Trait;

@@ -91,6 +91,14 @@ current module, then it must also be declared as public (e.g., `pub fn`).
   ],
   "children": [
     {
+      "message": "'std::sync::mpmc::Iter' is unstable in nightly Rust and is only available with the `#![feature(mpmc_channel)]` attribute",
+      "code": null,
+      "level": "note",
+      "spans": [],
+      "children": [],
+      "rendered": null
+    },
+    {
       "message": "consider importing one of these structs",
       "code": null,
       "level": "help",
@@ -405,6 +413,7 @@ current module, then it must also be declared as public (e.g., `pub fn`).
 \u001b[1m\u001b[94mLL\u001b[0m \u001b[1m\u001b[94m|\u001b[0m     let x: Iter;
    \u001b[1m\u001b[94m|\u001b[0m            \u001b[1m\u001b[91m^^^^\u001b[0m \u001b[1m\u001b[91mnot found in this scope\u001b[0m
    \u001b[1m\u001b[94m|\u001b[0m
+   \u001b[1m\u001b[94m= \u001b[0m\u001b[1mnote\u001b[0m: 'std::sync::mpmc::Iter' is unstable in nightly Rust and is only available with the `#![feature(mpmc_channel)]` attribute
 \u001b[1m\u001b[96mhelp\u001b[0m: consider importing one of these structs
    \u001b[1m\u001b[94m|\u001b[0m
 \u001b[1m\u001b[94mLL\u001b[0m \u001b[92m+ use std::collections::binary_heap::Iter;\u001b[0m
