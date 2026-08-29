@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `transmute` in this scope
-  --> $DIR/filter-intrinsics.rs:5:13
+  --> $DIR/filter-intrinsics.rs:6:13
    |
 LL |     let _ = transmute::<usize>();
    |             ^^^^^^^^^ not found in this scope

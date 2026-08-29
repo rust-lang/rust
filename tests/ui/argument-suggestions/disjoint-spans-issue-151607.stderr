@@ -25,6 +25,8 @@ error[E0425]: cannot find value `E` in this scope
 LL |     foo(B, g, D, E, F, G)
    |                  ^ not found in this scope
    |
+   = note: 'std::f128::consts::E' is unstable in nightly Rust and is only available with the `#![feature(f128)]` attribute
+   = note: 'std::f16::consts::E' is unstable in nightly Rust and is only available with the `#![feature(f16)]` attribute
 help: a local variable with a similar name exists
    |
 LL -     foo(B, g, D, E, F, G)

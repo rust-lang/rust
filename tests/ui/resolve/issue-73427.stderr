@@ -115,6 +115,8 @@ LL | / enum E {
 LL | |     TupleWithFields(()),
 LL | | }
    | |_^
+   = note: 'std::f128::consts::E' is unstable in nightly Rust and is only available with the `#![feature(f128)]` attribute
+   = note: 'std::f16::consts::E' is unstable in nightly Rust and is only available with the `#![feature(f16)]` attribute
 help: the following enum variant is available
    |
 LL -     E.foo();
