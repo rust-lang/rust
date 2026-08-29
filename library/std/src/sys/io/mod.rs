@@ -51,5 +51,5 @@ pub use error::errno_location;
     target_os = "wasi",
 ))]
 pub use error::set_errno;
-pub use error::{decode_error_kind, errno, error_string, is_interrupted};
+pub use error::{decode_error_kind, errno, format_error, is_interrupted};
 pub use is_terminal::is_terminal;

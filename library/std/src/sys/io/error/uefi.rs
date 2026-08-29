@@ -1,6 +1,6 @@
 use r_efi::efi::Status;
 
-use crate::io;
+use crate::{fmt, io};
 
 pub fn errno() -> io::RawOsError {
     0
@@ -54,7 +54,7 @@ pub fn decode_error_kind(code: io::RawOsError) -> io::ErrorKind {
     }
 }
 
-pub fn error_string(errno: io::RawOsError) -> String {
+pub fn format_error(errno: io::RawOsError, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     // Keep the List in Alphabetical Order
     // The Messages are taken from UEFI Specification Appendix D - Status Codes
     #[rustfmt::skip]
@@ -98,7 +98,7 @@ pub fn error_string(errno: io::RawOsError) -> String {
         Status::VOLUME_FULL => "There is no more space on the file system.",
         Status::VOLUME_CORRUPTED => "An inconstancy was detected on the file system causing the operating to fail.",
         Status::WRITE_PROTECTED => "The device cannot be written to.",
-        _ => return format!("Status: {errno}"),
+        _ => return write!(f, "Status: {errno}"),
     };
-    msg.to_owned()
+    f.write_str(msg)
 }
