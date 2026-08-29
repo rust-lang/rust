@@ -116,9 +116,9 @@ We have [a chapter](git.md) on how to use Git when contributing to Rust.
 > but also have areas that they are not very familiar with. If your PR contains changes that are
 > large, complex, cross-cutting and/or highly domain-specific, it becomes very difficult to find a
 > suitable reviewer who is comfortable in reviewing all of the changes in such a PR. This is also
-> true if the changes are not only compiler-specific but also contains changes which fall under the
+> true if the changes are not only compiler-specific but also contain changes which fall under the
 > purview of reviewers from other teams, like the standard library team. [There's a bot][triagebot]
-> which notifies the relevant teams and pings people who have setup specific alerts based on the
+> which notifies the relevant teams and pings people who have set up specific alerts based on the
 > files modified.
 >
 > Before making such changes, you are strongly encouraged to **discuss your proposed changes with
@@ -354,7 +354,7 @@ To find documentation-related issues, use the [A-docs label].
 You can find documentation style guidelines in [RFC 1574].
 
 To build the standard library documentation, use `x doc --stage 1 library --open`.
-To build the documentation for a book (e.g. the unstable book), use `x doc src/doc/unstable-book.`
+To build the documentation for a book (e.g. the unstable book), use `x doc src/doc/unstable-book`.
 Results should appear in `build/host/doc`, as well as automatically open in your default browser.
 See [Building Documentation](./building/compiler-documenting.md#building-documentation) for more
 information.
@@ -365,7 +365,7 @@ The CSS might be messed up, but you can verify that the HTML is right.
 
 Please notice that we don't accept typography/spellcheck fixes to **internal documentation**
 as it's usually not worth the churn or the review time.
-Examples of internal documentation is code comments and rustc api docs.
+Examples of internal documentation are code comments and rustc API docs.
 However, feel free to fix those if accompanied by other improvements in the same PR.
 
 ### Contributing to rustc-dev-guide
