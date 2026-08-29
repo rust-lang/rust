@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `transmute` in this scope
-  --> $DIR/filter-intrinsics.rs:6:13
+  --> $DIR/filter-intrinsics.rs:7:13
    |
 LL |     let _ = transmute::<usize>();
    |             ^^^^^^^^^ not found in this scope
@@ -10,7 +10,7 @@ LL + use std::mem::transmute;
    |
 
 error[E0425]: cannot find function `fabs` in this scope
-  --> $DIR/filter-intrinsics.rs:9:13
+  --> $DIR/filter-intrinsics.rs:10:13
    |
 LL |     let _ = fabs(1.0);
    |             ^^^^ not found in this scope
