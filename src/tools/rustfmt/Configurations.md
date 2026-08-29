@@ -2150,9 +2150,9 @@ Convert `#![doc]` and `#[doc]` attributes to `//!` and `///` doc comments.
 #### `false` (default):
 
 ```rust
-#![doc = "Example documentation"]
+#![doc = " Example documentation"]
 
-#[doc = "Example item documentation"]
+#[doc = " Example item documentation"]
 pub enum Bar {}
 
 /// Example item documentation
@@ -2163,6 +2163,9 @@ pub enum Foo {}
 
 ```rust
 //! Example documentation
+
+/// Example item documentation
+pub enum Bar {}
 
 /// Example item documentation
 pub enum Foo {}
