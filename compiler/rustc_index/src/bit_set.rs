@@ -135,11 +135,27 @@ impl<T: Idx> DenseBitSet<T> {
         count_ones(&self.words)
     }
 
-    /// Returns `true` if `self` contains `elem`.
+    /// Returns `true` if this bitset contains `value`.
+    ///
+    /// Unlike [`DenseBitSet::contains`], this method does not panic if the value
+    /// is outside this bitset's domain, and simply returns `false` instead.
     #[inline]
-    pub fn contains(&self, elem: T) -> bool {
-        assert!(elem.index() < self.domain_size);
-        let (word_index, mask) = word_index_and_mask(elem);
+    pub fn contains_loose(&self, value: T) -> bool {
+        (value.index() < self.domain_size) && self.contains(value)
+    }
+
+    /// Returns `true` if this bitset contains `value`.
+    ///
+    /// # Panics
+    /// If `value` is outside this bitset's domain.
+    ///
+    /// # See also
+    /// To allow out-of-domain values without panicking, use [`DenseBitSet::contains_loose`]
+    /// instead.
+    #[inline]
+    pub fn contains(&self, value: T) -> bool {
+        assert!(value.index() < self.domain_size);
+        let (word_index, mask) = word_index_and_mask(value);
         (self.words[word_index] & mask) != 0
     }
 
