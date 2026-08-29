@@ -53,10 +53,24 @@ impl<'sess> AttributeParser<'sess> {
             sym::prelude_import => ("the `prelude_import` attribute is for use by rustc only".to_string(), &[]),
             sym::profiler_runtime => ("the `profiler_runtime` attribute is used to identify the `profiler_builtins` crate which contains the profiler runtime and will never be stable".to_string(), &[]),
             sym::thread_local => ("the `thread_local` attribute is an experimental feature, and does not currently handle destructors".to_string(), &[]),
+            sym::rustdoc_internals => ("this subset of the `doc` attribute is meant for internal use only".to_string(), &[]),
+            sym::doc_notable_trait => ("the `doc(notable_trait)` attribute is experimental".to_string(), &[]),
+            sym::doc_cfg => ("the `doc(cfg)` and `doc(auto_cfg)` attributes are experimental".to_string(), &[]),
+            sym::doc_masked => ("the `doc(masked)` attribute is experimental".to_string(), &[]),
             _ => (format!("the `{attr_path}` attribute is an experimental feature"), &[]),
         };
 
-        let mut diag = feature_err(self.sess, gate_name, attr_path.span, explain);
+        // For unstable subsets of an attribute, point at that
+        let err_span = if matches!(
+            gate_name,
+            sym::rustdoc_internals | sym::doc_notable_trait | sym::doc_cfg | sym::doc_masked
+        ) {
+            attr_span
+        } else {
+            attr_path.span
+        };
+
+        let mut diag = feature_err(self.sess, gate_name, err_span, explain);
 
         // Remove the suggestion for `#![feature(staged_api)]` as these attributes are currently
         // not usable outside std. If we do ever expose `#[stable]` etc under a different feature
