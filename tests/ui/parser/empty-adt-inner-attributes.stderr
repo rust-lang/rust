@@ -1,0 +1,40 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/empty-struct-inner-attributes.rs:2:5
+   |
+LL |     #![inline]
+   |     ^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: expected identifier, found `}`
+  --> $DIR/empty-struct-inner-attributes.rs:4:1
+   |
+LL | struct Test1 {
+   |        ----- while parsing this struct
+...
+LL | }
+   | ^ expected identifier
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/empty-struct-inner-attributes.rs:7:5
+   |
+LL |     #![inline]
+   |     ^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: expected identifier, found `}`
+  --> $DIR/empty-struct-inner-attributes.rs:9:1
+   |
+LL | enum Test2 {
+   |      ----- while parsing this enum
+...
+LL | }
+   | ^ expected identifier
+   |
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
+
+error: aborting due to 4 previous errors
+
