@@ -680,7 +680,7 @@ impl<'a> Diagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_> {
                 braces_span,
                 msg!("ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown"),
                 // ignore-tidy-todo
-                format!(" {{{indentation}{more}_ => todo!(),{indentation}}}"),
+                format!(" {{{indentation}{more}_ => {{ todo!() }}{indentation}}}"),
                 Applicability::HasPlaceholders,
             );
         } else {

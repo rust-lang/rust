@@ -16,7 +16,7 @@ LL |     Unstable,
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         UnstableEnum::Stable2 => {},
-LL +         UnstableEnum::Unstable => todo!()
+LL +         UnstableEnum::Unstable => { todo!() }
    |
 
 error: aborting due to 1 previous error
