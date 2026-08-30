@@ -5,6 +5,7 @@ use run_make_support::{bare_rustc, diff, similar};
 fn main() {
     // `rustc --help`
     let help = bare_rustc().arg("--help").run().stdout_utf8();
+
     diff().expected_file("help.stdout").actual_text("(rustc --help)", &help).run();
 
     // `rustc` should be the same as `rustc --help`
@@ -22,6 +23,20 @@ fn main() {
     // Check that all help options can be invoked at once
     let codegen_help = bare_rustc().arg("-Chelp").run().stdout_utf8();
     let unstable_help = bare_rustc().arg("-Zhelp").run().stdout_utf8();
+
+    let polonius_help =
+        format!("{}\n", unstable_help.lines().find(|line| line.contains("polonius=val")).unwrap());
+    let version = bare_rustc().arg("--version").run().stdout_utf8();
+    let expected_file = if version.contains("-nightly") || version.contains("-dev") {
+        "polonius-help.stdout"
+    } else {
+        "polonius-help-stable.stdout"
+    };
+    diff()
+        .expected_file(expected_file)
+        .actual_text("rustc -Zhelp (polonius)", &polonius_help)
+        .run();
+
     let lints_help = bare_rustc().arg("-Whelp").run().stdout_utf8();
     let expected_all = format!("{help}{codegen_help}{unstable_help}{lints_help}");
     let all_help = bare_rustc().args(["--help", "-Chelp", "-Zhelp", "-Whelp"]).run().stdout_utf8();
