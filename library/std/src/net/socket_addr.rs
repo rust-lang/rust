@@ -87,7 +87,9 @@ use crate::{io, iter, option, slice, vec};
 /// ```
 /// use std::net::{SocketAddr, ToSocketAddrs};
 ///
+/// // [2001:db8::1]
 /// let addr1 = SocketAddr::from(([0x2001, 0xdb8, 0, 0, 0, 0, 0, 1], 80));
+/// // [::1]
 /// let addr2 = SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 443));
 /// let addrs = vec![addr1, addr2];
 ///
