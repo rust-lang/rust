@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
-use rustc_type_ir::data_structures::HashSet;
+use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::{RegionConstraint, evaluate_solver_constraint};
 use rustc_type_ir::relate::Relate;
@@ -18,8 +18,8 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
-    OpaqueTypeKey, PredicateKind, Region, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode, eager_resolve_vars,
+    OpaqueTypeKey, PredicateKind, Region, RegionVid, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, eager_resolve_vars, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -1606,6 +1606,65 @@ where
         let mut unique = HashSet::default();
         if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints {
             r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
+        }
+
+        #[derive(Default)]
+        struct TrivialVars {
+            counts: HashMap<RegionVid, usize>,
+        }
+        impl<I> TypeVisitor<I> for TrivialVars
+        where
+            I: Interner,
+        {
+            type Result = ();
+            fn visit_ty(&mut self, t: I::Ty) {
+                // If a nested type doesn't have any `ReVar`s, then visiting it won't affect
+                // our `counts` anyway, so skip visiting it entirely for better perf.
+                if !t.has_infer_regions() {
+                    return;
+                }
+                t.super_visit_with(self);
+            }
+            fn visit_const(&mut self, c: I::Const) {
+                // The same goes for consts.
+                if !c.has_infer_regions() {
+                    return;
+                }
+                c.super_visit_with(self);
+            }
+            fn visit_region(&mut self, r: Region<I>) {
+                if let ty::ReVar(vid) = r.kind() {
+                    *self.counts.entry(vid).or_insert(0) += 1;
+                }
+            }
+        }
+
+        // If we have a constraint like `'re: '?1`, where '?1 can name 're and '?1 appears
+        // nowhere else in the response besides the constraint itself, then this kind of
+        // constraint is also trivial, since we're able to pick '?1 := 'empty, and 're: 'empty
+        // is always true for any 're.
+        if !external_constraints.region_constraints.is_empty() {
+            let mut vis = TrivialVars::default();
+            var_values.visit_with(&mut vis);
+            external_constraints.visit_with(&mut vis);
+
+            if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints
+            {
+                r.retain(|(outlives, _)| {
+                    if let ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, re)) = *outlives
+                        && let Some(sup_re) = sup.as_region()
+                        && let ty::RegionKind::ReVar(vid) = re.kind()
+                        // This is only safe if we call `eager_resolve_vars` beforehand,
+                        // which we do.
+                        && self.delegate.universe_of_lt(vid).unwrap()
+                            .can_name(max_universe(&**self.delegate, sup_re))
+                    {
+                        vis.counts.get(&vid).is_some_and(|c| *c > 1)
+                    } else {
+                        true
+                    }
+                });
+            }
         }
 
         let canonical = canonicalize_response(
