@@ -361,7 +361,7 @@ fn parse_directive_items<'p>(
                         WrappedParserError {
                             description: e.description,
                             label: e.label,
-                            span: slice_span(input.span, e.span.clone(), is_snippet),
+                            span: slice_span(input.span, e.span, is_snippet),
                         },
                         input.span,
                     );
