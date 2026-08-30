@@ -528,12 +528,13 @@ pub trait BuilderMethods<'a, 'tcx>:
             let tt = tt.add_indirection();
             let fnc_tree = FncTree { args: vec![tt.clone(), tt], ret: TypeTree::new() };
             let bytes = self.const_usize(layout.size.bytes());
-            let bytes = if layout.peel_transparent_wrappers(self).ty.is_scalable_vector() {
-                let vscale = self.vscale(self.type_i64());
-                self.mul(vscale, bytes)
-            } else {
-                bytes
-            };
+            let bytes =
+                if layout.peel_transparent_wrappers_from_non_1zst(self).ty.is_scalable_vector() {
+                    let vscale = self.vscale(self.type_i64());
+                    self.mul(vscale, bytes)
+                } else {
+                    bytes
+                };
             self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, Some(fnc_tree));
         }
     }
