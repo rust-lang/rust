@@ -18,8 +18,8 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
-    OpaqueTypeKey, PredicateKind, Region, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode, eager_resolve_vars,
+    OpaqueTypeKey, PredicateKind, Region, RegionVid, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, eager_resolve_vars, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -1606,6 +1606,75 @@ where
         let mut unique = HashSet::default();
         if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints {
             r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
+        }
+
+        #[derive(Default)]
+        struct NonTrivialVars {
+            vars: HashSet<RegionVid>,
+        }
+        impl<I> TypeVisitor<I> for NonTrivialVars
+        where
+            I: Interner,
+        {
+            type Result = ();
+            fn visit_ty(&mut self, t: I::Ty) {
+                // If a nested type doesn't have any `ReVar`s, then we won't insert
+                // anything into `vars` anyway, so skip for better perf.
+                if !t.has_infer_regions() {
+                    return;
+                }
+                t.super_visit_with(self);
+            }
+            fn visit_const(&mut self, c: I::Const) {
+                // The same goes for consts.
+                if !c.has_infer_regions() {
+                    return;
+                }
+                c.super_visit_with(self);
+            }
+            fn visit_region(&mut self, r: Region<I>) {
+                if let ty::ReVar(vid) = r.kind() {
+                    self.vars.insert(vid);
+                }
+            }
+        }
+
+        // If we have a constraint like `'re: '?1`, where '?1 can name 're and '?1 appears
+        // only on the RHS of region constraints, then this kind of constraint is also trivial,
+        // since we're able to pick '?1 := 'empty, and 're: 'empty is always true for any 're.
+        if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints
+            && !r.is_empty()
+        {
+            let mut vis = NonTrivialVars::default();
+            var_values.visit_with(&mut vis);
+            // We have to visit each component of `external_constraints` individually here
+            // because we skip the RHS of outlives constraints, and `TypeVisitor` doesn't
+            // have a method we can easily override in order to do this.
+            external_constraints.opaque_types.visit_with(&mut vis);
+            external_constraints.normalization_nested_goals.visit_with(&mut vis);
+            for (constraint, _) in r.iter() {
+                match constraint {
+                    ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, _)) => {
+                        sup.visit_with(&mut vis)
+                    }
+                    ty::RegionConstraint::Eq(eq) => eq.visit_with(&mut vis),
+                }
+            }
+
+            r.retain(|(outlives, _)| {
+                if let ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, re)) = *outlives
+                    && let Some(sup_re) = sup.as_region()
+                    && let ty::RegionKind::ReVar(vid) = re.kind()
+                    // This is only safe if we call `eager_resolve_vars` beforehand,
+                    // which we do.
+                    && self.delegate.universe_of_lt(vid).unwrap()
+                        .can_name(max_universe(&**self.delegate, sup_re))
+                {
+                    vis.vars.contains(&vid)
+                } else {
+                    true
+                }
+            });
         }
 
         let canonical = canonicalize_response(
