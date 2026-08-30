@@ -4430,6 +4430,7 @@ dependencies = [
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_ir",
+ "rustc_attr_ir",
  "rustc_crate_store",
  "rustc_data_structures",
  "rustc_errors",
