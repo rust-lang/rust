@@ -336,7 +336,6 @@ impl FromStr for EmitType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            // modern choices
             "html-static-files" => Ok(Self::HtmlStaticFiles),
             "html-non-static-files" => Ok(Self::HtmlNonStaticFiles),
             "dep-info" => Ok(Self::DepInfo(None)),

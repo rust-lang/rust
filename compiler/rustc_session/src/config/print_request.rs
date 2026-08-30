@@ -22,32 +22,85 @@ pub struct PrintRequest {
 #[derive(AllVariants)]
 pub enum PrintKind {
     // tidy-alphabetical-start
+    /// All target JSON specifications.
     AllTargetSpecsJson,
+
+    /// Does the backend supports the [`PrintRequest::arg`] `asm!()` mnemonic? (perma-unstable)
     BackendHasMnemonic,
+
+    /// Does the backend supports Zstd compression? (perma-unstable)
     BackendHasZstd,
+
+    /// List of all calling conventions supported by rustc.
     CallingConventions,
+
+    /// List of cfg values.
     Cfg,
+
+    /// List of check-cfg values.
     CheckCfg,
+
+    /// List of available code models for the current backend.
     CodeModels,
+
+    /// Name of the crate being compiled.
     CrateName,
+
+    /// Lint levels of the crate's root module.
     CrateRootLintLevels,
+
+    /// The current selected deployment target. (Apple only)
     DeploymentTarget,
+
+    /// The names of the files created by the `--emit=link` option. (e.g. `libfoo.a`)
     FileNames,
+
+    /// Target-tuple of the host compiler.
     HostTuple,
+
+    /// Linker invocations.
     LinkArgs,
+
+    /// When compiling a `staticlib` crate, print the linker flags used.
     NativeStaticLibs,
+
+    /// List of available relocation models for the current backend.
     RelocationModels,
+
+    /// List of available split debuginfos for the current target.
     SplitDebuginfo,
+
+    /// List of available stack protector strategies for the current backend.
     StackProtectorStrategies,
+
+    /// List of available crate types for the current target.
     SupportedCrateTypes,
+
+    /// Path to the sysroot.
     Sysroot,
+
+    /// List of available CPU values for the current target.
     TargetCPUs,
+
+    /// List of available target features for the current target.
     TargetFeatures,
+
+    /// Path to the target libdir.
     TargetLibdir,
+
+    /// List of supported targets.
     TargetList,
+
+    /// Current target JSON specification.
     TargetSpecJson,
+
+    /// Target JSON specification schema.
     TargetSpecJsonSchema,
+
+    /// List of available TLS models for the current backend.
     TlsModels,
+
+    /// Target-tuple for WebAssembly's proc-macro crates.
     WasmProcMacroTuple,
     // tidy-alphabetical-end
 }
