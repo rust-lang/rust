@@ -119,14 +119,16 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> SymbolName<'tcx> {
+    fn symbol_instance(&self, tcx: TyCtxt<'tcx>) -> Instance<'tcx> {
         match *self {
-            MonoItem::Fn(instance) => tcx.symbol_name(instance),
-            MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
-            MonoItem::GlobalAsm(item_id) => {
-                tcx.symbol_name(Instance::mono(tcx, item_id.owner_id.to_def_id()))
-            }
+            MonoItem::Fn(instance) => instance,
+            MonoItem::Static(def_id) => Instance::mono(tcx, def_id),
+            MonoItem::GlobalAsm(item_id) => Instance::mono(tcx, item_id.owner_id.to_def_id()),
         }
+    }
+
+    pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> SymbolName<'tcx> {
+        tcx.symbol_name(self.symbol_instance(tcx))
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
@@ -586,7 +588,12 @@ impl<'tcx> CodegenUnit<'tcx> {
             // See https://github.com/rust-lang/rust/pull/145358 for more details.
             //
             // Sorting by symbol name should not incur any new non-determinism.
-            items.sort_by_cached_key(|&(i, _)| i.symbol_name(tcx));
+            // With v0 mangling, crate disambiguators appear before item names, so sorting by
+            // mangled names can change codegen order when metadata changes.
+            items.sort_by_cached_key(|&(i, _)| {
+                let (linkage, edits) = tcx.symbol_name_and_sort_key(i.symbol_instance(tcx));
+                (edits.reconstruct(tcx, linkage), linkage)
+            });
         } else {
             items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         }

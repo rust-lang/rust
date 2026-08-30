@@ -28,6 +28,25 @@ pub(super) fn mangle<'tcx>(
     instantiating_crate: Option<CrateNum>,
     is_exportable: bool,
 ) -> String {
+    mangle_inner(tcx, instance, instantiating_crate, is_exportable, false).0
+}
+
+pub(super) fn mangle_with_sort_edits<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    instantiating_crate: Option<CrateNum>,
+) -> (String, Vec<u8>) {
+    let (symbol, sorting) = mangle_inner(tcx, instance, instantiating_crate, false, true);
+    (symbol, sorting.unwrap())
+}
+
+fn mangle_inner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    instantiating_crate: Option<CrateNum>,
+    is_exportable: bool,
+    generate_sort_key: bool,
+) -> (String, Option<Vec<u8>>) {
     let def_id = instance.def_id();
     // FIXME(eddyb) this should ideally not be needed.
     let args = tcx.normalize_erasing_regions(
@@ -36,15 +55,22 @@ pub(super) fn mangle<'tcx>(
     );
 
     let prefix = "_R";
+
+    // Avoid repeatedly growing the linkage buffer.
+    let mut out = String::with_capacity(if generate_sort_key { 128 } else { prefix.len() });
+    out.push_str(prefix);
+
     let mut p: V0SymbolMangler<'_> = V0SymbolMangler {
         tcx,
         start_offset: prefix.len(),
         is_exportable,
+        sort_edits: generate_sort_key.then(Vec::new),
+        removed_bytes: 0,
         paths: FxHashMap::default(),
         types: FxHashMap::default(),
         consts: FxHashMap::default(),
         binders: vec![],
-        out: String::from(prefix),
+        out,
     };
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
@@ -84,10 +110,21 @@ pub(super) fn mangle<'tcx>(
     } else {
         p.print_def_path(def_id, args).unwrap()
     };
+    // The instantiating crate suffix is only part of the linkage symbol.
+    let suffix_start = p.out.len();
+    let mut sort_edits = p.sort_edits.take();
+
     if let Some(instantiating_crate) = instantiating_crate {
         p.print_def_path(instantiating_crate.as_def_id(), ty::GenericArgs::empty()).unwrap();
     }
-    std::mem::take(&mut p.out)
+
+    if let Some(edits) = &mut sort_edits
+        && suffix_start != p.out.len()
+    {
+        ty::push_sort_edit(edits, suffix_start, p.out.len(), None);
+    }
+
+    (std::mem::take(&mut p.out), sort_edits)
 }
 
 pub fn mangle_cgu<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum, cgu_name: Either<u64, &str>) -> String {
@@ -96,6 +133,8 @@ pub fn mangle_cgu<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum, cgu_name: Either<u64
         tcx,
         start_offset: prefix.len(),
         is_exportable: false,
+        sort_edits: None,
+        removed_bytes: 0,
         paths: FxHashMap::default(),
         types: FxHashMap::default(),
         consts: FxHashMap::default(),
@@ -161,6 +200,8 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
         tcx,
         start_offset: prefix.len(),
         is_exportable: false,
+        sort_edits: None,
+        removed_bytes: 0,
         paths: FxHashMap::default(),
         types: FxHashMap::default(),
         consts: FxHashMap::default(),
@@ -203,6 +244,8 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
         tcx,
         start_offset: 0,
         is_exportable: false,
+        sort_edits: None,
+        removed_bytes: 0,
         paths: FxHashMap::default(),
         types: FxHashMap::default(),
         consts: FxHashMap::default(),
@@ -231,19 +274,32 @@ struct V0SymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
     binders: Vec<BinderLevel>,
     out: String,
+    // Ordered edits that reconstruct the normalized sorting key.
+    sort_edits: Option<Vec<u8>>,
+    // Number of bytes removed from the normalized output so far, including
+    // any shortening of backreferences after removing crate disambiguators.
+    removed_bytes: usize,
     is_exportable: bool,
 
     /// The length of the prefix in `out` (e.g. 2 for `_R`).
     start_offset: usize,
-    /// The values are start positions in `out`, in bytes.
-    paths: FxHashMap<(DefId, ty::GenericArgs<'tcx>), usize>,
-    types: FxHashMap<Ty<'tcx>, usize>,
-    consts: FxHashMap<ty::Const<'tcx>, usize>,
+    /// Cached byte positions in the linkage symbol and normalized ordering key.
+    /// The second offset is unused when no sorting key is being generated.
+    paths: FxHashMap<(DefId, ty::GenericArgs<'tcx>), (usize, usize)>,
+    types: FxHashMap<Ty<'tcx>, (usize, usize)>,
+    consts: FxHashMap<ty::Const<'tcx>, (usize, usize)>,
 }
 
 impl<'tcx> V0SymbolMangler<'tcx> {
     fn push(&mut self, s: &str) {
         self.out.push_str(s);
+    }
+
+    fn offsets(&self) -> (usize, usize) {
+        (
+            self.out.len(),
+            if self.sort_edits.is_some() { self.out.len() - self.removed_bytes } else { 0 },
+        )
     }
 
     /// Push a `_`-terminated base 62 integer, using the format
@@ -275,6 +331,7 @@ impl<'tcx> V0SymbolMangler<'tcx> {
     /// mangled names is not occasionally shorter due to the hash value. This fixed-length encoding
     /// prevents binary sizes from fluctuating between builds of the compiler.
     fn push_disambiguator_fixed_len(&mut self, dis: Hash64) {
+        let start = self.out.len();
         let x = dis.as_u64();
         if let Some(x) = x.checked_sub(1) {
             self.push("s");
@@ -282,6 +339,13 @@ impl<'tcx> V0SymbolMangler<'tcx> {
                 self.out.push_str(&x.to_base_fixed_len(62));
             }
             self.out.push('_');
+        }
+
+        if let Some(edits) = &mut self.sort_edits
+            && start != self.out.len()
+        {
+            ty::push_sort_edit(edits, start, self.out.len(), None);
+            self.removed_bytes += self.out.len() - start;
         }
     }
 
@@ -304,9 +368,21 @@ impl<'tcx> V0SymbolMangler<'tcx> {
         Ok(())
     }
 
-    fn print_backref(&mut self, i: usize) -> Result<(), PrintError> {
+    fn print_backref(&mut self, i: (usize, usize)) -> Result<(), PrintError> {
         self.push("B");
-        self.push_integer_62((i - self.start_offset) as u64);
+        let start = self.out.len();
+        push_integer_62((i.0 - self.start_offset) as u64, &mut self.out);
+
+        if let Some(edits) = &mut self.sort_edits
+            && i.0 != i.1
+        {
+            let end = self.out.len();
+            let offset = i.1 - self.start_offset;
+            ty::push_sort_edit(edits, start, end, Some(offset));
+            // Removing earlier bytes shifts backreference targets. Encoding
+            // the adjusted offset may also shorten the backreference itself.
+            self.removed_bytes += end - start - integer_62_len(offset);
+        }
         Ok(())
     }
 
@@ -372,7 +448,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         if let Some(&i) = self.paths.get(&(def_id, args)) {
             return self.print_backref(i);
         }
-        let start = self.out.len();
+        let start = self.offsets();
 
         self.default_print_def_path(def_id, args)?;
 
@@ -558,7 +634,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         if let Some(&i) = self.types.get(&ty) {
             return self.print_backref(i);
         }
-        let start = self.out.len();
+        let start = self.offsets();
 
         match *ty.kind() {
             // Basic types, handled above.
@@ -806,7 +882,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         }
 
         let ty::Value { ty: ct_ty, valtree } = cv;
-        let start = self.out.len();
+        let start = self.offsets();
 
         match ct_ty.kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
@@ -1069,11 +1145,20 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
 /// * `x = 0` is encoded as just the `"_"` terminator
 /// * `x > 0` is encoded as `x - 1` in base 62, followed by `"_"`,
 ///   e.g. `1` becomes `"0_"`, `62` becomes `"Z_"`, etc.
-pub(crate) fn push_integer_62(x: u64, output: &mut String) {
-    if let Some(x) = x.checked_sub(1) {
-        output.push_str(&x.to_base(62));
+pub(crate) use rustc_middle::ty::push_symbol_integer_62 as push_integer_62;
+
+// Length of the v0 base62 integer encoding, including the terminator.
+fn integer_62_len(x: usize) -> usize {
+    if let Some(mut x) = x.checked_sub(1) {
+        let mut len = 2;
+        while x >= 62 {
+            x /= 62;
+            len += 1;
+        }
+        len
+    } else {
+        1
     }
-    output.push('_');
 }
 
 pub(crate) fn encode_integer_62(x: u64) -> String {

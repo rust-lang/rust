@@ -2570,6 +2570,101 @@ pub struct SymbolName<'tcx> {
     pub name: &'tcx str,
 }
 
+impl<'tcx> TyCtxt<'tcx> {
+    /// Returns the linkage symbol for calling an instance from the local crate,
+    /// including instances provided by upstream crates.
+    #[inline]
+    pub fn symbol_name(self, instance: Instance<'tcx>) -> SymbolName<'tcx> {
+        self.symbol_name_and_sort_key(instance).0
+    }
+}
+
+/// Ordered, non-overlapping edits to the original linkage symbol that remove
+/// v0 crate disambiguators and the instantiating crate suffix, adjusting backreferences.
+///
+/// The compact byte representation enables bulk hashing and serialization.
+#[derive(Clone, Copy, Debug, TyEncodable, StableHash)]
+pub struct SymbolNameSortEdits<'tcx> {
+    edits: &'tcx [u8],
+}
+
+impl<'tcx> SymbolNameSortEdits<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, edits: &[u8]) -> Self {
+        Self { edits: tcx.arena.alloc_slice(edits) }
+    }
+
+    pub fn reconstruct(self, tcx: TyCtxt<'tcx>, linkage: SymbolName<'tcx>) -> SymbolName<'tcx> {
+        if self.edits.is_empty() {
+            return linkage;
+        }
+
+        let mut output = String::with_capacity(linkage.name.len());
+        let mut previous = 0;
+
+        let mut edits = self.edits;
+        while !edits.is_empty() {
+            let start = read_sort_edit_integer(&mut edits);
+            let len = read_sort_edit_integer(&mut edits);
+            let replacement = read_sort_edit_integer(&mut edits);
+
+            output.push_str(&linkage.name[previous..start]);
+            if let Some(offset) = replacement.checked_sub(1) {
+                push_symbol_integer_62(offset as u64, &mut output);
+            }
+            previous = start + len;
+        }
+
+        output.push_str(&linkage.name[previous..]);
+
+        SymbolName::new(tcx, &output)
+    }
+}
+
+// Each edit consists of three unsigned LEB128 integers:
+// the start position, removed length, and replacement offset plus one
+// (zero denotes a deletion).
+#[inline]
+pub fn push_sort_edit(edits: &mut Vec<u8>, start: usize, end: usize, backref: Option<usize>) {
+    use rustc_serialize::leb128::{max_leb128_len, write_usize_leb128};
+
+    let mut buffer = [0; max_leb128_len::<usize>()];
+    for value in [start, end - start, backref.map_or(0, |offset| offset + 1)] {
+        let len = write_usize_leb128(&mut buffer, value);
+        edits.extend_from_slice(&buffer[..len]);
+    }
+}
+
+// Read an unsigned LEB128 integer from the edit stream.
+#[inline]
+fn read_sort_edit_integer(bytes: &mut &[u8]) -> usize {
+    let mut result = 0;
+    let mut shift = 0;
+
+    loop {
+        let (&byte, rest) = bytes.split_first().expect("truncated symbol sort edit");
+        *bytes = rest;
+        let value = usize::from(byte & 0x7f);
+        assert!(shift < usize::BITS && value <= usize::MAX >> shift);
+        result |= value << shift;
+
+        if byte & 0x80 == 0 {
+            return result;
+        }
+
+        shift += 7;
+    }
+}
+
+/// Append an integer using the v0 symbol mangling base62 encoding.
+pub fn push_symbol_integer_62(x: u64, output: &mut String) {
+    use rustc_data_structures::base_n::ToBaseN;
+
+    if let Some(x) = x.checked_sub(1) {
+        output.push_str(&x.to_base(62));
+    }
+    output.push('_');
+}
+
 impl<'tcx> SymbolName<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, name: &str) -> SymbolName<'tcx> {
         SymbolName { name: tcx.arena.alloc_str(name) }

@@ -121,11 +121,12 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
     instance: Instance<'tcx>,
     instantiating_crate: CrateNum,
 ) -> String {
-    compute_symbol_name(tcx, instance, || instantiating_crate)
+    compute_symbol_name(tcx, instance, None, || instantiating_crate)
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
+    *providers =
+        Providers { symbol_name_and_sort_key: symbol_name_and_sort_key_provider, ..*providers };
 }
 
 /// Compute the v0 symbol name for an offload kernel instance. Forces
@@ -140,11 +141,13 @@ pub fn mangle_offload_export<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) 
     v0::mangle(tcx, instance, instantiating_crate, true)
 }
 
-// The `symbol_name` query provides the symbol name for calling a given
-// instance from the local crate. In particular, it will also look up the
-// correct symbol name of instances from upstream crates.
-fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
-    let symbol_name = compute_symbol_name(tcx, instance, || {
+fn symbol_name_and_sort_key_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> (ty::SymbolName<'tcx>, ty::SymbolNameSortEdits<'tcx>) {
+    let mut sorting = Vec::new();
+
+    let linkage = compute_symbol_name(tcx, instance, Some(&mut sorting), || {
         // This closure determines the instantiating crate for instances that
         // need an instantiating-crate-suffix for their symbol name, in order
         // to differentiate between local copies.
@@ -159,7 +162,7 @@ fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty
         }
     });
 
-    ty::SymbolName::new(tcx, &symbol_name)
+    (ty::SymbolName::new(tcx, &linkage), ty::SymbolNameSortEdits::new(tcx, &sorting))
 }
 
 pub fn typeid_for_trait_ref<'tcx>(
@@ -250,6 +253,7 @@ pub fn symbol_name_from_attrs<'tcx>(
 fn compute_symbol_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
+    sort_key: Option<&mut Vec<u8>>,
     compute_instantiating_crate: impl FnOnce() -> CrateNum,
 ) -> String {
     let def_id = instance.def_id();
@@ -310,6 +314,18 @@ fn compute_symbol_name<'tcx>(
     // host and device passes have different stable_crate_ids.
     let is_offload_kernel = tcx.def_kind(def_id).has_codegen_attrs()
         && tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::OFFLOAD_KERNEL);
+    // Record the edits needed to reconstruct the ordering key while
+    // generating the linkage symbol, avoiding a second mangling traversal.
+    let mangle_v0 = || {
+        if let Some(sort_key) = sort_key {
+            let (linkage, sorting) = v0::mangle_with_sort_edits(tcx, instance, instantiating_crate);
+            *sort_key = sorting;
+            linkage
+        } else {
+            v0::mangle(tcx, instance, instantiating_crate, false)
+        }
+    };
+
     let symbol = if is_offload_kernel {
         v0::mangle(tcx, instance, instantiating_crate, true)
     } else {
@@ -340,13 +356,9 @@ fn compute_symbol_name<'tcx>(
                             && mangled_name.len() > MAX_SYMBOL_LENGTH
                     };
 
-                    if mangled_name_too_long {
-                        v0::mangle(tcx, instance, instantiating_crate, false)
-                    } else {
-                        mangled_name
-                    }
+                    if mangled_name_too_long { mangle_v0() } else { mangled_name }
                 }
-                SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate, false),
+                SymbolManglingVersion::V0 => mangle_v0(),
                 SymbolManglingVersion::Hashed => {
                     hashed::mangle(tcx, instance, instantiating_crate, || {
                         v0::mangle(tcx, instance, instantiating_crate, false)
