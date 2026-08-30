@@ -479,6 +479,10 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     f.set_file_info(new_info)
 }
 
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
+}
+
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
     // UEFI does not support symlinks
     set_perm_nofollow(p, perm)
