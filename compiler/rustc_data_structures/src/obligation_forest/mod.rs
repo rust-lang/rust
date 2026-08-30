@@ -70,11 +70,11 @@
 //! aren't needed anymore.
 
 use std::cell::Cell;
-use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash;
 use std::marker::PhantomData;
 
+use hashbrown::hash_map::Entry;
 use thin_vec::ThinVec;
 use tracing::debug;
 

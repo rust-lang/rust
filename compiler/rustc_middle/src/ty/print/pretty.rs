@@ -3566,7 +3566,7 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
     // Put the symbol from all the unique namespace+symbol pairs into `map`.
     let mut map: DefIdMap<Symbol> = Default::default();
     for ((_, symbol), opt_def_id) in unique_symbols_rev.drain(..) {
-        use std::collections::hash_map::Entry::{Occupied, Vacant};
+        use rustc_data_structures::hash_map::Entry::{Occupied, Vacant};
 
         if let Some(def_id) = opt_def_id {
             match map.entry(def_id) {

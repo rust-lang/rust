@@ -6,7 +6,7 @@ use rustc_ast_pretty::pprust::path_to_string;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::EarlyContext;
 use rustc_span::{Span, Symbol, sym};
-use std::collections::hash_map::Entry;
+use rustc_data_structures::hash_map::Entry;
 
 fn emit_if_duplicated(
     cx: &EarlyContext<'_>,

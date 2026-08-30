@@ -1,6 +1,14 @@
-pub use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet, FxHasher};
+pub use rustc_hash::{FxBuildHasher, FxHasher};
 
-pub type StdEntry<'a, K, V> = std::collections::hash_map::Entry<'a, K, V>;
+// These are `hashbrown`'s hash map and set rather than the standard library's, even though the
+// standard library's are themselves a thin wrapper around `hashbrown`. Depending on `hashbrown`
+// directly means the compiler uses the version this workspace resolves, rather than whichever copy
+// happens to be baked into the standard library it is compiled against. [LLM-generated]
+pub type FxHashMap<K, V> = hashbrown::HashMap<K, V, FxBuildHasher>;
+pub type FxHashSet<V> = hashbrown::HashSet<V, FxBuildHasher>;
+
+pub type MapEntry<'a, K, V> = hashbrown::hash_map::Entry<'a, K, V, FxBuildHasher>;
+pub type MapOccupiedError<'a, K, V> = hashbrown::hash_map::OccupiedError<'a, K, V, FxBuildHasher>;
 
 pub type FxIndexMap<K, V> = indexmap::IndexMap<K, V, FxBuildHasher>;
 pub type FxIndexSet<V> = indexmap::IndexSet<V, FxBuildHasher>;
@@ -14,7 +22,7 @@ macro_rules! define_id_collections {
     ($map_name:ident, $set_name:ident, $entry_name:ident, $key:ty) => {
         pub type $map_name<T> = $crate::unord::UnordMap<$key, T>;
         pub type $set_name = $crate::unord::UnordSet<$key>;
-        pub type $entry_name<'a, T> = $crate::fx::StdEntry<'a, $key, T>;
+        pub type $entry_name<'a, T> = $crate::fx::MapEntry<'a, $key, T>;
     };
 }
 

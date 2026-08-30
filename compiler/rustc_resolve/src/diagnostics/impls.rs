@@ -1993,7 +1993,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         });
 
         if let Some((def_id, unused_ident)) = unused_macro {
-            let scope = self.local_macro_def_scopes[&def_id];
+            let scope = self.local_macro_def_scopes[def_id];
             let parent_nearest = parent_scope.module.nearest_parent_mod();
             let unused_macro_kinds = self.local_macro_map[def_id].macro_kinds();
             if !unused_macro_kinds.contains(macro_kind.into()) {

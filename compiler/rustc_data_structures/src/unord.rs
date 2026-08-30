@@ -3,7 +3,6 @@
 //! as required by the query system.
 
 use std::borrow::{Borrow, BorrowMut};
-use std::collections::hash_map::{Entry, OccupiedError};
 use std::hash::Hash;
 use std::iter::{Product, Sum};
 use std::ops::Index;
@@ -11,7 +10,7 @@ use std::ops::Index;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
 use crate::fingerprint::Fingerprint;
-use crate::fx::{FxBuildHasher, FxHashMap, FxHashSet};
+use crate::fx::{FxBuildHasher, FxHashMap, FxHashSet, MapEntry, MapOccupiedError};
 use crate::stable_hash::{
     StableCompare, StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
@@ -501,7 +500,7 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     }
 
     #[inline]
-    pub fn try_insert(&mut self, k: K, v: V) -> Result<&mut V, OccupiedError<'_, K, V>> {
+    pub fn try_insert(&mut self, k: K, v: V) -> Result<&mut V, MapOccupiedError<'_, K, V>> {
         self.inner.try_insert(k, v)
     }
 
@@ -520,7 +519,7 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
     }
 
     #[inline]
-    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
+    pub fn entry(&mut self, key: K) -> MapEntry<'_, K, V> {
         self.inner.entry(key)
     }
 

@@ -698,7 +698,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             && !redirections.borrow().is_empty()
         {
             let redirect_map_path = self.dst.join(crate_name.as_str()).join("redirect-map.json");
-            let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
+            // `FxHashMap` is `hashbrown`'s, which is not built with serde support here, so the
+            // entries go through a `BTreeMap`. That also makes the output deterministic.
+            // [LLM-generated]
+            let redirections = redirections.borrow();
+            let redirections: BTreeMap<&String, &String> = redirections.iter().collect();
+            let paths = serde_json::to_string(&redirections).unwrap();
             shared.ensure_dir(&self.dst.join(crate_name.as_str()))?;
             shared.fs.write(redirect_map_path, paths)?;
         }

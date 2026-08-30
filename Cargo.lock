@@ -1627,7 +1627,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1033caf0b349c518623b5396bfb2cf0bddf44f0306d543a250e5743297aafd10"
 dependencies = [
  "fnv",
- "hashbrown",
+ "hashbrown 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap",
  "stable_deref_trait",
 ]
@@ -1686,6 +1686,14 @@ dependencies = [
  "foldhash 0.2.0",
  "serde",
  "serde_core",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.17.1"
+source = "git+https://github.com/Zoxc/hashbrown.git?branch=linear-probes#dc5066465f34332634fadf2abb0da9d095da2348"
+dependencies = [
+ "foldhash 0.2.0",
 ]
 
 [[package]]
@@ -1977,7 +1985,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
 dependencies = [
  "equivalent",
- "hashbrown",
+ "hashbrown 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_core",
 ]
@@ -2783,7 +2791,7 @@ checksum = "2e5a6c098c7a3b6547378093f5cc30bc54fd361ce711e05293a5cc589562739b"
 dependencies = [
  "crc32fast",
  "flate2",
- "hashbrown",
+ "hashbrown 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap",
  "memchr",
  "ruzstd",
@@ -3456,7 +3464,7 @@ checksum = "d9776093b7ca170454ab1406954f7b7d97a57c51dc6c0642957fb2ef25c2d399"
 dependencies = [
  "bytecheck",
  "bytes",
- "hashbrown",
+ "hashbrown 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap",
  "munge",
  "ptr_meta",
@@ -3915,7 +3923,7 @@ dependencies = [
  "either",
  "elsa",
  "ena",
- "hashbrown",
+ "hashbrown 0.17.1 (git+https://github.com/Zoxc/hashbrown.git?branch=linear-probes)",
  "indexmap",
  "jobserver",
  "libc",
@@ -4760,6 +4768,7 @@ dependencies = [
 name = "rustc_serialize"
 version = "0.0.0"
 dependencies = [
+ "hashbrown 0.17.1 (git+https://github.com/Zoxc/hashbrown.git?branch=linear-probes)",
  "indexmap",
  "rustc_hashes",
  "rustc_macros",
@@ -4983,6 +4992,7 @@ dependencies = [
  "bitflags",
  "derive-where",
  "ena",
+ "hashbrown 0.17.1 (git+https://github.com/Zoxc/hashbrown.git?branch=linear-probes)",
  "indexmap",
  "rustc-hash 2.1.1",
  "rustc_abi",
@@ -5718,7 +5728,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5938a79ecf9cb8198d525ddb37cd8841f66ab98073f6a123af7ed7cdcbb73ae"
 dependencies = [
  "gimli 0.34.0",
- "hashbrown",
+ "hashbrown 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools",
  "object 0.39.1",
  "tracing",
@@ -6464,7 +6474,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d92fc335fb6d48f46bda1d8b26b69e28320c15ac3272208333833d6e217e2b4a"
 dependencies = [
  "bitflags",
- "hashbrown",
+ "hashbrown 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap",
  "semver",
  "serde",
@@ -6883,7 +6893,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f815340f0bb65d9775ae21e56b503b496683557b9b627b195d2766c25fb24ae"
 dependencies = [
  "anyhow",
- "hashbrown",
+ "hashbrown 0.17.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "id-arena",
  "indexmap",
  "log",

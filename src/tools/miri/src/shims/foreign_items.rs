@@ -1,4 +1,4 @@
-use std::collections::hash_map::Entry;
+use rustc_data_structures::hash_map::Entry;
 use std::io::Write;
 use std::path::Path;
 

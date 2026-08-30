@@ -1,6 +1,6 @@
-use std::collections::hash_map::Entry;
 use std::mem;
 
+use rustc_data_structures::hash_map::Entry;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{

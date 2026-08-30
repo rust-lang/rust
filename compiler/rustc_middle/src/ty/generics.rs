@@ -134,7 +134,7 @@ pub struct Generics {
 impl std::fmt::Debug for Generics {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         // ironically, we get this warning because of what we're trying to fix.
-        #[expect(rustc::potential_query_instability)]
+        #[allow(rustc::potential_query_instability)]
         let mut stabilized_hashmap = self.param_def_id_to_index.iter().collect::<Vec<_>>();
         stabilized_hashmap.sort_by_key(|(_, v)| **v);
         f.debug_struct("Generics")

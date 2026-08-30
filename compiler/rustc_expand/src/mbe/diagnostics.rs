@@ -293,7 +293,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             bug!("`Self::prepare()` was not called to initialize context");
         };
 
-        #[expect(
+        #[allow(
             rustc::potential_query_instability,
             reason = "sorting the results deterministically afterwards"
         )]

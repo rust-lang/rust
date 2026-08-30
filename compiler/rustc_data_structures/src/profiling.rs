@@ -82,7 +82,6 @@
 //! [mm]: https://github.com/rust-lang/measureme/
 
 use std::borrow::Borrow;
-use std::collections::hash_map::Entry;
 use std::error::Error;
 use std::fmt::Display;
 use std::path::Path;
@@ -91,6 +90,7 @@ use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 use std::{fs, hint, process};
 
+use hashbrown::hash_map::Entry;
 pub use measureme::EventId;
 use measureme::{EventIdBuilder, Profiler, SerializableString, StringId};
 use parking_lot::RwLock;

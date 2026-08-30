@@ -124,7 +124,7 @@ impl CommentWriter {
     ) {
         debug_assert!(self.enabled);
 
-        use std::collections::hash_map::Entry;
+        use rustc_data_structures::hash_map::Entry;
         match self.entity_comments.entry(entity.into()) {
             Entry::Occupied(mut occ) => {
                 occ.get_mut().push('\n');
@@ -143,7 +143,7 @@ impl CommentWriter {
     ) {
         debug_assert!(self.enabled);
 
-        use std::collections::hash_map::Entry;
+        use rustc_data_structures::hash_map::Entry;
         match self.inst_post_comments.entry(entity) {
             Entry::Occupied(mut occ) => {
                 occ.get_mut().push('\n');
@@ -210,7 +210,7 @@ impl FuncWriter for &'_ CommentWriter {
         inst: Inst,
         indent: usize,
     ) -> fmt::Result {
-        if let Some(comment) = self.entity_comments.get(&inst.into()) {
+        if let Some(comment) = self.entity_comments.get::<AnyEntity>(&inst.into()) {
             writeln!(w, "; {}", comment.replace('\n', "\n; "))?;
         }
         PlainWriter.write_instruction(w, func, aliases, inst, indent)?;

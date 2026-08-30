@@ -1,9 +1,9 @@
 use std::cell::RefCell;
-use std::collections::hash_map;
 use std::rc::Rc;
 
 use itertools::Itertools as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::hash_map;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Subdiagnostic, msg};

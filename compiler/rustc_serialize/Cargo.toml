@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
+hashbrown = { git = "https://github.com/Zoxc/hashbrown.git", branch = "linear-probes", default-features = false }
 indexmap = "2.0.0"
 rustc_hashes = { path = "../rustc_hashes" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

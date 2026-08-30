@@ -636,7 +636,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         items_to_check
     }
 
-    #[expect(
+    #[allow(
         rustc::potential_query_instability,
         reason = "The order of the unsolved items is not important, so we can just collect them into a vector."
     )]

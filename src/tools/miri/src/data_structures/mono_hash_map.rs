@@ -7,7 +7,7 @@
 
 use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::collections::hash_map::Entry;
+use rustc_data_structures::hash_map::Entry;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;

@@ -7,7 +7,7 @@ use rustc_hir::def_id::{LocalDefId, LocalModId};
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{FileName, Span};
-use std::collections::hash_map::Entry;
+use rustc_data_structures::hash_map::Entry;
 
 declare_clippy_lint! {
     /// ### What it does

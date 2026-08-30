@@ -109,7 +109,7 @@ where
                     panic!();
                 }
                 Ok(occupied) => {
-                    let ((key, status), vacant) = occupied.remove();
+                    let ((key, status), vacant) = occupied.remove(|(k, _)| sharded::make_hash(k));
                     if poison {
                         vacant.insert((key, ActiveKeyStatus::Poisoned));
                     }

@@ -1,8 +1,8 @@
-use std::collections::hash_map::Entry;
 use std::fmt;
 use std::ops::Index;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::hash_map::Entry;
 use rustc_hir::Mutability;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
@@ -102,7 +102,7 @@ impl<'tcx> BorrowSet<'tcx> {
 
     // Public method to support Creusot.
     pub fn activations_at_location(&self, location: &Location) -> &[BorrowIndex] {
-        self.activation_map.get(&location).map_or(&[], |activations| &activations[..])
+        self.activation_map.get(location).map_or(&[], |activations| &activations[..])
     }
 
     // Public method to support Creusot.

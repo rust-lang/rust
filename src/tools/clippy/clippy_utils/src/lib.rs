@@ -73,7 +73,7 @@ pub use self::hir_utils::{
 
 use core::mem;
 use core::ops::ControlFlow;
-use std::collections::hash_map::Entry;
+use rustc_data_structures::hash_map::Entry;
 use std::iter::{once, repeat_n, zip};
 use std::sync::{Mutex, OnceLock};
 

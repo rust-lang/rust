@@ -3,7 +3,7 @@ use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet, MapEntry};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
@@ -69,11 +69,11 @@ impl<V: JoinSemiLattice + Clone> JoinSemiLattice for StateData<V> {
         #[allow(rustc::potential_query_instability)]
         for (i, v) in other.map.iter() {
             match self.map.entry(*i) {
-                StdEntry::Vacant(e) => {
+                MapEntry::Vacant(e) => {
                     e.insert(v.clone());
                     changed = true
                 }
-                StdEntry::Occupied(e) => changed |= e.into_mut().join(v),
+                MapEntry::Occupied(e) => changed |= e.into_mut().join(v),
             }
         }
         changed

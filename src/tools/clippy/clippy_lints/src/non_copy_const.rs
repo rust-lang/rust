@@ -39,7 +39,7 @@ use rustc_middle::ty::{
     TypeckResults, TypingEnv, Unnormalized,
 };
 use rustc_span::DUMMY_SP;
-use std::collections::hash_map::Entry;
+use rustc_data_structures::hash_map::Entry;
 
 declare_clippy_lint! {
     /// ### What it does

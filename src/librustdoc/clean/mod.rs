@@ -1737,7 +1737,9 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Type {
                 if let Some(new_ty) = cx.args.get(&did).and_then(|p| p.as_ty()).cloned() {
                     return new_ty;
                 }
-                if let Some(bounds) = cx.impl_trait_bounds.remove(&did.into()) {
+                if let Some(bounds) =
+                    cx.impl_trait_bounds.remove::<crate::core::ImplTraitParam>(&did.into())
+                {
                     return ImplTrait(bounds);
                 }
             }
@@ -2342,7 +2344,9 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Param(ref p) => {
-            if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
+            if let Some(bounds) =
+                cx.impl_trait_bounds.remove::<crate::core::ImplTraitParam>(&p.index.into())
+            {
                 ImplTrait(bounds)
             } else if p.name == kw::SelfUpper {
                 SelfTy

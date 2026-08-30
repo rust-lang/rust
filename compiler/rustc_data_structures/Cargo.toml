@@ -34,7 +34,8 @@ tracing = "0.1"
 # tidy-alphabetical-end
 
 [dependencies.hashbrown]
-version = "0.17.0"
+git = "https://github.com/Zoxc/hashbrown.git"
+branch = "linear-probes"
 default-features = false
 features = ["nightly"]   # for may_dangle
 

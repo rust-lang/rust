@@ -1,7 +1,6 @@
-use std::collections::hash_map::Entry;
-
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::hash_map::Entry;
 use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -452,7 +451,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     overlapping_with.push(reg);
                 });
                 let output_used =
-                    overlapping_with.iter().any(|reg| used_output_regs.contains_key(&reg));
+                    overlapping_with.iter().any(|reg| used_output_regs.contains_key(reg));
 
                 if !output_used {
                     operands.push((

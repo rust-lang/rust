@@ -2,7 +2,6 @@ pub(crate) mod encode;
 mod serde;
 
 use std::collections::BTreeSet;
-use std::collections::hash_map::Entry;
 use std::path::Path;
 use std::string::FromUtf8Error;
 use std::{io, iter};
@@ -12,6 +11,7 @@ use ::serde::ser::{SerializeSeq, Serializer};
 use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::hash_map::Entry;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
 use rustc_hir::find_attr;

@@ -538,7 +538,7 @@ pub(crate) fn provide(providers: &mut Providers) {
                 // hope that this doesn't cause issues anywhere else in the compiler...
                 let mut result: UnordMap<String, Stability> = Default::default();
                 for (name, stability) in rustc_target::target_features::all_rust_features() {
-                    use std::collections::hash_map::Entry;
+                    use rustc_data_structures::hash_map::Entry;
                     match result.entry(name.to_owned()) {
                         Entry::Vacant(vacant_entry) => {
                             vacant_entry.insert(stability);

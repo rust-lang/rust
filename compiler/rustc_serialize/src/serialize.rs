@@ -661,6 +661,57 @@ where
     }
 }
 
+impl<E: Encoder, K, V, S> Encodable<E> for hashbrown::HashMap<K, V, S>
+where
+    K: Encodable<E> + Eq,
+    V: Encodable<E>,
+    S: BuildHasher,
+{
+    fn encode(&self, e: &mut E) {
+        e.emit_usize(self.len());
+        for (key, val) in self {
+            key.encode(e);
+            val.encode(e);
+        }
+    }
+}
+
+impl<D: Decoder, K, V, S> Decodable<D> for hashbrown::HashMap<K, V, S>
+where
+    K: Decodable<D> + Hash + Eq,
+    V: Decodable<D>,
+    S: BuildHasher + Default,
+{
+    fn decode(d: &mut D) -> hashbrown::HashMap<K, V, S> {
+        let len = d.read_usize();
+        (0..len).map(|_| (Decodable::decode(d), Decodable::decode(d))).collect()
+    }
+}
+
+impl<E: Encoder, T, S> Encodable<E> for hashbrown::HashSet<T, S>
+where
+    T: Encodable<E> + Eq,
+    S: BuildHasher,
+{
+    fn encode(&self, s: &mut E) {
+        s.emit_usize(self.len());
+        for e in self {
+            e.encode(s);
+        }
+    }
+}
+
+impl<D: Decoder, T, S> Decodable<D> for hashbrown::HashSet<T, S>
+where
+    T: Decodable<D> + Hash + Eq,
+    S: BuildHasher + Default,
+{
+    fn decode(d: &mut D) -> hashbrown::HashSet<T, S> {
+        let len = d.read_usize();
+        (0..len).map(|_| Decodable::decode(d)).collect()
+    }
+}
+
 impl<E: Encoder, K, V, S> Encodable<E> for indexmap::IndexMap<K, V, S>
 where
     K: Encodable<E> + Hash + Eq,
