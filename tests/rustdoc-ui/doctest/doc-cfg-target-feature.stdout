@@ -1,0 +1,39 @@
+
+running 1 test
+test $DIR/doc-cfg-target-feature.rs - foo (line 14) ... FAILED
+
+failures:
+
+---- $DIR/doc-cfg-target-feature.rs - foo (line 14) stdout ----
+warning: the feature `cfg_target_feature` has been stable since 1.27.0 and no longer requires an attribute to enable
+  --> $DIR/doc-cfg-target-feature.rs:14:12
+   |
+LL | #![feature(cfg_target_feature)]
+   |            ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(stable_features)]` on by default
+
+warning: 1 warning emitted
+
+Test executable failed (exit status: 101).
+
+stderr:
+
+thread 'main' ($TID) panicked at $DIR/doc-cfg-target-feature.rs:7:1:
+assertion failed: false
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::panic
+   3: rust_out::main::_doctest_main__home_imperio_rust_rust_tests_rustdoc_ui_doctest_doc_cfg_target_feature_rs_14_0
+   4: rust_out::main
+   5: <fn() as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+
+failures:
+    $DIR/doc-cfg-target-feature.rs - foo (line 14)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

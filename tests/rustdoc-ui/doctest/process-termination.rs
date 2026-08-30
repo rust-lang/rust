@@ -1,4 +1,6 @@
-//@ compile-flags:--test
+//@ compile-flags:--test --test-args=--test-threads=1
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ check-pass
 
 /// A check of using various process termination strategies
 ///

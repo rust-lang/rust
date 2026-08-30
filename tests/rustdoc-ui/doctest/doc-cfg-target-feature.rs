@@ -1,6 +1,7 @@
 //@ only-x86_64
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ compile-flags:--test
-//@ should-fail
+//@ failure-status: 101
 
 // #49723: rustdoc didn't add target features when extracting or running doctests
 
