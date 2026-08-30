@@ -40,6 +40,28 @@ core::test_binder_constraints! {
     }
 }
 
+// `&'b u8: 'a` implies `'b: 'a`, so type outlives assumptions have to be destructured into
+// region outlives assumptions.
+core::test_binder_constraints! {
+    impl<> {
+        forall<'a, 'b> where &'b u8: 'a {
+            'b: 'a
+        } expect {
+        }
+    }
+}
+
+// Binders in a type outlives assumption are skipped rather than bailed on, so
+// `for<'c> fn(&'c (), &'b u8): 'a` still gives us `'b: 'a`.
+core::test_binder_constraints! {
+    impl<> {
+        forall<'a, 'b> where for<'c> fn(&'c (), &'b u8): 'a {
+            'b: 'a
+        } expect {
+        }
+    }
+}
+
 // Discharging entailed constraints must not swallow the ones which still have to be lifted
 // into the outer universe. Here `'a: 'a` and `'b: 'a` are discharged inside the binder while
 // `'c: 'a` is lifted, as `'c` outlives every lower universe region that `'a` outlives.
