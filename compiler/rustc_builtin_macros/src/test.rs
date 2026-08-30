@@ -31,7 +31,7 @@ pub(crate) fn expand_test_case(
     attr_sp: Span,
     meta_item: &ast::MetaItem,
     anno_item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     check_builtin_macro_attribute(ecx, meta_item, sym::test_case);
     warn_on_duplicate_attribute(ecx, &anno_item, sym::test_case);
 
@@ -47,12 +47,12 @@ pub(crate) fn expand_test_case(
         }
         _ => {
             ecx.dcx().emit_err(diagnostics::TestCaseNonItem { span: anno_item.span() });
-            return vec![];
+            return;
         }
     };
 
     if !ecx.ecfg.should_test {
-        return vec![];
+        return;
     }
 
     // `#[test_case]` is valid on functions, consts, and statics. Only modify
@@ -79,7 +79,7 @@ pub(crate) fn expand_test_case(
         Annotatable::Item(item)
     };
 
-    vec![ret]
+    ecx.annotatable_arena.push(ret);
 }
 
 pub(crate) fn expand_test(
@@ -87,10 +87,10 @@ pub(crate) fn expand_test(
     attr_sp: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     check_builtin_macro_attribute(cx, meta_item, sym::test);
     warn_on_duplicate_attribute(cx, &item, sym::test);
-    expand_test_or_bench(cx, attr_sp, item, false)
+    expand_test_or_bench(cx, attr_sp, item, false);
 }
 
 pub(crate) fn expand_bench(
@@ -98,39 +98,40 @@ pub(crate) fn expand_bench(
     attr_path_sp: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     check_builtin_macro_attribute(cx, meta_item, sym::bench);
     warn_on_duplicate_attribute(cx, &item, sym::bench);
-    expand_test_or_bench(cx, attr_path_sp, item, true)
+    expand_test_or_bench(cx, attr_path_sp, item, true);
 }
 
 pub(crate) fn expand_test_or_bench(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
     item: Annotatable,
     is_bench: bool,
-) -> Vec<Annotatable> {
+) {
     let (item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
         Annotatable::Stmt(ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
         other => {
             not_testable_error(cx, is_bench, attr_sp, None);
-            return vec![other];
+            cx.annotatable_arena.push(other);
+            return;
         }
     };
 
     let ast::ItemKind::Fn(fn_) = &item.kind else {
         not_testable_error(cx, is_bench, attr_sp, Some(&item));
         return if is_stmt {
-            vec![Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item)))]
+            cx.annotatable_arena.push(Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item))));
         } else {
-            vec![Annotatable::Item(item)]
+            cx.annotatable_arena.push(Annotatable::Item(item));
         };
     };
 
     // If we're not in test configuration, remove the annotated item
     if !cx.ecfg.should_test {
-        return vec![];
+        return;
     }
 
     if let Some(attr) = attr::find_by_name(&item.attrs, sym::naked) {
@@ -138,7 +139,8 @@ pub(crate) fn expand_test_or_bench(
             testing_span: attr_sp,
             naked_span: attr.span,
         });
-        return vec![Annotatable::Item(item)];
+        cx.annotatable_arena.push(Annotatable::Item(item));
+        return;
     }
 
     // check_*_signature will report any errors in the type so compilation
@@ -151,9 +153,9 @@ pub(crate) fn expand_test_or_bench(
     };
     if check_result.is_err() {
         return if is_stmt {
-            vec![Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item)))]
+            cx.annotatable_arena.push(Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item))));
         } else {
-            vec![Annotatable::Item(item)]
+            cx.annotatable_arena.push(Annotatable::Item(item));
         };
     }
 
@@ -389,23 +391,23 @@ pub(crate) fn expand_test_or_bench(
     debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     if is_stmt {
-        vec![
+        cx.annotatable_arena.extend([
             // Access to libtest under a hygienic name
             Annotatable::Stmt(Box::new(cx.stmt_item(sp, test_extern))),
             // The generated test case
             Annotatable::Stmt(Box::new(cx.stmt_item(sp, test_const))),
             // The original item
             Annotatable::Stmt(Box::new(cx.stmt_item(sp, item))),
-        ]
+        ]);
     } else {
-        vec![
+        cx.annotatable_arena.extend([
             // Access to libtest under a hygienic name
             Annotatable::Item(test_extern),
             // The generated test case
             Annotatable::Item(test_const),
             // The original item
             Annotatable::Item(item),
-        ]
+        ]);
     }
 }
 

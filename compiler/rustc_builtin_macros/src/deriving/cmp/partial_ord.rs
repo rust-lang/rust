@@ -8,11 +8,11 @@ use crate::deriving::generic::*;
 use crate::deriving::{path_std, pathvec};
 
 pub(crate) fn expand_deriving_partial_ord(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     let ordering_ty = Path(path_std!(cmp::Ordering));
@@ -99,7 +99,7 @@ pub(crate) fn expand_deriving_partial_ord(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand_ext(cx, mitem, item, push, is_simple)
+    trait_def.expand_ext(cx, mitem, item, transform, is_simple)
 }
 
 // Special case for the type deriving both `PartialOrd` and `Ord`. Builds:

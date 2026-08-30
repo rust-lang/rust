@@ -8,11 +8,11 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_hash(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     let path = path_std!(hash::Hash);
@@ -43,7 +43,7 @@ pub(crate) fn expand_deriving_hash(
         document: true,
     };
 
-    hash_trait_def.expand(cx, mitem, item, push);
+    hash_trait_def.expand(cx, mitem, item, transform);
 }
 
 fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> BlockOrExpr {

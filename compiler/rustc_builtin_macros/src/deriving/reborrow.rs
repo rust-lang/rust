@@ -12,26 +12,26 @@ macro_rules! path {
 }
 
 pub(crate) fn expand_deriving_reborrow(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     _is_const: bool,
 ) {
     let Some((ident, generics)) = struct_def(cx, span, item, sym::Reborrow) else {
         return;
     };
 
-    push_marker_impl(cx, span, ident, generics, sym::Reborrow, Vec::new(), push);
+    push_marker_impl(cx, span, ident, generics, sym::Reborrow, Vec::new(), transform);
 }
 
 pub(crate) fn expand_deriving_coerce_shared(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     _is_const: bool,
 ) {
     let Some((ident, generics)) = struct_def(cx, span, item, sym::CoerceShared) else {
@@ -48,7 +48,7 @@ pub(crate) fn expand_deriving_coerce_shared(
         generics,
         sym::CoerceShared,
         vec![GenericArg::Type(target)],
-        push,
+        transform,
     );
 }
 
@@ -124,13 +124,13 @@ fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &Annotatable) -> Opt
 }
 
 fn push_marker_impl(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     ident: Ident,
     generics: &Generics,
     trait_name: Symbol,
     trait_args: Vec<GenericArg>,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
 ) {
     let mut trait_parts = path!(span, core::marker);
     trait_parts.push(Ident::new(trait_name, span));
@@ -154,7 +154,7 @@ fn push_marker_impl(
         .collect();
     let self_ty = cx.ty_path(cx.path_all(span, false, vec![ident], self_params));
 
-    push(Annotatable::Item(cx.item(
+    cx.annotatable_arena.push(transform(Annotatable::Item(cx.item(
         span,
         thin_vec::thin_vec![cx.attr_word(sym::automatically_derived, span)],
         ast::ItemKind::Impl(ast::Impl {
@@ -169,7 +169,7 @@ fn push_marker_impl(
             self_ty,
             items: ThinVec::new(),
         }),
-    )));
+    ))));
 }
 
 fn impl_generics(cx: &ExtCtxt<'_>, generics: &Generics) -> Generics {

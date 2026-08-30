@@ -471,20 +471,20 @@ fn find_type_parameters(
 impl<'a> TraitDef<'a> {
     pub(crate) fn expand(
         self,
-        cx: &ExtCtxt<'_>,
+        cx: &mut ExtCtxt<'_>,
         mitem: &ast::MetaItem,
         item: &'a Annotatable,
-        push: &mut dyn FnMut(Annotatable),
+        transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     ) {
-        self.expand_ext(cx, mitem, item, push, false);
+        self.expand_ext(cx, mitem, item, transform, false);
     }
 
     pub(crate) fn expand_ext(
         self,
-        cx: &ExtCtxt<'_>,
+        cx: &mut ExtCtxt<'_>,
         mitem: &ast::MetaItem,
         item: &'a Annotatable,
-        push: &mut dyn FnMut(Annotatable),
+        transform: &mut dyn FnMut(Annotatable) -> Annotatable,
         from_scratch: bool,
     ) {
         match item {
@@ -546,7 +546,8 @@ impl<'a> TraitDef<'a> {
                         })
                         .cloned(),
                 );
-                push(Annotatable::Item(Box::new(ast::Item { attrs, ..(*newitem).clone() })))
+                cx.annotatable_arena
+                    .push(transform(Annotatable::Item(Box::new(ast::Item { attrs, ..(*newitem).clone() }))));
             }
             _ => unreachable!(),
         }

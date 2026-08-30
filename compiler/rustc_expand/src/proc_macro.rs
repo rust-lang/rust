@@ -99,7 +99,7 @@ impl MultiItemModifier for DeriveProcMacro {
         _meta_item: &ast::MetaItem,
         item: Annotatable,
         _is_derive_const: bool,
-    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+    ) -> ExpandResult<(), Annotatable> {
         let _timer = record_expand_proc_macro(ecx, "expand_derive_proc_macro_outer", span);
 
         // We need special handling for statement items
@@ -127,12 +127,11 @@ impl MultiItemModifier for DeriveProcMacro {
 
         let Ok(output) = res else {
             // error will already have been emitted
-            return ExpandResult::Ready(vec![]);
+            return ExpandResult::Ready(());
         };
 
         let error_count_before = ecx.dcx().err_count();
         let mut parser = Parser::new(&ecx.sess.psess, output, Some("proc-macro derive"));
-        let mut items = vec![];
 
         loop {
             match parser.parse_item(
@@ -142,9 +141,10 @@ impl MultiItemModifier for DeriveProcMacro {
                 Ok(None) => break,
                 Ok(Some(item)) => {
                     if is_stmt {
-                        items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, item))));
+                        ecx.annotatable_arena
+                            .push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, item))));
                     } else {
-                        items.push(Annotatable::Item(item));
+                        ecx.annotatable_arena.push(Annotatable::Item(item));
                     }
                 }
                 Err(err) => {
@@ -159,7 +159,7 @@ impl MultiItemModifier for DeriveProcMacro {
             ecx.dcx().emit_err(diagnostics::ProcMacroDeriveTokens { span });
         }
 
-        ExpandResult::Ready(items)
+        ExpandResult::Ready(())
     }
 }
 

@@ -10,11 +10,11 @@ use crate::deriving::path_std;
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
 /// target item.
 pub(crate) fn expand_deriving_partial_eq(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     let structural_trait_def = TraitDef {
@@ -35,7 +35,7 @@ pub(crate) fn expand_deriving_partial_eq(
         safety: Safety::Default,
         document: true,
     };
-    structural_trait_def.expand(cx, mitem, item, push);
+    structural_trait_def.expand(cx, mitem, item, transform);
 
     // No need to generate `ne`, the default suffices, and not generating it is
     // faster.
@@ -65,7 +65,7 @@ pub(crate) fn expand_deriving_partial_eq(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, item, transform)
 }
 
 /// Generates the equality expression for a struct or enum variant when deriving

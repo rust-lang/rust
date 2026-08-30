@@ -9,11 +9,11 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_eq(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     let span = cx.with_def_site_ctxt(span);
@@ -46,7 +46,7 @@ pub(crate) fn expand_deriving_eq(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand_ext(cx, mitem, item, push, true)
+    trait_def.expand_ext(cx, mitem, item, transform, true)
 }
 
 fn cs_total_eq_assert(

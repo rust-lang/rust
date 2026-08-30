@@ -42,7 +42,7 @@ impl MultiItemModifier for Expander {
         meta_item: &ast::MetaItem,
         item: Annotatable,
         _is_derive_const: bool,
-    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+    ) -> ExpandResult<(), Annotatable> {
         let template = AttributeTemplate { list: Some(&["path"]), ..Default::default() };
         validate_attr::check_builtin_meta_item(
             &ecx.sess.psess,
@@ -54,15 +54,19 @@ impl MultiItemModifier for Expander {
         );
 
         let Some(path) = validate_input(ecx, meta_item) else {
-            return ExpandResult::Ready(Vec::new());
+            return ExpandResult::Ready(());
         };
 
         match ecx.resolver.cfg_accessible(ecx.current_expansion.id, path) {
-            Ok(true) => ExpandResult::Ready(vec![item]),
-            Ok(false) => ExpandResult::Ready(Vec::new()),
+            Ok(true) => {
+                ecx.annotatable_arena.push(item);
+                ExpandResult::Ready(())
+            }
+            Ok(false) => ExpandResult::Ready(()),
             Err(Indeterminate) if ecx.force_mode => {
                 ecx.dcx().emit_err(diagnostics::CfgAccessibleIndeterminate { span });
-                ExpandResult::Ready(vec![item])
+                ecx.annotatable_arena.push(item);
+                ExpandResult::Ready(())
             }
             Err(Indeterminate) => ExpandResult::Retry(item),
         }

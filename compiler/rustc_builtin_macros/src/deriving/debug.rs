@@ -9,11 +9,11 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_debug(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     // &mut ::std::fmt::Formatter
@@ -42,7 +42,7 @@ pub(crate) fn expand_deriving_debug(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, item, transform)
 }
 
 fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {

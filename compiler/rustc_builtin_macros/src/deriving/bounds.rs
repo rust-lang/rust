@@ -6,11 +6,11 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_copy(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     let trait_def = TraitDef {
@@ -27,15 +27,15 @@ pub(crate) fn expand_deriving_copy(
         document: true,
     };
 
-    trait_def.expand(cx, mitem, item, push);
+    trait_def.expand(cx, mitem, item, transform);
 }
 
 pub(crate) fn expand_deriving_const_param_ty(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     let trait_def = TraitDef {
@@ -52,5 +52,5 @@ pub(crate) fn expand_deriving_const_param_ty(
         document: true,
     };
 
-    trait_def.expand(cx, mitem, item, push);
+    trait_def.expand(cx, mitem, item, transform);
 }

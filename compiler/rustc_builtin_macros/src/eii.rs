@@ -35,12 +35,7 @@ use crate::diagnostics::{
 /// #[eii_declaration(panic_handler)]
 /// macro panic_handler() {}
 /// ```
-pub(crate) fn eii(
-    ecx: &mut ExtCtxt<'_>,
-    span: Span,
-    meta_item: &ast::MetaItem,
-    item: Annotatable,
-) -> Vec<Annotatable> {
+pub(crate) fn eii(ecx: &mut ExtCtxt<'_>, span: Span, meta_item: &ast::MetaItem, item: Annotatable) {
     eii_(ecx, span, meta_item, item, false)
 }
 
@@ -49,7 +44,7 @@ pub(crate) fn unsafe_eii(
     span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     eii_(ecx, span, meta_item, item, true)
 }
 
@@ -59,7 +54,7 @@ fn eii_(
     meta_item: &ast::MetaItem,
     orig_item: Annotatable,
     impl_unsafe: bool,
-) -> Vec<Annotatable> {
+) {
     let eii_attr_span = ecx.with_def_site_ctxt(eii_attr_span);
 
     let item = if let Annotatable::Item(item) = orig_item {
@@ -73,13 +68,15 @@ fn eii_(
             name: path_to_string(&meta_item.path),
             item_span: f.ident.span,
         });
-        return vec![orig_item];
+        ecx.annotatable_arena.push(orig_item);
+        return;
     } else {
         ecx.dcx().emit_err(EiiSharedMacroTarget {
             span: eii_attr_span,
             name: path_to_string(&meta_item.path),
         });
-        return vec![orig_item];
+        ecx.annotatable_arena.push(orig_item);
+        return;
     };
 
     let ast::Item { attrs, id: _, span: _, vis, kind, tokens: _ } = item.as_ref();
@@ -94,7 +91,7 @@ fn eii_(
                     span: expr.span,
                     name: path_to_string(&meta_item.path),
                 });
-                return vec![];
+                return;
             }
 
             // Statics must have an explicit name for the eii
@@ -103,7 +100,7 @@ fn eii_(
                     span: eii_attr_span,
                     name: path_to_string(&meta_item.path),
                 });
-                return vec![];
+                return;
             }
 
             // Mut statics are currently not supported
@@ -121,7 +118,8 @@ fn eii_(
                 span: eii_attr_span,
                 name: path_to_string(&meta_item.path),
             });
-            return vec![Annotatable::Item(item)];
+            ecx.annotatable_arena.push(Annotatable::Item(item));
+            return;
         }
     };
 
@@ -129,13 +127,15 @@ fn eii_(
         ItemKind::Fn(func) => {
             if func.eii_impl.is_some() {
                 ecx.dcx().emit_err(EiiBothDeclAndImpl { span: eii_attr_span });
-                return vec![Annotatable::Item(item)];
+                ecx.annotatable_arena.push(Annotatable::Item(item));
+                return;
             }
         }
         ItemKind::Static(stat) => {
             if stat.eii_impl.is_some() {
                 ecx.dcx().emit_err(EiiBothDeclAndImpl { span: eii_attr_span });
-                return vec![Annotatable::Item(item)];
+                ecx.annotatable_arena.push(Annotatable::Item(item));
+                return;
             }
         }
         _ => unreachable!("Target was checked earlier"),
@@ -152,7 +152,8 @@ fn eii_(
     let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, meta_item) else {
         // we don't need to wrap in Annotatable::Stmt conditionally since
         // EII can't be used on items in statement position
-        return vec![Annotatable::Item(item)];
+        ecx.annotatable_arena.push(Annotatable::Item(item));
+        return;
     };
 
     let mut module_items = Vec::new();
@@ -188,7 +189,7 @@ fn eii_(
 
     // we don't need to wrap in Annotatable::Stmt conditionally since
     // EII can't be used on items in statement position
-    module_items.into_iter().map(Annotatable::Item).collect()
+    ecx.annotatable_arena.extend(module_items.into_iter().map(Annotatable::Item));
 }
 
 fn split_attrs(
@@ -521,7 +522,7 @@ pub(crate) fn eii_declaration(
     span: Span,
     meta_item: &ast::MetaItem,
     mut item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     let i = if let Annotatable::Item(ref mut item) = item {
         item
     } else if let Annotatable::Stmt(ref mut stmt) = item
@@ -530,28 +531,33 @@ pub(crate) fn eii_declaration(
         item
     } else {
         ecx.dcx().emit_err(EiiExternTargetExpectedMacro { span });
-        return vec![item];
+        ecx.annotatable_arena.push(item);
+        return;
     };
 
     let ItemKind::MacroDef(_, d) = &mut i.kind else {
         ecx.dcx().emit_err(EiiExternTargetExpectedMacro { span });
-        return vec![item];
+        ecx.annotatable_arena.push(item);
+        return;
     };
 
     let Some(list) = meta_item.meta_item_list() else {
         ecx.dcx().emit_err(EiiExternTargetExpectedList { span: meta_item.span });
-        return vec![item];
+        ecx.annotatable_arena.push(item);
+        return;
     };
 
     if list.len() > 2 {
         ecx.dcx().emit_err(EiiExternTargetExpectedList { span: meta_item.span });
-        return vec![item];
+        ecx.annotatable_arena.push(item);
+        return;
     }
 
     let Some(extern_item_path) = list.get(0).and_then(|i| i.meta_item()).map(|i| i.path.clone())
     else {
         ecx.dcx().emit_err(EiiExternTargetExpectedList { span: meta_item.span });
-        return vec![item];
+        ecx.annotatable_arena.push(item);
+        return;
     };
 
     let impl_unsafe = if let Some(i) = list.get(1) {
@@ -559,7 +565,8 @@ pub(crate) fn eii_declaration(
             true
         } else {
             ecx.dcx().emit_err(EiiExternTargetExpectedUnsafe { span: i.span() });
-            return vec![item];
+            ecx.annotatable_arena.push(item);
+            return;
         }
     } else {
         false
@@ -568,7 +575,7 @@ pub(crate) fn eii_declaration(
     d.eii_declaration = Some(EiiDecl { foreign_item: extern_item_path, impl_unsafe });
 
     // Return the original item and the new methods.
-    vec![item]
+    ecx.annotatable_arena.push(item);
 }
 
 /// all Eiis share this function as the implementation for their attribute.
@@ -577,7 +584,7 @@ pub(crate) fn eii_shared_macro(
     span: Span,
     meta_item: &ast::MetaItem,
     mut item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     let i = if let Annotatable::Item(ref mut item) = item {
         item
     } else if let Annotatable::Stmt(ref mut stmt) = item
@@ -586,7 +593,8 @@ pub(crate) fn eii_shared_macro(
         item
     } else {
         ecx.dcx().emit_err(EiiSharedMacroTarget { span, name: path_to_string(&meta_item.path) });
-        return vec![item];
+        ecx.annotatable_arena.push(item);
+        return;
     };
 
     let eii_impl = match &mut i.kind {
@@ -595,7 +603,8 @@ pub(crate) fn eii_shared_macro(
         _ => {
             ecx.dcx()
                 .emit_err(EiiSharedMacroTarget { span, name: path_to_string(&meta_item.path) });
-            return vec![item];
+            ecx.annotatable_arena.push(item);
+            return;
         }
     };
 
@@ -611,7 +620,8 @@ pub(crate) fn eii_shared_macro(
             span: meta_item.span,
             name: path_to_string(&meta_item.path),
         });
-        return vec![item];
+        ecx.annotatable_arena.push(item);
+        return;
     };
 
     if eii_impl.is_some() {
@@ -627,5 +637,5 @@ pub(crate) fn eii_shared_macro(
         known_eii_macro_resolution: None,
     }));
 
-    vec![item]
+    ecx.annotatable_arena.push(item);
 }

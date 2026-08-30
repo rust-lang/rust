@@ -22,10 +22,15 @@ pub(crate) fn expand(
     _span: Span,
     meta_item: &ast::MetaItem,
     annotatable: Annotatable,
-) -> Vec<Annotatable> {
+) {
     check_builtin_macro_attribute(ecx, meta_item, sym::cfg_eval);
     warn_on_duplicate_attribute(ecx, &annotatable, sym::cfg_eval);
-    vec![cfg_eval(ecx.sess, ecx.ecfg.features, annotatable, ecx.current_expansion.lint_node_id)]
+    ecx.annotatable_arena.push(cfg_eval(
+        ecx.sess,
+        ecx.ecfg.features,
+        annotatable,
+        ecx.current_expansion.lint_node_id,
+    ));
 }
 
 pub(crate) fn cfg_eval(

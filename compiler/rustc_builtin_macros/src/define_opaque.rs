@@ -7,7 +7,7 @@ pub(crate) fn expand(
     _expand_span: Span,
     meta_item: &ast::MetaItem,
     mut item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     let define_opaque = match &mut item {
         Annotatable::Item(p) => match &mut p.kind {
             ast::ItemKind::Fn(f) => Some(&mut f.define_opaque),
@@ -34,7 +34,8 @@ pub(crate) fn expand(
 
     let Some(list) = meta_item.meta_item_list() else {
         ecx.dcx().span_err(meta_item.span, "expected list of type aliases");
-        return vec![item];
+        ecx.annotatable_arena.push(item);
+        return;
     };
 
     if let Some(define_opaque) = define_opaque {
@@ -58,5 +59,5 @@ pub(crate) fn expand(
         );
     }
 
-    vec![item]
+    ecx.annotatable_arena.push(item);
 }

@@ -9,11 +9,11 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_clone(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     // The simple form is `fn clone(&self) -> Self { *self }`, possibly with
@@ -82,7 +82,7 @@ pub(crate) fn expand_deriving_clone(
             document: false,
         };
 
-        trivial_def.expand_ext(cx, mitem, item, push, true);
+        trivial_def.expand_ext(cx, mitem, item, transform, true);
     }
 
     let trait_def = TraitDef {
@@ -108,7 +108,7 @@ pub(crate) fn expand_deriving_clone(
         document: true,
     };
 
-    trait_def.expand_ext(cx, mitem, item, push, is_simple)
+    trait_def.expand_ext(cx, mitem, item, transform, is_simple)
 }
 
 fn cs_clone_simple(

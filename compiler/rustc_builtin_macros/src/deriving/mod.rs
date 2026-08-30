@@ -34,8 +34,14 @@ pub(crate) mod partial_ord;
 
 pub(crate) mod generic;
 
-pub(crate) type BuiltinDeriveFn =
-    fn(&ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable), bool);
+pub(crate) type BuiltinDeriveFn = fn(
+    &mut ExtCtxt<'_>,
+    Span,
+    &MetaItem,
+    &Annotatable,
+    &mut dyn FnMut(Annotatable) -> Annotatable,
+    bool,
+);
 
 pub(crate) struct BuiltinDerive(pub(crate) BuiltinDeriveFn);
 
@@ -47,11 +53,10 @@ impl MultiItemModifier for BuiltinDerive {
         meta_item: &MetaItem,
         item: Annotatable,
         is_derive_const: bool,
-    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+    ) -> ExpandResult<(), Annotatable> {
         // FIXME: Built-in derives often forget to give spans contexts,
         // so we are doing it here in a centralized way.
         let span = ecx.with_def_site_ctxt(span);
-        let mut items = Vec::new();
         match item {
             Annotatable::Stmt(stmt) => {
                 if let ast::StmtKind::Item(item) = stmt.kind {
@@ -63,11 +68,11 @@ impl MultiItemModifier for BuiltinDerive {
                         &mut |a| {
                             // Cannot use 'ecx.stmt_item' here, because we need to pass 'ecx'
                             // to the function
-                            items.push(Annotatable::Stmt(Box::new(ast::Stmt {
+                            Annotatable::Stmt(Box::new(ast::Stmt {
                                 id: ast::DUMMY_NODE_ID,
                                 kind: ast::StmtKind::Item(a.expect_item()),
                                 span,
-                            })));
+                            }))
                         },
                         is_derive_const,
                     );
@@ -76,10 +81,10 @@ impl MultiItemModifier for BuiltinDerive {
                 }
             }
             _ => {
-                (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a), is_derive_const);
+                (self.0)(ecx, span, meta_item, &item, &mut |a| a, is_derive_const);
             }
         }
-        ExpandResult::Ready(items)
+        ExpandResult::Ready(())
     }
 }
 

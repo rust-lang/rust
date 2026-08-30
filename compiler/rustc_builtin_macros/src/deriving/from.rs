@@ -13,11 +13,11 @@ use crate::diagnostics;
 /// Generate an implementation of the `From` trait, provided that `item`
 /// is a struct or a tuple struct with exactly one field.
 pub(crate) fn expand_deriving_from(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &ast::MetaItem,
     annotatable: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     let Annotatable::Item(item) = &annotatable else {
@@ -127,5 +127,5 @@ pub(crate) fn expand_deriving_from(
         document: true,
     };
 
-    from_trait_def.expand(cx, mitem, annotatable, push);
+    from_trait_def.expand(cx, mitem, annotatable, transform);
 }

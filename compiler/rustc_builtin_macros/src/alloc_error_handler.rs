@@ -14,7 +14,7 @@ pub(crate) fn expand(
     _span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     check_builtin_macro_attribute(ecx, meta_item, sym::alloc_error_handler);
 
     let orig_item = item.clone();
@@ -32,7 +32,8 @@ pub(crate) fn expand(
         (item, fn_kind.ident, true, ecx.with_def_site_ctxt(fn_kind.sig.span))
     } else {
         ecx.dcx().emit_err(diagnostics::AllocErrorMustBeFn { span: item.span() });
-        return vec![orig_item];
+        ecx.annotatable_arena.push(orig_item);
+        return;
     };
 
     // Generate a bunch of new items using the AllocFnFactory
@@ -58,7 +59,8 @@ pub(crate) fn expand(
     };
 
     // Return the original item and the new methods.
-    vec![orig_item, const_item]
+    ecx.annotatable_arena.push(orig_item);
+    ecx.annotatable_arena.push(const_item);
 }
 
 // #[rustc_std_internal_symbol]

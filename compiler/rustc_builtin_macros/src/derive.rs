@@ -22,12 +22,13 @@ impl MultiItemModifier for Expander {
         meta_item: &ast::MetaItem,
         item: Annotatable,
         _: bool,
-    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+    ) -> ExpandResult<(), Annotatable> {
         let sess = ecx.sess;
         if report_bad_target(sess, &item, span).is_err() {
             // We don't want to pass inappropriate targets to derive macros to avoid
             // follow up errors, all other errors below are recoverable.
-            return ExpandResult::Ready(vec![item]);
+            ecx.annotatable_arena.push(item);
+            return ExpandResult::Ready(());
         }
 
         let (sess, features) = (ecx.sess, ecx.ecfg.features);
@@ -85,7 +86,10 @@ impl MultiItemModifier for Expander {
             });
 
         match result {
-            Ok(()) => ExpandResult::Ready(vec![item]),
+            Ok(()) => {
+                ecx.annotatable_arena.push(item);
+                ExpandResult::Ready(())
+            }
             Err(Indeterminate) => ExpandResult::Retry(item),
         }
     }

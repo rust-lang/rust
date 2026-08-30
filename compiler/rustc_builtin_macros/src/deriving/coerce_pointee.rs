@@ -19,11 +19,11 @@ macro_rules! path {
 }
 
 pub(crate) fn expand_deriving_coerce_pointee(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     _is_const: bool,
 ) {
     item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
@@ -104,7 +104,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
         let trait_path =
             cx.path_all(span, true, path!(span, core::marker::CoercePointeeValidated), vec![]);
         let trait_ref = cx.trait_ref(trait_path);
-        push(Annotatable::Item(
+        cx.annotatable_arena.push(transform(Annotatable::Item(
             cx.item(
                 span,
                 attrs.clone(),
@@ -144,9 +144,9 @@ pub(crate) fn expand_deriving_coerce_pointee(
                     items: ThinVec::new(),
                 }),
             ),
-        ));
+        )));
     }
-    let mut add_impl_block = |generics, trait_symbol, trait_args| {
+    let mut add_impl_block = |cx: &mut ExtCtxt<'_>, generics, trait_symbol, trait_args| {
         let mut parts = path!(span, core::ops);
         parts.push(Ident::new(trait_symbol, span));
         let trait_path = cx.path_all(span, true, parts, trait_args);
@@ -167,7 +167,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 items: ThinVec::new(),
             }),
         );
-        push(Annotatable::Item(item));
+        cx.annotatable_arena.push(transform(Annotatable::Item(item)));
     };
 
     // Create unsized `self`, that is, one where the `#[pointee]` type arg is replaced with `__S`. For
@@ -321,8 +321,8 @@ pub(crate) fn expand_deriving_coerce_pointee(
 
     // Add the impl blocks for `DispatchFromDyn` and `CoerceUnsized`.
     let gen_args = vec![GenericArg::Type(alt_self_type)];
-    add_impl_block(impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
-    add_impl_block(impl_generics.clone(), sym::CoerceUnsized, gen_args);
+    add_impl_block(cx, impl_generics.clone(), sym::DispatchFromDyn, gen_args.clone());
+    add_impl_block(cx, impl_generics.clone(), sym::CoerceUnsized, gen_args);
 }
 
 fn contains_maybe_sized_bound_on_pointee(predicates: &[WherePredicate], pointee: Symbol) -> bool {

@@ -166,7 +166,7 @@ mod llvm_enzyme {
         expand_span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
-    ) -> Vec<Annotatable> {
+    ) {
         expand_with_mode(ecx, expand_span, meta_item, item, DiffMode::Forward)
     }
 
@@ -175,7 +175,7 @@ mod llvm_enzyme {
         expand_span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
-    ) -> Vec<Annotatable> {
+    ) {
         expand_with_mode(ecx, expand_span, meta_item, item, DiffMode::Reverse)
     }
 
@@ -208,7 +208,7 @@ mod llvm_enzyme {
         meta_item: &ast::MetaItem,
         mut item: Annotatable,
         mode: DiffMode,
-    ) -> Vec<Annotatable> {
+    ) {
         let dcx = ecx.sess.dcx();
 
         // first get information about the annotable item: visibility, signature, name and generic
@@ -235,14 +235,16 @@ mod llvm_enzyme {
             _ => None,
         }) else {
             dcx.emit_err(diagnostics::AutoDiffInvalidApplication { span: item.span() });
-            return vec![item];
+            ecx.annotatable_arena.push(item);
+            return;
         };
 
         let meta_item_vec: ThinVec<MetaItemInner> = match meta_item.kind {
             ast::MetaItemKind::List(ref vec) => vec.clone(),
             _ => {
                 dcx.emit_err(diagnostics::AutoDiffMissingConfig { span: item.span() });
-                return vec![item];
+                ecx.annotatable_arena.push(item);
+                return;
             }
         };
 
@@ -254,7 +256,8 @@ mod llvm_enzyme {
         if meta_item_vec.is_empty() {
             // At the bare minimum, we need a fnc name.
             dcx.emit_err(diagnostics::AutoDiffMissingConfig { span: item.span() });
-            return vec![item];
+            ecx.annotatable_arena.push(item);
+            return;
         }
 
         let mode_symbol = match mode {
@@ -311,7 +314,8 @@ mod llvm_enzyme {
         if !x.is_active() {
             // We encountered an error, so we return the original item.
             // This allows us to potentially parse other attributes.
-            return vec![item];
+            ecx.annotatable_arena.push(item);
+            return;
         }
         let span = ecx.with_def_site_ctxt(expand_span);
 
@@ -470,7 +474,8 @@ mod llvm_enzyme {
             }
         };
 
-        vec![orig_annotatable, d_annotatable]
+        ecx.annotatable_arena.push(orig_annotatable);
+        ecx.annotatable_arena.push(d_annotatable);
     }
 
     // shadow arguments (the extra ones which were not in the original (primal) function), in reverse mode must be

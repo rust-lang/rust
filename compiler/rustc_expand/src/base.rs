@@ -41,6 +41,7 @@ use crate::stats::MacroStat;
 /// When adding new variants, make sure to adjust the `visit_*` / `flat_map_*`
 /// calls in `InvocationCollector` to use `assign_id!`
 #[derive(Debug, Clone)]
+#[must_use]
 pub enum Annotatable {
     Item(Box<ast::Item>),
     AssocItem(Box<ast::AssocItem>, AssocCtxt),
@@ -291,12 +292,12 @@ pub trait MultiItemModifier {
         meta_item: &ast::MetaItem,
         item: Annotatable,
         is_derive_const: bool,
-    ) -> ExpandResult<Vec<Annotatable>, Annotatable>;
+    ) -> ExpandResult<(), Annotatable>;
 }
 
 impl<F> MultiItemModifier for F
 where
-    F: Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, Annotatable) -> Vec<Annotatable>,
+    F: Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, Annotatable) -> (),
 {
     fn expand(
         &self,
@@ -305,7 +306,7 @@ where
         meta_item: &ast::MetaItem,
         item: Annotatable,
         _is_derive_const: bool,
-    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+    ) -> ExpandResult<(), Annotatable> {
         ExpandResult::Ready(self(ecx, span, meta_item, item))
     }
 }
@@ -943,13 +944,8 @@ impl SyntaxExtension {
 
     /// A dummy derive macro `#[derive(Foo)]`.
     pub fn dummy_derive(edition: Edition) -> SyntaxExtension {
-        fn expander(
-            _: &mut ExtCtxt<'_>,
-            _: Span,
-            _: &ast::MetaItem,
-            _: Annotatable,
-        ) -> Vec<Annotatable> {
-            Vec::new()
+        fn expander(_: &mut ExtCtxt<'_>, _: Span, _: &ast::MetaItem, _: Annotatable) -> () {
+            ()
         }
         SyntaxExtension::default(SyntaxExtensionKind::Derive(Arc::new(expander)), edition)
     }
@@ -1198,6 +1194,9 @@ pub struct ExtCtxt<'a> {
     /// (or during eager expansion, but that's a hack).
     pub force_mode: bool,
     pub expansions: FxIndexMap<Span, Vec<String>>,
+    /// Cached arena to amortize allocations during macro expansion.
+    /// Individual expanders push their annotatables to this arena.
+    pub annotatable_arena: Vec<Annotatable>,
     /// Used for running pre-expansion lints on freshly loaded modules.
     pub(super) lint_store: LintStoreExpandDyn<'a>,
     /// Used for storing lints generated during expansion, like `NAMED_ARGUMENTS_USED_POSITIONALLY`
@@ -1240,6 +1239,7 @@ impl<'a> ExtCtxt<'a> {
             buffered_early_lint: vec![],
             macro_stats: Default::default(),
             nb_macro_errors: 0,
+            annotatable_arena: Vec::new(),
         }
     }
 

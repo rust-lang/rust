@@ -17,7 +17,7 @@ pub(crate) fn expand(
     _span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     check_builtin_macro_attribute(ecx, meta_item, sym::global_allocator);
 
     let orig_item = item.clone();
@@ -35,14 +35,16 @@ pub(crate) fn expand(
         (item, *ident, true, ecx.with_def_site_ctxt(ty.span))
     } else {
         ecx.dcx().emit_err(diagnostics::AllocMustStatics { span: item.span() });
-        return vec![orig_item];
+        ecx.annotatable_arena.push(orig_item);
+        return;
     };
 
     // Forbid `#[thread_local]` attributes on the item
     if let Some(attr) = item.attrs.iter().find(|x| x.has_name(sym::thread_local)) {
         ecx.dcx()
             .emit_err(diagnostics::AllocCannotThreadLocal { span: item.span, attr: attr.span });
-        return vec![orig_item];
+        ecx.annotatable_arena.push(orig_item);
+        return;
     }
 
     // Generate a bunch of new items using the AllocFnFactory
@@ -69,7 +71,8 @@ pub(crate) fn expand(
     };
 
     // Return the original item and the new methods.
-    vec![orig_item, const_item]
+    ecx.annotatable_arena.push(orig_item);
+    ecx.annotatable_arena.push(const_item);
 }
 
 struct AllocFnFactory<'a, 'b> {

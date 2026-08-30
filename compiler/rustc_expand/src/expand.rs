@@ -864,8 +864,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     match validate_attr::parse_meta(&self.cx.sess.psess, &attr) {
                         Ok(meta) => {
                             let item_clone = macro_stats.then(|| item.clone());
-                            let items = match expander.expand(self.cx, span, &meta, item, false) {
-                                ExpandResult::Ready(items) => items,
+
+                            // Before each expansion, we clear the arena, and then we use its
+                            // gathered items below.
+                            self.cx.annotatable_arena.clear();
+                            match expander.expand(self.cx, span, &meta, item, false) {
+                                ExpandResult::Ready(_) => {}
                                 ExpandResult::Retry(item) => {
                                     // Reassemble the original invocation for retrying.
                                     return ExpandResult::Retry(Invocation {
@@ -874,6 +878,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     });
                                 }
                             };
+                            let items = &mut self.cx.annotatable_arena;
                             if matches!(
                                 fragment_kind,
                                 AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr
@@ -882,7 +887,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 let guar = self.cx.dcx().emit_err(RemoveExprNotSupported { span });
                                 fragment_kind.dummy(span, guar)
                             } else {
-                                let fragment = fragment_kind.expect_from_annotatables(items);
+                                let fragment =
+                                    fragment_kind.expect_from_annotatables(items.drain(..));
                                 if macro_stats {
                                     update_attr_macro_stats(
                                         self.cx,
@@ -922,8 +928,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         span,
                         path,
                     };
-                    let items = match expander.expand(self.cx, span, &meta, item, is_const) {
-                        ExpandResult::Ready(items) => items,
+
+                    // Before each expansion, we clear the arena, and then we use its
+                    // gathered items below.
+                    self.cx.annotatable_arena.clear();
+                    match expander.expand(self.cx, span, &meta, item, is_const) {
+                        ExpandResult::Ready(_) => {}
                         ExpandResult::Retry(item) => {
                             // Reassemble the original invocation for retrying.
                             return ExpandResult::Retry(Invocation {
@@ -932,7 +942,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             });
                         }
                     };
-                    let fragment = fragment_kind.expect_from_annotatables(items);
+                    let items = &mut self.cx.annotatable_arena;
+                    let fragment = fragment_kind.expect_from_annotatables(items.drain(..));
                     if macro_stats {
                         update_derive_macro_stats(
                             self.cx,

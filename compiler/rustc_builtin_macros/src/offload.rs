@@ -64,12 +64,13 @@ pub(crate) fn expand_kernel(
     expand_span: Span,
     _meta_item: &ast::MetaItem,
     item: Annotatable,
-) -> Vec<Annotatable> {
+) {
     let dcx = ecx.sess.dcx();
 
     let Some((vis, sig, ident, generics, body)) = extract_fn(&item) else {
         dcx.emit_err(diagnostics::AutoDiffInvalidApplication { span: item.span() });
-        return vec![item];
+        ecx.annotatable_arena.push(item);
+        return;
     };
 
     let span = ecx.with_def_site_ctxt(expand_span);
@@ -180,5 +181,9 @@ pub(crate) fn expand_kernel(
         Annotatable::Item(item)
     };
 
-    if compile_for_device(ecx) { vec![device_item] } else { vec![host_item] }
+    if compile_for_device(ecx) {
+        ecx.annotatable_arena.push(device_item);
+    } else {
+        ecx.annotatable_arena.push(host_item);
+    }
 }

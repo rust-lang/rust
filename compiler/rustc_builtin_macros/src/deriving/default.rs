@@ -12,11 +12,11 @@ use crate::deriving::generic::*;
 use crate::diagnostics;
 
 pub(crate) fn expand_deriving_default(
-    cx: &ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_>,
     span: Span,
     mitem: &ast::MetaItem,
     item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    transform: &mut dyn FnMut(Annotatable) -> Annotatable,
     is_const: bool,
 ) {
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
@@ -53,7 +53,7 @@ pub(crate) fn expand_deriving_default(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, item, transform)
 }
 
 fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
