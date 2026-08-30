@@ -45,20 +45,44 @@ impl Drop for NamedTempFile {
     }
 }
 
+pub struct NamedTempDir {
+    path: PathBuf,
+}
+
+impl NamedTempDir {
+    pub fn new(prefix: &str) -> io::Result<NamedTempDir> {
+        general_imp::create(prefix, |_options, path| std::fs::create_dir(path))
+            .map(|((), path)| NamedTempDir { path })
+    }
+
+    #[inline]
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for NamedTempDir {
+    fn drop(&mut self) {
+        if std::fs::remove_dir_all(&self.path).is_err() {
+            tracing::info!("cannot remove temporary directory {}", self.path.display());
+        }
+    }
+}
+
 mod general_imp {
     use std::{
-        fs::{File, OpenOptions},
+        fs::OpenOptions,
         io::{self, ErrorKind},
-        path::PathBuf,
+        path::{Path, PathBuf},
         sync::atomic::{AtomicU32, Ordering},
     };
 
     static INTERNAL_COUNTER: AtomicU32 = AtomicU32::new(0);
 
-    pub(super) fn create(
+    pub(super) fn create<T>(
         prefix: &str,
-        mut options_callback: impl FnMut(&mut OpenOptions),
-    ) -> io::Result<(File, PathBuf)> {
+        mut create: impl FnMut(OpenOptions, &Path) -> io::Result<T>,
+    ) -> io::Result<(T, PathBuf)> {
         let temp_dir = std::env::temp_dir().canonicalize()?;
         let pid = std::process::id();
         loop {
@@ -68,8 +92,7 @@ mod general_imp {
             ));
             let mut open_options = OpenOptions::new();
             open_options.create_new(true);
-            options_callback(&mut open_options);
-            match open_options.open(&path) {
+            match create(open_options, &path) {
                 Err(e) if e.kind() == ErrorKind::AlreadyExists => {}
                 Err(e) => {
                     return Err(io::Error::new(
@@ -114,7 +137,7 @@ mod imp {
     }
 
     pub(super) fn create(prefix: &str) -> io::Result<NamedTempFile> {
-        let (file, mut path) = general_imp::create(prefix, |_| {})?;
+        let (file, mut path) = general_imp::create(prefix, |options, path| options.open(path))?;
         let mut delete_on_drop = true;
         if let Ok(original_path) = CString::new(path.as_os_str().as_bytes()) {
             // Unlinking the file will *not* remove it per the POSIX specification since it is open.
@@ -139,9 +162,11 @@ mod imp {
     const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x04000000;
 
     pub(super) fn create(prefix: &str) -> io::Result<NamedTempFile> {
-        let (file, path) = general_imp::create(prefix, |options| {
-            options.attributes(FILE_ATTRIBUTE_TEMPORARY);
-            options.custom_flags(FILE_FLAG_DELETE_ON_CLOSE);
+        let (file, path) = general_imp::create(prefix, |mut options, path| {
+            options
+                .attributes(FILE_ATTRIBUTE_TEMPORARY)
+                .custom_flags(FILE_FLAG_DELETE_ON_CLOSE)
+                .open(path)
         })?;
         Ok(NamedTempFile { _file: Some(file), path, delete_on_drop: false })
     }
@@ -158,7 +183,7 @@ mod imp {
     use super::*;
 
     pub(super) fn create(prefix: &str) -> io::Result<NamedTempFile> {
-        let (file, path) = general_imp::create(prefix, |_| {})?;
+        let (file, path) = general_imp::create(prefix, |options, path| options.open(path))?;
         Ok(NamedTempFile { _file: Some(file), path, delete_on_drop: true })
     }
 }

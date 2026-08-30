@@ -27,7 +27,7 @@ impl Expander {
         let lib = lib.canonicalize_utf8()?;
         let modified_time = fs::metadata(&lib).and_then(|it| it.modified())?;
 
-        let file = ensure_file_with_lock_free_access(lib)?;
+        let file = ensure_file_with_lock_free_access(lib);
         let library = ProcMacroLibrary::open(file.path())?;
 
         Ok(Expander { inner: library, modified_time, _file: file })
@@ -88,19 +88,28 @@ impl ProcMacroLibrary {
 
 /// Copy the dylib to temp directory to prevent locking in Windows
 #[cfg(windows)]
-fn ensure_file_with_lock_free_access(path: Utf8PathBuf) -> io::Result<NamedTempFile> {
+fn ensure_file_with_lock_free_access(path: Utf8PathBuf) -> NamedTempFile {
     if std::env::var("RA_DONT_COPY_PROC_MACRO_DLL").is_ok() {
-        return Ok(NamedTempFile::from_path(path.into_std_path_buf()));
+        return NamedTempFile::from_path(path.into_std_path_buf());
     }
 
-    let file_name = path.file_stem().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, format!("File path is invalid: {path}"))
-    })?;
+    (|| {
+        let file_name = path.file_stem().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidInput, format!("File path is invalid: {path}"))
+        })?;
 
-    NamedTempFile::new_from_existing(&format!("proc-macro-srv-{file_name}.dll"), path.as_std_path())
+        NamedTempFile::new_from_existing(
+            &format!("proc-macro-srv-{file_name}.dll"),
+            path.as_std_path(),
+        )
+    })
+    .unwrap_or_else(|err| {
+        tracing::warn!("failed to create temporary file: {err}");
+        NamedTempFile::from_path(path.into_std_path_buf())
+    })
 }
 
 #[cfg(unix)]
-fn ensure_file_with_lock_free_access(path: Utf8PathBuf) -> io::Result<NamedTempFile> {
-    Ok(NamedTempFile::from_path(path.into_std_path_buf()))
+fn ensure_file_with_lock_free_access(path: Utf8PathBuf) -> NamedTempFile {
+    NamedTempFile::from_path(path.into_std_path_buf())
 }
