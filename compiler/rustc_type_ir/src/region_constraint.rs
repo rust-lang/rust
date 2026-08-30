@@ -665,6 +665,14 @@ fn pull_region_outlives_constraints_out_of_universe<
                         }
                     };
 
+                    // The constraint may already be entailed by the assumptions of the binder we are
+                    // leaving, e.g. `for<'a, 'b> where 'b: 'a { 'b: 'a }`. There is nothing to lift into
+                    // a smaller universe in that case, and looking for lower universe candidates would
+                    // wrongly result in `Or([])` whenever the placeholders have no lower universe bounds.
+                    if regions_outlived_by(region_1, assumptions).any(|r| r == region_2) {
+                        continue;
+                    }
+
                     let mut candidates = vec![];
 
                     for ub in regions_outlived_by(region_1, assumptions)
