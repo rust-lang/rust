@@ -46,6 +46,16 @@ pub(super) fn is_inline_valid_on_fn<'tcx>(
         return Err("#[rustc_no_mir_inline]");
     }
 
+    // MC/DC coverage does not work properly with inlining, because the
+    // instrumenter adds temporary variables to the functions which aren't
+    // (yet?) taken in account when inlining.
+    //
+    // FIXME(peron): Consider a refinement of the condition to only prevent
+    // functions with MC/DC instrumentation from inlining.
+    if tcx.sess.instrument_coverage_mcdc() {
+        return Err("No inlining when MC/DC coverage is enabled");
+    }
+
     let ty = tcx.type_of(def_id);
     if match ty.instantiate_identity().skip_norm_wip().kind() {
         ty::FnDef(..) => tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().c_variadic(),
