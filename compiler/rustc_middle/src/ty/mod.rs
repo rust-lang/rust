@@ -31,18 +31,18 @@ use rustc_abi::{
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{self as attr, StrippedCfgItem, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
-use rustc_hir::attrs::StrippedCfgItem;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_hir::{self as hir, MissingLifetimeKind, attrs as attr, find_attr};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{IndexVec, static_assert_size};
 pub use rustc_lint_defs::RegisteredTools;
@@ -221,7 +221,7 @@ pub struct PerOwnerResolverData<'tcx> {
     /// Resolution for import nodes, which have multiple resolutions in different namespaces.
     pub import_res: hir::def::PerNS<Option<Res<ast::NodeId>>> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
-    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>> = Default::default(),
+    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, hir::MissingLifetimeKind)>> = Default::default(),
 
     /// The id of the owner
     pub id: ast::NodeId,
@@ -251,7 +251,10 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
     ///
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
-    pub fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
+    pub fn extra_lifetime_params(
+        &self,
+        id: NodeId,
+    ) -> &[(Ident, NodeId, hir::MissingLifetimeKind)] {
         self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
     }
 }
@@ -2008,17 +2011,22 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: impl Into<DefId>,
         attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::Attribute> {
         #[expect(deprecated)]
-        self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
+        self.get_all_attrs(did).iter().filter(move |a: &&rustc_attr_ir::Attribute| a.has_name(attr))
     }
 
     /// Gets all attributes.
     ///
+    /// <div class="warning">
+    ///
     /// To see if an item has a specific attribute, you should use
-    /// [`rustc_hir::find_attr!`] so you can use matching.
+    /// [`rustc_attr_ir::find_attr!`] so you can use matching.
+    ///
+    /// </div>
+    ///
     #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
-    pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
+    pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [rustc_attr_ir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
             self.hir_attrs(self.local_def_id_to_hir_id(did))
@@ -2031,8 +2039,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: DefId,
         attr: &[Symbol],
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        let filter_fn = move |a: &&hir::Attribute| a.path_matches(attr);
+    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::Attribute> {
+        let filter_fn = move |a: &&rustc_attr_ir::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
             self.hir_attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
@@ -2474,8 +2482,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
 // `HasAttrs` impls: allow `find_attr!(tcx, id, ...)` to work with both DefId-like types and HirId.
 
-impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for DefId {
-    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+impl<'tcx> rustc_attr_ir::HasAttrs<'tcx, TyCtxt<'tcx>> for DefId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [rustc_attr_ir::Attribute] {
         if let Some(did) = self.as_local() {
             tcx.hir_attrs(tcx.local_def_id_to_hir_id(did))
         } else {
@@ -2484,20 +2492,20 @@ impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for DefId {
     }
 }
 
-impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for LocalDefId {
-    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+impl<'tcx> rustc_attr_ir::HasAttrs<'tcx, TyCtxt<'tcx>> for LocalDefId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [rustc_attr_ir::Attribute] {
         tcx.hir_attrs(tcx.local_def_id_to_hir_id(self))
     }
 }
 
-impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::OwnerId {
-    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
-        hir::attrs::HasAttrs::get_attrs(self.def_id, tcx)
+impl<'tcx> rustc_attr_ir::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::OwnerId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [rustc_attr_ir::Attribute] {
+        rustc_attr_ir::HasAttrs::get_attrs(self.def_id, tcx)
     }
 }
 
-impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::HirId {
-    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+impl<'tcx> rustc_attr_ir::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::HirId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [rustc_attr_ir::Attribute] {
         tcx.hir_attrs(self)
     }
 }

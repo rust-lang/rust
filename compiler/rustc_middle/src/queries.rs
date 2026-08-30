@@ -53,6 +53,8 @@ use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_attr_ir::lang_items::{LangItem, LanguageItems};
+use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_crate_store::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
@@ -63,8 +65,6 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::{LangItem, LanguageItems};
-use rustc_hir::attrs::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
@@ -1526,8 +1526,12 @@ rustc_queries! {
 
     /// Returns the attributes on the item at `def_id`.
     ///
-    /// Do not use this directly, use `tcx.get_attrs` instead.
-    query attrs_for_def(def_id: DefId) -> &'tcx [hir::Attribute] {
+    /// <div class="warning">
+    ///
+    /// Do not use this directly, use [`rustc_attr_ir::find_attr`] instead.
+    ///
+    /// </div>
+    query attrs_for_def(def_id: DefId) -> &'tcx [rustc_attr_ir::Attribute] {
         desc { "collecting attributes of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
