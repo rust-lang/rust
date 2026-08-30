@@ -98,7 +98,6 @@ target | notes
 [`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | Armv7-A OpenHarmony
 [`loongarch64-unknown-linux-gnu`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19+, glibc 2.36), LSX required
 [`loongarch64-unknown-linux-musl`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19+, musl 1.2.5), LSX required
-[`i686-pc-windows-gnu`](platform-support/windows-gnu.md) | 32-bit MinGW (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 `powerpc-unknown-linux-gnu` | PowerPC Linux (kernel 3.2+, glibc 2.17)
 `powerpc64-unknown-linux-gnu` | PPC64 Linux (kernel 3.2+, glibc 2.17)
 [`powerpc64-unknown-linux-musl`](platform-support/powerpc64-unknown-linux-musl.md) | PPC64 Linux (kernel 4.19+, musl 1.2.5)
@@ -184,6 +183,7 @@ target | std | notes
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux (kernel 3.2+, glibc 2.17, original Pentium) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux (musl 1.2.5, original Pentium) [^x86_32-floats-x87]
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android ([Pentium 4 plus various extensions](https://developer.android.com/ndk/guides/abis.html#x86)) [^x86_32-floats-return-ABI]
+[`i686-pc-windows-gnu`](platform-support/windows-gnu.md) | ✓ | 32-bit MinGW (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 [`i686-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | ✓ | 32-bit x86 MinGW (Windows 10+, Pentium 4), LLVM ABI [^x86_32-floats-return-ABI]
 [`i686-unknown-freebsd`](platform-support/freebsd.md) | ✓ | 32-bit x86 FreeBSD (Pentium 4) [^x86_32-floats-return-ABI]
 `i686-unknown-linux-musl` | ✓ | 32-bit Linux with musl 1.2.5 (Pentium 4) [^x86_32-floats-return-ABI]
