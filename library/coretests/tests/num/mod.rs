@@ -37,6 +37,8 @@ mod midpoint;
 mod nan;
 mod niche_types;
 mod ops;
+#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+mod ppcf128;
 mod wrapping;
 
 use floats::{assert_biteq, float_test};

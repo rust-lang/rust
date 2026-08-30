@@ -51,52 +51,70 @@ impl ppcf128 {
 
     /// Returns the memory representation of this floating point number as a byte array in
     /// little-endian byte order.
-    #[unstable(feature = "powerpc_ppcf128", issue = "none")]
+    #[unstable(feature = "powerpc_ppcf128", issue = "161787")]
+    #[rustc_const_unstable(feature = "powerpc_ppcf128", issue = "161787")]
     #[inline]
     pub const fn to_le_bytes(self) -> [u8; 16] {
         let mut bytes = self.to_ne_bytes();
         if cfg!(target_endian = "big") {
-            bytes.reverse();
+            bytes[..8].reverse();
+            bytes[8..].reverse();
         }
         bytes
     }
 
     /// Returns the memory representation of this floating point number as a byte array in
     /// big-endian (network) byte order.
-    #[unstable(feature = "powerpc_ppcf128", issue = "none")]
+    #[unstable(feature = "powerpc_ppcf128", issue = "161787")]
+    #[rustc_const_unstable(feature = "powerpc_ppcf128", issue = "161787")]
     #[inline]
     pub const fn to_be_bytes(self) -> [u8; 16] {
         let mut bytes = self.to_ne_bytes();
         if cfg!(target_endian = "little") {
-            bytes.reverse();
+            bytes[..8].reverse();
+            bytes[8..].reverse();
         }
         bytes
     }
 
+    #[unstable(feature = "powerpc_ppcf128", issue = "161787")]
+    #[rustc_const_unstable(feature = "powerpc_ppcf128", issue = "161787")]
+    #[inline]
+    pub const fn to_components(self) -> (f64, f64) {
+        let bytes = self.to_ne_bytes();
+        let ([hi, lo], &[]) = bytes.as_chunks() else {
+            unreachable!()
+        };
+
+        cfg_select! {
+            target_endian = "little" => (f64::from_le_bytes(*hi), f64::from_le_bytes(*lo)),
+            target_endian = "big" => (f64::from_be_bytes(*hi), f64::from_be_bytes(*lo)),
+        }
+    }
+
     /// Check whether the large and small component are in normal form.
     const fn is_normal_form(large: f64, small: f64) -> bool {
-        let is_elfv2 = cfg!(all(target_arch = "powerpc64", target_endian = "little"));
+        let is_elfv2 = cfg!(target_endian = "little");
 
         if large.is_nan() {
             true
         } else if large.is_infinite() && is_elfv2 {
             small == 0.0
         } else {
-            large + small == large
+            large.abs() > small.abs() && large + small == large
         }
     }
 
     /// Create a [`ppcf128`] from its large and small components.
     ///
     /// This function will normalize the components if they are not already in normal form.
-    #[unstable(feature = "powerpc_ppcf128", issue = "none")]
-    pub const fn from_components(mut large: f64, mut small: f64) -> Self {
-        (large, small) = if Self::is_normal_form(large, small) {
-            (large, small)
-        } else if !(large + small).is_finite() {
-            (large, 0.0)
+    #[unstable(feature = "powerpc_ppcf128", issue = "161787")]
+    pub const fn from_components(x: f64, y: f64) -> Self {
+        let (large, small) = if Self::is_normal_form(x, y) {
+            (x, y)
+        } else if !(x + y).is_finite() {
+            (x + y, 0.0)
         } else {
-            let (x, y) = (large, small);
             let large = x + y;
             // Per https://doi.org/10.1145/3121432, Algorithm 2
             let x1 = large - y;
@@ -146,7 +164,22 @@ impl Clone for ppcf128 {
 #[unstable(feature = "powerpc_ppcf128", issue = "161787")]
 impl Copy for ppcf128 {}
 
-#[unstable(feature = "powerpc_ppcf128", issue = "none")]
+#[unstable(feature = "powerpc_ppcf128", issue = "161787")]
+impl Default for ppcf128 {
+    fn default() -> Self {
+        Self::from_components(0.0, 0.0)
+    }
+}
+
+#[unstable(feature = "powerpc_ppcf128", issue = "161787")]
+impl crate::fmt::Debug for ppcf128 {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        let (hi, lo) = self.to_components();
+        write!(f, "ppcf128({hi}, {lo})")
+    }
+}
+
+#[unstable(feature = "powerpc_ppcf128", issue = "161787")]
 impl PartialEq for ppcf128 {
     #[inline]
     fn eq(&self, other: &ppcf128) -> bool {
