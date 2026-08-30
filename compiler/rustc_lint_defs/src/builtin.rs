@@ -3657,7 +3657,7 @@ declare_lint! {
     Allow,
     "identifiers that will be parsed as a prefix in Rust 2021",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2021 "reserving-syntax"),
+        reason: fcw!(EditionSemanticsChange 2021 "reserving-syntax"),
     };
     crate_level_only
 }
