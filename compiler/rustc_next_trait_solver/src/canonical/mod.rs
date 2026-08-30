@@ -26,9 +26,8 @@ use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
 use crate::solve::{
-     CanonicalResponse, Certainty, ExternalConstraintsData,
-    ExternalRegionConstraints, Goal, NestedNormalizationGoals, QueryInput, Response,
-    VisibleForLeakCheck, inspect,
+    CanonicalResponse, Certainty, ExternalConstraintsData, ExternalRegionConstraints, Goal,
+    NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
 };
 
 pub mod canonicalizer;
