@@ -507,4 +507,18 @@ impl<'a> Parser<'a> {
 
         Err(self.dcx().create_err(err))
     }
+
+    /// Parse inner attributes and error if they are present
+    /// Returns whether any inner attributes were discarded
+    pub fn recover_inner_attributes(&mut self) -> PResult<'a, bool> {
+        let attributes = self.parse_inner_attributes()?;
+        for attr in &attributes {
+            self.error_on_forbidden_inner_attr(
+                attr.span,
+                InnerAttrPolicy::Forbidden(Some(InnerAttrForbiddenReason::InCodeBlock)),
+                true,
+            );
+        }
+        Ok(!attributes.is_empty())
+    }
 }
