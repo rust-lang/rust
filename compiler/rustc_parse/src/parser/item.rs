@@ -1936,6 +1936,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_variant(&mut self, span: Span) -> PResult<'a, Option<Variant>> {
+        if self.recover_inner_attributes()? && self.check(exp![CloseBrace]) {
+            return Ok(None);
+        }
         self.recover_vcs_conflict_marker();
         let variant_attrs = self.parse_outer_attributes()?;
         self.recover_vcs_conflict_marker();
@@ -2139,6 +2142,7 @@ impl<'a> Parser<'a> {
         let mut fields = ThinVec::new();
         let mut recovered = Recovered::No;
         if self.eat(exp!(OpenBrace)) {
+            self.recover_inner_attributes()?;
             while self.token != token::CloseBrace {
                 match self.parse_field_def(adt_ty, ident_span) {
                     Ok(field) => {
