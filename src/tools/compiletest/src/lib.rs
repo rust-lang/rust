@@ -221,7 +221,6 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         "src/etc/gdb_load_rust_pretty_printers.py",
         "src/etc/gdb_lookup.py",
         "src/etc/gdb_providers.py",
-        "src/etc/lldb_batchmode",
         "src/etc/lldb_lookup.py",
         "src/etc/lldb_providers.py",
     ];
@@ -231,6 +230,7 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
     }
 
     stamp.add_dir(&src_root.join("src/etc/natvis"));
+    stamp.add_dir(&src_root.join("src/etc/lldb_batchmode"));
 
     stamp.add_dir(&config.target_run_lib_path);
 
@@ -506,7 +506,7 @@ fn files_related_to_test(
     config: &Config,
     testpaths: &TestPaths,
     aux_props: &AuxProps,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> Vec<Utf8PathBuf> {
     let mut related = vec![];
 
@@ -533,12 +533,29 @@ fn files_related_to_test(
 
     // UI test files.
     for extension in UI_EXTENSIONS {
-        let path = expected_output_path(testpaths, revision, &config.compare_mode, extension);
+        let path =
+            expected_output_path(testpaths, variant.revision(), &config.compare_mode, extension);
         related.push(path);
     }
 
     // `minicore.rs` test auxiliary: we need to make sure tests get rerun if this changes.
     related.push(config.src_root.join("tests").join("auxiliary").join("minicore.rs"));
+
+    // `tests/debuginfo` blessed files
+    match variant.debugger {
+        Some(debugger @ Debugger::Lldb | debugger @ Debugger::Gdb) => {
+            let bless_path: Utf8PathBuf =
+                testpaths.file.parent().unwrap().join(format!("{}_input", debugger.to_str()));
+            if bless_path.is_dir() {
+                related.extend(
+                    WalkDir::new(bless_path)
+                        .into_iter()
+                        .map(|entry| Utf8PathBuf::from(entry.unwrap().path().to_str().unwrap())),
+                );
+            }
+        }
+        Some(Debugger::Cdb) | None => {}
+    }
 
     related
 }
@@ -572,7 +589,7 @@ fn is_up_to_date(
     // Check the timestamp of the stamp file against the last modified time
     // of all files known to be relevant to the test.
     let mut inputs_stamp = cx.common_inputs_stamp.clone();
-    for path in files_related_to_test(&cx.config, testpaths, aux_props, variant.revision()) {
+    for path in files_related_to_test(&cx.config, testpaths, aux_props, variant) {
         inputs_stamp.add_path(&path);
     }
 
