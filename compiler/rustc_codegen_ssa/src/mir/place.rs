@@ -112,7 +112,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        if layout.peel_transparent_wrappers(bx).deref().is_scalable_vector() {
+        // Scalable vector are never 1-ZST. FIXME: is that correct?
+        if layout.peel_transparent_wrappers_from_non_1zst(bx).deref().is_scalable_vector() {
             Self::alloca_scalable(bx, layout)
         } else {
             Self::alloca_size(bx, layout.size, layout)
@@ -159,7 +160,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
     ) -> Self {
         PlaceValue::new_sized(
-            bx.alloca_with_ty(layout.peel_transparent_wrappers(bx)),
+            // FIXME why is this peeling at all? And why is it redoing the work the caller just did?
+            bx.alloca_with_ty(layout.peel_transparent_wrappers_from_non_1zst(bx)),
             layout.align.abi,
         )
         .with_type(layout)
