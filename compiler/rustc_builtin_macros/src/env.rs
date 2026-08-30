@@ -40,7 +40,7 @@ pub(crate) fn expand_option_env<'cx>(
         Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
     let ExpandResult::Ready(mac) =
-        expr_to_string(cx, var_expr.clone(), "argument must be a string literal")
+        expr_to_string(cx, var_expr, "argument must be a string literal")
     else {
         return ExpandResult::Retry(());
     };
