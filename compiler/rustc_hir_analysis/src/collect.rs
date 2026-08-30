@@ -1758,7 +1758,8 @@ fn const_param_default<'tcx>(
         )
     };
 
-    let icx = ItemCtxt::new(tcx, param_def_id);
+    let item_def_id = tcx.local_parent(param_def_id);
+    let icx = ItemCtxt::new(tcx, item_def_id);
 
     let ct = icx
         .lowerer()
