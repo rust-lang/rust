@@ -211,6 +211,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         Node::Item(_) | Node::ForeignItem(_) => None,
 
         // Params don't really have generics, but we use it when instantiating their value paths.
+        // FIXME: Use the HIR parent here similar to `Node::Field`. Blocked on the removal of GCE,
+        //        see comment in `type_of.rs` for details (Ctrl+F for `generics_of`).
         Node::GenericParam(_) => None,
 
         Node::Synthetic => span_bug!(

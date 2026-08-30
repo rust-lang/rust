@@ -1781,7 +1781,10 @@ fn const_param_default<'tcx>(
         )
     };
 
-    let icx = ItemCtxt::new(tcx, param_def_id);
+    // FIXME: Don't lower in the context of parent. Blocked on the removal of GCE. See comment in
+    //        `type_of.rs` for details (Ctrl+F for `generics_of`).
+    let item_def_id = tcx.local_parent(param_def_id);
+    let icx = ItemCtxt::new(tcx, item_def_id);
 
     let ct = icx
         .lowerer()
