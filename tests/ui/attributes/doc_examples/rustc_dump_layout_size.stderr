@@ -1,0 +1,8 @@
+error: size: Size(16 bytes)
+ --> $DIR/rustc_dump_layout_size.rs:7:1
+  |
+7 | type ID = std::any::TypeId;
+  | ^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,37 @@
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+       ]
+ --> $DIR/rustc_dump_vtable.rs:7:1
+  |
+7 | type X = dyn Send;
+  | ^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<dyn Any as Any>::type_id - shim(reify)),
+       ]
+  --> $DIR/rustc_dump_vtable.rs:10:1
+   |
+10 | type Y = dyn core::any::Any;
+   | ^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<C as Iterator>::next),
+           Method(<C as Iterator>::size_hint),
+           Method(<C as Iterator>::advance_by),
+           Method(<C as Iterator>::nth),
+       ]
+  --> $DIR/rustc_dump_vtable.rs:15:1
+   |
+15 | impl Iterator for C {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

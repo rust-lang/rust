@@ -4,11 +4,13 @@
 //! see [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html).
 
 // tidy-alphabetical-start
+#![expect(internal_features, reason = "rustdoc_internals, for documenting attributes")]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(default_field_values)]
 #![feature(derive_const)]
 #![feature(exhaustive_patterns)]
+#![feature(rustdoc_internals)]
 #![feature(variant_count)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
@@ -125,3 +127,5 @@ macro_rules! find_attr {
         }
     }};
 }
+
+include!("attribute_docs.rs");
