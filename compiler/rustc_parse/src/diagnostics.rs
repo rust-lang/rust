@@ -3728,28 +3728,6 @@ impl HelpUseLatestEdition {
 }
 
 #[derive(Diagnostic)]
-#[diag("`box` expressions have been removed (feature `box_syntax`)")]
-pub(crate) struct BoxExprsRemoved {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: UseBoxNew,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "use `Box::new()` instead",
-    applicability = "machine-applicable",
-    style = "verbose"
-)]
-pub(crate) struct UseBoxNew {
-    #[suggestion_part(code = "Box::new(")]
-    pub box_kw_and_lo: Span,
-    #[suggestion_part(code = ")")]
-    pub hi: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`box` patterns have been removed (feature `box_patterns`)")]
 #[help("enable feature `deref_patterns` instead and...")]
 pub(crate) struct BoxPatsRemoved {

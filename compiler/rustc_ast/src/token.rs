@@ -315,6 +315,7 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: IdentIsRaw) -> boo
         || [
             kw::Async,
             kw::Do,
+            // FIXME: Remove this (needs lang FCP as it affects stable macro matching behavior).
             kw::Box,
             kw::Break,
             kw::Const,
