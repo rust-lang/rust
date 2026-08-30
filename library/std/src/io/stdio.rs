@@ -1197,7 +1197,7 @@ pub(crate) fn attempt_print_to_stderr(args: fmt::Arguments<'_>) {
 
 /// Trait to determine if a descriptor/handle refers to a terminal/tty.
 #[stable(feature = "is_terminal", since = "1.70.0")]
-pub impl(crate) trait IsTerminal {
+pub trait IsTerminal {
     /// Returns `true` if the descriptor/handle refers to a terminal/tty.
     ///
     /// On platforms where Rust does not know how to detect a terminal yet, this will return
