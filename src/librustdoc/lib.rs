@@ -858,16 +858,17 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             );
         }
     };
+    let md_input = config::markdown_input(&input);
 
-    let output_format = options.output_format;
+    if options.should_test || options.output_format == config::OutputFormat::Doctest {
+        return match md_input {
+            Some(_) => wrap_return(dcx, doctest::test_markdown(&input, options, dcx)),
+            None => doctest::run(dcx, input, options),
+        };
+    }
 
-    match (
-        options.should_test || output_format == config::OutputFormat::Doctest,
-        config::markdown_input(&input),
-    ) {
-        (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(&input, options, dcx)),
-        (true, None) => return doctest::run(dcx, input, options),
-        (false, Some(md_input)) => {
+    if let Some(md_input) = md_input {
+        return {
             let md_input = md_input.to_owned();
             let edition = options.edition;
             let config = core::create_config(input, options, &render_options);
@@ -875,7 +876,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
             // `run_compiler`.
-            return wrap_return(
+            wrap_return(
                 dcx,
                 interface::run_compiler(config, |compiler| {
                     // construct a phony "crate" without actually running the parser
@@ -916,9 +917,8 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                         });
                     res
                 }),
-            );
-        }
-        (false, None) => {}
+            )
+        };
     }
 
     // need to move these items separately because we lose them by the time the closure is called,
