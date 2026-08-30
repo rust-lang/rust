@@ -38,7 +38,7 @@ COPY host-x86_64/pr-check-1/validate-toolstate.sh /scripts/
 
 ENV PUPPETEER_SKIP_DOWNLOAD 1
 
-# Check library crates on all tier 1 targets.
+# Check library crates on all tier 2+ targets.
 # We disable optimized compiler built-ins because that requires a C toolchain for the target.
 # We also skip the x86_64-unknown-linux-gnu target as it is well-tested by other jobs.
 ENV SCRIPT=" \
@@ -57,7 +57,11 @@ ENV SCRIPT=" \
   /scripts/check-default-config-profiles.sh && \
   python3 ../x.py build src/tools/build-manifest && \
   python3 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
-  python3 ../x.py check --set build.optimized-compiler-builtins=false core alloc std --target=aarch64-unknown-linux-gnu,i686-pc-windows-msvc,i686-unknown-linux-gnu,x86_64-apple-darwin,x86_64-pc-windows-gnu,x86_64-pc-windows-msvc && \
+  build/host/stage1/bin/rustc --print all-target-specs-json -Zunstable-options \
+    | jq 'to_entries[] | select(.value.metadata.tier <= 2) | select(.value.metadata.std == true) | .key' \
+    | while read -r target; do \
+        python3 ../x.py check --set build.optimized-compiler-builtins=false core alloc std --target=$target \
+    ;done && \
   /scripts/validate-toolstate.sh && \
   reuse --include-submodules lint && \
   python3 ../x.py test collect-license-metadata"
