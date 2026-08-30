@@ -687,6 +687,8 @@ fn pull_region_outlives_constraints_out_of_universe<
                     pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
                 RegionOutlives(region_1, region_2, ()) => {
+                    // Outlives is reflexive, so this holds no matter which universes are involved
+                    // and regardless of whether we know the assumptions for `u`.
                     if region_1 == region_2 {
                         continue;
                     }
@@ -771,16 +773,27 @@ pub fn destructure_type_outlives_constraints_in_root<
         let mut destructured_constraints = Vec::new();
         for c in &and.0 {
             match c {
+                // Outlives is reflexive. Discharging this here and not just when leaving a universe
+                // matters as constraints are also destructured in the root, where reflexive candidates
+                // are the whole reason an OR is satisfiable. E.g. `!T: 'a` with a `!T: 'a` assumption
+                // ends up as `Or([.., RegionOutlives('a, 'a)])`.
+                RegionOutlives(r1, r2, _) if r1 == r2 => {}
                 Ambiguity(_) | RegionOutlives(..) => {
                     destructured_constraints.push(Or::new_leaf(c.clone()))
                 }
-                PlaceholderTyOutlives(ty, r, span) => destructured_constraints.push(Or::new(
-                    regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).map(
-                        move |assumption_r| {
-                            And::new([RegionOutlives(assumption_r, *r, span.clone())])
-                        },
-                    ),
-                )),
+                PlaceholderTyOutlives(ty, r, span) => {
+                    let candidates =
+                        regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).collect::<Vec<_>>();
+                    if candidates.contains(r) {
+                        destructured_constraints.push(Or::new_true());
+                    } else {
+                        destructured_constraints.push(Or::new(candidates.into_iter().map(
+                            move |assumption_r| {
+                                And::new([RegionOutlives(assumption_r, *r, span.clone())])
+                            },
+                        )));
+                    }
+                }
                 AliasTyOutlivesViaEnv(bound_outlives, span) => {
                     destructured_constraints.push(
                         alias_outlives_candidates_from_assumptions(
