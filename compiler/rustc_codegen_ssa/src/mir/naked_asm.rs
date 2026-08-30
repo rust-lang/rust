@@ -54,7 +54,9 @@ pub fn codegen_naked_asm<
     template_vec.extend(template.iter().cloned());
     template_vec.push(rustc_ast::ast::InlineAsmTemplatePiece::String(end.into()));
 
-    cx.codegen_global_asm(&template_vec, &operands, options, line_spans);
+    let target_features: Vec<_> =
+        cx.tcx().asm_target_features(instance.def_id()).iter().map(|s| format!("+{s}")).collect();
+    cx.codegen_global_asm(&template_vec, &operands, options, line_spans, &target_features);
 }
 
 fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>>(

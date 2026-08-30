@@ -72,6 +72,7 @@ pub trait AsmCodegenMethods<'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         line_spans: &[Span],
+        target_features: &[String],
     );
 
     /// The mangled name of this instance
