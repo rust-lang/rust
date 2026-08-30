@@ -48,6 +48,31 @@ unsafe fn configure_llvm(sess: &Session) {
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
+    // Check to ensure we're running against the correct LLVM version.
+    unsafe {
+        let mut llvm_major = 0;
+        let mut llvm_minor = 0;
+        let mut llvm_patch = 0;
+        llvm::LLVMGetVersion(&mut llvm_major, &mut llvm_minor, &mut llvm_patch);
+        let expected_version = llvm::LLVMRustVersionMajor();
+        if llvm_major != expected_version {
+            panic!(
+                concat!(
+                    "LLVM version mismatch: this compiler was built for LLVM {}, ",
+                    "but LLVM {}.{}.{} was found{}"
+                ),
+                expected_version,
+                llvm_major,
+                llvm_minor,
+                llvm_patch,
+                match rustc_session::filesearch::dll_path(llvm::LLVMGetVersion as *mut _) {
+                    Ok(path) => format!(" at {}", path.display()),
+                    Err(_) => String::new(),
+                }
+            );
+        }
+    }
+
     unsafe {
         llvm::LLVMRustInstallErrorHandlers();
     }
