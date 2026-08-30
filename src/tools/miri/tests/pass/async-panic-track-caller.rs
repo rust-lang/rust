@@ -3,7 +3,7 @@
 
 //@ edition:2021
 //@ revisions: afn cls afn_cls nofeat
-//
+//@ run-native
 //
 //
 //
