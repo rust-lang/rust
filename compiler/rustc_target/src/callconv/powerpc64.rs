@@ -60,13 +60,19 @@ where
     C: HasDataLayout,
 {
     arg.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()).and_then(|unit| {
-        // ELFv1 and AIX only passes one-member aggregates transparently.
-        // ELFv2 passes up to eight uniquely addressable members.
-        if ((abi == ELFv1 || abi == AIX)
-            && (arg.layout.size > unit.size || is_or_contains_union(cx, arg.layout)))
-            || arg.layout.size > unit.size.checked_mul(8, cx).unwrap()
-        {
-            return None;
+        match abi {
+            ELFv1 | AIX => {
+                // Pass only one-member aggregates transparently.
+                if arg.layout.size > unit.size || is_or_contains_union(cx, arg.layout) {
+                    return None;
+                }
+            }
+            ELFv2 => {
+                // Pass up to eight uniquely addressable members.
+                if arg.layout.size > unit.size.checked_mul(8, cx).unwrap() {
+                    return None;
+                }
+            }
         }
 
         let valid_unit = match unit.kind {
