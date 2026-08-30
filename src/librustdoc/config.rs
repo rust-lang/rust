@@ -10,7 +10,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_lint::Level;
 use rustc_session::config::{
     self, CodegenOptions, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    OptionsTargetModifiers, OutFileName, PrintRequest, Sysroot, UnstableOptions,
+    OptionsTargetModifiers, OutFileName, PrintCategory, PrintRequest, Sysroot, UnstableOptions,
     collect_print_requests, get_cmd_lint_options, nightly_options, parse_crate_types_from_list,
     parse_externs, parse_target_triple,
 };
@@ -574,8 +574,13 @@ impl Options {
             Err(err) => dcx.fatal(err),
         };
 
-        let prints =
-            collect_print_requests(early_dcx, &mut codegen_options, &unstable_opts, matches);
+        let prints = collect_print_requests(
+            early_dcx,
+            &mut codegen_options,
+            &unstable_opts,
+            matches,
+            &[PrintCategory::Target, PrintCategory::Crate],
+        );
 
         let mut parts_out_dir =
             match matches.opt_str("write-doc-meta-dir").map(PathToParts::from_flag).transpose() {

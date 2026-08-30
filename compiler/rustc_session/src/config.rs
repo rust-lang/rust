@@ -35,8 +35,11 @@ use tracing::debug;
 
 pub use crate::config::cfg::{Cfg, CheckCfg, ExpectedValues};
 use crate::config::native_libs::parse_native_libs;
-pub use crate::config::print_request::{PrintKind, PrintRequest, collect_print_requests};
+pub use crate::config::print_request::{
+    PrintCategory, PrintKind, PrintRequest, collect_print_requests,
+};
 use crate::diagnostics::FileWriteFail;
+use crate::macros::AllVariants;
 pub use crate::options::*;
 use crate::search_paths::SearchPath;
 use crate::utils::CanonicalizedPath;
@@ -2897,7 +2900,13 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         ));
     }
 
-    let prints = print_request::collect_print_requests(early_dcx, &mut cg, &unstable_opts, matches);
+    let prints = print_request::collect_print_requests(
+        early_dcx,
+        &mut cg,
+        &unstable_opts,
+        matches,
+        PrintCategory::ALL_VARIANTS,
+    );
 
     // -Zretpoline-external-thunk also requires -Zretpoline
     if unstable_opts.retpoline_external_thunk {

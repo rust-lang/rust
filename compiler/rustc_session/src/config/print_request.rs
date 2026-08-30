@@ -105,6 +105,15 @@ pub enum PrintKind {
     // tidy-alphabetical-end
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(AllVariants)]
+pub enum PrintCategory {
+    Target,
+    Codegen,
+    Linker,
+    Crate,
+}
+
 impl PrintKind {
     fn name(self) -> &'static str {
         use PrintKind::*;
@@ -138,6 +147,28 @@ impl PrintKind {
             TlsModels => "tls-models",
             WasmProcMacroTuple => "wasm-proc-macro-tuple",
             // tidy-alphabetical-end
+        }
+    }
+
+    fn category(self) -> PrintCategory {
+        use PrintKind::*;
+        match self {
+            TargetList | TargetSpecJsonSchema | AllTargetSpecsJson | TargetSpecJson
+            | TargetCPUs | TargetFeatures | DeploymentTarget | HostTuple | SupportedCrateTypes
+            | Sysroot | TargetLibdir | Cfg | CheckCfg | WasmProcMacroTuple => PrintCategory::Target,
+
+            BackendHasMnemonic
+            | BackendHasZstd
+            | CallingConventions
+            | CodeModels
+            | SplitDebuginfo
+            | StackProtectorStrategies
+            | TlsModels
+            | RelocationModels => PrintCategory::Codegen,
+
+            LinkArgs | NativeStaticLibs => PrintCategory::Linker,
+
+            CrateName | CrateRootLintLevels | FileNames => PrintCategory::Crate,
         }
     }
 
@@ -202,6 +233,7 @@ pub fn collect_print_requests(
     cg: &mut CodegenOptions,
     unstable_opts: &UnstableOptions,
     matches: &getopts::Matches,
+    allowed: &[PrintCategory],
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();
     if cg.target_cpu.as_deref() == Some("help") {
@@ -243,12 +275,14 @@ pub fn collect_print_requests(
                     for example: `--print=backend-has-mnemonic:RET`",
                 );
             }
-        } else if let Some(print_kind) = PrintKind::from_str(req) {
+        } else if let Some(print_kind) = PrintKind::from_str(req)
+            && allowed.contains(&print_kind.category())
+        {
             check_print_request_stability(early_dcx, unstable_opts, print_kind);
             (print_kind, None)
         } else {
             let is_nightly = nightly_options::match_is_nightly_build(matches);
-            emit_unknown_print_request_help(early_dcx, req, is_nightly)
+            emit_unknown_print_request_help(early_dcx, req, is_nightly, allowed)
         };
 
         let out = out.unwrap_or(OutFileName::Stdout);
@@ -279,11 +313,17 @@ fn check_print_request_stability(
     }
 }
 
-fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str, is_nightly: bool) -> ! {
+fn emit_unknown_print_request_help(
+    early_dcx: &EarlyDiagCtxt,
+    req: &str,
+    is_nightly: bool,
+    allowed: &[PrintCategory],
+) -> ! {
     let prints = PrintKind::ALL_VARIANTS
         .iter()
         // If we're not on nightly, we don't want to print unstable options
         .filter(|kind| is_nightly || kind.is_stable())
+        .filter(|kind| allowed.contains(&kind.category()))
         .map(|kind| format!("`{kind}`"))
         .collect::<Vec<_>>()
         .join(", ");
@@ -292,9 +332,12 @@ fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str, is_nigh
     diag.help(format!("valid print requests are: {prints}"));
 
     if req == "lints" {
-        diag.help(format!("use `-Whelp` to print a list of lints"));
+        diag.help("use `-Whelp` to print a list of lints");
     }
 
-    diag.help(format!("for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information"));
+    if allowed == PrintCategory::ALL_VARIANTS {
+        diag.help("for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information");
+    }
+
     diag.emit()
 }
