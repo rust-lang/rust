@@ -115,13 +115,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
 
         match expr.kind {
-            ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
+            ExprKind::LogicalOp { op: op @ LogicalOp::And, lhs, rhs } => {
+                this.maybe_mcdc_record_operator(op, expr_span);
+
                 let lhs_then_block = this.then_else_break_inner(block, lhs, args).into_block();
                 let rhs_then_block =
                     this.then_else_break_inner(lhs_then_block, rhs, args).into_block();
                 rhs_then_block.unit()
             }
-            ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
+            ExprKind::LogicalOp { op: op @ LogicalOp::Or, lhs, rhs } => {
+                this.maybe_mcdc_record_operator(op, expr_span);
+
                 let local_scope = this.local_scope();
                 let (lhs_success_block, failure_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
@@ -201,17 +205,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let temp_scope = args.temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
 
-                let place = unpack!(
-                    block = this.as_temp(
-                        block,
-                        TempLifetime {
-                            temp_lifetime: Some(temp_scope),
-                            backwards_incompatible: None
-                        },
-                        expr_id,
-                        mutability
+                let place = this.in_mcdc_sub_scope(|this| {
+                    unpack!(
+                        block = this.as_temp(
+                            block,
+                            TempLifetime {
+                                temp_lifetime: Some(temp_scope),
+                                backwards_incompatible: None
+                            },
+                            expr_id,
+                            mutability
+                        )
                     )
-                );
+                });
 
                 let operand = Operand::Move(Place::from(place));
 

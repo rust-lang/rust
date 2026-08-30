@@ -192,6 +192,8 @@ pub enum CoverageLevel {
     /// instrumentation, so it might be removed in the future when MC/DC is
     /// sufficiently complete, or if it is making MC/DC changes difficult.
     Condition,
+    /// Instrument decisions for MC/DC coverage.
+    Mcdc,
 }
 
 // The different settings that the `-Z offload` flag can have.
