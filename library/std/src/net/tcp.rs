@@ -47,6 +47,8 @@ use crate::time::Duration;
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let mut stream = TcpStream::connect("[::1]:34254")?;
+/// #   #[allow(unused)]
+///     let mut ipv4_stream = TcpStream::connect("127.0.0.1:34254")?;
 ///
 ///     stream.write(&[1])?;
 ///     stream.read(&mut [0; 128])?;
@@ -87,6 +89,8 @@ pub struct TcpStream(net_imp::TcpStream);
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let listener = TcpListener::bind("[::1]:80")?;
+/// #   #[allow(unused)]
+///     let ipv4_listener = TcpListener::bind("127.0.0.1:80")?;
 ///
 ///     // accept connections and process them serially
 ///     for stream in listener.incoming() {

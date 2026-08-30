@@ -49,6 +49,8 @@ use crate::time::Duration;
 /// fn main() -> std::io::Result<()> {
 ///     {
 ///         let socket = UdpSocket::bind("[::1]:34254")?;
+///         # #[allow(unused)]
+///         let ipv4_socket = UdpSocket::bind("127.0.0.1:34254")?;
 ///
 ///         // Receives a single datagram message on the socket. If `buf` is too small to hold
 ///         // the message, it will be cut off.
