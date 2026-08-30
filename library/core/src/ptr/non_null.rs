@@ -4,7 +4,8 @@ use crate::marker::{Destruct, PointeeSized, Unsize};
 use crate::mem::{MaybeUninit, SizedTypeProperties, transmute};
 use crate::num::NonZero;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr::Unique;
+use crate::ptr::metadata::Thin;
+use crate::ptr::{Unique, null_mut};
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{fmt, hash, intrinsics, mem, ptr};
@@ -1720,5 +1721,29 @@ const impl<T: PointeeSized> From<&T> for NonNull<T> {
     #[inline]
     fn from(r: &T) -> Self {
         NonNull::from_ref(r)
+    }
+}
+
+#[stable(feature = "from_option_nonnull", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+const impl<T: Thin> From<Option<NonNull<T>>> for *const T {
+    /// Converts an `Option<NonNull<T>>` to a `*const T`.
+    ///
+    /// This conversion is safe and infallible due to our layout guarantees.
+    #[inline]
+    fn from(value: Option<NonNull<T>>) -> Self {
+        value.map_or_else(null_mut, NonNull::as_ptr).cast_const()
+    }
+}
+
+#[stable(feature = "from_option_nonnull", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+const impl<T: Thin> From<Option<NonNull<T>>> for *mut T {
+    /// Converts an `Option<NonNull<T>>` to a `*mut T`.
+    ///
+    /// This conversion is safe and infallible due to our layout guarantees.
+    #[inline]
+    fn from(value: Option<NonNull<T>>) -> Self {
+        value.map_or_else(null_mut, NonNull::as_ptr)
     }
 }
