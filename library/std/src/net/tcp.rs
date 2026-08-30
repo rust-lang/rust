@@ -156,8 +156,8 @@ impl TcpStream {
     /// use std::net::{SocketAddr, TcpStream};
     ///
     /// let addrs = [
-    ///     SocketAddr::from(([127, 0, 0, 1], 8080)),
-    ///     SocketAddr::from(([127, 0, 0, 1], 8081)),
+    ///     SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 8080)),
+    ///     SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 8081)),
     /// ];
     /// if let Ok(stream) = TcpStream::connect(&addrs[..]) {
     ///     println!("Connected to the server!");
