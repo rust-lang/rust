@@ -415,7 +415,7 @@ pub enum StatementKind<'tcx> {
     ///
     /// Coverage statements are used in conjunction with the coverage mappings and other
     /// information stored in the function's
-    /// [`mir::Body::function_coverage_info`](crate::mir::Body::function_coverage_info).
+    /// [`mir::Body::coverage_mir_info`](crate::mir::Body::coverage_mir_info).
     /// (For inlined MIR, take care to look up the *original function's* coverage info.)
     ///
     /// Interpreters and codegen backends that don't support coverage instrumentation

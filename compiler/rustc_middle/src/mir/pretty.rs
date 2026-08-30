@@ -630,21 +630,21 @@ fn write_mir_intro<'tcx>(
     // Add an empty line before the first block is printed.
     writeln!(w)?;
 
-    if let Some(coverage_info_hi) = &body.coverage_info_hi {
-        write_coverage_info_hi(coverage_info_hi, w)?;
+    if let Some(early_info) = &body.coverage_early_info {
+        write_coverage_early_info(early_info, w)?;
     }
-    if let Some(function_coverage_info) = &body.function_coverage_info {
-        write_function_coverage_info(function_coverage_info, w)?;
+    if let Some(mir_info) = &body.coverage_mir_info {
+        write_coverage_mir_info(mir_info, w)?;
     }
 
     Ok(())
 }
 
-fn write_coverage_info_hi(
-    coverage_info_hi: &coverage::CoverageInfoHi,
+fn write_coverage_early_info(
+    early_info: &coverage::CoverageEarlyInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::CoverageInfoHi { num_block_markers: _, branch_spans } = coverage_info_hi;
+    let coverage::CoverageEarlyInfo { num_block_markers: _, branch_spans } = early_info;
 
     // Only add an extra trailing newline if we printed at least one thing.
     let mut did_print = false;
@@ -664,11 +664,11 @@ fn write_coverage_info_hi(
     Ok(())
 }
 
-fn write_function_coverage_info(
-    function_coverage_info: &coverage::FunctionCoverageInfo,
+fn write_coverage_mir_info(
+    mir_info: &coverage::CoverageMirInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::FunctionCoverageInfo { mappings, .. } = function_coverage_info;
+    let coverage::CoverageMirInfo { mappings, .. } = mir_info;
 
     for coverage::Mapping { kind, span } in mappings {
         writeln!(w, "{INDENT}coverage {kind:?} => {span:?};")?;
