@@ -17,7 +17,7 @@ use crate::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTrait
 use crate::relate::Relate;
 use crate::search_graph::RequiredDepth;
 use crate::solve::{
-    AccessedOpaques, CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect,
+    AccessedOpaques, CanonicalInputData, Certainty, ExternalConstraintsData, QueryResult, inspect,
 };
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
@@ -499,7 +499,7 @@ pub trait Interner:
     fn mk_probe(self, probe: inspect::Probe<Self>) -> Self::Probe;
     fn evaluate_root_goal_for_proof_tree_raw(
         self,
-        canonical_goal: CanonicalInput<Self>,
+        canonical_goal: Self::CanonicalInput,
         root_depth: usize,
     ) -> (QueryResult<Self>, Self::Probe, RequiredDepth);
 
@@ -520,6 +520,9 @@ pub trait Interner:
     ) -> Region<Self>;
 
     fn intern_canonical_bound(self, var: BoundVar) -> Region<Self>;
+
+    type CanonicalInput: Copy + Debug + Hash + Eq + Deref<Target = CanonicalInputData<Self>>;
+    fn mk_canonical_input(self, data: impl Into<CanonicalInputData<Self>>) -> Self::CanonicalInput;
 }
 
 macro_rules! declare_lift_into {
@@ -711,7 +714,7 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 }
 
 impl<I: Interner> search_graph::Cx for I {
-    type Input = CanonicalInput<I>;
+    type Input = I::CanonicalInput;
     type Result = (QueryResult<I>, AccessedOpaques<I>);
     type AmbiguityKind = Certainty;
 

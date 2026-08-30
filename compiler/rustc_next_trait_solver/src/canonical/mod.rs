@@ -26,7 +26,7 @@ use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
 use crate::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData,
+     CanonicalResponse, Certainty, ExternalConstraintsData,
     ExternalRegionConstraints, Goal, NestedNormalizationGoals, QueryInput, Response,
     VisibleForLeakCheck, inspect,
 };
@@ -58,7 +58,7 @@ pub(super) fn canonicalize_goal<D, I>(
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
     typing_mode: TypingMode<I>,
-) -> (ThinVec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
+) -> (ThinVec<I::GenericArg>, I::CanonicalInput)
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -71,8 +71,10 @@ where
         },
     );
 
-    let query_input =
-        ty::CanonicalQueryInput { canonical, typing_mode: TypingModeEqWrapper(typing_mode) };
+    let query_input = delegate.cx().mk_canonical_input(ty::CanonicalQueryInput {
+        canonical,
+        typing_mode: TypingModeEqWrapper(typing_mode),
+    });
     (orig_values, query_input)
 }
 

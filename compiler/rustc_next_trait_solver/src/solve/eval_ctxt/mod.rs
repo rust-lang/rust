@@ -41,8 +41,8 @@ use crate::solve::fast_path::compute_goal_fast_path_cold;
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
-    CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT,
-    Goal, GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
+    CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT, Goal,
+    GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
     NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
     VisibleForLeakCheck, inspect,
 };
@@ -516,7 +516,7 @@ where
     pub(super) fn enter_canonical<T>(
         cx: I,
         search_graph: &'a mut SearchGraph<D>,
-        canonical_input: CanonicalInput<I>,
+        canonical_input: I::CanonicalInput,
         proof_tree_builder: &mut inspect::ProofTreeBuilder<D>,
         f: impl FnOnce(
             &mut EvalCtxt<'_, D>,
@@ -833,7 +833,7 @@ where
 
     fn build_stalled_on(
         &self,
-        canonical_goal: CanonicalInput<I>,
+        canonical_goal: I::CanonicalInput,
         maybe_info: MaybeInfo,
         stalled_vars: ThinVec<I::GenericArg>,
         previously_succeeded_in_erased: SucceededInErased<I>,
@@ -1827,7 +1827,7 @@ pub fn evaluate_root_goal_for_proof_tree_raw_provider<
     I: Interner,
 >(
     cx: I,
-    canonical_goal: CanonicalInput<I>,
+    canonical_goal: I::CanonicalInput,
     root_depth: usize,
 ) -> (QueryResult<I>, I::Probe, RequiredDepth) {
     let mut inspect = inspect::ProofTreeBuilder::new();

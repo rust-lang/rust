@@ -10,6 +10,7 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::solve::CanonicalInputData;
 use rustc_type_ir::{
     BoundVar, CollectAndApply, DebruijnIndex, Interner, TypeFoldable, Unnormalized, VisitorResult,
     search_graph, try_visit,
@@ -663,6 +664,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Probe = &'tcx inspect::Probe<TyCtxt<'tcx>>;
     fn mk_probe(self, probe: inspect::Probe<Self>) -> &'tcx inspect::Probe<TyCtxt<'tcx>> {
         self.arena.alloc(probe)
+    }
+    type CanonicalInput = CanonicalInput<'tcx>;
+    fn mk_canonical_input(self, data: impl Into<CanonicalInputData<Self>>) -> CanonicalInput<'tcx> {
+        self.intern_canonical_input(data.into())
     }
     fn evaluate_root_goal_for_proof_tree_raw(
         self,

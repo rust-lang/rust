@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use rustc_type_ir::search_graph::{self, PathKind};
 use rustc_type_ir::solve::{
-    AccessedOpaques, CanonicalInput, Certainty, NoSolution, QueryResult, RerunResultExt,
+    AccessedOpaques, Certainty, NoSolution, QueryResult, RerunResultExt,
 };
 use rustc_type_ir::{Interner, MayBeErased, TypingMode};
 
@@ -30,7 +30,7 @@ where
     type ValidationScope = Infallible;
     fn enter_validation_scope(
         _cx: Self::Cx,
-        _input: CanonicalInput<I>,
+        _input: I::CanonicalInput,
     ) -> Option<Self::ValidationScope> {
         None
     }
@@ -47,7 +47,7 @@ where
     fn initial_provisional_result(
         cx: I,
         kind: PathKind,
-        input: CanonicalInput<I>,
+        input: I::CanonicalInput,
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
         match kind {
             PathKind::Coinductive => response_no_constraints(cx, input, Certainty::Yes),
@@ -101,7 +101,7 @@ where
 
     fn stack_overflow_result(
         cx: I,
-        input: CanonicalInput<I>,
+        input: I::CanonicalInput,
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
         response_no_constraints(cx, input, Certainty::overflow(true))
     }
@@ -109,7 +109,7 @@ where
     const FIXPOINT_OVERFLOW_AMBIGUITY_KIND: Certainty = Certainty::overflow(false);
     fn fixpoint_overflow_result(
         cx: I,
-        input: CanonicalInput<I>,
+        input: I::CanonicalInput,
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
         response_no_constraints(cx, input, Certainty::overflow(false))
     }
@@ -129,7 +129,7 @@ where
     fn compute_goal(
         search_graph: &mut SearchGraph<D>,
         cx: I,
-        input: CanonicalInput<I>,
+        input: I::CanonicalInput,
         inspect: &mut Self::ProofTreeBuilder,
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
         EvalCtxt::enter_canonical(cx, search_graph, input, inspect, |ecx, goal| {
@@ -144,7 +144,7 @@ where
 
 fn response_no_constraints<I: Interner>(
     cx: I,
-    input: CanonicalInput<I>,
+    input: I::CanonicalInput,
     certainty: Certainty,
 ) -> (QueryResult<I>, AccessedOpaques<I>) {
     (

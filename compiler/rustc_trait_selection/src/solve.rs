@@ -19,7 +19,7 @@ pub use select::InferCtxtSelectExt;
 
 fn evaluate_root_goal_for_proof_tree_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (CanonicalInput<TyCtxt<'tcx>>, usize),
+    key: (rustc_middle::traits::solve::CanonicalInput<'tcx>, usize),
 ) -> (QueryResult<TyCtxt<'tcx>>, &'tcx inspect::Probe<TyCtxt<'tcx>>, RequiredDepth) {
     evaluate_root_goal_for_proof_tree_raw_provider::<SolverDelegate<'tcx>, TyCtxt<'tcx>>(
         tcx, key.0, key.1,

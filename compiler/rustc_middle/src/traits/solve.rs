@@ -12,7 +12,8 @@ pub type Goal<'tcx, P> = ir::solve::Goal<TyCtxt<'tcx>, P>;
 pub type QueryInput<'tcx, P> = ir::solve::QueryInput<TyCtxt<'tcx>, P>;
 pub type QueryResult<'tcx> = ir::solve::QueryResult<TyCtxt<'tcx>>;
 pub type CandidateSource<'tcx> = ir::solve::CandidateSource<TyCtxt<'tcx>>;
-pub type CanonicalInput<'tcx, P = ty::Predicate<'tcx>> = ir::solve::CanonicalInput<TyCtxt<'tcx>, P>;
+pub type CanonicalInputRaw<'tcx, P = ty::Predicate<'tcx>> =
+    ir::solve::CanonicalInput<TyCtxt<'tcx>, P>;
 pub type CanonicalResponse<'tcx> = ir::solve::CanonicalResponse<TyCtxt<'tcx>>;
 pub type FetchEligibleAssocItemResponse<'tcx> =
     ir::solve::FetchEligibleAssocItemResponse<TyCtxt<'tcx>>;
@@ -22,6 +23,17 @@ pub type GoalStalledOnOpaques<'tcx> = ir::solve::GoalStalledOnOpaques<TyCtxt<'tc
 pub type SucceededInErased<'tcx> = ir::solve::SucceededInErased<TyCtxt<'tcx>>;
 
 pub type PredefinedOpaques<'tcx> = &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>;
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, StableHash)]
+pub struct CanonicalInput<'tcx>(pub(crate) Interned<'tcx, CanonicalInputData<TyCtxt<'tcx>>>);
+
+impl<'tcx> std::ops::Deref for CanonicalInput<'tcx> {
+    type Target = CanonicalInputData<TyCtxt<'tcx>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, StableHash)]
 pub struct ExternalConstraints<'tcx>(
