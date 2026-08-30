@@ -2356,6 +2356,90 @@ fn test_rename_symlink() {
 }
 
 #[test]
+fn test_rename_noreplace() {
+    let tmpdir = tmpdir();
+    let source_path = tmpdir.join("source_file.txt");
+    let target_path = tmpdir.join("target_file.txt");
+
+    fs::write(&source_path, b"source hello world").unwrap();
+
+    fs::rename_noreplace(&source_path, &target_path).unwrap();
+    assert!(!source_path.exists());
+    assert_eq!(fs::read(&target_path).unwrap(), b"source hello world");
+}
+
+#[test]
+fn test_rename_noreplace_existing_file() {
+    let tmpdir = tmpdir();
+    let source_path = tmpdir.join("source_file.txt");
+    let target_path = tmpdir.join("target_file.txt");
+
+    fs::write(&source_path, b"source hello world").unwrap();
+    fs::write(&target_path, b"target hello world").unwrap();
+
+    let err = fs::rename_noreplace(&source_path, &target_path).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
+    // Make sure the failed rename left both files untouched.
+    assert_eq!(fs::read(&source_path).unwrap(), b"source hello world");
+    assert_eq!(fs::read(&target_path).unwrap(), b"target hello world");
+}
+
+#[test]
+fn test_rename_noreplace_directory_to_empty_directory() {
+    // Renaming a directory over an existing empty directory should fail;
+    // plain `rename` would succeed here.
+    let tmpdir = tmpdir();
+    let source_path = tmpdir.join("source_directory");
+    let target_path = tmpdir.join("target_directory");
+
+    fs::create_dir(&source_path).unwrap();
+    fs::create_dir(&target_path).unwrap();
+
+    let err = fs::rename_noreplace(&source_path, &target_path).unwrap_err();
+    assert_matches!(
+        err.kind(),
+        // A native no-replace rename returns `AlreadyExists`. The `link`/`unlink`
+        // fallback cannot rename directories and returns `PermissionDenied`.
+        ErrorKind::AlreadyExists | ErrorKind::PermissionDenied,
+        "Expected AlreadyExists or PermissionDenied error, got {err}"
+    );
+}
+
+#[test]
+#[cfg(any(target_os = "linux", target_os = "android", target_vendor = "apple", windows))]
+fn test_rename_noreplace_directory() {
+    // The `link`/`unlink` fallback cannot move directories, so only platforms
+    // with a native no-replace rename are tested.
+    let tmpdir = tmpdir();
+    let source_path = tmpdir.join("source_directory");
+    let target_path = tmpdir.join("target_directory");
+
+    fs::create_dir(&source_path).unwrap();
+    fs::write(source_path.join("file.txt"), b"hello world").unwrap();
+
+    fs::rename_noreplace(&source_path, &target_path).unwrap();
+    assert!(!source_path.exists());
+    assert_eq!(fs::read(target_path.join("file.txt")).unwrap(), b"hello world");
+}
+
+#[test]
+fn test_rename_noreplace_symlink() {
+    let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    };
+
+    let original = tmpdir.join("original");
+    let dest = tmpdir.join("dest");
+    let not_exist = Path::new("does not exist");
+
+    symlink_file(not_exist, &original).unwrap();
+    fs::rename_noreplace(&original, &dest).unwrap();
+    // Make sure that renaming `original` to `dest` preserves the symlink.
+    assert_eq!(fs::read_link(&dest).unwrap().as_path(), not_exist);
+}
+
+#[test]
 #[cfg(windows)]
 #[cfg_attr(
     all(windows, target_arch = "aarch64"),
