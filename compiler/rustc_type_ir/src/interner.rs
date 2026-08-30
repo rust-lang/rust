@@ -152,7 +152,6 @@ pub trait Interner:
         + Debug
         + Hash
         + Eq
-        + TypeFoldable<Self>
         + Deref<Target = ExternalConstraintsData<Self>>;
     fn mk_external_constraints(
         self,

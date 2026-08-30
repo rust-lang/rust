@@ -57,7 +57,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
     }
 
     pub fn result(&self) -> Result<Certainty, NoSolution> {
-        self.result.map(|c| c.value.certainty)
+        self.result.map(|c| c.value.response.certainty)
     }
 
     pub fn goal(&self) -> &'a InspectGoal<'a, 'tcx> {
@@ -354,7 +354,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         } = root;
         // If there's a normalizes-to goal, AND the evaluation result with the result of
         // constraining the normalizes-to RHS and computing the nested goals.
-        let result = result.map(|ok| ok.value.certainty);
+        let result = result.map(|ok| ok.value.response.certainty);
 
         InspectGoal {
             infcx,
