@@ -1,11 +1,12 @@
 #![feature(move_trait)]
 #![feature(negative_impls)]
+#![feature(min_specialization)]
 
 use std::marker::Move;
 
 struct A;
 struct B;
-unsafe impl !Move for B {}
+impl !Move for B {}
 
 fn main() {
     let a = A;
@@ -13,4 +14,5 @@ fn main() {
 
     let b = B;
     let _new_b = b;
+    //~^ ERROR values of type `B` may not be movable [E0277]
 }
