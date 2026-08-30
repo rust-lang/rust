@@ -578,6 +578,11 @@ impl Session {
             && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Condition
     }
 
+    pub fn instrument_coverage_mcdc(&self) -> bool {
+        self.instrument_coverage()
+            && self.opts.unstable_opts.coverage_options.level >= CoverageLevel::Mcdc
+    }
+
     /// Provides direct access to the `CoverageOptions` struct, so that
     /// individual flags for debugging/testing coverage instrumetation don't
     /// need separate accessors.
