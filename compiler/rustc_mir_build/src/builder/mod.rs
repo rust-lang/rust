@@ -839,7 +839,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine.clone(),
             None,
         );
-        body.coverage_info_hi = self.coverage_info.as_ref().map(|b| b.as_done());
+        body.coverage_early_info = self.coverage_info.as_ref().map(|b| b.as_done());
 
         let writer = pretty::MirWriter::new(self.tcx);
         writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
@@ -858,7 +858,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine,
             None,
         );
-        body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
+        body.coverage_early_info = self.coverage_info.map(|b| b.into_done());
 
         let writer = pretty::MirWriter::new(self.tcx);
         for (index, block) in body.basic_blocks.iter().enumerate() {

@@ -10,8 +10,8 @@ use std::sync::Arc;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods as _, ConstCodegenMethods};
 use rustc_middle::mir::coverage::{
-    BasicCoverageBlock, CounterId, CovTerm, CoverageIdsInfo, Expression, ExpressionId,
-    FunctionCoverageInfo, Mapping, MappingKind, Op,
+    BasicCoverageBlock, CounterId, CovTerm, CoverageCodegenInfo, CoverageMirInfo, Expression,
+    ExpressionId, Mapping, MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_span::{SourceFile, Span};
@@ -52,22 +52,22 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     instance: Instance<'tcx>,
     is_used: bool,
 ) -> Option<CovfunRecord<'tcx>> {
-    let fn_cov_info = tcx.instance_mir(instance.def).function_coverage_info.as_deref()?;
-    let ids_info = tcx.coverage_ids_info(instance.def)?;
+    let mir_info = tcx.instance_mir(instance.def).coverage_mir_info.as_deref()?;
+    let cg_info = tcx.coverage_codegen_info(instance.def)?;
 
-    let expressions = prepare_expressions(ids_info);
+    let expressions = prepare_expressions(cg_info);
 
     let mut covfun = CovfunRecord {
         _instance: instance,
         mangled_function_name: tcx.symbol_name(instance).name,
-        source_hash: if is_used { fn_cov_info.function_source_hash } else { 0 },
+        source_hash: if is_used { mir_info.function_source_hash } else { 0 },
         is_used,
         virtual_file_mapping: VirtualFileMapping::default(),
         expressions,
         regions: llvm_cov::Regions::default(),
     };
 
-    fill_region_tables(tcx, fn_cov_info, ids_info, &mut covfun);
+    fill_region_tables(tcx, mir_info, cg_info, &mut covfun);
 
     if covfun.regions.has_no_regions() {
         debug!(?covfun, "function has no mappings to embed; skipping");
@@ -91,12 +91,12 @@ pub(crate) fn counter_for_term(term: CovTerm) -> ffi::Counter {
 }
 
 /// Convert the function's coverage-counter expressions into a form suitable for FFI.
-fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression> {
+fn prepare_expressions(cg_info: &CoverageCodegenInfo) -> Vec<ffi::CounterExpression> {
     // We know that LLVM will optimize out any unused expressions before
     // producing the final coverage map, so there's no need to do the same
     // thing on the Rust side unless we're confident we can do much better.
     // (See `CounterExpressionsMinimizer` in `CoverageMappingWriter.cpp`.)
-    ids_info
+    cg_info
         .expressions
         .iter()
         .map(move |&Expression { lhs, op, rhs }| ffi::CounterExpression {
@@ -113,14 +113,14 @@ fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression
 /// Populates the mapping region tables in the current function's covfun record.
 fn fill_region_tables<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_cov_info: &'tcx FunctionCoverageInfo,
-    ids_info: &'tcx CoverageIdsInfo,
+    mir_info: &'tcx CoverageMirInfo,
+    cg_info: &'tcx CoverageCodegenInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
     // If this function is unused, replace all counters with zero.
     let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
         let term = if covfun.is_used {
-            ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
+            cg_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
         } else {
             CovTerm::Zero
         };
@@ -130,7 +130,7 @@ fn fill_region_tables<'tcx>(
     // Currently a function's mappings must all be in the same file, so use the
     // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
-    let Some(first_span) = (try { fn_cov_info.mappings.first()?.span }) else {
+    let Some(first_span) = (try { mir_info.mappings.first()?.span }) else {
         debug_assert!(false, "function has no mappings: {covfun:?}");
         return;
     };
@@ -155,7 +155,7 @@ fn fill_region_tables<'tcx>(
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
-    for &Mapping { ref kind, span } in &fn_cov_info.mappings {
+    for &Mapping { ref kind, span } in &mir_info.mappings {
         let Some(coords) = make_coords(span) else { continue };
         let cov_span = coords.make_coverage_span(local_file_id);
 
