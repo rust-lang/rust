@@ -4412,6 +4412,7 @@ dependencies = [
  "gsgdt",
  "parking_lot",
  "polonius-engine",
+ "rustc-demangle",
  "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
