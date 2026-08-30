@@ -301,14 +301,35 @@ def main():
             # this point are either from the `bless` not working properly, or some other issue with
             # the test itself. In either case, we probably don't want to update the test data until
             # those are resolved.
-            # Only runs if the test contains a repr command, as we don't want to create an input
-            # file for a test that won't ever use it.
+
+            # If we're running CI though, the runner may be on a target that the PR author doesn't
+            # have access to. In such cases, we want to dump the json output so they can "manually
+            # bless" when necessary.
+            if (
+                not all_ok
+                and (is_ci := os.environ.get("CI")) is not None
+                and is_ci == "true"
+            ):
+                from lldb_providers import FEATURE_FLAGS
+
+                path = os.path.relpath(os.environ["LLDB_BATCHMODE_INPUT_DATA_PATH"])
+
+                print(f"[repr] If you do not have access to this target, you can manually update \
+the test data by overwriting the data in {path} with the following:")
+
+                INPUT_DATA.print_json(
+                    BlessMetadata(
+                        sys.version, debugger.GetVersionString(), str(FEATURE_FLAGS)
+                    )
+                )
 
             if not tested_all_types() or not tested_all_variables():
                 debugger.HandleCommand("quit 1")
             elif BLESS:
                 from lldb_providers import FEATURE_FLAGS
 
+                # Only runs if the test contains a repr command, as we don't want to create an input
+                # file for a test that won't ever use it.
                 INPUT_DATA.save_blessing(
                     BlessMetadata(
                         sys.version, debugger.GetVersionString(), str(FEATURE_FLAGS)
