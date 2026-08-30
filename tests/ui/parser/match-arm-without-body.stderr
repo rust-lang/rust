@@ -15,9 +15,6 @@ LL |         Some(_),
 help: try adding parentheses to match on a tuple...
    |
 LL ~         (Some(_),
-LL |
-LL |
-LL |
 LL ~         _) => {}
    |
 help: ...or a vertical bar to match on alternatives
@@ -35,9 +32,6 @@ LL |         Some(_),
 help: try adding parentheses to match on a tuple...
    |
 LL ~         (Some(_),
-LL |
-LL |
-LL |
 LL ~         None) if true => {}
    |
 help: ...or a vertical bar to match on alternatives
@@ -55,9 +49,6 @@ LL |         Some(_),
 help: try adding parentheses to match on a tuple...
    |
 LL ~         (Some(_),
-LL |
-LL |
-LL |
 LL ~         _) = {}
    |
 help: ...or a vertical bar to match on alternatives

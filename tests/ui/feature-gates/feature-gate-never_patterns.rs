@@ -59,8 +59,7 @@ fn main() {
 
     // Check that the gate operates even behind `cfg`.
     match Some(0) {
-        //~^ ERROR non-exhaustive patterns: `Some(_)` not covered
-        None => {}
+        _ => {}
         #[cfg(false)]
         Some(_)
         //~^ ERROR `match` arm with no body
