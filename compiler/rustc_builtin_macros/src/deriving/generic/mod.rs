@@ -494,7 +494,7 @@ impl<'a> TraitDef<'a> {
                     Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
                 );
 
-                let newitem = match &item.kind {
+                let mut newitem = match &item.kind {
                     ast::ItemKind::Struct(ident, generics, struct_def) => self.expand_struct_def(
                         cx,
                         struct_def,
@@ -530,8 +530,7 @@ impl<'a> TraitDef<'a> {
                 };
                 // Keep the lint attributes of the previous item to control how the
                 // generated implementations are linted
-                let mut attrs = newitem.attrs.clone();
-                attrs.extend(
+                newitem.attrs.extend(
                     item.attrs
                         .iter()
                         .filter(|a| {
@@ -546,7 +545,7 @@ impl<'a> TraitDef<'a> {
                         })
                         .cloned(),
                 );
-                push(Annotatable::Item(Box::new(ast::Item { attrs, ..(*newitem).clone() })))
+                push(Annotatable::Item(newitem))
             }
             _ => unreachable!(),
         }
