@@ -101,7 +101,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 .unwrap_or_else(|| icx.lower_ty(ty)),
             TraitItemKind::Type(_, Some(ty)) => icx.lower_ty(ty),
             TraitItemKind::Type(_, None) => {
-                span_bug!(item.span, "associated type missing default");
+                span_bug!(item.span, "type_of: associated type missing default");
             }
         },
 
@@ -196,7 +196,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             | ItemKind::ExternCrate(..)
             | ItemKind::Use(..)
             | ItemKind::TestBinderConstraints { .. } => {
-                span_bug!(item.span, "compute_type_of_item: unexpected item type: {:?}", item.kind);
+                span_bug!(item.span, "type_of: unexpected item kind: {:?}", item.kind);
             }
         },
 
@@ -254,12 +254,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     lowered_ty
                 }
             }
-            x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
+            _ => bug!("type_of: unexpected node kind {hir_node:?}"),
         },
 
-        x => {
-            bug!("unexpected sort of node in type_of(): {:?}", x);
-        }
+        node => bug!("type_of: unexpected node kind: {node:?}"),
     };
     if let Err(e) = icx.check_tainted_by_errors()
         && !output.references_error()

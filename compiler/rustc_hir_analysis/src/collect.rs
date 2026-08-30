@@ -1745,28 +1745,24 @@ fn rendered_precise_capturing_args<'tcx>(
 
 fn const_param_default<'tcx>(
     tcx: TyCtxt<'tcx>,
-    local_def_id: LocalDefId,
+    param_def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
     let hir::Node::GenericParam(hir::GenericParam {
-        kind: hir::GenericParamKind::Const { default: Some(default_ct), .. },
+        kind: hir::GenericParamKind::Const { default: Some(ct), .. },
         ..
-    }) = tcx.hir_node_by_def_id(local_def_id)
+    }) = tcx.hir_node_by_def_id(param_def_id)
     else {
         span_bug!(
-            tcx.def_span(local_def_id),
-            "`const_param_default` expected a generic parameter with a constant"
+            tcx.def_span(param_def_id),
+            "const_param_default: expected a const parameter with a default value"
         )
     };
 
-    let icx = ItemCtxt::new(tcx, local_def_id);
+    let icx = ItemCtxt::new(tcx, param_def_id);
 
-    let def_id = local_def_id.to_def_id();
-    let identity_args = ty::GenericArgs::identity_for_item(tcx, tcx.parent(def_id));
-
-    let ct = icx.lowerer().lower_const_arg(
-        default_ct,
-        tcx.type_of(def_id).instantiate(tcx, identity_args).skip_norm_wip(),
-    );
+    let ct = icx
+        .lowerer()
+        .lower_const_arg(ct, tcx.type_of(param_def_id).instantiate_identity().skip_norm_wip());
     ty::EarlyBinder::bind(tcx, ct)
 }
 
