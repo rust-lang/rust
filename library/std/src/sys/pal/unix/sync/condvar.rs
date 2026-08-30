@@ -151,28 +151,23 @@ impl Condvar {
     /// # Safety
     /// May only be called once per instance of `Self`.
     pub unsafe fn init(self: Pin<&mut Self>) {
+        use crate::mem::DropGuard;
         use crate::pin::pin;
-
-        struct AttrGuard<'a>(Pin<&'a COpaque<libc::pthread_condattr_t>>);
-        impl Drop for AttrGuard<'_> {
-            fn drop(&mut self) {
-                unsafe {
-                    let result = libc::pthread_condattr_destroy(self.0.get());
-                    assert_eq!(result, 0);
-                }
-            }
-        }
 
         unsafe {
             let attr = pin!(COpaque::<libc::pthread_condattr_t>::uninit());
+
             // FIXME(pin-ergonomics): remove the next line.
             let attr = attr.into_ref();
             let r = libc::pthread_condattr_init(attr.get());
             assert_eq!(r, 0);
-            let attr = AttrGuard(attr);
-            let r = libc::pthread_condattr_setclock(attr.0.get(), Self::CLOCK);
+            let attr = DropGuard::new(attr, |attr| {
+                let result = libc::pthread_condattr_destroy(attr.get());
+                assert_eq!(result, 0);
+            });
+            let r = libc::pthread_condattr_setclock(attr.get(), Self::CLOCK);
             assert_eq!(r, 0);
-            let r = libc::pthread_cond_init(self.as_ref().raw(), attr.0.get());
+            let r = libc::pthread_cond_init(self.as_ref().raw(), attr.get());
             assert_eq!(r, 0);
         }
     }
