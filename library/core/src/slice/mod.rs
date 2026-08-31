@@ -6,6 +6,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::byte_str::ByteStr;
 use crate::clone::TrivialClone;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, unchecked_sub};
@@ -5379,6 +5380,24 @@ impl<T> [T] {
     #[unstable(feature = "str_as_str", issue = "130366")]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         self
+    }
+}
+
+impl [u8] {
+    /// Casts a byte slice as a byte string.
+    #[unstable(feature = "byte_str", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "byte_str", issue = "134915")]
+    pub const fn as_byte_str(&self) -> &ByteStr {
+        ByteStr::from_bytes(self)
+    }
+
+    /// Casts a mutable byte slice as a byte string.
+    #[unstable(feature = "byte_str", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "byte_str", issue = "134915")]
+    pub const fn as_mut_byte_str(&mut self) -> &mut ByteStr {
+        ByteStr::from_bytes_mut(self)
     }
 }
 

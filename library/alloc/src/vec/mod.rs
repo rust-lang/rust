@@ -91,6 +91,8 @@ pub use self::extract_if::ExtractIf;
 use crate::alloc::{Allocator, Global};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
+#[cfg(not(no_global_oom_handling))]
+use crate::byte_str::ByteString;
 use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
 
@@ -3704,6 +3706,17 @@ impl<A: Allocator> Vec<u8, A> {
     ) -> Result<(), TryReserveError> {
         // ignore-tidy-undocumented-unsafe
         unsafe { self.try_append_elements(other) }
+    }
+}
+
+impl Vec<u8> {
+    /// Converts a vector of bytes into a byte string.
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "byte_str", issue = "134915")]
+    #[inline]
+    #[rustc_const_unstable(feature = "byte_str", issue = "134915")]
+    pub const fn into_byte_string(self) -> ByteString {
+        ByteString(self)
     }
 }
 

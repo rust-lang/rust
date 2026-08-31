@@ -1,4 +1,4 @@
-use core::bstr::ByteStr;
+use core::byte_str::ByteStr;
 
 #[test]
 fn test_debug() {
