@@ -4,7 +4,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
 use crate::sys::fd::FileDesc;
-pub use crate::sys::fs::common::{Dir, exists};
+pub use crate::sys::fs::common::{Dir, ExtraHomeDirs, ExtraMediaDirs, exists};
 use crate::sys::time::SystemTime;
 use crate::sys::{
     AsInner, AsInnerMut, FromInner, IntoInner, io_slices, io_slices_mut, map_motor_error,
