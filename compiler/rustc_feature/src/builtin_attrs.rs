@@ -61,13 +61,15 @@ pub fn find_gated_cfg(pred: impl Fn(Symbol) -> bool) -> Option<&'static GatedCfg
 
 #[derive(Clone, Debug, Copy)]
 pub enum AttributeStability {
-    /// An attribute that is unstable behind a specified feature fagte
+    /// An attribute that is unstable behind a specified feature gate.
     Unstable {
         /// The feature gate, for example `rustc_attrs` for rustc_* attributes.
         gate_name: Symbol,
-        /// Check function to be called during the `PostExpansionVisitor` pass, which will be one of the `Features::*` functions
-        gate_check: fn(&Features) -> bool,
-        /// Notes to be displayed when an attempt is made to use the attribute without its feature gate.
+        /// Check function to be called during the `PostExpansionVisitor` pass, which will be one
+        /// of the `Features::*` functions
+        gate_check: GateFn,
+        /// Notes to be displayed when an attempt is made to use the attribute without its feature
+        /// gate.
         notes: &'static [&'static str],
     },
     /// A stable attribute, can be used on all release channels
