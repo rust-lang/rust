@@ -191,7 +191,7 @@ LL | #[deprecated = 5]
    |                expected a string literal here
 
 error[E0539]: malformed `rustc_macro_transparency` attribute input
-  --> $DIR/malformed-attrs.rs:43:3
+  --> $DIR/malformed-attrs.rs:45:3
    |
 LL | #[rustc_macro_transparency]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,7 +206,7 @@ LL | #[rustc_macro_transparency = "transparent"]
    |                            +++++++++++++++
 
 error: the `rustc_macro_transparency` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:43:3
+  --> $DIR/malformed-attrs.rs:45:3
    |
 LL | #[rustc_macro_transparency]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -214,7 +214,7 @@ LL | #[rustc_macro_transparency]
    = help: the `rustc_macro_transparency` attribute can only be applied to macro defs
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/malformed-attrs.rs:46:3
+  --> $DIR/malformed-attrs.rs:48:3
    |
 LL | #[repr]
    |   ^^^^ expected this to be a list
@@ -222,7 +222,7 @@ LL | #[repr]
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0565]: malformed `rustc_as_ptr` attribute input
-  --> $DIR/malformed-attrs.rs:48:3
+  --> $DIR/malformed-attrs.rs:50:3
    |
 LL | #[rustc_as_ptr = 5]
    |   ^^^^^^^^^^^^^---
@@ -236,7 +236,7 @@ LL + #[rustc_as_ptr]
    |
 
 error[E0539]: malformed `rustc_align` attribute input
-  --> $DIR/malformed-attrs.rs:53:3
+  --> $DIR/malformed-attrs.rs:55:3
    |
 LL | #[rustc_align]
    |   ^^^^^^^^^^^ expected this to be a list
@@ -247,7 +247,7 @@ LL | #[rustc_align(<alignment in bytes>)]
    |              ++++++++++++++++++++++
 
 error[E0539]: malformed `optimize` attribute input
-  --> $DIR/malformed-attrs.rs:55:3
+  --> $DIR/malformed-attrs.rs:57:3
    |
 LL | #[optimize]
    |   ^^^^^^^^ expected this to be a list
@@ -262,7 +262,7 @@ LL | #[optimize(speed)]
    |           +++++++
 
 error[E0805]: malformed `optimize` attribute input
-  --> $DIR/malformed-attrs.rs:57:3
+  --> $DIR/malformed-attrs.rs:59:3
    |
 LL | #[optimize(none, none)]
    |   ^^^^^^^^------------
@@ -282,7 +282,7 @@ LL + #[optimize(speed)]
    |
 
 error[E0805]: malformed `optimize` attribute input
-  --> $DIR/malformed-attrs.rs:59:3
+  --> $DIR/malformed-attrs.rs:61:3
    |
 LL | #[optimize(none, speed)]
    |   ^^^^^^^^-------------
@@ -302,7 +302,7 @@ LL + #[optimize(speed)]
    |
 
 error[E0565]: malformed `cold` attribute input
-  --> $DIR/malformed-attrs.rs:61:3
+  --> $DIR/malformed-attrs.rs:63:3
    |
 LL | #[cold = 1]
    |   ^^^^^---
@@ -316,7 +316,7 @@ LL + #[cold]
    |
 
 error[E0539]: malformed `must_use` attribute input
-  --> $DIR/malformed-attrs.rs:63:3
+  --> $DIR/malformed-attrs.rs:65:3
    |
 LL | #[must_use()]
    |   ^^^^^^^^--
@@ -334,7 +334,7 @@ LL + #[must_use = "reason"]
    |
 
 error[E0565]: malformed `no_mangle` attribute input
-  --> $DIR/malformed-attrs.rs:65:3
+  --> $DIR/malformed-attrs.rs:67:3
    |
 LL | #[no_mangle = 1]
    |   ^^^^^^^^^^---
@@ -348,7 +348,7 @@ LL + #[no_mangle]
    |
 
 error[E0565]: malformed `naked` attribute input
-  --> $DIR/malformed-attrs.rs:67:3
+  --> $DIR/malformed-attrs.rs:69:3
    |
 LL | #[unsafe(naked())]
    |   ^^^^^^^^^^^^--^
@@ -362,7 +362,7 @@ LL + #[unsafe(naked)]
    |
 
 error[E0565]: malformed `track_caller` attribute input
-  --> $DIR/malformed-attrs.rs:69:3
+  --> $DIR/malformed-attrs.rs:71:3
    |
 LL | #[track_caller()]
    |   ^^^^^^^^^^^^--
@@ -376,7 +376,7 @@ LL + #[track_caller]
    |
 
 error[E0539]: malformed `export_name` attribute input
-  --> $DIR/malformed-attrs.rs:71:3
+  --> $DIR/malformed-attrs.rs:73:3
    |
 LL | #[export_name()]
    |   ^^^^^^^^^^^^^
@@ -388,7 +388,7 @@ LL + #[export_name = "name"]
    |
 
 error[E0805]: malformed `used` attribute input
-  --> $DIR/malformed-attrs.rs:73:3
+  --> $DIR/malformed-attrs.rs:75:3
    |
 LL | #[used()]
    |   ^^^^--
@@ -406,7 +406,7 @@ LL | #[used(linker)]
    |        ++++++
 
 error: the `used` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:73:3
+  --> $DIR/malformed-attrs.rs:75:3
    |
 LL | #[used()]
    |   ^^^^
@@ -414,7 +414,7 @@ LL | #[used()]
    = help: the `used` attribute can only be applied to statics
 
 error[E0539]: malformed `crate_name` attribute input
-  --> $DIR/malformed-attrs.rs:76:3
+  --> $DIR/malformed-attrs.rs:78:3
    |
 LL | #[crate_name]
    |   ^^^^^^^^^^
@@ -864,8 +864,14 @@ note: the lint level is defined here
 LL | #![deny(invalid_doc_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
+error: valid forms for the attribute are `doc = "doc comment"`, `doc(alias)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(masked)`, `doc(no_inline)`, `doc(notable_trait)`, and `doc(test)`
+  --> $DIR/malformed-attrs.rs:43:3
+   |
+LL | #[doc()]
+   |   ^^^^^
+
 error: valid forms for the attribute are `inline`, `inline(always)`, and `inline(never)`
-  --> $DIR/malformed-attrs.rs:50:3
+  --> $DIR/malformed-attrs.rs:52:3
    |
 LL | #[inline = 5]
    |   ^^^^^^^^^^
@@ -875,7 +881,7 @@ LL | #[inline = 5]
    = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_name]`
-  --> $DIR/malformed-attrs.rs:76:1
+  --> $DIR/malformed-attrs.rs:78:1
    |
 LL | #[crate_name]
    | ^^^^^^^^^^^^^
@@ -889,12 +895,6 @@ LL | |     #[coroutine = 63] || {}
 LL | | }
    | |_^
    = note: requested on the command line with `-W unused-attributes`
-
-error: valid forms for the attribute are `doc = "doc comment"`, `doc(alias)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(masked)`, `doc(no_inline)`, `doc(notable_trait)`, and `doc(test)`
-  --> $DIR/malformed-attrs.rs:79:3
-   |
-LL | #[doc]
-   |   ^^^
 
 warning: the `link` attribute cannot be used on functions
   --> $DIR/malformed-attrs.rs:85:3
@@ -990,7 +990,7 @@ Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805
 For more information about an error, try `rustc --explain E0308`.
 Future incompatibility report: Future breakage diagnostic:
 error: valid forms for the attribute are `inline`, `inline(always)`, and `inline(never)`
-  --> $DIR/malformed-attrs.rs:50:3
+  --> $DIR/malformed-attrs.rs:52:3
    |
 LL | #[inline = 5]
    |   ^^^^^^^^^^

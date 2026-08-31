@@ -40,6 +40,8 @@
 //~^ ERROR malformed
 #[doc]
 //~^ ERROR
+#[doc()]
+//~^ ERROR
 #[rustc_macro_transparency]
 //~^ ERROR malformed
 //~| ERROR attribute cannot be used on
@@ -76,8 +78,6 @@
 #[crate_name]
 //~^ ERROR malformed
 //~| WARN crate-level attribute should be an inner attribute
-#[doc]
-//~^ ERROR
 #[target_feature]
 //~^ ERROR malformed
 #[export_stable = 1]

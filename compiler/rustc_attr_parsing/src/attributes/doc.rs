@@ -705,16 +705,7 @@ impl DocParser {
 
     fn accept_single_doc_attr(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
         match args {
-            ArgParser::NoArgs => {
-                let suggestions = cx.adcx().suggestions();
-                let span = cx.inner_span;
-                cx.emit_lint(
-                    INVALID_DOC_ATTRIBUTES,
-                    IllFormedAttributeInput::new(&suggestions, None, None),
-                    span,
-                );
-            }
-            ArgParser::List(items) => {
+            ArgParser::List(items) if !items.is_empty() => {
                 for i in items.mixed() {
                     match i {
                         MetaItemOrLitParser::MetaItemParser(mip) => {
@@ -738,6 +729,15 @@ impl DocParser {
                         "Should have been handled at the same time as sugar-syntaxed doc comments"
                     );
                 }
+            }
+            _ => {
+                let suggestions = cx.adcx().suggestions();
+                let span = cx.inner_span;
+                cx.emit_lint(
+                    INVALID_DOC_ATTRIBUTES,
+                    IllFormedAttributeInput::new(&suggestions, None, None),
+                    span,
+                );
             }
         }
     }
