@@ -14,17 +14,18 @@ use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
+    codegen_handle_fn_abi_err,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_session::{PointerAuthSchema, Session};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_structures::CrateType;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
@@ -1286,21 +1287,6 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        match err {
-            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) => {
-                self.tcx.dcx().emit_fatal(Spanned { span, node: err });
-            }
-            _ => match fn_abi_request {
-                FnAbiRequest::OfFnPtr { sig, extra_args } => {
-                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
-                }
-                FnAbiRequest::OfInstance { instance, extra_args } => {
-                    span_bug!(
-                        span,
-                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
-                    );
-                }
-            },
-        }
+        codegen_handle_fn_abi_err(self.tcx, err, span, fn_abi_request).raise_fatal()
     }
 }

@@ -14,7 +14,7 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, sym};
 use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
@@ -1373,12 +1373,36 @@ pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
     /// but this hook allows e.g. codegen to return only `&FnAbi` from its
     /// `cx.fn_abi_of_*(...)`, without any `Result<...>` around it to deal with
     /// (and any `FnAbiError`s are turned into fatal errors or ICEs).
+    ///
+    /// Codegen backends should use [`codegen_handle_fn_abi_err`] as implementation.
     fn handle_fn_abi_err(
         &self,
         err: FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>>::Error;
+}
+
+/// Implementation of [`FnAbiOfHelpers::handle_fn_abi_err`] for codegen backends.
+pub fn codegen_handle_fn_abi_err<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    err: FnAbiError<'tcx>,
+    span: Span,
+    fn_abi_request: FnAbiRequest<'tcx>,
+) -> ErrorGuaranteed {
+    match err {
+        FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) => {
+            tcx.dcx().emit_err(Spanned { span, node: err })
+        }
+        _ => match fn_abi_request {
+            FnAbiRequest::OfFnPtr { sig, extra_args } => {
+                span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
+            }
+            FnAbiRequest::OfInstance { instance, extra_args } => {
+                span_bug!(span, "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",);
+            }
+        },
+    }
 }
 
 /// Blanket extension trait for contexts that can compute `FnAbi`s.
