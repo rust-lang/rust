@@ -252,9 +252,7 @@ jobs:
       matrix:
         include:
           - cmd: vsce
-            pat: MARKETPLACE_TOKEN
           - cmd: ovsx
-            pat: OPENVSX_TOKEN
     steps:
       - name: Install Nodejs
         uses: actions/setup-node@v6
@@ -277,6 +275,8 @@ jobs:
 
       - name: Publish Extension
         if: github.repository == 'rust-lang/rust-analyzer'
+        env:
+          PUBLISH_PAT: ${{ (matrix.cmd == 'vsce' && secrets.MARKETPLACE_TOKEN) || (matrix.cmd == 'ovsx' && secrets.OPENVSX_TOKEN) }}
         working-directory: ./editors/code
-        run: npx ${{ matrix.cmd }} publish --skip-duplicate --pat ${{ secrets[matrix.pat] }} --packagePath ../../dist/rust-analyzer-*.vsix ${{ github.ref != 'refs/heads/release' && '--pre-release' || '' }}
+        run: npx ${{ matrix.cmd }} publish --skip-duplicate --pat "$PUBLISH_PAT" --packagePath ../../dist/rust-analyzer-*.vsix ${{ github.ref != 'refs/heads/release' && '--pre-release' || '' }}
         timeout-minutes: 2

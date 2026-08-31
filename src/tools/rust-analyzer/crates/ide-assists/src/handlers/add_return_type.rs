@@ -161,7 +161,7 @@ fn extract_tail(ctx: &AssistContext<'_, '_>) -> Option<(FnType, ast::Expr, Inser
             let stmt_list = body.stmt_list()?;
             let tail_expr = stmt_list.tail_expr()?;
 
-            let ret_range_end = stmt_list.l_curly_token()?.text_range().start();
+            let ret_range_end = stmt_list.l_curly_token()?.text_range().end();
             let ret_range = TextRange::new(rparen_pos, ret_range_end);
             (FnType::Function, tail_expr, ret_range, action)
         }
@@ -215,10 +215,28 @@ mod tests {
 
     #[test]
     fn infer_return_type_cursor_at_return_type_pos() {
-        cov_mark::check!(cursor_in_ret_position);
+        cov_mark::check_count!(cursor_in_ret_position, 3);
         check_assist(
             add_return_type,
             r#"fn foo() $0{
+    45
+}"#,
+            r#"fn foo() -> i32 {
+    45
+}"#,
+        );
+        check_assist(
+            add_return_type,
+            r#"fn foo()$0 {
+    45
+}"#,
+            r#"fn foo() -> i32 {
+    45
+}"#,
+        );
+        check_assist(
+            add_return_type,
+            r#"fn foo() {$0
     45
 }"#,
             r#"fn foo() -> i32 {

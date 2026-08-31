@@ -244,6 +244,40 @@ fn foo() -> foo::Num
 "#,
     );
 
+    check_edit(
+        "u32",
+        r#"
+macro_rules! identity { ($($t:tt)*) => {$($t)*}; }
+identity! {
+    fn foo() u$0
+}
+"#,
+        r#"
+macro_rules! identity { ($($t:tt)*) => {$($t)*}; }
+identity! {
+    fn foo() -> u32
+}
+"#,
+    );
+
+    check_edit(
+        "Num",
+        r#"
+macro_rules! identity { ($($t:tt)*) => {$($t)*}; }
+mod foo { pub type Num = u32; }
+identity! {
+    fn foo() foo::N$0
+}
+"#,
+        r#"
+macro_rules! identity { ($($t:tt)*) => {$($t)*}; }
+mod foo { pub type Num = u32; }
+identity! {
+    fn foo() -> foo::Num
+}
+"#,
+    );
+
     // no spaces, test edit order
     check_edit(
         "foo",

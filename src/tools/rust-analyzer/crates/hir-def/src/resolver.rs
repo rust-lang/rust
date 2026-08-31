@@ -1392,7 +1392,9 @@ impl HasResolver for FunctionId {
 
 impl HasResolver for ConstId {
     fn resolver(self, db: &dyn SourceDatabase) -> Resolver<'_> {
-        lookup_resolver(db, self)
+        // Consts can have generic params on nightly. Furthermore they're a `GenericDefId`,
+        // so not pushing a generic params scope here complicates things (e.g. `TypeOwnerId` tracking).
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 

@@ -41,7 +41,6 @@ use std::{
 
 use paths::{Utf8Path, Utf8PathBuf};
 use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
-use temp_dir::TempDir;
 
 pub use crate::server_impl::token_id::SpanId;
 
@@ -64,16 +63,11 @@ pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
 pub struct ProcMacroSrv<'env> {
     expanders: Mutex<HashMap<Utf8PathBuf, Arc<dylib::Expander>>>,
     env: &'env EnvSnapshot,
-    temp_dir: TempDir,
 }
 
 impl<'env> ProcMacroSrv<'env> {
     pub fn new(env: &'env EnvSnapshot) -> Self {
-        Self {
-            expanders: Default::default(),
-            env,
-            temp_dir: TempDir::with_prefix("proc-macro-srv").unwrap(),
-        }
+        Self { expanders: Default::default(), env }
     }
 
     pub fn join_spans(&self, first: Span, second: Span) -> Option<Span> {
@@ -205,7 +199,7 @@ impl ProcMacroSrv<'_> {
 
     fn expander(&self, path: &Utf8Path) -> Result<Arc<dylib::Expander>, String> {
         let expander = || {
-            let expander = dylib::Expander::new(&self.temp_dir, path)
+            let expander = dylib::Expander::new(path)
                 .map_err(|err| format!("Cannot create expander for {path}: {err}",));
             expander.map(Arc::new)
         };

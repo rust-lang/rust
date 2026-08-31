@@ -528,7 +528,7 @@ mod tests {
             Some(it) => it,
             None => {
                 let node = std::any::type_name::<N>();
-                panic!("Failed to make ast node `{node}` from text {text}")
+                panic!("Failed to make ast node `{node}` from text `{text}`")
             }
         };
         let node = node.clone_subtree();

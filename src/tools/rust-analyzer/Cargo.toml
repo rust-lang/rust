@@ -4,7 +4,7 @@ exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.95"
+rust-version = "1.98"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
@@ -143,7 +143,6 @@ smallvec = { version = "1.15.1", features = [
     "const_generics",
 ] }
 smol_str = "0.3.2"
-temp-dir = "0.2.0"
 text-size = "1.1.1"
 toml = "1.1.2"
 tracing = { version = "0.1.41", default-features = false, features = ["std"] }
