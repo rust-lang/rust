@@ -54,9 +54,9 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::target_object_format, sym::cfg_target_object_format, Features::cfg_target_object_format),
 ];
 
-/// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
-pub fn find_gated_cfg(pred: impl Fn(Symbol) -> bool) -> Option<&'static GatedCfg> {
-    GATED_CFGS.iter().find(|(cfg_sym, ..)| pred(*cfg_sym))
+/// Find a gated cfg matching `name`.
+pub fn find_gated_cfg(name: Symbol) -> Option<&'static GatedCfg> {
+    GATED_CFGS.iter().find(|(cfg_sym, ..)| name == *cfg_sym)
 }
 
 #[derive(Clone, Debug, Copy)]
