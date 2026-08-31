@@ -33,7 +33,6 @@ use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node, find_
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
@@ -41,7 +40,6 @@ use rustc_middle::thir::{self, ExprId, LocalVarId, Param, ParamId, PatKind, Thir
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::LintLevel;
@@ -508,7 +506,17 @@ fn construct_fn<'tcx>(
 
     let infcx = tcx.infer_ctxt().build(typing_mode);
 
-    let coroutine = match normalized_type_of(&infcx, fn_def).kind() {
+    let defining_ty = tcx.type_of(fn_def).instantiate_identity().skip_normalization();
+    let defining_ty = if infcx.next_trait_solver() {
+        // Closure types come from HIR typeck results, where they were already
+        // normalized during writeback. Wrapping them in an `EarlyBinder`
+        // conservatively makes aliases non-rigid, so restore their rigidness
+        // instead of normalizing them again during MIR build.
+        ty::set_aliases_to_rigid(tcx, defining_ty)
+    } else {
+        defining_ty
+    };
+    let coroutine = match defining_ty.kind() {
         ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
             tcx.coroutine_kind(fn_def).unwrap(),
             args.as_coroutine().yield_ty(),
@@ -564,18 +572,6 @@ fn construct_fn<'tcx>(
     };
 
     body
-}
-
-fn normalized_type_of<'tcx>(infcx: &InferCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
-    let tcx = infcx.tcx;
-    let ty = tcx.type_of(def_id).instantiate_identity();
-    if !infcx.next_trait_solver() {
-        return ty.skip_normalization();
-    }
-
-    let ocx = ObligationCtxt::new(infcx);
-    let cause = ObligationCause::misc(tcx.def_span(def_id), def_id);
-    ocx.deeply_normalize(&cause, tcx.param_env(def_id), ty).unwrap()
 }
 
 fn construct_const<'a, 'tcx>(
