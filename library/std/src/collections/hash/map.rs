@@ -3010,7 +3010,7 @@ where
     ///
     /// If the iterator produces any pairs with equal keys,
     /// all but one of the corresponding values will be dropped.
-    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> HashMap<K, V, S> {
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> HashMap<K, V, S> {
         let mut map = HashMap::with_hasher(Default::default());
         map.extend(iter);
         map
@@ -3027,7 +3027,7 @@ where
     A: Allocator,
 {
     #[inline]
-    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
         self.base.extend(iter)
     }
 
@@ -3051,7 +3051,7 @@ where
     A: Allocator,
 {
     #[inline]
-    fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.base.extend(iter)
     }
 

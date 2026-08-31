@@ -2545,7 +2545,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
     ///
     /// If the iterator produces any pairs with equal keys,
     /// all but one of the corresponding values will be dropped.
-    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> BTreeMap<K, V> {
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> BTreeMap<K, V> {
         let mut inputs: Vec<_> = iter.into_iter().collect();
 
         if inputs.is_empty() {
@@ -2561,7 +2561,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V, A: AllocatorClone> Extend<(K, V)> for BTreeMap<K, V, A> {
     #[inline]
-    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |(k, v)| {
             self.insert(k, v);
         });
