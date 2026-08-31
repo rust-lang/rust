@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
+use rustc_macros::StableHash;
 use rustc_span::{Span, Symbol, sym};
 
 use super::{Feature, to_nonzero};
@@ -43,18 +43,19 @@ macro_rules! status_to_enum {
 ///
 /// The former is preferred. `enabled` should only be used when the feature symbol is not a
 /// constant, e.g. a parameter, or when the feature is a library feature.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, StableHash)]
 pub struct Features {
     /// `#![feature]` attrs for language features, for error reporting.
     enabled_lang_features: Vec<EnabledLangFeature>,
     /// `#![feature]` attrs for non-language (library) features.
     enabled_lib_features: Vec<EnabledLibFeature>,
     /// `enabled_lang_features` + `enabled_lib_features`.
+    #[stable_hash(ignore)] // Ignored because it's the sum of the other two fields
     enabled_features: FxHashSet<Symbol>,
 }
 
 /// Information about an enabled language feature.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, StableHash)]
 pub struct EnabledLangFeature {
     /// Name of the feature gate guarding the language feature.
     pub gate_name: Symbol,
@@ -65,7 +66,7 @@ pub struct EnabledLangFeature {
 }
 
 /// Information about an enabled library feature.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, StableHash)]
 pub struct EnabledLibFeature {
     pub gate_name: Symbol,
     pub attr_sp: Span,
@@ -117,32 +118,6 @@ impl Features {
         } else {
             false
         }
-    }
-}
-
-impl StableHash for Features {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        // `enabled_features` is skipped because it's the sum of the lang and lib features.
-        let Features { enabled_lang_features, enabled_lib_features, enabled_features: _ } = self;
-        enabled_lang_features.stable_hash(hcx, hasher);
-        enabled_lib_features.stable_hash(hcx, hasher);
-    }
-}
-
-impl StableHash for EnabledLangFeature {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        let EnabledLangFeature { gate_name, attr_sp, stable_since } = self;
-        gate_name.stable_hash(hcx, hasher);
-        attr_sp.stable_hash(hcx, hasher);
-        stable_since.stable_hash(hcx, hasher);
-    }
-}
-
-impl StableHash for EnabledLibFeature {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        let EnabledLibFeature { gate_name, attr_sp } = self;
-        gate_name.stable_hash(hcx, hasher);
-        attr_sp.stable_hash(hcx, hasher);
     }
 }
 
