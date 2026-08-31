@@ -258,7 +258,7 @@ pub unsafe fn dll_path(function: *mut std::ffi::c_void) -> Result<PathBuf, Strin
 }
 
 #[cfg(target_os = "wasi")]
-pub unsafe fn dll_path(function: *mut std::ffi::c_void) -> Result<PathBuf, String> {
+pub unsafe fn dll_path(_function: *mut std::ffi::c_void) -> Result<PathBuf, String> {
     Err("dll_path is not supported on WASI".to_string())
 }
 

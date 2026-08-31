@@ -112,6 +112,12 @@ impl<I: Interner> AliasTyKind<I> {
 /// with `IsRigid::Yes`. At this point we no longer have to try and renormalize this alias
 /// later on.
 ///
+/// Rigidness becomes outdated when the surrounding typing mode or param env changes,
+/// because further normalization might be possible.
+/// We should also note that rigidness can be shared within some typing mode groups
+/// if the param env is the same, e.g., `Typeck/PostTypeckUntilBorrowck` and
+/// `PostAnalysis/Codegen`.
+///
 /// FIXME(#155345): Alias handling is currently still in flux for the new trait
 /// solver and this is currently somewhat messy. Please reach out on
 /// #t-types/trait-system-refactor-initiative if you encounter this and it isn't

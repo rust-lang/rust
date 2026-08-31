@@ -516,7 +516,7 @@ macro_rules! extend_items {
         $(
             #[stable(feature = "token_stream_extend_ts_items", since = "1.92.0")]
             impl Extend<$item> for TokenStream {
-                fn extend<T: IntoIterator<Item = $item>>(&mut self, iter: T) {
+                fn extend<I: IntoIterator<Item = $item>>(&mut self, iter: I) {
                     self.extend(iter.into_iter().map(TokenTree::$item));
                 }
             }
