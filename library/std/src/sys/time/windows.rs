@@ -1,6 +1,6 @@
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
-use crate::sys::helpers::mul_div_u64;
+use crate::sys::pal::time::perf_counter::Frequency;
 use crate::sys::pal::time::{
     INTERVALS_PER_SEC, checked_dur2intervals, intervals2dur, perf_counter,
 };
@@ -33,11 +33,11 @@ impl Instant {
         // In order to keep unit conversions out of normal interval math, we
         // measure in QPC units and immediately convert to nanoseconds.
 
-        let freq = perf_counter::frequency() as u64;
-        let now = perf_counter::now();
+        let freq = perf_counter::Frequency::query();
+        let now = perf_counter::Counter::query();
 
-        // We convert now to `u64` to be able to use `Duration`.
-        let instant_nsec = mul_div_u64(now as u64, NANOS_PER_SEC, freq);
+        // We convert to `u64` to be able to use `Duration`.
+        let instant_nsec = perf_counter::convert(now, freq, NANOS_PER_SEC) as u64;
         // We can add an arbitrary offset to shift the epoch of this clock. We do that to avoid
         // being too close to 0 which would lead to underflow when computing times in the past. Also
         // see <https://github.com/rust-lang/rust/issues/156142>.
@@ -69,24 +69,21 @@ impl Instant {
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct Stopwatch {
-    ticks: i64,
+    ticks: perf_counter::Counter,
 }
 
 impl Stopwatch {
     pub fn start() -> Self {
-        Self { ticks: perf_counter::now() }
+        Self { ticks: perf_counter::Counter::query() }
     }
 
     pub fn checked_duration_since(self, other: Stopwatch) -> Option<Duration> {
-        let diff = self.ticks - other.ticks;
-        if diff < -1 {
-            None
-        } else if diff <= 1 {
+        let diff = self.ticks.checked_sub(other.ticks)?;
+        if diff.as_u64() <= 1 {
             // When QPC is used across threads, equivalent tick counts might differ by +/- 1.
             Some(Duration::ZERO)
         } else {
-            let freq = perf_counter::frequency() as u64;
-            let nanos = mul_div_u64(diff as u64, NANOS_PER_SEC, freq);
+            let nanos = perf_counter::convert(diff, Frequency::query(), NANOS_PER_SEC);
             Some(Duration::from_nanos(nanos))
         }
     }
