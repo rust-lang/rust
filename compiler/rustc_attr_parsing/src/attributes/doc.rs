@@ -749,7 +749,6 @@ impl AttributeParser for DocParser {
         template!(
             List: &[
                 "alias",
-                "attribute",
                 "hidden",
                 "html_favicon_url",
                 "html_logo_url",
@@ -762,19 +761,10 @@ impl AttributeParser for DocParser {
                 "masked",
                 "cfg",
                 "notable_trait",
-                "keyword",
-                "fake_variadic",
-                "search_unbox",
-                "rust_logo",
                 "auto_cfg",
                 "test",
-                "spotlight",
-                "include",
-                "no_default_passes",
-                "passes",
-                "plugins",
             ],
-            NameValueStr: "string"
+            NameValueStr: "doc comment"
         ),
         AttributeStability::Stable, // Some parts of the attribute are unstable, manually checked in parser
         |this, cx, args| {
