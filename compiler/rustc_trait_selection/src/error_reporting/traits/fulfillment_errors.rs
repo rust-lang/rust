@@ -657,6 +657,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         span_bug!(span, "coerce requirement gave wrong error: `{:?}`", predicate)
                     }
 
+                    ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
+                        if self.next_trait_solver() =>
+                    {
+                        // We normalize `TypeOutlives` in the next solver, which is fallible
+                        return self.dcx().span_delayed_bug(
+                            span,
+                            "type outlives claues errored outside borrowck without any other error",
+                        );
+                    }
                     ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
                     | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..)) => {
                         span_bug!(
