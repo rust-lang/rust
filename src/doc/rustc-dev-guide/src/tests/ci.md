@@ -66,8 +66,8 @@ kinds of builds (sets of jobs).
 ### Pull Request builds
 
 After each push to a pull request, a set of `pr` jobs are executed.
-Currently, these execute the `x86_64-gnu-llvm-X`, `x86_64-gnu-tools`, `pr-check-1`, `pr-check-2`
-and `tidy` jobs, all running on Linux.
+Currently, these execute the `test-x86_64-gnu-llvm-X`, `test-x86_64-gnu-tools`, `test-pr-check-1`, `test-pr-check-2`
+and `test-tidy` jobs, all running on Linux.
 These execute a relatively short
 (~40 minutes) and lightweight test suite that should catch common issues.
 More specifically, they run a set of lints, they try to perform a cross-compile check

@@ -109,11 +109,11 @@ jobs:
 # When overridden, `citool` will check for equivalence between the PR and CI job
 # of the same name modulo `continue_on_error` and `env`.
 pr:
-  - name: pr-check-1
+  - name: test-pr-check-1
     <<: *job-linux-4c
-  - name: pr-check-2
+  - name: test-pr-check-2
     <<: *job-linux-4c
-  - name: tidy
+  - name: test-tidy
     continue_on_error: true
     free_disk: false
     env:
@@ -121,33 +121,33 @@ pr:
       # tidy. This speeds up the PR CI job by ~1 minute.
       SKIP_SUBMODULES: src/gcc
     <<: *job-linux-4c
-  - name: x86_64-gnu-llvm-21
+  - name: test-x86_64-gnu-llvm-21
     env:
       ENABLE_GCC_CODEGEN: "1"
       DOCKER_SCRIPT: x86_64-gnu-llvm.sh
     <<: *job-linux-4c
-  - name: aarch64-gnu-llvm-21-1
+  - name: test-aarch64-gnu-llvm-21-1
     env:
-      IMAGE: aarch64-gnu-llvm-21
+      IMAGE: test-aarch64-gnu-llvm-21
       LLVM_VERSION: "21"
       DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-aarch64-linux
-  - name: aarch64-gnu-llvm-21-2
+  - name: test-aarch64-gnu-llvm-21-2
     env:
-      IMAGE: aarch64-gnu-llvm-21
+      IMAGE: test-aarch64-gnu-llvm-21
       LLVM_VERSION: "21"
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-aarch64-linux
-  - name: x86_64-gnu-tools
+  - name: test-x86_64-gnu-tools
     <<: *job-linux-4c
-  - name: x86_64-gnu-miri
+  - name: test-x86_64-gnu-miri
     <<: *job-linux-4c
-  - name: x86_64-gnu-gcc
+  - name: test-x86_64-gnu-gcc
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
     env:
       CODEGEN_BACKENDS: llvm,gcc
     <<: *job-linux-4c
-  - name: x86_64-gnu-gcc-core-tests
+  - name: test-x86_64-gnu-gcc-core-tests
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/codegen-backend-tests/cg_gcc.html
     env:
       CODEGEN_BACKENDS: gcc
@@ -155,7 +155,7 @@ pr:
 
   # This job tests features we want to stabilize soon, to ensure they don't
   # regress.
-  - name: x86_64-gnu-next-trait-solver-polonius
+  - name: test-x86_64-gnu-next-trait-solver-polonius
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/x86_64-gnu-next-trait-solver-polonius-ci-job.html
     env:
       CODEGEN_BACKENDS: llvm
@@ -174,9 +174,9 @@ try:
 optional:
   # This job is used just to test optional jobs.
   # It will be replaced by tier 2 and tier 3 jobs in the future.
-  - name: optional-pr-check-1
+  - name: optional-test-pr-check-1
     env:
-      IMAGE: pr-check-1
+      IMAGE: test-pr-check-1
     <<: *job-linux-4c
   - <<: [*job-dist-x86_64-linux, *job-linux-36c-codebuild]
     name: dist-x86_64-linux-codebuild
@@ -206,16 +206,16 @@ auto:
   #   Linux/Docker builders   #
   #############################
 
-  - name: aarch64-gnu
+  - name: test-aarch64-gnu
     <<: *job-aarch64-linux
 
-  - name: aarch64-gnu-debug
+  - name: test-aarch64-gnu-debug
     <<: *job-aarch64-linux
 
-  - name: arm-android
+  - name: test-arm-android
     <<: *job-linux-4c
 
-  - name: armhf-gnu
+  - name: test-armhf-gnu
     <<: *job-linux-4c
 
   - name: dist-aarch64-linux
@@ -323,45 +323,45 @@ auto:
 
   # The i686-gnu job is split into multiple jobs to run tests in parallel.
   # i686-gnu-1 skips tests that run in i686-gnu-2.
-  - name: i686-gnu-1
+  - name: test-i686-gnu-1
     env:
-      IMAGE: i686-gnu
+      IMAGE: test-i686-gnu
       DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in i686-gnu-1
-  - name: i686-gnu-2
+  - name: test-i686-gnu-2
     env:
-      IMAGE: i686-gnu
+      IMAGE: test-i686-gnu
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-linux-4c
 
   # The i686-gnu-nopt job is split into multiple jobs to run tests in parallel.
   # i686-gnu-nopt-1 skips tests that run in i686-gnu-nopt-2
-  - name: i686-gnu-nopt-1
+  - name: test-i686-gnu-nopt-1
     env:
-      IMAGE: i686-gnu-nopt
+      IMAGE: test-i686-gnu-nopt
       DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in i686-gnu-nopt-1
-  - name: i686-gnu-nopt-2
+  - name: test-i686-gnu-nopt-2
     env:
-      IMAGE: i686-gnu-nopt
+      IMAGE: test-i686-gnu-nopt
       DOCKER_SCRIPT: i686-gnu-nopt-2.sh
     <<: *job-linux-4c
 
-  - name: pr-check-1
+  - name: test-pr-check-1
     <<: *job-linux-4c
 
-  - name: pr-check-2
+  - name: test-pr-check-2
     <<: *job-linux-4c
 
-  - name: tidy
+  - name: test-tidy
     free_disk: false
     <<: *job-linux-4c
 
-  - name: test-various
+  - name: test-test-various
     <<: *job-linux-4c
 
   # FIXME: temporarily disabled due to fuchsia server rate limits. See
@@ -377,14 +377,14 @@ auto:
 
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
-  - name: x86_64-rust-for-linux
+  - name: test-x86_64-rust-for-linux
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/rust-for-linux.html
     <<: *job-linux-4c
 
-  - name: x86_64-gnu
+  - name: test-x86_64-gnu
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-parallel-frontend
+  - name: test-x86_64-gnu-parallel-frontend
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/x86_64-gnu-parallel-frontend.html
     env:
       DOCKER_SCRIPT: x86_64-gnu-parallel-frontend.sh
@@ -395,94 +395,94 @@ auto:
   # depend on the channel being built (for example if they include the
   # channel name on the output), and this builder prevents landing
   # changes that would result in broken builds after a promotion.
-  - name: x86_64-gnu-stable
+  - name: test-x86_64-gnu-stable
     # Only run this job on the nightly channel. Running this on beta
     # could cause failures when `dev: 1` in `stage0.txt`, and running
     # this on stable is useless.
     only_on_channel: nightly
     env:
-      IMAGE: x86_64-gnu
+      IMAGE: test-x86_64-gnu
       RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-aux
+  - name: test-x86_64-gnu-aux
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-debug
+  - name: test-x86_64-gnu-debug
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-distcheck
+  - name: test-x86_64-gnu-distcheck
     <<: *job-linux-4c
 
   # The x86_64-gnu-llvm-21 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-21-1 skips tests that run in x86_64-gnu-llvm-21-{2,3}.
-  - name: x86_64-gnu-llvm-21-1
+  - name: test-x86_64-gnu-llvm-21-1
     env:
       RUST_BACKTRACE: 1
-      IMAGE: x86_64-gnu-llvm-21
+      IMAGE: test-x86_64-gnu-llvm-21
       LLVM_VERSION: "21"
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-21-{1,3}
-  - name: x86_64-gnu-llvm-21-2
+  - name: test-x86_64-gnu-llvm-21-2
     env:
       RUST_BACKTRACE: 1
-      IMAGE: x86_64-gnu-llvm-21
+      IMAGE: test-x86_64-gnu-llvm-21
       LLVM_VERSION: "21"
       DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-21-{1,2}
-  - name: x86_64-gnu-llvm-21-3
+  - name: test-x86_64-gnu-llvm-21-3
     env:
       RUST_BACKTRACE: 1
-      IMAGE: x86_64-gnu-llvm-21
+      IMAGE: test-x86_64-gnu-llvm-21
       LLVM_VERSION: "21"
       DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
     <<: *job-linux-4c
 
   # The x86_64-gnu-llvm-22 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-22-1 skips tests that run in x86_64-gnu-llvm-22-{2,3}.
-  - name: x86_64-gnu-llvm-22-1
+  - name: test-x86_64-gnu-llvm-22-1
     env:
       RUST_BACKTRACE: 1
-      IMAGE: x86_64-gnu-llvm-22
+      IMAGE: test-x86_64-gnu-llvm-22
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-22-{1,3}
-  - name: x86_64-gnu-llvm-22-2
+  - name: test-x86_64-gnu-llvm-22-2
     env:
       RUST_BACKTRACE: 1
-      IMAGE: x86_64-gnu-llvm-22
+      IMAGE: test-x86_64-gnu-llvm-22
       DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-22-{1,2}
-  - name: x86_64-gnu-llvm-22-3
+  - name: test-x86_64-gnu-llvm-22-3
     env:
       RUST_BACKTRACE: 1
-      IMAGE: x86_64-gnu-llvm-22
+      IMAGE: test-x86_64-gnu-llvm-22
       DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-nopt
+  - name: test-x86_64-gnu-nopt
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-tools
+  - name: test-x86_64-gnu-tools
     env:
       DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-miri
+  - name: test-x86_64-gnu-miri
     <<: *job-linux-4c
 
-  - name: x86_64-gnu-stdlib-semver-check
+  - name: test-x86_64-gnu-stdlib-semver-check
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/stdlib-semver-check.html
     <<: *job-linux-4c
 
-  - name: optional-x86_64-gnu-autodiff
+  - name: optional-test-x86_64-gnu-autodiff
     continue_on_error: true
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/autodiff-ci-job.html
     <<: *job-linux-4c
@@ -576,7 +576,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos-15
 
-  - name: aarch64-apple-1
+  - name: test-aarch64-apple-1
     env:
       # NOTE: keep in sync with `src/ci/docker/scripts/stage_2_test_set1.sh`
       SCRIPT: >-
@@ -596,7 +596,7 @@ auto:
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
     <<: *job-macos-15
 
-  - name: aarch64-apple-2
+  - name: test-aarch64-apple-2
     env:
       # NOTE: keep in sync with `src/ci/docker/scripts/stage_2_test_set2.sh`,
       # union `src/tools/cargo` specifically.
@@ -627,7 +627,7 @@ auto:
   # previous attempts have timed out multiple times. Remove/revert this job if
   # this hangs or times out, or if it becomes the slowest Merge CI job, and let
   # T-infra know.
-  - name: aarch64-apple-macos-26-1
+  - name: test-aarch64-apple-macos-26-1
     doc_url: https://github.com/rust-lang/rust/issues/157687
     env:
       # NOTE: keep in sync with `src/ci/docker/scripts/stage_2_test_set1.sh`
@@ -648,7 +648,7 @@ auto:
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
     <<: *job-macos-26
 
-  - name: aarch64-apple-macos-26-2
+  - name: test-aarch64-apple-macos-26-2
     doc_url: https://github.com/rust-lang/rust/issues/157687
     env:
       # NOTE: keep in sync with `src/ci/docker/scripts/stage_2_test_set2.sh`,
@@ -680,46 +680,46 @@ auto:
   ######################
 
   # x86_64-msvc is split into two jobs to run tests in parallel.
-  - name: x86_64-msvc-1
+  - name: test-x86_64-msvc-1
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-py
     <<: *job-windows
 
-  - name: x86_64-msvc-2
+  - name: test-x86_64-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows
 
   # i686-msvc is split into two jobs to run tests in parallel.
-  - name: i686-msvc-1
+  - name: test-i686-msvc-1
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc  --enable-sanitizers
       SCRIPT: make ci-msvc-py
     <<: *job-windows
 
-  - name: i686-msvc-2
+  - name: test-i686-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows
 
   # aarch64-msvc is split into two jobs to run tests in parallel.
-  - name: aarch64-msvc-1
+  - name: test-aarch64-msvc-1
     env:
       RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
       SCRIPT: make ci-msvc-py
     <<: *job-windows-aarch64
 
-  - name: aarch64-msvc-2
+  - name: test-aarch64-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows-aarch64
 
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
-  - name: x86_64-msvc-ext1
+  - name: test-x86_64-msvc-ext1
     env:
       SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
@@ -728,7 +728,7 @@ auto:
   # Temporary builder to workaround CI issues
   # See <https://github.com/rust-lang/rust/issues/127883>
   #FIXME: Remove this, and re-enable the same tests in `checktools.sh`, once CI issues are fixed.
-  - name: x86_64-msvc-ext2
+  - name: test-x86_64-msvc-ext2
     env:
       SCRIPT: >
         python x.py test --stage 2 miri --target x86_64-apple-darwin --test-args pass &&
@@ -742,7 +742,7 @@ auto:
     <<: *job-windows
 
   # Run `checktools.sh` and upload the toolstate file.
-  - name: x86_64-msvc-ext3
+  - name: test-x86_64-msvc-ext3
     env:
       SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
       HOST_TARGET: x86_64-pc-windows-msvc
@@ -767,13 +767,13 @@ auto:
   # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
 
   # x86_64-mingw is split into two jobs to run tests in parallel.
-  - name: x86_64-mingw-1
+  - name: test-x86_64-mingw-1
     env:
       SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
     <<: *job-windows
 
-  - name: x86_64-mingw-2
+  - name: test-x86_64-mingw-2
     env:
       SCRIPT: make ci-mingw-bootstrap
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
