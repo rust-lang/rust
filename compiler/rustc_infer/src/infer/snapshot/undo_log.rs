@@ -113,7 +113,6 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
 pub(crate) struct InferCtxtUndoLogs<'tcx> {
     logs: Vec<UndoLog<'tcx>>,
     num_open_snapshots: usize,
-    stalled_goal_generation: Option<u64>,
 }
 
 /// The UndoLogs trait defines how we undo a particular kind of action (of type T). We can undo any
@@ -160,7 +159,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         }
 
         self.type_variable_storage.finalize_rollback();
-        self.undo_log.stalled_goal_generation = snapshot.stalled_goal_generation;
+        self.stalled_goal_generation = snapshot.stalled_goal_generation;
 
         if self.undo_log.num_open_snapshots == 1 {
             // After the root snapshot the undo log should be empty.
@@ -187,32 +186,12 @@ impl<'tcx> InferCtxtInner<'tcx> {
 }
 
 impl<'tcx> InferCtxtUndoLogs<'tcx> {
-    pub(crate) fn new(track_stalled_goal_generation: bool) -> Self {
-        Self {
-            stalled_goal_generation: track_stalled_goal_generation.then_some(0),
-            ..Default::default()
-        }
-    }
-
-    #[inline]
-    pub(crate) fn stalled_goal_generation(&self) -> Option<u64> {
-        self.stalled_goal_generation
-    }
-
-    #[inline]
-    pub(crate) fn bump_stalled_goal_generation(&mut self) {
-        if let Some(generation) = &mut self.stalled_goal_generation {
-            *generation = generation.wrapping_add(1);
-        }
-    }
-
-    pub(crate) fn start_snapshot(&mut self) -> Snapshot<'tcx> {
+    pub(crate) fn start_snapshot(
+        &mut self,
+        stalled_goal_generation: Option<u64>,
+    ) -> Snapshot<'tcx> {
         self.num_open_snapshots += 1;
-        Snapshot {
-            undo_len: self.logs.len(),
-            stalled_goal_generation: self.stalled_goal_generation,
-            _marker: PhantomData,
-        }
+        Snapshot { undo_len: self.logs.len(), stalled_goal_generation, _marker: PhantomData }
     }
 
     pub(crate) fn region_constraints_in_snapshot(
