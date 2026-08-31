@@ -1,6 +1,6 @@
 # Standard library semantic versioning breakage check
 
-The `x86_64-gnu-stdlib-semver-check` job runs the [`cargo-semver-checks`][csc] (c-s-c) tool on the standard library (`core`, `alloc` and `std`) in order to find potential unintended semantic versioning (semver) breakages.
+The `test-x86_64-gnu-stdlib-semver-check` job runs the [`cargo-semver-checks`][csc] (c-s-c) tool on the standard library (`core`, `alloc` and `std`) in order to find potential unintended semantic versioning (semver) breakages.
 It does so by analyzing the rustdoc JSON output (from the `rust-docs-json` component) of the parent merge commit, and the current commit being merged.
 When it runs, one of five things can happen:
 

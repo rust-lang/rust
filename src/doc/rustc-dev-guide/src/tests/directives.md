@@ -231,8 +231,8 @@ The following directives will check LLVM support:
   `COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS` is set) if the component does not exist.
 - `needs-forced-clang-based-tests` — test is ignored unless the environment
   variable `RUSTBUILD_FORCE_CLANG_BASED_TESTS` is set, which enables building clang alongside LLVM
-  - This is only set in two CI jobs ([`x86_64-gnu-debug`] and
-    [`aarch64-gnu-debug`]), which only runs a subset of `run-make` tests.
+  - This is only set in two CI jobs ([`test-x86_64-gnu-debug`] and
+    [`test-aarch64-gnu-debug`]), which only runs a subset of `run-make` tests.
     Other tests with this directive will not run at all, which is usually not what you want.
 
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for ignoring debuggers.

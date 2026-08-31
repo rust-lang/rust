@@ -253,11 +253,11 @@ to your PR, like this:
 ```yaml
 pr:
   ...
-  - image: x86_64-gnu-tools
+  - image: test-x86_64-gnu-tools
     <<: *job-linux-16c
   # this item was copied from the `auto` section
   # vvvvvvvvvvvvvvvvvv
-  - image: x86_64-msvc
+  - image: test-x86_64-msvc
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
       SCRIPT: make ci-msvc
