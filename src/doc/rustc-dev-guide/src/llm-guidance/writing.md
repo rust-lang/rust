@@ -63,7 +63,7 @@ For example:
 
 - Search for related issues and PRs.
 - Find relevant code, tests, git history, and Zulip discussion.
-- If this is a cross-cutting change, consult the "cross-cutting" section of [the contributing docs](../contributing.md#pull-requests).
+- If this is a cross-cutting change, consult the [pull request guidance](../getting-started.md#pull-requests).
 - [Make the smallest change that fixes the problem][small-cls].
   Do not combine it with unrelated refactors or cleanups.
 
@@ -81,7 +81,7 @@ You may use an LLM for generating the instructions for that tool, but you should
 
 Consider [performance] as you write.
 
-[performance]: ../contributing.md#performance
+[performance]: ../tests/perf.md#performance-considerations
 
 Think before adding dependencies;
 consult our [guidance for new dependencies][crates-io].
@@ -176,3 +176,9 @@ We don't care which model you used, but we do care whether you used the LLM to i
 > 🤖 Generated with Claude Code
 
 > `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>`
+
+## LLM policy
+
+See [Forge][LLM policy].
+
+[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html

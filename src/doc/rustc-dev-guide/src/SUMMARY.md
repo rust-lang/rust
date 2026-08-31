@@ -51,6 +51,7 @@
 # Contributing to Rust
 
 - [Contribution procedures](./contributing.md)
+- [Writing rustc-dev-guide documentation](./contributing-to-guide.md)
 - [About the compiler team](./compiler-team.md)
 - [Using Git](./git.md)
 - [Mastering @rustbot](./rustbot.md)
