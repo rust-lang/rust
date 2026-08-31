@@ -2,12 +2,12 @@ use std::cmp::Ordering;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::Place;
-use rustc_middle::span_bug;
+use rustc_middle::{bug, span_bug};
 use tracing::debug;
 
 use crate::builder::Builder;
 use crate::builder::matches::{
-    Candidate, PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase,
+    Candidate, MatchPairKind, PatConstKind, SliceLenOp, Test, TestBranch, TestKind, TestableCase,
 };
 
 /// Output of [`Builder::partition_candidates_into_buckets`].
@@ -131,17 +131,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let (match_pair_index, match_pair) = candidate
-            .match_pairs
-            .iter()
-            .enumerate()
-            .find(|&(_, mp)| mp.place == Some(test_place))?;
+        let (match_pair_index, match_pair_testable_case) =
+            candidate.match_pairs.iter().enumerate().find_map(|(i, mp)| {
+                if let MatchPairKind::Testable { place, ref testable_case, .. } = mp.kind
+                    && place == test_place
+                {
+                    Some((i, testable_case))
+                } else {
+                    None
+                }
+            })?;
 
         // If true, the match pair is completely entailed by its corresponding test
         // branch, so it can be removed. If false, the match pair is _compatible_
         // with its test branch, but still needs a more specific test.
         let fully_matched;
-        let ret = match (&test.kind, &match_pair.testable_case) {
+        let ret = match (&test.kind, match_pair_testable_case) {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
             (
@@ -174,7 +179,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 let is_conflicting_candidate = |candidate: &&mut Candidate<'tcx>| {
                     candidate.match_pairs.iter().any(|mp| {
-                        mp.place == Some(test_place) && is_covering_range(&mp.testable_case)
+                        matches!(mp.kind, MatchPairKind::Testable { place, ref testable_case, .. }
+                            if place == test_place && is_covering_range(testable_case)
+                        )
                     })
                 };
                 if prior_candidates
@@ -364,7 +371,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if fully_matched {
             // Replace the match pair by its sub-pairs.
             let match_pair = candidate.match_pairs.remove(match_pair_index);
-            candidate.match_pairs.extend(match_pair.subpairs);
+            let MatchPairKind::Testable { subpairs, .. } = match_pair.kind else {
+                bug!("match pair must have been refutable");
+            };
+            candidate.match_pairs.extend(subpairs);
             // Move or-patterns to the end.
             candidate.sort_match_pairs();
         }
