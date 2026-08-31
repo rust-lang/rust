@@ -572,6 +572,12 @@ generated for this test yet, consider using the `--bless` option."
             f.write(x)
             f.write("\n")
 
+    def print_json(self, metadata: BlessMetadata):
+        """Prints `self` to `stdout` in json format with no formatting. This output is identicall to
+        what would be saved via `TargetData.save_blessing`"""
+        self.bless_metadata = metadata
+        print(json.dumps(clean_nones(asdict(self))))
+
 
 def clean_nones(value):
     """
