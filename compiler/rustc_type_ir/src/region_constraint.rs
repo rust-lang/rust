@@ -257,16 +257,29 @@ impl<I: Interner> And<I> {
 }
 impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
     pub fn new(i: impl IntoIterator<Item = LeafRegionConstraint<I, S>>) -> Self {
-        Self(i.into_iter().collect::<IndexSet<_>>().into_iter().collect())
+        let mut seen = IndexSet::new();
+        And(i
+            .into_iter()
+            .filter(|leaf| {
+                if seen.contains(&leaf.clone().without_span()) {
+                    false
+                } else {
+                    seen.insert(leaf.clone().without_span());
+                    true
+                }
+            })
+            .collect())
     }
 
     fn is_and_equivalent_to(&self, other: &And<I, S>) -> bool {
         let this = self.clone().0;
         let other = other.clone().0;
 
-        // FIXME(-Zassumptions-on-binders): using `==` here means we consider spans
-        this.iter().all(|c1| other.iter().any(|c2| c1 == c2))
-            && other.iter().all(|c2| this.iter().any(|c1| c1 == c2))
+        this.iter()
+            .all(|c1| other.iter().any(|c2| c1.clone().without_span() == c2.clone().without_span()))
+            && other.iter().all(|c2| {
+                this.iter().any(|c1| c1.clone().without_span() == c2.clone().without_span())
+            })
     }
 
     pub fn without_spans(self) -> And<I> {
@@ -310,12 +323,19 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
         let mut and_constraint = fst.0.to_vec();
 
         for and in or.0.split_first().unwrap().1 {
-            and_constraint.retain(|c| and.0.iter().any(|c2| c == c2));
+            and_constraint.retain(|c| {
+                and.0.iter().any(|c2| c.clone().without_span() == c2.clone().without_span())
+            });
         }
         let and_constraint = And::new(and_constraint);
 
         let or_constraint = Or::new(or.0.into_iter().map(|and| {
-            And::new(and.0.into_iter().filter(|c| and_constraint.0.iter().all(|s_c| c != s_c)))
+            And::new(and.0.into_iter().filter(|c| {
+                and_constraint
+                    .0
+                    .iter()
+                    .all(|s_c| c.clone().without_span() != s_c.clone().without_span())
+            }))
         }));
 
         Self {
