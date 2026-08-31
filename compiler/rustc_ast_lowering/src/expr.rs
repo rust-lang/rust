@@ -2261,6 +2261,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, hir::ExprKind::Lit(Spanned { node: LitKind::Bool(val), span }))
     }
 
+    pub(super) fn expr_usize_literal(&mut self, span: Span, val: u128) -> hir::Expr<'hir> {
+        self.expr(
+            span,
+            hir::ExprKind::Lit(Spanned {
+                node: LitKind::Int(val.into(), LitIntType::Unsigned(UintTy::Usize)),
+                span,
+            }),
+        )
+    }
+
     pub(super) fn expr(&mut self, span: Span, kind: hir::ExprKind<'hir>) -> hir::Expr<'hir> {
         let hir_id = self.next_id();
         hir::Expr { hir_id, kind, span: self.lower_span(span) }

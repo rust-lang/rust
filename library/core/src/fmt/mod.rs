@@ -716,6 +716,7 @@ impl<'a> Formatter<'a> {
 pub struct Arguments<'a> {
     template: NonNull<u8>,
     args: NonNull<rt::Argument<'a>>,
+    estimated_capacity: usize,
 }
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
@@ -729,9 +730,16 @@ impl<'a> Arguments<'a> {
     pub unsafe fn new<const N: usize, const M: usize>(
         template: &'a [u8; N],
         args: &'a [rt::Argument<'a>; M],
+        estimated_capacity: usize,
     ) -> Arguments<'a> {
         // SAFETY: Responsibility of the caller.
-        unsafe { Arguments { template: mem::transmute(template), args: mem::transmute(args) } }
+        unsafe {
+            Arguments {
+                template: mem::transmute(template),
+                args: mem::transmute(args),
+                estimated_capacity,
+            }
+        }
     }
 
     // Same as `from_str`, but not const.
@@ -752,57 +760,7 @@ impl<'a> Arguments<'a> {
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[inline]
     pub fn estimated_capacity(&self) -> usize {
-        if let Some(s) = self.as_str() {
-            return s.len();
-        }
-        // Iterate over the template, counting the length of literal pieces.
-        let mut length = 0usize;
-        let mut starts_with_placeholder = false;
-        let mut template = self.template;
-        loop {
-            // SAFETY: We can assume the template is valid.
-            unsafe {
-                let n = template.read();
-                template = template.add(1);
-                if n == 0 {
-                    // End of template.
-                    break;
-                } else if n < 128 {
-                    // Short literal string piece.
-                    length += n as usize;
-                    template = template.add(n as usize);
-                } else if n == 128 {
-                    // Long literal string piece.
-                    let len = usize::from(u16::from_le_bytes(template.cast_array().read()));
-                    length += len;
-                    template = template.add(2 + len);
-                } else {
-                    assert_unchecked(n >= 0xC0);
-                    // Placeholder piece.
-                    if length == 0 {
-                        starts_with_placeholder = true;
-                    }
-                    // Skip remainder of placeholder:
-                    let skip = (n & 1 != 0) as usize * 4 // flags (32 bit)
-                        + (n & 2 != 0) as usize * 2  // width     (16 bit)
-                        + (n & 4 != 0) as usize * 2  // precision (16 bit)
-                        + (n & 8 != 0) as usize * 2; // arg_index (16 bit)
-                    template = template.add(skip as usize);
-                }
-            }
-        }
-
-        if starts_with_placeholder && length < 16 {
-            // If the format string starts with a placeholder,
-            // don't preallocate anything, unless length
-            // of literal pieces is significant.
-            0
-        } else {
-            // There are some placeholders, so any additional push
-            // will reallocate the string. To avoid that,
-            // we're "pre-doubling" the capacity here.
-            length.wrapping_mul(2)
-        }
+        self.estimated_capacity
     }
 }
 
@@ -818,6 +776,7 @@ impl<'a> Arguments<'a> {
             Arguments {
                 template: mem::transmute(s.as_ptr()),
                 args: mem::transmute(s.len() << 1 | 1),
+                estimated_capacity: s.len(),
             }
         }
     }
