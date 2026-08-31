@@ -88,11 +88,11 @@ impl Features {
     /// - Feature gate name.
     /// - The span of the `#[feature]` attribute.
     /// - For stable language features, version info for when it was stabilized.
-    pub fn enabled_lang_features(&self) -> &Vec<EnabledLangFeature> {
+    pub fn enabled_lang_features(&self) -> &[EnabledLangFeature] {
         &self.enabled_lang_features
     }
 
-    pub fn enabled_lib_features(&self) -> &Vec<EnabledLibFeature> {
+    pub fn enabled_lib_features(&self) -> &[EnabledLibFeature] {
         &self.enabled_lib_features
     }
 
