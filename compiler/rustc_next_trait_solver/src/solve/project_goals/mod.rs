@@ -27,7 +27,9 @@ where
             ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 self.normalize_associated_term(goal)
             }
-            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
+            ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. } => {
                 self.normalize_inherent_associated_term(goal)
             }
             ty::AliasTermKind::OpaqueTy { .. } => self.normalize_opaque_type(goal),
