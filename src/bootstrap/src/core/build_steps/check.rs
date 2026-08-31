@@ -233,7 +233,7 @@ impl CommandLineStep for StdImportantTargets {
             .expect("Cannot deserialize target JSON specs from the stage1 compiler");
         let mut important_targets = specs
             .iter()
-            .filter(|(_, spec)| spec.metadata.tier.map(|t| t >= 2).unwrap_or(false))
+            .filter(|(_, spec)| spec.metadata.tier.map(|t| t <= 2).unwrap_or(false))
             .map(|(name, _)| name)
             .collect::<Vec<_>>();
         important_targets.sort_unstable();
