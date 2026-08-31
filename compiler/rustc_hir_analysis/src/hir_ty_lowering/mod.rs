@@ -1609,7 +1609,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_def_id(tcx, item_def_id, args)))
+        Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_def_id(
+            tcx,
+            item_def_id,
+            args,
+            ty::AliasConstInherentArgsKind::WithSelf,
+        )))
     }
 
     /// Resolve a [type-relative](hir::QPath::TypeRelative) (and type-level) path.
@@ -1773,12 +1778,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let kind = match assoc_tag {
             ty::AssocTag::Type => ty::AliasTermKind::InherentTy { def_id: assoc_item },
-            ty::AssocTag::Const => {
-                // FIXME(mgca): drop once `InherentConst` accepts IAC-shaped args (issue #156181)
-                // without this, `new_from_args` errors (#155341).
-                self.require_type_const_attribute(assoc_item, span)?;
-                ty::AliasTermKind::InherentConst { def_id: assoc_item }
-            }
+            ty::AssocTag::Const => ty::AliasTermKind::InherentConstSelf { def_id: assoc_item },
             ty::AssocTag::Fn => unreachable!(),
         };
 
@@ -1948,7 +1948,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self.require_type_const_attribute(item_def_id, span)?;
         let alias_const = ty::AliasConst::new(
             tcx,
-            ty::AliasConstKind::new_from_def_id(tcx, item_def_id),
+            ty::AliasConstKind::new_from_def_id(
+                tcx,
+                item_def_id,
+                ty::AliasConstInherentArgsKind::WithSelf,
+            ),
             item_args,
         );
         Ok(Const::new_alias(tcx, ty::IsRigid::No, alias_const))
@@ -2903,7 +2907,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Const::new_alias(
                     tcx,
                     ty::IsRigid::No,
-                    ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, did), args),
+                    ty::AliasConst::new(
+                        tcx,
+                        ty::AliasConstKind::new_from_def_id(
+                            tcx,
+                            did,
+                            ty::AliasConstInherentArgsKind::WithSelf,
+                        ),
+                        args,
+                    ),
                 )
             }
             Res::Def(kind @ DefKind::Ctor(ctor_of, CtorKind::Const), did) => {
@@ -3141,14 +3153,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
-        // FIXME(gca): Intentionally disallowing paths to inherent associated non-type constants
-        // until a refactoring for how generic args for IACs are represented has been landed.
-        let is_inherent_assoc_const = tcx.def_kind(def_id)
-            == DefKind::AssocConst { is_type_const: false }
-            && tcx.def_kind(tcx.parent(def_id)) == DefKind::Impl { of_trait: false };
-        if tcx.is_type_const(def_id)
-            || tcx.features().generic_const_args() && !is_inherent_assoc_const
-        {
+        if tcx.is_type_const(def_id) || tcx.features().generic_const_args() {
             Ok(())
         } else {
             let mut err = self.dcx().struct_span_err(

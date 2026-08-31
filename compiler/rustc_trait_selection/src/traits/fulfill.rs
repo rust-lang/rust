@@ -720,7 +720,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     && matches!(
                                         a.kind,
                                         ty::AliasConstKind::Projection { .. }
-                                            | ty::AliasConstKind::Inherent { .. }
+                                            | ty::AliasConstKind::InherentSelf { .. }
+                                            | ty::AliasConstKind::InherentImpl { .. }
                                     ) =>
                             {
                                 if let Ok(new_obligations) = infcx
