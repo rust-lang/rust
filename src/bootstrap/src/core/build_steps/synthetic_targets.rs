@@ -62,8 +62,8 @@ fn create_synthetic_target(
 }
 
 /// Get the JSON target specs from the given compiler.
-/// If `target` is None, prints specs for this single target.
-/// Otherwise prints specs for all known targets.
+/// If `target` is Some, prints specs for this single target.
+/// Otherwise, prints specs for all known targets.
 pub fn get_target_specs(
     builder: &Builder<'_>,
     compiler: Compiler,
