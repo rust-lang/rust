@@ -1,6 +1,6 @@
 //! List of the removed feature gates.
 
-use std::num::{NonZero, NonZeroU32};
+use std::num::NonZero;
 
 use rustc_span::sym;
 
@@ -17,7 +17,7 @@ macro_rules! opt_nonzero_u32 {
         None
     };
     ($val:expr) => {
-        Some(NonZeroU32::new($val).unwrap())
+        Some(<NonZero<u32>>::new($val).unwrap())
     };
 }
 
@@ -34,7 +34,7 @@ macro_rules! declare_features {
                     issue: to_nonzero($issue),
                 },
                 reason: $reason,
-                pull:  opt_nonzero_u32!($($pull)?),
+                pull: opt_nonzero_u32!($($pull)?),
             }),+
         ];
     };
