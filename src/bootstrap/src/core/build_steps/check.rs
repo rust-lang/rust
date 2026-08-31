@@ -1,5 +1,6 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -7,6 +8,7 @@ use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{
     ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, std_cargo, std_crates_for_make_run,
 };
+use crate::core::build_steps::synthetic_targets::get_target_specs;
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
     SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, ToolTargetBuildMode, get_tool_target_compiler,
@@ -181,6 +183,82 @@ impl CommandLineStep for Std {
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(StepMetadata::check("std", self.target).built_by(self.build_compiler))
+    }
+}
+
+/// Check the standard library for all Tier 2 and Tier 1 targets.
+/// Queries a the stage 1 compiler to find the target tiers.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StdImportantTargets {
+    build_compiler: Compiler,
+}
+
+impl CommandLineStep for StdImportantTargets {
+    type Output = ();
+
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("std-important-targets")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(StdImportantTargets {
+            build_compiler: run.builder.compiler(1, run.build_triple()),
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let build_compiler = self.build_compiler;
+        if builder.config.dry_run() {
+            return;
+        }
+
+        #[derive(serde_derive::Deserialize)]
+        struct Metadata {
+            tier: Option<u32>,
+        }
+
+        #[derive(serde_derive::Deserialize)]
+        struct Target {
+            metadata: Metadata,
+        }
+
+        let target_specs = get_target_specs(builder, build_compiler, None);
+        let specs: HashMap<String, Target> = serde_json::from_value(target_specs)
+            .expect("Cannot deserialize target JSON specs from the stage1 compiler");
+        let mut important_targets = specs
+            .iter()
+            .filter(|(_, spec)| spec.metadata.tier.map(|t| t >= 2).unwrap_or(false))
+            .map(|(name, _)| name)
+            .collect::<Vec<_>>();
+        important_targets.sort_unstable();
+        builder.info(&format!("Found {} tier 2+ targets to check", important_targets.len()));
+        for target in important_targets {
+            let target = TargetSelection::from_user(target);
+            let std = Std {
+                build_compiler: prepare_compiler_for_check(builder, target, Mode::Std)
+                    .build_compiler(),
+                target,
+                crates: builder
+                    .in_tree_crates("sysroot", Some(target))
+                    .into_iter()
+                    .map(|krate| krate.name.clone())
+                    .collect(),
+            };
+            builder.ensure(std);
+        }
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::check("std-important-targets", TargetSelection::from_user("none"))
+                .built_by(self.build_compiler),
+        )
     }
 }
 

@@ -869,6 +869,7 @@ impl<'a> Builder<'a> {
                 // that issue somewhere else, but we still want to keep `check::Std` at the end so that the
                 // quicker steps run before this.
                 check::Std,
+                check::StdImportantTargets
             ),
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,

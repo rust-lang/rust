@@ -49,16 +49,7 @@ fn create_synthetic_target(
         return TargetSelection::create_synthetic(&name, path.to_str().unwrap());
     }
 
-    let mut cmd = builder.rustc_cmd(compiler);
-    cmd.arg("--target").arg(base.rustc_target_arg());
-    cmd.args(["-Zunstable-options", "--print", "target-spec-json"]);
-
-    // If `rust.channel` is set to either beta or stable, rustc will complain that
-    // we cannot use nightly features. So `RUSTC_BOOTSTRAP` is needed here.
-    cmd.env("RUSTC_BOOTSTRAP", "1");
-
-    let output = cmd.run_capture(builder).stdout();
-    let mut spec: serde_json::Value = serde_json::from_slice(output.as_bytes()).unwrap();
+    let mut spec = get_target_specs(builder, compiler, Some(base));
     let spec_map = spec.as_object_mut().unwrap();
 
     // The `is-builtin` attribute of a spec needs to be removed, otherwise rustc will complain.
@@ -68,4 +59,30 @@ fn create_synthetic_target(
 
     std::fs::write(&path, serde_json::to_vec_pretty(&spec).unwrap()).unwrap();
     TargetSelection::create_synthetic(&name, path.to_str().unwrap())
+}
+
+/// Get the JSON target specs from the given compiler.
+/// If `target` is None, prints specs for this single target.
+/// Otherwise prints specs for all known targets.
+pub fn get_target_specs(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: Option<TargetSelection>,
+) -> serde_json::Value {
+    let mut cmd = builder.rustc_cmd(compiler);
+    cmd.arg("-Zunstable-options");
+    if let Some(target) = target {
+        cmd.arg("--target").arg(target.rustc_target_arg());
+        cmd.args(["--print", "target-spec-json"]);
+    } else {
+        cmd.args(["--print", "all-target-specs-json"]);
+    }
+
+    // If `rust.channel` is set to either beta or stable, rustc will complain that
+    // we cannot use nightly features. So `RUSTC_BOOTSTRAP` is needed here.
+    cmd.env("RUSTC_BOOTSTRAP", "1");
+
+    let output = cmd.cached().run_capture(builder).stdout();
+    let spec: serde_json::Value = serde_json::from_slice(output.as_bytes()).unwrap();
+    spec
 }
