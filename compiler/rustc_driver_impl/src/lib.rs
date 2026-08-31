@@ -741,9 +741,7 @@ fn print_crate_info(
                     .iter()
                     .filter_map(|&(name, value)| {
                         // On stable, exclude unstable flags.
-                        if !sess.is_nightly_build()
-                            && find_gated_cfg(|cfg_sym| cfg_sym == name).is_some()
-                        {
+                        if !sess.is_nightly_build() && find_gated_cfg(name).is_some() {
                             return None;
                         }
 
