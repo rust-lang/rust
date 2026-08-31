@@ -12,6 +12,7 @@ LL |     map.push(f2);
    |
    = note: expected fn item `for<'a> fn(&'a A) {f1}`
               found fn item `for<'a> fn(&'a A) {f2}`
+   = note: different fn items have unique types, even if their signatures are the same
 note: method defined here
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 

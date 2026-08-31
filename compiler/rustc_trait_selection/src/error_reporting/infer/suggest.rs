@@ -521,7 +521,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let found_sig =
                     self.normalize_fn_sig(self.tcx.fn_sig(*did2).instantiate(self.tcx, args2));
 
-                if self.same_type_modulo_infer(expected_sig, found_sig) {
+                let expected_sig_anon = self.tcx.anonymize_bound_vars(expected_sig);
+                let found_sig_anon = self.tcx.anonymize_bound_vars(found_sig);
+                if self.same_type_modulo_infer(expected_sig_anon, found_sig_anon) {
                     diag.subdiagnostic(FnUniqTypes);
                 }
 

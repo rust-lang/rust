@@ -16,4 +16,5 @@ fn main() {
     map.push(f1);
     map.push(f2);
     //~^ ERROR mismatched types
+    //~| NOTE different fn items have unique types
 }
