@@ -1095,10 +1095,14 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     }
 
                     match alias_const.kind {
-                        ty::AliasConstKind::Inherent { .. } => {
+                        ty::AliasConstKind::InherentSelf { .. } => {
                             self.add_wf_preds_for_inherent_projection(alias_const.into());
                             return; // Subtree is handled by above function
                         }
+                        // please ping khyperia and/or BoxyUwU if this `bug!` fires
+                        ty::AliasConstKind::InherentImpl { .. } => bug!(
+                            "This ought to be unreachable, the entrypoints of WF should still have InherentSelf-form alias consts."
+                        ),
                         ty::AliasConstKind::Projection { def_id }
                         | ty::AliasConstKind::Free { def_id }
                         | ty::AliasConstKind::Anon { def_id } => {

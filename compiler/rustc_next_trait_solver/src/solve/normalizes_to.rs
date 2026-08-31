@@ -417,7 +417,17 @@ where
                 target_container_def_id,
             )?;
 
-            if !cx.check_args_compatible(target_item_def_id.into(), target_args) {
+            let target_item_def_id: I::DefId = target_item_def_id.into();
+
+            let target_item_kind = if goal.predicate.alias.kind.is_type() {
+                ty::AliasTermKind::ProjectionTy { def_id: target_item_def_id.try_into().unwrap() }
+            } else {
+                ty::AliasTermKind::ProjectionConst {
+                    def_id: target_item_def_id.try_into().unwrap(),
+                }
+            };
+
+            if !cx.check_alias_term_args_compatible(target_item_kind, target_args) {
                 return error_response(
                     ecx,
                     cx.delay_bug("associated item has mismatched arguments"),
@@ -427,15 +437,14 @@ where
             // Finally we construct the actual value of the associated type.
             let term = match goal.predicate.alias.kind {
                 ty::AliasTermKind::ProjectionTy { .. } => {
-                    let t = cx.type_of(target_item_def_id.into()).instantiate(cx, target_args);
+                    let t = cx.type_of(target_item_def_id).instantiate(cx, target_args);
                     let t = ecx.normalize(GoalSource::Misc, goal.param_env, t)?;
                     t.into()
                 }
                 ty::AliasTermKind::ProjectionConst { .. }
-                    if cx.is_type_const(target_item_def_id.into()) =>
+                    if cx.is_type_const(target_item_def_id) =>
                 {
-                    let c =
-                        cx.const_of_item(target_item_def_id.into()).instantiate(cx, target_args);
+                    let c = cx.const_of_item(target_item_def_id).instantiate(cx, target_args);
                     let c = ecx.normalize(GoalSource::Misc, goal.param_env, c)?;
                     c.into()
                 }
@@ -443,7 +452,7 @@ where
                     let alias_const = ty::AliasConst::new(
                         cx,
                         ty::AliasConstKind::Projection {
-                            def_id: target_item_def_id.into().try_into().unwrap(),
+                            def_id: target_item_def_id.try_into().unwrap(),
                         },
                         target_args,
                     );
@@ -827,13 +836,7 @@ where
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionClause {
-                projection_term: ty::AliasTerm::new(
-                    ecx.cx(),
-                    cx.alias_term_kind_from_def_id(
-                        goal.predicate.alias.expect_projection_def_id().into(),
-                    ),
-                    [self_ty],
-                ),
+                projection_term: ty::AliasTerm::new(ecx.cx(), goal.predicate.alias.kind, [self_ty]),
                 term,
             }
             .upcast(cx),
@@ -865,13 +868,7 @@ where
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionClause {
-                projection_term: ty::AliasTerm::new(
-                    ecx.cx(),
-                    cx.alias_term_kind_from_def_id(
-                        goal.predicate.alias.expect_projection_def_id().into(),
-                    ),
-                    [self_ty],
-                ),
+                projection_term: ty::AliasTerm::new(ecx.cx(), goal.predicate.alias.kind, [self_ty]),
                 term,
             }
             .upcast(cx),
