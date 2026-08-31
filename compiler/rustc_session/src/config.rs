@@ -1515,7 +1515,11 @@ impl Default for Options {
             verbose: false,
             target_modifiers: BTreeMap::default(),
             mitigation_coverage_map: Default::default(),
-            jobs: Jobs { frontend: None, backend: None, linker: LinkerJobs::Default },
+            jobs: Jobs {
+                frontend: NonZero::new(1).unwrap(),
+                backend: NonZero::new(1).unwrap(),
+                linker: LinkerJobs::Default,
+            },
         }
     }
 }
@@ -1705,12 +1709,10 @@ impl LinkerJobs {
     }
 }
 
-/// `None` for frontend and backend means everything is single-threaded
-/// and synchronization can be disabled.
 #[derive(Clone, Copy)]
 pub struct Jobs {
-    pub frontend: Option<NonZero<usize>>,
-    pub backend: Option<NonZero<usize>>,
+    pub frontend: NonZero<usize>,
+    pub backend: NonZero<usize>,
     pub linker: LinkerJobs,
 }
 
@@ -1728,9 +1730,9 @@ fn parse_jobs_all(
     let jobs = matches
         .opt_str("jobs")
         .map(|s| parse_jobs_one(early_dcx, "--jobs", &s, unstable, &mut available));
-    let check_upper_limit = |value: Option<_>, opt_name| {
+    let check_upper_limit = |value, opt_name| {
         if let Some(jobs) = jobs
-            && value.or(NonZero::new(1)) > jobs.or(NonZero::new(1))
+            && value > jobs
         {
             early_dcx.early_fatal(format!("`{opt_name}` cannot be larger than `--jobs`"));
         }
@@ -1754,7 +1756,7 @@ fn parse_jobs_all(
                 check_upper_limit(frontend, opt_name);
                 frontend
             }
-            None => jobs.flatten(),
+            None => jobs.or(NonZero::new(1)).unwrap(),
         },
     };
     let backend = match matches.opt_str("jobs-backend") {
@@ -1777,10 +1779,10 @@ fn parse_jobs_all(
             let linker =
                 parse_jobs_one(early_dcx, opt_name, &jobs_linker, unstable, &mut available);
             check_upper_limit(linker, opt_name);
-            LinkerJobs::Explicit(linker.or(NonZero::new(1)).unwrap())
+            LinkerJobs::Explicit(linker)
         }
         None => match jobs {
-            Some(n) => LinkerJobs::Explicit(n.or(NonZero::new(1)).unwrap()),
+            Some(n) => LinkerJobs::Explicit(n),
             None => LinkerJobs::Default, // back compat with lld
         },
     };
@@ -1795,13 +1797,13 @@ fn parse_jobs_one(
     s: &str,
     unstable: bool,
     available: &mut Option<u8>,
-) -> Option<NonZero<usize>> {
+) -> NonZero<usize> {
     if s == "sync" {
         // Enable synchronization overhead for benchmarking despite only using one thread.
         if !unstable {
             early_dcx.early_fatal(format!("`{opt_name}=sync` requires `-Z unstable-options`"));
         }
-        return NonZero::new(1);
+        return NonZero::new(1).unwrap();
     }
     // The number of jobs is capped by 255 (`u8::MAX`) to avoid arbitrary large numbers like 999999
     // causing compiler panics (#117638). The limit can be potentially increased, because e.g.
@@ -1816,7 +1818,7 @@ fn parse_jobs_one(
             .early_fatal(format!("`{opt_name}`: expected a number from 0 to 255 or `sync`")),
     };
     // `Jobs` uses `usize` for more convenient use, even if the actual values are limited to `u8`.
-    (n > 1).then_some(NonZero::new(usize::from(n)).unwrap())
+    NonZero::new(usize::from(n)).unwrap()
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {

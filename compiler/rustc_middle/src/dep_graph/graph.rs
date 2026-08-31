@@ -667,7 +667,7 @@ impl DepGraph {
 impl DepGraphData {
     fn assert_dep_node_not_yet_allocated_in_current_session<S: std::fmt::Display>(
         &self,
-        sess: &Session,
+        _sess: &Session,
         dep_node: &DepNode,
         msg: impl FnOnce() -> S,
     ) {
@@ -676,7 +676,7 @@ impl DepGraphData {
             let ok = match color {
                 DepNodeColor::Unknown => true,
                 DepNodeColor::Red => false,
-                DepNodeColor::Green(..) => sess.opts.jobs.frontend.is_some(), // Other threads may mark this green
+                DepNodeColor::Green(..) => true, // Other threads may mark this green
             };
             if !ok {
                 panic!("{}", msg())

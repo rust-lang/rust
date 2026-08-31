@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
-use std::num::NonZero;
+// use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -222,7 +222,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
-    let jobs_frontend = jobs.frontend.or(NonZero::new(1)).unwrap();
+    let jobs_frontend = jobs.frontend;
     let registry = sync::Registry::new(jobs_frontend);
 
     let Some(proof) = sync::check_dyn_thread_safe() else {

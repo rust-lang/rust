@@ -1260,7 +1260,7 @@ fn start_executing_work<B: WriteBackendMethods>(
     // tokens before releasing them, so we can never accidentally release the last token
     // permanently held by rustc process.
     let parallel = match sess.opts.jobs.backend {
-        Some(n) if backend.supports_parallel() => Some(n),
+        n if backend.supports_parallel() => Some(n),
         _ => None,
     };
     let jobserver_helper = parallel.map(|_| {

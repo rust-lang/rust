@@ -379,12 +379,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     trace!("run_compiler");
 
     // Set parallel mode before thread pool creation, which will create `Lock`s.
-    rustc_data_structures::sync::set_dyn_thread_safe_mode(config.opts.jobs.frontend.is_some());
+    rustc_data_structures::sync::set_dyn_thread_safe_mode(true);
 
     // Initialize jobserver as early as possible.
     let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
     let jobs = config.opts.jobs;
-    if let Some(limit) = jobs.frontend.max(jobs.backend).max(jobs.linker.limit()) {
+    if let Some(limit) = Some(jobs.frontend).max(Some(jobs.backend)).max(jobs.linker.limit()) {
         jobserver::initialize(limit.get(), |err| {
             let note = "the build environment is likely misconfigured";
             early_dcx.early_struct_warn(err).with_note(note).emit()

@@ -2517,18 +2517,16 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         return;
     };
 
-    if tcx.sess.opts.jobs.frontend.is_some() {
-        // Prefetch some queries used by metadata encoding.
-        // This is not necessary for correctness, but is only done for performance reasons.
-        // It can be removed if it turns out to cause trouble or be detrimental to performance.
-        par_join(
-            || prefetch_mir(tcx),
-            || {
-                let _ = tcx.exported_non_generic_symbols(LOCAL_CRATE);
-                let _ = tcx.exported_generic_symbols(LOCAL_CRATE);
-            },
-        );
-    }
+    // Prefetch some queries used by metadata encoding.
+    // This is not necessary for correctness, but is only done for performance reasons.
+    // It can be removed if it turns out to cause trouble or be detrimental to performance.
+    par_join(
+        || prefetch_mir(tcx),
+        || {
+            let _ = tcx.exported_non_generic_symbols(LOCAL_CRATE);
+            let _ = tcx.exported_generic_symbols(LOCAL_CRATE);
+        },
+    );
 
     // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
     // information changes, and maybe reuse the work product.
