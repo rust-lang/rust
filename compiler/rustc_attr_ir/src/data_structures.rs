@@ -12,7 +12,9 @@ use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, Path, ast};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
+use rustc_macros::{
+    Decodable, Decodable_NoContext, Encodable, Encodable_NoContext, PrintAttribute, StableHash,
+};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
@@ -108,7 +110,8 @@ pub enum InstructionSetAttr {
     ArmT32,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, Eq, StableHash, PrintAttribute)]
+#[derive(Copy, Clone, Debug)]
+#[derive(Encodable_NoContext, Decodable_NoContext, StableHash, PrintAttribute)]
 pub enum InstrumentFnAttr {
     /// `#[instrument_fn = "on"]`
     On,
