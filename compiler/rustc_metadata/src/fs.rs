@@ -7,6 +7,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{OutFileName, OutputType};
 use rustc_session::output::filename_for_metadata;
+use rustc_span::ErrorGuaranteed;
 use rustc_structures::CrateType;
 
 use crate::diagnostics::{
@@ -34,7 +35,7 @@ pub fn emit_wrapper_file(sess: &Session, data: &[u8], tmpdir: &Path, name: &str)
     out_filename
 }
 
-pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> Result<EncodedMetadata, ErrorGuaranteed> {
     let out_filename = filename_for_metadata(tcx.sess, tcx.output_filenames(()));
     // To avoid races with another rustc process scanning the output directory,
     // we need to write the file somewhere else and atomically move it to its
@@ -68,6 +69,10 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
                 tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_stub_filename, err });
             });
         }
+    }
+
+    if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
+        return Err(guar);
     }
 
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
@@ -109,7 +114,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
                 tcx.dcx().emit_fatal(FailedCreateEncodedMetadata { err });
             });
 
-    metadata
+    Ok(metadata)
 }
 
 #[cfg(not(target_os = "linux"))]
