@@ -221,6 +221,7 @@ impl CommandLineStep for StdImportantTargets {
         #[derive(serde_derive::Deserialize)]
         struct Metadata {
             tier: Option<u32>,
+            std: Option<bool>,
         }
 
         #[derive(serde_derive::Deserialize)]
@@ -231,24 +232,32 @@ impl CommandLineStep for StdImportantTargets {
         let target_specs = get_target_specs(builder, build_compiler, None);
         let specs: HashMap<String, Target> = serde_json::from_value(target_specs)
             .expect("Cannot deserialize target JSON specs from the stage1 compiler");
+
+        struct ParsedSpec {
+            target: TargetSelection,
+            std: bool,
+        }
+
         let mut important_targets = specs
             .iter()
-            .filter(|(_, spec)| spec.metadata.tier.map(|t| t <= 2).unwrap_or(false))
-            .map(|(name, _)| name)
+            .filter_map(|(tuple, spec)| {
+                let tier = spec.metadata.tier?;
+                let std = spec.metadata.std.unwrap_or(false);
+                if tier > 2 {
+                    return None;
+                }
+                Some(ParsedSpec { target: TargetSelection::from_user(tuple), std })
+            })
             .collect::<Vec<_>>();
-        important_targets.sort_unstable();
-        builder.info(&format!("Found {} tier 2+ targets to check", important_targets.len()));
-        for target in important_targets {
-            let target = TargetSelection::from_user(target);
+        important_targets.sort_unstable_by_key(|a| a.target);
+        builder.info(&format!("Found {} tier 1/2 targets to check", important_targets.len()));
+        for spec in important_targets {
+            let crates: &[&str] = if spec.std { &["core", "alloc", "std"] } else { &["core"] };
             let std = Std {
-                build_compiler: prepare_compiler_for_check(builder, target, Mode::Std)
+                build_compiler: prepare_compiler_for_check(builder, spec.target, Mode::Std)
                     .build_compiler(),
-                target,
-                crates: builder
-                    .in_tree_crates("sysroot", Some(target))
-                    .into_iter()
-                    .map(|krate| krate.name.clone())
-                    .collect(),
+                target: spec.target,
+                crates: crates.iter().map(|s| s.to_string()).collect(),
             };
             builder.ensure(std);
         }
