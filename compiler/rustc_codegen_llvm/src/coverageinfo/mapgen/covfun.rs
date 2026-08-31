@@ -77,15 +77,15 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     Some(covfun)
 }
 
-pub(crate) fn counter_for_term(term: CovTerm) -> ffi::Counter {
-    use ffi::Counter;
+fn counter_for_term(term: CovTerm) -> ffi::Counter {
     match term {
-        CovTerm::Zero => Counter::ZERO,
-        CovTerm::Counter(id) => {
-            Counter { kind: ffi::CounterKind::CounterValueReference, id: CounterId::as_u32(id) }
-        }
+        CovTerm::Zero => ffi::Counter::ZERO,
+        CovTerm::Counter(id) => ffi::Counter {
+            kind: ffi::CounterKind::CounterValueReference,
+            id: CounterId::as_u32(id),
+        },
         CovTerm::Expression(id) => {
-            Counter { kind: ffi::CounterKind::Expression, id: ExpressionId::as_u32(id) }
+            ffi::Counter { kind: ffi::CounterKind::Expression, id: ExpressionId::as_u32(id) }
         }
     }
 }
@@ -174,10 +174,10 @@ fn fill_region_tables<'tcx>(
     }
 }
 
-/// Generates the contents of the covfun record for this function, which
-/// contains the function's coverage mapping data. The record is then stored
+/// Generates and emits the covfun record for this function, which
+/// contains the function's coverage mapping data. The record is emitted
 /// as a global variable in the `__llvm_covfun` section.
-pub(crate) fn generate_covfun_record<'tcx>(
+pub(crate) fn emit_covfun_record<'tcx>(
     cx: &mut CodegenCx<'_, 'tcx>,
     global_file_table: &GlobalFileTable,
     covfun: &CovfunRecord<'tcx>,

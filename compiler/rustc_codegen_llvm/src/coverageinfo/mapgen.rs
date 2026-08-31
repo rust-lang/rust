@@ -74,7 +74,7 @@ pub(crate) fn finalize(cx: &mut CodegenCx<'_, '_>) {
         unused::prepare_covfun_records_for_unused_functions(cx, &mut covfun_records);
     }
 
-    // If there are no covfun records for this CGU, don't generate a covmap record.
+    // If there are no covfun records for this CGU, don't emit a covmap record.
     // Emitting a covmap record without any covfun records causes `llvm-cov` to
     // fail when generating coverage reports, and if there are no covfun records
     // then the covmap record isn't useful anyway.
@@ -89,13 +89,13 @@ pub(crate) fn finalize(cx: &mut CodegenCx<'_, '_>) {
         GlobalFileTable::build(tcx, covfun_records.iter().flat_map(|c| c.all_source_files()));
 
     for covfun in &covfun_records {
-        covfun::generate_covfun_record(cx, &global_file_table, covfun)
+        covfun::emit_covfun_record(cx, &global_file_table, covfun);
     }
 
-    // Generate the coverage map header, which contains the filenames used by
+    // Emit the coverage map header, which contains the filenames used by
     // this CGU's coverage mappings, and store it in a well-known global.
     // (This is skipped if we returned early due to having no covfun records.)
-    generate_covmap_record(cx, covmap_version, &global_file_table.filenames_buffer);
+    emit_covmap_record(cx, covmap_version, &global_file_table.filenames_buffer);
 }
 
 /// Maps "global" (per-CGU) file ID numbers to their underlying source file paths.
@@ -218,10 +218,10 @@ impl VirtualFileMapping {
     }
 }
 
-/// Generates the contents of the covmap record for this CGU, which mostly
-/// consists of a header and a list of filenames. The record is then stored
+/// Generates and emits the covmap record for this CGU, which mostly
+/// consists of a header and a list of filenames. The record is emitted
 /// as a global variable in the `__llvm_covmap` section.
-fn generate_covmap_record<'ll>(
+fn emit_covmap_record<'ll>(
     cx: &mut CodegenCx<'ll, '_>,
     version: CovmapVersion,
     filenames_buffer: &[u8],
