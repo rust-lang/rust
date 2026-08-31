@@ -91,7 +91,7 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
 
 /// This type contains all the things within [`InferCtxt`] that sit within a
 /// [`RefCell`] and are involved with taking/rolling back snapshots. Snapshot
-/// operations are hot enough that we want only one call to 
+/// operations are hot enough that we want only one call to
 /// [`RefCell::borrow_mut`] per call to [`InferCtxt::start_snapshot`] and
 ///  [`InferCtxt::rollback_to`].
 #[derive(Clone)]
@@ -104,8 +104,8 @@ pub struct InferCtxtInner<'tcx> {
     projection_cache: traits::ProjectionCacheStorage<'tcx>,
 
     /// Primary map of inference variables to the types that they currently
-    /// represent. 
-    /// 
+    /// represent.
+    ///
     /// We instantiate [`UnificationTable`] with `bounds<Ty>` because the types
     /// that might instantiate a general type variable have an order,
     /// represented by its upper and lower bounds.
