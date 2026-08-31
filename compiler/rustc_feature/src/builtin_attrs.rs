@@ -417,15 +417,15 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
 ];
 
 pub fn is_builtin_attr_name(name: Symbol) -> bool {
-    BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
+    BUILTIN_ATTRIBUTE_SET.contains(&name)
 }
 
-pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashSet<Symbol>> = LazyLock::new(|| {
-    let mut map = FxHashSet::default();
+pub static BUILTIN_ATTRIBUTE_SET: LazyLock<FxHashSet<Symbol>> = LazyLock::new(|| {
+    let mut set = FxHashSet::default();
     for attr in BUILTIN_ATTRIBUTES.iter() {
-        if !map.insert(*attr) {
+        if !set.insert(*attr) {
             panic!("duplicate builtin attribute `{}`", attr);
         }
     }
-    map
+    set
 });
