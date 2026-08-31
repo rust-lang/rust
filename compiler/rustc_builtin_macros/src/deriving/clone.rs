@@ -109,7 +109,7 @@ pub(crate) fn expand_deriving_clone(
 fn cs_clone_simple(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
-    substr: &Substructure<'_>,
+    substr: Substructure<'_>,
     is_union: bool,
 ) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
@@ -150,7 +150,7 @@ fn cs_clone_simple(
             &[sym::clone, sym::AssertParamIsCopy],
         );
     } else {
-        match *substr.fields {
+        match substr.fields {
             StaticStruct(vdata, ..) => {
                 process_variant(vdata);
             }
@@ -165,7 +165,7 @@ fn cs_clone_simple(
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
-fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let ctor_path;
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
@@ -179,7 +179,7 @@ fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> Bl
         Struct(vdata_, af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident]);
             all_fields = af;
-            vdata = *vdata_;
+            vdata = vdata_;
         }
         EnumMatching(.., variant, af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);

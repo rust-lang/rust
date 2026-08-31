@@ -49,11 +49,7 @@ pub(crate) fn expand_deriving_eq(
     trait_def.expand_ext(cx, mitem, item, push, true)
 }
 
-fn cs_total_eq_assert(
-    cx: &ExtCtxt<'_>,
-    trait_span: Span,
-    substr: &Substructure<'_>,
-) -> BlockOrExpr {
+fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
     let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &ast::VariantData| {
@@ -78,7 +74,7 @@ fn cs_total_eq_assert(
         }
     };
 
-    match *substr.fields {
+    match substr.fields {
         StaticStruct(vdata, ..) => {
             process_variant(vdata);
         }

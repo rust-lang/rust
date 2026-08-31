@@ -41,7 +41,7 @@ pub(crate) fn expand_deriving_ord(
     trait_def.expand(cx, mitem, item, push)
 }
 
-pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);
     let equal_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
     let cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);

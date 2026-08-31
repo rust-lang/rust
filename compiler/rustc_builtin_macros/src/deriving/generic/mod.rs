@@ -275,7 +275,7 @@ pub(crate) struct Substructure<'a> {
     /// Verbatim access to any non-selflike arguments, i.e. arguments that
     /// don't have type `&Self`.
     pub nonselflike_args: &'a [Box<Expr>],
-    pub fields: &'a SubstructureFields<'a>,
+    pub fields: SubstructureFields<'a>,
 }
 
 /// Summary of the relevant parts of a struct/enum field.
@@ -323,10 +323,10 @@ pub(crate) enum SubstructureFields<'a> {
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
 pub(crate) type CombineSubstructureFunc<'a> =
-    Box<dyn Fn(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
+    Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>;
 
 pub(crate) fn combine_substructure<'a>(
-    f: impl Fn(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a,
+    f: impl Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a,
 ) -> CombineSubstructureFunc<'a> {
     Box::new(f)
 }
@@ -850,7 +850,7 @@ impl<'a> TraitDef<'a> {
                         self,
                         type_ident,
                         &nonselflike_args,
-                        &StaticStruct(struct_def),
+                        StaticStruct(struct_def),
                     )
                 } else {
                     method_def.expand_struct_method_body(
@@ -908,7 +908,7 @@ impl<'a> TraitDef<'a> {
                         self,
                         type_ident,
                         &nonselflike_args,
-                        &StaticEnum(enum_def),
+                        StaticEnum(enum_def),
                     )
                 } else {
                     method_def.expand_enum_method_body(
@@ -957,12 +957,12 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         nonselflike_args: &[Box<Expr>],
-        fields: &SubstructureFields<'_>,
+        fields: SubstructureFields<'_>,
     ) -> BlockOrExpr {
         let span = trait_.span;
         let substructure = Substructure { type_ident, nonselflike_args, fields };
         let f: &CombineSubstructureFunc<'_> = &self.combine_substructure;
-        f(cx, span, &substructure)
+        f(cx, span, substructure)
     }
 
     fn is_static(&self) -> bool {
@@ -1118,7 +1118,7 @@ impl<'a> MethodDef<'a> {
             trait_,
             type_ident,
             nonselflike_args,
-            &Struct(struct_def, selflike_fields),
+            Struct(struct_def, selflike_fields),
         )
     }
 
@@ -1248,7 +1248,7 @@ impl<'a> MethodDef<'a> {
                             trait_,
                             type_ident,
                             nonselflike_args,
-                            &EnumDiscr(discr_field, None),
+                            EnumDiscr(discr_field, None),
                         );
                         discr_let_stmts.append(&mut discr_check.0);
                         return BlockOrExpr(discr_let_stmts, discr_check.1);
@@ -1259,7 +1259,7 @@ impl<'a> MethodDef<'a> {
                             trait_,
                             type_ident,
                             nonselflike_args,
-                            &AllFieldlessEnum(enum_def),
+                            AllFieldlessEnum(enum_def),
                         );
                     }
                     FieldlessVariantsStrategy::Default => (),
@@ -1272,7 +1272,7 @@ impl<'a> MethodDef<'a> {
                     trait_,
                     type_ident,
                     nonselflike_args,
-                    &EnumMatching(variant, Vec::new()),
+                    EnumMatching(variant, Vec::new()),
                 );
             }
         }
@@ -1324,7 +1324,7 @@ impl<'a> MethodDef<'a> {
                         trait_,
                         type_ident,
                         nonselflike_args,
-                        &substructure,
+                        substructure,
                     )
                     .into_expr(cx, span);
 
@@ -1345,7 +1345,7 @@ impl<'a> MethodDef<'a> {
                         trait_,
                         type_ident,
                         nonselflike_args,
-                        &EnumMatching(v, Vec::new()),
+                        EnumMatching(v, Vec::new()),
                     )
                     .into_expr(cx, span),
                 )
@@ -1391,7 +1391,7 @@ impl<'a> MethodDef<'a> {
                 trait_,
                 type_ident,
                 nonselflike_args,
-                &EnumDiscr(discr_field, Some(get_match_expr(selflike_args))),
+                EnumDiscr(discr_field, Some(get_match_expr(selflike_args))),
             );
             discr_let_stmts.append(&mut discr_check_plus_match.0);
             BlockOrExpr(discr_let_stmts, discr_check_plus_match.1)
@@ -1543,10 +1543,10 @@ impl<'a> TraitDef<'a> {
 /// The function passed to `cs_fold` is called repeatedly with a value of this
 /// type. It describes one part of the code generation. The result is always an
 /// expression.
-pub(crate) enum CsFold<'a> {
+pub(crate) enum CsFold {
     /// The basic case: a field expression for one or more selflike args. E.g.
     /// for `PartialEq::eq` this is something like `self.x == other.x`.
-    Single(&'a FieldInfo),
+    Single(FieldInfo),
 
     /// The combination of two field expressions. E.g. for `PartialEq::eq` this
     /// is something like `<field1 equality> && <field2 equality>`.
@@ -1562,44 +1562,43 @@ pub(crate) fn cs_fold<F>(
     use_foldl: bool,
     cx: &ExtCtxt<'_>,
     trait_span: Span,
-    substructure: &Substructure<'_>,
+    substructure: Substructure<'_>,
     mut f: F,
 ) -> Box<Expr>
 where
-    F: FnMut(&ExtCtxt<'_>, CsFold<'_>) -> Box<Expr>,
+    F: FnMut(&ExtCtxt<'_>, CsFold) -> Box<Expr>,
 {
     match substructure.fields {
-        EnumMatching(.., all_fields) | Struct(_, all_fields) => {
+        EnumMatching(.., mut all_fields) | Struct(_, mut all_fields) => {
             if all_fields.is_empty() {
                 return f(cx, CsFold::Fieldless);
             }
 
-            let (base_field, rest) = if use_foldl {
-                all_fields.split_first().unwrap()
-            } else {
-                all_fields.split_last().unwrap()
-            };
+            let base_field =
+                if use_foldl { all_fields.remove(0) } else { all_fields.pop().unwrap() };
+            let rest = all_fields;
 
             let base_expr = f(cx, CsFold::Single(base_field));
 
-            let op = |old, field: &FieldInfo| {
+            let op = |old, field: FieldInfo| {
+                let span = field.span;
                 let new = f(cx, CsFold::Single(field));
-                f(cx, CsFold::Combine(field.span, old, new))
+                f(cx, CsFold::Combine(span, old, new))
             };
 
             if use_foldl {
-                rest.iter().fold(base_expr, op)
+                rest.into_iter().fold(base_expr, op)
             } else {
-                rest.iter().rfold(base_expr, op)
+                rest.into_iter().rfold(base_expr, op)
             }
         }
         EnumDiscr(discr_field, match_expr) => {
             let discr_check_expr = f(cx, CsFold::Single(discr_field));
             if let Some(match_expr) = match_expr {
                 if use_foldl {
-                    f(cx, CsFold::Combine(trait_span, discr_check_expr, match_expr.clone()))
+                    f(cx, CsFold::Combine(trait_span, discr_check_expr, match_expr))
                 } else {
-                    f(cx, CsFold::Combine(trait_span, match_expr.clone(), discr_check_expr))
+                    f(cx, CsFold::Combine(trait_span, match_expr, discr_check_expr))
                 }
             } else {
                 discr_check_expr

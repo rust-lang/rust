@@ -120,7 +120,7 @@ pub(crate) fn expand_deriving_partial_eq(
 fn get_substructure_equality_expr(
     cx: &ExtCtxt<'_>,
     span: Span,
-    substructure: &Substructure<'_>,
+    substructure: Substructure<'_>,
 ) -> BlockOrExpr {
     use SubstructureFields::*;
 
@@ -148,7 +148,7 @@ fn get_substructure_equality_expr(
                 .unwrap_or_else(|| cx.expr_bool(span, true))
         }
         EnumDiscr(disc, match_expr) => {
-            let lhs = get_field_equality_expr(cx, disc);
+            let lhs = get_field_equality_expr(cx, &disc);
             let Some(match_expr) = match_expr else {
                 return BlockOrExpr::new_expr(lhs);
             };

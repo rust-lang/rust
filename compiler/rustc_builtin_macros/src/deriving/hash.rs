@@ -46,7 +46,7 @@ pub(crate) fn expand_deriving_hash(
     hash_trait_def.expand(cx, mitem, item, push);
 }
 
-fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let [state_expr] = substr.nonselflike_args else {
         cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
@@ -60,13 +60,13 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'
     let (stmts, match_expr) = match substr.fields {
         Struct(_, fields) | EnumMatching(.., fields) => {
             let stmts =
-                fields.iter().map(|field| call_hash(field.span, field.self_expr.clone())).collect();
+                fields.into_iter().map(|field| call_hash(field.span, field.self_expr)).collect();
             (stmts, None)
         }
         EnumDiscr(discr_field, match_expr) => {
             assert!(discr_field.other_selflike_exprs.is_empty());
-            let stmts = thin_vec![call_hash(discr_field.span, discr_field.self_expr.clone())];
-            (stmts, match_expr.clone())
+            let stmts = thin_vec![call_hash(discr_field.span, discr_field.self_expr)];
+            (stmts, match_expr)
         }
         _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive(Hash)`"),
     };

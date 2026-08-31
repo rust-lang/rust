@@ -111,7 +111,7 @@ fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr
 fn cs_partial_cmp(
     cx: &ExtCtxt<'_>,
     span: Span,
-    substr: &Substructure<'_>,
+    substr: Substructure<'_>,
     discr_then_data: bool,
 ) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);
