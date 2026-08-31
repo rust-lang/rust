@@ -67,7 +67,7 @@ fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
 fn default_struct_substructure(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
-    substr: &Substructure<'_>,
+    substr: Substructure<'_>,
     variant_data: &VariantData,
 ) -> BlockOrExpr {
     let expr = match variant_data {

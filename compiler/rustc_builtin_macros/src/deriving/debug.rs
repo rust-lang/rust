@@ -45,7 +45,7 @@ pub(crate) fn expand_deriving_debug(
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     // We want to make sure we have the ctxt set so that we can use unstable methods
     let span = cx.with_def_site_ctxt(span);
 
@@ -55,7 +55,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
     }
 
     let (ident, vdata, fields) = match substr.fields {
-        Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
+        Struct(vdata, fields) => (substr.type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
         AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, substr),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
@@ -217,7 +217,7 @@ fn show_fieldless_enum(
     cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,
-    substr: &Substructure<'_>,
+    substr: Substructure<'_>,
 ) -> BlockOrExpr {
     let fmt = substr.nonselflike_args[0].clone();
     let arms = def
