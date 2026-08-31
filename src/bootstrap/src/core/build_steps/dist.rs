@@ -31,7 +31,7 @@ use crate::core::build_steps::llvm::{
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
 };
-use crate::core::build_steps::vendor::Vendor;
+use crate::core::build_steps::vendor::{VENDORING_BROKEN_BY_HASHBROWN_BRANCH, Vendor};
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{
     Builder, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
@@ -675,9 +675,13 @@ impl CommandLineStep for Rustc {
             generate_target_spec_json_schema(builder, image);
 
             // HTML copyright files
-            let file_list = builder.ensure(super::run::GenerateCopyright);
-            for file in file_list {
-                builder.install(&file, &image.join("share/doc/rust"), FileType::Regular);
+            //
+            // Generating these vendors the tree, which the `hashbrown` branch breaks.
+            if !VENDORING_BROKEN_BY_HASHBROWN_BRANCH {
+                let file_list = builder.ensure(super::run::GenerateCopyright);
+                for file in file_list {
+                    builder.install(&file, &image.join("share/doc/rust"), FileType::Regular);
+                }
             }
 
             // README
@@ -1396,7 +1400,7 @@ fn prepare_source_tarball<'a>(
     write_git_info(builder.rust_info().info(), plain_dst_src);
     write_git_info(builder.cargo_info.info(), &plain_dst_src.join("./src/tools/cargo"));
 
-    if builder.config.dist_vendor {
+    if builder.config.dist_vendor && !VENDORING_BROKEN_BY_HASHBROWN_BRANCH {
         builder.require_and_update_all_submodules();
 
         // Vendor packages that are required by opt-dist to collect PGO profiles.

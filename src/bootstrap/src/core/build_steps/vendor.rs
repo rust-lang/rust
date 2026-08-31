@@ -11,6 +11,15 @@ use crate::utils::exec::command;
 /// The name of the directory where vendored dependencies are stored.
 pub const VENDOR_DIR: &str = "vendor";
 
+/// Whether vendoring the compiler workspace is currently broken.
+///
+/// `cargo vendor` refuses to vendor two packages with the same name and version from different
+/// sources, and the `linear-probes` `hashbrown` branch the compiler builds against (see
+/// `compiler/rustc_data_structures/Cargo.toml`) has the same version as the crates.io `hashbrown`
+/// the rest of the tree uses. Vendoring the compiler workspace, and the copyright generation which
+/// depends on it, are therefore skipped while that branch is in `Cargo.lock`. [LLM-generated]
+pub const VENDORING_BROKEN_BY_HASHBROWN_BRANCH: bool = true;
+
 /// Returns the cargo workspaces to vendor for `x vendor` and dist tarballs.
 ///
 /// Returns a `Vec` of `(path_to_manifest, submodules_required)` where
