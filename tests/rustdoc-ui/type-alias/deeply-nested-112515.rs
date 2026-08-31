@@ -2,7 +2,7 @@
 // It's to ensure that this code doesn't have infinite loop in rustdoc when
 // trying to retrieve type alias implementations.
 
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 //@ check-pass
 

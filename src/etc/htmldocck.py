@@ -629,7 +629,10 @@ def check(target, commands):
         check_command(c, cache)
         run_commands += 1
     if run_commands == 0:
-        stderr("\nNo check, move this file in `rustdoc-ui` testsuite if you want to check it doesn't crash")
+        stderr(
+            "\nNo check, move this file in `rustdoc-ui` testsuite if you want to check "
+            + "it doesn't crash"
+        )
         raise SystemExit(1)
 
 
