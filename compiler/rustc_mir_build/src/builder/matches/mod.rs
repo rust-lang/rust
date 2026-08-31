@@ -1030,7 +1030,7 @@ struct Candidate<'tcx> {
     ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
     ///
     /// Invariants:
-    /// - All or-patterns ([`TestableCase::Or`]) have been sorted to the end.
+    /// - All or-patterns ([`MatchPairKind::Or`]) have been sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
@@ -1116,14 +1116,14 @@ impl<'tcx> Candidate<'tcx> {
 
     /// Restores the invariant that or-patterns must be sorted to the end.
     fn sort_match_pairs(&mut self) {
-        self.match_pairs.sort_by_key(|pair| matches!(pair.testable_case, TestableCase::Or { .. }));
+        self.match_pairs.sort_by_key(|pair| matches!(pair.kind, MatchPairKind::Or { .. }));
     }
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
     fn starts_with_or_pattern(&self) -> bool {
         matches!(
-            &*self.match_pairs,
-            [MatchPairTree { testable_case: TestableCase::Or { .. }, .. }, ..]
+            self.match_pairs.first(),
+            Some(MatchPairTree { kind: MatchPairKind::Or { .. }, .. })
         )
     }
 
@@ -1223,7 +1223,6 @@ enum TestableCase<'tcx> {
     Slice { len: u64, op: SliceLenOp },
     Deref { temp: Place<'tcx>, mutability: Mutability },
     Never,
-    Or { pats: Box<[FlatPat<'tcx>]> },
 }
 
 impl<'tcx> TestableCase<'tcx> {
@@ -1261,30 +1260,30 @@ enum PatConstKind {
 /// Each node also has a list of subpairs (possibly empty) that must also match,
 /// and some additional information from the THIR pattern it represents.
 #[derive(Debug, Clone)]
-pub(crate) struct MatchPairTree<'tcx> {
-    /// This place...
-    ///
-    /// ---
-    /// This can be `None` if it referred to a non-captured place in a closure.
-    ///
-    /// Invariant: Can only be `None` when `testable_case` is `Or`.
-    /// Therefore this must be `Some(_)` after or-pattern expansion.
-    place: Option<Place<'tcx>>,
-
-    /// ... must pass this test...
-    testable_case: TestableCase<'tcx>,
-
-    /// ... and these subpairs must match.
-    ///
-    /// ---
-    /// Subpairs typically represent tests that can only be performed after their
-    /// parent has succeeded. For example, the pattern `Some(3)` might have an
-    /// outer match pair that tests for the variant `Some`, and then a subpair
-    /// that tests its field for the value `3`.
-    subpairs: Vec<Self>,
+struct MatchPairTree<'tcx> {
+    kind: MatchPairKind<'tcx>,
 
     /// Span field of the THIR pattern this node was created from.
     pattern_span: Span,
+}
+
+#[derive(Debug, Clone)]
+enum MatchPairKind<'tcx> {
+    Or {
+        or_subpats: Box<[FlatPat<'tcx>]>,
+    },
+    Testable {
+        /// Place that will be tested.
+        place: Place<'tcx>,
+        /// Test to perform against the place, and the desired outcome.
+        testable_case: TestableCase<'tcx>,
+
+        /// Further tests that can only be performed after this test has succeeded.
+        /// For example, in the pattern `Some(3)` this node might represent a test
+        /// for the variant `Some`, while a subpair would test its field for the
+        /// value `3`.
+        subpairs: Vec<MatchPairTree<'tcx>>,
+    },
 }
 
 /// A runtime test to perform to determine which candidates match a scrutinee place.
@@ -1948,10 +1947,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'tcx>,
         match_pair: MatchPairTree<'tcx>,
     ) {
-        let TestableCase::Or { pats } = match_pair.testable_case else { bug!() };
-        debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
+        let MatchPairKind::Or { or_subpats } = match_pair.kind else { bug!() };
+        debug!("expanding or-pattern: candidate={:#?}\nor_subpats={:#?}", candidate, or_subpats);
         candidate.or_span = Some(match_pair.pattern_span);
-        candidate.subcandidates = pats
+        candidate.subcandidates = or_subpats
             .into_iter()
             .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
@@ -2116,7 +2115,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug_assert!(
             remaining_match_pairs
                 .iter()
-                .all(|match_pair| matches!(match_pair.testable_case, TestableCase::Or { .. }))
+                .all(|match_pair| matches!(match_pair.kind, MatchPairKind::Or { .. }))
         );
 
         // Visit each leaf candidate within this subtree, add a copy of the remaining
@@ -2167,8 +2166,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates[0].match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
-        // Unwrap is ok after simplification.
-        let match_place = match_pair.place.unwrap();
+
+        let MatchPairKind::Testable { place: match_place, .. } = match_pair.kind else {
+            bug!("match pair must be testable")
+        };
         debug!(?test, ?match_pair);
 
         (match_place, test)
