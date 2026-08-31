@@ -867,26 +867,12 @@ const impl AsMut<str> for str {
 // THE NO-ERROR ERROR TYPE
 ////////////////////////////////////////////////////////////////////////////////
 
-/// The error type for errors that can never happen.
+/// An alias to [`!`], the "never" type.
 ///
-/// Since this is an alias to the never type, a value of this type can never actually exist.
-/// This can be useful for generic APIs that use [`Result`] and parameterize the error type,
-/// to indicate that the result is always [`Ok`].
+/// If targeting Rust CURRENT_RUSTC_VERSION or newer, prefer using `!` directly. `Infallible` may be
+/// deprecated in a future Rust version.
 ///
-/// For example, the [`TryFrom`] trait (conversion that returns a [`Result`])
-/// has a blanket implementation for all types where a reverse [`Into`] implementation exists.
-///
-/// ```ignore (illustrates std code, duplicating the impl in a doctest would be an error)
-/// impl<T, U> TryFrom<U> for T where U: Into<T> {
-///     type Error = Infallible;
-///
-///     fn try_from(value: U) -> Result<Self, Infallible> {
-///         Ok(U::into(value))  // Never returns `Err`
-///     }
-/// }
-/// ```
-///
-/// Note: since CURRENT_RUSTC_VERSION this is an alias to `!`. If targeting that or future versions,
-/// prefer using the never type directly.
+/// Prior to Rust CURRENT_RUSTC_VERSION, `Infallible` was defined as `enum Infallible {}` and `!`
+/// was not yet stabilized.
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 pub type Infallible = !;
