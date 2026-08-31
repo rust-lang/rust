@@ -111,3 +111,11 @@ impl fmt::Debug for Dir {
         f.debug_struct("Dir").field("path", &self.path).finish()
     }
 }
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct ExtraHomeDirs {}
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct ExtraMediaDirs {}
