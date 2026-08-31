@@ -30,6 +30,7 @@ fn main() {
     test_readiness_after_short_write();
     test_readable_after_read_shutdown_and_short_read();
     test_writable_after_write_shutdown_with_full_buffer();
+    test_initial_readiness();
 }
 
 /// Test that connecting to a server socket works when the client
@@ -777,4 +778,16 @@ fn test_writable_after_write_shutdown_with_full_buffer() {
     let result =
         unsafe { errno_result(libc::write(client_sockfd, buffer.as_ptr().cast(), buffer.len())) };
     assert_eq!(result.unwrap_err().kind(), ErrorKind::BrokenPipe);
+}
+
+/// Test that a socket reports the EPOLLHUP and EPOLLOUT readiness
+/// directly after being created.
+fn test_initial_readiness() {
+    let sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)) }.unwrap();
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+
+    epoll_ctl_add(epfd, sockfd, EPOLLOUT | EPOLLIN | EPOLLHUP | EPOLLRDHUP).unwrap();
+
+    check_epoll_wait(epfd, &[Ev { events: EPOLLOUT | EPOLLHUP, data: sockfd }], -1);
 }
