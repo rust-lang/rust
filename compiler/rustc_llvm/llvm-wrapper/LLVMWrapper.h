@@ -19,8 +19,6 @@ extern "C" void LLVMRustSetLastError(const char *);
 enum class LLVMRustResult { Success, Failure };
 
 typedef struct OpaqueRustString *RustStringRef;
-typedef struct LLVMOpaqueTwine *LLVMTwineRef;
-typedef struct LLVMOpaqueSMDiagnostic *LLVMSMDiagnosticRef;
 
 extern "C" void LLVMRustStringWriteImpl(RustStringRef buf,
                                         const char *slice_ptr,
