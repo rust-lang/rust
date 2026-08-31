@@ -1741,7 +1741,7 @@ fn parse_jobs_all(
                 check_upper_limit(frontend, opt_name);
                 frontend
             }
-            None => jobs.flatten(),
+            None => jobs.flatten().or(NonZero::new(1)),
         },
     };
     let backend = match matches.opt_str("jobs-backend") {
