@@ -1,5 +1,6 @@
 pub mod add;
 pub mod cmp;
+pub mod complex;
 pub mod conv;
 pub mod div;
 pub mod extend;
