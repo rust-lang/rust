@@ -233,32 +233,19 @@ class StdRcProvider(printer_base):
     def __init__(self, valobj, is_atomic=False):
         self._valobj = valobj
         self._is_atomic = is_atomic
+        self._ptr = unwrap_unique_or_non_null(valobj["raw_rc"]["weak"]["ptr"])
 
-        if is_atomic:
-            self._ptr = unwrap_unique_or_non_null(valobj["ptr"])
-            self._value = self._ptr["data"]
-            # FIXME(shua): the debuginfo template type should be 'str' not 'u8'
-            if self._ptr.type.target().name == "alloc::rc::RcInner<str>":
-                length = self._valobj["ptr"]["pointer"]["length"]
-                u8_ptr_ty = gdb.Type.pointer(gdb.lookup_type("u8"))
-                ptr = self._value.address.reinterpret_cast(u8_ptr_ty)
-                self._value = ptr.lazy_string(encoding="utf-8", length=length)
-            self._strong = unwrap_scalar_wrappers(self._ptr["strong"])
-            self._weak = unwrap_scalar_wrappers(self._ptr["weak"]) - 1
+        if self._ptr.type.name == "*const str":
+            self._value = self._ptr["data_ptr"].lazy_string(
+                encoding="utf-8", length=self._ptr["length"]
+            )
         else:
-            self._ptr = unwrap_unique_or_non_null(valobj["raw_rc"]["weak"]["ptr"])
+            self._value = self._ptr.dereference()
 
-            if self._ptr.type.name == "*const str":
-                self._value = self._ptr["data_ptr"].lazy_string(
-                    encoding="utf-8", length=self._ptr["length"]
-                )
-            else:
-                self._value = self._ptr.dereference()
+        ref_counts_ptr = self._ptr.reinterpret_cast(_get_ref_counts_ptr_type()) - 1
 
-            ref_counts_ptr = self._ptr.reinterpret_cast(_get_ref_counts_ptr_type()) - 1
-
-            self._strong = unwrap_scalar_wrappers(ref_counts_ptr["strong"])
-            self._weak = unwrap_scalar_wrappers(ref_counts_ptr["weak"]) - 1
+        self._strong = unwrap_scalar_wrappers(ref_counts_ptr["strong"])
+        self._weak = unwrap_scalar_wrappers(ref_counts_ptr["weak"]) - 1
 
     def to_string(self):
         if self._is_atomic:
