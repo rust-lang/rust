@@ -29,7 +29,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::MixedBitSet;
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{
@@ -486,7 +486,7 @@ fn borrowck_check_region_constraints<'diag, 'tcx>(
             reservation_error_reported: Default::default(),
             uninitialized_error_reported: Default::default(),
             regioncx: &regioncx,
-            used_mut: Default::default(),
+            used_mut: DenseBitSet::new_empty(body.local_decls.len()),
             used_mut_upvars: SmallVec::new(),
             borrow_set: &borrow_set,
             upvars: &[],
@@ -525,7 +525,7 @@ fn borrowck_check_region_constraints<'diag, 'tcx>(
         reservation_error_reported: Default::default(),
         uninitialized_error_reported: Default::default(),
         regioncx: &regioncx,
-        used_mut: Default::default(),
+        used_mut: DenseBitSet::new_empty(body.local_decls.len()),
         used_mut_upvars: SmallVec::new(),
         borrow_set: &borrow_set,
         upvars: tcx.closure_captures(def),
@@ -560,17 +560,22 @@ fn borrowck_check_region_constraints<'diag, 'tcx>(
     // Note that this set is expected to be small - only upvars from closures
     // would have a chance of erroneously adding non-user-defined mutable vars
     // to the set.
-    let temporary_used_locals: FxIndexSet<Local> = mbcx
-        .used_mut
+    let mut temporary_used_locals = DenseBitSet::new_empty(body.local_decls.len());
+    mbcx.used_mut
         .iter()
-        .filter(|&local| !mbcx.body.local_decls[*local].is_user_variable())
-        .cloned()
-        .collect();
+        .filter(|local| !mbcx.body.local_decls[*local].is_user_variable())
+        .for_each(|local| {
+            temporary_used_locals.insert(local);
+        });
+
     // For the remaining unused locals that are marked as mutable, we avoid linting any that
     // were never initialized. These locals may have been removed as unreachable code; or will be
     // linted as unused variables.
-    let unused_mut_locals =
-        mbcx.body.mut_vars_iter().filter(|local| !mbcx.used_mut.contains(local)).collect();
+    let mut unused_mut_locals = DenseBitSet::new_empty(body.local_decls.len());
+    mbcx.body.mut_vars_iter().filter(|local| !mbcx.used_mut.contains(*local)).for_each(|local| {
+        unused_mut_locals.insert(local);
+    });
+
     mbcx.gather_used_muts(temporary_used_locals, unused_mut_locals);
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
@@ -769,7 +774,7 @@ pub(crate) struct MirBorrowckCtxt<'a, 'diag, 'tcx> {
     uninitialized_error_reported: FxIndexSet<Local>,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
-    used_mut: FxIndexSet<Local>,
+    used_mut: DenseBitSet<Local>,
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
@@ -2739,7 +2744,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     fn lint_unused_mut(&self) {
         let tcx = self.infcx.tcx;
         let body = self.body;
-        for local in body.mut_vars_and_args_iter().filter(|local| !self.used_mut.contains(local)) {
+        for local in body.mut_vars_and_args_iter().filter(|local| !self.used_mut.contains(*local)) {
             let local_decl = &body.local_decls[local];
             let ClearCrossCrate::Set(SourceScopeLocalData { lint_root, .. }) =
                 body.source_scopes[local_decl.source_info.scope].local_data

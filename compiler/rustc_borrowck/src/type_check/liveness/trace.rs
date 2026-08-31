@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
@@ -42,8 +42,8 @@ pub(super) fn trace<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     location_map: &DenseLocationMap,
     move_data: &MoveData<'tcx>,
-    relevant_live_locals: Vec<Local>,
-    boring_locals: Vec<Local>,
+    relevant_live_locals: DenseBitSet<Local>,
+    boring_locals: DenseBitSet<Local>,
 ) {
     let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness_trace");
 
@@ -131,8 +131,8 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         }
     }
 
-    fn compute_for_all_locals(&mut self, relevant_live_locals: Vec<Local>) {
-        for local in relevant_live_locals {
+    fn compute_for_all_locals(&mut self, relevant_live_locals: DenseBitSet<Local>) {
+        for local in relevant_live_locals.iter() {
             self.reset_local_state();
             self.add_defs_for(local);
             self.compute_use_live_points_for(local);
@@ -161,8 +161,8 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
     /// These are all the locals which do not potentially reference a region local
     /// to this body. Locals which only reference free regions are always drop-live
     /// and can therefore safely be dropped.
-    fn dropck_boring_locals(&mut self, boring_locals: Vec<Local>) {
-        for local in boring_locals {
+    fn dropck_boring_locals(&mut self, boring_locals: DenseBitSet<Local>) {
+        for local in boring_locals.iter() {
             let local_ty = self.cx.body().local_decls[local].ty;
             let local_span = self.cx.body().local_decls[local].source_info.span;
             let drop_data = self.cx.drop_data.entry(local_ty).or_insert_with({
@@ -182,7 +182,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
     ///
     /// Add facts for all locals with free regions, since regions may outlive
     /// the function body only at certain nodes in the CFG.
-    fn add_extra_drop_facts(&mut self, relevant_live_locals: &[Local]) {
+    fn add_extra_drop_facts(&mut self, relevant_live_locals: &DenseBitSet<Local>) {
         // This collect is more necessary than immediately apparent
         // because these facts go into `add_drop_live_facts_for()`,
         // which also writes to `polonius_facts`, and so this is genuinely
@@ -194,15 +194,12 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         // `add_drop_live_facts_for()` that make sense.
         let Some(facts) = self.cx.typeck.polonius_facts.as_ref() else { return };
         let facts_to_add: Vec<_> = {
-            let relevant_live_locals: FxIndexSet<_> =
-                relevant_live_locals.iter().copied().collect();
-
             facts
                 .var_dropped_at
                 .iter()
                 .filter_map(|&(local, location_index)| {
                     let local_ty = self.cx.body().local_decls[local].ty;
-                    if relevant_live_locals.contains(&local) || !local_ty.has_free_regions() {
+                    if relevant_live_locals.contains(local) || !local_ty.has_free_regions() {
                         return None;
                     }
 

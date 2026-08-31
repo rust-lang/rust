@@ -1,5 +1,5 @@
-use itertools::{Either, Itertools};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, SourceInfo};
 use rustc_middle::span_bug;
@@ -60,8 +60,7 @@ pub(super) fn generate<'tcx>(
     {
         let (_, boring_locals) =
             compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
-        typeck.polonius_context.as_mut().unwrap().boring_nll_locals =
-            boring_locals.into_iter().collect();
+        typeck.polonius_context.as_mut().unwrap().boring_nll_locals = boring_locals;
         free_regions = typeck.universal_regions.universal_regions_iter().collect();
     }
     let (relevant_live_locals, boring_locals) =
@@ -89,18 +88,20 @@ fn compute_relevant_live_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
     free_regions: &FxHashSet<RegionVid>,
     body: &Body<'tcx>,
-) -> (Vec<Local>, Vec<Local>) {
-    let (boring_locals, relevant_live_locals): (Vec<_>, Vec<_>) =
-        body.local_decls.iter_enumerated().partition_map(|(local, local_decl)| {
-            if tcx.all_free_regions_meet(&local_decl.ty, |r| free_regions.contains(&r.as_var())) {
-                Either::Left(local)
-            } else {
-                Either::Right(local)
-            }
-        });
+) -> (DenseBitSet<Local>, DenseBitSet<Local>) {
+    let mut boring_locals = DenseBitSet::new_empty(body.local_decls.len());
+    let mut relevant_live_locals = DenseBitSet::new_empty(body.local_decls.len());
+
+    body.local_decls.iter_enumerated().for_each(|(local, local_decl)| {
+        if tcx.all_free_regions_meet(&local_decl.ty, |r| free_regions.contains(&r.as_var())) {
+            boring_locals.insert(local);
+        } else {
+            relevant_live_locals.insert(local);
+        }
+    });
 
     debug!("{} total variables", body.local_decls.len());
-    debug!("{} variables need liveness", relevant_live_locals.len());
+    debug!("{} variables need liveness", relevant_live_locals.count());
     debug!("{} regions outlive free regions", free_regions.len());
 
     (relevant_live_locals, boring_locals)
