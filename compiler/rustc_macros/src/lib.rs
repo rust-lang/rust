@@ -191,10 +191,7 @@ decl_derive!(
         primary_span,
         label,
         subdiagnostic,
-        suggestion,
-        suggestion_short,
-        suggestion_hidden,
-        suggestion_verbose)] =>
+        suggestion)] =>
         #[doc = "See <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html#derivediagnostic>"]
         diagnostics::diagnostic_derive
 );
@@ -209,12 +206,7 @@ decl_derive!(
         warning,
         subdiagnostic,
         suggestion,
-        suggestion_short,
-        suggestion_hidden,
-        suggestion_verbose,
         multipart_suggestion,
-        multipart_suggestion_short,
-        multipart_suggestion_hidden,
         // field attributes
         primary_span,
         suggestion_part,
