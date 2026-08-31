@@ -14,7 +14,7 @@ use std::sync::LazyLock;
 use std::{cmp, fs, iter, thread};
 
 use externs::{ExternOpt, split_extern_opt};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hash::{StableHasher, StableOrd};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtFlags};
@@ -1499,7 +1499,6 @@ impl Default for Options {
             pretty: None,
             working_dir,
             color: ColorConfig::Auto,
-            logical_env: FxIndexMap::default(),
             verbose: false,
             target_modifiers: BTreeMap::default(),
             mitigation_coverage_map: Default::default(),
@@ -2121,7 +2120,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Defines which scopes of paths should be remapped by `--remap-path-prefix`",
             "<macro,diagnostics,debuginfo,coverage,object,all>",
         ),
-        opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "<VAR>=<VALUE>"),
         opt(Unstable, Opt, "j", "jobs", "Limit on the number of used parallel jobs", "<N>"),
         opt(
             Unstable,
@@ -2664,23 +2662,6 @@ fn parse_remap_path_prefix(
         .collect()
 }
 
-fn parse_logical_env(
-    early_dcx: &EarlyDiagCtxt,
-    matches: &getopts::Matches,
-) -> FxIndexMap<String, String> {
-    let mut vars = FxIndexMap::default();
-
-    for arg in matches.opt_strs("env-set") {
-        if let Some((name, val)) = arg.split_once('=') {
-            vars.insert(name.to_string(), val.to_string());
-        } else {
-            early_dcx.early_fatal(format!("`--env-set`: specify value for variable `{arg}`"));
-        }
-    }
-
-    vars
-}
-
 // JUSTIFICATION: before wrapper fn is available
 #[allow(rustc::bad_opt_access)]
 pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::Matches) -> Options {
@@ -2956,8 +2937,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         early_dcx.early_fatal("can't dump dependency graph without `-Z query-dep-graph`");
     }
 
-    let logical_env = parse_logical_env(early_dcx, matches);
-
     let sysroot = Sysroot::new(matches.opt_str("sysroot").map(PathBuf::from));
 
     let real_source_base_dir = |suffix: &str, confirm: &str| {
@@ -3072,7 +3051,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         pretty,
         working_dir,
         color,
-        logical_env,
         verbose,
         target_modifiers: collected_options.target_modifiers,
         mitigation_coverage_map: collected_options.mitigations,

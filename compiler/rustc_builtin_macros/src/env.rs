@@ -17,13 +17,9 @@ use thin_vec::thin_vec;
 use crate::diagnostics;
 use crate::util::{expr_to_string, get_exprs_from_tts, get_single_expr_from_tts};
 
-fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Result<Symbol, VarError> {
+fn lookup_env(var: Symbol) -> Result<Symbol, VarError> {
     let var = var.as_str();
-    if let Some(value) = cx.sess.opts.logical_env.get(var) {
-        return Ok(Symbol::intern(value));
-    }
-    // If the environment variable was not defined with the `--env-set` option, we try to retrieve it
-    // from rustc's environment.
+    // Try to retrieve the environment variable from rustc's environment.
     Ok(Symbol::intern(&env::var(var)?))
 }
 
@@ -50,7 +46,7 @@ pub(crate) fn expand_option_env<'cx>(
     };
 
     let sp = cx.with_def_site_ctxt(sp);
-    let value = lookup_env(cx, var);
+    let value = lookup_env(var);
     cx.sess.env_depinfo.borrow_mut().insert((var, value.as_ref().ok().copied()));
     let e = match value {
         Err(VarError::NotPresent) => {
@@ -124,7 +120,7 @@ pub(crate) fn expand_env<'cx>(
     };
 
     let span = cx.with_def_site_ctxt(sp);
-    let value = lookup_env(cx, var);
+    let value = lookup_env(var);
     cx.sess.env_depinfo.borrow_mut().insert((var, value.as_ref().ok().copied()));
     let e = match value {
         Err(VarError::NotPresent) => {
