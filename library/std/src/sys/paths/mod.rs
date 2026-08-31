@@ -6,7 +6,8 @@ cfg_select! {
         mod imp {
             pub use super::hermit::{getcwd, temp_dir};
             pub use super::unsupported::{
-                JoinPathsError, SplitPaths, chdir, current_exe, home_dir, join_paths, split_paths,
+                JoinPathsError, SplitPaths, SplitPathsRef, chdir, current_exe, home_dir,
+                join_paths, split_paths, split_paths_ref,
             };
         }
     }
@@ -16,8 +17,8 @@ cfg_select! {
         mod unsupported;
         mod imp {
             pub use super::motor::{
-                JoinPathsError, SplitPaths, chdir, current_exe, getcwd, home_dir, join_paths,
-                split_paths, temp_dir,
+                JoinPathsError, SplitPaths, SplitPathsRef, chdir, current_exe, getcwd, home_dir,
+                join_paths, split_paths, split_paths_ref, temp_dir,
             };
         }
     }
@@ -28,8 +29,8 @@ cfg_select! {
         mod imp {
             pub use super::sgx::chdir;
             pub use super::unsupported::{
-                JoinPathsError, SplitPaths, current_exe, getcwd, home_dir, join_paths, split_paths,
-                temp_dir,
+                JoinPathsError, SplitPaths, SplitPathsRef, current_exe, getcwd, home_dir,
+                join_paths, split_paths, split_paths_ref, temp_dir,
             };
         }
     }
@@ -47,7 +48,8 @@ cfg_select! {
         mod unsupported;
         mod imp {
             pub use super::unsupported::{
-                JoinPathsError, SplitPaths, current_exe, home_dir, join_paths, split_paths,
+                JoinPathsError, SplitPaths, SplitPathsRef, current_exe, home_dir, join_paths,
+                split_paths, split_paths_ref,
             };
             pub use super::wasi::{chdir, getcwd, temp_dir};
         }
@@ -63,6 +65,6 @@ cfg_select! {
 }
 
 pub use imp::{
-    JoinPathsError, SplitPaths, chdir, current_exe, getcwd, home_dir, join_paths, split_paths,
-    temp_dir,
+    JoinPathsError, SplitPaths, SplitPathsRef, chdir, current_exe, getcwd, home_dir, join_paths,
+    split_paths, split_paths_ref, temp_dir,
 };

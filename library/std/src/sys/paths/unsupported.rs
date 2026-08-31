@@ -1,6 +1,6 @@
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
-use crate::path::{self, PathBuf};
+use crate::path::{self, Path, PathBuf};
 use crate::sys::pal::unsupported;
 use crate::{fmt, io};
 
@@ -13,14 +13,26 @@ pub fn chdir(_: &path::Path) -> io::Result<()> {
 }
 
 pub struct SplitPaths<'a>(!, PhantomData<&'a ()>);
+pub struct SplitPathsRef<'a>(!, PhantomData<&'a ()>);
 
 pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
 }
 
+pub fn split_paths_ref(_unparsed: &OsStr) -> Option<SplitPathsRef<'_>> {
+    None
+}
+
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
     fn next(&mut self) -> Option<PathBuf> {
+        self.0
+    }
+}
+
+impl<'a> Iterator for SplitPathsRef<'a> {
+    type Item = &'a Path;
+    fn next(&mut self) -> Option<&'a Path> {
         self.0
     }
 }

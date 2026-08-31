@@ -502,6 +502,57 @@ impl fmt::Debug for SplitPaths<'_> {
     }
 }
 
+/// An iterator that splits an environment variable into paths according to
+/// platform-specific conventions.
+///
+/// The iterator element type is <code>&[Path]</code>.
+///
+/// This structure is created by [`env::split_paths_ref()`]. See its
+/// documentation for more.
+///
+/// [`env::split_paths_ref()`]: split_paths_ref
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "env_split_paths_ref", issue = "none")]
+pub struct SplitPathsRef<'a> {
+    inner: paths_imp::SplitPathsRef<'a>,
+}
+
+/// Parses input according to platform conventions for the `PATH`
+/// environment variable.
+///
+/// Unlike [`split_paths`], this function does not allocate and instead yields
+/// [`Path`]s borrowed from `unparsed`. Returns `None` on platforms that may
+/// require allocations to handle `PATH` splitting conventions.
+///
+/// # Platform-specific behavior
+///
+/// Returns `Some` on Unix platforms and `None` on all other platforms.
+/// Note that this [may change in the future][changes].
+///
+/// [changes]: io#platform-specific-behavior
+#[unstable(feature = "env_split_paths_ref", issue = "none")]
+pub fn split_paths_ref<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> Option<SplitPathsRef<'_>> {
+    Some(SplitPathsRef { inner: paths_imp::split_paths_ref(unparsed.as_ref())? })
+}
+
+#[unstable(feature = "env_split_paths_ref", issue = "none")]
+impl<'a> Iterator for SplitPathsRef<'a> {
+    type Item = &'a Path;
+    fn next(&mut self) -> Option<&'a Path> {
+        self.inner.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+#[unstable(feature = "env_split_paths_ref", issue = "none")]
+impl fmt::Debug for SplitPathsRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SplitPathsRef").finish_non_exhaustive()
+    }
+}
+
 /// The error type for operations on the `PATH` variable. Possibly returned from
 /// [`env::join_paths()`].
 ///
