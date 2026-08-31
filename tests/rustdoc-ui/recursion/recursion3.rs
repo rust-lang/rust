@@ -1,3 +1,5 @@
+//@ check-pass
+
 pub mod longhands {
     pub use super::*;
 

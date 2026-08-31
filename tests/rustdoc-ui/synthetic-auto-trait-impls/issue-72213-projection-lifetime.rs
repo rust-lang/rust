@@ -2,6 +2,8 @@
 // Tests that we don't ICE when we have projection predicates
 // in our initial ParamEnv
 
+//@ check-pass
+
 pub struct Lines<'a, L>
 where
     L: Iterator<Item = &'a ()>,

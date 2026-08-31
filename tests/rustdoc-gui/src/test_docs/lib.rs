@@ -14,6 +14,7 @@
 #![feature(macro_derive)]
 #![feature(negative_impls)]
 #![feature(doc_notable_trait)]
+#![feature(decl_macro)]
 
 /*!
 Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
@@ -821,4 +822,8 @@ pub mod notable {
 
     pub struct Wrapper;
     impl Labeled for Wrapper {}
+}
+
+pub macro decl_macro {
+    () => { "bar" }
 }
