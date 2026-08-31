@@ -108,7 +108,6 @@ pub fn load_job_db(db: &str) -> anyhow::Result<JobDatabase> {
     let mut db: JobDatabase = serde_yaml::from_value(db).context("failed to parse job database")?;
 
     register_pr_jobs_as_auto_jobs(&mut db)?;
-
     validate_job_database(&db)?;
 
     Ok(db)
@@ -127,7 +126,7 @@ pub fn load_job_db(db: &str) -> anyhow::Result<JobDatabase> {
 /// CI runs to be red until the cause is fixed.
 fn register_pr_jobs_as_auto_jobs(db: &mut JobDatabase) -> anyhow::Result<()> {
     for pr_job in &db.pr_jobs {
-        // It's acceptable to "override" a PR job in Auto job, for instance, `x86_64-gnu-tools` will
+        // It's acceptable to "override" a PR job in Auto job, for instance, `test-x86_64-gnu-tools` will
         // receive an additional `DEPLOY_TOOLSTATES_JSON: toolstates-linux.json` env when under Auto
         // environment versus PR environment.
         if db.find_auto_job_by_name(&pr_job.name).is_some() {
@@ -210,6 +209,18 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
                 job = auto_job.name
             ));
         }
+    }
+
+    // All jobs should follow a naming convention - either they are test or dist jobs.
+    for job in &db.auto_jobs {
+        let name = job.name.strip_prefix("optional-").unwrap_or(&job.name);
+        if name.starts_with("dist-") || name.starts_with("test-") {
+            continue;
+        }
+        return Err(anyhow!(
+            "Auto job `{job}` name must start with test- or dist-`.",
+            job = job.name
+        ));
     }
 
     Ok(())
