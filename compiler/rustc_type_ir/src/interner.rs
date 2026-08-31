@@ -21,8 +21,8 @@ use crate::solve::{
 };
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
-    self as ty, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex, Region, RegionKind,
-    TraitRef, search_graph,
+    self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex,
+    Region, RegionKind, TraitRef, search_graph,
 };
 
 /// The central trait in the shared abstraction layer, specifying all implementation-specific
@@ -275,10 +275,18 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn alias_const_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasConstKind<Self>;
+    fn alias_const_kind_from_def_id(
+        self,
+        def_id: Self::DefId,
+        inherent_args: ty::AliasConstInherentArgsKind,
+    ) -> ty::AliasConstKind<Self>;
 
     // FIXME: remove in favor of explicit construction
-    fn alias_term_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTermKind<Self>;
+    fn alias_term_kind_from_def_id(
+        self,
+        def_id: Self::DefId,
+        inherent_args: ty::AliasConstInherentArgsKind,
+    ) -> ty::AliasTermKind<Self>;
 
     fn trait_ref_and_own_args_for_alias(
         self,
@@ -293,9 +301,18 @@ pub trait Interner:
         I: Iterator<Item = T>,
         T: CollectAndApply<Self::GenericArg, Self::GenericArgs>;
 
-    fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool;
+    fn check_alias_term_args_compatible(
+        self,
+        term_kind: AliasTermKind<Self>,
+        args: Self::GenericArgs,
+    ) -> bool;
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
+    fn debug_assert_alias_term_args_compatible(
+        self,
+        term_kind: AliasTermKind<Self>,
+        args: Self::GenericArgs,
+    );
 
     /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
     /// are compatible with the `DefId`.

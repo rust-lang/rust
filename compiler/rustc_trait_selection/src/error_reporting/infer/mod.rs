@@ -1613,7 +1613,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
                             ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
                             ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentConst { def_id } => def_id.into(),
+                            ty::AliasTermKind::InherentConstSelf { def_id } => def_id.into(),
+                            ty::AliasTermKind::InherentConstImpl { def_id } => def_id.into(),
                         };
                         (false, Mismatch::Fixed(self.tcx.def_descr(def_id)))
                     }
