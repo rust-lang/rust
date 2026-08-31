@@ -1,5 +1,7 @@
 // Test for https://github.com/rust-lang/rust/issues/48463 issue.
 
+//@ check-pass
+
 use std::any::Any;
 use std::ops::Deref;
 
