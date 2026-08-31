@@ -21,7 +21,7 @@ use crate::analysis::{output_largest_job_duration_changes, output_test_diffs};
 use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
 use crate::github::JobInfoResolver;
-use crate::jobs::{RunType, load_job_db};
+use crate::jobs::RunType;
 use crate::metrics::{JobMetrics, download_auto_job_metrics, download_job_metrics, load_metrics};
 use crate::test_dashboard::generate_test_dashboard;
 use crate::utils::{init_submodule_if_needed, load_env_var, output_details};

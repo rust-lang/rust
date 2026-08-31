@@ -392,10 +392,11 @@ pub fn calculate_job_matrix(
     })?;
     eprintln!("Run type: {run_type:?}");
 
-    let jobs = calculate_jobs(&run_type, &db, channel)?;
+    let mut jobs = calculate_jobs(&run_type, &db, channel)?;
     if jobs.is_empty() && !matches!(run_type, RunType::MainJob) {
         return Err(anyhow::anyhow!("Computed job list is empty"));
     }
+    jobs.sort_by_key(|j| j.name.clone());
 
     let run_type = match run_type {
         RunType::PullRequest => "pr",
