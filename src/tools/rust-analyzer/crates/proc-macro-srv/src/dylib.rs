@@ -102,11 +102,8 @@ fn ensure_file_with_lock_free_access(path: Utf8PathBuf) -> NamedTempFile {
             &format!("proc-macro-srv-{file_name}.dll"),
             path.as_std_path(),
         )
-    })
-    .unwrap_or_else(|err| {
-        tracing::warn!("failed to create temporary file: {err}");
-        NamedTempFile::from_path(path.into_std_path_buf())
-    })
+    })()
+    .unwrap_or_else(|_err| NamedTempFile::from_path(path.into_std_path_buf()))
 }
 
 #[cfg(unix)]
