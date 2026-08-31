@@ -1145,6 +1145,8 @@ symbols! {
         instruction_set,
         instrument_fn,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
+        integer_max,
+        integer_min,
         integral,
         internal,
         internal_eq_trait_method_impls,
