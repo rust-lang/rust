@@ -1,6 +1,6 @@
 //! List of the removed feature gates.
 
-use std::num::{NonZero, NonZeroU32};
+use std::num::NonZero;
 
 use rustc_span::sym;
 
@@ -17,7 +17,7 @@ macro_rules! opt_nonzero_u32 {
         None
     };
     ($val:expr) => {
-        Some(NonZeroU32::new($val).unwrap())
+        Some(<NonZero<u32>>::new($val).unwrap())
     };
 }
 
@@ -34,7 +34,7 @@ macro_rules! declare_features {
                     issue: to_nonzero($issue),
                 },
                 reason: $reason,
-                pull:  opt_nonzero_u32!($($pull)?),
+                pull: opt_nonzero_u32!($($pull)?),
             }),+
         ];
     };
@@ -211,7 +211,7 @@ declare_features! (
     (removed, no_coverage, "1.74.0", Some(84605), Some("renamed to `coverage_attribute`"), 114656),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), Some("removed due to lack of demand"), 69667),
-    // Allows the use of `no_sanitize` attribute.
+    /// Allows the use of `no_sanitize` attribute.
     /// The feature was renamed to `sanitize` and the attribute to `#[sanitize(xyz = "on|off")]`
     (removed, no_sanitize, "1.91.0", Some(39699), Some(r#"renamed to sanitize(xyz = "on|off")"#), 142681),
     /// Note: this feature was previously recorded in a separate
@@ -266,7 +266,7 @@ declare_features! (
     (removed, pushpop_unsafe, "1.2.0", None, None),
     (removed, quad_precision_float, "1.0.0", None, None),
     (removed, quote, "1.33.0", Some(29601), None),
-    (removed, ref_pat_everywhere, "1.80.0", Some(123076), Some("superseded by `ref_pat_eat_one_layer_2024"), 125168),
+    (removed, ref_pat_everywhere, "1.80.0", Some(123076), Some("superseded by `ref_pat_eat_one_layer_2024`"), 125168),
     (removed, reflect, "1.0.0", Some(27749), None),
     /// Allows using the `#[register_attr]` attribute.
     (removed, register_attr, "1.65.0", Some(66080),
