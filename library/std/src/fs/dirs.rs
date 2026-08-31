@@ -23,7 +23,7 @@ pub struct HomeDirs {
     pub(crate) config: Option<PathBuf>,
     pub(crate) data: Option<PathBuf>,
     pub(crate) state: Option<PathBuf>,
-    #[expect(dead_code, reason = "no extra home dirs")]
+    #[cfg_attr(not(unix), expect(dead_code, reason = "no extra home dirs"))]
     pub(crate) extra: ExtraHomeDirs,
 }
 
@@ -51,7 +51,7 @@ pub struct MediaDirs {
     pub(crate) music: Option<PathBuf>,
     pub(crate) pictures: Option<PathBuf>,
     pub(crate) videos: Option<PathBuf>,
-    #[expect(dead_code, reason = "no extra media dirs")]
+    #[cfg_attr(not(unix), expect(dead_code, reason = "no extra media dirs"))]
     pub(crate) extra: ExtraMediaDirs,
 }
 
