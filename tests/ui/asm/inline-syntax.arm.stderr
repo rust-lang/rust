@@ -13,6 +13,7 @@ note: instantiated into assembly here
    |
 LL | .intel_syntax noprefix
    | ^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unknown directive
   --> $DIR/inline-syntax.rs:21:15

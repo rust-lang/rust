@@ -46,6 +46,7 @@ use core::error::Error;
 use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
+use core::mem::DropGuard;
 #[cfg(not(no_global_oom_handling))]
 use core::num::Saturating;
 #[cfg(not(no_global_oom_handling))]
@@ -54,7 +55,7 @@ use core::ops::Add;
 use core::ops::AddAssign;
 use core::ops::{self, Range, RangeBounds};
 use core::str::pattern::{Pattern, Utf8Pattern};
-use core::{fmt, hash, ptr, slice};
+use core::{fmt, hash, hint, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::Allocator;
@@ -583,7 +584,7 @@ impl String {
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD], which looks like this: �
     ///
     /// [byteslice]: prim@slice
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the conversion, there is an unsafe version
@@ -687,7 +688,7 @@ impl String {
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "string_from_utf8_lossy_owned", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_from_utf8_lossy_owned", since = "1.99.0")]
     pub fn from_utf8_lossy_owned(v: Vec<u8>) -> String {
         if let Cow::Owned(string) = String::from_utf8_lossy(&v) {
             string
@@ -721,10 +722,22 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
-        // This isn't done via collect::<Result<_, _>>() for performance reasons.
-        // FIXME: the function can be simplified again when #48994 is closed.
-        let mut ret = String::with_capacity(v.len());
-        for c in char::decode_utf16(v.iter().cloned()) {
+        Self::from_utf16_units(v.iter().cloned(), v.len())
+    }
+
+    /// Decodes an iterator of UTF-16 code units into a `String`, returning
+    /// [`Err`] on the first lone surrogate. `capacity` should be the number of
+    /// code units, which is used to preallocate the output buffer.
+    // This isn't done via collect::<Result<_, _>>() for performance reasons.
+    // FIXME: the function can be simplified again when #48994 is closed.
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    fn from_utf16_units(
+        units: impl Iterator<Item = u16>,
+        capacity: usize,
+    ) -> Result<String, FromUtf16Error> {
+        let mut ret = String::with_capacity(capacity);
+        for c in char::decode_utf16(units) {
             let Ok(c) = c else {
                 return Err(FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate });
             };
@@ -742,7 +755,7 @@ impl String {
     ///
     /// [`from_utf8_lossy`]: String::from_utf8_lossy
     /// [`Cow<'a, str>`]: crate::borrow::Cow "borrow::Cow"
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -790,11 +803,12 @@ impl String {
         let (chunks, []) = v.as_chunks::<2>() else {
             return Err(FromUtf16Error { kind: FromUtf16ErrorKind::OddBytes });
         };
+        // ignore-tidy-undocumented-unsafe
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
-            _ => char::decode_utf16(chunks.iter().copied().map(u16::from_le_bytes))
-                .collect::<Result<_, _>>()
-                .map_err(|_| FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate }),
+            _ => {
+                Self::from_utf16_units(chunks.iter().copied().map(u16::from_le_bytes), chunks.len())
+            }
         }
     }
 
@@ -807,7 +821,7 @@ impl String {
     ///
     /// [`from_utf8_lossy`]: String::from_utf8_lossy
     /// [`Cow<'a, str>`]: crate::borrow::Cow "borrow::Cow"
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -825,6 +839,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "str_from_utf16_endian", since = "1.98.0")]
     pub fn from_utf16le_lossy(v: &[u8]) -> String {
+        // ignore-tidy-undocumented-unsafe
         match (cfg!(target_endian = "little"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
             (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
@@ -863,11 +878,12 @@ impl String {
         let (chunks, []) = v.as_chunks::<2>() else {
             return Err(FromUtf16Error { kind: FromUtf16ErrorKind::OddBytes });
         };
+        // ignore-tidy-undocumented-unsafe
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16(v),
-            _ => char::decode_utf16(chunks.iter().copied().map(u16::from_be_bytes))
-                .collect::<Result<_, _>>()
-                .map_err(|_| FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate }),
+            _ => {
+                Self::from_utf16_units(chunks.iter().copied().map(u16::from_be_bytes), chunks.len())
+            }
         }
     }
 
@@ -880,7 +896,7 @@ impl String {
     ///
     /// [`from_utf8_lossy`]: String::from_utf8_lossy
     /// [`Cow<'a, str>`]: crate::borrow::Cow "borrow::Cow"
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -898,6 +914,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "str_from_utf16_endian", since = "1.98.0")]
     pub fn from_utf16be_lossy(v: &[u8]) -> String {
+        // ignore-tidy-undocumented-unsafe
         match (cfg!(target_endian = "big"), unsafe { v.align_to::<u16>() }) {
             (true, ([], v, [])) => Self::from_utf16_lossy(v),
             (true, ([], v, [_remainder])) => Self::from_utf16_lossy(v) + "\u{FFFD}",
@@ -938,6 +955,7 @@ impl String {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "vec_into_raw_parts", since = "1.93.0")]
+    #[inline]
     pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
         self.vec.into_raw_parts()
     }
@@ -981,6 +999,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
+        // SAFETY: Upheld by caller.
         unsafe { String { vec: Vec::from_raw_parts(buf, length, capacity) } }
     }
 
@@ -1125,6 +1144,7 @@ impl String {
         let additional: Saturating<usize> = slice.iter().map(|x| Saturating(x.len())).sum();
         self.reserve(additional.0);
         let (ptr, len, cap) = core::mem::take(self).into_raw_parts();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let mut dst = ptr.add(len);
             for new in slice {
@@ -1513,6 +1533,7 @@ impl String {
     pub fn pop(&mut self) -> Option<char> {
         let ch = self.chars().rev().next()?;
         let newlen = self.len() - ch.len_utf8();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             self.vec.set_len(newlen);
         }
@@ -1551,6 +1572,7 @@ impl String {
 
         let next = idx + ch.len_utf8();
         let len = self.len();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             ptr::copy(self.vec.as_ptr().add(next), self.vec.as_mut_ptr().add(idx), len - next);
             self.vec.set_len(len - (next - idx));
@@ -1624,6 +1646,7 @@ impl String {
             len += count;
         }
 
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             self.vec.set_len(len);
         }
@@ -1661,52 +1684,48 @@ impl String {
     where
         F: FnMut(char) -> bool,
     {
-        struct SetLenOnDrop<'a> {
-            s: &'a mut String,
-            idx: usize,
-            del_bytes: usize,
-        }
-
-        impl<'a> Drop for SetLenOnDrop<'a> {
-            fn drop(&mut self) {
-                let new_len = self.idx - self.del_bytes;
-                debug_assert!(new_len <= self.s.len());
-                unsafe { self.s.vec.set_len(new_len) };
-            }
-        }
-
         let len = self.len();
-        let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
-
-        while guard.idx < len {
-            let ch =
-                // SAFETY: `guard.idx` is positive-or-zero and less that len so the `get_unchecked`
-                // is in bound. `self` is valid UTF-8 like string and the returned slice starts at
-                // a unicode code point so the `Chars` always return one character.
-                unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap_unchecked() };
-            let ch_len = ch.len_utf8();
-
-            if !f(ch) {
-                guard.del_bytes += ch_len;
-            } else if guard.del_bytes > 0 {
-                // SAFETY: `guard.idx` is in bound and `guard.del_bytes` represent the number of
-                // bytes that are erased from the string so the resulting `guard.idx -
-                // guard.del_bytes` always represent a valid unicode code point.
-                //
-                // `guard.del_bytes` >= `ch.len_utf8()`, so taking a slice with `ch.len_utf8()` len
-                // is safe.
-                ch.encode_utf8(unsafe {
-                    crate::slice::from_raw_parts_mut(
-                        guard.s.as_mut_ptr().add(guard.idx - guard.del_bytes),
-                        ch.len_utf8(),
-                    )
-                });
-            }
-
-            // Point idx to the next char
-            guard.idx += ch_len;
+        if len == 0 {
+            // Explicit check results in better optimization
+            return;
         }
 
+        // Fast path: find the first character that should be removed or return early.
+        let mut chars = self.char_indices();
+        let (mut read, write) = loop {
+            let Some((idx, ch)) = chars.next() else { return };
+            if hint::unlikely(!f(ch)) {
+                break (idx + ch.len_utf8(), idx);
+            }
+        };
+        drop(chars);
+
+        // Slow path: at least one character is going to be removed.
+        let mut guard = DropGuard::new((self, write), |(s, write)| {
+            debug_assert!(write <= s.len());
+            debug_assert!(str::from_utf8(&s.vec[..write]).is_ok());
+            // SAFETY: Restore the string length to the number of bytes written so far.
+            unsafe { s.vec.set_len(write) }
+        });
+        let (s, write) = &mut *guard;
+        while read < len {
+            // SAFETY: `read` is within bound because `read` < `len`, so taking
+            // a slice with `len` is safe.
+            let ch = unsafe { s.get_unchecked(read..len).chars().next().unwrap_unchecked() };
+            let ch_len = ch.len_utf8();
+            if f(ch) {
+                // SAFETY: `read` is on a char boundary, as guaranteed above; `g.write` is
+                // within bounds because it is always behind `read`.
+                unsafe {
+                    let ptr = s.vec.as_mut_ptr();
+                    ptr::copy(ptr.add(read), ptr.add(*write), ch_len);
+                }
+                *write += ch_len;
+            }
+            read += ch_len;
+        }
+
+        // All bytes processed; commit the final length by dropping the guard.
         drop(guard);
     }
 
@@ -1928,6 +1947,7 @@ impl String {
     pub fn split_off(&mut self, at: usize) -> String {
         assert!(self.is_char_boundary(at));
         let other = self.vec.split_off(at);
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(other) }
     }
 
@@ -2104,6 +2124,7 @@ impl String {
             "end of range should be a character boundary"
         );
 
+        // ignore-tidy-undocumented-unsafe
         unsafe { self.as_mut_vec() }.splice(checked_range, replace_with.bytes());
     }
 
@@ -2189,6 +2210,7 @@ impl String {
     #[inline]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
+        // ignore-tidy-undocumented-unsafe
         unsafe { from_boxed_utf8_unchecked(slice) }
     }
 
@@ -2220,6 +2242,7 @@ impl String {
     #[inline]
     pub fn leak<'a>(self) -> &'a mut str {
         let slice = self.vec.leak();
+        // ignore-tidy-undocumented-unsafe
         unsafe { from_utf8_unchecked_mut(slice) }
     }
 }
@@ -2279,7 +2302,7 @@ impl FromUtf8Error {
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "string_from_utf8_lossy_owned", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_from_utf8_lossy_owned", since = "1.99.0")]
     pub fn into_utf8_lossy(self) -> String {
         const REPLACEMENT: &str = "\u{FFFD}";
 
@@ -3454,7 +3477,7 @@ impl IntoChars {
     #[unstable(feature = "string_into_chars", issue = "133125")]
     #[inline]
     pub fn into_string(self) -> String {
-        // Safety: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
+        // SAFETY: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
         unsafe { String::from_utf8_unchecked(self.bytes.collect()) }
     }
 
@@ -3551,6 +3574,7 @@ unsafe impl Send for Drain<'_> {}
 #[stable(feature = "drain", since = "1.6.0")]
 impl Drop for Drain<'_> {
     fn drop(&mut self) {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             // Use Vec::drain. "Reaffirm" the bounds checks to avoid
             // panic code being inserted again.

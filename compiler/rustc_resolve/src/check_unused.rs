@@ -32,7 +32,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{DiagArgValue, Diagnostic, MultiSpan};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_session::lint::builtin::{
+use rustc_lint_defs::builtin::{
     MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
 };
 use rustc_span::{DUMMY_SP, Ident, Span, kw};

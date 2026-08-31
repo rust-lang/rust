@@ -19,9 +19,9 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
+use rustc_lint_defs::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_literal_escaper::unescape_char;
 use rustc_session::diagnostics::report_lit_error;
-use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -85,30 +85,9 @@ impl<'a> Parser<'a> {
         self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value })
     }
 
-    fn parse_expr_catch_underscore(
-        &mut self,
-        restrictions: Restrictions,
-    ) -> PResult<'a, Box<Expr>> {
-        match self.parse_expr_res(restrictions) {
-            Ok(expr) => Ok(expr),
-            Err(err) => match self.token.ident() {
-                Some((Ident { name: kw::Underscore, .. }, IdentIsRaw::No))
-                    if self.may_recover() && self.look_ahead(1, |t| t == &token::Comma) =>
-                {
-                    // Special-case handling of `foo(_, _, _)`
-                    let guar = err.emit();
-                    self.bump();
-                    Ok(self.mk_expr(self.prev_token.span, ExprKind::Err(guar)))
-                }
-                _ => Err(err),
-            },
-        }
-    }
-
     /// Parses a sequence of expressions delimited by parentheses.
     fn parse_expr_paren_seq(&mut self) -> PResult<'a, ThinVec<Box<Expr>>> {
-        self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore(Restrictions::empty()))
-            .map(|(r, _)| r)
+        self.parse_paren_comma_seq(Self::parse_expr).map(|(r, _)| r)
     }
 
     /// Parses an expression, subject to the given restrictions.
@@ -1644,7 +1623,7 @@ impl<'a> Parser<'a> {
         let (es, trailing_comma) = match self.parse_seq_to_end(
             exp!(CloseParen),
             SeqSep::trailing_allowed(exp!(Comma)),
-            |p| p.parse_expr_catch_underscore(restrictions.intersection(Restrictions::ALLOW_LET)),
+            |p| p.parse_expr_res(restrictions.intersection(Restrictions::ALLOW_LET)),
         ) {
             Ok(x) => x,
             Err(err) => {

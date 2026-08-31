@@ -3,7 +3,7 @@ use std::mem;
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
 use rustc_attr_parsing as attr;
-use rustc_attr_parsing::{AttributeParser, OmitDoc, ShouldEmit};
+use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::Target;
@@ -187,7 +187,6 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &i.attrs,
                     i.span,
                     Target::MacroDef,
-                    OmitDoc::Skip,
                     std::convert::identity,
                     |_lint_id, _span, _kind| {
                         // FIXME(jdonszelmann): emit lints here properly
@@ -213,6 +212,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 return;
             }
             ItemKind::DelegationMac(..) => unreachable!(),
+            ItemKind::TestBinderConstraints(..) => DefKind::TestBinderConstraints,
         };
         self.with_owner(
             i.id,

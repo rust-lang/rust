@@ -7,9 +7,8 @@ use rustc_ast::ImplPolarity;
 use rustc_hir::attrs::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, GenericArgKind, Ty};
-use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -187,11 +186,7 @@ fn ty_allowed_without_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty
         return true;
     }
 
-    if is_copy(cx, ty) && !contains_pointer_like(cx, ty) {
-        return true;
-    }
-
-    false
+    is_copy(cx, ty) && !contains_pointer_like(cx, ty)
 }
 
 /// Heuristic to allow cases like `Vec<*const u8>`

@@ -31,27 +31,27 @@ use rustc_abi::{
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{self as attr, StrippedCfgItem, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
-use rustc_hir::attrs::StrippedCfgItem;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_hir::{self as hir, MissingLifetimeKind, attrs as attr, find_attr};
-use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
+use rustc_index::{IndexVec, static_assert_size};
+pub use rustc_lint_defs::RegisteredTools;
 use rustc_macros::{
     BlobDecodable, Decodable, Encodable, StableHash, TyDecodable, TyEncodable, TypeFoldable,
     TypeVisitable, extension,
 };
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::OptLevel;
-pub use rustc_session::lint::RegisteredTools;
 use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
@@ -59,6 +59,7 @@ use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
+pub use rustc_type_ir::search_graph::RequiredDepth;
 pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind, VisibleForLeakCheck};
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
@@ -89,9 +90,9 @@ pub use self::predicate::{
     ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
     ExistentialTraitRef, HostEffectClause, NormalizesTo, OutlivesClause, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
-    PolyProjectionPredicate, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitPredicate,
-    PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionPredicate,
-    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SubtypePredicate, TraitPredicate,
+    PolyProjectionClause, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitClause,
+    PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionClause,
+    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SubtypePredicate, TraitClause,
     TraitRef, TypeOutlivesClause,
 };
 pub use self::region::{
@@ -220,7 +221,7 @@ pub struct PerOwnerResolverData<'tcx> {
     /// Resolution for import nodes, which have multiple resolutions in different namespaces.
     pub import_res: hir::def::PerNS<Option<Res<ast::NodeId>>> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
-    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>> = Default::default(),
+    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, hir::MissingLifetimeKind)>> = Default::default(),
 
     /// The id of the owner
     pub id: ast::NodeId,
@@ -250,7 +251,10 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
     ///
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
-    pub fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
+    pub fn extra_lifetime_params(
+        &self,
+        id: NodeId,
+    ) -> &[(Ident, NodeId, hir::MissingLifetimeKind)] {
         self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
     }
 }
@@ -1154,8 +1158,13 @@ pub struct ParamEnv<'tcx> {
     caller_bounds: Clauses<'tcx>,
 }
 
+// Empty ParamEnv's are super common (like, 100x more common than nonempty pnes),
+// so we want to not carry around too much data in this common case.
+// Make sure that a ParamEnv is no bigger than a single pointer, always.
+static_assert_size!(ParamEnv<'_>, std::mem::size_of::<usize>());
+
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
+    fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> {
         self.caller_bounds()
     }
 }
@@ -1169,18 +1178,26 @@ impl<'tcx> ParamEnv<'tcx> {
     /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
     #[inline]
     pub fn empty() -> Self {
-        Self::new(ListWithCachedTypeInfo::empty())
+        Self { caller_bounds: ListWithCachedTypeInfo::empty() }
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> Clauses<'tcx> {
-        self.caller_bounds
+    pub fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> + Clone {
+        self.caller_bounds.iter()
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.caller_bounds.as_slice().is_empty()
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: Clauses<'tcx>) -> Self {
-        ParamEnv { caller_bounds }
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        caller_bounds: impl IntoIterator<Item = ty::Clause<'tcx>>,
+    ) -> Self {
+        ParamEnv { caller_bounds: tcx.mk_clauses_from_iter(caller_bounds.into_iter()) }
     }
 
     /// Creates a pair of param-env and value for use in queries.
@@ -1195,7 +1212,7 @@ impl<'tcx> ParamEnv<'tcx> {
         if tcx.next_trait_solver_globally() {
             self
         } else {
-            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds))
+            ParamEnv::new(tcx, tcx.reveal_opaque_types_in_bounds(self.caller_bounds).iter())
         }
     }
 }
@@ -1904,10 +1921,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         match (impl1.polarity, impl2.polarity) {
-            (ImplPolarity::Reservation, _) | (_, ImplPolarity::Reservation) => {
-                // `#[rustc_reservation_impl]` impls don't overlap with anything
-                return Some(ImplOverlapKind::Permitted { marker: false });
-            }
             (ImplPolarity::Positive, ImplPolarity::Negative)
             | (ImplPolarity::Negative, ImplPolarity::Positive) => {
                 // `impl AutoTrait for Type` + `impl !AutoTrait for Type`
@@ -1998,17 +2011,22 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: impl Into<DefId>,
         attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::Attribute> {
         #[expect(deprecated)]
-        self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
+        self.get_all_attrs(did).iter().filter(move |a: &&rustc_attr_ir::Attribute| a.has_name(attr))
     }
 
     /// Gets all attributes.
     ///
+    /// <div class="warning">
+    ///
     /// To see if an item has a specific attribute, you should use
-    /// [`rustc_hir::find_attr!`] so you can use matching.
+    /// [`rustc_attr_ir::find_attr!`] so you can use matching.
+    ///
+    /// </div>
+    ///
     #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
-    pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [hir::Attribute] {
+    pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [rustc_attr_ir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
             self.hir_attrs(self.local_def_id_to_hir_id(did))
@@ -2021,8 +2039,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: DefId,
         attr: &[Symbol],
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        let filter_fn = move |a: &&hir::Attribute| a.path_matches(attr);
+    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::Attribute> {
+        let filter_fn = move |a: &&rustc_attr_ir::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
             self.hir_attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
@@ -2407,7 +2425,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
-            | DefKind::SyntheticCoroutineBody => false,
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::TestBinderConstraints => false,
         }
     }
 
@@ -2463,8 +2482,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
 // `HasAttrs` impls: allow `find_attr!(tcx, id, ...)` to work with both DefId-like types and HirId.
 
-impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for DefId {
-    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+impl<'tcx> rustc_attr_ir::HasAttrs<'tcx, TyCtxt<'tcx>> for DefId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [rustc_attr_ir::Attribute] {
         if let Some(did) = self.as_local() {
             tcx.hir_attrs(tcx.local_def_id_to_hir_id(did))
         } else {
@@ -2473,20 +2492,20 @@ impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for DefId {
     }
 }
 
-impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for LocalDefId {
-    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+impl<'tcx> rustc_attr_ir::HasAttrs<'tcx, TyCtxt<'tcx>> for LocalDefId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [rustc_attr_ir::Attribute] {
         tcx.hir_attrs(tcx.local_def_id_to_hir_id(self))
     }
 }
 
-impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::OwnerId {
-    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
-        hir::attrs::HasAttrs::get_attrs(self.def_id, tcx)
+impl<'tcx> rustc_attr_ir::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::OwnerId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [rustc_attr_ir::Attribute] {
+        rustc_attr_ir::HasAttrs::get_attrs(self.def_id, tcx)
     }
 }
 
-impl<'tcx> hir::attrs::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::HirId {
-    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [hir::Attribute] {
+impl<'tcx> rustc_attr_ir::HasAttrs<'tcx, TyCtxt<'tcx>> for hir::HirId {
+    fn get_attrs(self, tcx: &TyCtxt<'tcx>) -> &'tcx [rustc_attr_ir::Attribute] {
         tcx.hir_attrs(self)
     }
 }

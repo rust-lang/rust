@@ -23,8 +23,8 @@ fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
 }
 
 fn run_build(paths: &[PathBuf], config: Config) -> Cache {
-    let build = Build::new(config);
-    let builder = Builder::new(&build);
+    let sess = Session::new(config);
+    let builder = Builder::new(&sess);
     builder.run_step_descriptions(&Builder::get_step_descriptions(builder.kind), paths);
     builder.cache
 }
@@ -114,13 +114,13 @@ fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -
 
 mod sysroot_target_dirs {
     use super::{
-        Build, Builder, Compiler, TEST_TRIPLE_1, TEST_TRIPLE_2, TargetSelection, configure,
+        Builder, Compiler, Session, TEST_TRIPLE_1, TEST_TRIPLE_2, TargetSelection, configure,
     };
 
     #[test]
     fn test_sysroot_target_libdir() {
-        let build = Build::new(configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-        let builder = Builder::new(&build);
+        let sess = Session::new(configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
+        let builder = Builder::new(&sess);
         let target_triple_1 = TargetSelection::from_user(TEST_TRIPLE_1);
         let compiler = Compiler::new(1, target_triple_1);
         let target_triple_2 = TargetSelection::from_user(TEST_TRIPLE_2);
@@ -139,8 +139,8 @@ mod sysroot_target_dirs {
 
     #[test]
     fn test_sysroot_target_bindir() {
-        let build = Build::new(configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
-        let builder = Builder::new(&build);
+        let sess = Session::new(configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
+        let builder = Builder::new(&sess);
         let target_triple_1 = TargetSelection::from_user(TEST_TRIPLE_1);
         let compiler = Compiler::new(1, target_triple_1);
         let target_triple_2 = TargetSelection::from_user(TEST_TRIPLE_2);
@@ -242,26 +242,28 @@ fn test_prebuilt_llvm_config_path_resolution() {
         "#,
     );
 
-    let build = Build::new(config);
-    let builder = Builder::new(&build);
+    let sess = Session::new(config);
+    let builder = Builder::new(&sess);
 
-    let expected = PathBuf::from("/some/path/to/llvm-config");
+    let host_llvm_config = PathBuf::from("/some/path/to/llvm-config");
 
     let actual =
         get_llvm_build_status(&builder, TargetSelection::from_user("arm-unknown-linux-gnueabihf"))
             .llvm_output()
-            .host_llvm_config
-            .clone();
+            .llvm_config()
+            .to_path_buf();
     let actual = drop_win_disk_prefix_if_present(actual);
-    assert_eq!(expected, actual);
+    assert_ne!(
+        host_llvm_config, actual,
+        "llvm-config should be returned for the given target, not the host"
+    );
 
     let actual = get_llvm_build_status(&builder, builder.config.host_target)
         .llvm_output()
-        .host_llvm_config
-        .clone();
+        .llvm_config()
+        .to_path_buf();
     let actual = drop_win_disk_prefix_if_present(actual);
-    assert_eq!(expected, actual);
-    assert_eq!(expected, actual);
+    assert_eq!(host_llvm_config, actual);
 
     let config = configure(
         r#"
@@ -270,13 +272,13 @@ fn test_prebuilt_llvm_config_path_resolution() {
         "#,
     );
 
-    let build = Build::new(config.clone());
-    let builder = Builder::new(&build);
+    let sess = Session::new(config.clone());
+    let builder = Builder::new(&sess);
 
     let actual = get_llvm_build_status(&builder, builder.config.host_target)
         .llvm_output()
-        .host_llvm_config
-        .clone();
+        .llvm_config()
+        .to_path_buf();
     let expected = builder
         .out
         .join(builder.config.host_target)
@@ -293,13 +295,13 @@ fn test_prebuilt_llvm_config_path_resolution() {
 
     // CI-LLVM isn't always available; check if it's enabled before testing.
     if config.llvm_ci_mode.download_from_ci() {
-        let build = Build::new(config.clone());
-        let builder = Builder::new(&build);
+        let sess = Session::new(config.clone());
+        let builder = Builder::new(&sess);
 
         let actual = get_llvm_build_status(&builder, builder.config.host_target)
             .llvm_output()
-            .host_llvm_config
-            .clone();
+            .llvm_config()
+            .to_path_buf();
         let expected = builder
             .out
             .join(builder.config.host_target)
@@ -317,8 +319,8 @@ fn test_is_builder_target() {
     for (target1, target2) in [(target1, target2), (target2, target1)] {
         let mut config = configure("build", &[], &[]);
         config.host_target = target1;
-        let build = Build::new(config);
-        let builder = Builder::new(&build);
+        let sess = Session::new(config);
+        let builder = Builder::new(&sess);
 
         assert!(builder.config.is_host_target(target1));
         assert!(!builder.config.is_host_target(target2));
@@ -1661,7 +1663,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiler")
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (76 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (77 crates)");
     }
 
     #[test]
@@ -1687,7 +1689,7 @@ mod snapshot {
             ctx.config("check")
                 .path("compiler")
                 .stage(1)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (76 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (77 crates)");
     }
 
     #[test]
@@ -1701,7 +1703,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host> (76 crates)
+        [check] rustc 1 <host> -> rustc 2 <host> (77 crates)
         ");
     }
 
@@ -1717,7 +1719,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [check] rustc 1 <host> -> std 1 <target1>
-        [check] rustc 1 <host> -> rustc 2 <target1> (76 crates)
+        [check] rustc 1 <host> -> rustc 2 <target1> (77 crates)
         [check] rustc 1 <host> -> rustc 2 <target1>
         [check] rustc 1 <host> -> Rustdoc 2 <target1>
         [check] rustc 1 <host> -> rustc_codegen_cranelift 2 <target1>
@@ -1814,7 +1816,7 @@ mod snapshot {
             ctx.config("check")
                 .paths(&["library", "compiler"])
                 .args(&args)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (76 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (77 crates)");
     }
 
     #[test]
@@ -2539,9 +2541,8 @@ mod snapshot {
             ctx.config("doc")
                 .path("compiler")
                 .stage(1)
-                .render_steps(), @r"
+                .render_steps(), @"
         [build] rustdoc 0 <host>
-        [build] llvm <host>
         [doc] rustc 0 <host> -> rustc 1 <host>
         ");
     }
@@ -2641,10 +2642,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("clippy")
                 .path("compiler")
-                .render_steps(), @r"
-        [build] llvm <host>
-        [clippy] rustc 0 <host> -> rustc 1 <host>
-        ");
+                .render_steps(), @"[clippy] rustc 0 <host> -> rustc 1 <host>");
     }
 
     #[test]
@@ -2704,8 +2702,7 @@ mod snapshot {
             ctx.config("clippy")
                 .path("miri")
                 .stage(1)
-                .render_steps(), @r"
-        [build] llvm <host>
+                .render_steps(), @"
         [check] rustc 0 <host> -> rustc 1 <host>
         [clippy] rustc 0 <host> -> miri 1 <host>
         ");
@@ -3023,10 +3020,7 @@ mod snapshot {
     #[test]
     fn fix_compiler() {
         let ctx = TestCtx::new();
-        insta::assert_snapshot!(ctx.config("fix").path("compiler").render_steps(), @r"
-        [build] llvm <host>
-        [fix] rustc 0 <host> -> rustc 1 <host> (76 crates)
-        ");
+        insta::assert_snapshot!(ctx.config("fix").path("compiler").render_steps(), @"[fix] rustc 0 <host> -> rustc 1 <host> (77 crates)");
     }
 }
 
@@ -3127,8 +3121,8 @@ impl ConfigBuilder {
     fn run(self) -> Cache {
         let config = self.create_config();
 
-        let build = Build::new(config);
-        let builder = Builder::new(&build);
+        let sess = Session::new(config);
+        let builder = Builder::new(&sess);
         builder
             .run_step_descriptions(&Builder::get_step_descriptions(builder.kind), &builder.paths);
         builder.cache

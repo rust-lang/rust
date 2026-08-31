@@ -1,7 +1,6 @@
 use super::tcp4;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::SocketAddr;
-use crate::ptr::NonNull;
 use crate::sys::pal::{helpers, unsupported};
 use crate::time::Duration;
 
@@ -85,11 +84,8 @@ impl Tcp {
     pub(crate) fn nodelay(&self) -> io::Result<bool> {
         match self {
             Self::V4(client) => {
-                let temp = client.get_mode_data()?;
-                match NonNull::new(temp.control_option) {
-                    Some(x) => unsafe { Ok(x.as_ref().enable_nagle.into()) },
-                    None => unsupported(),
-                }
+                let nagle: bool = client.get_control_option()?.enable_nagle.into();
+                Ok(!nagle)
             }
         }
     }

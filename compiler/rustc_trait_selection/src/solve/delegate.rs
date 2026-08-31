@@ -1,11 +1,13 @@
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::mem;
-use std::ops::Deref;
+use std::ops::{ControlFlow, Deref};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
+use rustc_hir::def::Namespace;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
@@ -15,16 +17,21 @@ use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtx
 use rustc_infer::traits::solve::{
     ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, SucceededInErased,
 };
+use rustc_lint_defs::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, MaybeInfo};
+use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::{
     self, CanonicalizerState, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar};
 use rustc_span::{DUMMY_SP, Span};
+use rustc_structures::Limit;
 use thin_vec::{ThinVec, thin_vec};
 
+use super::inspect::InferCtxtProofTreeExt;
+use crate::solve::inspect::{self, InspectConfig, ProofTreeVisitor};
 use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
 
 #[repr(transparent)]
@@ -166,7 +173,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 && self.known_no_opaque_types_in_storage()
                 {
                     goal_stalled_on_args_or_nonempty_opaques(thin_vec![TyOrConstInferVar::Ty(vid)])
-                } else if trait_pred.polarity() == ty::PredicatePolarity::Positive {
+                } else if trait_pred.polarity() == ty::ClausePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
                             let predicate = self.resolve_vars_if_possible(goal.predicate);
@@ -503,5 +510,94 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         // Clear (don't deallocate) the state for later reuse.
         state.clear();
         *self.canonicalizer_state.borrow_mut() = state;
+    }
+
+    fn emit_next_solver_overflow_fcw(&self, goal: Goal<'tcx, ty::Predicate<'tcx>>, span: Span) {
+        let tcx = self.tcx;
+        let goal = self.resolve_vars_if_possible(goal);
+        let mut visitor = OverflowedGoalChain {
+            span,
+            predicates: vec![],
+            recursion_limit: usize::min(16, tcx.recursion_limit().0),
+        };
+        let _ = self
+            .with_disabled_next_solver_overflow_fcw(|| self.visit_proof_tree(goal, &mut visitor));
+        tcx.emit_node_span_lint(
+            RECURSION_DEPTH_EXCEEDING_LIMIT,
+            CRATE_HIR_ID,
+            span,
+            rustc_errors::DiagDecorator(|diag| {
+                // FIXME: share this with overflow error in fulfillment instead of duplicating.
+                let pred_str = |pred: ty::Predicate<'tcx>| {
+                    let s = pred.to_string();
+                    if s.len() > 80 {
+                        let mut p: FmtPrinter<'_, '_> =
+                            FmtPrinter::new_with_limit(tcx, Namespace::TypeNS, Limit(10));
+                        pred.print(&mut p).unwrap();
+                        p.into_buffer()
+                    } else {
+                        s
+                    }
+                };
+                diag.primary_message(format!(
+                    "overflow evaluating the requirement `{}`",
+                    pred_str(goal.predicate),
+                ));
+                for p in visitor.predicates.into_iter().skip(1) {
+                    diag.note(format!("which requires `{}`", pred_str(p)));
+                }
+                diag.note("and so on...");
+                diag.help(
+                    "consider adding a manual `impl` of auto traits like `Send` for intermediate types, if auto traits are involved",
+                );
+                diag.help(format!(
+                    "or consider increasing the recursion limit by adding a \
+                     `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
+                    tcx.recursion_limit() * 2,
+                    tcx.crate_name(LOCAL_CRATE),
+                ));
+                diag.note("this lint is attached to the whole crate and can't be disabled on a per-function basis");
+            }),
+        )
+    }
+}
+
+struct OverflowedGoalChain<'tcx> {
+    span: Span,
+    predicates: Vec<ty::Predicate<'tcx>>,
+    recursion_limit: usize,
+}
+
+impl<'tcx> ProofTreeVisitor<'tcx> for OverflowedGoalChain<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn config(&self) -> InspectConfig {
+        InspectConfig { max_depth: self.recursion_limit }
+    }
+
+    fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+        self.predicates.push(goal.goal().predicate);
+        if let Some(cand) = goal.unique_applicable_candidate() {
+            goal.infcx().probe(|_| {
+                if let Some(nested_goal_with_largest_required_depth) = cand
+                    .instantiate_nested_goals(self.span)
+                    .into_iter()
+                    .max_by_key(|g| g.required_depth())
+                {
+                    nested_goal_with_largest_required_depth.visit_with(self)
+                } else {
+                    ControlFlow::Continue(())
+                }
+            })?;
+        }
+        ControlFlow::Continue(())
+    }
+
+    fn on_recursion_limit(&mut self) -> Self::Result {
+        ControlFlow::Break(())
     }
 }

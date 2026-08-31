@@ -11,9 +11,8 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::hir::nested_filter;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::Ident;
 

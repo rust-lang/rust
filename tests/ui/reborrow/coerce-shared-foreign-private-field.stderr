@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` requires all target type fields to be accessible from the impl
-  --> $DIR/coerce-shared-foreign-private-field.rs:16:1
+  --> $DIR/coerce-shared-foreign-private-field.rs:19:1
    |
 LL | impl<'a> CoerceShared<ForeignRef<'a>> for LocalMut<'a> {}
    | ^^^^^^^^^^^^^^^^^^^^^^--------------^^^^^^^^^^^^^^^^^^^^^

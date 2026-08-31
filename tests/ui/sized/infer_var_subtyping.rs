@@ -9,8 +9,6 @@
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 
-#![feature(never_type)]
-
 fn blah(e: !) {
     let source = Box::new(e);
     let _: Box<dyn Send> = source;

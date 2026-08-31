@@ -14,9 +14,10 @@ use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
+use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
+use rustc_lint_defs::{Lint, LintId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
-use rustc_session::lint::{Lint, LintId};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 
 // Glob imports to avoid big, bitrotty import lists
@@ -245,10 +246,8 @@ attribute_parsers!(
         Single<RustcLintOptDenyFieldAccessParser>,
         Single<RustcMacroTransparencyParser>,
         Single<RustcMustImplementOneOfParser>,
-        Single<RustcNeverTypeOptionsParser>,
         Single<RustcObjcClassParser>,
         Single<RustcObjcSelectorParser>,
-        Single<RustcReservationImplParser>,
         Single<RustcScalableVectorParser>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<RustcSkipDuringMethodDispatchParser>,
@@ -354,7 +353,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcSpecializationTraitParser>>,
         Single<WithoutArgs<RustcStdInternalSymbolParser>>,
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
-        Single<WithoutArgs<RustcTestEntrypointMarkerParser>>,
         Single<WithoutArgs<RustcTrivialFieldReadsParser>>,
         Single<WithoutArgs<SplatParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
@@ -462,7 +460,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
 
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
         self.emit_lint(
-            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+            UNUSED_ATTRIBUTES,
             UnusedDuplicate { this: unused_span, other: used_span, warning: false },
             unused_span,
         )
@@ -474,7 +472,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
         unused_span: Span,
     ) {
         self.emit_lint(
-            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+            UNUSED_ATTRIBUTES,
             UnusedDuplicate { this: unused_span, other: used_span, warning: true },
             unused_span,
         )
@@ -865,12 +863,6 @@ impl<'p, 'sess: 'p> DerefMut for SharedContext<'p, 'sess> {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum OmitDoc {
-    Lower,
-    Skip,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum ShouldEmit {
     /// The operations will emit errors, and lints, and errors are fatal.
@@ -1105,7 +1097,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         let attr_path = self.attr_path.to_string();
         let valid_without_list = self.template.word;
         self.emit_lint(
-            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+            UNUSED_ATTRIBUTES,
             crate::diagnostics::EmptyAttributeList {
                 attr_span: span,
                 attr_path,

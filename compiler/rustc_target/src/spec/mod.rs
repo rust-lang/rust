@@ -41,7 +41,6 @@
 use core::result::Result;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::fmt;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
@@ -73,6 +72,7 @@ pub use abi_map::{AbiMap, AbiMapping};
 pub use base::apple;
 pub use base::avr::ef_avr_arch;
 pub use json::json_schema;
+pub use rustc_structures::SanitizerSet;
 pub use tuple::TargetTuple;
 
 /// Linker is called through a C/C++ compiler.
@@ -988,12 +988,14 @@ crate::target_spec_enum! {
 crate::target_spec_enum! {
     /// The Rustc-specific variant of the ABI used for this target.
     pub enum RustcAbi {
+        /// On x86-32/64, aarch64, and S390x: do not use any FPU or SIMD registers for the ABI.
+        Softfloat = "softfloat",
         /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
         X86Sse2 = "x86-sse2",
         /// On PowerPC only: build for SPE.
         PowerPcSpe = "powerpc-spe",
-        /// On x86-32/64, aarch64, and S390x: do not use any FPU or SIMD registers for the ABI.
-        Softfloat = "softfloat",
+        /// On SPARC-32: use the V8+ ABI.
+        SparcV8Plus = "sparc-v8plus",
     }
 
     parse_error_type = "rustc abi";
@@ -1144,149 +1146,6 @@ impl ToJson for StackProbeType {
             ]
             .into_iter()
             .collect(),
-        })
-    }
-}
-
-#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-pub struct SanitizerSet(u16);
-bitflags::bitflags! {
-    impl SanitizerSet: u16 {
-        const ADDRESS = 1 << 0;
-        const LEAK    = 1 << 1;
-        const MEMORY  = 1 << 2;
-        const THREAD  = 1 << 3;
-        const HWADDRESS = 1 << 4;
-        const CFI     = 1 << 5;
-        const MEMTAG  = 1 << 6;
-        const SHADOWCALLSTACK = 1 << 7;
-        const KCFI    = 1 << 8;
-        const KERNELADDRESS = 1 << 9;
-        const KERNELHWADDRESS = 1 << 10;
-        const SAFESTACK = 1 << 11;
-        const DATAFLOW = 1 << 12;
-        const REALTIME = 1 << 13;
-    }
-}
-rustc_data_structures::external_bitflags_debug! { SanitizerSet }
-
-impl SanitizerSet {
-    // Taken from LLVM's sanitizer compatibility logic:
-    // https://github.com/llvm/llvm-project/blob/release/18.x/clang/lib/Driver/SanitizerArgs.cpp#L512
-    const MUTUALLY_EXCLUSIVE: &'static [(SanitizerSet, SanitizerSet)] = &[
-        (SanitizerSet::ADDRESS, SanitizerSet::MEMORY),
-        (SanitizerSet::ADDRESS, SanitizerSet::THREAD),
-        (SanitizerSet::ADDRESS, SanitizerSet::HWADDRESS),
-        (SanitizerSet::ADDRESS, SanitizerSet::MEMTAG),
-        (SanitizerSet::ADDRESS, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::ADDRESS, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::ADDRESS, SanitizerSet::SAFESTACK),
-        (SanitizerSet::LEAK, SanitizerSet::MEMORY),
-        (SanitizerSet::LEAK, SanitizerSet::THREAD),
-        (SanitizerSet::LEAK, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::LEAK, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::LEAK, SanitizerSet::SAFESTACK),
-        (SanitizerSet::MEMORY, SanitizerSet::THREAD),
-        (SanitizerSet::MEMORY, SanitizerSet::HWADDRESS),
-        (SanitizerSet::MEMORY, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::MEMORY, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::MEMORY, SanitizerSet::SAFESTACK),
-        (SanitizerSet::THREAD, SanitizerSet::HWADDRESS),
-        (SanitizerSet::THREAD, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::THREAD, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::THREAD, SanitizerSet::SAFESTACK),
-        (SanitizerSet::HWADDRESS, SanitizerSet::MEMTAG),
-        (SanitizerSet::HWADDRESS, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::HWADDRESS, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::HWADDRESS, SanitizerSet::SAFESTACK),
-        (SanitizerSet::CFI, SanitizerSet::KCFI),
-        (SanitizerSet::MEMTAG, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::MEMTAG, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::KERNELADDRESS, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::KERNELADDRESS, SanitizerSet::SAFESTACK),
-        (SanitizerSet::KERNELHWADDRESS, SanitizerSet::SAFESTACK),
-    ];
-
-    /// Return sanitizer's name
-    ///
-    /// Returns none if the flags is a set of sanitizers numbering not exactly one.
-    pub fn as_str(self) -> Option<&'static str> {
-        Some(match self {
-            SanitizerSet::ADDRESS => "address",
-            SanitizerSet::CFI => "cfi",
-            SanitizerSet::DATAFLOW => "dataflow",
-            SanitizerSet::KCFI => "kcfi",
-            SanitizerSet::KERNELADDRESS => "kernel-address",
-            SanitizerSet::KERNELHWADDRESS => "kernel-hwaddress",
-            SanitizerSet::LEAK => "leak",
-            SanitizerSet::MEMORY => "memory",
-            SanitizerSet::MEMTAG => "memtag",
-            SanitizerSet::SAFESTACK => "safestack",
-            SanitizerSet::SHADOWCALLSTACK => "shadow-call-stack",
-            SanitizerSet::THREAD => "thread",
-            SanitizerSet::HWADDRESS => "hwaddress",
-            SanitizerSet::REALTIME => "realtime",
-            _ => return None,
-        })
-    }
-
-    pub fn mutually_exclusive(self) -> Option<(SanitizerSet, SanitizerSet)> {
-        Self::MUTUALLY_EXCLUSIVE
-            .into_iter()
-            .find(|&(a, b)| self.contains(*a) && self.contains(*b))
-            .copied()
-    }
-}
-
-/// Formats a sanitizer set as a comma separated list of sanitizers' names.
-impl fmt::Display for SanitizerSet {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut first = true;
-        for s in *self {
-            let name = s.as_str().unwrap_or_else(|| panic!("unrecognized sanitizer {s:?}"));
-            if !first {
-                f.write_str(", ")?;
-            }
-            f.write_str(name)?;
-            first = false;
-        }
-        Ok(())
-    }
-}
-
-impl FromStr for SanitizerSet {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "address" => SanitizerSet::ADDRESS,
-            "cfi" => SanitizerSet::CFI,
-            "dataflow" => SanitizerSet::DATAFLOW,
-            "kcfi" => SanitizerSet::KCFI,
-            "kernel-address" => SanitizerSet::KERNELADDRESS,
-            "kernel-hwaddress" => SanitizerSet::KERNELHWADDRESS,
-            "leak" => SanitizerSet::LEAK,
-            "memory" => SanitizerSet::MEMORY,
-            "memtag" => SanitizerSet::MEMTAG,
-            "safestack" => SanitizerSet::SAFESTACK,
-            "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
-            "thread" => SanitizerSet::THREAD,
-            "hwaddress" => SanitizerSet::HWADDRESS,
-            "realtime" => SanitizerSet::REALTIME,
-            s => return Err(format!("unknown sanitizer {s}")),
-        })
-    }
-}
-
-crate::json::serde_deserialize_from_str!(SanitizerSet);
-impl schemars::JsonSchema for SanitizerSet {
-    fn schema_name() -> std::borrow::Cow<'static, str> {
-        "SanitizerSet".into()
-    }
-    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
-        let all = Self::all().iter().map(|sanitizer| sanitizer.as_str()).collect::<Vec<_>>();
-        schemars::json_schema! ({
-            "type": "string",
-            "enum": all,
         })
     }
 }
@@ -2091,6 +1950,7 @@ crate::target_spec_enum! {
         VecDefault = "vec-default",
         VecExtAbi = "vec-extabi",
         X32 = "x32",
+        V8Plus = "v8plus",
         Unspecified = "",
     }
     other_variant = Other;
@@ -2651,8 +2511,8 @@ pub struct TargetOptions {
     /// Use LLVM intrinsic for mcount function name
     pub llvm_mcount_intrinsic: Option<StaticCow<str>>,
 
-    /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
-    /// and the `-target-abi` flag in llc. In the LLVM API this is `MCOptions.ABIName`.
+    /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers and
+    /// the `-target-abi` flag in llc. In the LLVM API this is `MCTargetOptions::ABIName`.
     pub llvm_abiname: LlvmAbi,
 
     /// Control the float ABI to use, for architectures that support it. The only architecture we

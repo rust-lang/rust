@@ -24,7 +24,7 @@ enum UsesVectorRegisters {
 fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorRegisters {
     match mode {
         PassMode::Ignore | PassMode::Indirect { .. } => UsesVectorRegisters::No,
-        PassMode::Cast { pad_i32: _, cast }
+        PassMode::Cast { pad_i32_count: _, cast }
             if cast.prefix.iter().any(|x| matches!(x.kind, RegKind::Vector { .. }))
                 || matches!(cast.rest.unit.kind, RegKind::Vector { .. }) =>
         {
@@ -84,6 +84,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature: feature,
+                        abi: abi.conv.to_string(),
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: false,
@@ -101,6 +102,7 @@ fn do_check_simd_vector_abi<'tcx>(
                     tcx.dcx().emit_err(diagnostics::AbiErrorDisabledVectorType {
                         span,
                         required_feature,
+                        abi: abi.conv.to_string(),
                         ty: arg_abi.layout.ty,
                         is_call,
                         is_scalable: true,
@@ -158,9 +160,9 @@ fn do_check_unsized_params<'tcx>(
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let ty = instance.ty(tcx, typing_env);
-    if ty.is_fn() && ty.fn_sig(tcx).abi() == ExternAbi::Unadjusted {
-        // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
-        // intrinsics
+    if ty.is_fn() && ty.fn_sig(tcx).abi() == ExternAbi::LlvmIntrinsic {
+        // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
+        // LLVM intrinsics
         return;
     }
     let Ok(abi) = tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
@@ -170,12 +172,8 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         tcx.dcx().delayed_bug("ABI computation failure should lead to compilation failure");
         return;
     };
-    // Unlike the call-site check, we do also check "Rust" ABI functions here.
-    // This should never trigger, *except* if we start making use of vector registers
-    // for the "Rust" ABI and the user disables those vector registers (which should trigger a
-    // warning as that's clearly disabling a "required" target feature for this target).
-    // Using such a function is where disabling the vector register actually can start leading
-    // to soundness issues, so erroring here seems good.
+    // Unlike the call-site check, we do also check "Rust" ABI functions here. This can actually
+    // trigger due to scalable vectors being require for the "Rust" ABI for some types.
     let loc = || {
         let def_id = instance.def_id();
         (
@@ -198,11 +196,11 @@ fn check_call_site_abi<'tcx>(
     loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
     let extern_abi = callee.fn_sig(tcx).abi();
-    if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::Unadjusted {
+    if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::LlvmIntrinsic {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.
-        // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
-        // intrinsics
+        // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
+        // LLVM intrinsics
         return;
     }
     let typing_env = ty::TypingEnv::fully_monomorphized();

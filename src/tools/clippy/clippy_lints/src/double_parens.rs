@@ -2,8 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{SpanExt as _, snippet_with_applicability, snippet_with_context};
 use rustc_ast::ast::{Expr, ExprKind, MethodCall};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -74,7 +73,7 @@ impl EarlyLintPass for DoubleParens {
             // ^^^^^^^^^ expr
             //      ^^^  arg
             //       ^   inner
-            ExprKind::Call(_, args) | ExprKind::MethodCall(box MethodCall { args, .. })
+            ExprKind::Call(_, args) | ExprKind::MethodCall(MethodCall { args, .. })
                 if let [arg] = &**args
                     && let ExprKind::Paren(inner) = &arg.kind
                     && expr.span.eq_ctxt(arg.span)

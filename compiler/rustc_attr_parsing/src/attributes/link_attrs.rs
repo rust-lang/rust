@@ -2,11 +2,12 @@ use rustc_attr_ir::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_attr_ir::*;
 use rustc_errors::msg;
 use rustc_feature::{AttributeStability, Features};
+use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
-use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_span::edition::Edition::Edition2024;
 use rustc_span::kw;
+use rustc_structures::NativeLibKind;
 use rustc_target::spec::{Arch, BinaryFormat};
 
 use super::prelude::*;
@@ -547,7 +548,9 @@ impl NoArgsAttributeParser for ExportStableParser {
         Allow(Target::Enum),
         Allow(Target::Union),
         Allow(Target::TyAlias),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Use),
         Allow(Target::Mod),
         Allow(Target::Impl { of_trait: false }),

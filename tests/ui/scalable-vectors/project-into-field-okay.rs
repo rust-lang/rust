@@ -2,17 +2,13 @@
 //@ compile-flags: -Copt-level=3 --test -Cdebuginfo=2
 //@ only-aarch64
 #![allow(internal_features, unused, improper_ctypes_definitions, nonstandard_style)]
-#![feature(
-    abi_unadjusted,
-    link_llvm_intrinsics,
-    rustc_attrs,
-    min_adt_const_params
-)]
+#![feature(link_llvm_intrinsics, rustc_attrs, min_adt_const_params)]
 
 // This snippet is reduced from stdarch and previously failed prior to preventing projection into
 // fields during MIR validation in rust#160642.
 
-use std::{marker::ConstParamTy, mem::transmute};
+use std::marker::ConstParamTy;
+use std::mem::transmute;
 
 #[derive(Copy, Clone)]
 #[rustc_scalable_vector(4)]
@@ -67,7 +63,7 @@ fn assert_svcntw_cntw() {
 #[inline]
 #[target_feature(enable = "sve")]
 pub fn svcntw_pat<const PATTERN: svpattern>() -> u64 {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.cntw")]
         fn _svcntw_pat(pattern: svpattern) -> i64;
     }

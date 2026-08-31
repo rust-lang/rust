@@ -141,11 +141,8 @@ pub fn libdir(target: TargetSelection) -> &'static str {
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
 /// If the dylib_path_var is already set for this cmd, the old value will be overwritten!
 pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
-    let mut list = dylib_path();
-    for path in path {
-        list.insert(0, path);
-    }
-    cmd.env(dylib_path_var(), t!(env::join_paths(list)));
+    let paths = path.into_iter().chain(dylib_path());
+    cmd.env(dylib_path_var(), t!(env::join_paths(paths)));
 }
 
 pub struct TimeIt(bool, Instant);
@@ -183,6 +180,17 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
         junction::create(target, junction)
     }
+}
+
+/// Detects a symlink or a junction on Windows
+pub fn is_symlink_dir(_metadata: &fs::Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::FileTypeExt;
+        _metadata.file_type().is_symlink_dir()
+    }
+    #[cfg(not(windows))]
+    false
 }
 
 /// Return the host target on which we are currently running.

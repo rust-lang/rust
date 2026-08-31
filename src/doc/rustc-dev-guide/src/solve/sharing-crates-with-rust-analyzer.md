@@ -29,7 +29,7 @@ Since these crates are not published on `crates.io` as part of the compiler's no
 process, rust-analyzer maintains its own publishing pipeline.
 It uses the [rustc-auto-publish script][rustc-auto-publish] to publish these crates to `crates.io`
 with the prefix `ra-ap-rustc_*`
-(for example: https://crates.io/crates/ra-ap-rustc_next_trait_solver).
+(for example: <https://crates.io/crates/ra-ap-rustc_next_trait_solver>).
 rust-analyzer then depends on these re-published crates in its own build.
 
 For trait solving specifically, the primary shared crates are `rustc_type_ir` and

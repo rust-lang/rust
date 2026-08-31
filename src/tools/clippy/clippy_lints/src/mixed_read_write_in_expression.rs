@@ -4,9 +4,8 @@ use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::{get_parent_expr, sym};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, LetStmt, Node, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -43,7 +42,7 @@ declare_clippy_lint! {
     /// order of sub-expressions.
     ///
     /// ### Why restrict this?
-    /// While [the evaluation order of sub-expressions] is fully specified in Rust,
+    /// While [the evaluation order of sub-expressions][order] is fully specified in Rust,
     /// it still may be confusing to read an expression where the evaluation order
     /// affects its behavior.
     ///
@@ -72,7 +71,7 @@ declare_clippy_lint! {
     /// let a = tmp + x;
     /// ```
     ///
-    /// [order]: (https://doc.rust-lang.org/reference/expressions.html?highlight=subexpression#evaluation-order-of-operands)
+    /// [order]: https://doc.rust-lang.org/reference/expressions.html?highlight=subexpression#evaluation-order-of-operands
     #[clippy::version = "pre 1.29.0"]
     pub MIXED_READ_WRITE_IN_EXPRESSION,
     restriction,

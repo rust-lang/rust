@@ -6,6 +6,12 @@ use crate::fmt::{self, Write};
 #[cfg(not(all(target_arch = "loongarch64", target_feature = "lsx")))]
 use crate::intrinsics::const_eval_select;
 use crate::{ascii, iter, ops};
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+use crate::{
+    iter::{Filter, FusedIterator},
+    slice::Split,
+    str::{BytesIsNotEmpty, IsAsciiWhitespace},
+};
 
 impl [u8] {
     /// Checks if all bytes in this slice are within the ASCII range.
@@ -313,6 +319,140 @@ impl [u8] {
     #[inline]
     pub const fn trim_ascii(&self) -> &[u8] {
         self.trim_ascii_start().trim_ascii_end()
+    }
+
+    /// Splits a byte slice by ASCII whitespace.
+    ///
+    /// The returned iterator yields byte slices that are subslices of the
+    /// original byte slice, separated by any amount of ASCII whitespace.
+    ///
+    /// This uses the same definition as [`u8::is_ascii_whitespace`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(u8_split_ascii_whitespace)]
+    ///
+    /// let mut iter = b"A few words".split_ascii_whitespace();
+    ///
+    /// assert_eq!(Some(&b"A"[..]), iter.next());
+    /// assert_eq!(Some(&b"few"[..]), iter.next());
+    /// assert_eq!(Some(&b"words"[..]), iter.next());
+    ///
+    /// assert_eq!(None, iter.next());
+    /// ```
+    ///
+    /// Various kinds of ASCII whitespace are considered
+    /// (see [`u8::is_ascii_whitespace`]):
+    ///
+    /// ```
+    /// #![feature(u8_split_ascii_whitespace)]
+    ///
+    /// let mut iter = b" Mary   had\ta little  \n\t lamb".split_ascii_whitespace();
+    ///
+    /// assert_eq!(Some(&b"Mary"[..]), iter.next());
+    /// assert_eq!(Some(&b"had"[..]), iter.next());
+    /// assert_eq!(Some(&b"a"[..]), iter.next());
+    /// assert_eq!(Some(&b"little"[..]), iter.next());
+    /// assert_eq!(Some(&b"lamb"[..]), iter.next());
+    ///
+    /// assert_eq!(None, iter.next());
+    /// ```
+    ///
+    /// If the byte slice is empty or contains only ASCII whitespace, the iterator
+    /// yields no byte slices:
+    ///
+    /// ```
+    /// #![feature(u8_split_ascii_whitespace)]
+    ///
+    /// assert_eq!(b"".split_ascii_whitespace().next(), None);
+    /// assert_eq!(b"   ".split_ascii_whitespace().next(), None);
+    /// ```
+    #[must_use = "this returns the split byte slice as an iterator, without modifying the original"]
+    #[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+    #[inline]
+    pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace<'_> {
+        let inner = self.split(IsAsciiWhitespace).filter(BytesIsNotEmpty);
+        SplitAsciiWhitespace { inner }
+    }
+}
+
+/// An iterator over the non-ASCII-whitespace subslices of a byte slice,
+/// separated by any amount of ASCII whitespace.
+///
+/// This struct is created by the [`split_ascii_whitespace`] method on [`[u8]`][byteslice].
+/// See its documentation for more.
+///
+/// [`split_ascii_whitespace`]: slice::split_ascii_whitespace
+/// [byteslice]: prim@slice
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+#[derive(Clone, Debug)]
+pub struct SplitAsciiWhitespace<'a> {
+    pub(crate) inner: Filter<Split<'a, u8, IsAsciiWhitespace>, BytesIsNotEmpty>,
+}
+
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+impl<'a> Iterator for SplitAsciiWhitespace<'a> {
+    type Item = &'a [u8];
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a [u8]> {
+        self.inner.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a [u8]> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a [u8]> {
+        self.inner.next_back()
+    }
+}
+
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+impl FusedIterator for SplitAsciiWhitespace<'_> {}
+
+impl<'a> SplitAsciiWhitespace<'a> {
+    /// Returns remainder of the split slice.
+    ///
+    /// If the iterator is empty, returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(u8_split_ascii_whitespace)]
+    ///
+    /// let mut split = b"Mary had a little lamb".split_ascii_whitespace();
+    /// assert_eq!(split.remainder(), Some(b"Mary had a little lamb".as_slice()));
+    ///
+    /// split.next();
+    /// assert_eq!(split.remainder(), Some(b"had a little lamb".as_slice()));
+    ///
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.remainder(), None);
+    /// ```
+    #[inline]
+    #[must_use]
+    // This is also blocked on: https://github.com/rust-lang/rust/issues/77998
+    #[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+    pub fn remainder(&self) -> Option<&'a [u8]> {
+        if self.inner.iter.finished {
+            return None;
+        }
+
+        Some(self.inner.iter.v)
     }
 }
 
@@ -666,10 +806,9 @@ const fn is_ascii(bytes: &[u8]) -> bool {
         } else {
             // For small inputs, use usize-at-a-time processing to avoid SSE2 call overhead.
             if bytes.len() < SIMD_MIN_LEN {
-                let chunks = bytes.chunks_exact(USIZE_SIZE);
-                let remainder = chunks.remainder();
+                let (chunks, remainder) = bytes.as_chunks::<USIZE_SIZE>();
                 for chunk in chunks {
-                    let word = usize::from_ne_bytes(chunk.try_into().unwrap());
+                    let word = usize::from_ne_bytes(*chunk);
                     if (word & NONASCII_MASK) != 0 {
                         return false;
                     }

@@ -8,6 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lint::LintStore;
+use rustc_lint_defs::{Level, LintId};
 use rustc_middle::ty;
 use rustc_middle::ty::CurrentGcx;
 use rustc_middle::util::Providers;
@@ -17,7 +18,7 @@ use rustc_parse::parser::Recovery;
 use rustc_query_impl::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::parse::ParseSess;
-use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
+use rustc_session::{CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, sym};
 use tracing::trace;
@@ -43,8 +44,9 @@ pub struct Compiler {
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
-pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
-    cfgs.into_iter()
+pub(crate) fn parse_cfg(sess: &Session, cfgs: Vec<String>) -> Cfg {
+    let cfg = cfgs
+        .into_iter()
         .map(|s| {
             let psess = ParseSess::emitter_with_note(format!(
                 "this occurred on the command line: `--cfg={s}`"
@@ -53,7 +55,7 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
 
             macro_rules! error {
                 ($reason: expr) => {
-                    dcx.fatal(format!("invalid `--cfg` argument: `{s}` ({})", $reason));
+                    sess.dcx().fatal(format!("invalid `--cfg` argument: `{s}` ({})", $reason));
                 };
             }
 
@@ -105,11 +107,13 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                 error!(r#"expected `key` or `key="value"`"#);
             }
         })
-        .collect::<Cfg>()
+        .collect::<Cfg>();
+
+    config::build_configuration(sess, cfg)
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> CheckCfg {
+pub(crate) fn parse_check_cfg(sess: &Session, specs: Vec<String>) -> CheckCfg {
     // If any --check-cfg is passed then exhaustive_values and exhaustive_names
     // are enabled by default.
     let exhaustive_names = !specs.is_empty();
@@ -127,13 +131,15 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
 
         macro_rules! error {
             ($reason:expr) => {{
-                let mut diag = dcx.struct_fatal(format!("invalid `--check-cfg` argument: `{s}`"));
+                let mut diag =
+                    sess.dcx().struct_fatal(format!("invalid `--check-cfg` argument: `{s}`"));
                 diag.note($reason);
                 diag.note(VISIT);
                 diag.emit()
             }};
             (in $arg:expr, $reason:expr) => {{
-                let mut diag = dcx.struct_fatal(format!("invalid `--check-cfg` argument: `{s}`"));
+                let mut diag =
+                    sess.dcx().struct_fatal(format!("invalid `--check-cfg` argument: `{s}`"));
 
                 let pparg = rustc_ast_pretty::pprust::meta_list_item_to_string($arg);
                 if let Some(lit) = $arg.lit() {
@@ -303,6 +309,8 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
         }
     }
 
+    check_cfg.fill_well_known(&sess.target);
+
     check_cfg
 }
 
@@ -326,7 +334,7 @@ pub struct Config {
     /// running rustc without having to save". (See #102759.)
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
 
-    pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    pub lint_caps: FxHashMap<LintId, Level>,
 
     /// This is a callback from the driver that is called when [`ParseSess`] is created.
     pub psess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,
@@ -442,14 +450,25 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             sess.fallback_intrinsics = FxHashSet::from_iter(codegen_backend.fallback_intrinsics());
             sess.thin_lto_supported = codegen_backend.thin_lto_supported();
 
-            let cfg = parse_cfg(sess.dcx(), config.crate_cfg);
-            let mut cfg = config::build_configuration(&sess, cfg);
-            util::add_configuration(&mut cfg, &mut sess, &*codegen_backend);
-            sess.config = cfg;
+            let target_config = codegen_backend.target_config(&sess);
 
-            let mut check_cfg = parse_check_cfg(sess.dcx(), config.crate_check_cfg);
-            check_cfg.fill_well_known(&sess.target);
-            sess.check_config = check_cfg;
+            // Store all of the target features in the session.
+            // Needs to be done before `parse_cfg` because it checks this list.
+            sess.internal_target_features
+                .extend(target_config.internal_target_features.to_sorted_stable_ord());
+
+            sess.config = parse_cfg(&sess, config.crate_cfg);
+            let is_nightly_build = sess.is_nightly_build();
+            let is_crt_static = sess.crt_static(None);
+            util::add_configuration(
+                &mut sess.config,
+                &target_config,
+                &sess.target,
+                is_nightly_build,
+                is_crt_static,
+            );
+
+            sess.check_config = parse_check_cfg(&sess, config.crate_check_cfg);
 
             if let Some(psess_created) = config.psess_created {
                 psess_created(&mut sess.psess);

@@ -812,8 +812,7 @@ Defines which scopes of paths should be remapped by --remap-path-prefix.
 `rustdoc` (and by extension `rustc`) have a special `documentation` remapping scope, it
 permits remapping source paths that ends up in the generated documentation.
 
-Currently the scope can only be specified from `rustc`, due to the lack of an equivalent
-`--remap-path-scope` flag in `rustc`.
+It can specified with `--remap-path-scope=documentation`.
 
 ## `#[doc(cfg)]` and `#[doc(auto_cfg)]`
 

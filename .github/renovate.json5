@@ -48,8 +48,8 @@
       "groupName": "Cargo lock file maintenance",
       "commitMessageAction": "Compiler and tools lock file update",
       // Renovate merges all matching rules, so the lockfiles rules below
-      // also inherits this note and asks Triagebot for a dep-bumps reviewer.
-      "prBodyNotes": ["r? dep-bumps"]
+      // also inherits these notes and asks Triagebot for a dep-bumps reviewer.
+      "prBodyNotes": ["r? dep-bumps", "⚠️ Supply chain security safety: wait 3 days until the last commit to this PR before running `bors try` or `bors r+`"]
     },
     {
       // Update library/Cargo.lock in a dedicated PR.

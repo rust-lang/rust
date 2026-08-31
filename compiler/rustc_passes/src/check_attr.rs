@@ -24,27 +24,26 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
+    self as hir, AssocCtxt, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
     GenericParamKind, HirId, Item, ItemKind, MethodKind, Mod, Node, ParamName, Target, TraitItem,
     find_attr,
 };
+use rustc_lint_defs::builtin::{
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS,
+    UNUSED_ATTRIBUTES,
+};
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::CrateType;
 use rustc_session::diagnostics::feature_err;
-use rustc_session::lint;
-use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
-};
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_structures::CrateType;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::{ObligationCtxt, TraitErrors};
@@ -62,7 +61,15 @@ struct DiagnosticOnConstOnlyForNonConstTraitImpls {
 
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
-        hir::ImplItemKind::Const(..) => Target::AssocConst,
+        hir::ImplItemKind::Const(..) => {
+            let parent_def_id = tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
+            let containing_item = tcx.hir_expect_item(parent_def_id);
+            let of_trait = match &containing_item.kind {
+                hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
+                _ => bug!("parent of an ImplItem must be an Impl"),
+            };
+            Target::AssocConst(AssocCtxt::Impl { of_trait })
+        }
         hir::ImplItemKind::Fn(..) => {
             let parent_def_id = tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
             let containing_item = tcx.hir_expect_item(parent_def_id);
@@ -71,12 +78,20 @@ fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>)
                 _ => bug!("parent of an ImplItem must be an Impl"),
             };
             if containing_impl_is_for_trait {
-                Target::Method(MethodKind::Trait { body: true })
+                Target::Method(MethodKind::TraitImpl)
             } else {
                 Target::Method(MethodKind::Inherent)
             }
         }
-        hir::ImplItemKind::Type(..) => Target::AssocTy,
+        hir::ImplItemKind::Type(..) => {
+            let parent_def_id = tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
+            let containing_item = tcx.hir_expect_item(parent_def_id);
+            let of_trait = match &containing_item.kind {
+                hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
+                _ => bug!("parent of an ImplItem must be an Impl"),
+            };
+            Target::AssocTy(AssocCtxt::Impl { of_trait })
+        }
     }
 }
 
@@ -192,12 +207,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
-            AttributeKind::Deprecated { span: attr_span, .. } => {
-                self.check_deprecated(hir_id, *attr_span, target)
-            }
-            AttributeKind::RustcDumpObjectLifetimeDefaults => {
-                self.check_dump_object_lifetime_defaults(hir_id);
-            }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::NonExhaustive(attr_span) => {
                 self.check_non_exhaustive(*attr_span, span, target, item)
@@ -250,6 +259,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::CustomMir(..) => (),
             AttributeKind::DebuggerVisualizer(..) => (),
             AttributeKind::DefaultLibAllocator => (),
+            AttributeKind::Deprecated { .. } => (),
             AttributeKind::DoNotRecommend => (),
             // `#[doc]` is actually a lot more than just doc comments, so is checked below
             AttributeKind::DocComment { .. } => (),
@@ -337,6 +347,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcDumpInferredOutlives => (),
             AttributeKind::RustcDumpItemBounds => (),
             AttributeKind::RustcDumpLayout(..) => (),
+            AttributeKind::RustcDumpObjectLifetimeDefaults => (),
             AttributeKind::RustcDumpSymbolName(..) => (),
             AttributeKind::RustcDumpUserArgs => (),
             AttributeKind::RustcDumpVariances => (),
@@ -361,7 +372,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcMir(_) => (),
             AttributeKind::RustcMustMatchExhaustively(..) => (),
             AttributeKind::RustcNeverReturnsNullPtr => (),
-            AttributeKind::RustcNeverTypeOptions { .. } => (),
             AttributeKind::RustcNoImplicitAutorefs => (),
             AttributeKind::RustcNoImplicitBounds => (),
             AttributeKind::RustcNoMirInline => (),
@@ -381,7 +391,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcPubTransparent(..) => (),
             AttributeKind::RustcReallocator => (),
             AttributeKind::RustcRegions => (),
-            AttributeKind::RustcReservationImpl(..) => (),
             AttributeKind::RustcScalableVector { .. } => (),
             AttributeKind::RustcShouldNotBeCalledOnConstItems => (),
             AttributeKind::RustcSimdMonomorphizeLaneLimit(..) => (),
@@ -390,7 +399,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
-            AttributeKind::RustcTestEntrypointMarker => (),
             AttributeKind::RustcTestMarker(..) => (),
             AttributeKind::RustcThenThisWouldNeed(..) => (),
             AttributeKind::RustcTrivialFieldReads => (),
@@ -739,7 +747,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn
             | Target::Closure
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+            | Target::Method(
+                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+            ) => {
                 // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
                 if let Some(did) = hir_id.as_owner()
                     && self.tcx.def_kind(did).has_codegen_attrs()
@@ -765,7 +775,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_naked(&self, hir_id: HirId, target: Target) {
         match target {
             Target::Fn
-            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {
+            | Target::Method(
+                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+            ) => {
                 let fn_sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
                 let abi = fn_sig.header.abi;
                 if abi.is_rustic_abi() && !self.tcx.features().naked_functions_rustic_abi() {
@@ -785,23 +797,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Debugging aid for the `object_lifetime_default` query.
-    fn check_dump_object_lifetime_defaults(&self, hir_id: HirId) {
-        let tcx = self.tcx;
-        let Some(owner_id) = hir_id.as_owner() else { return };
-        for param in &tcx.generics_of(owner_id.def_id).own_params {
-            let ty::GenericParamDefKind::Type { .. } = param.kind else { continue };
-            let default = tcx.object_lifetime_default(param.def_id);
-            let repr = match default {
-                ObjectLifetimeDefault::Empty => "Empty".to_owned(),
-                ObjectLifetimeDefault::Static => "'static".to_owned(),
-                ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
-                ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
-            };
-            tcx.dcx().span_err(tcx.def_span(param.def_id), repr);
-        }
-    }
-
     /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid.
     fn check_non_exhaustive(
         &self,
@@ -816,7 +811,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     kind: hir::ItemKind::Struct(_, _, hir::VariantData::Struct { fields, .. }),
                     ..
                 } = item.unwrap()
-                    && !fields.is_empty()
                     && fields.iter().any(|f| f.default.is_some())
                 {
                     self.dcx().emit_err(diagnostics::NonExhaustiveWithDefaultFieldValues {
@@ -831,7 +825,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     fn check_doc_alias_value(&self, span: Span, hir_id: HirId, target: Target, alias: Symbol) {
         if let Some(location) = match target {
-            Target::AssocTy => {
+            Target::AssocTy(_) => {
                 if let DefKind::Impl { .. } =
                     self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
                 {
@@ -840,7 +834,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     None
                 }
             }
-            Target::AssocConst => {
+            Target::AssocConst(_) => {
                 let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
                 let containing_item = self.tcx.hir_expect_item(parent_def_id);
                 // We can't link to trait impl's consts.
@@ -1225,18 +1219,47 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ReprAttr::ReprC => {
                     is_c = true;
                 }
-                ReprAttr::ReprAlign(..) => {}
-                ReprAttr::ReprPacked(_) => {}
+                ReprAttr::ReprAlign(..) => (),
+                ReprAttr::ReprPacked(..) => (),
                 ReprAttr::ReprSimd => {
                     is_simd = true;
                 }
                 ReprAttr::ReprTransparent => {
                     is_transparent = true;
                 }
-                ReprAttr::ReprInt(_) => {
+                ReprAttr::ReprInt(..) => {
                     int_reprs += 1;
                 }
             };
+        }
+
+        if !reprs.is_empty() {
+            let sorted_reprs = {
+                let mut to_sort = reprs.to_owned();
+                to_sort.sort_unstable();
+                to_sort
+            };
+
+            // To collect all duplicates, get subslices where all of the elements of the subslice
+            // are equal, then filter out all those whose length is not 1. We could return warnings
+            // for each of them, but that's annoyingly excessive. So we instead collect all spans in
+            // one big Vec.
+            let spans: Vec<Span> = sorted_reprs
+                .chunk_by(|(a, _), (b, _)| a == b)
+                .map(ToOwned::to_owned)
+                .filter(|slice| slice.len() != 1)
+                .flatten()
+                .map(|(_, span)| span)
+                .collect();
+
+            if !spans.is_empty() {
+                self.tcx.emit_node_span_lint(
+                    REPEATED_REPRS,
+                    hir_id,
+                    spans,
+                    diagnostics::RepeatedRepr,
+                );
+            }
         }
 
         // Just point at all repr hints if there are any incompatibilities.
@@ -1296,23 +1319,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         .dcx()
                         .emit_err(diagnostics::RustcAllowConstFnUnstable { attr_span, span });
                 }
-            }
-            _ => {}
-        }
-    }
-
-    fn check_deprecated(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        match target {
-            Target::AssocConst | Target::Method(..) | Target::AssocTy
-                if self.tcx.def_kind(self.tcx.local_parent(hir_id.owner.def_id))
-                    == DefKind::Impl { of_trait: true } =>
-            {
-                self.tcx.emit_node_span_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr_span,
-                    diagnostics::DeprecatedAnnotationHasNoEffect { span: attr_span },
-                );
             }
             _ => {}
         }
@@ -1587,7 +1593,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             };
 
             self.tcx.emit_node_span_lint(
-                lint::builtin::UNUSED_ATTRIBUTES,
+                UNUSED_ATTRIBUTES,
                 hir_id,
                 no_mangle_span,
                 diagnostics::MixedExportNameAndNoMangle {

@@ -3,8 +3,8 @@ use rustc_ast::{self as ast, ExprKind, FnRetTy, ForLoop, HasAttrs as _, StmtKind
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
+use rustc_lint_defs::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_middle::ty::{self, adjustment};
-use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition::Edition2015;
 use rustc_span::{BytePos, Span, kw, sym};
 
@@ -817,8 +817,8 @@ impl EarlyLintPass for UnusedParens {
                     self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
                 }
             }
-            // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
-            Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => {
+            // Avoid linting on `i @ (p0 | .. | pn)`, #64106.
+            Ident(.., Some(p)) | Deref(p) | Guard(p, _) => {
                 self.check_unused_parens_pat(cx, p, true, false, keep_space)
             }
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.

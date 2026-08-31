@@ -11,12 +11,11 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Body, Expr, ExprKind, Mutability, Path, QPath};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt as _;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty, Unnormalized,
+    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionClause, Ty, Unnormalized,
 };
-use rustc_session::impl_lint_pass;
 use rustc_span::SyntaxContext;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
@@ -185,7 +184,7 @@ fn needless_borrow_count<'tcx>(
         .instantiate_identity()
         .skip_norm_wip()
         .skip_binder();
-    let clauses = cx.tcx.param_env(fn_id).caller_bounds();
+    let clauses = cx.tcx.param_env(fn_id).caller_bounds().collect::<Vec<_>>();
     let projection_predicates = clauses
         .iter()
         .filter_map(|clause| {
@@ -272,7 +271,7 @@ fn needless_borrow_count<'tcx>(
             return false;
         }
 
-        clauses.iter().all(|clause| {
+        clauses.iter().all(|&clause| {
             if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
                 && cx
                     .tcx
@@ -328,7 +327,7 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
 fn is_mixed_projection_predicate<'tcx>(
     cx: &LateContext<'tcx>,
     callee_def_id: DefId,
-    projection_predicate: &ProjectionPredicate<'tcx>,
+    projection_predicate: &ProjectionClause<'tcx>,
 ) -> bool {
     let generics = cx.tcx.generics_of(callee_def_id);
     // The predicate requires the projected type to equal a type parameter from the parent context.
@@ -371,7 +370,7 @@ fn referent_used_exactly_once<'tcx>(
         && let [location] = *local_assignments(mir, local).as_slice()
         && let block_data = &mir.basic_blocks[location.block]
         && let Some(statement) = block_data.statements.get(location.statement_index)
-        && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
+        && let StatementKind::Assign((_, Rvalue::Ref(_, _, place))) = statement.kind
         && !place.is_indirect_first_projection()
     {
         let body_owner_local_def_id = cx.tcx.hir_enclosing_body_owner(reference.hir_id);
@@ -402,7 +401,7 @@ fn replace_types<'tcx>(
     new_ty: Ty<'tcx>,
     fn_sig: FnSig<'tcx>,
     arg_index: usize,
-    projection_predicates: &[ProjectionPredicate<'tcx>],
+    projection_predicates: &[ProjectionClause<'tcx>],
     args: &mut [GenericArg<'tcx>],
 ) -> bool {
     let mut replaced = DenseBitSet::new_empty(args.len());

@@ -182,6 +182,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
             }
 
+            PlaceRef { local: _, projection: [ProjectionElem::PhantomDeref] } => {
+                item_msg = String::new();
+                reason = String::new();
+            }
+            PlaceRef { local: _, projection: [_proj_base @ .., ProjectionElem::PhantomDeref] } => {
+                item_msg = String::new();
+                reason = String::new();
+            }
+
             PlaceRef {
                 local: _,
                 projection:
@@ -1228,7 +1237,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 tcx.clauses_of(callee_def_id).instantiate(tcx, generic_args).clauses.iter().any(
                     |clause| {
                         clause.as_trait_clause().is_some_and(|trait_pred| {
-                            trait_pred.polarity() == ty::PredicatePolarity::Positive
+                            trait_pred.polarity() == ty::ClausePolarity::Positive
                                 && tcx.fn_trait_kind_from_def_id(trait_pred.def_id())
                                     == Some(ty::ClosureKind::Fn)
                                 && trait_pred.self_ty().skip_binder().peel_refs()

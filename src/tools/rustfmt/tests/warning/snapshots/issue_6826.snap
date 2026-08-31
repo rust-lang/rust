@@ -1,0 +1,18 @@
+---
+source: src/test/mod.rs
+---
+error[internal]: not formatted because a comment would be lost
+ --> tests/warning/source/issue_6826.rs:2
+  |
+2 |         c.is_ascii_alphanumeric() // 123
+  |
+  = note: set `error_on_unformatted = false` to suppress the warning against comments or string literals
+
+error[internal]: left behind trailing whitespace
+ --> tests/warning/source/issue_6826.rs:3:3:20
+  |
+3 |         || c == '。' 
+  |                     ^
+  |
+
+warning: rustfmt has failed to format. See previous 2 errors.

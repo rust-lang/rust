@@ -135,6 +135,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::atomic_fence
                 | sym::atomic_singlethreadfence
                 | sym::caller_location
+                | sym::offload_get_num_devices
                 | sym::return_address => {}
                 _ => {
                     span_bug!(
@@ -433,8 +434,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     parse_atomic_ordering(fail_ordering),
                     weak,
                 );
-                let val = bx.from_immediate(val);
-                let success = bx.from_immediate(success);
 
                 let mut builder = OperandRefBuilder::new(result_layout);
                 builder.insert_imm(FieldIdx::from_u32(0), val);

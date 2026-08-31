@@ -3,7 +3,7 @@ use std::ops::Range;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::DiagDecorator;
 use rustc_hir::HirId;
-use rustc_lint_defs::Applicability;
+use rustc_lint::Applicability;
 use rustc_resolve::rustdoc::pulldown_cmark::{Event, Options, Parser, Tag};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 

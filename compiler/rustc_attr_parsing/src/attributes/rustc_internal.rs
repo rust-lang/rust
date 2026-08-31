@@ -4,8 +4,8 @@ use rustc_ast::{LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::GenericParamKind;
 use rustc_attr_ir::{
-    BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
-    DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
+    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
+    RustcMirKind,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::AttributeStability;
@@ -397,79 +397,6 @@ impl NoArgsAttributeParser for RustcCaptureAnalysisParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCaptureAnalysis;
 }
 
-pub(crate) struct RustcNeverTypeOptionsParser;
-
-impl SingleAttributeParser for RustcNeverTypeOptionsParser {
-    const PATH: &[Symbol] = &[sym::rustc_never_type_options];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
-    const TEMPLATE: AttributeTemplate = template!(List: &[
-        r#"fallback = "unit", "never", "no""#,
-        r#"diverging_block_default = "unit", "never""#,
-    ]);
-    const STABILITY: AttributeStability = unstable!(
-        rustc_attrs,
-        "`rustc_never_type_options` is used to experiment with never type fallback and work on never type stabilization"
-    );
-
-    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let list = cx.expect_list(args, cx.attr_span)?;
-
-        let mut fallback = None::<Ident>;
-        let mut diverging_block_default = None::<Ident>;
-
-        for arg in list.mixed() {
-            let Some((ident, arg)) = cx.expect_name_value(arg, arg.span(), None) else {
-                continue;
-            };
-
-            let res = match ident.name {
-                sym::fallback => &mut fallback,
-                sym::diverging_block_default => &mut diverging_block_default,
-                _ => {
-                    cx.adcx().expected_specific_argument(
-                        ident.span,
-                        &[sym::fallback, sym::diverging_block_default],
-                    );
-                    continue;
-                }
-            };
-
-            let field = cx.expect_string_literal(arg)?;
-
-            if res.is_some() {
-                cx.adcx().duplicate_key(ident.span, ident.name);
-                continue;
-            }
-
-            *res = Some(Ident { name: field, span: arg.value_span });
-        }
-
-        let fallback = match fallback {
-            None => None,
-            Some(Ident { name: sym::unit, .. }) => Some(DivergingFallbackBehavior::ToUnit),
-            Some(Ident { name: sym::never, .. }) => Some(DivergingFallbackBehavior::ToNever),
-            Some(Ident { name: sym::no, .. }) => Some(DivergingFallbackBehavior::NoFallback),
-            Some(Ident { span, .. }) => {
-                cx.adcx()
-                    .expected_specific_argument_strings(span, &[sym::unit, sym::never, sym::no]);
-                return None;
-            }
-        };
-
-        let diverging_block_default = match diverging_block_default {
-            None => None,
-            Some(Ident { name: sym::unit, .. }) => Some(DivergingBlockBehavior::Unit),
-            Some(Ident { name: sym::never, .. }) => Some(DivergingBlockBehavior::Never),
-            Some(Ident { span, .. }) => {
-                cx.adcx().expected_specific_argument_strings(span, &[sym::unit, sym::no]);
-                return None;
-            }
-        };
-
-        Some(AttributeKind::RustcNeverTypeOptions { fallback, diverging_block_default })
-    }
-}
-
 pub(crate) struct RustcTrivialFieldReadsParser;
 
 impl NoArgsAttributeParser for RustcTrivialFieldReadsParser {
@@ -777,8 +704,12 @@ impl CombineAttributeParser for RustcCleanParser {
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcClean(items);
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
-        Allow(Target::AssocConst),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
         Allow(Target::Const),
         Allow(Target::Enum),
         Allow(Target::Expression),
@@ -870,8 +801,12 @@ impl SingleAttributeParser for RustcIfThisChangedParser {
     const PATH: &[Symbol] = &[sym::rustc_if_this_changed];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
-        Allow(Target::AssocConst),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
         Allow(Target::Const),
         Allow(Target::Enum),
         Allow(Target::Expression),
@@ -928,8 +863,12 @@ impl CombineAttributeParser for RustcThenThisWouldNeedParser {
         |items, _span| AttributeKind::RustcThenThisWouldNeed(items);
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
-        Allow(Target::AssocConst),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
         Allow(Target::Const),
         Allow(Target::Enum),
         Allow(Target::Expression),
@@ -1004,12 +943,16 @@ impl NoArgsAttributeParser for RustcEffectiveVisibilityParser {
         Allow(Target::TraitAlias),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Impl { of_trait: true }),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignTy),
@@ -1031,8 +974,12 @@ impl SingleAttributeParser for RustcDiagnosticItemParser {
         Allow(Target::Enum),
         Allow(Target::MacroDef),
         Allow(Target::TyAlias),
-        Allow(Target::AssocTy),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Fn),
         Allow(Target::Const),
         Allow(Target::Mod),
@@ -1100,23 +1047,6 @@ impl NoArgsAttributeParser for RustcStrictCoherenceParser {
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcStrictCoherence;
-}
-
-pub(crate) struct RustcReservationImplParser;
-
-impl SingleAttributeParser for RustcReservationImplParser {
-    const PATH: &[Symbol] = &[sym::rustc_reservation_impl];
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowList(&[Allow(Target::Impl { of_trait: true })]);
-    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "reservation message");
-    const STABILITY: AttributeStability = unstable!(rustc_attrs);
-
-    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let value_str = cx.expect_string_literal(nv)?;
-
-        Some(AttributeKind::RustcReservationImpl(value_str))
-    }
 }
 
 pub(crate) struct PreludeImportParser;

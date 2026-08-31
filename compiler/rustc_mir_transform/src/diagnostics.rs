@@ -3,10 +3,11 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
     Subdiagnostic, msg,
 };
+use rustc_lint_defs::Lint;
+use rustc_lint_defs::builtin::{ARITHMETIC_OVERFLOW, UNCONDITIONAL_PANIC};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
 
@@ -119,8 +120,8 @@ impl<'a, P: std::fmt::Debug> Diagnostic<'a, ()> for AssertLint<P> {
 impl AssertLintKind {
     pub(crate) fn lint(&self) -> &'static Lint {
         match self {
-            AssertLintKind::ArithmeticOverflow => lint::builtin::ARITHMETIC_OVERFLOW,
-            AssertLintKind::UnconditionalPanic => lint::builtin::UNCONDITIONAL_PANIC,
+            AssertLintKind::ArithmeticOverflow => ARITHMETIC_OVERFLOW,
+            AssertLintKind::UnconditionalPanic => UNCONDITIONAL_PANIC,
         }
     }
 }

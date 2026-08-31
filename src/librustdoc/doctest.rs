@@ -25,11 +25,12 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{Attribute, CRATE_HIR_ID};
 use rustc_interface::interface;
+use rustc_lint as lint;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
-use rustc_session::lint;
+use rustc_session::config::{self, ErrorOutputType, Input};
 use rustc_span::edition::Edition;
 use rustc_span::{FileName, RemapPathScopeComponents, Span};
+use rustc_structures::CrateType;
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::{debug, info};
@@ -547,6 +548,8 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
 /// and everything needed to calculate the compiler's command-line arguments.
 /// The `# ` prefix on boring lines has also been stripped.
 pub(crate) struct RunnableDocTest {
+    /// In a merged test, this is the code for the "bundle" that contains the actual doctests.
+    /// In a standalone test this is just the regular test code.
     full_test_code: String,
     full_test_line_offset: usize,
     test_opts: IndividualTestOptions,
@@ -555,7 +558,9 @@ pub(crate) struct RunnableDocTest {
     line: usize,
     edition: Edition,
     no_run: bool,
-    merged_test_code: Option<String>,
+    /// If `Some`, this is a merged test and the string is the code for the "runner" that contains
+    /// the test harness to invoke the doctests.
+    merged_test_runner_code: Option<String>,
 }
 
 impl RunnableDocTest {
@@ -566,7 +571,7 @@ impl RunnableDocTest {
         self.test_opts.outdir.path().join(format!("doctest_runner_{}.rs", self.edition))
     }
     fn is_multiple_tests(&self) -> bool {
-        self.merged_test_code.is_some()
+        self.merged_test_runner_code.is_some()
     }
 }
 
@@ -705,7 +710,7 @@ fn run_test(
             return (Duration::default(), Err(TestFailure::CompileError));
         }
     };
-    let output = if let Some(merged_test_code) = &doctest.merged_test_code {
+    let output = if let Some(merged_test_runner_code) = &doctest.merged_test_runner_code {
         // compile-fail tests never get merged, so this should always pass
         let status = child.wait().expect("Failed to wait");
 
@@ -750,7 +755,7 @@ fn run_test(
         extern_path.push(&output_bundle_file);
         runner_compiler.arg(extern_path);
         runner_compiler.arg(&runner_input_file);
-        if std::fs::write(&runner_input_file, merged_test_code).is_err() {
+        if std::fs::write(&runner_input_file, merged_test_runner_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
             return (instant.elapsed(), Err(TestFailure::CompileError));
@@ -1179,7 +1184,7 @@ fn doctest_run_fn(
         line: scraped_test.line,
         edition: scraped_test.edition(&rustdoc_options),
         no_run: scraped_test.no_run(&rustdoc_options),
-        merged_test_code: None,
+        merged_test_runner_code: None,
     };
     let (_, res) =
         run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);

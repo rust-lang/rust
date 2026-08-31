@@ -2,11 +2,11 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
@@ -35,6 +35,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
+use rustc_lint_defs::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
@@ -47,7 +48,6 @@ use rustc_mir_dataflow::move_paths::{
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
-use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_trait_selection::traits::query::type_op::{QueryTypeOp, TypeOp, TypeOpOutput};
 use smallvec::SmallVec;
@@ -2024,7 +2024,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Downcast(_, _)
-                | ProjectionElem::UnwrapUnsafeBinder(_) => (),
+                | ProjectionElem::UnwrapUnsafeBinder(_)
+                | ProjectionElem::PhantomDeref => (),
             }
 
             place_ty = place_ty.projection_ty(tcx, elem);
@@ -2272,6 +2273,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     // (base initialized; no need to
                     // recur further)
                     break;
+                }
+
+                ProjectionElem::PhantomDeref => {
+                    panic!("we don't allow assignments to PhantomDeref, location {location:?}");
                 }
 
                 ProjectionElem::Subslice { .. } => {
@@ -2643,6 +2648,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             // Deref should only be for reference, pointers or boxes
                             _ => bug!("Deref of unexpected type: {:?}", base_ty),
                         }
+                    }
+                    ProjectionElem::PhantomDeref => {
+                        bug!("encountered PhantomDeref in is_mutable")
                     }
                     // Check as the inner reference type if it is a field projection
                     // from the `&pin` pattern

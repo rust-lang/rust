@@ -10,8 +10,9 @@
 //! defined directly on the `f128` type.
 
 #![unstable(feature = "f128", issue = "116909")]
+#![expect(clippy::approx_constant, reason = "this module defines f128 constants")]
 
-use crate::convert::FloatToInt;
+use crate::convert::{FloatToFloat, FloatToInt};
 use crate::num::FpCategory;
 use crate::panic::const_assert;
 use crate::{intrinsics, mem};
@@ -1028,6 +1029,100 @@ impl f128 {
         unsafe { FloatToInt::<Int>::to_int_unchecked(self) }
     }
 
+    /// Converts to the target float type, rounding as defined in IEEE 754.
+    ///
+    /// This is equivalent to `self as Flt`. Narrowing to a smaller type can
+    /// produce an infinity.
+    ///
+    /// ```
+    /// #![feature(float_conversions, f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    ///
+    /// let x = 1.5_f128;
+    /// assert_eq!(x.cast::<f64>(), 1.5_f64);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    pub fn cast<Flt>(self) -> Flt
+    where
+        Self: FloatToFloat<Flt>,
+    {
+        FloatToFloat::<Flt>::cast(self)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type, saturating
+    /// at the type's boundaries and mapping `NaN` to zero.
+    ///
+    /// This is equivalent to `self as Int`.
+    ///
+    /// ```
+    /// #![feature(float_conversions, f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    ///
+    /// assert_eq!(4.6_f128.to_int_saturating::<u8>(), 4);
+    /// assert_eq!(f128::NAN.to_int_saturating::<u8>(), 0);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    pub fn to_int_saturating<Int>(self) -> Int
+    where
+        Self: FloatToInt<Int>,
+    {
+        FloatToInt::<Int>::to_int_saturating(self)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type, returning
+    /// `None` if the value is `NaN`, infinite, or does not fit in the target type.
+    ///
+    /// ```
+    /// #![feature(float_conversions, f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    ///
+    /// assert_eq!(4.6_f128.to_int_checked::<u8>(), Some(4));
+    /// assert_eq!(f128::NAN.to_int_checked::<u8>(), None);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    pub fn to_int_checked<Int>(self) -> Option<Int>
+    where
+        Self: FloatToInt<Int>,
+    {
+        FloatToInt::<Int>::to_int_checked(self)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type.
+    ///
+    /// This is equivalent to `self.to_int_checked().unwrap()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is `NaN`, infinite, or does not fit in the target type.
+    ///
+    /// ```
+    /// #![feature(float_conversions, f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    ///
+    /// assert_eq!(4.6_f128.to_int_strict::<u8>(), 4);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    #[track_caller]
+    pub fn to_int_strict<Int>(self) -> Int
+    where
+        Self: FloatToInt<Int>,
+    {
+        self.to_int_checked::<Int>()
+            .expect("the value cannot be represented in the target integer type")
+    }
+
     /// Raw transmutation to `u128`.
     ///
     /// This is currently identical to `transmute::<f128, u128>(self)` on all platforms.
@@ -1388,7 +1483,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(target_has_reliable_f128)] {
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert!((-3.0f128).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f128).clamp(-2.0, 1.0) == 0.0);
@@ -1405,6 +1500,7 @@ impl f128 {
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
     pub const fn clamp(mut self, min: f128, max: f128) -> f128 {
         const_assert!(
             min <= max,
@@ -1449,10 +1545,48 @@ impl f128 {
     #[inline]
     #[unstable(feature = "clamp_magnitude", issue = "148519")]
     #[must_use = "this returns the clamped value and does not modify the original"]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
     pub fn clamp_magnitude(self, limit: f128) -> f128 {
-        assert!(limit >= 0.0, "limit must be non-negative");
+        assert!(limit >= 0.0, "limit must be non-negative and not NaN");
         let limit = limit.abs(); // Canonicalises -0.0 to 0.0
         self.clamp(-limit, limit)
+    }
+
+    /// Restrict a value to a certain range, unless it is NaN.
+    ///
+    /// This is largely equal to `max`, `min`, or `clamp`, depending on whether the range is
+    /// `min..`, `..=max`, or `min..=max`, respectively. However, unlike `max` and `min`, it will
+    /// panic if any bound is NaN.
+    ///
+    /// Note that this function returns NaN if the initial value was NaN as
+    /// well.
+    ///
+    /// Exclusive ranges are not permitted.
+    ///
+    /// # Panics
+    ///
+    /// Panics on `min..=max` if `min > max`, or if any bound is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128, clamp_to)]
+    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// assert_eq!((-3.0f128).clamp_to(-2.0..=1.0), -2.0);
+    /// assert_eq!(0.0f128.clamp_to(-2.0..=1.0), 0.0);
+    /// assert_eq!(2.0f128.clamp_to(..=1.0), 1.0);
+    /// assert_eq!(5.0f128.clamp_to(7.0..), 7.0);
+    /// assert!(f128::NAN.clamp_to(1.0..=2.0).is_nan());
+    /// # }
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "clamp_to", issue = "147781")]
+    pub fn clamp_to<R>(self, range: R) -> Self
+    where
+        R: crate::cmp::ClampBounds<Self>,
+    {
+        range.clamp(self)
     }
 
     /// Computes the absolute value of `self`.

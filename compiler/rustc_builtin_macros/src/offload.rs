@@ -134,9 +134,9 @@ pub(crate) fn expand_kernel(
     // host function
     let mut host_fn = Box::new(ast::Fn {
         defaultness: ast::Defaultness::Implicit,
-        sig: sig.clone(),
+        sig,
         ident,
-        generics: generics.clone(),
+        generics,
         contract: None,
         body: Some(body),
         define_opaque: None,
@@ -144,7 +144,7 @@ pub(crate) fn expand_kernel(
     });
 
     for param in host_fn.sig.decl.inputs.iter_mut() {
-        param.pat = Box::new(ecx.pat_wild(param.pat.span));
+        *param.pat = ecx.pat_wild(param.pat.span);
     }
 
     // inline(never) attr
@@ -176,7 +176,7 @@ pub(crate) fn expand_kernel(
             thin_vec![rustc_offload_kernel, inline_never],
             ast::ItemKind::Fn(host_fn),
         );
-        item.vis = vis.clone();
+        item.vis = vis;
         Annotatable::Item(item)
     };
 

@@ -28,6 +28,7 @@ rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_hashes = { path = "../rustc_hashes" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_llvm = { path = "../rustc_llvm" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
@@ -35,6 +36,7 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_sanitizers = { path = "../rustc_sanitizers" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_structures = { path = "../rustc_structures" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

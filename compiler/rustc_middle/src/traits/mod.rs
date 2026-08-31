@@ -105,7 +105,7 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn derived_cause(
         mut self,
-        parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        parent_trait_pred: ty::PolyTraitClause<'tcx>,
         variant: impl FnOnce(DerivedCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
         /*!
@@ -491,7 +491,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 
     /// Returns the base obligation and the base trait predicate, if any, ignoring
     /// derived obligations.
-    pub fn peel_derives_with_predicate(&self) -> (&Self, Option<ty::PolyTraitPredicate<'tcx>>) {
+    pub fn peel_derives_with_predicate(&self) -> (&Self, Option<ty::PolyTraitClause<'tcx>>) {
         let mut base_cause = self;
         let mut base_trait_pred = None;
         while let Some((parent_code, parent_pred)) = base_cause.parent_with_predicate() {
@@ -504,7 +504,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
         (base_cause, base_trait_pred)
     }
 
-    pub fn parent_with_predicate(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
+    pub fn parent_with_predicate(&self) -> Option<(&Self, Option<ty::PolyTraitClause<'tcx>>)> {
         match self {
             ObligationCauseCode::FunctionArg { parent_code, .. } => Some((parent_code, None)),
             ObligationCauseCode::BuiltinDerived(derived)
@@ -577,7 +577,7 @@ pub struct DerivedCause<'tcx> {
     /// current obligation. Note that only trait obligations lead to
     /// derived obligations, so we just store the trait predicate here
     /// directly.
-    pub parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+    pub parent_trait_pred: ty::PolyTraitClause<'tcx>,
 
     /// The parent trait had this cause.
     pub parent_code: ObligationCauseCodeHandle<'tcx>,
@@ -925,7 +925,8 @@ impl DynCompatibilityViolationSolution {
                 err.span_suggestion(
                     add_self_sugg.1,
                     format!(
-                        "consider turning `{name}` into a method by giving it a `&self` argument"
+                        "consider turning `{name}` into a method by giving it a `&self` \
+                             argument, so that it is accessible through the trait object's vtable"
                     ),
                     add_self_sugg.0,
                     Applicability::MaybeIncorrect,
@@ -933,8 +934,8 @@ impl DynCompatibilityViolationSolution {
                 err.span_suggestion(
                     make_sized_sugg.1,
                     format!(
-                        "alternatively, consider constraining `{name}` so it does not apply to \
-                             trait objects"
+                        "alternatively, consider constraining `{name}` so it is explicitly \
+                             marked as not applying to trait objects"
                     ),
                     make_sized_sugg.0,
                     Applicability::MaybeIncorrect,

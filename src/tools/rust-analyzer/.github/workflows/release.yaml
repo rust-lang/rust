@@ -40,7 +40,6 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             # Use a container with glibc 2.28
-            # Zig is not used because it doesn't work with PGO
             container: quay.io/pypa/manylinux_2_28_x86_64
             code-target: linux-x64
             allocator: system
@@ -200,15 +199,9 @@ jobs:
 
   publish:
     if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
-    name: publish
     runs-on: ubuntu-latest
     needs: ["dist", "dist-x86_64-unknown-linux-musl"]
     steps:
-      - name: Install Nodejs
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
@@ -237,40 +230,9 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: dist-aarch64-apple-darwin
+          pattern: dist-*
           path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-x86_64-apple-darwin
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-x86_64-unknown-linux-gnu
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-x86_64-unknown-linux-musl
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-aarch64-unknown-linux-gnu
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-arm-unknown-linux-gnueabihf
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-x86_64-pc-windows-msvc
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-i686-pc-windows-msvc
-          path: dist
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist-aarch64-pc-windows-msvc
-          path: dist
+          merge-multiple: true
       - run: ls -al ./dist
 
       - name: Publish Release
@@ -280,28 +242,41 @@ jobs:
           name: ${{ env.TAG }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
+  publish-extension:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
+    name: publish-extension (${{ matrix.cmd }})
+    runs-on: ubuntu-latest
+    needs: publish
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cmd: vsce
+            pat: MARKETPLACE_TOKEN
+          - cmd: ovsx
+            pat: OPENVSX_TOKEN
+    steps:
+      - name: Install Nodejs
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
       - run: npm ci
         working-directory: ./editors/code
 
-      - name: Publish Extension (Code Marketplace, release)
-        if: github.ref == 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
+      - name: Publish Extension
+        if: github.repository == 'rust-lang/rust-analyzer'
         working-directory: ./editors/code
-        # token from https://dev.azure.com/rust-analyzer/
-        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
-
-      - name: Publish Extension (OpenVSX, release)
-        if: github.ref == 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
-        working-directory: ./editors/code
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
-        timeout-minutes: 2
-
-      - name: Publish Extension (Code Marketplace, nightly)
-        if: github.ref != 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
-        working-directory: ./editors/code
-        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix --pre-release
-
-      - name: Publish Extension (OpenVSX, nightly)
-        if: github.ref != 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
-        working-directory: ./editors/code
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
+        run: npx ${{ matrix.cmd }} publish --skip-duplicate --pat ${{ secrets[matrix.pat] }} --packagePath ../../dist/rust-analyzer-*.vsix ${{ github.ref != 'refs/heads/release' && '--pre-release' || '' }}
         timeout-minutes: 2

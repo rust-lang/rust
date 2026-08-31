@@ -15,6 +15,7 @@ rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_ir = { path = "../rustc_ast_ir" }
+rustc_attr_ir = { path = "../rustc_attr_ir" }
 rustc_crate_store = { path = "../rustc_crate_store" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
@@ -28,6 +29,7 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_structures = { path = "../rustc_structures" }
 rustc_target = { path = "../rustc_target" }
 rustc_thread_pool = { path = "../rustc_thread_pool" }
 rustc_type_ir = { path = "../rustc_type_ir" }

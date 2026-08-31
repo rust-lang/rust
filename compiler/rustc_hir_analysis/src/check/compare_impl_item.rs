@@ -238,7 +238,7 @@ fn compare_method_clause_entailment<'tcx>(
 
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     // NOTE(-Zhigher-ranked-assumptions): The `hybrid_preds`
     // should be well-formed. However, using them may result in
     // region errors as we currently don't track placeholder
@@ -254,7 +254,7 @@ fn compare_method_clause_entailment<'tcx>(
     //
     // cc trait-system-refactor-initiative/issues/166.
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
-    debug!(caller_bounds=?param_env.caller_bounds());
+    debug!(?param_env);
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
@@ -494,7 +494,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .into_iter()
         .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -2230,7 +2230,7 @@ fn compare_const_clause_entailment<'tcx>(
     );
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
 
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -2380,9 +2380,9 @@ fn compare_type_clause_entailment<'tcx>(
     }
 
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
-    debug!(caller_bounds=?param_env.caller_bounds());
+    debug!(?param_env);
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
@@ -2627,7 +2627,7 @@ fn param_env_with_gat_bounds<'tcx>(
 ) -> ty::ParamEnv<'tcx> {
     let param_env = tcx.param_env(impl_ty.def_id);
     let container_id = impl_ty.container_id(tcx);
-    let mut clauses = param_env.caller_bounds().to_vec();
+    let mut clauses = param_env.caller_bounds().collect::<Vec<_>>();
 
     // for RPITITs, we should install predicates that allow us to project all
     // of the RPITITs associated with the same body. This is because checking
@@ -2726,7 +2726,7 @@ fn param_env_with_gat_bounds<'tcx>(
             }
             _ => clauses.push(
                 ty::Binder::bind_with_vars(
-                    ty::ProjectionPredicate {
+                    ty::ProjectionClause {
                         projection_term: ty::AliasTerm::new_from_def_id(
                             tcx,
                             trait_ty.def_id,
@@ -2741,7 +2741,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
     }
 
-    ty::ParamEnv::new(tcx.mk_clauses(&clauses))
+    ty::ParamEnv::new(tcx, clauses)
 }
 
 /// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,

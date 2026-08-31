@@ -104,7 +104,7 @@ lsp-server = { version = "0.7.9" }
 anyhow = "1.0.98"
 arrayvec = "0.7.6"
 bitflags = "2.9.1"
-cargo_metadata = "0.23.0"
+cargo_metadata = "0.23.1"
 camino = "1.2.2"
 crossbeam-channel = "0.5.15"
 dissimilar = "1.0.10"

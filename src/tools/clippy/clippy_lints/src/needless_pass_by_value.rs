@@ -13,10 +13,9 @@ use rustc_hir::{
     PatKind, QPath, TyKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt as _};
-use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, Symbol};
@@ -121,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
         let meta_sized_trait = need!(cx.tcx.lang_items().meta_sized_trait());
 
-        let preds = traits::elaborate(cx.tcx, cx.param_env.caller_bounds().iter())
+        let preds = traits::elaborate(cx.tcx, cx.param_env.caller_bounds())
             .filter(|c| !c.is_global())
             .filter_map(|clause| {
                 // Note that we do not want to deal with qualified clauses here.

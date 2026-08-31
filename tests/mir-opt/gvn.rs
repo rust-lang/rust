@@ -949,7 +949,7 @@ fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
 
 // CHECK: fn aggregate_struct_then_transmute
 unsafe fn aggregate_struct_then_transmute(id: u16, thin: *const u8) {
-    // CHECK: [[PAT:_[0-9]+]] = copy _1 as (u16) is 0..=55554 (Transmute);
+    // CHECK: [[PAT:_[0-9]+]] = copy _1 as pattern_type!(u16 is 0..=55554) (Transmute);
     // CHECK: [[TEMP:_[0-9]+]] = copy [[PAT]] as u16 (Transmute);
     // CHECK: opaque::<u16>(move [[TEMP]])
     let a = MyId(std::intrinsics::transmute(id));

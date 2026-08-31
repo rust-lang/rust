@@ -3,11 +3,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::Mode;
 use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{
-    ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
-    std_crates_for_make_run,
+    ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, std_cargo, std_crates_for_make_run,
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
@@ -20,6 +18,7 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
+use crate::core::session::Mode;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::helpers::t;
 
@@ -251,6 +250,7 @@ impl Step for PrepareRustcRmetaSysroot {
 
         // Copy the generated rmeta artifacts to a separate directory
         let dir = builder
+            .config
             .out
             .join(build_compiler.host)
             .join(format!("stage{}-rustc-rmeta-artifacts", build_compiler.stage + 1));
@@ -289,6 +289,7 @@ impl Step for PrepareStdRmetaSysroot {
 
         // Copy the generated rmeta artifacts to a separate directory
         let dir = builder
+            .config
             .out
             .join(self.build_compiler.host)
             .join(format!("stage{}-std-rmeta-artifacts", self.build_compiler.stage));
@@ -582,7 +583,6 @@ impl CommandLineStep for CraneliftCodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, target);
         self.build_compiler.configure_cargo(&mut cargo);
 
         let _guard = builder.msg(
@@ -647,7 +647,7 @@ impl CommandLineStep for GccCodegenBackend {
 
     fn run(self, builder: &Builder<'_>) {
         // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
-        if builder.build.config.vendor {
+        if builder.sess.config.vendor {
             println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
             return;
         }
@@ -665,7 +665,6 @@ impl CommandLineStep for GccCodegenBackend {
         );
 
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, target);
         self.build_compiler.configure_cargo(&mut cargo);
 
         let _guard =

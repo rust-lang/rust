@@ -34,7 +34,7 @@ error: layout_of(NonZero<u32>) = Layout {
 LL | type X = std::num::NonZeroU32;
    | ^^^^^^
 
-error: layout_of((u32) is 1..) = Layout {
+error: layout_of(pattern_type!(u32 is 1..)) = Layout {
            size: Size(4 bytes),
            align: AbiAlign {
                abi: Align(4 bytes),
@@ -70,7 +70,7 @@ error: layout_of((u32) is 1..) = Layout {
 LL | type Y = pattern_type!(u32 is 1..);
    | ^^^^^^
 
-error: layout_of(Option<(u32) is 1..>) = Layout {
+error: layout_of(Option<pattern_type!(u32 is 1..)>) = Layout {
            size: Size(4 bytes),
            align: AbiAlign {
                abi: Align(4 bytes),
@@ -270,7 +270,7 @@ error: the type has an unknown layout
 LL | type WRAP2 = pattern_type!(u32 is 5..2);
    | ^^^^^^^^^^
 
-error: layout_of((i8) is -10..=10) = Layout {
+error: layout_of(pattern_type!(i8 is -10..=10)) = Layout {
            size: Size(1 bytes),
            align: AbiAlign {
                abi: Align(1 bytes),
@@ -306,7 +306,7 @@ error: layout_of((i8) is -10..=10) = Layout {
 LL | type SIGN = pattern_type!(i8 is -10..=10);
    | ^^^^^^^^^
 
-error: layout_of((i8) is i8::MIN..=0) = Layout {
+error: layout_of(pattern_type!(i8 is i8::MIN..=0)) = Layout {
            size: Size(1 bytes),
            align: AbiAlign {
                abi: Align(1 bytes),

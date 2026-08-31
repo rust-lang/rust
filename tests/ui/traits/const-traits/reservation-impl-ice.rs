@@ -1,5 +1,5 @@
 //@ compile-flags: -Znext-solver
-#![feature(const_convert, never_type, const_trait_impl)]
+#![feature(const_convert, const_trait_impl)]
 
 const fn impls_from<T: [const] From<!>>() {}
 

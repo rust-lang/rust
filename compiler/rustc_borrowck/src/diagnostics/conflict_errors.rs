@@ -285,7 +285,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             let place = &self.move_data.move_paths[mpi].place;
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
-            if self.infcx.param_env.caller_bounds().iter().any(|c| {
+            if self.infcx.param_env.caller_bounds().any(|c| {
                 c.as_trait_clause().is_some_and(|pred| {
                     pred.skip_binder().self_ty() == ty && self.infcx.tcx.is_fn_trait(pred.def_id())
                 })
@@ -691,7 +691,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         if !clauses.instantiate_identity(tcx).clauses.iter().any(|clause| {
             clause.as_trait_clause().is_some_and(|tc| {
                 tc.self_ty().skip_binder().is_param(param.index)
-                    && tc.polarity() == ty::PredicatePolarity::Positive
+                    && tc.polarity() == ty::ClausePolarity::Positive
                     && supertrait_def_ids(tcx, tc.def_id())
                         .flat_map(|trait_did| tcx.associated_items(trait_did).in_definition_order())
                         .any(|item| item.is_method())
@@ -4268,6 +4268,13 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                                     place_ty.ty.is_box(),
                                     "Drop of value behind a reference or raw pointer"
                                 );
+                                StorageDeadOrDrop::BoxedStorageDead
+                            }
+                            StorageDeadOrDrop::Destructor(_) => kind,
+                        },
+                        ProjectionElem::PhantomDeref => match kind {
+                            StorageDeadOrDrop::LocalStorageDead
+                            | StorageDeadOrDrop::BoxedStorageDead => {
                                 StorageDeadOrDrop::BoxedStorageDead
                             }
                             StorageDeadOrDrop::Destructor(_) => kind,

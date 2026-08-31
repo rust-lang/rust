@@ -16,6 +16,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::Obligation;
+use rustc_lint_defs::builtin::COHERENCE_LEAK_CHECK;
 use rustc_middle::bug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::query::NoSolution;
@@ -24,7 +25,6 @@ use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
     self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
 };
-use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, sym};
 use specialization_graph::GraphExt;
 use tracing::{debug, instrument};
@@ -203,10 +203,7 @@ fn fulfill_implication<'tcx>(
         debug!(
             "fulfill_implication: for impls on {:?} and {:?}, \
                  could not fulfill: {:?} given {:?}",
-            source_trait_ref,
-            target_trait_ref,
-            errors,
-            param_env.caller_bounds()
+            source_trait_ref, target_trait_ref, errors, param_env
         );
         return Err(NoSolution);
     }
@@ -334,10 +331,7 @@ pub(super) fn specializes(
         debug!(
             "fulfill_implication: for impls on {:?} and {:?}, \
                  could not fulfill: {:?} given {:?}",
-            specializing_impl_trait_ref,
-            parent_impl_trait_ref,
-            errors,
-            param_env.caller_bounds()
+            specializing_impl_trait_ref, parent_impl_trait_ref, errors, param_env
         );
         return false;
     }
@@ -370,10 +364,7 @@ pub(super) fn specializes(
             debug!(
                 "fulfill_implication: for impls on {:?} and {:?}, \
                  could not fulfill: {:?} given {:?}",
-                specializing_impl_trait_ref,
-                parent_impl_trait_ref,
-                errors,
-                param_env.caller_bounds()
+                specializing_impl_trait_ref, parent_impl_trait_ref, errors, param_env
             );
             return false;
         }

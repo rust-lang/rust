@@ -35,7 +35,7 @@ use rustc_middle::mir::interpret::{ConstAllocation, ErrorHandled, GlobalAlloc};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
 use rustc_privacy::DefIdVisitor;
-use rustc_session::config::CrateType;
+use rustc_structures::CrateType;
 use tracing::debug;
 
 /// Determines whether this item is recursive for reachability. See `is_recursively_reachable_local`
@@ -260,7 +260,8 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Struct(..)
                     | hir::ItemKind::Enum(..)
                     | hir::ItemKind::Union(..)
-                    | hir::ItemKind::GlobalAsm { .. } => {}
+                    | hir::ItemKind::GlobalAsm { .. }
+                    | rustc_hir::ItemKind::TestBinderConstraints { .. } => {}
                 }
             }
             Node::TraitItem(trait_method) => {

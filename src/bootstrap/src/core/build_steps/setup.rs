@@ -173,7 +173,7 @@ impl CommandLineStep for Profile {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        setup(&builder.build.config, self);
+        setup(&builder.sess.config, self);
     }
 }
 
@@ -375,11 +375,7 @@ fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
 
     // Take care not to overwrite the file
     let result = File::options().append(true).create(true).open(&pathbuf);
-    if result.is_err() {
-        return false;
-    }
-
-    true
+    result.is_ok()
 }
 
 // Used to get the path for `Subcommand::Setup`

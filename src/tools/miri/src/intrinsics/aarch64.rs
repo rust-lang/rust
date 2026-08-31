@@ -21,7 +21,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `left` input, the second half of the output from the `right` input.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_u8
             "neon.umaxp.v16i8" => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -63,7 +63,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // Used by `vpadd_{s8, u8, s16, u16, s32, u32}`.
             name if name.starts_with("neon.addp.") => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -107,7 +107,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // Used by `vpaddl_{u8, u16, u32}` and `vpaddlq_{u8, u16, u32}`.
             name if name.starts_with("neon.uaddlp.") => {
-                let [src] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [src] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (src, src_len) = this.project_to_simd(src)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
@@ -150,7 +150,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // https://developer.arm.com/architectures/instruction-sets/intrinsics#f:@navigationhierarchiessimdisa=[Neon]&q=vqdmulh
             name if name.starts_with("neon.sqdmulh.") => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -196,14 +196,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // have either 8 or 16 elements.
                 let (table_segments, indices) = match unprefixed_name {
                     "neon.tbl1.v8i8" | "neon.tbl1.v16i8" => {
-                        let [table, indices] = this.check_shim_sig_unadjusted(link_name, args)?;
+                        let [table, indices] =
+                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                         let (table, len) = this.project_to_simd(table)?;
                         assert_eq!(len, 16);
                         (vec![table], indices)
                     }
                     "neon.tbl2.v8i8" | "neon.tbl2.v16i8" => {
                         let [table0, table1, indices] =
-                            this.check_shim_sig_unadjusted(link_name, args)?;
+                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                         let (table0, len0) = this.project_to_simd(table0)?;
                         let (table1, len1) = this.project_to_simd(table1)?;
                         assert_eq!([len0, len1], [16; 2]);
@@ -211,7 +212,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     "neon.tbl3.v8i8" | "neon.tbl3.v16i8" => {
                         let [table0, table1, table2, indices] =
-                            this.check_shim_sig_unadjusted(link_name, args)?;
+                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                         let (table0, len0) = this.project_to_simd(table0)?;
                         let (table1, len1) = this.project_to_simd(table1)?;
                         let (table2, len2) = this.project_to_simd(table2)?;
@@ -220,7 +221,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     "neon.tbl4.v8i8" | "neon.tbl4.v16i8" => {
                         let [table0, table1, table2, table3, indices] =
-                            this.check_shim_sig_unadjusted(link_name, args)?;
+                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                         let (table0, len0) = this.project_to_simd(table0)?;
                         let (table1, len1) = this.project_to_simd(table1)?;
                         let (table2, len2) = this.project_to_simd(table2)?;
@@ -275,7 +276,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let [crc, data] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [crc, data] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let crc = this.read_scalar(crc)?;
                 let data = this.read_scalar(data)?;
 
@@ -303,7 +304,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Also see <https://gcc.gnu.org/pipermail/gcc-patches/2023-February/612088.html>.
                 this.expect_target_feature_for_intrinsic(link_name, "aes")?;
 
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let left = this.read_scalar(left)?.to_u64()?;
                 let right = this.read_scalar(right)?.to_u64()?;
 
@@ -319,7 +320,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "crypto.sha256h" => {
                 this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
 
-                let [abcd, efgh, wk] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [abcd, efgh, wk] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (abcd, abcd_len) = this.project_to_simd(abcd)?;
                 let (efgh, efgh_len) = this.project_to_simd(efgh)?;
@@ -344,7 +345,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "crypto.sha256h2" => {
                 this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
 
-                let [efgh, abcd, wk] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [efgh, abcd, wk] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (efgh, efgh_len) = this.project_to_simd(efgh)?;
                 let (abcd, abcd_len) = this.project_to_simd(abcd)?;
@@ -369,7 +370,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "crypto.sha256su0" => {
                 this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
 
-                let [a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (a, a_len) = this.project_to_simd(a)?;
                 let (b, b_len) = this.project_to_simd(b)?;
@@ -391,7 +392,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "crypto.sha256su1" => {
                 this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
 
-                let [a, b, c] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [a, b, c] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (a, a_len) = this.project_to_simd(a)?;
                 let (b, b_len) = this.project_to_simd(b)?;

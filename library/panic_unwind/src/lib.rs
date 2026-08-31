@@ -28,8 +28,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use alloc::boxed::Box;
+use alloc::panicking::PanicPayload;
 use core::any::Any;
-use core::panic::PanicPayload;
 
 cfg_select! {
     any(
@@ -68,30 +68,25 @@ cfg_select! {
     }
 }
 
-unsafe extern "C" {
+unsafe extern "Rust" {
     /// Handler in std called when a panic object is dropped outside of
     /// `catch_unwind`.
     #[rustc_std_internal_symbol]
-    fn __rust_drop_panic() -> !;
+    safe fn __rust_drop_panic() -> !;
 
     /// Handler in std called when a foreign exception is caught.
     #[rustc_std_internal_symbol]
-    fn __rust_foreign_exception() -> !;
+    safe fn __rust_foreign_exception() -> !;
 }
 
 #[rustc_std_internal_symbol]
-#[allow(improper_ctypes_definitions)]
-pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static) {
-    unsafe { Box::into_raw(imp::cleanup(payload)) }
+pub unsafe fn __rust_panic_cleanup(payload: *mut u8) -> Box<dyn Any + Send + 'static> {
+    unsafe { imp::cleanup(payload) }
 }
 
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
 #[rustc_std_internal_symbol]
-pub unsafe fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32 {
-    unsafe {
-        let payload = Box::from_raw(payload.take_box());
-
-        imp::panic(payload)
-    }
+pub fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32 {
+    imp::panic(payload)
 }

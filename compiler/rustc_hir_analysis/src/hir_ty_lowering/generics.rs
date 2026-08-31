@@ -7,10 +7,10 @@ use rustc_errors::{
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
+use rustc_lint_defs::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
-use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::kw;
 use rustc_trait_selection::traits;
 use smallvec::SmallVec;

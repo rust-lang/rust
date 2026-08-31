@@ -122,6 +122,7 @@ struct ConfigBuilder {
     rustc_debug_assertions: bool,
     std_debug_assertions: bool,
     std_remap_debuginfo: bool,
+    disable_minification: bool,
 }
 
 impl ConfigBuilder {
@@ -200,6 +201,11 @@ impl ConfigBuilder {
         self
     }
 
+    fn disable_minification(&mut self, is_enabled: bool) -> &mut Self {
+        self.disable_minification = is_enabled;
+        self
+    }
+
     fn build(&mut self) -> Config {
         let args = &[
             "compiletest",
@@ -266,6 +272,9 @@ impl ConfigBuilder {
         if self.std_remap_debuginfo {
             args.push("--with-std-remap-debuginfo".to_owned());
         }
+        if self.disable_minification {
+            args.push("--disable-minification".to_owned());
+        }
 
         args.push("--rustc-path".to_string());
         args.push(std::env::var("TEST_RUSTC").expect("must be configured by bootstrap"));
@@ -307,6 +316,15 @@ fn should_fail() {
     assert_eq!(d.should_fail, ShouldFail::No);
     let d = make_test_description(&config, tn, p, p, "//@ should-fail", None, None);
     assert_eq!(d.should_fail, ShouldFail::Yes);
+}
+
+#[test]
+fn disable_minification_flag() {
+    let config: Config = cfg().build();
+    assert!(!config.disable_minification);
+
+    let config: Config = cfg().disable_minification(true).build();
+    assert!(config.disable_minification);
 }
 
 #[test]

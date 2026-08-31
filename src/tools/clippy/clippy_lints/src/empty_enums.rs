@@ -1,16 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::span_contains_cfg;
 use rustc_hir::{Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for `enum`s with no variants, which therefore are uninhabited types
     /// (cannot be instantiated).
-    ///
-    /// As of this writing, the `never_type` is still a nightly-only experimental API.
-    /// Therefore, this lint is only triggered if `#![feature(never_type)]` is enabled.
     ///
     /// ### Why is this bad?
     /// * If you only want a type which can’t be instantiated, you should use [`!`]
@@ -36,8 +32,6 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// #![feature(never_type)]
-    ///
     /// /// Use the `!` type directly...
     /// type CannotExist = !;
     ///
@@ -61,8 +55,6 @@ impl LateLintPass<'_> for EmptyEnums {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Enum(.., def) = item.kind
             && def.variants.is_empty()
-            // Only suggest the `never_type` if the feature is enabled
-            && cx.tcx.features().never_type()
             && !span_contains_cfg(cx, item.span)
         {
             span_lint_and_help(

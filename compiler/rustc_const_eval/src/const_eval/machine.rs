@@ -8,6 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, find_attr};
+use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
@@ -945,15 +946,12 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let hir_id = ecx.machine.best_lint_scope(*ecx.tcx);
                 let is_error = ecx
                     .tcx
-                    .lint_level_spec_at_node(
-                        rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
-                        hir_id,
-                    )
+                    .lint_level_spec_at_node(LONG_RUNNING_CONST_EVAL, hir_id)
                     .level()
                     .is_error();
                 let span = ecx.cur_span();
                 ecx.tcx.emit_node_span_lint(
-                    rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
+                    LONG_RUNNING_CONST_EVAL,
                     hir_id,
                     span,
                     LongRunning { item_span: ecx.tcx.span },

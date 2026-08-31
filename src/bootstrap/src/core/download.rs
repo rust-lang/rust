@@ -108,16 +108,15 @@ enum DownloadSource {
 
 /// Functions that are only ever called once, but named for clarity and to avoid thousand-line functions.
 impl Config {
-    pub(crate) fn download_clippy(&self) -> PathBuf {
+    pub(crate) fn download_clippy(&self, initial_sysroot: &Path) -> PathBuf {
         self.do_if_verbose(|| println!("downloading stage0 clippy artifacts"));
 
         let date = &self.stage0_metadata.compiler.date;
         let version = &self.stage0_metadata.compiler.version;
         let host = self.host_target;
 
-        let clippy_stamp =
-            BuildStamp::new(&self.initial_sysroot).with_prefix("clippy").add_stamp(date);
-        let cargo_clippy = self.initial_sysroot.join("bin").join(exe("cargo-clippy", host));
+        let clippy_stamp = BuildStamp::new(initial_sysroot).with_prefix("clippy").add_stamp(date);
+        let cargo_clippy = initial_sysroot.join("bin").join(exe("cargo-clippy", host));
         if cargo_clippy.exists() && clippy_stamp.is_up_to_date() {
             return cargo_clippy;
         }

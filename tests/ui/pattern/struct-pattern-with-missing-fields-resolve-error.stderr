@@ -13,6 +13,11 @@ LL |     if let Website { url, .. } = website {
    |            ------------------- this pattern doesn't include `title`, which is available in `Website`
 LL |         println!("[{}]({})", title, url);
    |                              ^^^^^ not found in this scope
+   |
+help: include `title` in the pattern
+   |
+LL |     if let Website { url, title, .. } = website {
+   |                           ++++++
 
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/struct-pattern-with-missing-fields-resolve-error.rs:28:20
@@ -20,8 +25,12 @@ error[E0425]: cannot find value `a` in this scope
 LL |     if let Foo::Bar { .. } = x {
    |            --------------- this pattern doesn't include `a`, which is available in `Bar`
 LL |         println!("{a}");
-   |                    ^
+   |                    ^ not found in this scope
    |
+help: include `a` in the pattern
+   |
+LL |     if let Foo::Bar { a, .. } = x {
+   |                       ++
 help: a local variable with a similar name exists
    |
 LL -         println!("{a}");

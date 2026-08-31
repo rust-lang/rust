@@ -586,6 +586,7 @@ pub(super) mod resolve_completely {
                 | InferenceDiagnostic::CannotIndexInto { found: ty, .. }
                 | InferenceDiagnostic::ExpectedFunction { found: ty, .. }
                 | InferenceDiagnostic::ExpectedArrayOrSlicePat { found: ty, .. }
+                | InferenceDiagnostic::UnaryOperatorCannotBeApplied { found: ty, .. }
                 | InferenceDiagnostic::UnresolvedField { receiver: ty, .. }
                 | InferenceDiagnostic::UnresolvedMethodCall { receiver: ty, .. } = diagnostic
                     && ty.as_ref().references_non_lt_error()

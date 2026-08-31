@@ -4,9 +4,8 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Pat, PatKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_middle::ty::Ty;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -56,7 +55,7 @@ fn is_unary_pattern(pat: &Pat<'_>) -> bool {
         | PatKind::Err(_) => false,
         PatKind::Struct(_, a, etc) => etc.is_none() && a.iter().all(|x| is_unary_pattern(x.pat)),
         PatKind::Tuple(a, etc) | PatKind::TupleStruct(_, a, etc) => etc.as_opt_usize().is_none() && array_rec(a),
-        PatKind::Ref(x, _, _) | PatKind::Box(x) | PatKind::Deref(x) | PatKind::Guard(x, _) => is_unary_pattern(x),
+        PatKind::Ref(x, _, _) | PatKind::Deref(x) | PatKind::Guard(x, _) => is_unary_pattern(x),
         PatKind::Expr(_) => true,
     }
 }

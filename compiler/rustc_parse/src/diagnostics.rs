@@ -1119,6 +1119,27 @@ pub(crate) struct ArrayBracketsInsteadOfBracesSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag("attributes are not allowed inside imports")]
+pub(crate) struct AttrInUseTree {
+    #[primary_span]
+    pub attr_span: Span,
+    #[subdiagnostic]
+    pub sub: Option<AttrInUseTreeSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("move the import to its own item", style = "verbose")]
+pub(crate) struct AttrInUseTreeSugg {
+    #[suggestion_part(code = "{code}")]
+    pub use_lo: Span,
+    #[suggestion_part(code = "")]
+    pub attr_span: Span,
+    #[suggestion_part(code = "")]
+    pub tree_span: Span,
+    pub code: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("`match` arm body without braces")]
 pub(crate) struct MatchArmBodyWithoutBraces {
     #[primary_span]
@@ -3729,6 +3750,13 @@ pub(crate) struct AddBoxNew {
 }
 
 #[derive(Diagnostic)]
+#[diag("`box_patterns` has been removed")]
+pub(crate) struct BoxPatternsRemoved {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("return type not allowed with return type notation")]
 pub(crate) struct BadReturnTypeNotationOutput {
     #[primary_span]
@@ -4557,19 +4585,6 @@ pub(crate) struct BreakWithLabelAndLoopSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("prefix `'r` is reserved")]
-pub(crate) struct RawPrefix {
-    #[label("reserved prefix")]
-    pub label: Span,
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("unicode codepoint changing visible direction of text present in comment")]
 #[note(
     "these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen"
@@ -4610,40 +4625,18 @@ pub(crate) struct UnicodeTextFlowSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("prefix `{$prefix}` is unknown")]
-pub(crate) struct ReservedPrefix {
-    #[label("unknown prefix")]
-    pub label: Span,
+#[diag("{$subject} is parsed as a {$kind} in Rust {$edition} and onward")]
+pub(crate) struct ReservedPrefixLint {
+    pub subject: String,
+    pub kind: &'static str,
+    pub edition: Edition,
     #[suggestion(
-        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
+        "consider inserting whitespace here to avoid this",
         code = " ",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
-    pub suggestion: Span,
-
-    pub prefix: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("will be parsed as a guarded string in Rust 2024")]
-pub(crate) struct ReservedStringLint {
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a guarded string in Rust 2024",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("reserved token in Rust 2024")]
-pub(crate) struct ReservedMultihashLint {
-    #[suggestion(
-        "insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024",
-        code = " ",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
+    pub sugg: Span,
 }
 
 #[derive(Subdiagnostic)]

@@ -171,7 +171,6 @@ fn f16_builtin<'gcc, 'tcx>(
         sym::exp2f16 => "exp2f",
         sym::fabs => "fabsf",
         sym::floorf16 => "__builtin_floorf",
-        sym::fmaf16 => "fmaf",
         sym::logf16 => "logf",
         sym::log2f16 => "log2f",
         sym::log10f16 => "log10f",
@@ -249,7 +248,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::expf16
             | sym::exp2f16
             | sym::floorf16
-            | sym::fmaf16
             | sym::logf16
             | sym::log2f16
             | sym::log10f16

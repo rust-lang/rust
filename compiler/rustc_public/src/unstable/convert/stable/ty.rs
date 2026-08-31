@@ -840,16 +840,16 @@ impl<'tcx> Stable<'tcx> for ty::CoercePredicate<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::TraitPredicate<'tcx> {
-    type T = crate::ty::TraitPredicate;
+impl<'tcx> Stable<'tcx> for ty::TraitClause<'tcx> {
+    type T = crate::ty::TraitClause;
 
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::TraitPredicate { trait_ref, polarity } = self;
-        crate::ty::TraitPredicate {
+        let ty::TraitClause { trait_ref, polarity } = self;
+        crate::ty::TraitClause {
             trait_ref: trait_ref.stable(tables, cx),
             polarity: polarity.stable(tables, cx),
         }
@@ -872,16 +872,16 @@ where
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::ProjectionPredicate<'tcx> {
-    type T = crate::ty::ProjectionPredicate;
+impl<'tcx> Stable<'tcx> for ty::ProjectionClause<'tcx> {
+    type T = crate::ty::ProjectionClause;
 
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::ProjectionPredicate { projection_term, term } = self;
-        crate::ty::ProjectionPredicate {
+        let ty::ProjectionClause { projection_term, term } = self;
+        crate::ty::ProjectionClause {
             projection_term: projection_term.stable(tables, cx),
             term: term.kind().stable(tables, cx),
         }
@@ -896,19 +896,18 @@ impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
         match self {
             Positive => crate::ty::ImplPolarity::Positive,
             Negative => crate::ty::ImplPolarity::Negative,
-            Reservation => crate::ty::ImplPolarity::Reservation,
         }
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::PredicatePolarity {
-    type T = crate::ty::PredicatePolarity;
+impl<'tcx> Stable<'tcx> for ty::ClausePolarity {
+    type T = crate::ty::ClausePolarity;
 
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        use rustc_middle::ty::PredicatePolarity::*;
+        use rustc_middle::ty::ClausePolarity::*;
         match self {
-            Positive => crate::ty::PredicatePolarity::Positive,
-            Negative => crate::ty::PredicatePolarity::Negative,
+            Positive => crate::ty::ClausePolarity::Positive,
+            Negative => crate::ty::ClausePolarity::Negative,
         }
     }
 }
@@ -1034,7 +1033,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
             ExternAbi::CmseNonSecureEntry => Abi::CCmseNonSecureEntry,
             ExternAbi::System { unwind } => Abi::System { unwind },
             ExternAbi::RustCall => Abi::RustCall,
-            ExternAbi::Unadjusted => Abi::Unadjusted,
+            ExternAbi::LlvmIntrinsic => Abi::LlvmIntrinsic,
             ExternAbi::RustCold => Abi::RustCold,
             ExternAbi::RustPreserveNone => Abi::RustPreserveNone,
             ExternAbi::RustTail => Abi::RustTail,

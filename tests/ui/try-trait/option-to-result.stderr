@@ -14,7 +14,7 @@ LL | fn test_option() -> Option<i32>{
    | ------------------------------- this function returns an `Option`
 LL |     let a:Result<i32, i32> = Ok(5);
 LL |     a?;
-   |      ^ use `.ok()?` if you want to discard the `Result<Infallible, i32>` error information
+   |      ^ use `.ok()?` if you want to discard the `Result<!, i32>` error information
 
 error: aborting due to 2 previous errors
 

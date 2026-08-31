@@ -10,9 +10,9 @@ use std::ops::ControlFlow;
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::at::ToTrace;
@@ -27,11 +27,10 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt, GenericArgsRef,
-    PolyProjectionPredicate, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
-    TypingMode, Unnormalized, Upcast, elaborate, may_use_unstable_feature,
+    PolyProjectionClause, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode,
+    Unnormalized, Upcast, elaborate, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::AliasBoundKind;
-use rustc_span::Symbol;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -59,7 +58,6 @@ mod confirmation;
 pub enum IntercrateAmbiguityCause<'tcx> {
     DownstreamCrate { trait_ref: ty::TraitRef<'tcx>, self_ty: Option<Ty<'tcx>> },
     UpstreamCrateUpdate { trait_ref: ty::TraitRef<'tcx>, self_ty: Option<Ty<'tcx>> },
-    ReservationImpl { message: Symbol },
 }
 
 impl<'tcx> IntercrateAmbiguityCause<'tcx> {
@@ -94,7 +92,6 @@ impl<'tcx> IntercrateAmbiguityCause<'tcx> {
                     }
                 )
             }
-            IntercrateAmbiguityCause::ReservationImpl { message } => message.to_string(),
         })
     }
 }
@@ -129,7 +126,7 @@ struct TraitObligationStack<'prev, 'tcx> {
 
     /// The trait predicate from `obligation` but "freshened" with the
     /// selection-context's freshener. Used to check for recursion.
-    fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
+    fresh_trait_pred: ty::PolyTraitClause<'tcx>,
 
     /// Starts out equal to `depth` -- if, during evaluation, we
     /// encounter a cycle, then we will set this flag to the minimum
@@ -441,7 +438,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report "`Bar` does
         // not implement `Clone`".
         if candidates.len() == 1 {
-            return self.filter_reservation_impls(candidates.pop().unwrap());
+            return Ok(candidates.pop());
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -488,13 +485,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
             let candidate_preference_mode =
                 CandidatePreferenceMode::compute(self.tcx(), stack.obligation.predicate.def_id());
-            if let Some(candidate) =
-                self.winnow_candidates(has_non_region_infer, candidate_preference_mode, candidates)
-            {
-                self.filter_reservation_impls(candidate)
-            } else {
-                Ok(None)
-            }
+            Ok(self.winnow_candidates(has_non_region_infer, candidate_preference_mode, candidates))
         }
     }
 
@@ -1011,7 +1002,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         if !self.typing_mode().is_coherence()
             && obligation.is_global()
-            && obligation.param_env.caller_bounds().iter().all(|bound| bound.has_param())
+            && obligation.param_env.caller_bounds().all(|bound| bound.has_param())
         {
             // If a param env has no global bounds, global obligations do not
             // depend on its particular value in order to work, so we can clear
@@ -1217,6 +1208,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This suffices to allow chains like `FnMut` implemented in
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
+        //
+        // FIXME(min_generic_const_args): Consider consts as well?
         let unbound_input_types =
             stack.fresh_trait_pred.skip_binder().trait_ref.args.types().any(|ty| ty.is_fresh());
 
@@ -1316,13 +1309,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn check_evaluation_cache(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> Option<EvaluationResult> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         if self.can_use_global_caches(param_env, trait_pred) {
             let key = (infcx.typing_env(param_env), trait_pred);
-            if let Some(res) = tcx.evaluation_cache.get(&key, tcx) {
+            if let Some(res) = tcx.caches.evaluation_cache.get(&key, tcx) {
                 Some(res)
             } else {
                 debug_assert_eq!(infcx.evaluation_cache.get(&(param_env, trait_pred), tcx), None);
@@ -1336,7 +1329,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn insert_evaluation_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         dep_node: DepNodeIndex,
         result: EvaluationResult,
     ) {
@@ -1351,7 +1344,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.can_use_global_caches(param_env, trait_pred) {
             debug!(?trait_pred, ?result, "insert_evaluation_cache global");
             // This may overwrite the cache with the same value
-            tcx.evaluation_cache.insert(
+            tcx.caches.evaluation_cache.insert(
                 (infcx.typing_env(param_env), trait_pred),
                 dep_node,
                 result,
@@ -1415,58 +1408,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self, candidates))]
     fn filter_impls(
         &mut self,
-        candidates: Vec<SelectionCandidate<'tcx>>,
+        mut candidates: Vec<SelectionCandidate<'tcx>>,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Vec<SelectionCandidate<'tcx>> {
         trace!("{candidates:#?}");
         let tcx = self.tcx();
-        let mut result = Vec::with_capacity(candidates.len());
 
-        for candidate in candidates {
-            if let ImplCandidate(def_id) = candidate {
+        candidates.retain(|candidate| {
+            if let &ImplCandidate(def_id) = candidate {
                 match (tcx.impl_polarity(def_id), obligation.polarity()) {
-                    (ty::ImplPolarity::Reservation, _)
-                    | (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
-                    | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {
-                        result.push(candidate);
-                    }
-                    _ => {}
+                    (ty::ImplPolarity::Positive, ty::ClausePolarity::Positive)
+                    | (ty::ImplPolarity::Negative, ty::ClausePolarity::Negative) => true,
+
+                    // remove impl candidates with mismatched polarity to the obligation
+                    _ => false,
                 }
             } else {
-                result.push(candidate);
+                true
             }
-        }
+        });
 
-        trace!("{result:#?}");
-        result
-    }
-
-    /// filter_reservation_impls filter reservation impl for any goal as ambiguous
-    #[instrument(level = "debug", skip(self))]
-    fn filter_reservation_impls(
-        &mut self,
-        candidate: SelectionCandidate<'tcx>,
-    ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        let tcx = self.tcx();
-        // Treat reservation impls as ambiguity.
-        if let ImplCandidate(def_id) = candidate
-            && let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id)
-        {
-            if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                let message = find_attr!(tcx, def_id, RustcReservationImpl(message) => *message);
-                if let Some(message) = message {
-                    debug!(
-                        "filter_reservation_impls: \
-                                 reservation impl ambiguity on {:?}",
-                        def_id
-                    );
-                    intercrate_ambiguity_clauses
-                        .insert(IntercrateAmbiguityCause::ReservationImpl { message });
-                }
-            }
-            return Ok(None);
-        }
-        Ok(Some(candidate))
+        trace!("{candidates:#?}");
+        candidates
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
@@ -1497,7 +1460,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn can_use_global_caches(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        pred: ty::PolyTraitPredicate<'tcx>,
+        pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         // If there are any inference variables in the `ParamEnv`, then we
         // always use a cache local to this particular scope. Otherwise, we
@@ -1545,14 +1508,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn check_candidate_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        cache_fresh_trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         let pred = cache_fresh_trait_pred.skip_binder();
 
         if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
-            if let Some(res) = tcx.selection_cache.get(&(infcx.typing_env(param_env), pred), tcx) {
+            if let Some(res) =
+                tcx.caches.selection_cache.get(&(infcx.typing_env(param_env), pred), tcx)
+            {
                 return Some(res);
             } else if cfg!(debug_assertions) {
                 match infcx.selection_cache.get(&(param_env, pred), tcx) {
@@ -1598,7 +1563,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn insert_candidate_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        cache_fresh_trait_pred: ty::PolyTraitClause<'tcx>,
         dep_node: DepNodeIndex,
         candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) {
@@ -1619,7 +1584,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug_assert!(!candidate.has_infer());
 
                 // This may overwrite the cache with the same value.
-                tcx.selection_cache.insert(
+                tcx.caches.selection_cache.insert(
                     (infcx.typing_env(param_env), pred),
                     dep_node,
                     candidate,
@@ -1762,7 +1727,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub(super) fn match_projection_projections(
         &mut self,
         obligation: &ProjectionTermObligation<'tcx>,
-        env_predicate: PolyProjectionPredicate<'tcx>,
+        env_predicate: PolyProjectionClause<'tcx>,
         potentially_unnormalized_candidates: bool,
     ) -> ProjectionMatchesProjection {
         let def_id = obligation.predicate.expect_projection_def_id();
@@ -1928,7 +1893,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         //
         // Our handling of where-bounds is generally fairly messy but necessary for backwards
         // compatibility, see #50825 for why we need to handle global where-bounds like this.
-        let is_global = |c: ty::PolyTraitPredicate<'tcx>| c.is_global() && !c.has_bound_vars();
+        let is_global = |c: ty::PolyTraitClause<'tcx>| c.is_global() && !c.has_bound_vars();
         let param_candidates = candidates
             .iter()
             .filter_map(|c| if let ParamCandidate(p) = c.candidate { Some(p) } else { None });
@@ -2556,7 +2521,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         nested_obligations.extend(obligations);
 
         match self.typing_mode() {
-            TypingMode::Coherence => {}
             TypingMode::Reflection
                 if !self.tcx().impl_is_fully_generic_for_reflection(impl_def_id) =>
             {
@@ -2564,18 +2528,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 return Err(());
             }
 
-            TypingMode::Typeck { .. }
+            TypingMode::Coherence
+            | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::Codegen
             | TypingMode::ErasedNotCoherence(_)
             | TypingMode::Reflection
-            | TypingMode::PostAnalysis => {
-                if impl_trait_header.polarity == ty::ImplPolarity::Reservation {
-                    debug!("reservation impls only apply in intercrate mode");
-                    return Err(());
-                }
-            }
+            | TypingMode::PostAnalysis => {}
         }
 
         Ok(Normalized { value: impl_args, obligations: nested_obligations })
@@ -2778,8 +2738,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
     fn match_fresh_trait_preds(
         &self,
-        previous: ty::PolyTraitPredicate<'tcx>,
-        current: ty::PolyTraitPredicate<'tcx>,
+        previous: ty::PolyTraitClause<'tcx>,
+        current: ty::PolyTraitClause<'tcx>,
     ) -> bool {
         let mut matcher = _match::MatchAgainstFreshVars::new(self.tcx());
         matcher.relate(previous, current).is_ok()
@@ -2837,7 +2797,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,              // of impl or trait
         args: GenericArgsRef<'tcx>, // for impl or trait
-        parent_trait_pred: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
+        parent_trait_pred: ty::Binder<'tcx, ty::TraitClause<'tcx>>,
     ) -> PredicateObligations<'tcx> {
         let tcx = self.tcx();
 
@@ -3031,7 +2991,7 @@ struct ProvisionalEvaluationCache<'tcx> {
     /// - then we determine that `E` is in error -- we will then clear
     ///   all cache values whose DFN is >= 4 -- in this case, that
     ///   means the cached value for `F`.
-    map: RefCell<FxIndexMap<ty::PolyTraitPredicate<'tcx>, ProvisionalEvaluation>>,
+    map: RefCell<FxIndexMap<ty::PolyTraitClause<'tcx>, ProvisionalEvaluation>>,
 
     /// The stack of terms that we assume to be well-formed because a `WF(term)` predicate
     /// is on the stack above (and because of wellformedness is coinductive).
@@ -3072,7 +3032,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     /// `reached_depth` (from the returned value).
     fn get_provisional(
         &self,
-        fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        fresh_trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> Option<ProvisionalEvaluation> {
         debug!(
             ?fresh_trait_pred,
@@ -3090,7 +3050,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
         &self,
         from_dfn: usize,
         reached_depth: usize,
-        fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        fresh_trait_pred: ty::PolyTraitClause<'tcx>,
         result: EvaluationResult,
     ) {
         debug!(?from_dfn, ?fresh_trait_pred, ?result, "insert_provisional");

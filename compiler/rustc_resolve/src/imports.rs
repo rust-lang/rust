@@ -10,15 +10,15 @@ use rustc_errors::{Applicability, BufferedEarlyLint, Diagnostic};
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
+use rustc_lint_defs::LintId;
+use rustc_lint_defs::builtin::{
+    AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
+    PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
+};
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
 use rustc_session::diagnostics::feature_err;
-use rustc_session::lint::LintId;
-use rustc_session::lint::builtin::{
-    AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
-    PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
-};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
@@ -373,6 +373,7 @@ pub(crate) struct UnresolvedImportError {
     pub(crate) label: Option<String>,
     pub(crate) note: Option<String>,
     pub(crate) suggestion: Option<Suggestion>,
+    pub(crate) help: Option<String>,
     pub(crate) candidates: Option<Vec<ImportSuggestion>>,
     pub(crate) segment: Option<Ident>,
     /// comes from `PathRes::Failed { module }`
@@ -994,6 +995,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     label: None,
                     note: None,
                     suggestion: None,
+                    help: None,
                     candidates: None,
                     segment: None,
                     module: None,
@@ -1237,6 +1239,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 segment,
                 label,
                 suggestion,
+                help,
                 module,
                 error_implied_by_parse_error: _,
                 message,
@@ -1252,6 +1255,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             segment: segment.name,
                             label,
                             suggestion,
+                            help,
                             module,
                             message,
                         },
@@ -1264,6 +1268,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 span,
                 label,
                 suggestion,
+                help,
                 module,
                 segment,
                 note,
@@ -1290,6 +1295,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 String::from("a similar path exists"),
                                 Applicability::MaybeIncorrect,
                             )),
+                            help: None,
                             candidates: None,
                             segment: Some(segment),
                             module,
@@ -1300,6 +1306,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             label: Some(label),
                             note,
                             suggestion,
+                            help,
                             candidates: None,
                             segment: Some(segment),
                             module,
@@ -1341,6 +1348,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         label: Some(String::from("cannot glob-import a module into itself")),
                         note: None,
                         suggestion: None,
+                        help: None,
                         candidates: None,
                         segment: None,
                         module: None,
@@ -1579,6 +1587,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     label: Some(label),
                     note,
                     suggestion,
+                    help: None,
                     candidates: if !parent_suggestion.is_empty() {
                         Some(parent_suggestion)
                     } else {

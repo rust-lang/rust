@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(macro_metavar_expr)]
 #![feature(rustc_private)]
 #![feature(unwrap_infallible)]
@@ -134,12 +134,12 @@ macro_rules! extract_msrv_attr {
     () => {
         fn check_attributes(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.check_attributes(sess, attrs);
+            self.msrv.check_attributes(attrs);
         }
 
         fn check_attributes_post(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            self.msrv.check_attributes_post(sess, attrs);
+            self.msrv.check_attributes_post(attrs);
         }
     };
 }
@@ -1489,7 +1489,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Missing => unreachable!(),
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.is_some_and(|pat| is_refutable(cx, pat)),
-        PatKind::Box(pat) | PatKind::Ref(pat, _, _) => is_refutable(cx, pat),
+        PatKind::Ref(pat, _, _) => is_refutable(cx, pat),
         PatKind::Expr(PatExpr {
             kind: PatExprKind::Path(qpath),
             hir_id,
@@ -2788,7 +2788,9 @@ pub fn expr_use_sites<'tcx>(
                 | Node::TraitRef(_)
                 | Node::Ty(_)
                 | Node::TyPat(_)
-                | Node::WherePredicate(_) => {
+                | Node::WherePredicate(_)
+                | Node::TestBinderForall(_)
+                | Node::TestBinderExists(_) => {
                     // This shouldn't be possible to hit; the inner iterator should have
                     // been moved to the end before we hit any of these nodes.
                     debug_assert!(false, "found {parent:?} which is after the final use node");

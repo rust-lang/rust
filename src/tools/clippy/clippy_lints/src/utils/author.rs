@@ -9,9 +9,8 @@ use rustc_hir::{
     self as hir, BindingMode, Body, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
     FnRetTy, HirId, Lit, PatExprKind, PatKind, QPath, StmtKind, StructTailExpr,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{FloatTy, IntTy, TypeckResults, UintTy};
-use rustc_session::declare_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
 use std::cell::Cell;
 use std::fmt::{Display, Formatter};
@@ -804,11 +803,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 bind!(self, fields);
                 kind!("Tuple({fields}, {skip_pos:?})");
                 self.slice(fields, |field| self.pat(field));
-            },
-            PatKind::Box(pat) => {
-                bind!(self, pat);
-                kind!("Box({pat})");
-                self.pat(pat);
             },
             PatKind::Deref(pat) => {
                 bind!(self, pat);

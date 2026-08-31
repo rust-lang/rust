@@ -215,7 +215,7 @@ impl Error {
             {
                 Ok(*err)
             } else {
-                // Safety: We have just checked that the condition is true
+                // SAFETY: We have just checked that the condition is true
                 unsafe { core::hint::unreachable_unchecked() }
             }
         } else {
@@ -256,8 +256,7 @@ fn custom_owner_from_box(
     ///
     /// `ptr` must be valid to pass into `Box::from_raw`.
     unsafe fn drop_box_raw<T: ?Sized>(ptr: NonNull<T>) {
-        // SAFETY
-        // Caller ensures `ptr` is valid to pass into `Box::from_raw`.
+        // SAFETY: Caller ensures `ptr` is valid to pass into `Box::from_raw`.
         drop(unsafe { Box::from_non_null(ptr) })
     }
 

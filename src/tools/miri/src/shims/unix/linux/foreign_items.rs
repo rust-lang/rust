@@ -40,18 +40,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "open64" => {
                 // `open64` is variadic, the third argument is only present when the second argument
                 // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
-                let ([path_raw, flag], varargs) =
-                    this.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
+                let ([path_raw, flag], varargs) = this.check_shim_sig_variadic(
+                    shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.open(path_raw, flag, varargs)?;
                 this.write_scalar(result, dest)?;
             }
             "pread64" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, count, offset] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *mut _, usize, libc::off64_t) -> isize),
-                    link_name,
-                    abi,
-                    args,
+                    shim_sig!(extern "C" fn(i32, *_, usize, libc::off64_t) -> isize),
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
@@ -62,10 +62,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pwrite64" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, buf, n, offset] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *const _, usize, libc::off64_t) -> isize),
-                    link_name,
-                    abi,
-                    args,
+                    shim_sig!(extern "C" fn(i32, *_, usize, libc::off64_t) -> isize),
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
@@ -78,9 +76,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 let [fd, offset, whence] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t, i32) -> libc::off64_t),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let offset = this.read_scalar(offset)?.to_int(offset.layout.size)?;
@@ -90,9 +86,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "ftruncate64" => {
                 let [fd, length] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let length = this.read_scalar(length)?.to_int(length.layout.size)?;
@@ -102,9 +96,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "posix_fallocate64" => {
                 let [fd, offset, len] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t) -> i32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 let fd = this.read_scalar(fd)?.to_i32()?;
@@ -118,9 +110,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "fallocate" => {
                 let [fd, mode, offset, len] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, libc::off_t, libc::off_t) -> i32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 let fd = this.read_scalar(fd)?.to_i32()?;
@@ -137,9 +127,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "fallocate64" => {
                 let [fd, mode, offset, len] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, libc::off64_t, libc::off64_t) -> i32),
-                    link_name,
-                    abi,
-                    args,
+                    (link_name, abi, args),
                 )?;
 
                 let fd = this.read_scalar(fd)?.to_i32()?;
@@ -152,40 +140,41 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "readdir64" => {
-                let [dirp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [dirp] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 this.readdir(dirp, dest)?;
             }
             "sync_file_range" => {
                 let [fd, offset, nbytes, flags] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.sync_file_range(fd, offset, nbytes, flags)?;
                 this.write_scalar(result, dest)?;
             }
             "statx" => {
                 let [dirfd, pathname, flags, mask, statxbuf] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
                 this.write_scalar(result, dest)?;
             }
             // epoll, eventfd
             "epoll_create1" => {
-                let [flag] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [flag] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.epoll_create1(flag)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_ctl" => {
                 let [epfd, op, fd, event] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.epoll_ctl(epfd, op, fd, event)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_wait" => {
                 let [epfd, events, maxevents, timeout] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
             }
             "eventfd" => {
-                let [val, flag] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [val, flag] =
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.eventfd(val, flag)?;
                 this.write_scalar(result, dest)?;
             }
@@ -193,7 +182,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Threading
             "pthread_setname_np" => {
                 let [thread, name] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let res = match this.pthread_setname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
@@ -209,7 +198,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pthread_getname_np" => {
                 let [thread, name, len] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 // The function's behavior isn't portable between platforms.
                 // In case of glibc, the length of the output buffer must
                 // be not shorter than TASK_COMM_LEN.
@@ -232,7 +221,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "gettid" => {
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.unix_gettid(link_name.as_str())?;
                 this.write_scalar(result, dest)?;
             }
@@ -246,35 +235,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Miscellaneous
             "mmap64" => {
                 let [addr, length, prot, flags, fd, offset] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let offset = this.read_scalar(offset)?.to_i64()?;
                 let ptr = this.mmap(addr, length, prot, flags, fd, offset.into())?;
                 this.write_scalar(ptr, dest)?;
             }
             "mremap" => {
-                let ([old_address, old_size, new_size, flags], _) =
-                    this.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
+                let ([old_address, old_size, new_size, flags], _) = this.check_shim_sig_variadic(
+                    shim_sig!(extern "C" fn(*_, usize, usize, i32, ...) -> *_),
+                    (link_name, abi, args),
+                )?;
                 let ptr = this.mremap(old_address, old_size, new_size, flags)?;
                 this.write_scalar(ptr, dest)?;
             }
             "__xpg_strerror_r" => {
                 let [errnum, buf, buflen] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let result = this.strerror_r(errnum, buf, buflen)?;
                 this.write_scalar(result, dest)?;
             }
             "__errno_location" => {
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
             "__libc_current_sigrtmin" => {
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
 
                 this.write_int(SIGRTMIN, dest)?;
             }
             "__libc_current_sigrtmax" => {
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
 
                 this.write_int(SIGRTMAX, dest)?;
             }
@@ -283,14 +274,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // These shims are enabled only when the caller is in the standard library.
             "pthread_getattr_np" if this.frame_in_std() => {
                 let [_thread, _attr] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 this.write_null(dest)?;
             }
             "gnu_get_libc_version"
                 if this.frame_in_std()
                     && this.tcx.sess.target.env == rustc_target::spec::Env::Gnu =>
             {
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 // We have to be at least version 2.26 so that std does not call `res_init`.
                 // This returns a C string, so we have to add a null terminator.
                 let version = "2.26\0";

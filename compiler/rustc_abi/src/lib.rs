@@ -184,6 +184,14 @@ impl ReprOptions {
         self.flags.contains(ReprFlags::IS_C)
     }
 
+    /// Returns whether this is (implicitly or explicitly) `repr(Rust)`, i.e., its layout
+    /// is defined by Rust and we make no stable commitments.
+    #[inline]
+    pub fn rust(&self) -> bool {
+        // `linear` is currently just an internal flag we set on Box; that's still `repr(Rust)`.
+        !self.c() & !self.simd() & !self.scalable() & !self.transparent()
+    }
+
     #[inline]
     pub fn packed(&self) -> bool {
         self.pack.is_some()
@@ -1041,7 +1049,6 @@ impl Step for Size {
     }
 
     #[inline]
-    #[cfg(not(bootstrap))]
     fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
         let (s, o) = u64::forward_overflowing(start.bytes(), count);
         (Self::from_bytes(s), o)
@@ -1063,7 +1070,6 @@ impl Step for Size {
     }
 
     #[inline]
-    #[cfg(not(bootstrap))]
     fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
         let (s, o) = u64::backward_overflowing(start.bytes(), count);
         (Self::from_bytes(s), o)
@@ -2171,8 +2177,8 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     pub max_repr_align: Option<Align>,
 
     /// The alignment the type would have, ignoring any `repr(align)` but including `repr(packed)`.
-    /// Only used on aarch64-linux, where the argument passing ABI ignores the requested alignment
-    /// in some cases.
+    /// Only used on aarch64-linux and arm, where the argument passing ABI ignores the requested
+    /// alignment in some cases.
     pub unadjusted_abi_align: Align,
 
     /// The randomization seed based on this type's own repr and its fields.

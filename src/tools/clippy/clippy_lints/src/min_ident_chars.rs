@@ -9,8 +9,7 @@ use rustc_hir::{
     FieldDef, HirId, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind, Node, Pat, PatKind, TraitFn, TraitItem,
     TraitItemKind, UseKind, Variant,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{Ident, Symbol};
 use std::borrow::Cow::{self, Borrowed, Owned};
 
@@ -143,7 +142,8 @@ impl LateLintPass<'_> for MinIdentChars {
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
             | ItemKind::Impl(_)
-            | ItemKind::Use(..) => return,
+            | ItemKind::Use(..)
+            | ItemKind::TestBinderConstraints { .. } => return,
         };
         if let Some(missing) = self.check_sym(ident.name)
             && !(matches!(i.kind, ItemKind::Fn { .. })

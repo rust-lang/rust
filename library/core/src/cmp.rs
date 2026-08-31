@@ -26,7 +26,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod bytewise;
+mod clamp;
 pub(crate) use bytewise::BytewiseEq;
+#[unstable(feature = "clamp_bounds", issue = "147781")]
+pub use clamp::ClampBounds;
 
 use self::Ordering::*;
 use crate::marker::{Destruct, PointeeSized};
@@ -1169,6 +1172,35 @@ pub const trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized {
             self
         }
     }
+
+    /// Restrict a value to a certain range.
+    ///
+    /// This is equal to `max`, `min`, or `clamp`, depending on whether the range is `min..`,
+    /// `..=max`, or `min..=max`, respectively. Exclusive ranges are not permitted.
+    ///
+    /// # Panics
+    ///
+    /// Panics on `min..=max` if `min > max`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp_to)]
+    /// assert_eq!((-3).clamp_to(-2..=1), -2);
+    /// assert_eq!(0.clamp_to(-2..=1), 0);
+    /// assert_eq!(2.clamp_to(..=1), 1);
+    /// assert_eq!(5.clamp_to(7..), 7);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "clamp_to", issue = "147781")]
+    fn clamp_to<R>(self, range: R) -> Self
+    where
+        Self: Sized + [const] Destruct,
+        R: [const] ClampBounds<Self>,
+    {
+        range.clamp(self)
+    }
 }
 
 /// Derive macro generating an impl of the trait [`Ord`].
@@ -2266,8 +2298,37 @@ mod impls {
 
     partial_ord_impl! { f16 f32 f64 f128 }
 
+    macro_rules! min_max_impl {
+        (char) => {
+            #[inline]
+            fn min(self, other: Self) -> Self {
+                let c = u32::min(self as u32, other as u32);
+                // SAFETY: it's one of the inputs
+                unsafe { char::from_u32_unchecked(c) }
+            }
+
+            #[inline]
+            fn max(self, other: Self) -> Self {
+                let c = u32::max(self as u32, other as u32);
+                // SAFETY: it's one of the inputs
+                unsafe { char::from_u32_unchecked(c) }
+            }
+        };
+        ($t:ident) => {
+            #[inline]
+            fn min(self, other: Self) -> Self {
+                crate::intrinsics::integer_min(self, other)
+            }
+
+            #[inline]
+            fn max(self, other: Self) -> Self {
+                crate::intrinsics::integer_max(self, other)
+            }
+        };
+    }
+
     macro_rules! ord_impl {
-        ($($t:ty)*) => ($(
+        ($($t:ident)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
             const impl PartialOrd for $t {
@@ -2306,6 +2367,8 @@ mod impls {
                         self
                     }
                 }
+
+                min_max_impl!($t);
             }
         )*)
     }
@@ -2355,7 +2418,7 @@ mod impls {
 
     ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     const impl PartialEq for ! {
         #[inline]
@@ -2364,11 +2427,11 @@ mod impls {
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     const impl Eq for ! {}
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     const impl PartialOrd for ! {
         #[inline]
@@ -2377,7 +2440,7 @@ mod impls {
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     const impl Ord for ! {
         #[inline]

@@ -1,4 +1,4 @@
-error: Undefined Behavior: calling a variadic function with a non-variadic caller-side signature
+error: Undefined Behavior: ABI mismatch: `open` is a variadic function, but the caller is using a non-variadic signature
   --> tests/fail/shims/non_vararg_signature_mismatch.rs:LL:CC
    |
 LL |         open(c_path.as_ptr(), /* value does not matter */ 0)

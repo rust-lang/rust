@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
-use crate::Build;
 use crate::core::config::TargetSelection;
+use crate::core::session::Session;
 
 /// A structure representing a Rust compiler.
 ///
@@ -39,9 +39,9 @@ impl Compiler {
         self.forced_compiler = forced_compiler;
     }
 
-    /// Returns `true` if this is a snapshot compiler for `build`'s configuration
-    pub(crate) fn is_snapshot(&self, build: &Build) -> bool {
-        self.stage == 0 && self.host == build.host_target
+    /// Returns `true` if this is a snapshot compiler for the session's configuration
+    pub(crate) fn is_snapshot(&self, sess: &Session) -> bool {
+        self.stage == 0 && self.host == sess.host_target
     }
 
     /// Indicates whether the compiler was forced to use a specific stage.

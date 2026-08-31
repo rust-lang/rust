@@ -1841,6 +1841,34 @@ pub const fn fdiv_algebraic<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 #[rustc_intrinsic]
 pub const fn frem_algebraic<T: bounds::FloatPrimitive>(a: T, b: T) -> T;
 
+/// Integer `min`imum, signed or unsigned depending on `T`.
+///
+/// Allowed only on `uN`, `iN`, `usize`, and `isize`.
+/// (Not on `bool` nor on `char`.)
+///
+/// Stabilized as [`u16::min`] and [`i64::min`] and similar.
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn integer_min<T: [const] bounds::IntegerPrimitive>(a: T, b: T) -> T {
+    if a < b { a } else { b }
+}
+
+/// Integer `max`imum, signed or unsigned depending on `T`.
+///
+/// Allowed only on `uN`, `iN`, `usize`, and `isize`.
+/// (Not on `bool` nor on `char`.)
+///
+/// Stabilized as [`u16::max`] and [`i64::max`] and similar.
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn integer_max<T: [const] bounds::IntegerPrimitive>(a: T, b: T) -> T {
+    if a < b { b } else { a }
+}
+
 /// Returns the number of bits set in an integer type `T`
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
@@ -2915,14 +2943,9 @@ pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(
             // Do nothing
             ret
         } else {
-            match cond {
-                crate::option::Option::Some(cond) => {
-                    if !cond(&ret) {
-                        // Emit no unwind panic in case this was a safety requirement.
-                        crate::panicking::panic_nounwind("failed ensures check");
-                    }
-                },
-                crate::option::Option::None => {},
+            if let crate::option::Option::Some(cond) = cond && !cond(&ret) {
+                // Emit no unwind panic in case this was a safety requirement.
+                crate::panicking::panic_nounwind("failed ensures check");
             }
             ret
         }
@@ -3808,13 +3831,15 @@ pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) ->
 /// - `f`: The kernel function to offload.
 /// - `workgroup_dim`: A 3D size specifying the number of workgroups to launch.
 /// - `thread_dim`: A 3D size specifying the number of threads per workgroup.
+/// - `dyn_cache`: The amount of dynamic shared memory to request for the kernel.
+/// - `device_id`: The device to offload to. Use `-1` to select the default device.
 /// - `args`: A tuple of arguments forwarded to `f`.
 ///
 /// Example usage (pseudocode):
 ///
 /// ```rust,ignore (pseudocode)
 /// fn kernel(x: *mut [f64; 128]) {
-///     core::intrinsics::offload(kernel_1, [256, 1, 1], [32, 1, 1], (x,))
+///     core::intrinsics::offload(kernel_1, [256, 1, 1], [32, 1, 1], 0, -1, (x,))
 /// }
 ///
 /// #[cfg(target_os = "linux")]
@@ -3838,8 +3863,19 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
     workgroup_dim: [u32; 3],
     thread_dim: [u32; 3],
     dyn_cache: u32,
+    device_id: i32,
     args: T,
 ) -> R;
+
+/// Returns the number of offload devices available on the system.
+///
+/// Use this to discover which `device_id` values are valid to pass to
+/// [`offload`]. Devices are numbered from `0` to the returned value minus one.
+///
+/// Returns `0` if no offloading devices are present.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn offload_get_num_devices() -> i32;
 
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]

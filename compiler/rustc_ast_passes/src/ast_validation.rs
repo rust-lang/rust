@@ -29,12 +29,12 @@ use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, Diagnostic, LintBuffer};
 use rustc_feature::Features;
-use rustc_session::Session;
-use rustc_session::diagnostics::feature_err;
-use rustc_session::lint::builtin::{
+use rustc_lint_defs::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY, UNUSED_VISIBILITIES,
 };
+use rustc_session::Session;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 

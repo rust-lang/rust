@@ -477,15 +477,6 @@ fn construct_fn<'tcx>(
     let arguments = &thir.params;
 
     let return_ty = fn_sig.output();
-    let coroutine = match tcx.type_of(fn_def).instantiate_identity().skip_norm_wip().kind() {
-        ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
-            tcx.coroutine_kind(fn_def).unwrap(),
-            args.as_coroutine().yield_ty(),
-            args.as_coroutine().resume_ty(),
-        ))),
-        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
-        ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
-    };
 
     if let Some((dialect, phase)) =
         find_attr!(tcx, fn_id, CustomMir(dialect, phase) => (dialect, phase))
@@ -514,6 +505,27 @@ fn construct_fn<'tcx>(
     };
 
     let infcx = tcx.infer_ctxt().build(typing_mode);
+
+    let defining_ty = tcx.type_of(fn_def).instantiate_identity().skip_normalization();
+    let defining_ty = if infcx.next_trait_solver() {
+        // Closure types come from HIR typeck results, where they were already
+        // normalized during writeback. Wrapping them in an `EarlyBinder`
+        // conservatively makes aliases non-rigid, so restore their rigidness
+        // instead of normalizing them again during MIR build.
+        ty::set_aliases_to_rigid(tcx, defining_ty)
+    } else {
+        defining_ty
+    };
+    let coroutine = match defining_ty.kind() {
+        ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
+            tcx.coroutine_kind(fn_def).unwrap(),
+            args.as_coroutine().yield_ty(),
+            args.as_coroutine().resume_ty(),
+        ))),
+        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
+        ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
+    };
+
     let mut builder = Builder::new(
         thir,
         infcx,
@@ -823,7 +835,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine.clone(),
             None,
         );
-        body.coverage_info_hi = self.coverage_info.as_ref().map(|b| b.as_done());
+        body.coverage_early_info = self.coverage_info.as_ref().map(|b| b.as_done());
 
         let writer = pretty::MirWriter::new(self.tcx);
         writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
@@ -842,7 +854,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine,
             None,
         );
-        body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
+        body.coverage_early_info = self.coverage_info.map(|b| b.into_done());
 
         let writer = pretty::MirWriter::new(self.tcx);
         for (index, block) in body.basic_blocks.iter().enumerate() {

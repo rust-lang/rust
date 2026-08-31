@@ -138,7 +138,17 @@ impl<'tcx> DefiningTy<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, body_def_id: LocalDefId) -> DefiningTy<'tcx> {
         match tcx.hir_body_owner_kind(body_def_id) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = tcx.type_of(body_def_id).instantiate_identity().skip_norm_wip();
+                let defining_ty =
+                    tcx.type_of(body_def_id).instantiate_identity().skip_normalization();
+                let defining_ty = if tcx.next_trait_solver_globally() {
+                    // Closure types come from HIR typeck results, where they were already
+                    // normalized during writeback. Wrapping them in an `EarlyBinder`
+                    // conservatively makes aliases non-rigid, so restore their rigidness
+                    // instead of normalizing them again during borrowck.
+                    ty::set_aliases_to_rigid(tcx, defining_ty)
+                } else {
+                    defining_ty
+                };
                 match *defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
                     ty::Coroutine(def_id, args) => DefiningTy::Coroutine(def_id, args),

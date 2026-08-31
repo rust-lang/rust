@@ -894,6 +894,8 @@ unsafe extern "C" {
         SLen: c_uint,
     ) -> MetadataKindId;
 
+    pub(crate) fn LLVMGetVersion(major: &mut c_uint, minor: &mut c_uint, patch: &mut c_uint);
+
     pub(crate) fn LLVMDisposeTargetMachine(T: ptr::NonNull<TargetMachine>);
 
     // Create modules.
@@ -906,13 +908,6 @@ unsafe extern "C" {
     /// Data layout. See Module::getDataLayout.
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
-
-    /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
-    pub(crate) fn LLVMAppendModuleInlineAsm(
-        M: &Module,
-        Asm: *const c_uchar, // See "PTR_LEN_STR".
-        Len: size_t,
-    );
 
     /// Create the specified uniqued inline asm string. See `InlineAsm::get()`.
     pub(crate) fn LLVMGetInlineAsm<'ll>(
@@ -2119,6 +2114,17 @@ unsafe extern "C" {
         ConstraintsLen: size_t,
     ) -> bool;
 
+    /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
+    pub(crate) fn LLVMRustAppendModuleInlineAsm(
+        M: &Module,
+        Asm: *const c_uchar, // See "PTR_LEN_STR".
+        AsmLen: size_t,
+        TargetFeatures: *const c_uchar, // See "PTR_LEN_STR".
+        TargetFeaturesLen: size_t,
+        TargetCpu: *const c_uchar, // See "PTR_LEN_STR".
+        TargetCpuLen: size_t,
+    );
+
     /// A list of pointer-length strings is passed as two pointer-length slices,
     /// one slice containing pointers and one slice containing their corresponding
     /// lengths. The implementation will check that both slices have the same length.
@@ -2508,6 +2514,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustSetModulePICLevel(M: &Module);
     pub(crate) fn LLVMRustSetModulePIELevel(M: &Module);
     pub(crate) fn LLVMRustSetModuleCodeModel(M: &Module, Model: CodeModel);
+    pub(crate) fn LLVMRustSetModuleLargeDataThreshold(M: &Module, Threshold: u64);
     pub(crate) fn LLVMRustBufferPtr(p: &Buffer) -> *const u8;
     pub(crate) fn LLVMRustBufferLen(p: &Buffer) -> usize;
     pub(crate) fn LLVMRustBufferFree(p: &'static mut Buffer);

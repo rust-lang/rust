@@ -613,6 +613,7 @@ fn set_get_unix_permissions() {
     assert_eq!(mask & metadata1.permissions().mode(), 0o0777);
 }
 
+#[cfg(not(target_os = "android"))]
 #[test]
 fn set_get_permissions_nofollows() {
     let tmpdir = tmpdir();
@@ -639,7 +640,7 @@ fn set_get_permissions_nofollows() {
                 permission_bits.set_readonly(false);
                 check!(fs::set_permissions_nofollow(&filename, permission_bits));
             }
-        },
+        }
         _ => {
             let error_kind = result.unwrap_err().kind();
             assert_eq!(error_kind, crate::io::ErrorKind::Unsupported);
@@ -649,48 +650,71 @@ fn set_get_permissions_nofollows() {
 
 // Only Windows and Unix support `fs::set_permissions_nofollow`
 #[test]
-#[cfg(all(any(windows, unix), not(any(target_os = "espidf", target_os = "horizon"))))]
+#[cfg(all(
+    any(windows, unix),
+    not(any(target_os = "espidf", target_os = "horizon", target_os = "wasi"))
+))]
 fn set_get_permissions_nofollows_symlink() {
     #[cfg(not(windows))]
-    use crate::os::unix::fs::symlink as symlink_dir;
+    use crate::os::unix::fs::symlink as symlink_file;
     #[cfg(windows)]
-    use crate::os::windows::fs::symlink_dir;
+    use crate::os::windows::fs::symlink_file;
 
     let tmpdir = tmpdir();
     let filename = tmpdir.join("set_get_unix_permissions_file");
     let symlink_name = tmpdir.join("set_get_unix_permissions");
     check!(File::create(&filename));
-    check!(symlink_dir(&filename, &symlink_name));
+    check!(symlink_file(&filename, &symlink_name));
 
-    let sym_metadata = check!(fs::symlink_metadata(&symlink_name));
-    let mut permission_bits = sym_metadata.permissions();
-    permission_bits.set_readonly(true);
-    let result = fs::set_permissions_nofollow(&symlink_name, permission_bits);
+    let init_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
+    let mut init_symlink_permissions = init_symlink_metadata.permissions();
+
+    let init_target_metadata = check!(fs::metadata(&symlink_name));
+    let init_target_permissions = init_target_metadata.permissions();
+
+    // Set symlink permissions to readonly
+    init_symlink_permissions.set_readonly(true);
+    let result = fs::set_permissions_nofollow(&symlink_name, init_symlink_permissions);
 
     cfg_select! {
-        any(windows, target_os = "android", target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly") => {
+        any(
+            windows,
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "openbsd",
+            target_os = "netbsd",
+            target_os = "dragonfly",
+            target_os = "nto",
+            target_os = "qnx"
+        ) => {
             assert_eq!(result.unwrap(), ());
-            let metadata0 = check!(fs::symlink_metadata(&symlink_name));
-            // So seems like BSD-based systems trying to set permissions
-            // on symlinks could lead to no effect, so we should expect
-            // there being no change to BSD-based systems.
+
+            let after_target_metadata = check!(fs::metadata(&symlink_name));
+            // We should expect the target file to not have its permission bits
+            // changed
+            assert_eq!(after_target_metadata.permissions(), init_target_permissions);
+
+            let after_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
+            // On these systems, it's confirmed the symlink itself is marked readonly
             // https://superuser.com/questions/1099634/change-permissions-symbolic-link-mac-os
-            #[cfg(windows)]
-            assert!(metadata0.permissions().readonly());
-            #[cfg(not(windows))]
-            assert!(!metadata0.permissions().readonly());
+            assert!(after_symlink_metadata.permissions().readonly());
 
             // Reset the read-only bit under Windows 7: avoids the
             // `TempDir::drop` from crashing on a permission denial when
             // trying to delete the file that has it.
             #[cfg(all(windows, target_vendor = "win7"))]
             {
-                let mut permission_bits = metadata0.permissions();
-                permission_bits.set_readonly(false);
-                check!(fs::set_permissions_nofollow(&symlink_name, permission_bits));
+                let mut symlink_permission_bits = after_symlink_metadata.permissions();
+                symlink_permission_bits.set_readonly(false);
+                check!(fs::set_permissions_nofollow(&symlink_name, symlink_permission_bits));
             }
-        },
+        }
         _ => {
+            let after_target_metadata = check!(fs::metadata(&symlink_name));
+            // We should expect the target file to not have its permission bits
+            // changed
+            assert_eq!(after_target_metadata.permissions(), init_target_permissions);
+
             let error_kind = result.unwrap_err().kind();
             assert_eq!(error_kind, crate::io::ErrorKind::Unsupported);
         }
@@ -1418,6 +1442,7 @@ fn fchmod_works() {
     check!(file.set_permissions(p));
 }
 
+#[cfg(not(target_os = "android"))]
 #[test]
 fn fchmodat_works() {
     let tmpdir = tmpdir();
@@ -2747,4 +2772,39 @@ fn test_dir_rename_file() {
     let mut buf = [0u8; 3];
     check!(f.read_exact(&mut buf));
     assert_eq!(b"bar", &buf);
+}
+
+#[test]
+fn test_dir_remove_dir() {
+    let tmpdir = tmpdir();
+    check!(fs::create_dir(tmpdir.join("foo")));
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.remove_dir("foo"));
+    assert!(!matches!(exists(tmpdir.join("foo")), Ok(true)));
+}
+
+#[test]
+fn test_dir_create_dir() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.create_dir("foo"));
+    check!(Dir::open(tmpdir.join("foo")));
+}
+
+#[test]
+fn test_dir_open_dir() {
+    let tmpdir = tmpdir();
+    let dir1 = check!(Dir::open(tmpdir.path()));
+    check!(dir1.create_dir("foo"));
+    let dir2 = check!(Dir::open(tmpdir.path().join("foo")));
+    let mut f =
+        check!(dir2.open_file_with("bar.txt", &OpenOptions::new().create(true).write(true)));
+    check!(f.write(b"baz"));
+    check!(f.flush());
+    drop(f);
+    let dir3 = check!(dir1.open_dir("foo"));
+    let mut f = check!(dir3.open_file("bar.txt"));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"baz", &buf);
 }

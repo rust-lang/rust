@@ -10,11 +10,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::Obligation;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt as _};
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
@@ -344,8 +343,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             && let Some(self_ty) = inputs.first()
                             && let ty::Ref(_, _, Mutability::Mut) = self_ty.kind()
                             && let Some(second_ty) = inputs.get(1)
-                            && let clauses = cx.tcx.param_env(def_id).caller_bounds()
-                            && clauses.iter().any(|clause| {
+                            && cx.tcx.param_env(def_id).caller_bounds().any(|clause| {
                                 if let ty::ClauseKind::Trait(trait_pred) = clause.kind().skip_binder() {
                                     trait_pred.self_ty() == *second_ty
                                         && cx.tcx.lang_items().fn_mut_trait() == Some(trait_pred.def_id())
@@ -400,7 +398,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     && let b = cx.typeck_results().expr_ty(recv)
                     && a.is_diag_item(cx, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
-                    && let Some(a_type) = args.types().next()
+                    && let Some(a_type) = args.iter().next().and_then(GenericArg::as_type)
                     && same_type_modulo_regions(a_type, b)
                 {
                     span_lint_and_help(
@@ -425,7 +423,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     if name == sym::try_from_fn
                         && a.is_diag_item(cx, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
-                        && let Some(a_type) = args.types().next()
+                        && let Some(a_type) = args.iter().next().and_then(GenericArg::as_type)
                         && same_type_modulo_regions(a_type, b)
                     {
                         let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));

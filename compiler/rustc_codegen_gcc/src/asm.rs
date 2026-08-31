@@ -733,7 +733,7 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => "f",
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => "d", // more specific than "r"
-        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg | MipsInlineAsmRegClass::wreg) => "f",
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
         // https://github.com/gcc-mirror/gcc/blob/master/gcc/config/nvptx/nvptx.md -> look for
         // "define_constraint".
@@ -790,6 +790,9 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::dreg) => "e",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::qreg) => "e",
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Err => unreachable!(),
     }
@@ -843,6 +846,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         }
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::wreg) => cx.type_vector(cx.type_i32(), 4),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => cx.type_i32(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => cx.type_i64(),
@@ -896,6 +900,9 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::dreg) => cx.type_f64(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::qreg) => cx.type_f128(),
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
@@ -1084,7 +1091,9 @@ fn modifier_to_gcc(
                 modifier
             }
         }
-        InlineAsmRegClass::Mips(_) => None,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => None,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => modifier,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::wreg) => Some('w'),
         InlineAsmRegClass::Nvptx(_) => None,
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::vsreg) => {
             if modifier.is_none() {

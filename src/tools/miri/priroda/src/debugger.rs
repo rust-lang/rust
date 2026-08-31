@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use miri::Immediate::Uninit;
-use miri::*;
+use miri::{InterpErrorInfo, InterpErrorKind, TerminationInfo, *};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size};
 use rustc_hir::def::CtorKind;
 use rustc_middle::mir::interpret::AllocId;
@@ -39,6 +39,9 @@ pub(super) struct PrirodaContext<'tcx> {
     breakpoints: BreakpointTable,
     pub(super) current_location: Option<SourceLocation>,
     last_location: Option<SourceLocation>,
+    // FIXME: add restart and other post-exit commands, similar to GDB and
+    // old Priroda, instead of only replaying the saved exit code.
+    exit_code: Option<i32>,
 }
 
 pub(super) enum StorageProj {
@@ -98,11 +101,18 @@ impl LocalDesc {
 enum ResumeMode {
     /// Stop at the next visible MIR instruction.
     MirInstruction,
-    /// Stop at the next source line.
+    /// Step over the source position `start_position`, entered from a stack of
+    /// depth `start_stack_depth`.
     ///
-    /// `None` means the current interpreter position has no source location, so
-    /// the first mapped source location is good enough to report.
-    SourceLine(Option<(PathBuf, usize)>),
+    /// Execution keeps going while it is deeper than `start_stack_depth` (i.e.
+    /// inside a call made from the stepped-over line), and stops once it is back
+    /// at that depth or shallower and the displayed source position has changed.
+    /// A `start_stack_depth` of `usize::MAX` means execution is never deeper,
+    /// turning this into a plain source step that also stops inside called functions.
+    StepOver { start_position: Option<(PathBuf, usize)>, start_stack_depth: usize },
+    /// Step out of the current user frame, stopping once execution returns to a
+    /// shallower user-frame depth.
+    StepOut { start_position: Option<(PathBuf, usize)>, start_user_frame_depth: usize },
     /// Stop at the first mapped source location from a user-relevant frame.
     ///
     /// This is the DAP entry-stop primitive: it skips over interpreter startup
@@ -119,10 +129,27 @@ enum InstructionVisibility {
     Visible,
 }
 
+impl ResumeMode {
+    fn skipped_breakpoint(&self) -> Option<&(PathBuf, usize)> {
+        match self {
+            ResumeMode::StepOver { start_position: Some(position), .. }
+            | ResumeMode::StepOut { start_position: Some(position), .. } => Some(position),
+            _ => None,
+        }
+    }
+}
+
 /// Describes why execution stopped and returned control to the frontend.
 pub(super) enum StepResult {
     Step,
     Breakpoint,
+    Exception { message: String },
+}
+
+pub(super) enum ExecutionResult {
+    Stopped(StepResult),
+    ProgramExited { code: i32 },
+    Rejected { message: &'static str },
 }
 
 fn normalize_path(path: PathBuf) -> PathBuf {
@@ -131,7 +158,13 @@ fn normalize_path(path: PathBuf) -> PathBuf {
 
 impl<'tcx> PrirodaContext<'tcx> {
     pub(super) fn new(ecx: MiriInterpCx<'tcx>) -> Self {
-        Self { ecx, breakpoints: HashMap::new(), current_location: None, last_location: None }
+        Self {
+            ecx,
+            breakpoints: HashMap::new(),
+            current_location: None,
+            last_location: None,
+            exit_code: None,
+        }
     }
 
     pub(super) fn local_path(&self, location: &SourceLocation) -> Option<PathBuf> {
@@ -152,17 +185,79 @@ impl<'tcx> PrirodaContext<'tcx> {
         Some((self.local_path(location)?, location.line))
     }
 
+    fn already_finished(&self) -> Option<ExecutionResult> {
+        self.exit_code.map(|code| ExecutionResult::ProgramExited { code })
+    }
+
     /// Step to the next visible MIR instruction.
-    fn stepi(&mut self) -> InterpResult<'tcx, StepResult> {
+    fn stepi(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        if let Some(result) = self.already_finished() {
+            return interp_ok(result);
+        }
         self.resume(ResumeMode::MirInstruction)
     }
+
     /// Step until the displayed source file or line changes.
-    pub(super) fn step(&mut self) -> InterpResult<'tcx, StepResult> {
-        self.resume(ResumeMode::SourceLine(self.current_source_position()))
+    ///
+    /// This is the CLI source-level step; it shares its stepping semantics with
+    /// [`Self::step_in_source`].
+    pub(super) fn step(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        self.step_in_source()
+    }
+
+    /// Step into the next source location.
+    ///
+    /// This can enter calls that have a distinct displayed source position,
+    /// while `next` uses [`Self::step_over_source`].
+    pub(super) fn step_in_source(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        if let Some(result) = self.already_finished() {
+            return interp_ok(result);
+        }
+        self.resume(ResumeMode::StepOver {
+            start_position: self.current_source_position(),
+            start_stack_depth: usize::MAX,
+        })
+    }
+
+    /// Step over the current source position, not stopping inside any call it makes.
+    ///
+    /// Records the current source position and stack depth before advancing,
+    /// then keeps stepping until execution is back at that depth (or shallower)
+    /// and the displayed source position has changed.
+    pub(super) fn step_over_source(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        if let Some(result) = self.already_finished() {
+            return interp_ok(result);
+        }
+        let start_position = self.current_source_position();
+        let start_stack_depth = self.active_thread_stack_depth();
+        self.resume(ResumeMode::StepOver { start_position, start_stack_depth })
+    }
+
+    /// Number of frames on the active thread's stack.
+    fn active_thread_stack_depth(&self) -> usize {
+        self.ecx.active_thread_stack().len()
+    }
+
+    /// Step out of the current user frame.
+    ///
+    /// Records the current user-frame depth and runs until execution reaches a
+    /// source location in a shallower user frame.
+    pub(super) fn step_out_source(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        if let Some(result) = self.already_finished() {
+            return interp_ok(result);
+        }
+        let start_user_frame_depth = self.active_user_frame_depth();
+        if start_user_frame_depth <= 1 {
+            return interp_ok(ExecutionResult::Rejected {
+                message: "stepOut is not meaningful in the outermost user frame",
+            });
+        }
+        let start_position = self.current_source_position();
+        self.resume(ResumeMode::StepOut { start_position, start_user_frame_depth })
     }
 
     /// Run until the initial editor-visible stop point.
-    pub(super) fn stop_at_first_user_location(&mut self) -> InterpResult<'tcx, StepResult> {
+    pub(super) fn stop_at_first_user_location(&mut self) -> InterpResult<'tcx, ExecutionResult> {
         self.resume(ResumeMode::FirstUserSourceLocation)
     }
 
@@ -173,8 +268,15 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     /// Continue execution until reaching a breakpoint or propagating termination.
-    pub(super) fn continue_execution(&mut self) -> InterpResult<'tcx, StepResult> {
+    pub(super) fn continue_execution(&mut self) -> InterpResult<'tcx, ExecutionResult> {
+        if let Some(result) = self.already_finished() {
+            return interp_ok(result);
+        }
         self.resume(ResumeMode::Continue)
+    }
+
+    pub(super) fn finish_session(&mut self) -> InterpResult<'tcx, ()> {
+        interp_ok(())
     }
 
     pub(super) fn set_breakpoint(&mut self, path: PathBuf, line: usize) -> BreakpointSetResult {
@@ -190,15 +292,44 @@ impl<'tcx> PrirodaContext<'tcx> {
         }
     }
 
+    fn program_exit(err: &InterpErrorInfo<'tcx>) -> Option<i32> {
+        let InterpErrorKind::MachineStop(info) = err.kind() else {
+            return None;
+        };
+        // FIXME: Preserve `TerminationInfo::Exit::leak_check` and run Miri's
+        // leak/thread-leak diagnostics once Priroda grows a proper post-exit
+        // finalization path. For now, program exit only records the debuggee exit code.
+        let Some(TerminationInfo::Exit { code, .. }) = info.downcast_ref::<TerminationInfo>()
+        else {
+            return None;
+        };
+        Some(*code)
+    }
+
+    fn stop_at_exception(&mut self, err: InterpErrorInfo<'tcx>) -> StepResult {
+        let message = err.kind().to_string();
+        self.last_location = self.current_location.take();
+        self.current_location = self.resolve_current_location();
+        StepResult::Exception { message }
+    }
+
     /// Advance execution until the selected resume mode reaches a stopping point.
-    fn resume(&mut self, mode: ResumeMode) -> InterpResult<'tcx, StepResult> {
+    fn resume(&mut self, mode: ResumeMode) -> InterpResult<'tcx, ExecutionResult> {
         loop {
-            self.advance()?;
+            // Program exits are not debugger exceptions. Preserve all other
+            // interpreter errors as stopped debugger events.
+            if let Err(err) = self.advance().report_err() {
+                if let Some(code) = Self::program_exit(&err) {
+                    self.exit_code = Some(code);
+                    return interp_ok(ExecutionResult::ProgramExited { code });
+                }
+                return interp_ok(ExecutionResult::Stopped(self.stop_at_exception(err)));
+            }
 
             // An explicit breakpoint should stop execution even when the current
             // MIR instruction would normally be hidden during manual stepping.
-            if self.is_at_breakpoint() {
-                return interp_ok(StepResult::Breakpoint);
+            if self.is_at_breakpoint(mode.skipped_breakpoint()) {
+                return interp_ok(ExecutionResult::Stopped(StepResult::Breakpoint));
             }
 
             match mode {
@@ -208,48 +339,79 @@ impl<'tcx> PrirodaContext<'tcx> {
                         InstructionVisibility::Visible
                     ) =>
                 {
-                    return interp_ok(StepResult::Step);
+                    return interp_ok(ExecutionResult::Stopped(StepResult::Step));
                 }
 
-                ResumeMode::SourceLine(ref prev_location) => {
-                    match (prev_location, &self.current_location) {
+                ResumeMode::StepOver { ref start_position, start_stack_depth } => {
+                    // While deeper than where we started, we are inside a call
+                    // made from the stepped-over line; keep going.
+                    if self.active_thread_stack_depth() > start_stack_depth {
+                        continue;
+                    }
+
+                    // Back at (or shallower than) the starting depth: stop once
+                    // the displayed source position has changed.
+                    match (start_position, &self.current_location) {
                         // We started from an unmapped location; stop once there
                         // is a source position the frontend can display.
-                        (None, Some(_)) => return interp_ok(StepResult::Step),
-
-                        (Some((prev_path, prev_line)), Some(current_location)) => {
-                            if let Some(current_path) = self.local_path(current_location) {
-                                // A source step stops when the displayed source
-                                // position changes to a different file or line.
-                                if *prev_path != current_path || *prev_line != current_location.line
+                        (None, Some(_)) =>
+                            return interp_ok(ExecutionResult::Stopped(StepResult::Step)),
+                        (Some((start_path, start_line)), Some(current_location)) => {
+                            // A source step stops when the displayed source
+                            // position changes to a different file or line.
+                            if let Some(current_path) = self.local_path(current_location)
+                                && (*start_path != current_path
+                                    || *start_line != current_location.line)
+                            {
+                                // Return spans can point at a function header. Keep walking when
+                                // that would move `next` backwards within the same frame.
+                                if self.active_thread_stack_depth() == start_stack_depth
+                                    && *start_path == current_path
+                                    && current_location.line < *start_line
                                 {
-                                    return interp_ok(StepResult::Step);
+                                    continue;
                                 }
+                                return interp_ok(ExecutionResult::Stopped(StepResult::Step));
                             }
                         }
-
                         _ => {}
                     }
+                }
+
+                ResumeMode::StepOut { start_user_frame_depth, .. }
+                    if self.active_user_frame_depth() < start_user_frame_depth
+                        && self.current_location.is_some() =>
+                {
+                    return interp_ok(ExecutionResult::Stopped(StepResult::Step));
                 }
 
                 ResumeMode::FirstUserSourceLocation
                     if self.current_location.is_some() && self.has_user_relevant_frame() =>
                 {
-                    return interp_ok(StepResult::Step);
+                    return interp_ok(ExecutionResult::Stopped(StepResult::Step));
                 }
 
                 ResumeMode::MirInstruction
                 | ResumeMode::FirstUserSourceLocation
+                | ResumeMode::StepOut { .. }
                 | ResumeMode::Continue => {}
             }
         }
     }
 
     fn has_user_relevant_frame(&self) -> bool {
+        self.active_user_frame_depth() > 0
+    }
+
+    fn active_user_frame_depth(&self) -> usize {
         // Walk the whole stack, not just the top frame: during interpreter
         // startup the user's `main` can sit under Miri-internal frames that
         // have no source span, so checking only `last()` would miss it.
-        self.ecx.active_thread_stack().iter().any(|frame| frame.extra.user_relevance == u8::MAX)
+        self.ecx
+            .active_thread_stack()
+            .iter()
+            .filter(|frame| frame.extra.user_relevance == u8::MAX)
+            .count()
     }
 
     /// Advance Miri by one interpreter-loop transition.
@@ -292,10 +454,13 @@ impl<'tcx> PrirodaContext<'tcx> {
         }
     }
 
-    fn is_at_breakpoint(&self) -> bool {
+    fn is_at_breakpoint(&self, skipped_breakpoint: Option<&(PathBuf, usize)>) -> bool {
         let Some(bp) = self.current_breakpoint() else {
             return false;
         };
+        if skipped_breakpoint == Some(&bp) {
+            return false;
+        }
 
         // If the previous interpreter step had the same source position, this
         // is another MIR location for the breakpoint we just reported.
@@ -326,10 +491,11 @@ impl<'tcx> PrirodaContext<'tcx> {
         command: DebuggerCommand,
     ) -> InterpResult<'tcx, CommandResult> {
         match command {
-            DebuggerCommand::StepI => self.stepi().map(CommandResult::ExecutionStopped),
-            DebuggerCommand::Step => self.step().map(CommandResult::ExecutionStopped),
-            DebuggerCommand::Continue =>
-                self.continue_execution().map(CommandResult::ExecutionStopped),
+            DebuggerCommand::StepI => self.stepi().map(CommandResult::Execution),
+            DebuggerCommand::Step => self.step().map(CommandResult::Execution),
+            DebuggerCommand::Next => self.step_over_source().map(CommandResult::Execution),
+            DebuggerCommand::StepOut => self.step_out_source().map(CommandResult::Execution),
+            DebuggerCommand::Continue => self.continue_execution().map(CommandResult::Execution),
             DebuggerCommand::Breakpoint(path, line) =>
                 interp_ok(CommandResult::BreakpointResult(self.set_breakpoint(path, line))),
             DebuggerCommand::ListLocals => interp_ok(CommandResult::Locals(self.list_locals())),
@@ -337,7 +503,8 @@ impl<'tcx> PrirodaContext<'tcx> {
                 interp_ok(CommandResult::SingleLocal(self.get_local(local))),
             DebuggerCommand::Follow(alloc_id, offset) =>
                 self.follow_alloc(alloc_id, offset).map(CommandResult::Memory),
-            DebuggerCommand::TerminateSession => interp_ok(CommandResult::TerminateSession),
+            DebuggerCommand::TerminateSession =>
+                self.finish_session().map(|()| CommandResult::TerminateSession),
         }
     }
 
@@ -723,13 +890,14 @@ impl<'tcx> PrirodaContext<'tcx> {
             value: "<unsupported>".to_string(),
         };
 
-        match &frame.locals[local].as_mplace_or_imm() {
+        match &frame.locals()[local].as_mplace_or_imm_ghost() {
             None => {
                 local_desc.value = "<dead>".to_string();
             }
             Some(Either::Right(Uninit)) => local_desc.value = "<uninit>".to_string(),
 
             Some(Either::Left(_) | Either::Right(_)) => {
+                // FIXME: This seems wrong, it ignore the frame.
                 let op = self
                     .ecx
                     .local_to_op(local, None)
@@ -825,6 +993,8 @@ impl<'tcx> PrirodaContext<'tcx> {
 pub(super) enum DebuggerCommand {
     StepI,
     Step,
+    Next,
+    StepOut,
     TerminateSession,
     Continue,
     Breakpoint(PathBuf, usize),
@@ -840,7 +1010,7 @@ pub(super) enum BreakpointSetResult {
 }
 
 pub(super) enum CommandResult {
-    ExecutionStopped(StepResult),
+    Execution(ExecutionResult),
     BreakpointResult(BreakpointSetResult),
     Locals(Vec<LocalDesc>),
     SingleLocal(Option<LocalDesc>),

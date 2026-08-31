@@ -1,6 +1,6 @@
 //! Implements conversions from HIR types to Target.
 
-use rustc_attr_ir::target::{GenericParamKind, MethodKind, Target};
+use rustc_attr_ir::target::{AssocCtxt, GenericParamKind, MethodKind, Target};
 
 use crate::def::DefKind;
 use crate::{self as hir, ItemKind, TraitItemKind};
@@ -36,14 +36,14 @@ impl From<&hir::GenericParam<'_>> for Target {
 impl From<&hir::TraitItem<'_>> for Target {
     fn from(trait_item: &hir::TraitItem<'_>) -> Target {
         match trait_item.kind {
-            TraitItemKind::Const(..) => Target::AssocConst,
+            TraitItemKind::Const(..) => Target::AssocConst(AssocCtxt::Trait),
             TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
                 Target::Method(MethodKind::Trait { body: false })
             }
             TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => {
                 Target::Method(MethodKind::Trait { body: true })
             }
-            TraitItemKind::Type(..) => Target::AssocTy,
+            TraitItemKind::Type(..) => Target::AssocTy(AssocCtxt::Trait),
         }
     }
 }
@@ -91,6 +91,7 @@ impl From<&hir::Item<'_>> for Target {
             ItemKind::Trait { .. } => Target::Trait,
             ItemKind::TraitAlias(..) => Target::TraitAlias,
             ItemKind::Impl(imp_) => Target::Impl { of_trait: imp_.of_trait.is_some() },
+            ItemKind::TestBinderConstraints { .. } => Target::MacroCall,
         }
     }
 }

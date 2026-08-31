@@ -4,17 +4,19 @@ use std::sync::OnceLock;
 use std::{env, fs};
 
 use super::{Builder, Kind};
-use crate::core::build_steps::llvm::prebuilt_llvm_output;
+use crate::core::build_steps::compile::is_lto_stage;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::compiler::Compiler;
 use crate::core::config::flags::{Color, Subcommand};
 use crate::core::config::toml::pgo::PgoConfig;
-use crate::core::config::{CompressDebuginfo, Config, DryRun, SplitDebuginfo, TargetSelection};
+use crate::core::config::{
+    CompressDebuginfo, Config, DryRun, RustcLto, SplitDebuginfo, TargetSelection,
+};
+use crate::core::session::{CLang, GitRepo, Mode, RemapScheme};
 use crate::utils::build_stamp;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, envify, linker_flags, t};
-use crate::{CLang, GitRepo, Mode, RemapScheme};
 
 /// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))
@@ -152,6 +154,7 @@ pub(crate) struct Cargo {
     build_compiler_stage: u32,
     extra_rustflags: Vec<String>,
     profile: Option<&'static str>,
+    kind: Kind,
 }
 
 impl Cargo {
@@ -201,6 +204,10 @@ impl Cargo {
 
     pub(crate) fn into_cmd(self) -> BootstrapCommand {
         self.into()
+    }
+
+    pub(crate) fn kind(&self) -> Kind {
+        self.kind
     }
 
     /// Same as [`Cargo::new`] except this one doesn't configure the linker with
@@ -391,7 +398,9 @@ impl Cargo {
                 // Do not enable Zlib compression on:
                 // - Windows, because MSVC/PDB doesn't support it
                 // - macOS, because its linker doesn't know the flag
-                if !self.target.is_windows() && !self.target.is_apple() {
+                // - Cygwin, because its linker may not support the flag
+                if !self.target.is_windows() && !self.target.is_apple() && !self.target.is_cygwin()
+                {
                     // If we link through cc, we need the -Wl prefix.
                     // If we don't, then we must not add it, because the linker wouldn't
                     // understand it.
@@ -446,10 +455,41 @@ impl Cargo {
             let cc = ccacheify(&builder.cc(target));
             self.command.env(format!("CC_{triple_underscored}"), &cc);
 
-            // Extend `CXXFLAGS_$TARGET` with our extra flags.
+            // Compiling C deps, like jemalloc and llvm-wrapper, should be with
+            // the same LTO mode as the Rust code they are linked into.
+            //
+            // Std's C deps, e.g. compiler_builtins, ship inside rlibs that
+            // end users consume directly. Building with `-flto` may break
+            // non-LLVM linkers or mismatch on bitcode versions. Therefore we
+            // must not build std in LTO mode here.
+            let lto_cflag = if matches!(self.mode, Mode::Rustc | Mode::ToolRustcPrivate)
+                && is_lto_stage(&self.compiler)
+                && builder.cc_tool(target).is_like_clang()
+                // Exclude aarch64-linux as we can't assume the user has an LTO-capable linker
+                // (and these files get distributed in the rustc-dev component).
+                // FIXME: this means the argument above about doing this for rustc but not std makes
+                // no sense. We distribute rlibs for both, so both need to be linkable by users. I
+                // guess we just don't want to risk this for std, but are less worried about
+                // breaking rustc-dev.
+                && !target.starts_with("aarch64-unknown-linux")
+            {
+                match builder.config.rust_lto {
+                    RustcLto::Thin => Some("-flto=thin"),
+                    RustcLto::Fat => Some("-flto=full"),
+                    RustcLto::ThinLocal | RustcLto::Off => None,
+                }
+            } else {
+                None
+            };
+
+            // Extend `CFLAGS_$TARGET` with our extra flags.
             let env = format!("CFLAGS_{triple_underscored}");
             let mut cflags =
                 builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
+            if let Some(lto_cflag) = lto_cflag {
+                cflags.push(' ');
+                cflags.push_str(lto_cflag);
+            }
             if let Ok(var) = std::env::var(&env) {
                 cflags.push(' ');
                 cflags.push_str(&var);
@@ -471,6 +511,10 @@ impl Cargo {
                 let env = format!("CXXFLAGS_{triple_underscored}");
                 let mut cxxflags =
                     builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
+                if let Some(lto_cflag) = lto_cflag {
+                    cxxflags.push(' ');
+                    cxxflags.push_str(lto_cflag);
+                }
                 if let Ok(var) = std::env::var(&env) {
                     cxxflags.push(' ');
                     cxxflags.push_str(&var);
@@ -610,7 +654,7 @@ impl Builder<'_> {
         // from out of tree it shouldn't matter, since x.py is only used for
         // building in-tree.
         let color_logs = ["RUSTDOC_LOG_COLOR", "RUSTC_LOG_COLOR", "RUST_LOG_COLOR"];
-        match self.build.config.color {
+        match self.sess.config.color {
             Color::Always => {
                 cargo.arg("--color=always");
                 for log in &color_logs {
@@ -705,20 +749,6 @@ impl Builder<'_> {
         cargo.env("REAL_LIBRARY_PATH_VAR", helpers::dylib_path_var());
         if let Some(e) = env::var_os(helpers::dylib_path_var()) {
             cargo.env("REAL_LIBRARY_PATH", e);
-        }
-
-        // Set a flag for `check`/`clippy`/`fix`, so that certain build
-        // scripts can do less work (i.e. not building/requiring LLVM).
-        if matches!(cmd_kind, Kind::Check | Kind::Clippy | Kind::Fix) {
-            // If we've not yet built LLVM, or it's stale, then bust
-            // the rustc_llvm cache. That will always work, even though it
-            // may mean that on the next non-check build we'll need to rebuild
-            // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
-            // of work comparatively, and we'd likely need to rebuild it anyway,
-            // so that's okay.
-            if prebuilt_llvm_output(self, target).is_none() {
-                cargo.env("RUST_CHECK", "1");
-            }
         }
 
         // Forward `./x fix --allow-dirty` from bootstrap to cargo.
@@ -1010,15 +1040,13 @@ impl Builder<'_> {
         // These variables are primarily all read by
         // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
         cargo
-            .env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
             .env("RUSTC_REAL", self.rustc(compiler))
             .env("RUSTC_STAGE", build_compiler_stage.to_string())
             .env("RUSTC_SYSROOT", sysroot)
             .env("RUSTC_LIBDIR", &libdir)
             .env("RUSTDOC_LIBDIR", libdir)
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
-            .env("RUSTDOC_REAL", rustdoc_path)
-            .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
+            .env("RUSTDOC_REAL", rustdoc_path);
 
         if self.config.rust_break_on_ice {
             cargo.env("RUSTC_BREAK_ON_ICE", "1");
@@ -1136,14 +1164,14 @@ impl Builder<'_> {
         match mode {
             Mode::Rustc | Mode::Codegen => {
                 if let Some(ref map_to) =
-                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
+                    self.sess.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
                     // Tell the compiler which prefix was used for remapping the standard library
                     cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
                 }
 
                 if let Some(ref map_to) =
-                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::Compiler)
+                    self.sess.debuginfo_map_to(GitRepo::Rustc, RemapScheme::Compiler)
                 {
                     // Tell the compiler which prefix was used for remapping the compiler it-self
                     cargo.env("CFG_VIRTUAL_RUSTC_DEV_SOURCE_BASE_DIR", map_to);
@@ -1154,14 +1182,14 @@ impl Builder<'_> {
                         format!("compiler/={map_to}/compiler"),
                         // rustc creates absolute paths (in part bc of the `rust-src` unremap
                         // and for working directory) so let's remap the build directory as well.
-                        format!("{}={map_to}", self.build.src.display()),
+                        format!("{}={map_to}", self.sess.src.display()),
                         // remap OUT_DIR so they don't leak into artifacts.
-                        format!("{}={map_to}/out", self.build.out.display()),
+                        format!("{}={map_to}/out", self.sess.out.display()),
                         // on windows, rustc may use forward slashes internally
                         #[cfg(windows)]
                         format!(
                             "{}={map_to}\\out",
-                            self.build.out.display().to_string().replace('/', "\\")
+                            self.sess.out.display().to_string().replace('/', "\\")
                         ),
                     ]
                     .join("\t");
@@ -1174,7 +1202,7 @@ impl Builder<'_> {
             | Mode::ToolStd
             | Mode::ToolTarget => {
                 if let Some(ref map_to) =
-                    self.build.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
+                    self.sess.debuginfo_map_to(GitRepo::Rustc, RemapScheme::NonCompiler)
                 {
                     // When building the standard library sources, we want to apply the std remap scheme.
                     let map = [
@@ -1182,14 +1210,14 @@ impl Builder<'_> {
                         format!("library/={map_to}/library"),
                         // rustc creates absolute paths (in part bc of the `rust-src` unremap
                         // and for working directory) so let's remap the build directory as well.
-                        format!("{}={map_to}", self.build.src.display()),
+                        format!("{}={map_to}", self.sess.src.display()),
                         // remap OUT_DIR so they don't leak into artifacts.
-                        format!("{}={map_to}/out", self.build.out.display()),
+                        format!("{}={map_to}/out", self.sess.out.display()),
                         // on windows, rustc may use forward slashes internally
                         #[cfg(windows)]
                         format!(
                             "{}={map_to}\\out",
-                            self.build.out.display().to_string().replace('/', "\\")
+                            self.sess.out.display().to_string().replace('/', "\\")
                         ),
                     ]
                     .join("\t");
@@ -1200,7 +1228,7 @@ impl Builder<'_> {
 
         if self.config.rust_remap_debuginfo {
             let mut env_var = OsString::new();
-            if let Some(vendor) = self.build.vendored_crates_path() {
+            if let Some(vendor) = self.sess.vendored_crates_path() {
                 env_var.push(vendor);
                 env_var.push("=/rust/deps");
             } else {
@@ -1219,21 +1247,14 @@ impl Builder<'_> {
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
-        if matches!(mode, Mode::Std) {
-            // The `-Zembed-metadata` flag was renamed from `-Zno-embed-metadata`.
-            if self.local_rebuild {
-                cargo.arg("-Zembed-metadata=no");
-            } else {
-                cargo.arg("-Zno-embed-metadata");
-            }
-        }
+        cargo.arg("-Zembed-metadata=no");
 
         if self.config.dump_bootstrap_shims {
             prepare_shims_dump_dir(self);
 
             cargo
-                .env("DUMP_BOOTSTRAP_SHIMS", self.build.out.join("bootstrap-shims-dump"))
-                .env("BUILD_OUT", &self.build.out)
+                .env("DUMP_BOOTSTRAP_SHIMS", self.sess.out.join("bootstrap-shims-dump"))
+                .env("BUILD_OUT", &self.sess.out)
                 .env("CARGO_HOME", t!(home::cargo_home()));
         };
 
@@ -1267,10 +1288,13 @@ impl Builder<'_> {
         // separate Cargo projects. We can add LLVM's library path to the
         // rustc args as a workaround.
         if (mode == Mode::ToolRustcPrivate || mode == Mode::Codegen)
-            && let Some(llvm_config) = self.llvm_config(target)
+            && self.is_llvm_enabled_for(target)
         {
-            let llvm_libdir_raw =
-                command(llvm_config).cached().arg("--libdir").run_capture_stdout(self).stdout();
+            let llvm_libdir_raw = command(self.host_llvm_config())
+                .cached()
+                .arg("--libdir")
+                .run_capture_stdout(self)
+                .stdout();
             let llvm_libdir = llvm_libdir_raw.trim();
             if target.is_msvc() {
                 rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
@@ -1535,6 +1559,7 @@ impl Builder<'_> {
             build_compiler_stage,
             extra_rustflags,
             profile,
+            kind: cmd_kind,
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::sys::{AsInner, FromInner, IntoInner, map_motor_error};
+use crate::sys::{AsInner, FromInner, IntoInner, io_slices, io_slices_mut, map_motor_error};
 use crate::{io, process, sys};
 
 pub const STDIN_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
@@ -38,6 +38,15 @@ impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         moto_rt::fs::read(moto_rt::FD_STDIN, buf).map_err(map_motor_error)
     }
+
+    fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
+        moto_rt::fs::read_vectored(moto_rt::FD_STDIN, &mut io_slices_mut(bufs))
+            .map_err(map_motor_error)
+    }
+
+    fn is_read_vectored(&self) -> bool {
+        true
+    }
 }
 
 impl io::Write for Stdout {
@@ -48,6 +57,14 @@ impl io::Write for Stdout {
     fn flush(&mut self) -> io::Result<()> {
         moto_rt::fs::flush(moto_rt::FD_STDOUT).map_err(map_motor_error)
     }
+
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        moto_rt::fs::write_vectored(moto_rt::FD_STDOUT, &io_slices(bufs)).map_err(map_motor_error)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
 }
 
 impl io::Write for Stderr {
@@ -57,6 +74,14 @@ impl io::Write for Stderr {
 
     fn flush(&mut self) -> io::Result<()> {
         moto_rt::fs::flush(moto_rt::FD_STDERR).map_err(map_motor_error)
+    }
+
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        moto_rt::fs::write_vectored(moto_rt::FD_STDERR, &io_slices(bufs)).map_err(map_motor_error)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 }
 

@@ -153,6 +153,8 @@ fn visit_implementation_of_unpin(checker: &Checker<'_>) -> Result<(), ErrorGuara
                 }));
             }
             ty::Adt(_, _) => {}
+            // `extern type`s have no fields, so they can't be structurally pinned.
+            ty::Foreign(_) => {}
             _ => {
                 return Err(tcx.dcx().span_delayed_bug(span, "impl of `Unpin` for a non-adt type"));
             }
@@ -170,7 +172,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
 
     let param_env = tcx.param_env(impl_did);
 
-    if let ty::ImplPolarity::Negative | ty::ImplPolarity::Reservation = header.polarity {
+    if let ty::ImplPolarity::Negative = header.polarity {
         return Ok(());
     }
 
@@ -924,9 +926,9 @@ fn infringing_fields_error<'tcx>(
                             .or_default()
                             .push(error.obligation.cause.span);
                     }
-                    if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
+                    if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitClause {
                         trait_ref,
-                        polarity: ty::PredicatePolarity::Positive,
+                        polarity: ty::ClausePolarity::Positive,
                         ..
                     })) = error_predicate.kind().skip_binder()
                     {

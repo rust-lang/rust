@@ -867,7 +867,7 @@ pub enum Abi {
     CCmseNonSecureEntry,
     System { unwind: bool },
     RustCall,
-    Unadjusted,
+    LlvmIntrinsic,
     RustCold,
     RiscvInterruptM,
     RiscvInterruptS,
@@ -1231,10 +1231,10 @@ pub enum PredicateKind {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ClauseKind {
-    Trait(TraitPredicate),
+    Trait(TraitClause),
     RegionOutlives(RegionOutlivesClause),
     TypeOutlives(TypeOutlivesClause),
-    Projection(ProjectionPredicate),
+    Projection(ProjectionClause),
     ConstArgHasType(TyConst, Ty),
     WellFormed(TermKind),
     ConstEvaluatable(TyConst),
@@ -1260,10 +1260,13 @@ pub struct CoercePredicate {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct TraitPredicate {
+pub struct TraitClause {
     pub trait_ref: TraitRef,
-    pub polarity: PredicatePolarity,
+    pub polarity: ClausePolarity,
 }
+
+#[deprecated = "renamed to [`TraitClause`]"]
+pub type TraitPredicate = TraitClause;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct OutlivesClause<A, B>(pub A, pub B);
@@ -1279,10 +1282,13 @@ pub type RegionOutlivesPredicate = RegionOutlivesClause;
 pub type TypeOutlivesPredicate = TypeOutlivesClause;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct ProjectionPredicate {
+pub struct ProjectionClause {
     pub projection_term: AliasTerm,
     pub term: TermKind,
 }
+
+#[deprecated = "renamed to [`ProjectionClause`]"]
+pub type ProjectionPredicate = ProjectionClause;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ImplPolarity {
@@ -1292,10 +1298,13 @@ pub enum ImplPolarity {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub enum PredicatePolarity {
+pub enum ClausePolarity {
     Positive,
     Negative,
 }
+
+#[deprecated = "renamed to [`ClausePolarity`]"]
+pub type PredicatePolarity = ClausePolarity;
 
 macro_rules! index_impl {
     ($name:ident) => {

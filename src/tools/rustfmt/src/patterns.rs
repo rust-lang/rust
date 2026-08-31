@@ -70,10 +70,9 @@ fn is_short_pattern_inner(context: &RewriteContext<'_>, pat: &ast::Pat) -> bool 
         ast::PatKind::TupleStruct(_, ref path, ref subpats) => {
             path.segments.len() <= 1 && subpats.len() <= 1
         }
-        ast::PatKind::Box(ref p)
-        | PatKind::Deref(ref p)
-        | ast::PatKind::Ref(ref p, _, _)
-        | ast::PatKind::Paren(ref p) => is_short_pattern_inner(context, &*p),
+        PatKind::Deref(ref p) | ast::PatKind::Ref(ref p, _, _) | ast::PatKind::Paren(ref p) => {
+            is_short_pattern_inner(context, &*p)
+        }
         PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(context, p)),
     }
 }
@@ -114,7 +113,6 @@ impl Rewrite for Pat {
                     .ends_with_newline(false);
                 write_list(&items, &fmt)
             }
-            PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
             PatKind::Ident(BindingMode(by_ref, mutability), ident, ref sub_pat) => {
                 let mut_prefix = format_mutability(mutability).trim();
 
@@ -468,12 +466,19 @@ impl Rewrite for PatField {
                     self.pat.rewrite_result(context, nested_shape)?
                 )
             };
+
+            let combine_shape = if context.config.style_edition() >= StyleEdition::Edition2027 {
+                shape
+            } else {
+                nested_shape
+            };
+
             combine_strs_with_missing_comments(
                 context,
                 &attrs_str,
                 &pat_and_id_str,
-                mk_sp(hi_pos, self.pat.span.lo()),
-                nested_shape,
+                mk_sp(hi_pos, self.ident.span.lo()),
+                combine_shape,
                 false,
             )
         }
@@ -528,7 +533,7 @@ pub(crate) fn can_be_overflowed_pat(
             | ast::PatKind::Tuple(..)
             | ast::PatKind::Struct(..)
             | ast::PatKind::TupleStruct(..) => context.use_block_indent() && len == 1,
-            ast::PatKind::Ref(ref p, _, _) | ast::PatKind::Box(ref p) => {
+            ast::PatKind::Ref(ref p, _, _) => {
                 can_be_overflowed_pat(context, &TuplePatField::Pat(p), len)
             }
             ast::PatKind::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),

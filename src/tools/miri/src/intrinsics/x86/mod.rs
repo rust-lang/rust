@@ -45,7 +45,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 
-                let [cb_in, a, b] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [cb_in, a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let op = if unprefixed_name.starts_with("add") {
                     mir::BinOp::AddWithOverflow
                 } else {
@@ -63,7 +63,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the instruction behaves like a no-op, so it is always safe to call the
             // intrinsic.
             "sse2.pause" => {
-                let [] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 // Only exhibit the spin-loop hint behavior when SSE2 is enabled.
                 if this.tcx.sess.internal_target_features.contains(&Symbol::intern("sse2")) {
                     this.yield_active_thread();
@@ -82,7 +82,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     len = 8;
                 }
 
-                let [left, right, imm] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right, imm] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 pclmulqdq(this, left, right, imm, dest, len)?;
             }
@@ -665,58 +665,6 @@ fn split_simd_to_128bit_chunks<'tcx, P: Projectable<'tcx, Provenance>>(
     let chunked_op = op.transmute(chunked_layout, ecx)?;
 
     interp_ok((num_chunks, items_per_chunk, chunked_op))
-}
-
-/// Horizontally performs `which` operation on adjacent values of
-/// `left` and `right` SIMD vectors and stores the result in `dest`.
-/// "Horizontal" means that the i-th output element is calculated
-/// from the elements 2*i and 2*i+1 of the concatenation of `left` and
-/// `right`.
-///
-/// Each 128-bit chunk is treated independently (i.e., the value for
-/// the is i-th 128-bit chunk of `dest` is calculated with the i-th
-/// 128-bit chunks of `left` and `right`).
-fn horizontal_bin_op<'tcx>(
-    ecx: &mut crate::MiriInterpCx<'tcx>,
-    which: mir::BinOp,
-    saturating: bool,
-    left: &OpTy<'tcx>,
-    right: &OpTy<'tcx>,
-    dest: &MPlaceTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    assert_eq!(left.layout, dest.layout);
-    assert_eq!(right.layout, dest.layout);
-
-    let (num_chunks, items_per_chunk, left) = split_simd_to_128bit_chunks(ecx, left)?;
-    let (_, _, right) = split_simd_to_128bit_chunks(ecx, right)?;
-    let (_, _, dest) = split_simd_to_128bit_chunks(ecx, dest)?;
-
-    let middle = items_per_chunk / 2;
-    for i in 0..num_chunks {
-        let left = ecx.project_index(&left, i)?;
-        let right = ecx.project_index(&right, i)?;
-        let dest = ecx.project_index(&dest, i)?;
-
-        for j in 0..items_per_chunk {
-            // `j` is the index in `dest`
-            // `k` is the index of the 2-item chunk in `src`
-            let (k, src) = if j < middle { (j, &left) } else { (j.strict_sub(middle), &right) };
-            // `base_i` is the index of the first item of the 2-item chunk in `src`
-            let base_i = k.strict_mul(2);
-            let lhs = ecx.read_immediate(&ecx.project_index(src, base_i)?)?;
-            let rhs = ecx.read_immediate(&ecx.project_index(src, base_i.strict_add(1))?)?;
-
-            let res = if saturating {
-                Immediate::from(ecx.saturating_arith(which, &lhs, &rhs)?)
-            } else {
-                *ecx.binary_op(which, &lhs, &rhs)?
-            };
-
-            ecx.write_immediate(res, &ecx.project_index(&dest, j)?)?;
-        }
-    }
-
-    interp_ok(())
 }
 
 /// Conditionally multiplies the packed floating-point elements in

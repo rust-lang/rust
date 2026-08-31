@@ -83,21 +83,35 @@ runner_group_id = 8
 label_prefix = "ec2"
 region = "us-east-2"
 images = {
-    "x86_64ami" = "latest-gha-runner-ami"
+    "x86_64ami" = "latest-gha-runner-ami",
+    "arm64ami" = "latest-gha-runner-ami-arm64",
 }
 jit_runner = "organization"
-# Prices per hour of on-demand compute in us-east-2 (as of Aug 2026)
-# See rough assessment of build speed for dist-x86_64-quick in https://github.com/rust-lang/simpleinfra/issues/1132
-# m8a.2x     8 vCPU, 32 GB   $0.48688/hr
-# c8a.4x    16 vCPU, 32 GB   $0.86216/hr
-# c8a.8x    32 vCPU, 64 GB   $1.72432/hr
-# c8a.12x   48 vCPU, 96 GB   $2.58648/hr
-# CodeBuild 36 vCPU          $4.78799/hr
 allowed_instances = [
+    # AMD Zen 5 (x86_64) instances, a subset of these is used in production.
+    # Prices per hour of on-demand compute in us-east-2 (as of Aug 2026)
+    # See rough assessment of build speed for dist-x86_64-quick in https://github.com/rust-lang/simpleinfra/issues/1132
+    # m8a.2x     8 vCPU, 32 GB   $0.48688/hr
+    # c8a.4x    16 vCPU, 32 GB   $0.86216/hr
+    # c8a.8x    32 vCPU, 64 GB   $1.72432/hr
+    # c8a.12x   48 vCPU, 96 GB   $2.58648/hr
+    # CodeBuild 36 vCPU          $4.78799/hr
     "m8a.2xlarge",
     "c8a.4xlarge",
     "c8a.8xlarge",
     "c8a.12xlarge",
+
+    # Graviton 4 (aarch64) instances, currently just for experimentation
+    "m8g.2xlarge",
+    "c8g.4xlarge",
+    "c8g.8xlarge",
+    "c8g.12xlarge",
+
+    # Graviton 5 (aarch64) instances, currently just for experimentation
+    "m9g.2xlarge",
+    "c9g.4xlarge",
+    "c9g.8xlarge",
+    "c9g.12xlarge",
 ]
 
 # Enable unrolling of rollup member PRs after rollup merge

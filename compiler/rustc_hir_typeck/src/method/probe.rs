@@ -13,7 +13,9 @@ use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, query};
-use rustc_lint::builtin::METHOD_CALL_ON_DIVERGING_INFER_VAR;
+use rustc_lint_defs::builtin::{
+    METHOD_CALL_ON_DIVERGING_INFER_VAR, TYVAR_BEHIND_RAW_POINTER, UNSTABLE_NAME_COLLISIONS,
+};
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
@@ -23,7 +25,6 @@ use rustc_middle::ty::{
     Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
     edit_distance_with_substrings, find_best_match_for_name_with_substrings,
@@ -502,7 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
                 self.tcx.emit_node_span_lint(
-                    lint::builtin::TYVAR_BEHIND_RAW_POINTER,
+                    TYVAR_BEHIND_RAW_POINTER,
                     scope_expr_id,
                     span,
                     MissingTypeAnnot,
@@ -1033,7 +1034,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // We use `DeepRejectCtxt` here which may return false positive on where clauses
         // with alias self types. We need to later on reject these as inherent candidates
         // in `consider_probe`.
-        let bounds = self.param_env.caller_bounds().iter().filter_map(|clause| {
+        let bounds = self.param_env.caller_bounds().filter_map(|clause| {
             let bound_clause = clause.kind();
             match bound_clause.skip_binder() {
                 ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
@@ -1086,7 +1087,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits.iter() {
                 let trait_did = trait_candidate.def_id;
-                if duplicates.insert(trait_did) {
+                // If we have the same trait in scope but one of them is ambiguous and the other
+                // is not, we should treat them differently and then handle them later on.
+                if duplicates.insert((trait_did, trait_candidate.lint_ambiguous)) {
                     self.assemble_extension_candidates_for_trait(
                         &trait_candidate.import_ids,
                         trait_did,
@@ -1139,7 +1142,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             for (bound_trait_pred, _) in
                 traits::expand_trait_aliases(self.tcx, [(trait_ref.upcast(self.tcx), self.span)]).0
             {
-                assert_eq!(bound_trait_pred.polarity(), ty::PredicatePolarity::Positive);
+                assert_eq!(bound_trait_pred.polarity(), ty::ClausePolarity::Positive);
                 let bound_trait_ref = bound_trait_pred.map_bound(|pred| pred.trait_ref);
                 for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                     if !self.has_applicable_self(&item) {
@@ -1910,7 +1913,7 @@ impl<'tcx> Pick<'tcx> {
             return;
         }
         tcx.emit_node_span_lint(
-            lint::builtin::UNSTABLE_NAME_COLLISIONS,
+            UNSTABLE_NAME_COLLISIONS,
             scope_expr_id,
             span,
             ItemMaybeBeAddedToStd { this: self, tcx, span },
@@ -2380,10 +2383,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        let lint_ambiguous = match probes[0].0.kind {
+        // They are all the same, so if any of them is ambiguous, we report the pick as ambiguous.
+        let lint_ambiguous = probes.iter().any(|(p, _)| match p.kind {
             TraitCandidate(_, lint) => lint,
             _ => false,
-        };
+        });
 
         // FIXME: check the return type here somehow.
         // If so, just use this trait and call it a day.
@@ -2464,7 +2468,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        let lint_ambiguous = match probes[0].0.kind {
+        let lint_ambiguous = match child_candidate.kind {
             TraitCandidate(_, lint) => lint,
             _ => false,
         };

@@ -39,14 +39,6 @@ impl<'tcx> QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
         tcx.implied_outlives_bounds((canonicalized, false))
     }
-
-    fn perform_locally_with_next_solver(
-        ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
-        _span: Span,
-    ) -> Result<Self::QueryResponse, NoSolution> {
-        query_compute_implied_outlives_bounds(ocx, key.param_env, key.value.ty, false)
-    }
 }
 
 pub fn compute_implied_outlives_bounds_inner<'tcx>(

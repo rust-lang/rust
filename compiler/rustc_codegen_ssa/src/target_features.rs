@@ -3,12 +3,12 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::attrs::InstructionSetAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use rustc_lint_defs::builtin::{AARCH64_SOFTFLOAT_NEON, X86_SOFTFLOAT_SSE};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
-use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_span::{Span, Symbol, edit_distance, sym};
 use rustc_target::spec::{Arch, SanitizerSet};
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
@@ -99,12 +99,23 @@ pub(crate) fn from_target_feature_attr(
                     if abi_feature_constraints.incompatible.contains(&name.as_str()) {
                         // For "neon" specifically, we emit an FCW instead of a hard error.
                         // See <https://github.com/rust-lang/rust/issues/134375>.
+                        // Similar for "sse" on x86.
+                        // See <https://github.com/rust-lang/rust/issues/117938>.
                         if tcx.sess.target.arch == Arch::AArch64 && name.as_str() == "neon" {
                             tcx.emit_node_span_lint(
                                 AARCH64_SOFTFLOAT_NEON,
                                 tcx.local_def_id_to_hir_id(did),
                                 feature_span,
                                 diagnostics::Aarch64SoftfloatNeon,
+                            );
+                        } else if matches!(tcx.sess.target.arch, Arch::X86 | Arch::X86_64)
+                            && name.as_str() == "sse"
+                        {
+                            tcx.emit_node_span_lint(
+                                X86_SOFTFLOAT_SSE,
+                                tcx.local_def_id_to_hir_id(did),
+                                feature_span,
+                                diagnostics::X86SoftfloatSse,
                             );
                         } else {
                             tcx.dcx().emit_err(diagnostics::InternalOnlyTargetFeatureAttr {
@@ -517,7 +528,7 @@ pub fn sanitizer_features_by_flags(sess: &Session, features: &mut Vec<String>) {
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
-        rust_target_features: |tcx, cnum| {
+        all_rust_target_features: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             if tcx.sess.opts.actually_rustdoc {
                 // HACK: rustdoc would like to pretend that we have all the target features, so we

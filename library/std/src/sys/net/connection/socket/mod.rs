@@ -54,24 +54,27 @@ cfg_select! {
         target_os = "nuttx",
         target_vendor = "apple",
     ) => {
-        use c::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
-        use c::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
+        use c::{IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP, IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP};
     }
     _ => {
-        use c::IPV6_ADD_MEMBERSHIP;
-        use c::IPV6_DROP_MEMBERSHIP;
+        use c::{IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP};
     }
 }
 
 cfg_select! {
     any(
-        target_os = "linux", target_os = "android",
+        target_os = "linux",
+        target_os = "android",
         target_os = "hurd",
-        target_os = "dragonfly", target_os = "freebsd",
-        target_os = "openbsd", target_os = "netbsd",
-        target_os = "solaris", target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "solaris",
+        target_os = "illumos",
         target_os = "haiku",
-        target_os = "nto", target_os = "qnx",
+        target_os = "nto",
+        target_os = "qnx",
         target_os = "cygwin",
     ) => {
         use libc::MSG_NOSIGNAL;
@@ -83,10 +86,14 @@ cfg_select! {
 
 cfg_select! {
     any(
-        target_os = "dragonfly", target_os = "freebsd",
-        target_os = "openbsd", target_os = "netbsd",
-        target_os = "solaris", target_os = "illumos",
-        target_os = "nto", target_os = "qnx",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "nto",
+        target_os = "qnx",
     ) => {
         use crate::ffi::c_uchar;
         type IpV4MultiCastType = c_uchar;

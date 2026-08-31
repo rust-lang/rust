@@ -7,6 +7,14 @@ pub impl(self) trait FloatToInt<Int>: Sized {
     #[unstable(feature = "convert_float_to_int", issue = "67057")]
     #[doc(hidden)]
     unsafe fn to_int_unchecked(self) -> Int;
+
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[doc(hidden)]
+    fn to_int_saturating(self) -> Int;
+
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[doc(hidden)]
+    fn to_int_checked(self) -> Option<Int>;
 }
 
 macro_rules! impl_float_to_int {
@@ -19,6 +27,52 @@ macro_rules! impl_float_to_int {
                     // SAFETY: the safety contract must be upheld by the caller.
                     unsafe { crate::intrinsics::float_to_int_unchecked(self) }
                 }
+                #[inline]
+                fn to_int_saturating(self) -> $Int {
+                    // `as` already saturates and maps `NaN` to zero.
+                    self as $Int
+                }
+                #[inline]
+                fn to_int_checked(self) -> Option<$Int> {
+                    // We will compute LOW_THRESHOLD and HIGH_THRESHOLD
+                    // as <$Int>::MIN - 1 and <$Int>::MAX + 1 respectively,
+                    // or the next lower/higher value in case those are not
+                    // representable exactly. These thresholds represent the
+                    // first disallowed values.
+
+                    const LOW_THRESHOLD: $Float = {
+                        // The minimum of an integer type is representable or -INF
+                        // for all floats, as it is zero or a power of two.
+                        let int_min = <$Int>::MIN as $Float;
+                        let one_below_if_representable = int_min - 1.0;
+                        if one_below_if_representable == int_min {
+                            // We must allow int_min itself. In case int_min is
+                            // -INF this stays -INF, allowing any finite value.
+                            int_min.next_down()
+                        } else {
+                            one_below_if_representable
+                        }
+                    };
+
+                    const HIGH_THRESHOLD: $Float = {
+                        // The maximum of an integer type is always of the form
+                        // 2^k - 1 for some reasonable k. We can construct 2^k
+                        // exactly by summing 2^(k-1) twice, which fits in the
+                        // integer. The outcome will be exactly <$Int>::MAX + 1,
+                        // or INF allowing any finite value.
+                        let half = (<$Int>::MAX / 2) + 1;
+                        half as $Float + half as $Float
+                    };
+
+                    // NaN always fails these comparisons, and infinities at
+                    // least one.
+                    if LOW_THRESHOLD < self && self < HIGH_THRESHOLD {
+                        // SAFETY: we made sure we are in-bounds and finite.
+                        Some(unsafe { self.to_int_unchecked() })
+                    } else {
+                        None
+                    }
+                }
             }
         )+
     }
@@ -28,6 +82,34 @@ impl_float_to_int!(f16 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i12
 impl_float_to_int!(f32 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 impl_float_to_int!(f64 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 impl_float_to_int!(f128 => u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+
+/// Supporting trait for the inherent `cast` method converting between float types.
+/// Typically doesn’t need to be used directly.
+#[unstable(feature = "float_conversions", issue = "159913")]
+pub impl(self) trait FloatToFloat<Flt>: Sized {
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[doc(hidden)]
+    fn cast(self) -> Flt;
+}
+
+macro_rules! impl_float_to_float {
+    ($Float:ty => $($Flt:ty),+) => {
+        $(
+            #[unstable(feature = "float_conversions", issue = "159913")]
+            impl FloatToFloat<$Flt> for $Float {
+                #[inline]
+                fn cast(self) -> $Flt {
+                    self as $Flt
+                }
+            }
+        )+
+    }
+}
+
+impl_float_to_float!(f16 => f16, f32, f64, f128);
+impl_float_to_float!(f32 => f16, f32, f64, f128);
+impl_float_to_float!(f64 => f16, f32, f64, f128);
+impl_float_to_float!(f128 => f16, f32, f64, f128);
 
 /// Implement `From<bool>` for integers
 macro_rules! impl_from_bool {

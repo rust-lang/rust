@@ -7,7 +7,6 @@ use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_crate_store::{ExternCrate, ExternCrateSource};
-use rustc_data_structures::Limit;
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
@@ -17,6 +16,7 @@ use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
+use rustc_structures::Limit;
 use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
 use smallvec::SmallVec;
 
@@ -26,7 +26,7 @@ use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar
 use crate::query::{IntoQueryKey, Providers};
 use crate::ty::region::RegionExt;
 use crate::ty::{
-    ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitPredicate,
+    ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitClause,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
 
@@ -756,9 +756,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Uint(t) => write!(self, "{}", t.name_str())?,
             ty::Float(t) => write!(self, "{}", t.name_str())?,
             ty::Pat(ty, pat) => {
-                write!(self, "(")?;
+                write!(self, "pattern_type!(")?;
                 ty.print(self)?;
-                write!(self, ") is {pat:?}")?;
+                write!(self, " is {pat:?})")?;
             }
             ty::RawPtr(ty, mutbl) => {
                 write!(self, "*{} ", mutbl.ptr_str())?;
@@ -1060,11 +1060,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     // `MetaSized`, and skip sizedness bounds to be added at the end.
                     match tcx.as_lang_item(pred.def_id()) {
                         Some(LangItem::Sized) => match pred.polarity {
-                            ty::PredicatePolarity::Positive => {
+                            ty::ClausePolarity::Positive => {
                                 has_sized_bound = true;
                                 continue;
                             }
-                            ty::PredicatePolarity::Negative => has_negative_sized_bound = true,
+                            ty::ClausePolarity::Negative => has_negative_sized_bound = true,
                         },
                         Some(LangItem::MetaSized) => {
                             has_meta_sized_bound = true;
@@ -1085,9 +1085,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 ty::ClauseKind::Projection(pred) => {
                     let proj = bound_predicate.rebind(pred);
-                    let trait_ref = proj.map_bound(|proj| TraitPredicate {
+                    let trait_ref = proj.map_bound(|proj| TraitClause {
                         trait_ref: proj.projection_term.trait_ref(tcx),
-                        polarity: ty::PredicatePolarity::Positive,
+                        polarity: ty::ClausePolarity::Positive,
                     });
 
                     self.insert_trait_and_projection(
@@ -1151,8 +1151,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             } else {
                 // Otherwise, render this like a regular trait.
                 traits.insert(
-                    bound_args_and_self_ty.map_bound(|(args, self_ty)| ty::TraitPredicate {
-                        polarity: ty::PredicatePolarity::Positive,
+                    bound_args_and_self_ty.map_bound(|(args, self_ty)| ty::TraitClause {
+                        polarity: ty::ClausePolarity::Positive,
                         trait_ref: ty::TraitRef::new(
                             tcx,
                             trait_def_id,
@@ -1169,7 +1169,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             write!(self, "{}", if first { "" } else { " + " })?;
 
             self.wrap_binder(&trait_pred, WrapBinderMode::ForAll, |trait_pred, p| {
-                if trait_pred.polarity == ty::PredicatePolarity::Negative {
+                if trait_pred.polarity == ty::ClausePolarity::Negative {
                     write!(p, "!")?;
                 }
                 trait_pred.trait_ref.print_only_trait_name().print(p)?;
@@ -1257,10 +1257,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// traits map or fn_traits map, depending on if the trait is in the Fn* family of traits.
     fn insert_trait_and_projection(
         &mut self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
         traits: &mut FxIndexMap<
-            ty::PolyTraitPredicate<'tcx>,
+            ty::PolyTraitClause<'tcx>,
             FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
         fn_traits: &mut FxIndexMap<
@@ -1279,7 +1279,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             None
         };
 
-        if trait_pred.polarity() == ty::PredicatePolarity::Positive
+        if trait_pred.polarity() == ty::ClausePolarity::Positive
             && let Some((kind, is_async)) = fn_trait_and_async
             && let ty::Tuple(types) = *trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
         {
@@ -2305,9 +2305,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                         // `Foo<...>`.
                         if let Some(arg) = args.types().next() {
                             if let ty::Adt(_, arg_args) = arg.kind() {
-                                if arg_args.consts().next().is_none()
-                                    && arg_args.types().next().is_none()
-                                {
+                                if arg_args.terms().next().is_none() {
                                     // Single param type with no type or const parameters:
                                     // `Foo<Bar<'a>>`.
                                     true
@@ -2708,15 +2706,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 struct RegionFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
+    /// Regions bound by the binder being named (and placeholders) that have
+    /// already been named.
     region_map: UnordMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>,
-    name: &'a mut (
-                dyn FnMut(
-        Option<ty::DebruijnIndex>, // Debruijn index of the folded late-bound region
-        ty::DebruijnIndex,         // Index corresponding to binder level
-        ty::BoundRegion<'tcx>,
-    ) -> ty::Region<'tcx>
-                    + 'a
-            ),
+    name: &'a mut (dyn FnMut(ty::BoundRegion<'tcx>) -> ty::Region<'tcx> + 'a),
 }
 
 impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
@@ -2747,8 +2740,13 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let name = &mut self.name;
         let region = match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(db), br) if db >= self.current_index => {
-                *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
+            // Only name regions bound by the binder being named. Regions bound by an
+            // enclosing binder that merely escape through this one keep their name
+            // (they were named when that binder was folded) and their index, and must
+            // not end up in `region_map`, which callers use to build `for<...>` lists
+            // (#102392, #134410).
+            ty::ReBound(ty::BoundVarIndexKind::Bound(db), br) if db == self.current_index => {
+                *self.region_map.entry(br).or_insert_with(|| name(br))
             }
             ty::RePlaceholder(ty::PlaceholderRegion {
                 bound: ty::BoundRegion { kind, .. },
@@ -2761,10 +2759,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind };
-                        *self
-                            .region_map
-                            .entry(br)
-                            .or_insert_with(|| name(None, self.current_index, br))
+                        *self.region_map.entry(br).or_insert_with(|| name(br))
                     }
                 }
             }
@@ -2873,29 +2868,14 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
             let trim_path = with_forced_trimmed_paths();
             // Closure used in `RegionFolder` to create names for anonymous late-bound
-            // regions. We use two `DebruijnIndex`es (one for the currently folded
-            // late-bound region and the other for the binder level) to determine
-            // whether a name has already been created for the currently folded region,
-            // see issue #102392.
-            let mut name = |lifetime_idx: Option<ty::DebruijnIndex>,
-                            binder_level_idx: ty::DebruijnIndex,
-                            br: ty::BoundRegion<'tcx>| {
+            // regions.
+            let mut name = |br: ty::BoundRegion<'tcx>| {
                 let (name, kind) = if let Some(name) = br.kind.get_name(tcx) {
                     (name, br.kind)
                 } else {
                     let name = next_name(self);
                     (name, ty::BoundRegionKind::NamedForPrinting(name))
                 };
-
-                if let Some(lt_idx) = lifetime_idx {
-                    if lt_idx > binder_level_idx {
-                        return ty::Region::new_bound(
-                            tcx,
-                            ty::INNERMOST,
-                            ty::BoundRegion { var: br.var, kind },
-                        );
-                    }
-                }
 
                 // Unconditionally render `unsafe<>`.
                 if !trim_path || mode == WrapBinderMode::Unsafe {
@@ -3076,46 +3056,46 @@ impl<'tcx> ty::Binder<'tcx, ty::TraitRef<'tcx>> {
 }
 
 #[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift, Hash)]
-pub struct TraitPredPrintModifiersAndPath<'tcx>(ty::TraitPredicate<'tcx>);
+pub struct TraitClausePrintModifiersAndPath<'tcx>(ty::TraitClause<'tcx>);
 
-impl<'tcx> fmt::Debug for TraitPredPrintModifiersAndPath<'tcx> {
+impl<'tcx> fmt::Debug for TraitClausePrintModifiersAndPath<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
-#[extension(pub trait PrintTraitPredicateExt<'tcx>)]
-impl<'tcx> ty::TraitPredicate<'tcx> {
-    fn print_modifiers_and_trait_path(self) -> TraitPredPrintModifiersAndPath<'tcx> {
-        TraitPredPrintModifiersAndPath(self)
+#[extension(pub trait PrintTraitClauseExt<'tcx>)]
+impl<'tcx> ty::TraitClause<'tcx> {
+    fn print_modifiers_and_trait_path(self) -> TraitClausePrintModifiersAndPath<'tcx> {
+        TraitClausePrintModifiersAndPath(self)
     }
 }
 
 #[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift, Hash)]
-pub struct TraitPredPrintWithBoundConstness<'tcx>(
-    ty::TraitPredicate<'tcx>,
+pub struct TraitClausePrintWithBoundConstness<'tcx>(
+    ty::TraitClause<'tcx>,
     Option<ty::BoundConstness>,
 );
 
-impl<'tcx> fmt::Debug for TraitPredPrintWithBoundConstness<'tcx> {
+impl<'tcx> fmt::Debug for TraitClausePrintWithBoundConstness<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
-#[extension(pub trait PrintPolyTraitPredicateExt<'tcx>)]
-impl<'tcx> ty::PolyTraitPredicate<'tcx> {
+#[extension(pub trait PrintPolyTraitClauseExt<'tcx>)]
+impl<'tcx> ty::PolyTraitClause<'tcx> {
     fn print_modifiers_and_trait_path(
         self,
-    ) -> ty::Binder<'tcx, TraitPredPrintModifiersAndPath<'tcx>> {
-        self.map_bound(TraitPredPrintModifiersAndPath)
+    ) -> ty::Binder<'tcx, TraitClausePrintModifiersAndPath<'tcx>> {
+        self.map_bound(TraitClausePrintModifiersAndPath)
     }
 
     fn print_with_bound_constness(
         self,
         constness: Option<ty::BoundConstness>,
-    ) -> ty::Binder<'tcx, TraitPredPrintWithBoundConstness<'tcx>> {
-        self.map_bound(|trait_pred| TraitPredPrintWithBoundConstness(trait_pred, constness))
+    ) -> ty::Binder<'tcx, TraitClausePrintWithBoundConstness<'tcx>> {
+        self.map_bound(|trait_pred| TraitClausePrintWithBoundConstness(trait_pred, constness))
     }
 }
 
@@ -3214,10 +3194,10 @@ define_print! {
         }
     }
 
-    ty::TraitPredicate<'tcx> {
+    ty::TraitClause<'tcx> {
         self.trait_ref.self_ty().print(p)?;
         write!(p, ": ")?;
-        if let ty::PredicatePolarity::Negative = self.polarity {
+        if let ty::ClausePolarity::Negative = self.polarity {
             write!(p, "!")?;
         }
         self.trait_ref.print_trait_sugared().print(p)?;
@@ -3314,7 +3294,7 @@ define_print! {
         self.term.print(p)?;
     }
 
-    ty::ProjectionPredicate<'tcx> {
+    ty::ProjectionClause<'tcx> {
         self.projection_term.print(p)?;
         write!(p, " == ")?;
         p.reset_type_limit();
@@ -3389,20 +3369,20 @@ define_print_and_forward_display! {
         p.print_def_path(self.0.def_id, &[])?;
     }
 
-    TraitPredPrintModifiersAndPath<'tcx> {
-        if let ty::PredicatePolarity::Negative = self.0.polarity {
+    TraitClausePrintModifiersAndPath<'tcx> {
+        if let ty::ClausePolarity::Negative = self.0.polarity {
             write!(p, "!")?;
         }
         self.0.trait_ref.print_trait_sugared().print(p)?;
     }
 
-    TraitPredPrintWithBoundConstness<'tcx> {
+    TraitClausePrintWithBoundConstness<'tcx> {
         self.0.trait_ref.self_ty().print(p)?;
         write!(p, ": ")?;
         if let Some(constness) = self.1 {
             p.pretty_print_bound_constness(constness)?;
         }
-        if let ty::PredicatePolarity::Negative = self.0.polarity {
+        if let ty::ClausePolarity::Negative = self.0.polarity {
             write!(p, "!")?;
         }
         self.0.trait_ref.print_trait_sugared().print(p)?;

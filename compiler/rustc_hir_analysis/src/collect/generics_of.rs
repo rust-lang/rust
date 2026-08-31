@@ -6,9 +6,9 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, HirId, Node};
+use rustc_lint_defs::builtin::INVALID_TYPE_PARAM_DEFAULT;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::lint;
 use rustc_span::{Span, kw, sym};
 use tracing::{debug, instrument};
 
@@ -297,7 +297,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         ParamDefaultPolicy::Allowed => {}
                         ParamDefaultPolicy::FutureCompatForbidden => {
                             tcx.emit_node_span_lint(
-                                lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                                INVALID_TYPE_PARAM_DEFAULT,
                                 param.hir_id,
                                 param.span,
                                 GenericParametersForbiddenHere { msg: MESSAGE },

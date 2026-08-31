@@ -1082,7 +1082,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help (see more with ''--help'')')
             [CompletionResult]::new('eprintln', 'eprintln', [CompletionResultType]::ParameterValue, 'Run `profile_local eprintln`. This executes the compiler on the given benchmarks and stores its stderr output')
-            [CompletionResult]::new('samply', 'samply', [CompletionResultType]::ParameterValue, 'Run `profile_local samply` This executes the compiler on the given benchmarks and profiles it with `samply`. You need to install `samply`, e.g. using `cargo install samply`')
+            [CompletionResult]::new('samply', 'samply', [CompletionResultType]::ParameterValue, 'Run `profile_local samply` This executes the compiler on the given benchmarks and profiles it with `samply`. You need to install `samply`, e.g. using `cargo install --locked samply`')
             [CompletionResult]::new('cachegrind', 'cachegrind', [CompletionResultType]::ParameterValue, 'Run `profile_local cachegrind`. This executes the compiler on the given benchmarks under `Cachegrind`')
             [CompletionResult]::new('benchmark', 'benchmark', [CompletionResultType]::ParameterValue, 'Run compile benchmarks with a locally built compiler')
             [CompletionResult]::new('compare', 'compare', [CompletionResultType]::ParameterValue, 'Compare the results of two previously executed benchmark runs')

@@ -7,8 +7,8 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId, find_attr};
-use rustc_middle::ty::{self, GenericArgsRef, PredicatePolarity};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
+use rustc_middle::ty::{self, ClausePolarity, GenericArgsRef};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{Span, sym};
 
@@ -135,7 +135,7 @@ fn has_unstable_into_iter_predicate<'tcx>(
             continue;
         };
         if trait_clause.def_id() != into_iterator_def_id
-            || trait_clause.polarity() != PredicatePolarity::Positive
+            || trait_clause.polarity() != ClausePolarity::Positive
         {
             continue;
         }
@@ -686,9 +686,6 @@ impl EarlyLintPass for BadUseOfFindAttr {
                         find_attr_kind_in_pat(cx, pat);
                     }
                 }
-                PatKind::Box(pat) => {
-                    find_attr_kind_in_pat(cx, pat);
-                }
                 PatKind::Deref(pat) => {
                     find_attr_kind_in_pat(cx, pat);
                 }
@@ -763,7 +760,6 @@ fn pat_is_not_exhaustive_heuristic(pat: &hir::Pat<'_>) -> Option<(Span, &'static
         hir::PatKind::Or(..) => None,
         hir::PatKind::Never => None,
         hir::PatKind::Tuple(..) => None,
-        hir::PatKind::Box(pat) => pat_is_not_exhaustive_heuristic(&*pat),
         hir::PatKind::Deref(pat) => pat_is_not_exhaustive_heuristic(&*pat),
         hir::PatKind::Ref(pat, _, _) => pat_is_not_exhaustive_heuristic(&*pat),
         hir::PatKind::Expr(..) => None,

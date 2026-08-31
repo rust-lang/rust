@@ -462,7 +462,7 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
 ///     Ok(())
 /// }
 /// ```
-#[stable(feature = "fs_set_times", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fs_set_times", since = "1.99.0")]
 #[doc(alias = "utimens")]
 #[doc(alias = "utimes")]
 #[doc(alias = "utime")]
@@ -503,7 +503,7 @@ pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-#[stable(feature = "fs_set_times", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "fs_set_times", since = "1.99.0")]
 #[doc(alias = "utimensat")]
 #[doc(alias = "lutimens")]
 #[doc(alias = "lutimes")]
@@ -1578,6 +1578,63 @@ impl Dir {
             .map(|inner| Self { inner })
     }
 
+    /// Attempts to open a directory at `path` according to `opts`.
+    ///
+    /// This function opens a directory. To open a file instead, see [`File::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::{Dir, OpenOptions}, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open_with("foo", &OpenOptions::new().read(true))?;
+    ///     let mut f = dir.open_file("bar.txt")?;
+    ///     let contents = io::read_to_string(f)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
+        fs_imp::Dir::open(path.as_ref(), &opts.0).map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a directory at `path` with the minimum permissions for traversal.
+    ///
+    /// The permissions requested by this function are guaranteed to be sufficient to open a child
+    /// file or folder, but not necessarily to list all children.
+    ///
+    /// # Errors
+    ///
+    /// This function may return an error according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let foo = Dir::open_for_traversal("foo")?;
+    ///     let foobar = foo.open_dir("bar")?;
+    ///     let mut foobarbaz = foobar.open_file("baz")?;
+    ///     let contents = io::read_to_string(foobarbaz)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs_imp::Dir::open_for_traversal(path.as_ref()).map(|inner| Self { inner })
+    }
+
     /// Queries metadata about the underlying directory.
     ///
     /// # Examples
@@ -1718,6 +1775,99 @@ impl Dir {
         to: Q,
     ) -> io::Result<()> {
         self.inner.rename(from.as_ref(), &to_dir.inner, to.as_ref())
+    }
+
+    /// Attempts to create a directory relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To create a directory
+    /// relative to the current working directory, or at an absolute path, see
+    /// [`fs::create_dir`][crate::fs::create_dir].
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.create_dir(path.as_ref())
+    }
+
+    /// Attempts to open a directory in read-only mode relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To open a directory
+    /// relative to the current working directory, or at an absolute path, see [`Dir::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let foobar = dir.open_dir("bar")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
+        self.inner
+            .open_dir(path.as_ref(), &OpenOptions::new().read(true).0)
+            .map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a directory relative to this directory according to `opts`.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To open a directory
+    /// relative to the current working directory, or at an absolute path, see [`Dir::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return errors according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::{Dir, OpenOptions};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let foobar_w = dir.open_dir_with("bar", &OpenOptions::new().write(true))?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
+        self.inner.open_dir(path.as_ref(), &opts.0).map(|inner| Self { inner })
+    }
+
+    /// Attempts to remove a directory relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To remove a directory
+    /// relative to the current working directory, or at an absolute path, see
+    /// [`fs::remove_dir`][crate::fs::remove_dir].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     dir.remove_dir("bar")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.remove_dir(path.as_ref())
     }
 }
 
@@ -3287,8 +3437,9 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// not be used in security-sensitive contexts:
 /// - **Miri**: Even when emulating targets where the underlying implementation will protect against
 ///   TOCTOU races, Miri will not do so.
-/// - **QNX**, **Redox OS**, **VxWorks**: This function does not protect against TOCTOU races, as
-///   the underlying platform does not implement the required platform support to do so.
+/// - **ESP-IDF**, **Horizon**, **PS Vita**, **QNX**, **Redox OS**, **VxWorks**: This function does
+///   not protect against TOCTOU races, as the underlying platform does not implement the required
+///   platform support to do so.
 ///
 /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 /// [changes]: io#platform-specific-behavior
@@ -3469,21 +3620,21 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to:
-/// * `open` with `O_NOFOLLOW` flag enabled + `fchmod` on WASI
-/// * `fchmodat` function with the flag `AT_SYMLINK_NOFOLLOW` enabled
-///   on Unix platforms
-/// * The flag `FILE_FLAG_OPEN_REPARSE_POINT` is enabled and then the
-///   permissions of the file is set through `SetFileInformationByHandle`
-///   on Windows.
-/// * On all other platforms, the behavior remains the same with
-/// [`fs::set_permissions`].
-///
-/// [`fs::set_permissions`]: crate::fs::set_permissions
+/// This function currently corresponds to the following underlying operations:
+/// * Android: returns [`Unsupported`] on all files.
+/// * Linux, BSD-based platforms, QNX, NTO: `fchmodat` with `AT_SYMLINK_NOFOLLOW`.
+/// If that is not supported, we fall back to:
+///   * Unix-based platforms with symlinks: `open` with `O_NOFOLLOW` followed by
+///   [`fs::set_permissions`].
+///   * Unix-based platforms without symlinks: `open` followed by [`fs::set_permissions`].
+/// * Windows: `CreateFileW` with `FILE_FLAG_OPEN_REPARSE_POINT` followed
+///   by `SetFileInformationByHandle`.
 ///
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
+///
+/// [`fs::set_permissions`]: crate::fs::set_permissions
 ///
 /// # Errors
 ///
@@ -3493,10 +3644,8 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// * `path` does not exist.
 /// * The user lacks the permission to change attributes of the file.
 ///
-/// Note: On Linux, this will result in a [`Unsupported`] error
-/// if the final element is a symlink. On BSD-based systems, the
-/// behavior can vary from symlink permission bits changing or
-/// there being no effects on symlinks
+/// Note: On Linux and other Unix-based platforms with symlinks (non-BSD-based),
+/// this will result in an [`Unsupported`] error if the final element is a symlink.
 ///
 /// [`Unsupported`]: crate::io::ErrorKind::Unsupported
 ///
@@ -3509,8 +3658,8 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// fn main() -> std::io::Result<()> {
 ///     let mut perms = fs::symlink_metadata("foo.txt")?.permissions();
 ///     perms.set_readonly(true);
-///     // This should result in an error on certain platforms
-///     // or succeed in modifying the permissions of a symlink
+///     // This should result in an error on certain platforms or
+///     // succeed in modifying the permissions of a symlink
 ///     fs::set_permissions_nofollow("foo.txt", perms)?;
 ///     Ok(())
 /// }
@@ -3589,7 +3738,7 @@ impl DirBuilder {
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
         // if path's parent is None, it is "/" path, which should
         // return Ok immediately
-        if path == Path::new("") || path.parent() == None {
+        if path.is_empty() || path.parent().is_none() {
             return Ok(());
         }
 
@@ -3600,7 +3749,7 @@ impl DirBuilder {
             // for relative paths like "foo/bar", the parent of
             // "foo" will be "" which there's no need to invoke
             // a mkdir syscall on
-            if ancestor == Path::new("") || ancestor.parent() == None {
+            if ancestor.is_empty() || ancestor.parent().is_none() {
                 break;
             }
 

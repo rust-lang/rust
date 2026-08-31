@@ -515,8 +515,13 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `n` is greater than or equal to the number of
-        /// bits in `self`.
+        /// ## Overflow behavior
+        ///
+        /// If overflow checks are enabled (default in debug mode), this function will panic if `n`
+        /// is greater than or equal to the number of bits in `self`. If overflow checks are
+        /// disabled (default in release mode), there is no panic; instead, the value is shifted
+        /// by `n % Self::BITS`.
+        // FIXME(wrapping_funnel_shifts): link to `wrapping_funnel_shl` when stable.
         ///
         /// # Examples
         ///
@@ -543,21 +548,31 @@ macro_rules! uint_impl {
         ///
         /// ```should_panic
         /// #![feature(funnel_shifts)]
+        /// # #![feature(cfg_overflow_checks)]
+        /// # #[cfg(overflow_checks)] {
         ///
         #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
         /// // Okay
         #[doc = concat!("let _ = a.rotate_left(", stringify!($SelfT), "::BITS);")]
-        /// // Panics
+        /// // Panics (only when overflow checks are enabled)
         #[doc = concat!("let _ = a.funnel_shl(a, ", stringify!($SelfT), "::BITS);")]
+        /// # }
+        /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
         #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
         #[unstable(feature = "funnel_shifts", issue = "145686")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
+        #[rustc_inherit_overflow_checks]
         pub const fn funnel_shl(self, right: Self, n: u32) -> Self {
-            assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
-            // SAFETY: just checked that `shift` is in-range
-            unsafe { self.unchecked_funnel_shl(right, n) }
+            if intrinsics::overflow_checks() {
+                assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
+            }
+            // SAFETY: `n` is wrapped to within range
+            unsafe {
+                let n = n & (Self::BITS - 1);
+                self.unchecked_funnel_shl(right, n)
+            }
         }
 
         /// Performs a right funnel shift.
@@ -571,8 +586,13 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `n` is greater than or equal to the number of
-        /// bits in `self`.
+        /// ## Overflow behavior
+        ///
+        /// If overflow checks are enabled (default in debug mode), this function will panic if `n`
+        /// is greater than or equal to the number of bits in `self`. If overflow checks are
+        /// disabled (default in release mode), there is no panic; instead, the value is shifted
+        /// by `n % Self::BITS`.
+        // FIXME(wrapping_funnel_shifts): link to `wrapping_funnel_shr` when stable.
         ///
         /// # Examples
         ///
@@ -599,21 +619,31 @@ macro_rules! uint_impl {
         ///
         /// ```should_panic
         /// #![feature(funnel_shifts)]
+        /// # #![feature(cfg_overflow_checks)]
+        /// # #[cfg(overflow_checks)] {
         ///
         #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
         /// // Okay
         #[doc = concat!("let _ = a.rotate_right(", stringify!($SelfT), "::BITS);")]
-        /// // Panics
+        /// // Panics (only when overflow checks are enabled)
         #[doc = concat!("let _ = a.funnel_shr(a, ", stringify!($SelfT), "::BITS);")]
+        /// # }
+        /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
         #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
         #[unstable(feature = "funnel_shifts", issue = "145686")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
+        #[rustc_inherit_overflow_checks]
         pub const fn funnel_shr(self, right: Self, n: u32) -> Self {
-            assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
-            // SAFETY: just checked that `shift` is in-range
-            unsafe { self.unchecked_funnel_shr(right, n) }
+            if intrinsics::overflow_checks() {
+                assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
+            }
+            // SAFETY: `n` is wrapped to within range
+            unsafe {
+                let n = n & (Self::BITS - 1);
+                self.unchecked_funnel_shr(right, n)
+            }
         }
 
         /// Unchecked funnel shift left.
@@ -4168,7 +4198,7 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[deprecated(since = "CURRENT_RUSTC_VERSION", note = "replaced by the `MIN` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MIN` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_min_value")]
         pub const fn min_value() -> Self { Self::MIN }
 
@@ -4180,7 +4210,7 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[deprecated(since = "CURRENT_RUSTC_VERSION", note = "replaced by the `MAX` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MAX` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self { Self::MAX }
 

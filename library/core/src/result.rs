@@ -1343,7 +1343,6 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(never_type)]
     /// # #![feature(unwrap_infallible)]
     ///
     /// fn only_good_news() -> Result<String, !> {
@@ -1380,7 +1379,6 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(never_type)]
     /// # #![feature(unwrap_infallible)]
     ///
     /// fn only_bad_news() -> Result<!, String> {
@@ -1738,6 +1736,7 @@ impl<T, E> Result<&T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_cloned", since = "1.59.0")]
+    #[expect(clippy::map_clone, reason = "implements Result::cloned")]
     pub fn cloned(self) -> Result<T, E>
     where
         T: Clone,

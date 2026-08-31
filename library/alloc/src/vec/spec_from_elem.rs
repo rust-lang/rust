@@ -36,6 +36,7 @@ impl SpecFromElem for i8 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
         let mut v = Vec::with_capacity_in(n, alloc);
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             ptr::write_bytes(v.as_mut_ptr(), elem as u8, n);
             v.set_len(n);
@@ -51,6 +52,7 @@ impl SpecFromElem for u8 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
         let mut v = Vec::with_capacity_in(n, alloc);
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             ptr::write_bytes(v.as_mut_ptr(), elem, n);
             v.set_len(n);

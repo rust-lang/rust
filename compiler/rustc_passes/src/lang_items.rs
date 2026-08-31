@@ -230,7 +230,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             }
         }
 
-        if self.tcx.crate_types().contains(&rustc_session::config::CrateType::Sdylib) {
+        if self.tcx.crate_types().contains(&rustc_structures::CrateType::Sdylib) {
             self.tcx.dcx().emit_err(IncorrectCrateType { span: attr_span });
         }
 

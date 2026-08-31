@@ -159,10 +159,10 @@
 //!
 //! Allocations typically have a fixed size that cannot change. However, allocations created by
 //! directly invoking page table operations of the operating system, e.g. via `mmap`, are allowed to
-//! grow by adding more pages to them at the end. Unmapping parts of an allocation (i.e., shrinking
-//! it or punching holes into it) is currently not supported. Allocations created via
-//! "compiler-recognized" operations, such as `std::alloc` methods or `libc::malloc`, can never
-//! change their size, even if they use `mmap` under the hood.
+//! grow by adding more pages to them at the end. Adding more pages before the beginning, or
+//! unmapping parts of an allocation (i.e., shrinking it or punching holes into it), is currently
+//! not supported. Allocations created via "compiler-recognized" operations, such as `std::alloc`
+//! methods or `libc::malloc`, can never change their size, even if they use `mmap` under the hood.
 //!
 //! [`null()`]: null
 //!
@@ -1620,6 +1620,8 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
 ///
 /// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
+/// Care must be taken around [ownership of the returned value](#ownership-of-the-returned-value).
+///
 /// # Examples
 ///
 /// Basic usage:
@@ -2065,12 +2067,13 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// are two cases of usage that need to be distinguished:
 ///
 /// - When a volatile operation is used for memory inside an [allocation], it behaves exactly like
-///   [`read`], except for the additional guarantee that it won't be elided or reordered (see
-///   above). This implies that the operation will actually access memory and not e.g. be lowered to
-///   reusing data from a previous read. Other than that, all the usual rules for memory accesses
-///   apply (including provenance).  In particular, just like in C, whether an operation is volatile
-///   has no bearing whatsoever on questions involving concurrent accesses from multiple threads.
-///   Volatile accesses behave exactly like non-atomic accesses in that regard.
+///   [`read`], except for the additional guarantee that it won't be elided or reordered across
+///   other externally observable events (see above). This implies that the operation will actually
+///   access memory and not e.g. be lowered to reusing data from a previous read. Other than that,
+///   all the usual rules for memory accesses apply (including provenance). In particular, just
+///   like in C, whether an operation is volatile has no bearing whatsoever on questions involving
+///   concurrent accesses from multiple threads. Volatile accesses behave exactly like non-atomic
+///   accesses in that regard.
 ///
 /// - Volatile operations, however, may also be used to access memory that is _outside_ of any Rust
 ///   allocation. In this use-case, the pointer does *not* have to be [valid] for reads. This is
@@ -2172,11 +2175,12 @@ pub const unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// - When a volatile operation is used for memory inside an [allocation], it behaves exactly like
 ///   [`write`][write()], except for the additional guarantee that it won't be elided or reordered
-///   (see above). This implies that the operation will actually access memory and not e.g. be
-///   lowered to a register access. Other than that, all the usual rules for memory accesses apply
-///   (including provenance). In particular, just like in C, whether an operation is volatile has no
-///   bearing whatsoever on questions involving concurrent access from multiple threads. Volatile
-///   accesses behave exactly like non-atomic accesses in that regard.
+///   across other externally observable events (see above). This implies that the operation will
+///   actually access memory and not e.g. be lowered to a register access. Other than that, all the
+///   usual rules for memory accesses apply (including provenance). In particular, just like in C,
+///   whether an operation is volatile has no bearing whatsoever on questions involving concurrent
+///   access from multiple threads. Volatile accesses behave exactly like non-atomic accesses in
+///   that regard.
 ///
 /// - Volatile operations, however, may also be used to access memory that is _outside_ of any Rust
 ///   allocation. In this use-case, the pointer does *not* have to be [valid] for writes. This is
@@ -2185,7 +2189,7 @@ pub const unsafe fn read_volatile<T>(src: *const T) -> T {
 ///   semantics associated to their manipulation, and cannot be used as general purpose memory.
 ///   Here, any address value is possible, including 0 and [`usize::MAX`], so long as the semantics
 ///   of such a write are well-defined by the target hardware. The provenance of the pointer is
-///   irrelevant, and it can be created with [`without_provenance`]. The access must not trap. It
+///   irrelevant, and it can be created with [`without_provenance_mut`]. The access must not trap. It
 ///   can cause side-effects, but those must not affect Rust-allocated memory in any way. This
 ///   access is still not considered [atomic], and as such it cannot be used for inter-thread
 ///   synchronization.

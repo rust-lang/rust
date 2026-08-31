@@ -284,17 +284,6 @@ pub(crate) struct InvalidMayDangle {
 }
 
 #[derive(Diagnostic)]
-#[diag("this `#[deprecated]` annotation has no effect")]
-pub(crate) struct DeprecatedAnnotationHasNoEffect {
-    #[suggestion(
-        "remove the unnecessary deprecation attribute",
-        applicability = "machine-applicable",
-        code = ""
-    )]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[panic_handler]` function required, but not found")]
 pub(crate) struct MissingPanicHandler;
 
@@ -617,6 +606,11 @@ pub(crate) struct TransparentIncompatible {
     pub hint_spans: Vec<Span>,
     pub target: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[repr(..)]` attribute is specified more than once")]
+#[note("for consistency, only specify the representation once")]
+pub(crate) struct RepeatedRepr;
 
 #[derive(Diagnostic)]
 #[diag("deprecated attribute must be paired with either stable or unstable attribute", code = E0549)]

@@ -6,6 +6,7 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
 use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
+use rustc_lint_defs::builtin::{NON_CONTIGUOUS_RANGE_ENDPOINTS, OVERLAPPING_RANGE_ENDPOINTS};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
@@ -13,7 +14,6 @@ use rustc_middle::ty::{
     self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_span::def_id::LocalModId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
@@ -824,14 +824,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 print::write_ref_like(&mut s, pat.ty().inner(), &print(&pat.fields[0])).unwrap();
                 s
             }
-            DerefPattern(_) if pat.ty().is_box() && !self.tcx.features().deref_patterns() => {
-                // FIXME(deref_patterns): Remove this special handling once `box_patterns` is gone.
-                // HACK(@dianne): `box _` syntax is exposed on stable in diagnostics, e.g. to
-                // witness non-exhaustiveness of `match Box::new(0) { Box { .. } if false => {} }`.
-                // To avoid changing diagnostics before deref pattern syntax is finalized, let's use
-                // `box _` syntax unless `deref_patterns` is enabled.
-                format!("box {}", print(&pat.fields[0]))
-            }
             DerefPattern(_) => format!("deref!({})", print(&pat.fields[0])),
             Slice(slice) => {
                 let (prefix_len, has_dot_dot) = match slice.kind {
@@ -954,7 +946,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
             .collect();
         let pat_span = pat.data().span;
         self.tcx.emit_node_span_lint(
-            lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
+            OVERLAPPING_RANGE_ENDPOINTS,
             self.match_lint_level,
             pat_span,
             diagnostics::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
@@ -990,7 +982,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         if gapped_with.is_empty() {
             // If `gapped_with` is empty, `gap == T::MAX`.
             self.tcx.emit_node_span_lint(
-                lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
+                NON_CONTIGUOUS_RANGE_ENDPOINTS,
                 self.match_lint_level,
                 thir_pat.span,
                 diagnostics::ExclusiveRangeMissingMax {
@@ -1004,7 +996,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
             );
         } else {
             self.tcx.emit_node_span_lint(
-                lint::builtin::NON_CONTIGUOUS_RANGE_ENDPOINTS,
+                NON_CONTIGUOUS_RANGE_ENDPOINTS,
                 self.match_lint_level,
                 thir_pat.span,
                 diagnostics::ExclusiveRangeMissingGap {

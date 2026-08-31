@@ -257,8 +257,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::fundamental,
     sym::may_dangle,
 
-    sym::rustc_never_type_options,
-
     // ==========================================================================
     // Internal attributes: Runtime related:
     // ==========================================================================
@@ -364,8 +362,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::prelude_import,
     sym::rustc_paren_sugar,
     sym::rustc_inherit_overflow_checks,
-    sym::rustc_reservation_impl,
-    sym::rustc_test_entrypoint_marker,
     sym::rustc_test_marker,
     sym::rustc_allow_lifetime_dependent_specialization,
     sym::rustc_specialization_trait,

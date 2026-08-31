@@ -2,7 +2,7 @@ use std::assert_matches;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageInfoHi, CoverageKind};
+use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageEarlyInfo, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, SourceInfo, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};
 use rustc_middle::ty::TyCtxt;
@@ -11,7 +11,7 @@ use rustc_span::def_id::LocalDefId;
 use crate::builder::{Builder, CFG};
 
 /// Collects coverage-related information during MIR building, to eventually be
-/// turned into a function's [`CoverageInfoHi`] when MIR building is complete.
+/// turned into a function's [`CoverageEarlyInfo`] when MIR building is complete.
 pub(crate) struct CoverageInfoBuilder {
     /// Maps condition expressions to their enclosing `!`, for better instrumentation.
     nots: FxHashMap<ExprId, NotInfo>,
@@ -147,7 +147,7 @@ impl CoverageInfoBuilder {
         });
     }
 
-    pub(crate) fn into_done(self) -> Box<CoverageInfoHi> {
+    pub(crate) fn into_done(self) -> Box<CoverageEarlyInfo> {
         let Self { nots: _, markers: BlockMarkerGen { num_block_markers }, branch_info } = self;
 
         let branch_spans =
@@ -155,10 +155,10 @@ impl CoverageInfoBuilder {
 
         // For simplicity, always return an info struct (without Option), even
         // if there's nothing interesting in it.
-        Box::new(CoverageInfoHi { num_block_markers, branch_spans })
+        Box::new(CoverageEarlyInfo { num_block_markers, branch_spans })
     }
 
-    pub(crate) fn as_done(&self) -> Box<CoverageInfoHi> {
+    pub(crate) fn as_done(&self) -> Box<CoverageEarlyInfo> {
         let &Self { nots: _, markers: BlockMarkerGen { num_block_markers }, ref branch_info } =
             self;
 
@@ -170,7 +170,7 @@ impl CoverageInfoBuilder {
 
         // For simplicity, always return an info struct (without Option), even
         // if there's nothing interesting in it.
-        Box::new(CoverageInfoHi { num_block_markers, branch_spans })
+        Box::new(CoverageEarlyInfo { num_block_markers, branch_spans })
     }
 }
 

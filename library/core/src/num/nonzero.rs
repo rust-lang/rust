@@ -73,7 +73,7 @@ impl_zeroable_primitive!(
 /// For example, `Option<NonZero<u32>>` is the same size as `u32`:
 ///
 /// ```
-/// use core::{num::NonZero};
+/// use core::num::NonZero;
 ///
 /// assert_eq!(size_of::<Option<NonZero<u32>>>(), size_of::<u32>());
 /// ```
@@ -1561,7 +1561,10 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
                           without modifying the original"]
             #[inline]
             pub const fn div_ceil(self, rhs: Self) -> Self {
-                let v = self.get().div_ceil(rhs.get());
+                // An implementation of the function without calculating the remainder.
+                // It is better than the implementation for normal integers, but it can only
+                // be used here because of the possibility to subtract by one without overflow.
+                let v = (self.get() - 1) / rhs.get() + 1;
                 // SAFETY: ceiled division of two positive integers can never be zero.
                 unsafe { Self::new_unchecked(v) }
             }

@@ -1472,8 +1472,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 panic!("extern_statics cannot contain wildcards")
             };
             let info = ecx.get_alloc_info(alloc_id);
-            if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {
-                throw_unsup_format!(
+            if extern_decl_layout.size > info.size || extern_decl_layout.align.abi > info.align {
+                throw_ub_format!(
                     "extern static `{link_name}` has been declared as `{krate}::{name}` \
                     with a size of {decl_size} bytes and alignment of {decl_align} bytes, \
                     but Miri emulates it via an extern static shim \
@@ -1516,7 +1516,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             // Validate the allocation matches the declared size and alignment.
             let alloc_id = static_ptr.provenance.get_alloc_id().unwrap();
             let info = ecx.get_alloc_info(alloc_id);
-            if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {
+            if extern_decl_layout.size > info.size || extern_decl_layout.align.abi > info.align {
                 throw_ub_format!(
                     "extern static `{link_name}` has been declared as `{krate}::{name}` \
                     with a size of {decl_size} bytes and alignment of {decl_align} bytes, \
@@ -2000,12 +2000,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         res
     }
 
-    fn after_local_read(
-        ecx: &InterpCx<'tcx, Self>,
-        frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
-        local: mir::Local,
-    ) -> InterpResult<'tcx> {
-        if let Some(data_race) = &frame.extra.data_race {
+    fn after_local_read(ecx: &InterpCx<'tcx, Self>, local: mir::Local) -> InterpResult<'tcx> {
+        if let Some(data_race) = &ecx.frame().extra.data_race {
             let _trace = enter_trace_span!(data_race::after_local_read);
             data_race.local_read(local, &ecx.machine);
         }

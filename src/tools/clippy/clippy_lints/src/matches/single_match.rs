@@ -375,7 +375,6 @@ impl<'a> PatState<'a> {
             // Patterns for things which can only contain a single sub-pattern.
             PatKind::Binding(_, _, _, Some(pat))
             | PatKind::Ref(pat, _, _)
-            | PatKind::Box(pat)
             | PatKind::Deref(pat) => {
                 self.add_pat(cx, pat)
             },

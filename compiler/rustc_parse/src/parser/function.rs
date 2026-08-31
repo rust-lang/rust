@@ -6,7 +6,7 @@ use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::case::Case;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
-use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
+use rustc_lint_defs::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edition::Edition;
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, respan, sym};
 use thin_vec::ThinVec;
@@ -853,7 +853,7 @@ impl<'a> Parser<'a> {
         };
         // Is `pin const self` `n` tokens ahead?
         let is_isolated_pin_const_self = |this: &Self, n| {
-            this.look_ahead(n, |token| token.is_ident_named(sym::pin))
+            this.is_keyword_ahead(n, &[kw::Pin])
                 && this.is_keyword_ahead(n + 1, &[kw::Const])
                 && is_isolated_self(this, n + 2)
         };
@@ -862,8 +862,7 @@ impl<'a> Parser<'a> {
             |this: &Self, n| this.is_keyword_ahead(n, &[kw::Mut]) && is_isolated_self(this, n + 1);
         // Is `pin mut self` `n` tokens ahead?
         let is_isolated_pin_mut_self = |this: &Self, n| {
-            this.look_ahead(n, |token| token.is_ident_named(sym::pin))
-                && is_isolated_mut_self(this, n + 1)
+            this.is_keyword_ahead(n, &[kw::Pin]) && is_isolated_mut_self(this, n + 1)
         };
         // Parse `self` or `self: TYPE`. We already know the current token is `self`.
         let parse_self_possibly_typed = |this: &mut Self, m| {

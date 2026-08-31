@@ -1,4 +1,4 @@
-#![feature(core_intrinsics, rustc_attrs)]
+#![feature(gpu_offload, rustc_attrs)]
 #![allow(internal_features)]
 #![cfg_attr(device, no_main)]
 
@@ -7,6 +7,12 @@ fn kernel<T: Copy>(x: T) {}
 
 #[cfg(not(device))]
 fn main() {
-    core::intrinsics::offload::<_, _, ()>(kernel::<f32>, [1, 1, 1], [1, 1, 1], 0, (0.0f32,));
-    core::intrinsics::offload::<_, _, ()>(kernel::<i32>, [1, 1, 1], [1, 1, 1], 0, (0i32,));
+    core::offload::offload! {
+        kernel = kernel::<f32>,
+        args = (0.0f32,),
+    }
+    core::offload::offload! {
+        kernel = kernel::<i32>,
+        args = (0i32,),
+    }
 }

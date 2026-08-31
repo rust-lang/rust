@@ -97,6 +97,13 @@ Thanks! <3
 """
 label = "O-ARM"
 
+[ping.arm-maintainers]
+message = """\
+Dear ARM Maintainers, your feedback has been requested on this issue/PR.
+Thanks! <3
+"""
+label = "O-ARM"
+
 [ping.loongarch]
 message = """\
 Hey LoongArch Group! This issue has been identified as a good "LoongArch candidate".
@@ -843,7 +850,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: beta-nominated"
 message_on_add = [
     """\
-@*T-libs* PR #{number} "{title}" has been nominated for beta backport.
+@*T-libs-fcp* PR #{number} "{title}" has been nominated for beta backport.
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -867,7 +874,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: stable-nominated"
 message_on_add = [
     """\
-@**channel** PR #{number} "{title}" has been nominated for stable backport.
+@*T-libs-fcp* PR #{number} "{title}" has been nominated for stable backport.
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -1581,6 +1588,7 @@ cc = ["@rust-lang/wg-const-eval"]
 [assign]
 warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
+llm_policy_url = "https://forge.rust-lang.org/policies/llm-usage.html"
 
 [[assign.warn_non_default_branch.exceptions]]
 title = "[beta"
@@ -1807,7 +1815,7 @@ dep-bumps = [
 # ------------------------------------------------------------------------------
 
 [no-merges]
-exclude_titles = ["Rollup of", "subtree update", "Subtree update"]
+exclude_titles = ["Rollup of", "subtree update", "Subtree update", "subtree sync", "Subtree sync"]
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
 [github-releases]

@@ -94,12 +94,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let (infcx, orig_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
         let mut selcx = SelectionContext::new(&infcx);
-        for polarity in [ty::PredicatePolarity::Positive, ty::PredicatePolarity::Negative] {
+        for polarity in [ty::ClausePolarity::Positive, ty::ClausePolarity::Negative] {
             let result = selcx.select(&Obligation::new(
                 tcx,
                 ObligationCause::dummy(),
                 orig_env,
-                ty::TraitPredicate { trait_ref, polarity },
+                ty::TraitClause { trait_ref, polarity },
             ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
                 debug!("find_auto_trait_generics({trait_ref:?}): manual impl found, bailing out");
@@ -229,16 +229,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             .map(|field| field.ty(tcx, args).skip_norm_wip())
             .filter(|field_ty| field_ty.has_non_region_param())
             .map(|field_ty| {
-                ty::TraitPredicate {
+                ty::TraitClause {
                     trait_ref: ty::TraitRef::new(tcx, trait_did, [field_ty]),
-                    polarity: ty::PredicatePolarity::Positive,
+                    polarity: ty::ClausePolarity::Positive,
                 }
                 .upcast(tcx)
             })
             .collect::<Vec<ty::Clause<'tcx>>>();
-        let full_user_env = ty::ParamEnv::new(
-            tcx.mk_clauses_from_iter(orig_env.caller_bounds().iter().chain(field_clauses)),
-        );
+        let full_user_env = ty::ParamEnv::new(tcx, orig_env.caller_bounds().chain(field_clauses));
 
         let fresh_args = infcx.fresh_args_for_item(DUMMY_SP, adt_def.did());
         let fresh_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, fresh_args).skip_norm_wip();
@@ -318,15 +316,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let mut already_visited = UnordSet::new();
         let mut predicates = VecDeque::new();
-        predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
+        predicates.push_back(ty::Binder::dummy(ty::TraitClause {
             trait_ref: ty::TraitRef::new(infcx.tcx, trait_did, [ty]),
 
             // Auto traits are positive
-            polarity: ty::PredicatePolarity::Positive,
+            polarity: ty::ClausePolarity::Positive,
         }));
 
-        let computed_clauses = param_env.caller_bounds().iter();
-        let mut user_computed_clauses: FxIndexSet<_> = user_env.caller_bounds().iter().collect();
+        let computed_clauses = param_env.caller_bounds();
+        let mut user_computed_clauses: FxIndexSet<_> = user_env.caller_bounds().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -403,11 +401,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 tcx,
                 computed_clauses.clone().chain(user_computed_clauses.iter().cloned()),
             );
-            new_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(normalized_preds));
+            new_env = ty::ParamEnv::new(tcx, normalized_preds);
         }
 
-        let final_user_env =
-            ty::ParamEnv::new(tcx.mk_clauses_from_iter(user_computed_clauses.into_iter()));
+        let final_user_env = ty::ParamEnv::new(tcx, user_computed_clauses.into_iter());
         debug!(
             "evaluate_nested_obligations(ty={:?}, trait_did={:?}): succeeded with '{:?}' \
              '{:?}'",
@@ -454,7 +451,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     let new_args = new_trait.trait_ref.args;
                     let old_args = old_trait.trait_ref.args;
 
-                    if !new_args.types().eq(old_args.types()) {
+                    if !new_args.terms().eq(old_args.terms()) {
                         // We can't compare lifetimes if the types are different,
                         // so skip checking `old_clause`.
                         return true;
@@ -624,7 +621,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     }
 
     fn is_param_no_infer(&self, args: GenericArgsRef<'tcx>) -> bool {
-        self.is_of_param(args.type_at(0)) && !args.types().any(|t| t.has_infer_types())
+        self.is_of_param(args.type_at(0)) && !args.terms().any(|t| t.has_infer_types())
     }
 
     pub fn is_of_param(&self, ty: Ty<'tcx>) -> bool {
@@ -637,7 +634,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
     }
 
-    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
+    fn is_self_referential_projection(&self, p: ty::PolyProjectionClause<'tcx>) -> bool {
         if let Some(ty) = p.term().skip_binder().as_type() {
             matches!(ty.kind(), ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty())
         } else {
@@ -651,7 +648,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         nested: impl Iterator<Item = PredicateObligation<'tcx>>,
         computed_clauses: &mut FxIndexSet<ty::Clause<'tcx>>,
         fresh_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
-        predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
+        predicates: &mut VecDeque<ty::PolyTraitClause<'tcx>>,
         selcx: &mut SelectionContext<'_, 'tcx>,
     ) -> bool {
         let dummy_cause = ObligationCause::dummy();

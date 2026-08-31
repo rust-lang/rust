@@ -72,6 +72,7 @@ pub(crate) enum OnceExclusiveState {
     note = "the `Once::new()` function is now preferred",
     suggestion = "Once::new()"
 )]
+#[expect(clippy::declare_interior_mutable_const, reason = "legacy Once initializer")]
 pub const ONCE_INIT: Once = Once::new();
 
 impl Once {
@@ -344,6 +345,16 @@ impl Once {
 impl fmt::Debug for Once {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Once").finish_non_exhaustive()
+    }
+}
+
+#[stable(feature = "once_default", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+const impl Default for Once {
+    /// Creates a new `Once` value, same as [`Once::new`].
+    #[inline]
+    fn default() -> Once {
+        Once::new()
     }
 }
 

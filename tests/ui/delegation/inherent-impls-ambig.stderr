@@ -1,0 +1,99 @@
+error[E0425]: cannot find function `foo` in `X`
+  --> $DIR/inherent-impls-ambig.rs:16:14
+   |
+LL |     reuse X::foo;
+   |              ^^^ not found in `X`
+   |
+note: function `test_2::foo` exists but is inaccessible
+  --> $DIR/inherent-impls-ambig.rs:49:5
+   |
+LL |     reuse X::foo;
+   |     ^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `foo_self` in `X`
+  --> $DIR/inherent-impls-ambig.rs:19:14
+   |
+LL |     reuse X::foo_self;
+   |              ^^^^^^^^ not found in `X`
+   |
+note: function `test_2::foo_self` exists but is inaccessible
+  --> $DIR/inherent-impls-ambig.rs:52:5
+   |
+LL |     reuse X::foo_self;
+   |     ^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `foo` in `X`
+  --> $DIR/inherent-impls-ambig.rs:22:20
+   |
+LL |     reuse X::<()>::foo as foo1;
+   |                    ^^^ not found in `X`
+   |
+note: function `test_2::foo` exists but is inaccessible
+  --> $DIR/inherent-impls-ambig.rs:49:5
+   |
+LL |     reuse X::foo;
+   |     ^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `foo_self` in `X`
+  --> $DIR/inherent-impls-ambig.rs:25:23
+   |
+LL |     reuse X::<usize>::foo_self as foo_self1;
+   |                       ^^^^^^^^ not found in `X`
+   |
+note: function `test_2::foo_self` exists but is inaccessible
+  --> $DIR/inherent-impls-ambig.rs:52:5
+   |
+LL |     reuse X::foo_self;
+   |     ^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `foo` in `X`
+  --> $DIR/inherent-impls-ambig.rs:49:14
+   |
+LL |     reuse X::foo;
+   |              ^^^ not found in `X`
+   |
+note: function `test_1::foo` exists but is inaccessible
+  --> $DIR/inherent-impls-ambig.rs:16:5
+   |
+LL |     reuse X::foo;
+   |     ^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `foo_self` in `X`
+  --> $DIR/inherent-impls-ambig.rs:52:14
+   |
+LL |     reuse X::foo_self;
+   |              ^^^^^^^^ not found in `X`
+   |
+note: function `test_1::foo_self` exists but is inaccessible
+  --> $DIR/inherent-impls-ambig.rs:19:5
+   |
+LL |     reuse X::foo_self;
+   |     ^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `foo` in `X`
+  --> $DIR/inherent-impls-ambig.rs:55:27
+   |
+LL |     reuse X::<M1, usize>::foo as foo1;
+   |                           ^^^ not found in `X`
+   |
+note: function `test_1::foo` exists but is inaccessible
+  --> $DIR/inherent-impls-ambig.rs:16:5
+   |
+LL |     reuse X::foo;
+   |     ^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `foo_self` in `X`
+  --> $DIR/inherent-impls-ambig.rs:58:28
+   |
+LL |     reuse X::<M2, String>::foo_self as foo_self1;
+   |                            ^^^^^^^^ not found in `X`
+   |
+note: function `test_1::foo_self` exists but is inaccessible
+  --> $DIR/inherent-impls-ambig.rs:19:5
+   |
+LL |     reuse X::foo_self;
+   |     ^^^^^^^^^^^^^^^^^^ not accessible
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

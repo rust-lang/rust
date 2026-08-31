@@ -21,8 +21,8 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::{Config, TargetSelection};
+use crate::core::session::{FileType, Mode};
 use crate::utils::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
-use crate::{FileType, Mode};
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {
@@ -116,12 +116,12 @@ impl CommandLineStep for UnstableBook {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder
+        let unstable_book_md_dir = builder
             .ensure(UnstableBookGen { build_compiler: self.build_compiler, target: self.target });
         builder.ensure(RustbookSrc {
             target: self.target,
             name: "unstable-book".to_owned(),
-            src: builder.md_doc_out(self.target).join("unstable-book"),
+            src: unstable_book_md_dir,
             parent: Some(self),
             languages: vec![],
             build_compiler: None,
@@ -1293,6 +1293,8 @@ impl CommandLineStep for ErrorIndex {
     }
 }
 
+/// Runs the `unstable-book-gen` tool and returns a path to the generate unstable book markdown
+/// files.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct UnstableBookGen {
     build_compiler: Compiler,
@@ -1300,7 +1302,7 @@ pub struct UnstableBookGen {
 }
 
 impl CommandLineStep for UnstableBookGen {
-    type Output = ();
+    type Output = PathBuf;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1318,12 +1320,12 @@ impl CommandLineStep for UnstableBookGen {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) {
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.target;
         let rustc_path = builder.rustc(self.build_compiler);
 
         builder.info(&format!("Generating unstable book md files ({target})"));
-        let out = builder.md_doc_out(target).join("unstable-book");
+        let out = builder.out.join(target).join("md-doc").join("unstable-book");
         builder.create_dir(&out);
         builder.remove_dir(&out);
         let mut cmd = builder.tool_cmd(Tool::UnstableBookGen);
@@ -1331,13 +1333,14 @@ impl CommandLineStep for UnstableBookGen {
         cmd.arg(builder.src.join("compiler"));
         cmd.arg(builder.src.join("src"));
         cmd.arg(rustc_path);
-        cmd.arg(out);
+        cmd.arg(&out);
 
         // Running rustc requires the library path if rust.rpath = false
         // or any other libraries are in a custom location.
         builder.add_rustc_lib_path(self.build_compiler, &mut cmd);
 
         cmd.run(builder);
+        out
     }
 }
 
@@ -1419,7 +1422,7 @@ impl CommandLineStep for RustcBook {
             return;
         }
 
-        let out_base = builder.md_doc_out(self.target).join("rustc");
+        let out_base = builder.out.join(self.target).join("md-doc").join("rustc");
         t!(fs::create_dir_all(&out_base));
         let out_listing = out_base.join("src/lints");
         builder.cp_link_r(&builder.src.join("src/doc/rustc"), &out_base);

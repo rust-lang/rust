@@ -948,7 +948,7 @@ fn short_item_info(
 fn impl_trait_key(cx: &Context<'_>, i: &Impl) -> Option<String> {
     let trait_ = i.inner_impl().trait_.as_ref()?;
     let prefix = match i.inner_impl().polarity {
-        ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+        ty::ImplPolarity::Positive => "",
         ty::ImplPolarity::Negative => "!",
     };
     Some(format!("{prefix}{:#}", print_path(trait_, cx)))
@@ -964,7 +964,7 @@ fn render_impls<'a, 'cx>(
 ) -> impl fmt::Display + use<'a, 'cx> {
     impls.sort_by_cached_key(|imp| {
         let prefix = match imp.inner_impl().polarity {
-            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => Ordering::Greater,
+            ty::ImplPolarity::Positive => Ordering::Greater,
             ty::ImplPolarity::Negative => Ordering::Less,
         };
         (prefix, ImplString::new_path(imp, cx))
@@ -3083,10 +3083,16 @@ fn repr_attribute<'tcx>(
         (cache.document_private || field.vis.is_public()) && is_visible(field.did)
     };
 
+    // The transparent repr is public if
+    // - the non-1-ZST field is public and visible or
+    // - at least one field is public and visible if *all* fields are 1-ZSTs or
+    // - the item is annotated with internal attribute `#[rustc_pub_transparent]`
     if repr.transparent() {
-        // The transparent repr is public iff the non-1-ZST field is public and visible or
-        // – in case all fields are 1-ZST fields — at least one field is public and visible.
         let is_public = 'is_public: {
+            if hir::find_attr!(tcx, def_id, AttributeKind::RustcPubTransparent(_)) {
+                break 'is_public true;
+            }
+
             // `#[repr(transparent)]` can only be applied to structs and single-variant enums.
             let var = adt.variant(rustc_abi::FIRST_VARIANT); // the first and only variant
 

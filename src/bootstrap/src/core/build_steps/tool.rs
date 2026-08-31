@@ -23,9 +23,9 @@ use crate::core::builder::{
 };
 use crate::core::compiler::Compiler;
 use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
+use crate::core::session::{FileType, Mode};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, add_dylib_path, exe, t};
-use crate::{FileType, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -140,6 +140,7 @@ impl Step for ToolBuild {
         let pgo_config = match self.path {
             "src/tools/rustdoc" => Some(&builder.config.rustdoc_pgo),
             "src/tools/cargo" => Some(&builder.config.cargo_pgo),
+            "src/tools/clippy" => Some(&builder.config.clippy_pgo),
             _ => None,
         };
         if let Some(pgo_config) = pgo_config {
@@ -211,7 +212,7 @@ pub fn prepare_tool_cargo(
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     let mut features = extra_features.to_vec();
-    if builder.build.config.cargo_native_static {
+    if builder.sess.config.cargo_native_static {
         if path.ends_with("cargo")
             || path.ends_with("clippy")
             || path.ends_with("miri")
@@ -796,7 +797,7 @@ impl CommandLineStep for Rustdoc {
                 // Cargo adds a number of paths to the dylib search path on windows, which results in
                 // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
                 // rustdoc a different name.
-                tool: "rustdoc_tool_binary",
+                tool: "rustdoc-tool-binary",
                 mode: Mode::ToolRustcPrivate,
                 path: "src/tools/rustdoc",
                 source_type: SourceType::InTree,
@@ -864,7 +865,7 @@ impl CommandLineStep for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        builder.build.require_submodule("src/tools/cargo", None);
+        builder.sess.require_submodule("src/tools/cargo", None);
 
         builder.std(self.build_compiler, builder.host_target);
         builder.std(self.build_compiler, self.target);
@@ -1522,7 +1523,7 @@ fn extended_rustc_tool_is_default_step(
         && builder.config.tools.as_ref().map_or(
             // By default, on nightly/dev enable all tools, else only
             // build stable tools.
-            stable || builder.build.unstable_features(),
+            stable || builder.sess.unstable_features(),
             // If `tools` is set, search list for this tool.
             |tools| {
                 tools.iter().any(|tool| match tool.as_ref() {

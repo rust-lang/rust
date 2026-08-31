@@ -40,6 +40,7 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, HirId, find_attr};
+use rustc_lint_defs::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
@@ -48,7 +49,6 @@ use rustc_middle::ty::{
     Unnormalized, UpvarArgs, UpvarCapture,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
@@ -1191,7 +1191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !need_migrations.is_empty() {
             self.tcx.emit_node_span_lint(
-                lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
+                RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 self.tcx.local_def_id_to_hir_id(closure_def_id),
                 self.tcx.def_span(closure_def_id),
                 MigrationLint {
@@ -2442,8 +2442,7 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
         return false;
     }
 
-    !tcx.lint_level_spec_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id)
-        .is_allow()
+    !tcx.lint_level_spec_at_node(RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id).is_allow()
 }
 
 /// Return a two string tuple (s1, s2)

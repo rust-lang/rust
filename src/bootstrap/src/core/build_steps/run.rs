@@ -8,7 +8,6 @@ use std::path::PathBuf;
 use build_helper::git::get_git_untracked_files;
 use clap_complete::{Generator, shells};
 
-use crate::Mode;
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
@@ -16,6 +15,7 @@ use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor, default_paths_to_vend
 use crate::core::builder::{Builder, CommandLineStep, Kind, RunConfig, ShouldRun, StepMetadata};
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{get_completion, top_level_help};
+use crate::core::session::Mode;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
 
@@ -148,7 +148,7 @@ impl CommandLineStep for Miri {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.host_target;
+        let host = builder.sess.host_target;
         let compilers = self.compilers;
         let target = self.target;
 
@@ -257,7 +257,7 @@ impl CommandLineStep for GenerateCopyright {
         let paths_to_vendor = default_paths_to_vendor(builder);
         for (_, submodules) in &paths_to_vendor {
             for submodule in submodules {
-                builder.build.require_submodule(submodule, None);
+                builder.sess.require_submodule(submodule, None);
             }
         }
         let cargo_manifests = paths_to_vendor
@@ -491,7 +491,7 @@ impl CommandLineStep for Rustfmt {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.host_target;
+        let host = builder.sess.host_target;
 
         // `x run` uses stage 0 by default but rustfmt does not work well with stage 0.
         // Change the stage to 1 if it's not set explicitly.

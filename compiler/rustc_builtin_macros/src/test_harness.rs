@@ -14,8 +14,8 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_lint_defs::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_session::Session;
-use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::PanicStrategy;
@@ -130,7 +130,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
     }
 
     fn visit_item(&mut self, item: &mut ast::Item) {
-        if let Some(name) = get_test_name(&item) {
+        if let Some(name) = get_test_name(item) {
             debug!("this is a test item");
 
             // `unwrap` is ok because only functions, consts, and static should reach here.
@@ -151,7 +151,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             self.add_test_cases(item.id, span, prev_tests);
         } else {
             // But in those cases, we emit a lint to warn the user of these missing tests.
-            ast::visit::walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, &item);
+            ast::visit::walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, item);
         }
     }
 }
@@ -202,7 +202,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         // Remove any #[rustc_main] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
-        match entry_point_type(&item, self.depth == 0) {
+        match entry_point_type(item, self.depth == 0) {
             EntryPointType::RustcMainAttr => {
                 let allow_dead_code = attr::mk_attr_nested_word(
                     &self.sess.psess.attr_id_generator,

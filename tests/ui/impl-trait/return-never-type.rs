@@ -1,7 +1,5 @@
 //@ edition:2024
 
-#![feature(never_type)]
-
 use std::ops::Add;
 
 fn foo() -> impl Add<u32> {
