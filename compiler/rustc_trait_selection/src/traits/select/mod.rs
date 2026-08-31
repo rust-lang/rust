@@ -876,7 +876,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 && matches!(
                                     a.kind,
                                     ty::AliasConstKind::Projection { .. }
-                                        | ty::AliasConstKind::Inherent { .. }
+                                        | ty::AliasConstKind::InherentSelf { .. }
+                                        | ty::AliasConstKind::InherentImpl { .. }
                                 ) =>
                         {
                             if let Ok(InferOk { obligations, value: () }) = self

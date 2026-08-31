@@ -491,7 +491,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             ty::AliasConstKind::Projection { .. } => {
                 self.normalize_trait_projection(alias_const.into()).expect_const()
             }
-            ty::AliasConstKind::Inherent { .. } => {
+            ty::AliasConstKind::InherentSelf { .. } | ty::AliasConstKind::InherentImpl { .. } => {
                 self.normalize_inherent_projection(alias_const.into()).expect_const()
             }
             ty::AliasConstKind::Free { .. } => {
