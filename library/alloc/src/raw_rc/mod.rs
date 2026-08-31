@@ -63,7 +63,9 @@
 
 use core::cell::UnsafeCell;
 
+mod rc_alloc;
 mod rc_layout;
+mod rc_value_pointer;
 
 /// Stores reference counts.
 #[cfg_attr(target_pointer_width = "16", repr(C, align(2)))]
