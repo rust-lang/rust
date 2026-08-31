@@ -66,6 +66,12 @@ fn pattern_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
 fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     // test range_pat
     // fn main() {
+    //     match () {
+    //         (..1) => (),
+    //         (..=3) => (),
+    //         (..2 | 4) => (),
+    //     }
+    //
     //     match 92 {
     //         0 ... 100 => (),
     //         101 ..= 200 => (),
@@ -97,6 +103,7 @@ fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     //         (1.., _) => (),
     //         (..=2, _) => (),
     //     }
+    //
     // }
 
     if p.at(T![..=]) {
@@ -484,8 +491,7 @@ fn tuple_pat(p: &mut Parser<'_>) -> CompletedMarker {
             p.error("expected a pattern");
             break;
         }
-        has_rest |= p.at(T![..]);
-
+        has_rest |= !p.at(T![..=]) && p.at(T![..]) && !RANGE_PAT_END_FIRST.contains(p.nth(2));
         pattern(p);
         if !p.at(T![')']) {
             has_comma = true;

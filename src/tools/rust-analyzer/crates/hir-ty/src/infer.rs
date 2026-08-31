@@ -1629,10 +1629,6 @@ impl<'db> InferenceContext<'db> {
         self.defined_anon_consts.borrow_mut().append(&mut defined_anon_consts);
     }
 
-    // FIXME: This function should be private in module. It is currently only used in the consteval, since we need
-    // `InferenceResult` in the middle of inference. See the fixme comment in `consteval::eval_to_const`. If you
-    // used this function for another workaround, mention it here. If you really need this function and believe that
-    // there is no problem in it being `pub(crate)`, remove this comment.
     fn resolve_all(self) -> InferenceResult<'db> {
         let InferenceContext {
             table,
