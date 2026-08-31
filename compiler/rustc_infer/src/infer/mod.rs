@@ -89,10 +89,11 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
     ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut InferCtxtUndoLogs<'tcx>>,
 >;
 
-/// This type contains all the things within `InferCtxt` that sit within a
-/// `RefCell` and are involved with taking/rolling back snapshots. Snapshot
-/// operations are hot enough that we want only one call to `borrow_mut` per
-/// call to `start_snapshot` and `rollback_to`.
+/// This type contains all the things within [`InferCtxt`] that sit within a
+/// [`RefCell`] and are involved with taking/rolling back snapshots. Snapshot
+/// operations are hot enough that we want only one call to
+/// [`RefCell::borrow_mut`] per call to [`InferCtxt::start_snapshot`] and
+///  [`InferCtxt::rollback_to`].
 #[derive(Clone)]
 pub struct InferCtxtInner<'tcx> {
     undo_log: InferCtxtUndoLogs<'tcx>,
@@ -102,7 +103,10 @@ pub struct InferCtxtInner<'tcx> {
     /// This cache is snapshotted along with the infcx.
     projection_cache: traits::ProjectionCacheStorage<'tcx>,
 
-    /// We instantiate `UnificationTable` with `bounds<Ty>` because the types
+    /// Primary map of inference variables to the types that they currently
+    /// represent.
+    ///
+    /// We instantiate [`UnificationTable`] with `bounds<Ty>` because the types
     /// that might instantiate a general type variable have an order,
     /// represented by its upper and lower bounds.
     type_variable_storage: type_variable::TypeVariableStorage<'tcx>,
