@@ -698,61 +698,47 @@ mod parse_tests {
             }
         }
     }
-    // HACK(msrv): 1.63 rejects unknown width float literals at an AST level, so use a macro to
-    // hide them from the AST.
+    #[test]
     #[cfg(f16_enabled)]
-    macro_rules! f16_tests {
-        () => {
-            #[test]
-            fn test_f16() {
-                let checks = [
-                    ("0x.1234p+16", (0x1234 as f16).to_bits()),
-                    ("0x1.234p+12", (0x1234 as f16).to_bits()),
-                    ("0x12.34p+8", (0x1234 as f16).to_bits()),
-                    ("0x123.4p+4", (0x1234 as f16).to_bits()),
-                    ("0x1234p+0", (0x1234 as f16).to_bits()),
-                    ("0x1234.p+0", (0x1234 as f16).to_bits()),
-                    ("0x1234.0p+0", (0x1234 as f16).to_bits()),
-                    ("0x1.ffcp+15", f16::MAX.to_bits()),
-                    ("0x1.0p+1", 2.0f16.to_bits()),
-                    ("0x1.0p+0", 1.0f16.to_bits()),
-                    ("0x1.ffp+8", 0x5ffc),
-                    ("+0x1.ffp+8", 0x5ffc),
-                    ("0x1p+0", 0x3c00),
-                    ("0x1.998p-4", 0x2e66),
-                    ("0x1.9p+6", 0x5640),
-                    ("0x0.0p0", 0.0f16.to_bits()),
-                    ("-0x0.0p0", (-0.0f16).to_bits()),
-                    ("0x1.0p0", 1.0f16.to_bits()),
-                    ("0x1.998p-4", (0.1f16).to_bits()),
-                    ("-0x1.998p-4", (-0.1f16).to_bits()),
-                    ("0x0.123p-12", 0x0123),
-                    ("0x1p-24", 0x0001),
-                    ("nan", f16::NAN.to_bits()),
-                    ("-nan", (-f16::NAN).to_bits()),
-                    ("inf", f16::INFINITY.to_bits()),
-                    ("-inf", f16::NEG_INFINITY.to_bits()),
-                ];
-                for (s, exp) in checks {
-                    println!("parsing {s}");
-                    assert!(rounding_properties(s).is_ok());
-                    let act = hf16(s).to_bits();
-                    assert_eq!(
-                        act, exp,
-                        "parsing {s}: {act:#06x} != {exp:#06x}\nact: {act:#018b}\nexp: {exp:#018b}"
-                    );
-                }
-            }
-
-            #[test]
-            fn test_macros_f16() {
-                assert_eq!(hf16!("0x1.ffp+8").to_bits(), 0x5ffc_u16);
-            }
-        };
+    fn test_f16() {
+        let checks = [
+            ("0x.1234p+16", (0x1234 as f16).to_bits()),
+            ("0x1.234p+12", (0x1234 as f16).to_bits()),
+            ("0x12.34p+8", (0x1234 as f16).to_bits()),
+            ("0x123.4p+4", (0x1234 as f16).to_bits()),
+            ("0x1234p+0", (0x1234 as f16).to_bits()),
+            ("0x1234.p+0", (0x1234 as f16).to_bits()),
+            ("0x1234.0p+0", (0x1234 as f16).to_bits()),
+            ("0x1.ffcp+15", f16::MAX.to_bits()),
+            ("0x1.0p+1", 2.0f16.to_bits()),
+            ("0x1.0p+0", 1.0f16.to_bits()),
+            ("0x1.ffp+8", 0x5ffc),
+            ("+0x1.ffp+8", 0x5ffc),
+            ("0x1p+0", 0x3c00),
+            ("0x1.998p-4", 0x2e66),
+            ("0x1.9p+6", 0x5640),
+            ("0x0.0p0", 0.0f16.to_bits()),
+            ("-0x0.0p0", (-0.0f16).to_bits()),
+            ("0x1.0p0", 1.0f16.to_bits()),
+            ("0x1.998p-4", (0.1f16).to_bits()),
+            ("-0x1.998p-4", (-0.1f16).to_bits()),
+            ("0x0.123p-12", 0x0123),
+            ("0x1p-24", 0x0001),
+            ("nan", f16::NAN.to_bits()),
+            ("-nan", (-f16::NAN).to_bits()),
+            ("inf", f16::INFINITY.to_bits()),
+            ("-inf", f16::NEG_INFINITY.to_bits()),
+        ];
+        for (s, exp) in checks {
+            println!("parsing {s}");
+            assert!(rounding_properties(s).is_ok());
+            let act = hf16(s).to_bits();
+            assert_eq!(
+                act, exp,
+                "parsing {s}: {act:#06x} != {exp:#06x}\nact: {act:#018b}\nexp: {exp:#018b}"
+            );
+        }
     }
-
-    #[cfg(f16_enabled)]
-    f16_tests!();
 
     #[test]
     fn test_f32() {
@@ -840,60 +826,55 @@ mod parse_tests {
         }
     }
 
-    // HACK(msrv): 1.63 rejects unknown width float literals at an AST level, so use a macro to
-    // hide them from the AST.
+    #[test]
     #[cfg(f128_enabled)]
-    macro_rules! f128_tests {
-        () => {
-            #[test]
-            fn test_f128() {
-                let checks = [
-                    ("0x.1234p+16", (0x1234 as f128).to_bits()),
-                    ("0x1.234p+12", (0x1234 as f128).to_bits()),
-                    ("0x12.34p+8", (0x1234 as f128).to_bits()),
-                    ("0x123.4p+4", (0x1234 as f128).to_bits()),
-                    ("0x1234p+0", (0x1234 as f128).to_bits()),
-                    ("0x1234.p+0", (0x1234 as f128).to_bits()),
-                    ("0x1234.0p+0", (0x1234 as f128).to_bits()),
-                    ("0x1.ffffffffffffffffffffffffffffp+16383", f128::MAX.to_bits()),
-                    ("0x1.0p+1", 2.0f128.to_bits()),
-                    ("0x1.0p+0", 1.0f128.to_bits()),
-                    ("0x1.ffep+8", 0x4007ffe0000000000000000000000000),
-                    ("+0x1.ffep+8", 0x4007ffe0000000000000000000000000),
-                    ("0x1p+0", 0x3fff0000000000000000000000000000),
-                    ("0x1.999999999999999999999999999ap-4", 0x3ffb999999999999999999999999999a),
-                    ("0x1.9p+6", 0x40059000000000000000000000000000),
-                    ("0x0.0p0", 0.0f128.to_bits()),
-                    ("-0x0.0p0", (-0.0f128).to_bits()),
-                    ("0x1.0p0", 1.0f128.to_bits()),
-                    ("0x1.999999999999999999999999999ap-4", (0.1f128).to_bits()),
-                    ("-0x1.999999999999999999999999999ap-4", (-0.1f128).to_bits()),
-                    ("0x0.abcdef0123456789abcdef012345p-16382", 0x0000abcdef0123456789abcdef012345),
-                    ("0x1p-16494", 0x00000000000000000000000000000001),
-                    ("nan", f128::NAN.to_bits()),
-                    ("-nan", (-f128::NAN).to_bits()),
-                    ("inf", f128::INFINITY.to_bits()),
-                    ("-inf", f128::NEG_INFINITY.to_bits()),
-                ];
-                for (s, exp) in checks {
-                    println!("parsing {s}");
-                    let act = hf128(s).to_bits();
-                    assert_eq!(
-                        act, exp,
-                        "parsing {s}: {act:#034x} != {exp:#034x}\nact: {act:#0130b}\nexp: {exp:#0130b}"
-                    );
-                }
-            }
-
-            #[test]
-            fn test_macros_f128() {
-                assert_eq!(hf128!("0x1.ffep+8").to_bits(), 0x4007ffe0000000000000000000000000_u128);
-            }
+    fn test_f128() {
+        let checks = [
+            ("0x.1234p+16", (0x1234 as f128).to_bits()),
+            ("0x1.234p+12", (0x1234 as f128).to_bits()),
+            ("0x12.34p+8", (0x1234 as f128).to_bits()),
+            ("0x123.4p+4", (0x1234 as f128).to_bits()),
+            ("0x1234p+0", (0x1234 as f128).to_bits()),
+            ("0x1234.p+0", (0x1234 as f128).to_bits()),
+            ("0x1234.0p+0", (0x1234 as f128).to_bits()),
+            (
+                "0x1.ffffffffffffffffffffffffffffp+16383",
+                f128::MAX.to_bits(),
+            ),
+            ("0x1.0p+1", 2.0f128.to_bits()),
+            ("0x1.0p+0", 1.0f128.to_bits()),
+            ("0x1.ffep+8", 0x4007ffe0000000000000000000000000),
+            ("+0x1.ffep+8", 0x4007ffe0000000000000000000000000),
+            ("0x1p+0", 0x3fff0000000000000000000000000000),
+            (
+                "0x1.999999999999999999999999999ap-4",
+                0x3ffb999999999999999999999999999a,
+            ),
+            ("0x1.9p+6", 0x40059000000000000000000000000000),
+            ("0x0.0p0", 0.0f128.to_bits()),
+            ("-0x0.0p0", (-0.0f128).to_bits()),
+            ("0x1.0p0", 1.0f128.to_bits()),
+            ("0x1.999999999999999999999999999ap-4", (0.1f128).to_bits()),
+            ("-0x1.999999999999999999999999999ap-4", (-0.1f128).to_bits()),
+            (
+                "0x0.abcdef0123456789abcdef012345p-16382",
+                0x0000abcdef0123456789abcdef012345,
+            ),
+            ("0x1p-16494", 0x00000000000000000000000000000001),
+            ("nan", f128::NAN.to_bits()),
+            ("-nan", (-f128::NAN).to_bits()),
+            ("inf", f128::INFINITY.to_bits()),
+            ("-inf", f128::NEG_INFINITY.to_bits()),
+        ];
+        for (s, exp) in checks {
+            println!("parsing {s}");
+            let act = hf128(s).to_bits();
+            assert_eq!(
+                act, exp,
+                "parsing {s}: {act:#034x} != {exp:#034x}\nact: {act:#0130b}\nexp: {exp:#0130b}"
+            );
         }
     }
-
-    #[cfg(f128_enabled)]
-    f128_tests!();
 
     #[test]
     fn test_macros() {
