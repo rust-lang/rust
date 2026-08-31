@@ -1,5 +1,4 @@
 use std::ffi::CStr;
-use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -9,10 +8,8 @@ use crate::llvm;
 
 /// Responsible for safely creating and disposing llvm::TargetMachine via ffi functions.
 /// Not cloneable as there is no clone function for llvm::TargetMachine.
-#[repr(transparent)]
 pub struct OwnedTargetMachine {
     tm_unique: NonNull<llvm::TargetMachine>,
-    phantom: PhantomData<llvm::TargetMachine>,
 }
 
 impl OwnedTargetMachine {
@@ -71,7 +68,7 @@ impl OwnedTargetMachine {
         };
 
         NonNull::new(tm_ptr)
-            .map(|tm_unique| Self { tm_unique, phantom: PhantomData })
+            .map(|tm_unique| Self { tm_unique })
             .ok_or_else(|| LlvmError::CreateTargetMachine { triple: SmallCStr::from(triple) })
     }
 
