@@ -147,12 +147,6 @@ fn normalize_canonicalized_inherent_projection<'tcx>(
                 0,
                 &mut obligations,
             );
-            obligations.extend(const_arg_has_type_obligation(
-                tcx,
-                param_env,
-                normalized_term,
-                goal,
-            ));
             ocx.register_obligations(obligations);
 
             Ok(NormalizationResult { normalized_term })

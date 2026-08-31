@@ -483,13 +483,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 impl<I: Interner> AliasTy<I> {
     pub fn new_from_args(interner: I, kind: AliasTyKind<I>, args: I::GenericArgs) -> AliasTy<I> {
         if cfg!(debug_assertions) {
-            let def_id = match kind {
-                AliasTyKind::Projection { def_id } => def_id.into(),
-                AliasTyKind::Inherent { def_id } => def_id.into(),
-                AliasTyKind::Opaque { def_id } => def_id.into(),
-                AliasTyKind::Free { def_id } => def_id.into(),
-            };
-            interner.debug_assert_args_compatible(def_id, args);
+            interner.debug_assert_alias_term_args_compatible(kind.into(), args);
         }
         AliasTy { kind, args, _use_alias_new_instead: () }
     }
@@ -551,7 +545,10 @@ impl<I: Interner> ProjectionAliasTy<I> {
         kind: I::TraitAssocTyId,
         args: I::GenericArgs,
     ) -> Self {
-        interner.debug_assert_args_compatible(kind.into(), args);
+        interner.debug_assert_alias_term_args_compatible(
+            ty::AliasTermKind::ProjectionTy { def_id: kind },
+            args,
+        );
         Self { kind, args, _use_alias_new_instead: () }
     }
 
@@ -622,7 +619,10 @@ impl<I: Interner> InherentAliasTy<I> {
         kind: I::InherentAssocTyId,
         args: I::GenericArgs,
     ) -> Self {
-        interner.debug_assert_args_compatible(kind.into(), args);
+        interner.debug_assert_alias_term_args_compatible(
+            ty::AliasTermKind::InherentTy { def_id: kind },
+            args,
+        );
         Self { kind, args, _use_alias_new_instead: () }
     }
 
@@ -637,7 +637,10 @@ impl<I: Interner> InherentAliasTy<I> {
 
 impl<I: Interner> OpaqueAliasTy<I> {
     pub fn new_opaque_from_args(interner: I, kind: I::OpaqueTyId, args: I::GenericArgs) -> Self {
-        interner.debug_assert_args_compatible(kind.into(), args);
+        interner.debug_assert_alias_term_args_compatible(
+            ty::AliasTermKind::OpaqueTy { def_id: kind },
+            args,
+        );
         Self { kind, args, _use_alias_new_instead: () }
     }
 
@@ -652,7 +655,10 @@ impl<I: Interner> OpaqueAliasTy<I> {
 
 impl<I: Interner> FreeAliasTy<I> {
     pub fn new_free_from_args(interner: I, kind: I::FreeTyAliasId, args: I::GenericArgs) -> Self {
-        interner.debug_assert_args_compatible(kind.into(), args);
+        interner.debug_assert_alias_term_args_compatible(
+            ty::AliasTermKind::FreeTy { def_id: kind },
+            args,
+        );
         Self { kind, args, _use_alias_new_instead: () }
     }
 

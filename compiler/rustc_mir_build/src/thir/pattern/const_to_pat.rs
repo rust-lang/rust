@@ -80,14 +80,16 @@ impl<'tcx> ConstToPat<'tcx> {
     fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         if let ty::ConstKind::Alias(_, alias_const) = self.c.kind() {
             if let ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id } = alias_const.kind
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id } = alias_const.kind
                 && let Some(def_id) = def_id.as_local()
             {
                 // Include the container item in the output.
                 err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
             }
             if let ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id }
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
             | ty::AliasConstKind::Free { def_id } = alias_const.kind
             {
                 err.span_label(self.tcx.def_span(def_id), msg!("constant defined here"));
@@ -166,7 +168,8 @@ impl<'tcx> ConstToPat<'tcx> {
                         // on its use as well.
                         if let ty::ConstKind::Alias(_, alias_const) = self.c.kind()
                             && let ty::AliasConstKind::Projection { .. }
-                            | ty::AliasConstKind::Inherent { .. }
+                            | ty::AliasConstKind::InherentSelf { .. }
+                            | ty::AliasConstKind::InherentImpl { .. }
                             | ty::AliasConstKind::Free { .. } = alias_const.kind
                         {
                             err.downgrade_to_delayed_bug();
