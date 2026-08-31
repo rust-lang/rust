@@ -60,6 +60,7 @@ pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> i
     f(path)
 }
 
+pub use common::{ExtraHomeDirs, ExtraMediaDirs};
 pub use imp::{
     Dir, DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
     ReadDir,
