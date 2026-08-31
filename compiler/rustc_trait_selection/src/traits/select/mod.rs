@@ -1477,8 +1477,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // it's not worth going to more trouble to increase the
             // hit-rate, I don't think.
             TypingMode::Coherence => false,
-            // Avoid using the global cache when we're defining opaque types
-            // as their hidden type may impact the result of candidate selection.
+            // Avoid using the global cache when defining opaque types, as goals can
+            // indirectly depend on them without mentioning them directly. See #159932.
             TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
                 defining_opaque_types.is_empty()
