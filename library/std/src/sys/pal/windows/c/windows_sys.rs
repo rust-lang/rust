@@ -71,6 +71,7 @@ windows_link::link!("kernel32.dll" "system" fn InitOnceBeginInitialize(lpinitonc
 windows_link::link!("kernel32.dll" "system" fn InitOnceComplete(lpinitonce : LPINIT_ONCE, dwflags : u32, lpcontext : *const core::ffi::c_void) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn InitializeProcThreadAttributeList(lpattributelist : *mut _PROC_THREAD_ATTRIBUTE_LIST, dwattributecount : u32, dwflags : u32, lpsize : *mut usize) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn IsThreadAFiber() -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn LoadLibraryExA(lplibfilename : PCSTR, hfile : HANDLE, dwflags : u32) -> HMODULE);
 windows_link::link!("kernel32.dll" "system" fn LocalFree(hmem : HLOCAL) -> HLOCAL);
 windows_link::link!("kernel32.dll" "system" fn LockFileEx(hfile : HANDLE, dwflags : u32, dwreserved : u32, nnumberofbytestolocklow : u32, nnumberofbytestolockhigh : u32, lpoverlapped : *mut OVERLAPPED) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn MoveFileExW(lpexistingfilename : PCWSTR, lpnewfilename : PCWSTR, dwflags : u32) -> BOOL);
@@ -2926,6 +2927,7 @@ pub const IP_MULTICAST_LOOP: i32 = 11;
 pub const IP_MULTICAST_TTL: i32 = 10;
 pub const IP_TTL: i32 = 4;
 pub type LINGER = linger;
+pub const LOAD_LIBRARY_SEARCH_SYSTEM32: i32 = 2048;
 pub const LOCKFILE_EXCLUSIVE_LOCK: i32 = 2;
 pub const LOCKFILE_FAIL_IMMEDIATELY: i32 = 1;
 pub type LPBYTE = *mut u8;

@@ -20,7 +20,8 @@
 //! importing the same function unnecessarily.
 
 use crate::ffi::{CStr, c_void};
-use crate::ptr::NonNull;
+use crate::ptr::{self, NonNull};
+use crate::sync::LazyLock;
 use crate::sys::c;
 
 // This uses a static initializer to preload some imported functions.
@@ -118,6 +119,23 @@ impl Module {
         }
     }
 
+    /// Try to load a module handle.
+    ///
+    /// # SAFETY
+    ///
+    /// This should only be use for modules that exist for the lifetime of std.
+    pub unsafe fn load(name: &CStr) -> Option<Self> {
+        // SAFETY: A CStr is always null terminated.
+        unsafe {
+            let module = c::LoadLibraryExA(
+                /* lpLibFileName */ name.as_ptr().cast::<u8>(),
+                /* hReserved */ ptr::null_mut(),
+                /* dwFlags */ c::LOAD_LIBRARY_SEARCH_SYSTEM32,
+            );
+            NonNull::new(module).map(Self)
+        }
+    }
+
     // Try to get the address of a function.
     pub fn proc_address(self, name: &CStr) -> Option<NonNull<c_void>> {
         unsafe {
@@ -128,6 +146,33 @@ impl Module {
             // SAFETY: `GetProcAddress` returns None on null.
             proc.map(|p| NonNull::new_unchecked(p as *mut c_void))
         }
+    }
+}
+
+unsafe impl Send for Module {}
+unsafe impl Sync for Module {}
+
+type LazyLoadModule = impl FnOnce() -> Option<Module> + Send + Sync + 'static;
+
+#[define_opaque(LazyLoadModule)]
+const fn lazy_load_module(name: &'static CStr) -> LazyLoadModule {
+    move || unsafe { Module::load(name) }
+}
+
+/// Represents a loaded module.
+///
+/// Note that the modules std depends on must not be unloaded.
+/// Therefore a `Module` is always valid for the lifetime of std.
+pub(in crate::sys) struct LazyModule(LazyLock<Option<Module>, LazyLoadModule>);
+impl LazyModule {
+    ///  Create a lazy-loaded handle to a module.
+    pub const unsafe fn new(name: &'static CStr) -> Self {
+        Self(LazyLock::new(lazy_load_module(name)))
+    }
+
+    /// Get the module handle, loading it if necessary.
+    pub fn load(&self) -> Option<Module> {
+        *LazyLock::force(&self.0)
     }
 }
 
@@ -191,6 +236,67 @@ macro_rules! compat_fn_with_fallback {
             }
         }
         #[allow(unused)]
+        $(#[$meta])*
+        $vis use $symbol::call as $symbol;
+    )*);
+    (#[lazy] pub static $module:ident: &CStr = $name:expr; $(
+        $(#[$meta:meta])*
+        $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) -> $rettype:ty $fallback_body:block
+    )*) => (
+        pub static $module: &CStr = $name;
+    $(
+        $(#[$meta])*
+        pub mod $symbol {
+            #[allow(unused_imports)]
+            use super::*;
+            use crate::mem;
+            use crate::ffi::CStr;
+            use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
+            use crate::sys::compat::{LazyModule, Module};
+
+            type F = unsafe extern "system" fn($($argtype),*) -> $rettype;
+
+            /// `PTR` contains a function pointer to one of three functions.
+            /// It starts with the `load` function.
+            /// When that is called it attempts to load the requested symbol.
+            /// If it succeeds, `PTR` is set to the address of that symbol.
+            /// If it fails, then `PTR` is set to `fallback`.
+            static PTR: Atomic<*mut c_void> = AtomicPtr::new(load as unsafe extern "system" fn($($argname: $argtype),*) -> $rettype as *mut _);
+
+            unsafe extern "system" fn load($($argname: $argtype),*) -> $rettype {
+                unsafe {
+                    static MODULE: LazyModule = unsafe { LazyModule::new($module) };
+                    let func = load_from_module(MODULE.load());
+                    func($($argname),*)
+                }
+            }
+
+            fn load_from_module(module: Option<Module>) -> F {
+                unsafe {
+                    static SYMBOL_NAME: &CStr = ansi_str!(sym $symbol);
+                    if let Some(f) = module.and_then(|m| m.proc_address(SYMBOL_NAME)) {
+                        PTR.store(f.as_ptr(), Ordering::Relaxed);
+                        mem::transmute(f)
+                    } else {
+                        PTR.store(fallback as unsafe extern "system" fn($($argname: $argtype),*) -> $rettype as *mut _, Ordering::Relaxed);
+                        fallback
+                    }
+                }
+            }
+
+            #[allow(unused_variables)]
+            unsafe extern "system" fn fallback($($argname: $argtype),*) -> $rettype {
+                $fallback_body
+            }
+
+            #[inline(always)]
+            pub unsafe fn call($($argname: $argtype),*) -> $rettype {
+                unsafe {
+                    let func: F = mem::transmute(PTR.load(Ordering::Relaxed));
+                    func($($argname),*)
+                }
+            }
+        }
         $(#[$meta])*
         $vis use $symbol::call as $symbol;
     )*)
