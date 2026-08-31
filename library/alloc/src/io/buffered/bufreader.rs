@@ -594,9 +594,8 @@ impl<R: ?Sized + Seek> Seek for BufReader<R> {
     fn stream_position(&mut self) -> io::Result<u64> {
         let remainder = (self.buf.filled() - self.buf.pos()) as u64;
         self.inner.stream_position().map(|pos| {
-            pos.checked_sub(remainder).expect(
-                "overflow when subtracting remaining buffer size from inner stream position",
-            )
+            pos.checked_sub(remainder)
+                .expect("remaining buffer size should not exceed inner stream position")
         })
     }
 
