@@ -34,6 +34,11 @@ pub(super) fn generate<'tcx>(
     debug!("liveness::generate");
     let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness");
 
+    // Universal regions are live at every point.
+    for region in typeck.universal_regions.universal_regions_iter() {
+        typeck.constraints.liveness_constraints.add_all_points(region);
+    }
+
     let mut free_regions = regions_that_outlive_free_regions(
         typeck.infcx.num_region_vars(),
         &typeck.universal_regions,
