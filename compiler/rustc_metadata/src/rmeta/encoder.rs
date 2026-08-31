@@ -1585,8 +1585,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Static { .. } = def_kind {
                 if !self.tcx.is_foreign_item(def_id) {
-                    let data = self.tcx.eval_static_initializer(def_id).unwrap();
-                    record!(self.tables.eval_static_initializer[def_id] <- data);
+                    if let Ok(data) = self.tcx.eval_static_initializer(def_id) {
+                        record!(self.tables.eval_static_initializer[def_id] <- data);
+                    }
                 }
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
