@@ -2495,6 +2495,23 @@ pub(crate) struct AssociatedStaticItemNotAllowed {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+pub(crate) enum FieldNotAllowedInTraitSugg {
+    #[help("consider using a method instead: `fn {$ident}(&self) -> {$ty};`")]
+    Method { ident: String, ty: String },
+    #[note("`self` can only appear as a method receiver; consider `fn method(self: {$ty})`")]
+    SelfReceiver { ty: String },
+}
+
+#[derive(Diagnostic)]
+#[diag("fields are not allowed in trait definitions")]
+pub(crate) struct FieldNotAllowedInTrait {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: FieldNotAllowedInTraitSugg,
+}
+
 #[derive(Diagnostic)]
 #[diag("crate name using dashes are not valid in `extern crate` statements")]
 pub(crate) struct ExternCrateNameWithDashes {
