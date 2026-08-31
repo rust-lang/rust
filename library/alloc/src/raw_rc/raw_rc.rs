@@ -1,4 +1,5 @@
 use core::alloc::{AllocError, Allocator, AllocatorClone};
+use core::any::Any;
 use core::cell::UnsafeCell;
 use core::clone::CloneToUninit;
 #[cfg(not(no_global_oom_handling))]
@@ -833,6 +834,27 @@ impl<T, A> RawRc<[MaybeUninit<T>], A> {
     pub(crate) unsafe fn assume_init(self) -> RawRc<[T], A> {
         // SAFETY: Caller guarantees the contained value is properly initialized.
         unsafe { self.cast_with(|ptr| NonNull::new_unchecked(ptr.as_ptr() as _)) }
+    }
+}
+
+impl<A> RawRc<dyn Any, A> {
+    pub(crate) fn downcast<T>(self) -> Result<RawRc<T, A>, Self>
+    where
+        T: Any,
+    {
+        // SAFETY: We have checked the contained value is of type `T`.
+        if self.as_ref().is::<T>() { Ok(unsafe { self.downcast_unchecked() }) } else { Err(self) }
+    }
+
+    /// # Safety
+    ///
+    /// `self` must point to a valid `T` value.
+    pub(crate) unsafe fn downcast_unchecked<T>(self) -> RawRc<T, A>
+    where
+        T: Any,
+    {
+        // SAFETY: Caller guarantees the contained value is of type `T`.
+        unsafe { self.cast() }
     }
 }
 
