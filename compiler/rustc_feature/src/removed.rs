@@ -211,7 +211,7 @@ declare_features! (
     (removed, no_coverage, "1.74.0", Some(84605), Some("renamed to `coverage_attribute`"), 114656),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), Some("removed due to lack of demand"), 69667),
-    // Allows the use of `no_sanitize` attribute.
+    /// Allows the use of `no_sanitize` attribute.
     /// The feature was renamed to `sanitize` and the attribute to `#[sanitize(xyz = "on|off")]`
     (removed, no_sanitize, "1.91.0", Some(39699), Some(r#"renamed to sanitize(xyz = "on|off")"#), 142681),
     /// Note: this feature was previously recorded in a separate
