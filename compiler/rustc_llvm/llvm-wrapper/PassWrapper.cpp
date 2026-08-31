@@ -66,10 +66,8 @@ using namespace llvm;
 
 static codegen::RegisterCodeGenFlags CGF;
 
-typedef struct LLVMOpaquePass *LLVMPassRef;
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
-DEFINE_STDCXX_CONVERSION_FUNCTIONS(Pass, LLVMPassRef)
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(TargetMachine, LLVMTargetMachineRef)
 
 extern "C" void LLVMRustTimeTraceProfilerInitialize() {

@@ -1199,11 +1199,9 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V, RustStringRef Str) {
   }
 }
 
-DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Twine, LLVMTwineRef)
-
-extern "C" void LLVMRustWriteTwineToString(LLVMTwineRef T, RustStringRef Str) {
+extern "C" void LLVMRustWriteTwineToString(const Twine *T, RustStringRef Str) {
   auto OS = RawRustStringOstream(Str);
-  unwrap(T)->print(OS);
+  T->print(OS);
 }
 
 extern "C" void LLVMRustUnpackOptimizationDiagnostic(
@@ -1239,13 +1237,13 @@ enum class LLVMRustDiagnosticLevel {
 
 extern "C" void LLVMRustUnpackInlineAsmDiagnostic(
     LLVMDiagnosticInfoRef DI, LLVMRustDiagnosticLevel *LevelOut,
-    uint64_t *CookieOut, LLVMTwineRef *MessageOut) {
+    uint64_t *CookieOut, const Twine **MessageOut) {
   // Undefined to call this not on an inline assembly diagnostic!
   llvm::DiagnosticInfoInlineAsm *IA =
       static_cast<llvm::DiagnosticInfoInlineAsm *>(unwrap(DI));
 
   *CookieOut = IA->getLocCookie();
-  *MessageOut = wrap(&IA->getMsgStr());
+  *MessageOut = &IA->getMsgStr();
 
   switch (IA->getSeverity()) {
   case DS_Error:
@@ -1334,22 +1332,20 @@ LLVMRustGetDiagInfoKind(LLVMDiagnosticInfoRef DI) {
   return toRust((DiagnosticKind)unwrap(DI)->getKind());
 }
 
-DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
-
-extern "C" LLVMSMDiagnosticRef LLVMRustGetSMDiagnostic(LLVMDiagnosticInfoRef DI,
+extern "C" const SMDiagnostic *LLVMRustGetSMDiagnostic(LLVMDiagnosticInfoRef DI,
                                                        uint64_t *Cookie) {
   llvm::DiagnosticInfoSrcMgr *SM =
       static_cast<llvm::DiagnosticInfoSrcMgr *>(unwrap(DI));
   *Cookie = SM->getLocCookie();
-  return wrap(&SM->getSMDiag());
+  return &SM->getSMDiag();
 }
 
 extern "C" bool
-LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef, RustStringRef MessageOut,
+LLVMRustUnpackSMDiagnostic(const SMDiagnostic *DRef, RustStringRef MessageOut,
                            RustStringRef BufferOut,
                            LLVMRustDiagnosticLevel *LevelOut, unsigned *LocOut,
                            unsigned *RangesOut, size_t *NumRanges) {
-  SMDiagnostic &D = *unwrap(DRef);
+  const SMDiagnostic &D = *DRef;
   auto MessageOS = RawRustStringOstream(MessageOut);
   MessageOS << D.getMessage();
 
