@@ -354,15 +354,15 @@ impl SingleAttributeParser for RustcEditionRedirectParser {
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let value = cx.expect_name_value(args, cx.attr_span, Some(sym::rustc_edition_redirect))?;
         let value = cx.expect_string_literal(value)?;
-        let before = match value.as_str().parse::<Edition>() {
-            Ok(before) => before,
+        let edition = match value.as_str().parse::<Edition>() {
+            Ok(edition) => edition,
             Err(()) => {
                 cx.emit_err(diagnostics::InvalidEditionRedirect { span: cx.attr_span });
                 return None;
             }
         };
 
-        Some(AttributeKind::RustcEditionRedirect(EditionRedirect { before, span: cx.attr_span }))
+        Some(AttributeKind::RustcEditionRedirect(EditionRedirect { edition, span: cx.attr_span }))
     }
 }
 

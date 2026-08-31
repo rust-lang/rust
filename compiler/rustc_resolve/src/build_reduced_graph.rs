@@ -408,7 +408,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let edition_redirects = edition_redirects
                     .iter()
                     .map(|redirect| crate::EditionRedirectDecl {
-                        before: redirect.before,
+                        edition: redirect.edition,
                         // Model this as a one-step reexport under the original
                         // child's name: the target supplies the resolution, while
                         // the child supplies its visibility and provenance.

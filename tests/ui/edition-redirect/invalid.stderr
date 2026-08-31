@@ -4,7 +4,7 @@ error: edition redirect for `Public` must have the same visibility as its defaul
 LL | #[rustc_edition_redirect = "2024"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: multiple edition redirects before edition 2024 for `Duplicate`
+error: multiple edition redirects with edition 2024 for `Duplicate`
   --> $DIR/invalid.rs:44:1
    |
 LL | #[rustc_edition_redirect = "2024"]

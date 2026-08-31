@@ -8,7 +8,7 @@ macro_rules! old_macro {
     () => { 1 };
 }
 
-#[rustc_edition_redirect = "2024"]
+#[rustc_edition_redirect = "2021"]
 #[stable(feature = "edition_redirect_stability", since = "1.0.0")]
 pub use old_macro as redirected_macro;
 

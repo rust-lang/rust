@@ -42,7 +42,7 @@ pub type DuplicateTargetB = ();
 #[rustc_edition_redirect = "2024"]
 pub use DuplicateTargetA as Duplicate;
 #[rustc_edition_redirect = "2024"]
-//~^ ERROR multiple edition redirects before edition 2024 for `Duplicate`
+//~^ ERROR multiple edition redirects with edition 2024 for `Duplicate`
 pub use DuplicateTargetB as Duplicate;
 
 pub type Duplicate = ();

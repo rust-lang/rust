@@ -6,7 +6,7 @@
 pub struct Old;
 pub struct Current;
 
-#[rustc_edition_redirect = "2021"]
+#[rustc_edition_redirect = "2018"]
 pub use Old as Name;
 pub use Current as Name;
 
@@ -23,15 +23,15 @@ mod diagnostic_targets {
     }
 }
 
-#[rustc_edition_redirect = "2021"]
+#[rustc_edition_redirect = "2018"]
 pub use diagnostic_targets::AliasCarrier as AliasCarrier;
 pub struct AliasCarrier;
 
-#[rustc_edition_redirect = "2021"]
+#[rustc_edition_redirect = "2018"]
 pub use diagnostic_targets::Candidate as Candidate;
 pub struct Candidate;
 
-#[rustc_edition_redirect = "2021"]
+#[rustc_edition_redirect = "2018"]
 pub use diagnostic_targets::diagnostic_module as diagnostic_module;
 pub mod diagnostic_module {
     pub enum DiagnosticEnum {
@@ -43,7 +43,7 @@ pub mod trait_prelude {
     pub struct OldItem;
     pub struct CurrentItem;
 
-    #[rustc_edition_redirect = "2021"]
+    #[rustc_edition_redirect = "2018"]
     pub use OldItem as RedirectedItem;
     pub use CurrentItem as RedirectedItem;
 
@@ -62,7 +62,7 @@ pub mod trait_prelude {
         }
     }
 
-    #[rustc_edition_redirect = "2021"]
+    #[rustc_edition_redirect = "2018"]
     pub use old::RedirectedTrait as RedirectedTrait;
 
     pub trait RedirectedTrait {
@@ -83,7 +83,7 @@ macro_rules! old_macro {
     };
 }
 
-#[rustc_edition_redirect = "2021"]
+#[rustc_edition_redirect = "2018"]
 pub use old_macro as redirected_macro;
 
 #[macro_export]

@@ -27,10 +27,10 @@ impl Reexport {
     }
 }
 
-/// A different item that a module child resolves to before an edition boundary.
+/// A different item that a module child resolves to on or before a given edition.
 #[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct EditionRedirect {
-    pub before: Edition,
+    pub edition: Edition,
     pub target: Res<!>,
 }
 

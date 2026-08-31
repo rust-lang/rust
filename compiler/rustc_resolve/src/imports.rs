@@ -313,7 +313,7 @@ mod name_resolution {
                     return decl;
                 }
                 let edition = span.edition();
-                match decl.edition_redirects.iter().find(|redirect| edition < redirect.before) {
+                match decl.edition_redirects.iter().find(|redirect| edition <= redirect.edition) {
                     Some(redirect) => redirect.target,
                     None => decl,
                 }
@@ -930,7 +930,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     this.local_edition_redirects.push(LocalEditionRedirect {
                                         module: import.parent_scope.module.expect_local(),
                                         key: BindingKey::new(ident, ns),
-                                        before: redirect.before,
+                                        edition: redirect.edition,
                                         import_decl,
                                         default_decl: None,
                                         span: redirect.span,
@@ -2005,16 +2005,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             // Check that there are no duplicate editions in the group.
-            indices.sort_by_key(|&index| self.local_edition_redirects[index].before);
+            indices.sort_by_key(|&index| self.local_edition_redirects[index].edition);
             for &[previous, redirect] in indices.array_windows() {
                 let previous = &self.local_edition_redirects[previous];
                 let redirect = &self.local_edition_redirects[redirect];
-                if previous.before == redirect.before && diagnosed_duplicate.insert(redirect.span) {
+                if previous.edition == redirect.edition && diagnosed_duplicate.insert(redirect.span)
+                {
                     self.dcx().span_err(
                         redirect.span,
                         format!(
-                            "multiple edition redirects before edition {} for `{}`",
-                            redirect.before, redirect.key.ident.name
+                            "multiple edition redirects with edition {} for `{}`",
+                            redirect.edition, redirect.key.ident.name
                         ),
                     );
                 }
@@ -2049,11 +2050,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .iter()
             .filter(|redirect| redirect.default_decl == Some(decl))
             .collect::<SmallVec<[_; 1]>>();
-        redirects.sort_by_key(|redirect| redirect.before);
+        redirects.sort_by_key(|redirect| redirect.edition);
         redirects
             .into_iter()
             .map(|redirect| MetadataEditionRedirect {
-                before: redirect.before,
+                edition: redirect.edition,
                 target: redirect.import_decl.res().expect_non_local(),
             })
             .collect()

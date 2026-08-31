@@ -3,9 +3,9 @@
 pub struct Oldest;
 pub struct Middle;
 
-#[rustc_edition_redirect = "2024"]
-pub use Middle as Redirected;
 #[rustc_edition_redirect = "2021"]
+pub use Middle as Redirected;
+#[rustc_edition_redirect = "2018"]
 pub use Oldest as Redirected;
 pub struct Redirected;
 
@@ -17,9 +17,9 @@ pub mod middle_module {
     pub const VALUE: usize = 2;
 }
 
-#[rustc_edition_redirect = "2021"]
+#[rustc_edition_redirect = "2018"]
 pub use oldest_module as redirected_module;
-#[rustc_edition_redirect = "2024"]
+#[rustc_edition_redirect = "2021"]
 pub use middle_module as redirected_module;
 pub mod redirected_module {
     pub const VALUE: usize = 3;
@@ -31,9 +31,9 @@ pub mod use_targets {
     pub struct CurrentUse;
 }
 
-#[rustc_edition_redirect = "2021"]
+#[rustc_edition_redirect = "2018"]
 pub use use_targets::OldestUse as RedirectedUse;
-#[rustc_edition_redirect = "2024"]
+#[rustc_edition_redirect = "2021"]
 pub use use_targets::MiddleUse as RedirectedUse;
 pub use use_targets::CurrentUse as RedirectedUse;
 
@@ -54,7 +54,7 @@ pub mod reexport_scope {
     pub struct Old;
     pub struct Current;
 
-    #[rustc_edition_redirect = "2024"]
+    #[rustc_edition_redirect = "2021"]
     pub use self::OldAlias as Redirected;
     pub use self::Current as Redirected;
 
@@ -73,9 +73,9 @@ macro_rules! middle_macro {
     () => { 2 };
 }
 
-#[rustc_edition_redirect = "2021"]
+#[rustc_edition_redirect = "2018"]
 pub use oldest_macro as redirected_macro;
-#[rustc_edition_redirect = "2024"]
+#[rustc_edition_redirect = "2021"]
 pub use middle_macro as redirected_macro;
 #[macro_export]
 macro_rules! redirected_macro {
@@ -88,13 +88,13 @@ pub mod ambiguity {
     pub struct OldB;
 
     pub mod alias_a {
-        #[rustc_edition_redirect = "2024"]
+        #[rustc_edition_redirect = "2021"]
         pub use super::OldA as Item;
         pub use super::Shared as Item;
     }
 
     pub mod alias_b {
-        #[rustc_edition_redirect = "2024"]
+        #[rustc_edition_redirect = "2021"]
         pub use super::OldB as Item;
         pub use super::Shared as Item;
     }
