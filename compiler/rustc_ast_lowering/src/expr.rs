@@ -881,15 +881,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to
-    /// `inner_hir_id` in case the `async_fn_track_caller` feature is enabled.
+    /// `inner_hir_id`.
     pub(super) fn maybe_forward_track_caller(
         &mut self,
         span: Span,
         outer_hir_id: HirId,
         inner_hir_id: HirId,
     ) {
-        if self.tcx.features().async_fn_track_caller()
-            && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
+        if let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
             && find_attr!(*attrs, TrackCaller(_))
         {
             let unstable_span = self.mark_span_with_reason(

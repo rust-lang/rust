@@ -1,10 +1,8 @@
 //@ run-pass
 //@ edition:2021
-//@ revisions: afn cls nofeat
+//@ revisions: cls nofeat
 //@ needs-unwind
-// gate-test-async_fn_track_caller
 #![feature(stmt_expr_attributes)]
-#![cfg_attr(afn, feature(async_fn_track_caller))]
 #![cfg_attr(cls, feature(closure_track_caller))]
 #![allow(unused)]
 
@@ -51,8 +49,6 @@ async fn foo() {
 }
 
 #[track_caller]
-//[cls]~^ WARN `#[track_caller]` on async functions is a no-op
-//[nofeat]~^^ WARN `#[track_caller]` on async functions is a no-op
 async fn bar_track_caller() {
     panic!()
 }
@@ -65,8 +61,6 @@ struct Foo;
 
 impl Foo {
     #[track_caller]
-    //[cls]~^ WARN `#[track_caller]` on async functions is a no-op
-    //[nofeat]~^^ WARN `#[track_caller]` on async functions is a no-op
     async fn bar_assoc() {
         panic!();
     }
@@ -80,7 +74,8 @@ async fn foo_assoc() {
 // `nofeat`, we test that separately in `async-closure-gate.rs`
 #[cfg(cls)]
 async fn foo_closure() {
-    let c = #[track_caller] async || {
+    let c = #[track_caller]
+    async || {
         panic!();
     };
     c().await
@@ -90,10 +85,24 @@ async fn foo_closure() {
 // `nofeat`, we test that separately in `async-block.rs`
 #[cfg(cls)]
 async fn foo_block() {
-    let a = #[track_caller] async {
+    let a = #[track_caller]
+    async {
         panic!();
     };
     a.await
+}
+
+#[track_caller]
+async fn bar_manual_poll() {
+    panic!();
+}
+
+fn foo_manual_poll() {
+    let future = bar_manual_poll();
+    let future = std::pin::pin!(future);
+    let mut cx = std::task::Context::from_waker(std::task::Waker::noop());
+    let res = future.poll(&mut cx);
+    assert_eq!(res, std::task::Poll::Ready(()));
 }
 
 fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
@@ -113,22 +122,18 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 }
 
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 46
-);
+    assert_eq!(panicked_at(|| block_on(foo())), 44);
 
-    #[cfg(afn)]
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 61);
-    #[cfg(any(cls, nofeat))]
     assert_eq!(panicked_at(|| block_on(foo_track_caller())), 57);
 
-    #[cfg(afn)]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 76);
-    #[cfg(any(cls, nofeat))]
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 71);
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 70);
 
     #[cfg(cls)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 84);
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 81);
 
     #[cfg(cls)]
-    assert_eq!(panicked_at(|| block_on(foo_block())), 96);
+    assert_eq!(panicked_at(|| block_on(foo_block())), 92);
+
+    // This should be 101 (call site), not 104 (poll site)
+    assert_eq!(panicked_at(|| foo_manual_poll()), 104);
 }

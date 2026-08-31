@@ -273,7 +273,6 @@ late_lint_methods!(
             TrivialConstraints: TrivialConstraints,
             TypeAliasBounds: TypeAliasBounds,
             TypeLimits: TypeLimits::new(),
-            UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
             UnitBindings: UnitBindings,
             UnqualifiedLocalImports: UnqualifiedLocalImports,
             // Depends on effective visibilities
@@ -717,6 +716,11 @@ fn register_builtins(store: &mut LintStore) {
     store.register_removed(
         "dependency_on_unit_never_type_fallback",
         "the code warned by this lint no longer compiles",
+    );
+    store.register_removed(
+        "ungated_async_fn_track_caller",
+        "the `async_fn_track_caller` feature has stabilized, see \
+         <https://github.com/rust-lang/rust/issues/110011> for more information",
     );
 }
 
