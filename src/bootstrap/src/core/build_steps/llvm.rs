@@ -151,13 +151,7 @@ impl LdFlags {
 ///
 /// Calling this function should never attempt to checkout the LLVM submodule.
 pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> Option<LlvmOutput> {
-    // Try to download LLVM from CI, if possible
-    let llvm_ci = builder.ensure(LlvmFromCi { target });
-    if let Some(llvm) = llvm_ci {
-        return Some(llvm.output);
-    }
-
-    // If it is not available, use an externally provided LLVM
+    // Use an externally provided LLVM, if available
     if let Some(config) = builder.config.target_config.get(&target)
         && let Some(ref s) = config.llvm_config
     {
@@ -176,6 +170,12 @@ pub fn prebuilt_llvm_output(builder: &Builder<'_>, target: TargetSelection) -> O
             llvm_root_dir,
             kind: LlvmKind::External,
         });
+    }
+
+    // If external LLVM is not configured, try to download LLVM from CI, if possible
+    let llvm_ci = builder.ensure(LlvmFromCi { target });
+    if let Some(llvm) = llvm_ci {
+        return Some(llvm.output);
     }
 
     // If LLVM is not available from CI nor externally, it is still possible that it was already
@@ -256,21 +256,6 @@ fn llvm_output_dir(builder: &Builder<'_>, target: TargetSelection) -> PathBuf {
 }
 
 fn try_download_ci_llvm(builder: &Builder<'_>, target: TargetSelection) -> Option<DownloadedLlvm> {
-    if builder.config.llvm_ci_mode.requests_download_from_ci()
-        && let Some(config) = builder.config.target_config.get(&target)
-    {
-        if config.llvm_config.is_some() {
-            panic!(
-                "Cannot configure `llvm-config` for {target} when using `llvm.download-ci-llvm`",
-            );
-        }
-        if config.llvm_filecheck.is_some() {
-            panic!(
-                "Cannot configure `llvm-filecheck` for {target} when using `llvm.download-ci-llvm`"
-            );
-        }
-    }
-
     match builder.config.llvm_ci_mode {
         LlvmCiMode::BuildLocally => return None,
         LlvmCiMode::Download => {}

@@ -1008,6 +1008,11 @@ impl Config {
                     target.llvm_has_rust_patches = Some(patches);
                 }
                 if let Some(ref s) = target_llvm_filecheck {
+                    if target_llvm_config.is_none() {
+                        panic!(
+                            "You must also configure `llvm-config` when setting `llvm-filecheck` for target {triple}",
+                        );
+                    }
                     target.llvm_filecheck = Some(src.join(s));
                 }
                 target.llvm_libunwind = target_llvm_libunwind.as_ref().map(|v| {
