@@ -114,9 +114,10 @@ jobs:
           os: windows-2025-vs2026
         - target: x86_64-pc-windows-msvc
           os: windows-2025-vs2026
-        - target: i686-pc-windows-gnu
-          os: windows-2025-vs2026
-          channel: nightly-i686-gnu
+        # FIXME(rust-lang/compiler-builtins#1306): disabled due to broken environment
+        # - target: i686-pc-windows-gnu
+        #   os: windows-2025-vs2026
+        #   channel: nightly-i686-gnu
         - target: x86_64-pc-windows-gnu
           os: windows-2025-vs2026
           channel: nightly-x86_64-gnu
