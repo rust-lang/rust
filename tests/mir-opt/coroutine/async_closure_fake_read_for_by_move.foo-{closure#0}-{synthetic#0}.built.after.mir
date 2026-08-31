@@ -35,14 +35,14 @@ yields ()
 
     bb4: {
         StorageDead(_6);
-        FakeRead(ForMatchGuard, _3);
-        FakeRead(ForMatchGuard, _4);
         _0 = const ();
         goto -> bb6;
     }
 
     bb5: {
         StorageDead(_6);
+        FakeRead(ForMatchGuard, _3);
+        FakeRead(ForMatchGuard, _4);
         falseEdge -> [real: bb1, imaginary: bb1];
     }
 

@@ -86,7 +86,6 @@ fn full_tested_match2() -> () {
 
     bb11: {
         StorageDead(_7);
-        FakeRead(ForMatchGuard, _3);
         FakeRead(ForGuardBinding, _6);
         StorageLive(_5);
         _5 = copy ((_2 as Some).0: i32);
@@ -106,6 +105,7 @@ fn full_tested_match2() -> () {
     bb13: {
         StorageDead(_7);
         StorageDead(_6);
+        FakeRead(ForMatchGuard, _3);
         goto -> bb9;
     }
 

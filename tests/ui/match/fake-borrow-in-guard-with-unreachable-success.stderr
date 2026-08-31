@@ -1,0 +1,11 @@
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/fake-borrow-in-guard-with-unreachable-success.rs:7:22
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         Some(_) if { x = None; false } && return => {}
+   |                      ^ cannot assign
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0510`.
