@@ -38,5 +38,8 @@
                 <a class="src" href="{{href|safe}}">Source</a> {#+ #}
             {% else %}
         {% endmatch %}
+        {% if let Some(original_path) = original_path %}
+            <span class="reexport-origin">Reexported from {{+ original_path|safe}}</span>
+        {% endif %}
     </span> {# #}
 </div> {# #}

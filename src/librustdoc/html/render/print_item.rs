@@ -40,7 +40,7 @@ use crate::html::format::{
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::sidebar::filters;
-use crate::html::render::{document_full, document_item_info, notable_trait_badges};
+use crate::html::render::{document_full, document_item_info, href, notable_trait_badges};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
 const ITEM_TABLE_OPEN: &str = "<dl class=\"item-table\">";
@@ -62,6 +62,20 @@ struct NotableTraitBadgeVars {
     color_index: u8,
 }
 
+enum HtmlLinkOrPath {
+    Link { path: String, url: String },
+    Path(String),
+}
+
+impl fmt::Display for HtmlLinkOrPath {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Link { path, url } => write!(fmt, "<a href=\"{url}\">{path}</a>"),
+            Self::Path(path) => write!(fmt, "<code>{path}</code>"),
+        }
+    }
+}
+
 #[derive(Template)]
 #[template(path = "print_item.html")]
 struct ItemVars<'a> {
@@ -72,6 +86,7 @@ struct ItemVars<'a> {
     stability_since_raw: &'a str,
     notable_trait_badges: Vec<NotableTraitBadgeVars>,
     src_href: Option<&'a str>,
+    original_path: Option<HtmlLinkOrPath>,
 }
 
 pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Display {
@@ -110,8 +125,9 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                 unreachable!();
             }
         };
+        let tcx = cx.tcx();
         let stability_since_raw =
-            render_stability_since_raw(item.stable_since(cx.tcx()), item.const_stability(cx.tcx()))
+            render_stability_since_raw(item.stable_since(tcx), item.const_stability(tcx))
                 .maybe_display()
                 .to_string();
 
@@ -143,6 +159,26 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             })
             .collect();
 
+        let original_path = item.item_id.as_def_id().and_then(|def_id| {
+            // We only show non-local reexports.
+            if def_id.is_local() {
+                None
+            } else {
+                // To ensure that we go completely through the reexports. If we use
+                // `def_path_debug_str`, we `alloc::vec::Vec`, but if we use `def_path_str`, it's
+                // `std::vec::Vec`. So let's force the right path.
+                let path = format!(
+                    "{}{}",
+                    tcx.crate_name(def_id.krate),
+                    tcx.cstore_untracked().def_path(def_id).to_string_no_crate_verbose(),
+                );
+                Some(match href(def_id, cx) {
+                    Ok(href) => HtmlLinkOrPath::Link { path, url: href.url },
+                    _ => HtmlLinkOrPath::Path(path),
+                })
+            }
+        });
+
         let path_components = if item.is_fake_item() {
             vec![]
         } else {
@@ -168,6 +204,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             stability_since_raw: &stability_since_raw,
             notable_trait_badges,
             src_href: src_href.as_deref(),
+            original_path,
         };
 
         item_vars.render_into(buf).unwrap();
