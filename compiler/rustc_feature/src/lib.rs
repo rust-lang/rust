@@ -70,8 +70,7 @@ impl UnstableFeatures {
         let is_unstable_crate =
             |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
 
-        let bootstrap = env_var_rustc_bootstrap.ok();
-        if let Some(val) = bootstrap.as_deref() {
+        if let Ok(val) = env_var_rustc_bootstrap.as_deref() {
             match val {
                 val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,
                 // Hypnotize ourselves so that we think we are a stable compiler and thus don't
