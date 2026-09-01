@@ -39,6 +39,14 @@ pub struct ArgAbi {
     pub mode: PassMode,
 }
 
+/// Different modes in which indirect arguments can be passed.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize)]
+pub enum IndirectMode {
+    Pointer,
+    OnStack,
+    AmdgpuKernelArg,
+}
+
 /// How a function argument should be passed in to the target function.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum PassMode {
@@ -57,7 +65,12 @@ pub enum PassMode {
     /// Pass the argument after casting it.
     Cast { pad_i32_count: u8, cast: Opaque },
     /// Pass the argument indirectly via a hidden pointer.
-    Indirect { attrs: Opaque, meta_attrs: Opaque, on_stack: bool },
+    Indirect {
+        attrs: Opaque,
+        meta_attrs: Opaque,
+        address_space: Option<AddressSpace>,
+        mode: IndirectMode,
+    },
 }
 
 /// The layout of a type, alongside the type itself.
