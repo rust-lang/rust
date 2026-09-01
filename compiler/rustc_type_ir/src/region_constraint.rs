@@ -49,6 +49,7 @@ impl<T> Default for TransitiveRelationBuilder<T> {
 use crate::data_structures::IndexMap;
 use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
+use crate::outlives::{Component, push_outlives_components};
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, InferCtxtLike,
@@ -96,6 +97,11 @@ impl<I: Interner> Assumptions<I> {
 pub enum LeafRegionConstraint<I: Interner, S: Clone + std::fmt::Debug = ()> {
     Ambiguity(S),
     RegionOutlives(Region<I>, Region<I>, S),
+    /// A type-outlives constraint which has not yet been decomposed into its constituent parts.
+    ///
+    /// The minimal coroutine mode keeps these intact until region checking so that enabling the
+    /// mode does not strengthen the eager leak check.
+    TypeOutlives(I::Ty, Region<I>, S),
     /// Requirement that a (potentially higher ranked) alias outlives some (potentially higher ranked)
     /// region due to an assumption in the environment. This cannot be satisfied via component outlives
     /// or item bounds.
@@ -128,6 +134,7 @@ impl<I: Interner> LeafRegionConstraint<I> {
         match self {
             Ambiguity(()) => Ambiguity(span),
             RegionOutlives(r1, r2, ()) => RegionOutlives(r1, r2, span),
+            TypeOutlives(ty, r, ()) => TypeOutlives(ty, r, span),
             AliasTyOutlivesViaEnv(bound_outlives, ()) => {
                 AliasTyOutlivesViaEnv(bound_outlives, span)
             }
@@ -143,6 +150,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
         match self {
             Ambiguity(_) => Ambiguity(()),
             RegionOutlives(r1, r2, _) => RegionOutlives(r1, r2, ()),
+            TypeOutlives(ty, r, _) => TypeOutlives(ty, r, ()),
             AliasTyOutlivesViaEnv(bound_outlives, _) => AliasTyOutlivesViaEnv(bound_outlives, ()),
             PlaceholderTyOutlives(ty, r, _) => PlaceholderTyOutlives(ty, r, ()),
         }
@@ -153,6 +161,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
 
         let (Ambiguity(s)
         | RegionOutlives(_, _, s)
+        | TypeOutlives(_, _, s)
         | AliasTyOutlivesViaEnv(_, s)
         | PlaceholderTyOutlives(_, _, s)) = self;
         s.clone()
@@ -423,7 +432,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug> LeafRegionConstraint<I, S> {
 }
 
 /// Takes any constraints involving placeholders from the current universe and eagerly checks them.
-/// This can be done a few ways:
+/// Full assumptions-on-binders mode can do this a few ways:
 /// - There's an assumption on the binder introducing the placeholder which means the constraint is satisfied (true)
 /// - There's assumptions on the binder introducing the placeholder which allow us to rewrite the constraint in
 ///    terms of lower universe variables. For example given `for<'a> where('b: 'a) { prove(T: '!a_u1) }` we can
@@ -435,6 +444,10 @@ impl<I: Interner, S: Clone + std::fmt::Debug> LeafRegionConstraint<I, S> {
 /// propagating true/false/ambiguity as close to the root of the constraint as we can. The returned constraint should
 /// be checked for whether it is true/false/ambiguous as that should affect the result of whatever operation required
 /// entering the binder corresponding to `u`.
+///
+/// For universes with explicit assumptions, minimal coroutine mode only removes constraints
+/// directly implied by them. It leaves every other constraint unchanged so it can be checked in
+/// the root inference context. Universes without assumptions use the ordinary eager leak check.
 #[instrument(level = "debug", skip(infcx), ret)]
 pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
@@ -442,6 +455,12 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     u: UniverseIndex,
 ) -> RegionConstraint<I> {
     let assumptions = infcx.get_placeholder_assumptions(u);
+
+    if infcx.cx().assumptions_on_binders_min_coroutines()
+        && let Some(assumptions) = assumptions.as_ref()
+    {
+        return drop_constraints_satisfied_by_assumptions(infcx, constraint, u, assumptions);
+    }
 
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
     //     involving things from `u` or type outlives constraints not involving things from `u`
@@ -467,6 +486,56 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     propagate_ambiguity(constraint)
 }
 
+fn drop_constraints_satisfied_by_assumptions<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
+    infcx: &Infcx,
+    constraint: RegionConstraint<I>,
+    u: UniverseIndex,
+    assumptions: &Assumptions<I>,
+) -> RegionConstraint<I> {
+    use LeafRegionConstraint::*;
+
+    let region_outlives = |r1, r2| regions_outlived_by(r1, assumptions).any(|r| r == r2);
+    let type_outlives = |ty, r| {
+        assumptions.type_outlives.iter().any(|assumption| {
+            let Some(OutlivesClause(assumed_ty, assumed_r)) = assumption.no_bound_vars() else {
+                return false;
+            };
+            assumed_ty == ty && region_outlives(assumed_r, r)
+        })
+    };
+    let is_satisfied = |constraint: &LeafRegionConstraint<I>| {
+        // Constraints retained while leaving an inner universe may still mention that universe.
+        // The assumptions for `u` cannot be used to discharge those constraints.
+        if max_universe(infcx, constraint.clone()) != u {
+            return false;
+        }
+
+        match constraint {
+            RegionOutlives(r1, r2, ()) => region_outlives(*r1, *r2),
+            TypeOutlives(ty, r, ()) | PlaceholderTyOutlives(ty, r, ()) => type_outlives(*ty, *r),
+            Ambiguity(()) | AliasTyOutlivesViaEnv(..) => false,
+        }
+    };
+
+    let has_satisfied_constraint = constraint
+        .and_constraint
+        .0
+        .iter()
+        .chain(constraint.or_constraint.0.iter().flat_map(|and| and.0.iter()))
+        .any(is_satisfied);
+    if !has_satisfied_constraint {
+        return constraint;
+    }
+
+    let filter_and = |and: And<I>| And::new(and.0.into_iter().filter(|c| !is_satisfied(c)));
+    let and_constraint = filter_and(constraint.and_constraint);
+    let or_ands: Vec<_> = constraint.or_constraint.0.into_iter().map(filter_and).collect();
+    let or_constraint =
+        if or_ands.iter().any(|and| and.0.is_empty()) { Or::new_true() } else { Or::new(or_ands) };
+
+    RegionConstraint::new_from_or(Or::build_and(Or::new([and_constraint]), or_constraint))
+}
+
 /// Filter our region constraints to not include constraints between region variables from `u` and
 /// other regions as those are always satisfied. This requires some care to handle correctly for example:
 /// `'!a_u1: '?x_u1: '!b_u1` should result in us requiring `'!a_u1: '!b_u1` rather than dropping the two
@@ -489,9 +558,10 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
                            and: &And<I>| {
         for c in &and.0 {
             match c {
-                Ambiguity(()) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
-                    constraints.push(c.clone())
-                }
+                Ambiguity(())
+                | TypeOutlives(..)
+                | PlaceholderTyOutlives(..)
+                | AliasTyOutlivesViaEnv(..) => constraints.push(c.clone()),
                 RegionOutlives(r1, r2, ()) => {
                     regions.insert(*r1);
                     regions.insert(*r2);
@@ -636,7 +706,10 @@ fn pull_region_outlives_constraints_out_of_universe<
         let mut pulled_constraints = Vec::new();
         for c in and.0 {
             match c {
-                Ambiguity(()) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
+                Ambiguity(())
+                | TypeOutlives(..)
+                | PlaceholderTyOutlives(..)
+                | AliasTyOutlivesViaEnv(..) => {
                     assert!(max_universe(infcx, c.clone()) < u);
                     pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
@@ -692,10 +765,83 @@ fn pull_region_outlives_constraints_out_of_universe<
     RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint))
 }
 
-/// Converts type outlives constraints into region outlives constraints. This assumes the *complete* set of
-/// assumptions are known. This should not be called until the end of type checking.
-///
-/// The returned region constraint will not have *any* PlaceholderTyOutlives or AliasTyOutlivesViaEnv constraints.
+/// Converts a type-outlives constraint into constraints for the components of the type.
+#[instrument(level = "debug", skip(cx), ret)]
+pub fn destructure_type_outlives<I: Interner, S>(
+    cx: I,
+    ty: I::Ty,
+    r: Region<I>,
+    span: S,
+) -> Or<I, S>
+where
+    S: Clone + std::fmt::Debug + Eq + std::hash::Hash,
+{
+    let mut components = Default::default();
+    push_outlives_components(cx, ty, &mut components);
+    destructure_type_outlives_components(cx, &components, r, span)
+}
+
+fn destructure_type_outlives_components<I: Interner, S>(
+    cx: I,
+    components: &[Component<I>],
+    r: Region<I>,
+    span: S,
+) -> Or<I, S>
+where
+    S: Clone + std::fmt::Debug + Eq + std::hash::Hash,
+{
+    components.into_iter().fold(Or::new_true(), |acc, component| {
+        Or::build_and(acc, destructure_type_outlives_component(cx, component, r, span.clone()))
+    })
+}
+
+fn destructure_type_outlives_component<I: Interner, S>(
+    cx: I,
+    component: &Component<I>,
+    r: Region<I>,
+    span: S,
+) -> Or<I, S>
+where
+    S: Clone + std::fmt::Debug + Eq + std::hash::Hash,
+{
+    use LeafRegionConstraint::*;
+
+    match component {
+        Component::Region(component_r) => Or::new_leaf(RegionOutlives(*component_r, r, span)),
+        Component::Param(param) => {
+            Or::new_leaf(PlaceholderTyOutlives(Ty::new_param(cx, *param), r, span))
+        }
+        Component::Placeholder(placeholder) => {
+            Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(cx, *placeholder), r, span))
+        }
+        Component::Alias(_, alias) => {
+            let item_bound_outlives = Or::new(
+                crate::outlives::declared_bounds_from_definition(cx, *alias)
+                    .map(|bound| And::new([RegionOutlives(bound, r, span.clone())])),
+            );
+            let where_clause_outlives =
+                Or::new_leaf(AliasTyOutlivesViaEnv(Binder::dummy((*alias, r)), span.clone()));
+
+            let mut components = Default::default();
+            crate::outlives::compute_alias_components_recursive(cx, *alias, &mut components);
+            let components_outlives =
+                destructure_type_outlives_components(cx, &components, r, span);
+
+            Or::build_or(
+                Or::build_or(item_bound_outlives, where_clause_outlives),
+                components_outlives,
+            )
+        }
+        Component::UnresolvedInferenceVariable(_) => Or::new_ambig(span),
+        Component::EscapingAlias(components) => {
+            destructure_type_outlives_components(cx, components, r, span)
+        }
+    }
+}
+
+/// Converts all type-outlives constraints at the end of type checking, once the complete set of
+/// assumptions is known. The returned constraint has no `TypeOutlives`,
+/// `PlaceholderTyOutlives`, or `AliasTyOutlivesViaEnv` leaves.
 #[instrument(level = "debug", skip(infcx), ret)]
 pub fn destructure_type_outlives_constraints_in_root<
     Infcx: InferCtxtLike<Interner = I>,
@@ -715,6 +861,22 @@ pub fn destructure_type_outlives_constraints_in_root<
             match c {
                 Ambiguity(_) | RegionOutlives(..) => {
                     destructured_constraints.push(Or::new_leaf(c.clone()))
+                }
+                TypeOutlives(ty, r, span) => {
+                    let constraint = RegionConstraint::new_from_or(destructure_type_outlives(
+                        infcx.cx(),
+                        *ty,
+                        *r,
+                        span.clone(),
+                    ));
+                    destructured_constraints.push(
+                        destructure_type_outlives_constraints_in_root(
+                            infcx,
+                            constraint,
+                            assumptions,
+                        )
+                        .splatted_and_constraints(),
+                    );
                 }
                 PlaceholderTyOutlives(ty, r, span) => destructured_constraints.push(Or::new(
                     regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).map(
@@ -787,6 +949,23 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
         for c in and.0 {
             match c {
                 Ambiguity(()) | RegionOutlives(..) => rewritten_constraints.push(Or::new_leaf(c)),
+                TypeOutlives(ty, region, ()) => {
+                    let constraint = RegionConstraint::new_from_or(destructure_type_outlives(
+                        infcx.cx(),
+                        ty,
+                        region,
+                        (),
+                    ));
+                    rewritten_constraints.push(
+                        rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling(
+                            infcx,
+                            constraint,
+                            u,
+                            assumptions,
+                        )
+                        .splatted_and_constraints(),
+                    );
+                }
                 PlaceholderTyOutlives(ty, region, ()) => {
                     rewritten_constraints.push(rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(infcx, ty, region, u, assumptions));
                 }
@@ -1171,14 +1350,20 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
     {
         self.infcx.enter_forall_with_empty_assumptions(a, |a| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(
+                u,
+                (!self.cx().assumptions_on_binders_min_coroutines()).then(Assumptions::empty),
+            );
             let b = self.infcx.instantiate_binder_with_infer(b);
             self.relate(a, b)
         })?;
 
         self.infcx.enter_forall_with_empty_assumptions(b, |b| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(
+                u,
+                (!self.cx().assumptions_on_binders_min_coroutines()).then(Assumptions::empty),
+            );
             let a = self.infcx.instantiate_binder_with_infer(a);
             self.relate(a, b)
         })?;

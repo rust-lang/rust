@@ -2359,6 +2359,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                     match c {
                         LeafRegionConstraint::Ambiguity(_)
                         | LeafRegionConstraint::RegionOutlives(..)
+                        | LeafRegionConstraint::TypeOutlives(..)
                         | LeafRegionConstraint::AliasTyOutlivesViaEnv(..) => (), // OK
                         LeafRegionConstraint::PlaceholderTyOutlives(ty, _, span) => {
                             // we can't check this during lowering, because the ty is a ty::Bound that gets

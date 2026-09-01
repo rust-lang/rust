@@ -162,20 +162,7 @@ where
     let prev_universe = delegate.universe();
     let universes_created_in_query = response.max_universe.index();
     for _ in 0..universes_created_in_query {
-        let new_universe = delegate.create_next_universe();
-        if delegate.cx().assumptions_on_binders() {
-            // FIXME(-Zassumptions-on-binders): Remove this temporary workaround once
-            // opaque types no longer escape query responses with query-created placeholders.
-            // Region constraints involving query-created placeholders were handled inside
-            // the query. However, the placeholders can still escape in other response
-            // fields, such as opaque type constraints. To avoid triggering
-            // assertions, we explicitly insert empty assumptions for the
-            // recreated universes here.
-            delegate.insert_placeholder_assumptions(
-                new_universe,
-                Some(rustc_type_ir::region_constraint::Assumptions::empty()),
-            );
-        }
+        create_next_universe_with_placeholder_assumptions(delegate);
     }
 
     compute_query_response_instantiation_values_in_universe(
@@ -185,6 +172,25 @@ where
         span,
         prev_universe,
     )
+}
+
+fn create_next_universe_with_placeholder_assumptions<D, I>(delegate: &D)
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    let new_universe = delegate.create_next_universe();
+    if delegate.cx().assumptions_on_binders() {
+        // FIXME(-Zassumptions-on-binders): Remove this temporary workaround once opaque types no
+        // longer escape query responses with query-created placeholders. Region constraints
+        // involving query-created placeholders were handled inside the query, but placeholders can
+        // still escape in other response fields. These contextless universes use empty assumptions:
+        // they cannot discharge constraints, but allow them to propagate back to their source.
+        delegate.insert_placeholder_assumptions(
+            new_universe,
+            Some(rustc_type_ir::region_constraint::Assumptions::empty()),
+        );
+    }
 }
 
 fn compute_query_response_instantiation_values_in_universe<D, I, T>(
@@ -590,7 +596,7 @@ where
     // and the previous instantiation, extend `orig_values` for it.
     let max_universe = prev_universe + state.max_universe.index();
     while delegate.universe() < max_universe {
-        delegate.create_next_universe();
+        create_next_universe_with_placeholder_assumptions(delegate);
     }
     orig_values.extend(
         state.value.var_values.var_values.as_slice()[orig_values.len()..]

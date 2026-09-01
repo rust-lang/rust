@@ -4,16 +4,14 @@
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_type_ir::ClauseKind::*;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::outlives::{Component, push_outlives_components};
 #[cfg(not(feature = "nightly"))]
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
-    And, Assumptions, LeafRegionConstraint, Or, eagerly_handle_placeholders_in_universe,
-    propagate_ambiguity,
+    Assumptions, eagerly_handle_placeholders_in_universe, propagate_ambiguity,
 };
 use rustc_type_ir::{
-    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesClause, Region, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UniverseIndex, max_universe,
+    ClauseKind, InferCtxtLike, Interner, OutlivesClause, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, UniverseIndex, max_universe,
 };
 use tracing::{debug, instrument};
 
@@ -149,67 +147,5 @@ where
         } else {
             Ok(Certainty::Yes)
         }
-    }
-
-    /// Convert a type outlives constraint into a set of region outlives constraints and
-    /// type outlives constraints between the "components" of the type. E.g. `Foo<T, 'a>: 'b`
-    /// will be turned into `T: 'b, 'a: 'b`
-    #[instrument(level = "debug", skip(self), ret)]
-    pub(in crate::solve) fn destructure_type_outlives(&mut self, ty: I::Ty, r: Region<I>) -> Or<I> {
-        let mut components = Default::default();
-        push_outlives_components(self.cx(), ty, &mut components);
-        self.destructure_components(&components, r)
-    }
-
-    fn destructure_components(&mut self, components: &[Component<I>], r: Region<I>) -> Or<I> {
-        components
-            .into_iter()
-            .fold(Or::new_true(), |acc, c| Or::build_and(acc, self.destructure_component(c, r)))
-    }
-
-    fn destructure_component(&mut self, c: &Component<I>, r: Region<I>) -> Or<I> {
-        use Component::*;
-        use LeafRegionConstraint::*;
-        match c {
-            Region(c_r) => Or::new_leaf(RegionOutlives(*c_r, r, ())),
-            Placeholder(p) => {
-                Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r, ()))
-            }
-            Alias(_, alias) => self.destructure_alias_outlives(*alias, r),
-            UnresolvedInferenceVariable(_) => Or::new_ambig(()),
-            Param(_) => panic!("Params should have been canonicalized to placeholders"),
-            EscapingAlias(components) => self.destructure_components(components, r),
-        }
-    }
-
-    /// Convert an alias outlives constraint into an OR constraint of any number of three
-    /// separate classes of candidates:
-    /// 1. component outlives. we turn `Alias<T, 'a>: 'b` into `T: 'b, 'a: 'b`.
-    /// 2. item bounds. we turn `Alias<T, 'a>: 'b` into `'c: 'b` if `Alias` is
-    ///     defined as `type Alias<T, 'a>: 'c`
-    /// 3. env assumptions. we defer handling `Alias<T, 'a>: 'b` via where clauses until
-    ///     when exiting the current binder. See [`LeafRegionConstraint::AliasTyOutlivesViaEnv`].
-    #[instrument(level = "debug", skip(self), ret)]
-    fn destructure_alias_outlives(&mut self, alias: AliasTy<I>, r: Region<I>) -> Or<I> {
-        use LeafRegionConstraint::*;
-
-        let item_bounds =
-            rustc_type_ir::outlives::declared_bounds_from_definition(self.cx(), alias)
-                .map(|bound| And::new([RegionOutlives(bound, r, ())]));
-        let item_bound_outlives = Or::new(item_bounds);
-
-        let where_clause_outlives =
-            Or::new_leaf(AliasTyOutlivesViaEnv(Binder::dummy((alias, r)), ()));
-
-        let mut components = Default::default();
-        rustc_type_ir::outlives::compute_alias_components_recursive(
-            self.cx(),
-            alias,
-            &mut components,
-        );
-        let components_outlives = self.destructure_components(&components, r);
-
-        let assumption_outlives = Or::build_or(item_bound_outlives, where_clause_outlives);
-        Or::build_or(assumption_outlives, components_outlives)
     }
 }
