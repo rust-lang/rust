@@ -296,7 +296,7 @@ struct LoweringContext<'a, 'hir> {
 
     /// Used to get the current `fn`'s def span to point to when using `await`
     /// outside of an `async fn`.
-    current_item: Option<Span>,
+    current_item_span: Option<Span>,
 
     try_block_scope: TryBlockScope,
     loop_scope: Option<HirId>,
@@ -366,7 +366,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             is_in_dyn_type: false,
             coroutine_kind: None,
             task_context: None,
-            current_item: None,
+            current_item_span: None,
 
             move_expr_bindings: Vec::new(),
             lowering_move_expr_initializer: false,
@@ -1154,8 +1154,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn with_new_scopes<T>(&mut self, scope_span: Span, f: impl FnOnce(&mut Self) -> T) -> T {
-        let current_item = self.current_item;
-        self.current_item = Some(scope_span);
+        let current_item_span = self.current_item_span;
+        self.current_item_span = Some(scope_span);
 
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
@@ -1172,7 +1172,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         self.is_in_loop_condition = was_in_loop_condition;
 
-        self.current_item = current_item;
+        self.current_item_span = current_item_span;
 
         ret
     }
