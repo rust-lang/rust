@@ -1265,7 +1265,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// The "shallow" part of the name refers to the fact that types may themselves contain more
     /// type variables. e.g. The field types of a struct. `shallow_resolve` does not recurse into
     /// these nested variables. If that's what you want, use [`deeply_resolve_ignoring_regions`](Self::deeply_resolve_ignoring_regions),
-    /// or better [`deeply_resolve`](rustc_type_ir::deeply_resolve), if you can, which *does* resolve regions.
+    /// or better [`deeply_resolve_via_unification_table`](rustc_type_ir::InferCtxtLike::deeply_resolve_via_unification_table), if you can, which *does* resolve regions.
     pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Infer(v) = *ty.kind() {
             match v {
