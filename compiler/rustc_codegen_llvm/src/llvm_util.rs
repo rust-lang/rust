@@ -6,6 +6,7 @@ use std::sync::Once;
 use std::{ptr, slice, str};
 
 use libc::c_int;
+use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::target_features::internal_target_features;
 use rustc_codegen_ssa::{TargetConfig, target_features};
@@ -13,19 +14,20 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
-use rustc_session::Session;
 use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
+use rustc_session::{EarlySession, Session};
 use rustc_target::spec::{
-    Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
+    Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport, Target,
 };
 use smallvec::{SmallVec, smallvec};
 
-use crate::back::write::create_informational_target_machine;
+use crate::back::owned_mc_subtarget_info::OwnedMCSubtargetInfo;
+use crate::back::write::{create_informational_target_machine, llvm_err};
 use crate::{diagnostics, llvm};
 
 static INIT: Once = Once::new();
 
-pub(crate) fn init(sess: &Session) {
+pub(crate) fn init(sess: &EarlySession) {
     unsafe {
         // Before we touch LLVM, make sure that multithreading is enabled.
         if !llvm::LLVMIsMultithreaded().is_true() {
@@ -43,7 +45,7 @@ fn require_inited() {
     }
 }
 
-unsafe fn configure_llvm(sess: &Session) {
+unsafe fn configure_llvm(sess: &EarlySession) {
     let n_args = sess.opts.cg.llvm_args.len() + sess.target.llvm_args.len();
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
     let mut llvm_args = Vec::with_capacity(n_args + 1);
@@ -127,7 +129,7 @@ unsafe fn configure_llvm(sess: &Session) {
             }
         }
 
-        if wants_wasm_eh(sess) {
+        if wants_wasm_eh(&sess.target) {
             add("-wasm-enable-eh", false);
         }
 
@@ -236,9 +238,9 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
 /// `llvm-project` submodule in <https://github.com/rust-lang/rust/tree/HEAD/src> Though note that
 /// Rust can also be build with an external precompiled version of LLVM which might lead to failures
 /// if the oldest tested / supported LLVM version doesn't yet support the relevant intrinsics.
-pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFeature<'a>> {
+pub(crate) fn to_llvm_features<'a>(target: &Target, s: &'a str) -> Option<LLVMFeature<'a>> {
     let (major, _, _) = get_version();
-    match sess.target.arch {
+    match target.arch {
         Arch::AArch64 | Arch::Arm64EC => {
             match s {
                 "rcpc2" => Some(LLVMFeature::new("rcpc-immo")),
@@ -339,13 +341,20 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 /// Must express features in the way Rust understands them.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
-pub(crate) fn target_config(sess: &Session) -> TargetConfig {
-    let target_machine = create_informational_target_machine(sess, true);
+pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
+    require_inited();
+    let target_features = global_llvm_features(sess, true);
+
+    let triple = SmallCStr::new(&versioned_llvm_target(sess));
+    let cpu = SmallCStr::new(target_cpu(sess));
+    let features = CString::new(target_features.join(",")).unwrap();
+    let mc_subtarget_info = OwnedMCSubtargetInfo::new(&triple, &cpu, &features)
+        .unwrap_or_else(|err| llvm_err(sess.dcx(), err));
 
     let internal_target_features = internal_target_features(
         sess,
         |feature| {
-            to_llvm_features(sess, feature)
+            to_llvm_features(&sess.target, feature)
                 .map(|f| SmallVec::<[&str; 2]>::from_iter(f.into_iter()))
                 .unwrap_or_default()
         },
@@ -353,14 +362,14 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
             // This closure determines whether the target CPU has the feature according to LLVM. We
             // do *not* consider the `-Ctarget-feature`s here, as that will be handled later in
             // `internal_target_features`.
-            if let Some(feat) = to_llvm_features(sess, feature) {
+            if let Some(feat) = to_llvm_features(&sess.target, feature) {
                 // All the LLVM features this expands to must be enabled.
                 for llvm_feature in feat {
                     let cstr = SmallCStr::new(llvm_feature);
-                    // `LLVMRustHasFeature` is moderately expensive. On targets with many
+                    // `has_feature` is moderately expensive. On targets with many
                     // features (e.g. x86) these calls take a non-trivial fraction of runtime
                     // when compiling very small programs.
-                    if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) } {
+                    if !mc_subtarget_info.has_feature(&cstr) {
                         return false;
                     }
                 }
@@ -379,17 +388,17 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
         has_reliable_f128_math: true,
     };
 
-    update_target_reliable_float_cfg(sess, &mut cfg);
+    update_target_reliable_float_cfg(&sess.target, &mut cfg);
     cfg
 }
 
 /// Determine whether or not experimental float types are reliable based on known bugs.
-fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
-    let target_arch = &sess.target.arch;
-    let target_os = &sess.target.options.os;
-    let target_env = &sess.target.options.env;
-    let target_abi = &sess.target.options.cfg_abi;
-    let target_pointer_width = sess.target.pointer_width;
+fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
+    let target_arch = &target.arch;
+    let target_os = &target.options.os;
+    let target_env = &target.options.env;
+    let target_abi = &target.options.cfg_abi;
+    let target_pointer_width = target.pointer_width;
     let version = get_version();
     let (major, _, _) = version;
 
@@ -501,7 +510,7 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
 
 pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
     require_inited();
-    let tm = create_informational_target_machine(sess, false);
+    let tm = create_informational_target_machine(sess);
     match req.kind {
         PrintKind::TargetCPUs => print_target_cpus(sess, tm.raw(), out),
         PrintKind::TargetFeatures => print_target_features(sess, tm.raw(), out),
@@ -519,10 +528,11 @@ fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String)
         cpu_name: &'a str,
         remark: String,
     }
-    // Compare CPU against current target to label the default.
+    // Compare CPU against current target to label the default. Do not print it if
+    // `need_explicit_cpu` is set, because in that case the concept of default makes less sense.
     let target_cpu = handle_native(&sess.target.cpu);
     let make_remark = |cpu_name| {
-        if cpu_name == target_cpu {
+        if cpu_name == target_cpu && !sess.target.need_explicit_cpu {
             // FIXME(#132514): This prints the LLVM target string, which can be
             // different from the Rust target string. Is that intended?
             let target = &sess.target.llvm_target;
@@ -576,7 +586,7 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut Str
             }
             // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these
             // strings.
-            let llvm_feature = to_llvm_features(sess, *feature)?.llvm_feature_name;
+            let llvm_feature = to_llvm_features(&sess.target, *feature)?.llvm_feature_name;
             let desc =
                 match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok() {
                     Some(index) => {
@@ -648,14 +658,14 @@ fn handle_native(cpu_name: &str) -> &str {
     }
 }
 
-pub(crate) fn target_cpu(sess: &Session) -> &str {
+pub(crate) fn target_cpu(sess: &EarlySession) -> &str {
     let cpu_name = sess.opts.cg.target_cpu.as_deref().unwrap_or_else(|| &sess.target.cpu);
     handle_native(cpu_name)
 }
 
 /// The target features for compiler flags other than `-Ctarget-features`.
-fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
-    if wants_wasm_eh(sess) && sess.panic_strategy() == PanicStrategy::Unwind {
+fn llvm_features_by_flags(sess: &EarlySession, features: &mut Vec<String>) {
+    if wants_wasm_eh(&sess.target) && sess.panic_strategy() == PanicStrategy::Unwind {
         features.push("+exception-handling".into());
     }
 
@@ -679,7 +689,7 @@ fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
 /// If `for_cfg` is `true` then we are assembling the feature list for the purpose of populating
 /// [`rustc_codegen_ssa::TargetConfig`] based on what LLVM actually enables in this configuration.
 /// `-Ctarget-feature` should be ignored in that case since it is already processed separately.
-pub(crate) fn global_llvm_features(sess: &Session, for_cfg: bool) -> Vec<String> {
+pub(crate) fn global_llvm_features(sess: &EarlySession, for_cfg: bool) -> Vec<String> {
     // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
@@ -738,7 +748,7 @@ pub(crate) fn global_llvm_features(sess: &Session, for_cfg: bool) -> Vec<String>
         // passing requests down to LLVM. This means that all in-language
         // features also work on the command line instead of having two
         // different names when the LLVM name and the Rust name differ.
-        let Some(llvm_feature) = to_llvm_features(sess, feature) else { return };
+        let Some(llvm_feature) = to_llvm_features(&sess.target, feature) else { return };
 
         features.extend(
             std::iter::once(format!("{}{}", enable_disable, llvm_feature.llvm_feature_name)).chain(
@@ -798,7 +808,7 @@ pub(crate) fn tune_cpu(sess: &Session) -> Option<&str> {
 
 pub(crate) fn target_has_mnemonic(sess: &Session, mnemonic: &str) -> bool {
     require_inited();
-    let tm = create_informational_target_machine(sess, false);
+    let tm = create_informational_target_machine(sess);
     let cstr = SmallCStr::new(mnemonic);
     unsafe { llvm::LLVMRustTargetHasMnemonic(tm.raw(), cstr.as_ptr()) }
 }

@@ -67,8 +67,10 @@ using namespace llvm;
 static codegen::RegisterCodeGenFlags CGF;
 
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
+typedef struct LLVMOpaqueMCSubtargetInfo *LLVMMCSubtargetInfoRef;
 
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(TargetMachine, LLVMTargetMachineRef)
+DEFINE_STDCXX_CONVERSION_FUNCTIONS(MCSubtargetInfo, LLVMMCSubtargetInfoRef)
 
 extern "C" void LLVMRustTimeTraceProfilerInitialize() {
   timeTraceProfilerInitialize(
@@ -89,15 +91,27 @@ extern "C" void LLVMRustTimeTraceProfilerFinish(const char *FileName) {
   timeTraceProfilerCleanup();
 }
 
-extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
-                                   const char *Feature) {
-  TargetMachine *Target = unwrap(TM);
-#if LLVM_VERSION_GE(23, 0)
-  const MCSubtargetInfo &MCInfo = Target->getMCSubtargetInfo();
-#else
-  const MCSubtargetInfo &MCInfo = *Target->getMCSubtargetInfo();
-#endif
-  return MCInfo.checkFeatures(std::string("+") + Feature);
+extern "C" LLVMMCSubtargetInfoRef
+LLVMRustCreateMCSubtargetInfo(const char *TripleStr, const char *CPU,
+                              const char *Features) {
+  std::string Error;
+  auto Trip = Triple(Triple::normalize(TripleStr));
+  const llvm::Target *TheTarget = TargetRegistry::lookupTarget(Trip, Error);
+  if (TheTarget == nullptr) {
+    LLVMRustSetLastError(Error.c_str());
+    return nullptr;
+  }
+
+  return wrap(TheTarget->createMCSubtargetInfo(Trip, CPU, Features));
+}
+
+extern "C" bool LLVMRustMCSubtargetInfoHasFeature(LLVMMCSubtargetInfoRef MCInfo,
+                                                  const char *Feature) {
+  return unwrap(MCInfo)->checkFeatures(std::string("+") + Feature);
+}
+
+extern "C" void LLVMRustDisposeMCSubtargetInfo(LLVMMCSubtargetInfoRef MCInfo) {
+  delete unwrap(MCInfo);
 }
 
 /// Check whether the target has a specific assembly mnemonic like `ret` or

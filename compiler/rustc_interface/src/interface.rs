@@ -18,7 +18,7 @@ use rustc_parse::parser::Recovery;
 use rustc_query_impl::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::parse::ParseSess;
-use rustc_session::{CompilerIO, EarlyDiagCtxt, Session};
+use rustc_session::{CompilerIO, EarlyDiagCtxt, EarlySession, Session};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, sym};
 use tracing::trace;
@@ -365,7 +365,8 @@ pub struct Config {
     /// hotswapping branch of cg_clif" for "setting the codegen backend from a
     /// custom driver where the custom codegen backend has arbitrary data."
     /// (See #102759.)
-    pub make_codegen_backend: Option<Box<dyn FnOnce(&Session) -> Box<dyn CodegenBackend> + Send>>,
+    pub make_codegen_backend:
+        Option<Box<dyn FnOnce(&EarlySession) -> Box<dyn CodegenBackend> + Send>>,
 
     /// The inner atomic value is set to true when a feature marked as `internal` is
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
@@ -417,8 +418,27 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
 
+            let early_sess =
+                rustc_session::build_early_session(config.opts, target, config.ice_file);
+
+            let mut codegen_backend = match config.make_codegen_backend {
+                None => util::get_codegen_backend(
+                    &early_dcx,
+                    &early_sess.opts.sysroot,
+                    early_sess.opts.unstable_opts.codegen_backend.as_deref(),
+                    &early_sess.target,
+                ),
+                Some(make_codegen_backend) => {
+                    // N.B. `make_codegen_backend` takes precedence over
+                    // `target.default_codegen_backend`, which is ignored in this case.
+                    make_codegen_backend(&early_sess)
+                }
+            };
+            let codegen_backend_init = codegen_backend.init(&early_sess);
+
             let mut sess = rustc_session::build_session(
-                config.opts,
+                early_sess,
+                codegen_backend_init,
                 CompilerIO {
                     input: config.input,
                     output_dir: config.output_dir,
@@ -426,29 +446,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     temps_dir,
                 },
                 config.lint_caps,
-                target,
                 util::rustc_version_str().unwrap_or("unknown"),
-                config.ice_file,
                 config.using_internal_features,
             );
-
-            let codegen_backend = match config.make_codegen_backend {
-                None => util::get_codegen_backend(
-                    &early_dcx,
-                    &sess.opts.sysroot,
-                    sess.opts.unstable_opts.codegen_backend.as_deref(),
-                    &sess.target,
-                ),
-                Some(make_codegen_backend) => {
-                    // N.B. `make_codegen_backend` takes precedence over
-                    // `target.default_codegen_backend`, which is ignored in this case.
-                    make_codegen_backend(&sess)
-                }
-            };
-            codegen_backend.init(&sess);
-            sess.replaced_intrinsics = FxHashSet::from_iter(codegen_backend.replaced_intrinsics());
-            sess.fallback_intrinsics = FxHashSet::from_iter(codegen_backend.fallback_intrinsics());
-            sess.thin_lto_supported = codegen_backend.thin_lto_supported();
 
             let target_config = codegen_backend.target_config(&sess);
 
@@ -463,7 +463,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             util::add_configuration(
                 &mut sess.config,
                 &target_config,
-                &sess.target,
+                &sess.early_sess.target,
                 is_nightly_build,
                 is_crt_static,
             );

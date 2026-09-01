@@ -340,7 +340,6 @@ pub fn provide(providers: &mut Providers) {
     crate::base::provide(&mut providers.queries);
     crate::target_features::provide(&mut providers.queries);
     crate::codegen_attrs::provide(&mut providers.queries);
-    providers.queries.global_backend_features = |_tcx: TyCtxt<'_>, ()| vec![];
 }
 
 const RLINK_VERSION: u32 = 1;

@@ -29,12 +29,11 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, PatternKind, Ty, TyCtxt, UintTy, Unnormalized};
 use rustc_middle::{bug, span_bug};
-use rustc_session::Session;
 use rustc_session::config::{self, EntryFnType};
 use rustc_span::{DUMMY_SP, Symbol};
 use rustc_structures::CrateType;
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::{Arch, Os};
+use rustc_target::spec::{Arch, Os, Target as TargetSpec};
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
@@ -373,8 +372,8 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 // Returns `true` if this session's target will use native wasm
 // exceptions. This means that the VM does the unwinding for
 // us
-pub fn wants_wasm_eh(sess: &Session) -> bool {
-    sess.target.is_like_wasm
+pub fn wants_wasm_eh(target: &TargetSpec) -> bool {
+    target.is_like_wasm
 }
 
 /// Returns `true` if this session's target will use SEH-based unwinding.
@@ -382,15 +381,15 @@ pub fn wants_wasm_eh(sess: &Session) -> bool {
 /// This is only true for MSVC targets, and even then the 64-bit MSVC target
 /// currently uses SEH-ish unwinding with DWARF info tables to the side (same as
 /// 64-bit MinGW) instead of "full SEH".
-pub fn wants_msvc_seh(sess: &Session) -> bool {
-    sess.target.is_like_msvc
+pub fn wants_msvc_seh(target: &TargetSpec) -> bool {
+    target.is_like_msvc
 }
 
 /// Returns `true` if this session's target requires the new exception
 /// handling LLVM IR instructions (catchpad / cleanuppad / ... instead
 /// of landingpad)
-pub(crate) fn wants_new_eh_instructions(sess: &Session) -> bool {
-    wants_wasm_eh(sess) || wants_msvc_seh(sess)
+pub(crate) fn wants_new_eh_instructions(target: &TargetSpec) -> bool {
+    wants_wasm_eh(target) || wants_msvc_seh(target)
 }
 
 pub(crate) fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
@@ -1047,7 +1046,7 @@ impl CrateInfo {
         let n_crates = crates.len();
         let mut info = CrateInfo {
             target_cpu,
-            target_features: tcx.global_backend_features(()).clone(),
+            target_features: tcx.sess.global_backend_features.clone(),
             crate_types,
             exported_symbols,
             linked_symbols,

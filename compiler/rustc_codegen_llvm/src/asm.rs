@@ -499,7 +499,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             template_str.push_str("\n.att_syntax\n");
         }
 
-        let target_features = self.tcx.global_backend_features(()).join(",");
+        let target_features = self.tcx.sess.global_backend_features.join(",");
         let target_cpu = llvm_util::target_cpu(self.tcx.sess);
 
         llvm::append_module_inline_asm(

@@ -504,7 +504,7 @@ fn check_result(
     }
 
     if let Some(features) = check_tied_features(
-        tcx.sess,
+        &tcx.sess.target,
         &codegen_fn_attrs
             .target_features
             .iter()

@@ -21,7 +21,7 @@ use rustc_target::spec::{Arch, RelocModel};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::{GccContext, LockedTargetInfo, LtoMode, SyncContext, gcc_util, new_context};
+use crate::{GccContext, LtoMode, SharedTargetInfo, SyncContext, gcc_util, new_context};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(visibility: Visibility) -> gccjit::Visibility {
@@ -73,7 +73,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
 pub fn compile_codegen_unit(
     tcx: TyCtxt<'_>,
     cgu_name: Symbol,
-    target_info: LockedTargetInfo,
+    target_info: SharedTargetInfo,
     lto_supported: bool,
 ) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
@@ -96,7 +96,7 @@ pub fn compile_codegen_unit(
     fn module_codegen(
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
-        target_info: LockedTargetInfo,
+        target_info: SharedTargetInfo,
         lto_supported: bool,
     ) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
@@ -162,7 +162,7 @@ pub fn compile_codegen_unit(
 
         add_pic_option(&context, tcx.sess.relocation_model());
 
-        let target_cpu = gcc_util::target_cpu(tcx.sess);
+        let target_cpu = gcc_util::target_cpu(&tcx.sess);
         if target_cpu != "generic" {
             context.add_command_line_option(format!("-march={}", target_cpu));
         }

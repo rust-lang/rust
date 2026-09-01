@@ -7,10 +7,10 @@ use rustc_lint_defs::builtin::{AARCH64_SOFTFLOAT_NEON, X86_SOFTFLOAT_SSE};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
+use rustc_session::EarlySession;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edit_distance, sym};
-use rustc_target::spec::{Arch, SanitizerSet};
+use rustc_target::spec::{Arch, SanitizerSet, Target};
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
 use smallvec::SmallVec;
 
@@ -190,7 +190,7 @@ pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId,
 /// features). If the list contains a syntactically invalid item (not starting with `+`/`-`) , the
 /// error callback is invoked.
 fn parse_rust_feature_list<'a>(
-    sess: &'a Session,
+    target: &'a Target,
     features: &'a str,
     err_callback: impl Fn(&'a str),
     mut callback: impl FnMut(
@@ -211,14 +211,14 @@ fn parse_rust_feature_list<'a>(
             }
 
             let features_map =
-                features_map.get_or_insert_with(|| sess.target.rust_target_features_map());
+                features_map.get_or_insert_with(|| target.rust_target_features_map());
 
             if !features_map.contains_key(&base_feature) {
                 callback(base_feature, None, true);
                 continue;
             }
 
-            let implied_features = sess.target.implied_target_features(base_feature, &features_map);
+            let implied_features = target.implied_target_features(base_feature, &features_map);
             callback(base_feature, Some(implied_features), true)
         } else if let Some(base_feature) = feature.strip_prefix('-') {
             // Skip features that are not target features, but rustc features.
@@ -227,7 +227,7 @@ fn parse_rust_feature_list<'a>(
             }
 
             let features_map =
-                features_map.get_or_insert_with(|| sess.target.rust_target_features_map());
+                features_map.get_or_insert_with(|| target.rust_target_features_map());
 
             if !features_map.contains_key(&base_feature) {
                 callback(base_feature, None, false);
@@ -240,7 +240,7 @@ fn parse_rust_feature_list<'a>(
 
             let inverse_implied_features = inverse_implied_features.get_or_insert_with(|| {
                 let mut set: FxHashMap<&str, FxHashSet<&str>> = FxHashMap::default();
-                for (f, _, is) in sess.target.rust_target_features() {
+                for (f, _, is) in target.rust_target_features() {
                     for i in is.iter() {
                         set.entry(i).or_default().insert(f);
                     }
@@ -282,7 +282,7 @@ fn parse_rust_feature_list<'a>(
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled elsewhere.
 pub fn internal_target_features<'a, const N: usize>(
-    sess: &Session,
+    sess: &EarlySession,
     to_backend_features: impl Fn(&'a str) -> SmallVec<[&'a str; N]>,
     mut target_base_has_feature: impl FnMut(&str) -> bool,
 ) -> UnordSet<Symbol> {
@@ -314,7 +314,7 @@ pub fn internal_target_features<'a, const N: usize>(
 
     // Add enabled and remove disabled features.
     parse_rust_feature_list(
-        sess,
+        &sess.target,
         &sess.opts.cg.target_feature,
         /* err_callback */
         |feature| {
@@ -402,7 +402,7 @@ pub fn internal_target_features<'a, const N: usize>(
         },
     );
 
-    if let Some(f) = check_tied_features(sess, &enabled_disabled_features) {
+    if let Some(f) = check_tied_features(&sess.target, &enabled_disabled_features) {
         sess.dcx().emit_err(diagnostics::TargetFeatureDisableOrEnable {
             features: f,
             span: None,
@@ -416,11 +416,11 @@ pub fn internal_target_features<'a, const N: usize>(
 /// Given a map from target_features to whether they are enabled or disabled, ensure only valid
 /// combinations are allowed. Returns `Some` if a violation is found.
 pub fn check_tied_features(
-    sess: &Session,
+    target: &Target,
     features: &FxHashMap<&str, bool>,
 ) -> Option<&'static [&'static str]> {
     if !features.is_empty() {
-        for tied in sess.target.tied_target_features() {
+        for tied in target.tied_target_features() {
             // Tied features must be set to the same value, or not set at all
             let mut tied_iter = tied.iter();
             let enabled = features.get(tied_iter.next().unwrap());
@@ -437,7 +437,7 @@ pub fn check_tied_features(
 /// `extend_backend_features` extends the set of backend features (assumed to be in mutable state
 /// accessible by that closure) to enable/disable the given Rust feature name.
 pub fn target_spec_to_backend_features<'a>(
-    sess: &'a Session,
+    sess: &'a EarlySession,
     mut extend_backend_features: impl FnMut(&'a str, /* enable */ bool),
 ) {
     // This check handles SM versions that defaults (by LLVM) to unsupported (by Rust) PTX ISA versions.
@@ -453,7 +453,7 @@ pub fn target_spec_to_backend_features<'a>(
 
     // Compute implied features
     parse_rust_feature_list(
-        sess,
+        &sess.target,
         &sess.target.features,
         /* err_callback */
         |feature| {
@@ -476,11 +476,11 @@ pub fn target_spec_to_backend_features<'a>(
 /// `extend_backend_features` extends the set of backend features (assumed to be in mutable state
 /// accessible by that closure) to enable/disable the given Rust feature name.
 pub fn flag_to_backend_features<'a>(
-    sess: &'a Session,
+    sess: &'a EarlySession,
     mut extend_backend_features: impl FnMut(&'a str, /* enable */ bool),
 ) {
     parse_rust_feature_list(
-        sess,
+        &sess.target,
         &sess.opts.cg.target_feature,
         /* err_callback */
         |_feature| {
@@ -499,7 +499,7 @@ pub fn flag_to_backend_features<'a>(
 
 /// Computes the backend target features to be added to account for retpoline flags.
 /// Used by both LLVM and GCC since their target features are, conveniently, the same.
-pub fn retpoline_features_by_flags(sess: &Session, features: &mut Vec<String>) {
+pub fn retpoline_features_by_flags(sess: &EarlySession, features: &mut Vec<String>) {
     // -Zretpoline without -Zretpoline-external-thunk enables
     // retpoline-indirect-branches and retpoline-indirect-calls target features
     let unstable_opts = &sess.opts.unstable_opts;
@@ -518,7 +518,7 @@ pub fn retpoline_features_by_flags(sess: &Session, features: &mut Vec<String>) {
 }
 
 /// Computes the backend target features to be added to account for sanitizer flags.
-pub fn sanitizer_features_by_flags(sess: &Session, features: &mut Vec<String>) {
+pub fn sanitizer_features_by_flags(sess: &EarlySession, features: &mut Vec<String>) {
     // It's intentional that this is done only for non-kernel version of hwaddress. This matches
     // clang behavior.
     if sess.sanitizers().contains(SanitizerSet::HWADDRESS) {

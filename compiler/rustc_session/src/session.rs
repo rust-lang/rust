@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::ops::{Deref, DerefMut};
 use std::path::Component::Prefix;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -37,8 +38,8 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, DebugInfo,
-    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
-    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
+    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, LtoCli,
+    NATIVE_CPU, OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -323,16 +324,131 @@ impl PointerAuthConfig {
     }
 }
 
+/// Partial session built before the full session. More specifically, `EarlySession` is used to
+/// init the codegen backend, and then both pieces are used to build the full `Session`.
+pub struct EarlySession {
+    pub target: Target,
+    pub host: Target,
+    pub opts: config::Options,
+    pub psess: ParseSess,
+}
+
+// JUSTIFICATION: defn of the suggested wrapper fns
+#[allow(rustc::bad_opt_access)]
+impl EarlySession {
+    #[inline]
+    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.psess.dcx()
+    }
+
+    #[inline]
+    pub fn source_map(&self) -> &SourceMap {
+        self.psess.source_map()
+    }
+
+    /// Note: this is simpler than `Session::lto`, hence the `early_` prefix (to more clearly
+    /// distinguish it).
+    pub fn early_lto(&self) -> LtoCli {
+        self.opts.cg.lto
+    }
+
+    pub fn print_llvm_stats(&self) -> bool {
+        self.opts.unstable_opts.print_codegen_stats
+    }
+
+    pub fn print_llvm_stats_json(&self) -> Option<&String> {
+        self.opts.unstable_opts.print_codegen_stats_json.as_ref()
+    }
+
+    pub fn relocation_model(&self) -> RelocModel {
+        self.opts.cg.relocation_model.unwrap_or(self.target.relocation_model)
+    }
+
+    pub fn code_model(&self) -> Option<CodeModel> {
+        self.opts.cg.code_model.or(self.target.code_model)
+    }
+
+    pub fn tls_model(&self) -> TlsModel {
+        self.opts.unstable_opts.tls_model.unwrap_or(self.target.tls_model)
+    }
+
+    /// Returns the panic strategy for this compile session. If the user explicitly selected one
+    /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
+    pub fn panic_strategy(&self) -> PanicStrategy {
+        self.opts.cg.panic.unwrap_or(self.target.panic_strategy)
+    }
+
+    pub fn sanitizers(&self) -> SanitizerSet {
+        return self.opts.unstable_opts.sanitizer | self.target.options.default_sanitizers;
+    }
+
+    /// Get the deployment target on Apple platforms based on the standard environment variables,
+    /// or fall back to the minimum version supported by `rustc`.
+    ///
+    /// This should be guarded behind `if sess.target.is_like_darwin`.
+    pub fn apple_deployment_target(&self) -> apple::OSVersion {
+        let min = apple::OSVersion::minimum_deployment_target(&self.target);
+        let env_var = apple::deployment_target_env_var(&self.target.os);
+
+        // FIXME(madsmtm): Track changes to this.
+        if let Ok(deployment_target) = env::var(env_var) {
+            match apple::OSVersion::from_str(&deployment_target) {
+                Ok(version) => {
+                    let os_min = apple::OSVersion::os_minimum_deployment_target(&self.target.os);
+                    // It is common that the deployment target is set a bit too low, for example on
+                    // macOS Aarch64 to also target older x86_64. So we only want to warn when
+                    // variable is lower than the minimum OS supported by rustc, not when the
+                    // variable is lower than the minimum for a specific target.
+                    if version < os_min {
+                        self.dcx().emit_warn(diagnostics::AppleDeploymentTarget::TooLow {
+                            env_var,
+                            version: version.fmt_pretty().to_string(),
+                            os_min: os_min.fmt_pretty().to_string(),
+                        });
+                    }
+
+                    // Raise the deployment target to the minimum supported.
+                    version.max(min)
+                }
+                Err(error) => {
+                    self.dcx()
+                        .emit_err(diagnostics::AppleDeploymentTarget::Invalid { env_var, error });
+                    min
+                }
+            }
+        } else {
+            // If no deployment target variable is set, default to the minimum found above.
+            min
+        }
+    }
+}
+
+/// Some info about the backend, returned by `CodegenBackend::init` and put into the `Session`.
+#[derive(Default)]
+pub struct CodegenBackendInit {
+    /// See `Session::global_backend_features`.
+    pub global_backend_features: Vec<String>,
+
+    /// See `Session::replaced_intrinsics`.
+    pub replaced_intrinsics: Vec<Symbol>,
+
+    /// See `Session::fallback_intrinsics`.
+    pub fallback_intrinsics: Vec<Symbol>,
+
+    /// See `Session::thin_lto_supported`.
+    pub thin_lto_supported: bool = true,
+}
+
 /// Represents the data associated with a compilation
 /// session for a single crate.
 pub struct Session {
-    pub target: Target,
-    pub host: Target,
+    /// The `EarlySession` is embedded so it can be passed to functions that need it.
+    /// `Session::deref{_,mut}` exist so the fields within can be accessed as if they were direct
+    /// fields of `Session`.
+    pub early_sess: EarlySession,
     pub wasm_proc_macro_tuple: TargetTuple,
     pub wasm_proc_macro_target: Target,
-    pub opts: config::Options,
     pub target_tlib_path: SearchPath,
-    pub psess: ParseSess,
     pub unstable_features: UnstableFeatures,
     pub config: Cfg,
     pub check_config: CheckCfg,
@@ -378,8 +494,14 @@ pub struct Session {
     /// Set of actually enabled features for the current target, including ones that are not
     /// in `cfg(target_feature)` because they are unstable or internal-only.
     /// This is used by the compiler itself when it needs to know which target features are actually
-    /// going to be enabled in the backend.
+    /// going to be enabled in the backend (e.g. for knowing which registers inline asm can use).
     pub internal_target_features: FxIndexSet<Symbol>,
+
+    /// The list of backend target features for this session. Not used by Rust itself because the
+    /// concrete feature names can be backend-specific. This is computed from the target's base
+    /// features, `-Ctarget-cpu`, `-Ctarget-feature`, and other flags that the current backend
+    /// models as target features (but that are not considered target features in Rust).
+    pub global_backend_features: Vec<String>,
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
@@ -400,11 +522,12 @@ pub struct Session {
     host_filesearch: Arc<FileSearch>,
     wasm_proc_macro_filesearch: Option<Arc<FileSearch>>,
 
-    /// The names of intrinsics that the current codegen backend replaces
-    /// with its own implementations.
+    /// A list of all intrinsics that the current codegen backend definitely replaces with its own
+    /// implementations, which means their fallback bodies do not need to be monomorphized.
     pub replaced_intrinsics: FxHashSet<Symbol>,
-    /// The names of intrinsics that the current codegen backend does *not* replace
-    /// with its own implementations.
+
+    /// A list of all intrinsics that the current codegen backend definitely does *not* replace
+    /// with its own implementations, which means their fallback bodies can be MIR-inlined.
     pub fallback_intrinsics: FxHashSet<Symbol>,
 
     /// Does the codegen backend support ThinLTO?
@@ -422,6 +545,20 @@ pub struct Session {
 
     /// Config specifying targets' pointer authentication preference.
     pub pointer_auth_config: Option<PointerAuthConfig>,
+}
+
+impl Deref for Session {
+    type Target = EarlySession;
+
+    fn deref(&self) -> &EarlySession {
+        &self.early_sess
+    }
+}
+
+impl DerefMut for Session {
+    fn deref_mut(&mut self) -> &mut EarlySession {
+        &mut self.early_sess
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -535,16 +672,6 @@ impl Session {
         }
 
         self.dcx().set_must_produce_diag()
-    }
-
-    #[inline]
-    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
-        self.psess.dcx()
-    }
-
-    #[inline]
-    pub fn source_map(&self) -> &SourceMap {
-        self.psess.source_map()
     }
 
     pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> {
@@ -819,14 +946,6 @@ impl Session {
         self.opts.unstable_opts.verbose_internals
     }
 
-    pub fn print_llvm_stats(&self) -> bool {
-        self.opts.unstable_opts.print_codegen_stats
-    }
-
-    pub fn print_llvm_stats_json(&self) -> Option<&String> {
-        self.opts.unstable_opts.print_codegen_stats_json.as_ref()
-    }
-
     pub fn verify_llvm_ir(&self) -> bool {
         self.opts.unstable_opts.verify_llvm_ir || option_env!("RUSTC_VERIFY_LLVM_IR").is_some()
     }
@@ -916,12 +1035,6 @@ impl Session {
         }
     }
 
-    /// Returns the panic strategy for this compile session. If the user explicitly selected one
-    /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
-    pub fn panic_strategy(&self) -> PanicStrategy {
-        self.opts.cg.panic.unwrap_or(self.target.panic_strategy)
-    }
-
     pub fn fewer_names(&self) -> bool {
         if let Some(fewer_names) = self.opts.unstable_opts.fewer_names {
             fewer_names
@@ -952,18 +1065,6 @@ impl Session {
 
     pub fn contract_checks(&self) -> bool {
         self.opts.unstable_opts.contract_checks.unwrap_or(false)
-    }
-
-    pub fn relocation_model(&self) -> RelocModel {
-        self.opts.cg.relocation_model.unwrap_or(self.target.relocation_model)
-    }
-
-    pub fn code_model(&self) -> Option<CodeModel> {
-        self.opts.cg.code_model.or(self.target.code_model)
-    }
-
-    pub fn tls_model(&self) -> TlsModel {
-        self.opts.unstable_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
     pub fn direct_access_external_data(&self) -> Option<bool> {
@@ -1137,50 +1238,6 @@ impl Session {
         self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
-    /// Get the deployment target on Apple platforms based on the standard environment variables,
-    /// or fall back to the minimum version supported by `rustc`.
-    ///
-    /// This should be guarded behind `if sess.target.is_like_darwin`.
-    pub fn apple_deployment_target(&self) -> apple::OSVersion {
-        let min = apple::OSVersion::minimum_deployment_target(&self.target);
-        let env_var = apple::deployment_target_env_var(&self.target.os);
-
-        // FIXME(madsmtm): Track changes to this.
-        if let Ok(deployment_target) = env::var(env_var) {
-            match apple::OSVersion::from_str(&deployment_target) {
-                Ok(version) => {
-                    let os_min = apple::OSVersion::os_minimum_deployment_target(&self.target.os);
-                    // It is common that the deployment target is set a bit too low, for example on
-                    // macOS Aarch64 to also target older x86_64. So we only want to warn when variable
-                    // is lower than the minimum OS supported by rustc, not when the variable is lower
-                    // than the minimum for a specific target.
-                    if version < os_min {
-                        self.dcx().emit_warn(diagnostics::AppleDeploymentTarget::TooLow {
-                            env_var,
-                            version: version.fmt_pretty().to_string(),
-                            os_min: os_min.fmt_pretty().to_string(),
-                        });
-                    }
-
-                    // Raise the deployment target to the minimum supported.
-                    version.max(min)
-                }
-                Err(error) => {
-                    self.dcx()
-                        .emit_err(diagnostics::AppleDeploymentTarget::Invalid { env_var, error });
-                    min
-                }
-            }
-        } else {
-            // If no deployment target variable is set, default to the minimum found above.
-            min
-        }
-    }
-
-    pub fn sanitizers(&self) -> SanitizerSet {
-        return self.opts.unstable_opts.sanitizer | self.target.options.default_sanitizers;
-    }
-
     pub fn pointer_authentication(&self) -> bool {
         self.pointer_auth_config.is_some()
     }
@@ -1254,15 +1311,11 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
 
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
-pub fn build_session(
+pub fn build_early_session(
     sopts: config::Options,
-    io: CompilerIO,
-    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     target: Target,
-    cfg_version: &'static str,
     ice_file: Option<PathBuf>,
-    using_internal_features: &'static AtomicBool,
-) -> Session {
+) -> EarlySession {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
@@ -1297,6 +1350,24 @@ pub fn build_session(
         dcx.handle().warn(warning)
     }
 
+    let psess = ParseSess::with_dcx(dcx, source_map);
+
+    EarlySession { target, host, opts: sopts, psess }
+}
+
+// JUSTIFICATION: literally session construction
+#[allow(rustc::bad_opt_access)]
+pub fn build_session(
+    early_sess: EarlySession,
+    codegen_backend_init: CodegenBackendInit,
+    io: CompilerIO,
+    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    cfg_version: &'static str,
+    using_internal_features: &'static AtomicBool,
+) -> Session {
+    let EarlySession { target, host, opts: sopts, psess } = &early_sess;
+    let dcx = psess.dcx();
+
     let wasm_proc_macro_tuple = TargetTuple::from_tuple("wasm32-wasip2");
     let (wasm_proc_macro_target, target_warnings) = Target::search(
         &wasm_proc_macro_tuple,
@@ -1330,8 +1401,6 @@ pub fn build_session(
     } else {
         None
     };
-
-    let psess = ParseSess::with_dcx(dcx, source_map);
 
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
@@ -1385,14 +1454,18 @@ pub fn build_session(
     let pointer_auth_config: Option<PointerAuthConfig> =
         PointerAuthConfig::from_raw(&sopts.unstable_opts.pointer_authentication, &target);
 
+    let CodegenBackendInit {
+        global_backend_features,
+        replaced_intrinsics,
+        fallback_intrinsics,
+        thin_lto_supported,
+    } = codegen_backend_init;
+
     let sess = Session {
-        target,
-        host,
+        early_sess,
         wasm_proc_macro_tuple,
         wasm_proc_macro_target,
-        opts: sopts,
         target_tlib_path,
-        psess,
         unstable_features: UnstableFeatures::from_environment(None),
         config: Cfg::default(),
         check_config: CheckCfg::default(),
@@ -1407,6 +1480,7 @@ pub fn build_session(
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
         internal_target_features: Default::default(),
+        global_backend_features,
         cfg_version,
         using_internal_features,
         env_depinfo: Default::default(),
@@ -1414,9 +1488,9 @@ pub fn build_session(
         target_filesearch,
         host_filesearch,
         wasm_proc_macro_filesearch,
-        replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
-        fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
-        thin_lto_supported: true,                  // filled by `run_compiler`
+        replaced_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
+        fallback_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
+        thin_lto_supported,
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
