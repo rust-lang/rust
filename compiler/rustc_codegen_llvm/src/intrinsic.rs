@@ -66,45 +66,10 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
         sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
 
-        sym::sinf16 => ("llvm.sin", &[bx.type_f16()]),
-        sym::sinf32 => ("llvm.sin", &[bx.type_f32()]),
-        sym::sinf64 => ("llvm.sin", &[bx.type_f64()]),
-        sym::sinf128 => ("llvm.sin", &[bx.type_f128()]),
-
-        sym::cosf16 => ("llvm.cos", &[bx.type_f16()]),
-        sym::cosf32 => ("llvm.cos", &[bx.type_f32()]),
-        sym::cosf64 => ("llvm.cos", &[bx.type_f64()]),
-        sym::cosf128 => ("llvm.cos", &[bx.type_f128()]),
-
         sym::powf16 => ("llvm.pow", &[bx.type_f16()]),
         sym::powf32 => ("llvm.pow", &[bx.type_f32()]),
         sym::powf64 => ("llvm.pow", &[bx.type_f64()]),
         sym::powf128 => ("llvm.pow", &[bx.type_f128()]),
-
-        sym::expf16 => ("llvm.exp", &[bx.type_f16()]),
-        sym::expf32 => ("llvm.exp", &[bx.type_f32()]),
-        sym::expf64 => ("llvm.exp", &[bx.type_f64()]),
-        sym::expf128 => ("llvm.exp", &[bx.type_f128()]),
-
-        sym::exp2f16 => ("llvm.exp2", &[bx.type_f16()]),
-        sym::exp2f32 => ("llvm.exp2", &[bx.type_f32()]),
-        sym::exp2f64 => ("llvm.exp2", &[bx.type_f64()]),
-        sym::exp2f128 => ("llvm.exp2", &[bx.type_f128()]),
-
-        sym::logf16 => ("llvm.log", &[bx.type_f16()]),
-        sym::logf32 => ("llvm.log", &[bx.type_f32()]),
-        sym::logf64 => ("llvm.log", &[bx.type_f64()]),
-        sym::logf128 => ("llvm.log", &[bx.type_f128()]),
-
-        sym::log10f16 => ("llvm.log10", &[bx.type_f16()]),
-        sym::log10f32 => ("llvm.log10", &[bx.type_f32()]),
-        sym::log10f64 => ("llvm.log10", &[bx.type_f64()]),
-        sym::log10f128 => ("llvm.log10", &[bx.type_f128()]),
-
-        sym::log2f16 => ("llvm.log2", &[bx.type_f16()]),
-        sym::log2f32 => ("llvm.log2", &[bx.type_f32()]),
-        sym::log2f64 => ("llvm.log2", &[bx.type_f64()]),
-        sym::log2f128 => ("llvm.log2", &[bx.type_f128()]),
 
         sym::fmaf16 => ("llvm.fma", &[bx.type_f16()]),
         sym::fmaf32 => ("llvm.fma", &[bx.type_f32()]),
@@ -191,6 +156,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
             _ if simple.is_some() => simple.unwrap(),
+            // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
             sym::minimum_number_nsz_f16
             | sym::minimum_number_nsz_f32
             | sym::minimum_number_nsz_f64
@@ -199,7 +165,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::maximum_number_nsz_f32
             | sym::maximum_number_nsz_f64
             | sym::maximum_number_nsz_f128
-                // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
                 if llvm_version >= (22, 0, 0) =>
             {
                 let intrinsic_name = if name.as_str().starts_with("min") {
@@ -247,7 +212,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let llval = self.call(fn_ty, None, None, fn_decl, &[], None, None);
 
                 return IntrinsicResult::Operand(OperandValue::Immediate(llval));
-            },
+            }
             sym::is_val_statically_known => {
                 if let OperandValue::Immediate(imm) = args[0].val {
                     self.call_intrinsic(
@@ -275,10 +240,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         let ptr = select(self, true_val.llval, false_val.llval);
                         let selected =
                             OperandValue::Ref(PlaceValue::new_sized(ptr, true_val.align));
-                        let result = PlaceRef {
-                            val: result_place.unwrap(),
-                            layout: result_layout,
-                        };
+                        let result = PlaceRef { val: result_place.unwrap(), layout: result_layout };
                         selected.store(self, result);
                         return IntrinsicResult::WroteIntoPlace;
                     }
@@ -288,18 +250,18 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         let false_val = args[2].immediate_or_packed_pair(self);
                         select(self, true_val, false_val)
                     }
-                    (OperandValue::ZeroSized, OperandValue::ZeroSized) => return IntrinsicResult::Operand(OperandValue::ZeroSized),
+                    (OperandValue::ZeroSized, OperandValue::ZeroSized) => {
+                        return IntrinsicResult::Operand(OperandValue::ZeroSized);
+                    }
                     _ => span_bug!(span, "Incompatible OperandValue for select_unpredictable"),
                 }
             }
-            sym::catch_unwind => {
-                catch_unwind_intrinsic(
-                    self,
-                    args[0].immediate(),
-                    args[1].immediate(),
-                    args[2].immediate(),
-                )
-            }
+            sym::catch_unwind => catch_unwind_intrinsic(
+                self,
+                args[0].immediate(),
+                args[1].immediate(),
+                args[2].immediate(),
+            ),
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
             sym::va_arg => {
                 let target = &self.cx.tcx.sess.target;
@@ -376,10 +338,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     // use an LLVM integer type of the correct width and let it split it however.
                     let llty = self.type_ix(result_layout.size.bits());
                     let temp = if let Some(result_place) = result_place {
-                        PlaceRef {
-                            val: result_place,
-                            layout: result_layout,
-                        }
+                        PlaceRef { val: result_place, layout: result_layout }
                     } else {
                         PlaceRef::alloca(self, result_layout)
                     };
@@ -562,13 +521,35 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
-            sym::fabs => {
+            sym::fabs
+            | sym::exp
+            | sym::exp2
+            | sym::log
+            | sym::log10
+            | sym::log2
+            | sym::sin
+            | sym::cos => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
-                    span_bug!(span, "the `fabs` intrinsic requires a floating-point argument, got {:?}", ty);
+                    span_bug!(
+                        span,
+                        "the `{}` intrinsic requires a floating-point argument, got {:?}",
+                        name,
+                        ty
+                    );
                 };
                 let llty = self.type_float_from_ty(*f);
-                let llvm_name = "llvm.fabs";
+                let llvm_name = match name {
+                    sym::fabs => "llvm.fabs",
+                    sym::exp => "llvm.exp",
+                    sym::exp2 => "llvm.exp2",
+                    sym::log => "llvm.log",
+                    sym::log10 => "llvm.log10",
+                    sym::log2 => "llvm.log2",
+                    sym::sin => "llvm.sin",
+                    sym::cos => "llvm.cos",
+                    _ => bug!(),
+                };
                 self.call_intrinsic(
                     llvm_name,
                     &[llty],
@@ -627,10 +608,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::black_box => {
-                let result = PlaceRef {
-                    val: result_place.unwrap(),
-                    layout: result_layout,
-                };
+                let result = PlaceRef { val: result_place.unwrap(), layout: result_layout };
                 args[0].val.store(self, result);
                 let result_val_span = [result.val.llval];
                 // We need to "use" the argument in some way LLVM can't introspect, and on
@@ -888,8 +866,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::return_address => {
                 match self.sess().target.arch {
                     // Expand this list as needed
-                    | Arch::Wasm32
-                    | Arch::Wasm64 => {
+                    Arch::Wasm32 | Arch::Wasm64 => {
                         let ty = self.type_ptr();
                         self.const_null(ty)
                     }
@@ -897,11 +874,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         let ty = self.type_ix(32);
                         let val = self.const_int(ty, 0);
 
-                        let type_params: &[&'ll Type] = if llvm_version < (23, 0, 0) {
-                            &[]
-                        } else {
-                            &[self.type_ptr()]
-                        };
+                        let type_params: &[&'ll Type] =
+                            if llvm_version < (23, 0, 0) { &[] } else { &[self.type_ptr()] };
 
                         self.call_intrinsic("llvm.returnaddress", type_params, &[val])
                     }
