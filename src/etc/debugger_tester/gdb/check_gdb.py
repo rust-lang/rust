@@ -135,28 +135,42 @@ def var_matches(
 
     type_ok = var.type == expected.type
 
+    all_providers_ok = (
+        summary_ok & synthetic_ok & format_ok & pretty_type_name_ok & pretty_print_ok
+    )
+
     if var.has_visualizer() or expected.has_visualizer():
-        type_match_ok = type_matches(
-            valobj.type,
-            summary_ok
-            and synthetic_ok
-            and format_ok
-            and pretty_type_name_ok
-            and pretty_print_ok,
-        )
+        type_match_ok = type_matches(valobj.type, all_providers_ok)
     else:
+        type_match_ok = Result.Ok
+
+    # (small hack) If the type information doesn't match, BUT it doesn't affect the synthetics, we
+    # don't actually care that much. This prevents CI from failing when 2 different targets use 2
+    # different layouts, e.g.::
+    # x86_64-linux-gnu: `Vec { buf, len, marker}`
+    # aarch64-linux-gnu: `Vec {len, buf, marker}`
+    if type_match_ok == Result.Mismatch and all_providers_ok:
         type_match_ok = Result.Ok
 
     value_ok = var.value == expected.value
 
     work_list = [c for _i, c in get_children(valobj)]
-    child_types_ok = True
+    child_types_ok = Result.Ok
 
     while len(work_list) != 0:
         child = work_list.pop()
         work_list.extend([c for _i, c in get_children(child)])
 
-        child_types_ok &= type_matches(child.type) == Result.Ok
+        # similar to the above, child type mismatches aren't super important if the providers still
+        # work fine. We do still want to output them so they're visible if something else fails
+        # though.
+        if var.has_visualizer() or expected.has_visualizer():
+            child_types_ok &= type_matches(child.type)
+        else:
+            child_types_ok &= Result.Ok
+
+    if child_types_ok == Result.Mismatch and all_providers_ok:
+        child_types_ok = Result.Ok
 
     children_ok = children_match(var.children, expected.children, var_name, valobj)
 
