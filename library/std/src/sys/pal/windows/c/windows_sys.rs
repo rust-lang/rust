@@ -2434,6 +2434,8 @@ impl Default for EXCEPTION_RECORD {
 }
 pub const EXCEPTION_STACK_OVERFLOW: i32 = -1073741571;
 pub const EXTENDED_STARTUPINFO_PRESENT: i32 = 524288;
+pub const E_FAIL: HRESULT = 0x80004005_u32 as _;
+pub const E_INVALIDARG: HRESULT = 0x80070057_u32 as _;
 pub const E_NOTIMPL: HRESULT = 0x80004001_u32 as _;
 pub const ExceptionCollidedUnwind: EXCEPTION_DISPOSITION = 3;
 pub const ExceptionContinueExecution: EXCEPTION_DISPOSITION = 0;
@@ -2926,6 +2928,9 @@ impl Default for IP_MREQ {
 pub const IP_MULTICAST_LOOP: i32 = 11;
 pub const IP_MULTICAST_TTL: i32 = 10;
 pub const IP_TTL: i32 = 4;
+pub const KF_FLAG_DONT_VERIFY: KNOWN_FOLDER_FLAG = 16384;
+pub type KNOWNFOLDERID = GUID;
+pub type KNOWN_FOLDER_FLAG = u32;
 pub type LINGER = linger;
 pub const LOAD_LIBRARY_SEARCH_SYSTEM32: i32 = 2048;
 pub const LOCKFILE_EXCLUSIVE_LOCK: i32 = 2;
@@ -3297,6 +3302,7 @@ pub struct SYSTEM_INFO_0_0 {
     pub wProcessorArchitecture: u16,
     pub wReserved: u16,
 }
+pub const S_OK: HRESULT = 0x0_u32 as _;
 pub const TCP_NODELAY: i32 = 1;
 pub const TIMER_ALL_ACCESS: i32 = 2031619;
 pub const TIMER_MODIFY_STATE: i32 = 2;
