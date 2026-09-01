@@ -31,6 +31,7 @@ use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgK
 use rustc_infer::infer::{InferCtxt, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
 use rustc_lint_defs::builtin::REPR_C_ENUMS_LARGER_THAN_INT;
+use rustc_middle::middle::resolve_bound_vars::ResolveBoundVars;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
@@ -54,7 +55,7 @@ mod clauses_of;
 pub(crate) mod dump;
 mod generics_of;
 mod item_bounds;
-mod resolve_bound_vars;
+pub mod resolve_bound_vars;
 mod type_of;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -129,11 +130,12 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// `ItemCtxt` is parameterized by a `DefId` that it uses to satisfy
 /// `probe_ty_param_bounds` requests, drawing the information from
 /// the HIR (`hir::Generics`), recursively.
-pub(crate) struct ItemCtxt<'tcx> {
+pub struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
     lowering_delegation_segment: bool,
+    rbv: Option<ResolveBoundVars<'tcx>>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -243,25 +245,31 @@ fn bad_placeholder<'cx, 'tcx>(
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
-        ItemCtxt::new_internal(tcx, item_def_id, false)
+    pub fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
+        ItemCtxt::new_internal(tcx, item_def_id, false, None)
     }
 
     fn new_internal(
         tcx: TyCtxt<'tcx>,
         item_def_id: LocalDefId,
         delegation: bool,
+        rbv: Option<ResolveBoundVars<'tcx>>,
     ) -> ItemCtxt<'tcx> {
         ItemCtxt {
             tcx,
             item_def_id,
             tainted_by_errors: Cell::new(None),
             lowering_delegation_segment: delegation,
+            rbv,
         }
     }
 
-    pub(crate) fn new_for_delegation(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
-        ItemCtxt::new_internal(tcx, item_def_id, true)
+    pub fn new_for_delegation(
+        tcx: TyCtxt<'tcx>,
+        item_def_id: LocalDefId,
+        rbv: Option<ResolveBoundVars<'tcx>>,
+    ) -> ItemCtxt<'tcx> {
+        ItemCtxt::new_internal(tcx, item_def_id, true, rbv)
     }
 
     pub(crate) fn lower_ty(&self, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
@@ -470,6 +478,10 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
     fn item_def_id(&self) -> LocalDefId {
         self.item_def_id
+    }
+
+    fn opt_preset_rbv(&self) -> Option<&ResolveBoundVars<'tcx>> {
+        self.rbv.as_ref()
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {

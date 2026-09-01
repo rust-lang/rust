@@ -65,9 +65,9 @@ use rustc_hir::{
 };
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::extension;
-use rustc_middle::queries::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
+use rustc_middle::util::Providers;
 use rustc_session::diagnostics::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
@@ -97,10 +97,9 @@ mod path;
 pub mod stability;
 
 pub fn provide(providers: &mut Providers) {
-    providers.index_ast = index_ast;
-    providers.lower_to_hir = lower_to_hir;
-    providers.resolve_type_relative_delegations =
-        delegation::resolution::resolve_type_relative_delegations;
+    providers.queries.index_ast = index_ast;
+    providers.queries.lower_to_hir = lower_to_hir;
+    providers.queries.delegation_error = |tcx, def_id| lower_to_hir_internal(tcx, def_id, true);
 }
 
 #[cfg(debug_assertions)]
@@ -150,6 +149,7 @@ struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
     resolver: &'a ResolverAstLowering<'hir>,
     current_disambiguator: PerParentDisambiguatorState,
+    generate_error_delegation: bool,
 
     /// Used to allocate HIR nodes.
     arena: &'hir hir::Arena<'hir>,
@@ -224,19 +224,26 @@ struct LoweringContext<'a, 'hir> {
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn new(tcx: TyCtxt<'hir>, resolver: &'a ResolverAstLowering<'hir>, owner: NodeId) -> Self {
+    fn new(
+        tcx: TyCtxt<'hir>,
+        resolver: &'a ResolverAstLowering<'hir>,
+        owner: NodeId,
+        _clone_disambig: bool,
+        generate_error_delegation: bool,
+    ) -> Self {
         let current_ast_owner = &resolver.owners[&owner];
         let current_hir_id_owner = hir::OwnerId { def_id: current_ast_owner.def_id };
         let current_disambiguator = resolver
             .disambiguators
             .get(&current_hir_id_owner.def_id)
-            .map(|s| s.steal())
+            .map(|s| s.borrow().clone())
             .unwrap_or_else(|| PerParentDisambiguatorState::new(current_hir_id_owner.def_id));
 
         Self {
             tcx,
             resolver,
             current_disambiguator,
+            generate_error_delegation,
             owner: current_ast_owner,
             arena: tcx.hir_arena,
 
@@ -659,10 +666,20 @@ fn index_ast<'tcx>(
 
 #[instrument(level = "trace", skip(tcx))]
 fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
-    tcx.ensure_done().resolve_type_relative_delegations(());
+    let maybe_owner = lower_to_hir_internal(tcx, def_id, false);
+    if let Some((_, node)) = tcx.index_ast(()).get(def_id).map(Steal::steal) {
+        tcx.sess.time("drop_ast", || mem::drop(node));
+    }
 
+    maybe_owner
+}
+
+fn lower_to_hir_internal(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+    generate_error_delegation: bool,
+) -> hir::MaybeOwner<'_> {
     let ast_index = tcx.index_ast(());
-    let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 
     let fallback_to_ancestor = |parent_id| {
         // The item did not exist in the AST, it was created while lowering another item.
@@ -688,16 +705,20 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         })
     };
 
-    let Some((resolver, node)) = resolver_and_node else {
+    let resolver_and_node = ast_index.get(def_id).map(Steal::borrow);
+    let Some(resolver_and_node) = resolver_and_node else {
         // `ast_index` does not contain all definitions, only up-to the highest
         // `LocalDefId` which has a non-trivial `AstOwner`. Gracefully handle
         // other definitions, in particular those nested inside this highest definition.
         return fallback_to_ancestor(tcx.local_parent(def_id));
     };
 
-    let mut item_lowerer = item::ItemLowerer { tcx, resolver: &*resolver };
+    let (resolver, node) = &*resolver_and_node;
 
-    let item = match &node {
+    let mut item_lowerer =
+        item::ItemLowerer { tcx, resolver: &*resolver, generate_error_delegation };
+
+    match &node {
         // The item existed in the AST.
         AstOwner::Crate(c) => item_lowerer.lower_crate(&c),
         AstOwner::Item(item) => item_lowerer.lower_item(&item),
@@ -708,11 +729,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         // The item existed in the AST, but is not a HIR owner.
         // Fetch the correct information from its parent.
         AstOwner::NonOwner => fallback_to_ancestor(tcx.local_parent(def_id)),
-    };
-
-    tcx.sess.time("drop_ast", || mem::drop(node));
-
-    item
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

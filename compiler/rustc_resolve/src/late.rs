@@ -3572,6 +3572,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                             })
                                             .flatten();
 
+                                        if let Some(id) = self_type_def_id {
+                                            this.r.delegation_types_to_inh_impls.entry(id).or_default().push(this.r.current_owner.def_id);
+                                        }
+
                                         // Resolve the items within the impl.
                                         this.with_current_self_type(self_type, |this| {
                                             this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {

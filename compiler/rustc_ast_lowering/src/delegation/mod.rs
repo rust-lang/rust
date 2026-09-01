@@ -75,6 +75,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_delegation(&mut self, delegation: &Delegation) -> DelegationResults<'hir> {
         let span = self.lower_span(delegation.last_segment_span());
 
+        if self.generate_error_delegation {
+            return self.generate_delegation_error(span, delegation);
+        }
+
         let resolver = DelegationResolver::new(self);
         let Ok((res, mut generics)) = resolver.resolve_delegation(delegation, span) else {
             return self.generate_delegation_error(span, delegation);
@@ -598,17 +602,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         segment
     }
 
-    fn generate_delegation_error(
+    pub(crate) fn generate_delegation_error(
         &mut self,
         span: Span,
         delegation: &Delegation,
     ) -> DelegationResults<'hir> {
         let decl = self.arena.alloc(hir::FnDecl::dummy(span));
-
-        let header = self.generate_header_error();
-        let sig = hir::FnSig { decl, header, span };
-
-        let ident = self.lower_ident(delegation.ident);
 
         let body_id = self.lower_body(|this| {
             let path = this.lower_qpath(
@@ -620,6 +619,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );
+
+            let ty_id = match path {
+                QPath::Resolved(_, _) => HirId::INVALID,
+                QPath::TypeRelative(ty, _) => ty.hir_id,
+            };
+
+            if let [.., parent, child] = &delegation.path.segments[..]
+                && this.get_partial_res(parent.id).is_some_and(|res| res.full_res().is_some())
+                && this.get_partial_res(child.id).is_none()
+            {
+                decl.output = rustc_hir::FnRetTy::Return(this.arena.alloc(hir::Ty {
+                    hir_id: this.next_id(),
+                    kind: hir::TyKind::InferDelegation(rustc_hir::InferDelegation::Err(
+                        this.arena.alloc((
+                            ty_id,
+                            span,
+                            delegation.path.segments.last().unwrap().ident,
+                        )),
+                    )),
+                    span,
+                }));
+            }
 
             let callee_path = this.arena.alloc(this.mk_expr(hir::ExprKind::Path(path), span));
             let args = if let Some(block) = &delegation.body {
@@ -642,7 +663,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (&[], this.mk_expr(hir::ExprKind::Block(block, None), span))
         });
 
+        let header = self.generate_header_error();
+        let sig = hir::FnSig { decl, header, span };
+        let ident = self.lower_ident(delegation.ident);
         let generics = hir::Generics::empty();
+
         DelegationResults { ident, generics, body_id, sig }
     }
 

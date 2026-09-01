@@ -1,8 +1,30 @@
-error: delegation to inherent impl must contain parent generics
-  --> $DIR/inherent-impls-mixed-generics.rs:12:14
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/inherent-impls-mixed-generics.rs:12:11
    |
 LL |     reuse S::foo_self;
-   |              ^^^^^^^^
+   |           ^
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
+  --> $DIR/inherent-impls-mixed-generics.rs:12:11
+   |
+LL |     reuse S::foo_self;
+   |           ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
+  --> $DIR/inherent-impls-mixed-generics.rs:12:11
+   |
+LL |     reuse S::foo_self;
+   |           ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated functions
+  --> $DIR/inherent-impls-mixed-generics.rs:12:11
+   |
+LL |     reuse S::foo_self;
+   |           ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/inherent-impls-mixed-generics.rs:12:14
@@ -20,6 +42,7 @@ help: provide the argument
 LL |     reuse S::foo_self(/* value */);
    |                      +++++++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0061`.
+Some errors have detailed explanations: E0061, E0121.
+For more information about an error, try `rustc --explain E0061`.

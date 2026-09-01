@@ -205,6 +205,7 @@ pub struct ResolverGlobalCtxt {
     pub delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
     pub delegation_inh_functions_map:
         FxIndexMap<LocalDefId, FxIndexMap<Ident, DelegationInhFuncKind>>,
+    pub delegation_types_to_inh_impls: FxIndexMap<LocalDefId, Vec<LocalDefId>>,
 }
 
 #[derive(Debug)]

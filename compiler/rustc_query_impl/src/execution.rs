@@ -58,7 +58,7 @@ fn handle_cycle<'tcx, C: QueryCache>(
 
     if nested {
         // Avoid custom handlers and only use the robust `create_cycle_error` for nested cycle errors
-        handle_cycle_error::default(error)
+        (query.handle_cycle_error_fn)(tcx, key, cycle, error)
     } else {
         (query.handle_cycle_error_fn)(tcx, key, cycle, error)
     }

@@ -1,3 +1,5 @@
+//@compile-flags: -Z deduplicate-diagnostics=yes
+
 #![feature(fn_delegation)]
 
 mod test_1 {
@@ -14,19 +16,16 @@ mod test_1 {
     }
 
     reuse X::foo;
-    //~^ ERROR: ambiguous delegation to inherent impl function
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
     //~| ERROR: multiple applicable items in scope [E0034]
 
     reuse X::foo_self;
-    //~^ ERROR: ambiguous delegation to inherent impl function
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
     //~| ERROR: multiple applicable items in scope [E0034]
 
     reuse X::<()>::foo as foo1;
-    //~^ ERROR: ambiguous delegation to inherent impl function
 
     reuse X::<usize>::foo_self as foo_self1;
-    //~^ ERROR: ambiguous delegation to inherent impl function
-    //~| ERROR: this function takes 1 argument but 0 arguments were supplied
 }
 
 mod test_2 {
@@ -50,19 +49,17 @@ mod test_2 {
     impl Marker2 for M2 {}
 
     reuse X::foo;
-    //~^ ERROR: ambiguous delegation to inherent impl function
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
     //~| ERROR: multiple applicable items in scope [E0034]
 
     reuse X::foo_self;
-    //~^ ERROR: ambiguous delegation to inherent impl function
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
     //~| ERROR: multiple applicable items in scope [E0034]
 
     reuse X::<M1, usize>::foo as foo1;
-    //~^ ERROR: ambiguous delegation to inherent impl function
 
     reuse X::<M2, String>::foo_self as foo_self1;
-    //~^ ERROR: ambiguous delegation to inherent impl function
-    //~| ERROR: no associated function or constant named `foo_self` found for struct `test_2::X<M2, String>` in the current scope
+    //~^ ERROR: no associated function or constant named `foo_self` found for struct `test_2::X<M2, String>` in the current scope
 }
 
 fn main() {}

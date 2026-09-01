@@ -680,7 +680,7 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
         segment.res.opt_def_id().map(|def_id| (segment, def_id))
     };
 
-    let ctx = ItemCtxt::new_for_delegation(tcx, def_id);
+    let ctx = ItemCtxt::new_for_delegation(tcx, def_id, None);
     let lowerer = ctx.lowerer();
     let parent_args = info
         .parent_seg_id_for_sig

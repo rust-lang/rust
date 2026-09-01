@@ -215,6 +215,11 @@ rustc_queries! {
         desc { "getting the AST for lowering" }
     }
 
+    query delegation_error(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
+        eval_always
+        desc { "getting error delegation for `{}`", tcx.def_path_str(def_id) }
+    }
+
     /// Return the span for a definition.
     ///
     /// Contrary to `def_span` below, this query returns the full absolute span of the definition.
@@ -233,11 +238,13 @@ rustc_queries! {
 
     query lower_to_hir(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
+        handle_cycle_error
         desc { "lowering HIR for `{}`", tcx.def_path_str(def_id) }
     }
 
     query hir_owner(def_id: LocalDefId) -> rustc_middle::hir::ProjectedMaybeOwner<'tcx> {
         desc { "getting owner for `{}`", tcx.def_path_str(def_id) }
+        handle_cycle_error
         feedable
     }
 
@@ -437,6 +444,7 @@ rustc_queries! {
     /// **Tip**: You can use `#[rustc_dump_clauses]` on an item to basically print
     /// the result of this query for use in UI tests or for debugging purposes.
     query clauses_of(key: DefId) -> ty::GenericClauses<'tcx> {
+        handle_cycle_error
         desc { "computing clauses of `{}`", tcx.def_path_str(key) }
     }
 
@@ -820,6 +828,7 @@ rustc_queries! {
         desc { "computing explicit predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk
         separate_provide_extern
+        handle_cycle_error
         feedable
     }
 

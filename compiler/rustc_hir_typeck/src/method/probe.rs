@@ -273,6 +273,8 @@ pub(crate) enum Mode {
 
 #[derive(PartialEq, Eq, Debug)]
 pub(crate) enum ProbeScope<'tcx> {
+    InherentImplsOnly(DefId),
+
     // Single candidate coming from pre-resolved delegation method.
     Single(DefId, Option<Ty<'tcx>> /* self_ty override */),
 
@@ -628,7 +630,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         false,
                     );
                 }
+                ProbeScope::InherentImplsOnly(def_id) => {
+                    if let Some(def_id) = def_id.as_local() {
+                        let impls = self
+                            .tcx
+                            .resolutions(())
+                            .delegation_types_to_inh_impls
+                            .get(&def_id)
+                            .map(|impls| impls.as_slice())
+                            .unwrap_or(&[]);
+
+                        for impl_def_id in impls {
+                            probe_cx.assemble_inherent_impl_probe(impl_def_id.to_def_id(), 0);
+                        }
+                    } else {
+                        probe_cx.assemble_inherent_candidates();
+                        probe_cx.assemble_extension_candidates_for_traits_in_scope();
+                    }
+                }
             };
+
             op(probe_cx)
         })
     }
@@ -1298,7 +1319,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }))
     }
 
-    fn pick_core(
+    pub(crate) fn pick_core(
         &self,
         unsatisfied_predicates: &mut UnsatisfiedPredicates<'tcx>,
     ) -> Option<PickResult<'tcx>> {

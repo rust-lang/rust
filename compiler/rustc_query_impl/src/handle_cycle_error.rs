@@ -15,6 +15,46 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
+pub(crate) fn hir_owner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    _: Cycle<'tcx>,
+    err: Diag<'_>,
+) -> rustc_middle::hir::ProjectedMaybeOwner<'tcx> {
+    err.cancel();
+    rustc_middle::hir::ProjectedMaybeOwner::new(tcx.delegation_error(def_id))
+}
+
+pub(crate) fn lower_to_hir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    _: Cycle<'tcx>,
+    err: Diag<'_>,
+) -> rustc_hir::MaybeOwner<'tcx> {
+    err.cancel();
+    tcx.delegation_error(def_id)
+}
+
+pub(crate) fn clauses_of<'tcx>(
+    _: TyCtxt<'_>,
+    _: DefId,
+    _: Cycle<'tcx>,
+    err: Diag<'_>,
+) -> rustc_middle::ty::GenericClauses<'tcx> {
+    err.cancel();
+    Default::default()
+}
+
+pub(crate) fn explicit_clauses_of<'tcx>(
+    _: TyCtxt<'_>,
+    _: DefId,
+    _: Cycle<'tcx>,
+    err: Diag<'_>,
+) -> rustc_middle::ty::GenericClauses<'tcx> {
+    err.cancel();
+    Default::default()
+}
+
 // Default cycle handler used for all queries that don't use the `handle_cycle_error` query
 // modifier.
 pub(crate) fn default(err: Diag<'_>) -> ! {
@@ -351,7 +391,7 @@ pub(crate) fn create_cycle_error<'tcx>(
 ) -> Diag<'tcx> {
     assert!(!frames.is_empty());
 
-    let span = frames[0].tagged_key.catch_default_span(tcx, frames[1 % frames.len()].span);
+    let span = DUMMY_SP;
 
     let mut cycle_stack = Vec::new();
 
@@ -366,7 +406,7 @@ pub(crate) fn create_cycle_error<'tcx>(
     let mut prev = span;
     for i in 1..frames.len() {
         let frame = &frames[i];
-        let span = frame.tagged_key.catch_default_span(tcx, frames[(i + 1) % frames.len()].span);
+        let span = DUMMY_SP;
         cycle_stack.push(crate::diagnostics::CycleStack {
             span: if span == prev { DUMMY_SP } else { span },
             desc: frame.tagged_key.catch_description(tcx),

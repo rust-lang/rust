@@ -17,7 +17,7 @@ reuse inherent_impl::S::bar;
 reuse <inherent_impl::S as inherent_impl::Trait>::bar as trait_bar;
 
 reuse inherent_impl::X::foo as x_foo;
-//~^ ERROR: ambiguous delegation to inherent impl function
+//~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
 //~| ERROR: multiple applicable items in scope
 
 fn main() {}

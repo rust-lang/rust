@@ -41,6 +41,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
+use rustc_middle::middle::resolve_bound_vars::ResolveBoundVars;
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
@@ -238,6 +239,10 @@ pub trait HirTyLowerer<'tcx> {
         Self: Sized,
     {
         self
+    }
+
+    fn opt_preset_rbv(&self) -> Option<&ResolveBoundVars<'tcx>> {
+        None
     }
 
     /// Performs minimalistic dyn compat checks outside of bodies, but full within bodies.
@@ -579,7 +584,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         lifetime: &hir::Lifetime,
         reason: RegionInferReason<'_>,
     ) -> ty::Region<'tcx> {
-        if let Some(resolved) = self.tcx().named_bound_var(lifetime.hir_id) {
+        let resolved = self
+            .opt_preset_rbv()
+            .map(|rbv| rbv.defs.get(&lifetime.hir_id.local_id).cloned())
+            .unwrap_or_else(|| self.tcx().named_bound_var(lifetime.hir_id));
+
+        if let Some(resolved) = resolved {
             let region = self.lower_resolved_lifetime(resolved);
             self.check_param_uses_if_mcg(region, lifetime.ident.span, false)
         } else {
@@ -2187,7 +2197,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Lower a [resolved][hir::QPath::Resolved] path to a type.
-    #[instrument(level = "debug", skip_all)]
     pub fn lower_resolved_ty_path(
         &self,
         opt_self_ty: Option<Ty<'tcx>>,
@@ -3201,11 +3210,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir::InferDelegationSig::Output { .. } => *delegation_sig.last().unwrap(),
                 }
             }
+            rustc_hir::InferDelegation::Err(_) => Ty::new_error_with_message(
+                self.tcx(),
+                DUMMY_SP,
+                "accessing type of an error delegation",
+            ),
         }
     }
 
     /// Lower a type from the HIR to our internal notion of a type.
-    #[instrument(level = "debug", skip(self), ret)]
     pub fn lower_ty(&self, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
         let tcx = self.tcx();
 

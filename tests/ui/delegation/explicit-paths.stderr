@@ -1,5 +1,5 @@
 error[E0407]: method `foo3` is not a member of trait `Trait`
-  --> $DIR/explicit-paths.rs:48:9
+  --> $DIR/explicit-paths.rs:49:9
    |
 LL |         reuse to_reuse::foo3;
    |         ^^^^^^^^^^^^^^^^----^
@@ -8,7 +8,7 @@ LL |         reuse to_reuse::foo3;
    |         not a member of trait `Trait`
 
 error[E0407]: method `foo4` is not a member of trait `Trait`
-  --> $DIR/explicit-paths.rs:50:9
+  --> $DIR/explicit-paths.rs:51:9
    |
 LL |         reuse F::foo4 { &self.0 }
    |         ^^^^^^^^^----^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |         reuse F::foo4 { &self.0 }
    |         not a member of trait `Trait`
 
 error[E0119]: conflicting implementations of trait `Trait` for type `S`
-  --> $DIR/explicit-paths.rs:71:5
+  --> $DIR/explicit-paths.rs:72:5
    |
 LL |     impl Trait for S {
    |     ---------------- first implementation here
@@ -34,8 +34,24 @@ LL |     reuse S::foo4;
 LL |         reuse F::foo4 { &self.0 }
    |                  ---- private method defined here
 
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/explicit-paths.rs:27:14
+   |
+LL |     reuse S::foo4;
+   |              ^^^^ argument #1 of type `&S` is missing
+   |
+note: method defined here
+  --> $DIR/explicit-paths.rs:39:18
+   |
+LL |         reuse F::foo4 { &self.0 }
+   |                  ^^^^
+help: provide the argument
+   |
+LL |     reuse S::foo4(/* &S */);
+   |                  ++++++++++
+
 error[E0308]: mismatched types
-  --> $DIR/explicit-paths.rs:59:36
+  --> $DIR/explicit-paths.rs:60:36
    |
 LL |     trait Trait2 : Trait {
    |     -------------------- found this type parameter
@@ -53,13 +69,13 @@ LL |     fn foo1(&self, x: i32) -> i32 { x }
    |        ^^^^ -----
 
 error[E0277]: the trait bound `S2: Trait` is not satisfied
-  --> $DIR/explicit-paths.rs:73:16
+  --> $DIR/explicit-paths.rs:74:16
    |
 LL |         reuse <S2 as Trait>::foo1;
    |                ^^ unsatisfied trait bound
    |
 help: the trait `Trait` is not implemented for `S2`
-  --> $DIR/explicit-paths.rs:70:5
+  --> $DIR/explicit-paths.rs:71:5
    |
 LL |     struct S2;
    |     ^^^^^^^^^
@@ -76,7 +92,7 @@ LL |     impl Trait for S {
    |     ^^^^^^^^^^^^^^^^ `S`
 
 error[E0308]: mismatched types
-  --> $DIR/explicit-paths.rs:73:30
+  --> $DIR/explicit-paths.rs:74:30
    |
 LL |         reuse <S2 as Trait>::foo1;
    |                              ^^^^
@@ -92,7 +108,7 @@ note: method defined here
 LL |     fn foo1(&self, x: i32) -> i32 { x }
    |        ^^^^ -----
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0119, E0277, E0308, E0407, E0624.
-For more information about an error, try `rustc --explain E0119`.
+Some errors have detailed explanations: E0061, E0119, E0277, E0308, E0407, E0624.
+For more information about an error, try `rustc --explain E0061`.
