@@ -708,7 +708,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let mut remapped_types = DefIdMap::default();
     for (def_id, (ty, args)) in collected_types {
-        match infcx.fully_resolve(ty) {
+        match infcx.deeply_resolve_and_assert_fully_resolved(ty) {
             Ok(ty) => {
                 // `ty` contains free regions that we created earlier while liberating the
                 // trait fn signature. However, projection normalization expects `ty` to

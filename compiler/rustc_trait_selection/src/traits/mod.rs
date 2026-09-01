@@ -406,7 +406,7 @@ fn do_normalize_clauses<'tcx>(
     // caller sites. We should also avoid cloning if possible.
     let normalized_env = ty::ParamEnv::new(tcx, clauses.iter().copied());
     let _errors = infcx.resolve_regions(cause.body_def_id, normalized_env, []);
-    match infcx.fully_resolve(clauses.clone()) {
+    match infcx.deeply_resolve_and_assert_fully_resolved(clauses.clone()) {
         Ok(clauses) => clauses,
         Err(fixup_err) => {
             // The first folder only replaces infers from normalization failure. We might not have
