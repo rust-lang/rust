@@ -3,7 +3,7 @@
 //@ needs-llvm-components: aarch64
 
 #![crate_type = "lib"]
-#![feature(abi_unadjusted, f16b, link_llvm_intrinsics, no_core, simd_ffi)]
+#![feature(f16b, link_llvm_intrinsics, no_core, simd_ffi)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
@@ -19,7 +19,7 @@ type bfloat16x8_t = Simd<f16b, 8>;
 // CHECK-LABEL: define <4 x float> @vbfmmlaq_f32(
 // CHECK-SAME: <4 x float> %acc, <8 x bfloat> %lhs, <8 x bfloat> %rhs)
 pub unsafe extern "C" fn vbfmmlaq_f32(acc: f32x4, lhs: bfloat16x8_t, rhs: bfloat16x8_t) -> f32x4 {
-    unsafe extern "unadjusted" {
+    unsafe extern "llvm-intrinsic" {
         #[link_name = "llvm.aarch64.neon.bfmmla"]
         fn bfmmla(acc: f32x4, lhs: bfloat16x8_t, rhs: bfloat16x8_t) -> f32x4;
     }

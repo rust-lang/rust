@@ -1,5 +1,3 @@
-//@ ignore-s390x
-//@ ignore-wasm
 extern crate core;
 
 use core::num::f16b;

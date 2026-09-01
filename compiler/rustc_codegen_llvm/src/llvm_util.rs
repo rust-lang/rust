@@ -423,7 +423,7 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // does not work until LLVM 23 on Windows.
         (Arch::Arm64EC, _) => major >= 23,
         (Arch::AArch64, _) | (Arch::X86_64, _) | (Arch::RiscV64, _) | (Arch::LoongArch64, _) => {
-            major >= 21
+            true
         }
         _ => false,
     };

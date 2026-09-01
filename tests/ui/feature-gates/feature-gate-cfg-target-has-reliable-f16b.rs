@@ -1,5 +1,3 @@
-//@ ignore-s390x
-//@ ignore-wasm
 //@ compile-flags: --check-cfg=cfg(target_has_reliable_f16b)
 
 fn main() {
