@@ -12,8 +12,6 @@ pub type Goal<'tcx, P> = ir::solve::Goal<TyCtxt<'tcx>, P>;
 pub type QueryInput<'tcx, P> = ir::solve::QueryInput<TyCtxt<'tcx>, P>;
 pub type QueryResult<'tcx> = ir::solve::QueryResult<TyCtxt<'tcx>>;
 pub type CandidateSource<'tcx> = ir::solve::CandidateSource<TyCtxt<'tcx>>;
-pub type CanonicalInputRaw<'tcx, P = ty::Predicate<'tcx>> =
-    ir::solve::CanonicalInput<TyCtxt<'tcx>, P>;
 pub type CanonicalResponse<'tcx> = ir::solve::CanonicalResponse<TyCtxt<'tcx>>;
 pub type FetchEligibleAssocItemResponse<'tcx> =
     ir::solve::FetchEligibleAssocItemResponse<TyCtxt<'tcx>>;
@@ -24,6 +22,13 @@ pub type SucceededInErased<'tcx> = ir::solve::SucceededInErased<TyCtxt<'tcx>>;
 
 pub type PredefinedOpaques<'tcx> = &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>;
 
+// Interning CanonicalInput drastically reduces max memory usage when compiling a crate that has
+// trait solver recursion depth overflows with next-solver deduplicating individual inputs.
+// This mostly fixes #161748 where it reduced the memory usage for compiling bevy_render from
+// ~14GiB to ~4GiB
+// Main improved types:
+//   - rustc_type_ir::search_graph::GlobalCache
+//   - rustc_type_ir::search_graph::NestedGoals
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, StableHash)]
 pub struct CanonicalInput<'tcx>(pub(crate) Interned<'tcx, CanonicalInputData<TyCtxt<'tcx>>>);
 

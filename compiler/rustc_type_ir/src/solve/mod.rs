@@ -22,8 +22,8 @@ use crate::{
     InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
-pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
-    ty::CanonicalQueryInput<I, QueryInput<I, T>>;
+pub type CanonicalInputData<I> =
+    ty::CanonicalQueryInput<I, QueryInput<I, <I as Interner>::Predicate>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
 ///
@@ -662,23 +662,6 @@ impl<I: Interner> ExternalConstraintsData<I> {
     }
 }
 
-#[derive_where(Clone, Hash, PartialEq, Eq, Debug; I: Interner)]
-#[derive_where(Copy; <I as Interner>::Predicate)]
-#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub struct CanonicalInputData<I: Interner>(pub(crate) CanonicalInput<I>);
-impl<I: Interner> From<CanonicalInput<I>> for CanonicalInputData<I> {
-    fn from(value: CanonicalInput<I>) -> Self {
-        CanonicalInputData(value)
-    }
-}
-
-impl<I: Interner> std::ops::Deref for CanonicalInputData<I> {
-    type Target = CanonicalInput<I>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 /// Whether the given region constraint should be considered/ignored for
 /// leak check. In most part of the compiler, this should be `Yes`, except
 /// for applying constraints from the nested goals in next-solver.

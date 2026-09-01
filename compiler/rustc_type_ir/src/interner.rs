@@ -522,7 +522,7 @@ pub trait Interner:
     fn intern_canonical_bound(self, var: BoundVar) -> Region<Self>;
 
     type CanonicalInput: Copy + Debug + Hash + Eq + Deref<Target = CanonicalInputData<Self>>;
-    fn mk_canonical_input(self, data: impl Into<CanonicalInputData<Self>>) -> Self::CanonicalInput;
+    fn mk_canonical_input(self, data: CanonicalInputData<Self>) -> Self::CanonicalInput;
 }
 
 macro_rules! declare_lift_into {

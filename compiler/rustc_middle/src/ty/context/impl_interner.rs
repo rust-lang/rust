@@ -666,8 +666,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.arena.alloc(probe)
     }
     type CanonicalInput = CanonicalInput<'tcx>;
-    fn mk_canonical_input(self, data: impl Into<CanonicalInputData<Self>>) -> CanonicalInput<'tcx> {
-        self.intern_canonical_input(data.into())
+    fn mk_canonical_input(self, data: CanonicalInputData<Self>) -> CanonicalInput<'tcx> {
+        self.intern_canonical_input(data)
     }
     fn evaluate_root_goal_for_proof_tree_raw(
         self,
