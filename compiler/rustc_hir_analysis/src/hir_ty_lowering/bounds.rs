@@ -477,7 +477,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 debug!(?alias_args);
 
-                ty::AliasTerm::new_from_def_id(tcx, assoc_item.def_id, alias_args)
+                ty::AliasTerm::new_from_def_id(
+                    tcx,
+                    assoc_item.def_id,
+                    alias_args,
+                    ty::AliasConstInherentArgsKind::WithSelf,
+                )
             })
         };
 
