@@ -890,7 +890,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(sanitizer_kcfi_arity, Some(true));
     tracked!(sanitizer_memory_track_origins, 2);
     tracked!(sanitizer_recover, SanitizerSet::ADDRESS);
-    tracked!(saturating_float_casts, Some(true));
     tracked!(share_generics, Some(true));
     tracked!(simulate_remapped_rust_src_base, Some(PathBuf::from("/rustc/abc")));
     tracked!(small_data_threshold, Some(16));
