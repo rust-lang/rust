@@ -533,7 +533,11 @@ impl LateLintPass<'_> for ItemNameRepetitions {
             | ItemKind::Union(ident, ..)
             | ItemKind::Use(_, UseKind::Single(ident)) => ident,
 
-            ItemKind::ForeignMod { .. } | ItemKind::GlobalAsm { .. } | ItemKind::Impl(_) | ItemKind::Use(..) => return,
+            ItemKind::ForeignMod { .. }
+            | ItemKind::GlobalAsm { .. }
+            | ItemKind::Impl(_)
+            | ItemKind::Use(..)
+            | ItemKind::TestBinderConstraints { .. } => return,
         };
 
         let item_name = ident.name.as_str();

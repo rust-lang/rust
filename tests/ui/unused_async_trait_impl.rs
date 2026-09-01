@@ -1,5 +1,4 @@
 #![warn(clippy::unused_async_trait_impl)]
-#![feature(never_type)]
 
 trait HasAsyncMethod {
     async fn do_something() -> u32;

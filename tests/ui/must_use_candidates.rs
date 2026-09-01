@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![warn(clippy::must_use_candidate)]
 use std::rc::Rc;
 use std::sync::Arc;

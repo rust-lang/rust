@@ -265,7 +265,6 @@ impl<'a> NormalizedPat<'a> {
             PatKind::Missing => unreachable!(),
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,
             PatKind::Binding(.., Some(pat))
-            | PatKind::Box(pat)
             | PatKind::Deref(pat)
             | PatKind::Ref(pat, _, _)
             | PatKind::Guard(pat, _) => Self::from_pat(cx, arena, pat),

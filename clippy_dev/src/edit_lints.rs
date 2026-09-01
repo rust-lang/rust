@@ -98,8 +98,7 @@ pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
 /// * Adds an entry to `renamed_lints.rs`.
 /// * Renames all lint attributes to the new name (e.g. `#[allow(clippy::lint_name)]`).
 /// * Renames the lint struct to the new name.
-/// * Renames the module containing the lint struct to the new name if it shares a name with the
-///   lint.
+/// * Renames the module containing the lint struct to the new name if it shares a name with the lint.
 ///
 /// # Panics
 /// Panics for the following conditions:

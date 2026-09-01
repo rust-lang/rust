@@ -58,9 +58,9 @@ pub fn visit_local_usage<const N: usize>(
 ///
 /// Returns:
 /// - `None` if `location.block` may be re-entered while any of the locals are live.
-/// - `Some` with (for each [`BasicBlock`]) a bitset representing which of the locals are
-///   potentially live at the start of the block. Bit `i` stands for `locals[i]`. The exception is
-///   `location.block`, which is entered at `location` and therefore has every bit set.
+/// - `Some` with (for each [`BasicBlock`]) a bitset representing which of the locals are potentially live at the start
+///   of the block. Bit `i` stands for `locals[i]`. The exception is `location.block`, which is entered at `location`
+///   and therefore has every bit set.
 fn reachable_while_storage_live<const N: usize>(
     locals: &[Local; N],
     mir: &Body<'_>,

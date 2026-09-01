@@ -598,8 +598,8 @@ pub fn split_args_for_threads(
                 //
                 // For simplicity we use 30000 here under a few assumptions.
                 // * Individual arguments aren't super long (the final argument is still added)
-                // * `ARG_MAX` is set to a reasonable amount. Basically every system will be configured way above
-                //   what windows supports, but POSIX only requires `4096`.
+                // * `ARG_MAX` is set to a reasonable amount. Basically every system will be configured way above what
+                //   windows supports, but POSIX only requires `4096`.
                 if cmd_len > 30000 {
                     self.batch_size = self.args.len().div_ceil(self.thread_count).max(self.min_batch_size);
                     break;
