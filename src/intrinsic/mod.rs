@@ -62,22 +62,8 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::sqrtf64 => "sqrt",
         sym::powif32 => "__builtin_powif",
         sym::powif64 => "__builtin_powi",
-        sym::sinf32 => "sinf",
-        sym::sinf64 => "sin",
-        sym::cosf32 => "cosf",
-        sym::cosf64 => "cos",
         sym::powf32 => "powf",
         sym::powf64 => "pow",
-        sym::expf32 => "expf",
-        sym::expf64 => "exp",
-        sym::exp2f32 => "exp2f",
-        sym::exp2f64 => "exp2",
-        sym::logf32 => "logf",
-        sym::logf64 => "log",
-        sym::log10f32 => "log10f",
-        sym::log10f64 => "log10",
-        sym::log2f32 => "log2f",
-        sym::log2f64 => "log2",
         sym::fmaf32 => "fmaf",
         sym::fmaf64 => "fma",
         // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
@@ -117,16 +103,18 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     let f128_type = cx.type_f128();
     let func_name = match name {
         sym::ceilf128 => "ceilf128",
+        sym::cos => "cosf128",
         sym::fabs => "fabsf128",
-        sym::expf128 => "expf128",
-        sym::exp2f128 => "exp2f128",
+        sym::exp => "expf128",
+        sym::exp2 => "exp2f128",
         sym::floorf128 => "floorf128",
-        sym::logf128 => "logf128",
-        sym::log2f128 => "log2f128",
-        sym::log10f128 => "log10f128",
+        sym::log => "logf128",
+        sym::log2 => "log2f128",
+        sym::log10 => "log10f128",
         sym::truncf128 => "truncf128",
         sym::roundf128 => "roundf128",
         sym::round_ties_even_f128 => "roundevenf128",
+        sym::sin => "sinf128",
         sym::sqrtf128 => "sqrtf128",
         _ => span_bug!(span, "used get_simple_function_f128 for non-unary f128 intrinsic"),
     };
@@ -140,24 +128,6 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     )
 }
 
-fn generic_f16_builtin<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
-    name: Symbol,
-    args: &[OperandRef<'tcx, RValue<'gcc>>],
-) -> RValue<'gcc> {
-    let f32_type = cx.type_f32();
-    let builtin_name = match name {
-        sym::fabs => "fabsf",
-        _ => unreachable!(),
-    };
-
-    let func = cx.context.get_builtin_function(builtin_name);
-    let args: Vec<_> =
-        args.iter().map(|arg| cx.context.new_cast(None, arg.immediate(), f32_type)).collect();
-    let result = cx.context.new_call(None, func, &args);
-    cx.context.new_cast(None, result, cx.type_f16())
-}
-
 fn f16_builtin<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
@@ -167,16 +137,18 @@ fn f16_builtin<'gcc, 'tcx>(
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
         sym::copysignf16 => "__builtin_copysignf",
-        sym::expf16 => "expf",
-        sym::exp2f16 => "exp2f",
+        sym::cos => "cosf",
+        sym::exp => "expf",
+        sym::exp2 => "exp2f",
         sym::fabs => "fabsf",
         sym::floorf16 => "__builtin_floorf",
-        sym::logf16 => "logf",
-        sym::log2f16 => "log2f",
-        sym::log10f16 => "log10f",
+        sym::log => "logf",
+        sym::log2 => "log2f",
+        sym::log10 => "log10f",
         sym::powf16 => "__builtin_powf",
         sym::roundf16 => "__builtin_roundf",
         sym::round_ties_even_f16 => "__builtin_rintf",
+        sym::sin => "sinf",
         sym::sqrtf16 => "__builtin_sqrtf",
         sym::truncf16 => "__builtin_truncf",
         _ => unreachable!(),
@@ -245,12 +217,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
             sym::ceilf16
             | sym::copysignf16
-            | sym::expf16
-            | sym::exp2f16
             | sym::floorf16
-            | sym::logf16
-            | sym::log2f16
-            | sym::log10f16
             | sym::powf16
             | sym::roundf16
             | sym::round_ties_even_f16
@@ -262,11 +229,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::roundf128
             | sym::round_ties_even_f128
             | sym::sqrtf128
-            | sym::expf128
-            | sym::exp2f128
-            | sym::logf128
-            | sym::log2f128
-            | sym::log10f128
                 if self.cx.supports_f128_type =>
             {
                 let func = get_simple_function_f128(span, self, name);
@@ -450,16 +412,55 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     }
                 }
             }
-            sym::fabs => 'fabs: {
+            sym::fabs
+            | sym::exp
+            | sym::exp2
+            | sym::log
+            | sym::log10
+            | sym::log2
+            | sym::sin
+            | sym::cos => 'float_unop: {
                 let ty = args[0].layout.ty;
                 let ty::Float(float_ty) = *ty.kind() else {
                     span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
                 };
-                let func = match float_ty {
-                    ty::FloatTy::F16 => break 'fabs generic_f16_builtin(self, name, args),
-                    ty::FloatTy::F32 => self.context.get_builtin_function("fabsf"),
-                    ty::FloatTy::F64 => self.context.get_builtin_function("fabs"),
-                    ty::FloatTy::F128 => get_simple_function_f128(span, self, name),
+                use ty::FloatTy::*;
+                let func = match (name, float_ty) {
+                    (sym::fabs, F32) => self.context.get_builtin_function("fabsf"),
+                    (sym::fabs, F64) => self.context.get_builtin_function("fabs"),
+
+                    (sym::exp, F32) => self.context.get_builtin_function("expf"),
+                    (sym::exp, F64) => self.context.get_builtin_function("exp"),
+
+                    (sym::exp2, F32) => self.context.get_builtin_function("exp2f"),
+                    (sym::exp2, F64) => self.context.get_builtin_function("exp2"),
+
+                    (sym::log, F32) => self.context.get_builtin_function("logf"),
+                    (sym::log, F64) => self.context.get_builtin_function("log"),
+
+                    (sym::log10, F32) => self.context.get_builtin_function("log10f"),
+                    (sym::log10, F64) => self.context.get_builtin_function("log10"),
+
+                    (sym::log2, F32) => self.context.get_builtin_function("log2f"),
+                    (sym::log2, F64) => self.context.get_builtin_function("log2"),
+
+                    (sym::sin, F32) => self.context.get_builtin_function("sinf"),
+                    (sym::sin, F64) => self.context.get_builtin_function("sin"),
+
+                    (sym::cos, F32) => self.context.get_builtin_function("cosf"),
+                    (sym::cos, F64) => self.context.get_builtin_function("cos"),
+
+                    (_, F32 | F64) => unreachable!(),
+
+                    (_, F16) => break 'float_unop f16_builtin(self, name, args),
+                    (_, F128) => {
+                        if !self.cx.supports_f128_type {
+                            // Fall back to default body
+                            let fallback = Instance::new_raw(instance.def_id(), instance.args);
+                            return IntrinsicResult::Fallback(fallback);
+                        }
+                        get_simple_function_f128(span, self, name)
+                    }
                 };
                 self.cx.context.new_call(
                     self.location,
