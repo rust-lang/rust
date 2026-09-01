@@ -714,6 +714,18 @@ pub macro declare_arena(
         ) -> &mut [T] {
             T::allocate_from_iter(self, iter)
         }
+
+        #[allow(clippy::mut_from_ref)]
+        pub fn alloc_index_slice_from_iter<I, T, C>(
+            &'tcx self,
+            iter: impl ::std::iter::IntoIterator<Item = T>,
+        ) -> &mut ::rustc_index::IndexSlice<I, T>
+        where
+            I: ::rustc_index::Idx,
+            T: ArenaAllocatable<'tcx, C>,
+        {
+            ::rustc_index::IndexSlice::from_raw_mut(self.alloc_from_iter(iter))
+        }
     }
 }
 

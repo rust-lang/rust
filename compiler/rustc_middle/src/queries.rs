@@ -68,7 +68,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
-use rustc_index::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_lint_defs::{LintId, StableLintExpectationId};
 use rustc_macros::rustc_queries;
 use rustc_session::Limits;
@@ -204,14 +204,13 @@ rustc_queries! {
         desc { "getting the resolver for lowering" }
     }
 
-    query index_ast(_: ()) -> &'tcx IndexVec<LocalDefId, Steal<(
+    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Steal<(
         // There is only a single `ResolverAstLowering` for all owners.
         // We want to drop it once the whole HIR has been lowered.
         // We rely on reference counting to know when all definitions have been stolen.
         Arc<ResolverAstLowering<'tcx>>,
         AstOwner,
     )>> {
-        arena_cache
         eval_always
         no_hash
         desc { "getting the AST for lowering" }

@@ -41,13 +41,10 @@ rustc_arena::declare_arena! {
             rustc_middle::middle::resolve::ResolverAstLowering<'tcx>
         >,
     index_ast:
-        rustc_index::IndexVec<
-            rustc_span::def_id::LocalDefId,
-            rustc_data_structures::steal::Steal<(
-                std::sync::Arc<rustc_middle::middle::resolve::ResolverAstLowering<'tcx>>,
-                rustc_middle::middle::resolve::AstOwner
-            )>
-        >,
+        rustc_data_structures::steal::Steal<(
+            std::sync::Arc<rustc_middle::middle::resolve::ResolverAstLowering<'tcx>>,
+            rustc_middle::middle::resolve::AstOwner
+        )>,
     crate_alone: rustc_data_structures::steal::Steal<rustc_ast::Crate>,
     crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
     resolutions: rustc_middle::middle::resolve::ResolverGlobalCtxt,
