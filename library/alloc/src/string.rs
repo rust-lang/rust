@@ -2895,20 +2895,18 @@ impl ops::DerefMut for String {
     }
 }
 
-/// A type alias for [`Infallible`].
+/// A type alias for [`!`].
 ///
 /// This alias exists for backwards compatibility, and may be eventually deprecated.
-///
-/// [`Infallible`]: core::convert::Infallible "convert::Infallible"
 #[stable(feature = "str_parse_error", since = "1.5.0")]
-pub type ParseError = core::convert::Infallible;
+pub type ParseError = !;
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for String {
-    type Err = core::convert::Infallible;
+    type Err = !;
     #[inline]
-    fn from_str(s: &str) -> Result<String, Self::Err> {
+    fn from_str(s: &str) -> Result<String, !> {
         Ok(String::from(s))
     }
 }
