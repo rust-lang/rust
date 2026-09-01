@@ -92,9 +92,6 @@
 | '?23 live at {bb2[1]}
 | '?24 live at {bb2[1]}
 | '?25 live at {bb2[1]}
-| '?26 live at {bb2[2]}
-| '?27 live at {bb2[2]}
-| '?28 live at {bb2[2]}
 | '?1: '?23 due to BoringNoLocation at Single(bb2[1]) ($DIR/opaque_non_member_candidate_equality.rs:25:5: 25:13 (#0)
 | '?1: '?29 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:22:22: 22:45) ($DIR/opaque_non_member_candidate_equality.rs:22:22: 22:45 (#0)
 | '?1: '?32 due to BoringNoLocation at All($DIR/opaque_non_member_candidate_equality.rs:23:22: 23:45) ($DIR/opaque_non_member_candidate_equality.rs:23:22: 23:45 (#0)
