@@ -490,7 +490,7 @@ where
             })
             .collect();
 
-        cx.codegen_global_asm(asm.template, &operands, asm.options, asm.line_spans);
+        cx.codegen_global_asm(asm.template, &operands, asm.options, asm.line_spans, &[]);
     } else {
         span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
     }
