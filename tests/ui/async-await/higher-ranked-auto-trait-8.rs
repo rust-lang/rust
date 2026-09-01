@@ -1,8 +1,10 @@
 // Repro for <https://github.com/rust-lang/rust/issues/64552#issuecomment-532801232>.
 //@ edition: 2021
-//@ revisions: assumptions no_assumptions
+//@ revisions: assumptions min_coroutines no_assumptions
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
 //@[assumptions] check-pass
+//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines
+//@[min_coroutines] check-pass
 //@[no_assumptions] known-bug: #110338
 
 fn needs_send<T: Send>(_val: T) {}

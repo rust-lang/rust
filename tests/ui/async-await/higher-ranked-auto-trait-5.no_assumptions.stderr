@@ -1,5 +1,5 @@
 error: implementation of `Send` is not general enough
-  --> $DIR/higher-ranked-auto-trait-5.rs:13:5
+  --> $DIR/higher-ranked-auto-trait-5.rs:15:5
    |
 LL | /     assert_send(async {
 LL | |         call_me.call().await;

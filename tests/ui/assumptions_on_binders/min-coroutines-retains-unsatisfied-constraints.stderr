@@ -1,0 +1,7 @@
+error: higher-ranked lifetime bound could not be satisfied
+  --> $DIR/min-coroutines-retains-unsatisfied-constraints.rs:9:9
+   |
+LL |         forall<'w> where 'b: 'w {
+   |         ^^^^^^
+
+error: aborting due to 1 previous error
