@@ -15,8 +15,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_session::diagnostics::feature_err;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 use rustc_target::spec::Os;
 
 use crate::diagnostics;
@@ -154,18 +153,6 @@ fn process_builtin_attrs(
                 {
                     // This error is already reported in `rustc_ast_passes/src/ast_validation.rs`.
                     tcx.dcx().delayed_bug("`#[track_caller]` requires the Rust ABI");
-                }
-                if is_closure
-                    && !tcx.features().closure_track_caller()
-                    && !attr_span.allows_unstable(sym::closure_track_caller)
-                {
-                    feature_err(
-                        &tcx.sess,
-                        sym::closure_track_caller,
-                        *attr_span,
-                        "`#[track_caller]` on closures is currently unstable",
-                    )
-                    .emit();
                 }
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
             }
