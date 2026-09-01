@@ -553,8 +553,7 @@ pub fn snippet<'a, 'sm>(sm: impl HasSourceMap<'sm>, span: Span, default: &'a str
 ///
 /// - Applicability level `Unspecified` will never be changed.
 /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
-/// - If the default value is used and the applicability level is `MachineApplicable`, change it to
-///   `HasPlaceholders`
+/// - If the default value is used and the applicability level is `MachineApplicable`, change it to `HasPlaceholders`
 ///
 /// If the span might realistically contain a macro call (e.g. `vec![]`), consider using
 /// [`snippet_with_context`] instead.

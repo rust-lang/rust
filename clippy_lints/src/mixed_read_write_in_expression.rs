@@ -202,12 +202,11 @@ impl<'tcx> Visitor<'tcx> for DivergenceVisitor<'_, 'tcx> {
 /// This means reads for which there is a common ancestor between the read and
 /// the write such that
 ///
-/// * evaluating the ancestor necessarily evaluates both the read and the write (for example, `&x`
-///   and `|| x = 1` don't necessarily evaluate `x`), and
+/// * evaluating the ancestor necessarily evaluates both the read and the write (for example, `&x` and `|| x = 1` don't
+///   necessarily evaluate `x`), and
 ///
-/// * which one is evaluated first depends on the order of sub-expression evaluation. Blocks, `if`s,
-///   loops, `match`es, and the short-circuiting logical operators are considered to have a defined
-///   evaluation order.
+/// * which one is evaluated first depends on the order of sub-expression evaluation. Blocks, `if`s, loops, `match`es,
+///   and the short-circuiting logical operators are considered to have a defined evaluation order.
 ///
 /// When such a read is found, the lint is triggered.
 fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
@@ -272,12 +271,11 @@ fn check_expr<'tcx>(vis: &mut ReadVisitor<'_, 'tcx>, expr: &'tcx Expr<'_>) -> St
         ExprKind::Closure { .. } => {
             // Either
             //
-            // * `var` is defined in the closure body, in which case we've reached the top of the enclosing
-            //   function and can stop, or
+            // * `var` is defined in the closure body, in which case we've reached the top of the enclosing function and
+            //   can stop, or
             //
-            // * `var` is captured by the closure, in which case, because evaluating a closure does not evaluate
-            //   its body, we don't necessarily have a write, so we need to stop to avoid generating false
-            //   positives.
+            // * `var` is captured by the closure, in which case, because evaluating a closure does not evaluate its
+            //   body, we don't necessarily have a write, so we need to stop to avoid generating false positives.
             //
             // This is also the only place we need to stop early (grrr).
             return StopEarly::Stop;

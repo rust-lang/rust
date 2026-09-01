@@ -287,8 +287,7 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ),
         ItemKind::TraitAlias(..) => (Pat::Str("trait"), Pat::Str(";")),
         ItemKind::GlobalAsm { .. } => return (Pat::Str("global_asm"), Pat::Str("")),
-        ItemKind::Use(..) => return (Pat::Str(""), Pat::Str("")),
-        ItemKind::TestBinderConstraints { .. } => return (Pat::Str(""), Pat::Str("")),
+        ItemKind::Use(..) | ItemKind::TestBinderConstraints { .. } => return (Pat::Str(""), Pat::Str("")),
     };
     if item.vis_span.is_empty() {
         (start_pat, end_pat)

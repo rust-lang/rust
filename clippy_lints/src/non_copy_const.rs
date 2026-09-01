@@ -3,10 +3,9 @@
 // For `declare_interior_mutable_const` there are three strategies used to
 // determine if a value has interior mutability:
 // * A type-based check. This is the least accurate, but can always run.
-// * A const-eval based check. This is the most accurate, but this requires that the value is
-//   defined and does not work with generics.
-// * A HIR-tree based check. This is less accurate than const-eval, but it can be applied to generic
-//   values.
+// * A const-eval based check. This is the most accurate, but this requires that the value is defined and does not work
+//   with generics.
+// * A HIR-tree based check. This is less accurate than const-eval, but it can be applied to generic values.
 //
 // For `borrow_interior_mutable_const` the same three strategies are applied
 // when checking a constant's value, but field and array index projections at

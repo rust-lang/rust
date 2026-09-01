@@ -5,6 +5,7 @@ use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, GenericArg, HirId, LetStmt, Node, Path, TyKind};
 use rustc_lint::LateContext;
+use rustc_middle::ty::print::with_types_for_suggestion;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
@@ -95,7 +96,7 @@ pub(super) fn check<'tcx>(
                 diag.span_suggestion(
                     span,
                     "consider adding missing annotations",
-                    format!("{}::<{from_ty}, {to_ty}>", last.ident),
+                    with_types_for_suggestion!(format!("{}::<{from_ty}, {to_ty}>", last.ident)),
                     Applicability::MaybeIncorrect,
                 );
             }

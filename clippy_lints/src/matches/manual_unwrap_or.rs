@@ -186,8 +186,7 @@ fn find_type_name<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'static
 
 /// Checks whether it is safe to move scrutinee.
 /// It is not safe to move if:
-///     1. `scrutinee` is a `Result` that doesn't implemenet `Copy`, mainly because the `Err`
-///        variant is not copyable.
+///     1. `scrutinee` is a `Result` that doesn't implemenet `Copy`, mainly because the `Err` variant is not copyable.
 ///     2. `expr` is a local variable that is used after the if-let-else expression.
 /// ```rust,ignore
 /// let foo: Result<usize, String> = Ok(0);

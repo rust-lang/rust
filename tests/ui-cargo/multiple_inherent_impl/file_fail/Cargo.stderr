@@ -55,4 +55,4 @@ note: first implementation here
 12 | |     }
    | |_____^
 
-error: could not compile `file_fail` (bin "file_fail") due to 3 previous errors
+error: could not compile `file-fail` (bin "file-fail") due to 3 previous errors

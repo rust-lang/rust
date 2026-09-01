@@ -179,8 +179,8 @@ fn is_let_desugar(block: &Block<'_>) -> bool {
 /// NOTE: The functionality of this type is similar to
 /// [`clippy_utils::visitors::find_all_ret_expressions`], but we can't use
 /// `find_all_ret_expressions` instead of this type. The reasons are:
-/// 1. `find_all_ret_expressions` passes the argument of `ExprKind::Ret` to a callback, but what we
-///    need here is `ExprKind::Ret` itself.
+/// 1. `find_all_ret_expressions` passes the argument of `ExprKind::Ret` to a callback, but what we need here is
+///    `ExprKind::Ret` itself.
 /// 2. We can't trace current loop depth with `find_all_ret_expressions`.
 #[derive(Default)]
 struct RetCollector {
