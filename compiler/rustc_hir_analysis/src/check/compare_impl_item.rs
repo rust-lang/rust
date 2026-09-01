@@ -2727,9 +2727,9 @@ fn param_env_with_gat_bounds<'tcx>(
             _ => clauses.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionClause {
-                        projection_term: ty::AliasTerm::new_from_def_id(
+                        projection_term: ty::AliasTerm::new(
                             tcx,
-                            trait_ty.def_id,
+                            ty::AliasTermKind::ProjectionTy { def_id: trait_ty.def_id },
                             rebased_args,
                         ),
                         term: normalize_impl_ty.into(),

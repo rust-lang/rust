@@ -5,7 +5,7 @@
 //! 2. equate the self type, and
 //! 3. instantiate and register where clauses.
 
-use rustc_type_ir::solve::QueryResultOrRerunNonErased;
+use rustc_type_ir::solve::{NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased};
 use rustc_type_ir::{self as ty, Interner, Unnormalized};
 
 use crate::delegate::SolverDelegate;
@@ -21,20 +21,9 @@ where
         goal: Goal<I, ty::ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
-        let inherent = goal.predicate.projection_term;
-        let def_id = inherent.expect_inherent_def_id();
-        let impl_def_id = cx.inherent_alias_term_parent(def_id);
-        let impl_args = self.fresh_args_for_item(impl_def_id.into());
-
-        // Equate impl header and add impl where clauses
-        self.eq(
-            goal.param_env,
-            inherent.self_ty(),
-            cx.type_of(impl_def_id.into()).instantiate(cx, impl_args).skip_norm_wip(),
-        )?;
-
-        // Equate IAT with the RHS of the project goal
-        let inherent_args = inherent.rebase_inherent_args_onto_impl(impl_args, cx);
+        let def_id = goal.predicate.projection_term.expect_inherent_def_id();
+        let (inherent_kind, inherent_args) =
+            self.convert_inherent_self_to_impl(goal.param_env, goal.predicate.projection_term)?;
 
         // Check both where clauses on the impl and IAT
         //
@@ -53,25 +42,28 @@ where
                 .map(|clause| goal.with(cx, clause)),
         )?;
 
-        let normalized: I::Term = match inherent.kind {
+        let normalized: I::Term = match inherent_kind {
             ty::AliasTermKind::InherentTy { def_id } => {
                 let inherent = cx.type_of(def_id.into()).instantiate(cx, inherent_args);
                 let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
                 inherent.into()
             }
-            ty::AliasTermKind::InherentConst { def_id } if cx.is_type_const(def_id.into()) => {
+            ty::AliasTermKind::InherentConstImpl { def_id } if cx.is_type_const(def_id.into()) => {
                 let inherent = cx.const_of_item(def_id.into()).instantiate(cx, inherent_args);
                 let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
                 inherent.into()
             }
-            ty::AliasTermKind::InherentConst { .. } => {
-                // FIXME(gca): This is dead code at the moment. It should eventually call
-                // self.evaluate_const like projected consts do in consider_impl_candidate in
-                // normalizes_to/mod.rs. However, how generic args are represented for IACs is up in
-                // the air right now.
-                // Will self.evaluate_const eventually take the inherent_args or the impl_args form
-                // of args? It might be either.
-                panic!("References to inherent associated consts should have been blocked");
+            ty::AliasTermKind::InherentConstImpl { .. } => {
+                let term = ty::AliasTerm::new_from_args(cx, inherent_kind, inherent_args);
+                // NOTE: we intentionally pass in the `InherentConstImpl` form as the term to
+                // instantiate to upon too-generic CTFE failure, as we ought to consistently compare
+                // identities via `InherentConstImpl` rather than `InherentConstSelf`.
+                return self.evaluate_const_and_instantiate_projection_term(
+                    goal.param_env,
+                    term,
+                    goal.predicate.term,
+                    term.expect_ct(),
+                );
             }
             kind => panic!("expected inherent alias, found {kind:?}"),
         };
@@ -83,5 +75,44 @@ where
         )?;
         self.eq(goal.param_env, goal.predicate.term, normalized)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+    }
+
+    fn convert_inherent_self_to_impl(
+        &mut self,
+        param_env: I::ParamEnv,
+        term: ty::AliasTerm<I>,
+    ) -> Result<(ty::AliasTermKind<I>, I::GenericArgs), NoSolutionOrRerunNonErased> {
+        match term.kind {
+            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConstSelf { .. } => {
+                let cx = self.cx();
+                let def_id = term.expect_inherent_def_id();
+                let impl_def_id = cx.inherent_alias_term_parent(def_id);
+                let impl_args = self.fresh_args_for_item(impl_def_id.into());
+
+                // Equate impl header and add impl where clauses
+                self.eq(
+                    param_env,
+                    term.self_ty(),
+                    cx.type_of(impl_def_id.into()).instantiate(cx, impl_args).skip_norm_wip(),
+                )?;
+
+                // Equate IAT with the RHS of the project goal
+                let inherent_args = term.rebase_inherent_args_onto_impl(impl_args, cx);
+
+                let kind = match term.kind {
+                    ty::AliasTermKind::InherentTy { def_id } => {
+                        ty::AliasTermKind::InherentTy { def_id }
+                    }
+                    ty::AliasTermKind::InherentConstSelf { def_id } => {
+                        ty::AliasTermKind::InherentConstImpl { def_id }
+                    }
+                    _ => unreachable!(),
+                };
+
+                Ok((kind, inherent_args))
+            }
+            ty::AliasTermKind::InherentConstImpl { .. } => Ok((term.kind, term.args)),
+            kind => panic!("expected inherent alias, found {kind:?}"),
+        }
     }
 }

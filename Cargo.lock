@@ -3634,6 +3634,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_abi",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -3798,6 +3799,7 @@ dependencies = [
  "rustc-demangle",
  "rustc_abi",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_codegen_ssa",
  "rustc_crate_store",
  "rustc_data_structures",
@@ -3837,6 +3839,7 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
+ "rustc_attr_ir",
  "rustc_attr_parsing",
  "rustc_crate_store",
  "rustc_data_structures",
@@ -4068,6 +4071,7 @@ name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
+ "rustc_macros",
  "rustc_span",
  "serde",
  "serde_json",

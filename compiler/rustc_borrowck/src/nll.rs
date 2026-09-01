@@ -126,7 +126,7 @@ pub(crate) fn compute_regions<'tcx>(
     let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
 
-    let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
+    let mut lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints,
         &universal_region_relations,
         infcx,
@@ -144,19 +144,26 @@ pub(crate) fn compute_regions<'tcx>(
         &lowered_constraints,
     );
 
+    // If requested for `-Zpolonius=next`, compute loan liveness information.
+    // This is done prior to `RegionInferenceContext::new`, because we may add
+    // additional liveness constraints.
+    if let Some(polonius_context) = polonius_context.as_mut() {
+        let _timer = infcx.tcx.prof.generic_activity("borrowck_polonius_loan_liveness");
+        polonius_context.compute_loan_liveness(
+            &mut lowered_constraints.liveness_constraints,
+            lowered_constraints.outlives_constraints.outlives().iter().copied(),
+            &universal_region_relations.universal_regions,
+            body,
+            borrow_set,
+        );
+    }
+
     let mut regioncx = RegionInferenceContext::new(
         infcx,
         lowered_constraints,
         universal_region_relations,
         location_map,
     );
-
-    // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
-    // and use them to compute loan liveness.
-    if let Some(polonius_context) = polonius_context.as_mut() {
-        let _timer = infcx.tcx.prof.generic_activity("borrowck_polonius_loan_liveness");
-        polonius_context.compute_loan_liveness(&mut regioncx, body, borrow_set)
-    }
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = polonius_facts.as_ref().and_then(|polonius_facts| {

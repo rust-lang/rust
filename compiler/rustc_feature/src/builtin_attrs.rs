@@ -54,20 +54,22 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::target_object_format, sym::cfg_target_object_format, Features::cfg_target_object_format),
 ];
 
-/// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
-pub fn find_gated_cfg(pred: impl Fn(Symbol) -> bool) -> Option<&'static GatedCfg> {
-    GATED_CFGS.iter().find(|(cfg_sym, ..)| pred(*cfg_sym))
+/// Find a gated cfg matching `name`.
+pub fn find_gated_cfg(name: Symbol) -> Option<&'static GatedCfg> {
+    GATED_CFGS.iter().find(|(cfg_sym, ..)| name == *cfg_sym)
 }
 
 #[derive(Clone, Debug, Copy)]
 pub enum AttributeStability {
-    /// An attribute that is unstable behind a specified feature fagte
+    /// An attribute that is unstable behind a specified feature gate.
     Unstable {
         /// The feature gate, for example `rustc_attrs` for rustc_* attributes.
         gate_name: Symbol,
-        /// Check function to be called during the `PostExpansionVisitor` pass, which will be one of the `Features::*` functions
-        gate_check: fn(&Features) -> bool,
-        /// Notes to be displayed when an attempt is made to use the attribute without its feature gate.
+        /// Check function to be called during the `PostExpansionVisitor` pass, which will be one
+        /// of the `Features::*` functions
+        gate_check: GateFn,
+        /// Notes to be displayed when an attempt is made to use the attribute without its feature
+        /// gate.
         notes: &'static [&'static str],
     },
     /// A stable attribute, can be used on all release channels
@@ -416,15 +418,15 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
 ];
 
 pub fn is_builtin_attr_name(name: Symbol) -> bool {
-    BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
+    BUILTIN_ATTRIBUTE_SET.contains(&name)
 }
 
-pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashSet<Symbol>> = LazyLock::new(|| {
-    let mut map = FxHashSet::default();
+pub static BUILTIN_ATTRIBUTE_SET: LazyLock<FxHashSet<Symbol>> = LazyLock::new(|| {
+    let mut set = FxHashSet::default();
     for attr in BUILTIN_ATTRIBUTES.iter() {
-        if !map.insert(*attr) {
+        if !set.insert(*attr) {
             panic!("duplicate builtin attribute `{}`", attr);
         }
     }
-    map
+    set
 });

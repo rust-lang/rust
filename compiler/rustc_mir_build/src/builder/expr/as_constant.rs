@@ -74,7 +74,11 @@ pub(crate) fn as_constant_inner<'tcx>(
             if tcx.is_type_const(def_id) {
                 let uneval = ty::AliasConst::new(
                     tcx,
-                    ty::AliasConstKind::new_from_def_id(tcx, def_id),
+                    ty::AliasConstKind::new_from_def_id(
+                        tcx,
+                        def_id,
+                        ty::AliasConstInherentArgsKind::Impl,
+                    ),
                     args,
                 );
                 let ct = ty::Const::new_alias(tcx, ty::IsRigid::No, uneval);

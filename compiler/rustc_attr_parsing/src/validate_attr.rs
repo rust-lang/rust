@@ -11,7 +11,7 @@ use rustc_ast::{
 };
 use rustc_attr_ir::AttrPath;
 use rustc_errors::{Applicability, Diagnostic, PResult};
-use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
+use rustc_feature::BUILTIN_ATTRIBUTE_SET;
 use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_parse::parse_in;
 use rustc_session::diagnostics::report_lit_error;
@@ -27,7 +27,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
         AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::DocComment(..) => return,
     }
 
-    let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
+    let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_SET.get(&name));
 
     // Check input tokens for built-in and key-value attributes.
     if let Some(name) = builtin_attr_info {
