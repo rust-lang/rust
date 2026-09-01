@@ -14,6 +14,7 @@ use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
 use crate::delegate::SolverDelegate;
+use crate::solve::eval_ctxt::ForallBinderKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, NoSolution, assembly,
 };
@@ -267,19 +268,24 @@ where
             structural_traits::instantiate_constituent_tys_for_copy_clone_trait(ecx, self_ty)?;
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.enter_forall_with_assumptions(constituent_tys, goal.param_env, |ecx, tys| {
-                ecx.add_goals(
-                    GoalSource::ImplWhereBound,
-                    tys.into_iter().map(|ty| {
-                        goal.with(
-                            cx,
-                            ty::ClauseKind::HostEffect(
-                                goal.predicate.with_replaced_self_ty(cx, ty),
-                            ),
-                        )
-                    }),
-                )
-            })?;
+            ecx.enter_forall_with_assumptions(
+                constituent_tys,
+                goal.param_env,
+                ForallBinderKind::for_self_ty::<I>(self_ty),
+                |ecx, tys| {
+                    ecx.add_goals(
+                        GoalSource::ImplWhereBound,
+                        tys.into_iter().map(|ty| {
+                            goal.with(
+                                cx,
+                                ty::ClauseKind::HostEffect(
+                                    goal.predicate.with_replaced_self_ty(cx, ty),
+                                ),
+                            )
+                        }),
+                    )
+                },
+            )?;
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })

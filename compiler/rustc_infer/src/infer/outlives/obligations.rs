@@ -317,7 +317,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         b, a, category,
                     );
                 }
-                AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
+                TypeOutlives(..) | AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
                     unreachable!()
                 }
             }
