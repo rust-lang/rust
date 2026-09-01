@@ -381,6 +381,44 @@ impl<'tcx> BestObligation<'tcx> {
         })
     }
 
+    /// A `Projection` goal whose alias is a *free* alias -- e.g. the `Ta` in
+    /// `type Ta = impl Marker;` -- normalizes to the alias' value. If normalizing
+    /// that value fails, `normalize_free_alias` returns before reaching
+    /// `evaluate_added_goals_and_make_canonical_response`, so no
+    /// `MakeCanonicalResponse` step is recorded and the goal ends up with *no*
+    /// candidates at all. We'd then report a bare `Ta == u32` mismatch instead of
+    /// the real reason.
+    ///
+    /// Recurse into the alias' value so the opaque -- and in turn its item bounds --
+    /// get a chance to explain the failure.
+    fn detect_error_in_free_alias_value(
+        &mut self,
+        goal: &inspect::InspectGoal<'_, 'tcx>,
+        alias: ty::AliasTerm<'tcx>,
+        term: ty::Term<'tcx>,
+    ) -> ControlFlow<PredicateObligation<'tcx>> {
+        let tcx = goal.infcx().tcx;
+        let ty::AliasTermKind::FreeTy { def_id } = alias.kind else {
+            return ControlFlow::Continue(());
+        };
+
+        let value = tcx.type_of(def_id).instantiate(tcx, alias.args).skip_norm_wip();
+        let ty::Alias(_, inner) = *value.kind() else {
+            return ControlFlow::Continue(());
+        };
+
+        let pred = ty::ProjectionClause { projection_term: inner.into(), term };
+        let obligation =
+            Obligation::new(tcx, self.obligation.cause.clone(), goal.goal().param_env, pred);
+        self.with_derived_obligation(obligation, |this| {
+            goal.infcx().visit_proof_tree_at_depth(
+                goal.goal().with(tcx, pred),
+                goal.depth() + 1,
+                this,
+            )
+        })
+    }
+
     /// If we have no candidates, then it's likely that there is a
     /// non-well-formed alias in the goal.
     fn detect_error_from_empty_candidates(
@@ -398,6 +436,11 @@ impl<'tcx> BestObligation<'tcx> {
             {
                 self.detect_error_in_self_ty_normalization(goal, pred.projection_term.self_ty())?;
                 self.detect_non_well_formed_assoc_item(goal, pred.projection_term)?;
+            }
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)))
+                if matches!(pred.projection_term.kind, ty::AliasTermKind::FreeTy { .. }) =>
+            {
+                self.detect_error_in_free_alias_value(goal, pred.projection_term, pred.term)?;
             }
             Some(_) | None => {}
         }
