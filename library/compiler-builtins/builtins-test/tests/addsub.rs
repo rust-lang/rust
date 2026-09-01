@@ -87,7 +87,7 @@ macro_rules! float_sum {
             #[test]
             fn $fn_add() {
                 use core::ops::{Add, Sub};
-                use compiler_builtins::float::{add::$fn_add, sub::$fn_sub};
+                use imp::{$fn_add, $fn_sub};
                 use compiler_builtins::support::Float;
 
                 fuzz_float_2(N, |x: $f, y: $f| {
@@ -115,6 +115,26 @@ macro_rules! float_sum {
 
 #[cfg(not(x86_no_sse2))]
 mod float_addsub {
+    mod imp {
+        #[cfg(f16_enabled)]
+        pub use compiler_builtins::float::add::__addhf3;
+        pub use compiler_builtins::float::add::{__adddf3, __addsf3};
+        #[cfg(f16_enabled)]
+        pub use compiler_builtins::float::sub::__subhf3;
+        pub use compiler_builtins::float::sub::{__subdf3, __subsf3};
+        #[cfg(f128_enabled)]
+        cfg_select! {
+            any(target_arch = "powerpc", target_arch = "powerpc64") => {
+                pub use compiler_builtins::float::add::__addkf3 as __addtf3;
+                pub use compiler_builtins::float::sub::__subkf3 as __subtf3;
+            }
+            _ => {
+                pub use compiler_builtins::float::add::__addtf3;
+                pub use compiler_builtins::float::sub::__subtf3;
+            }
+        }
+    }
+
     use super::*;
 
     #[cfg(f16_enabled)]
@@ -128,15 +148,7 @@ mod float_addsub {
     }
 
     #[cfg(f128_enabled)]
-    #[cfg(not(x86_no_sse2))]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     float_sum! {
         f128, __addtf3, __subtf3, Quad, not(no_sys_f128);
-    }
-
-    #[cfg(f128_enabled)]
-    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-    float_sum! {
-        f128, __addkf3, __subkf3, Quad, not(no_sys_f128);
     }
 }

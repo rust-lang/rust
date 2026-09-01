@@ -109,7 +109,7 @@ macro_rules! float {
         $(
             #[test]
             fn $fn() {
-                use compiler_builtins::float::div::$fn;
+                use imp::$fn;
                 use compiler_builtins::support::Float;
                 use core::ops::Div;
 
@@ -139,27 +139,30 @@ macro_rules! float {
     };
 }
 
-#[cfg(not(x86_no_sse2))]
 mod float_div {
+    mod imp {
+        pub use compiler_builtins::float::div::{__divdf3, __divsf3};
+        #[cfg(f128_enabled)]
+        cfg_select! {
+            any(target_arch = "powerpc", target_arch = "powerpc64") => {
+                pub use compiler_builtins::float::div::__divkf3 as __divtf3;
+            }
+            _ => {
+                pub use compiler_builtins::float::div::__divtf3;
+            }
+        }
+    }
+
     use super::*;
 
+    // Hard float is inaccurate on i586 but we can still test against apfloat.
     float! {
-        f32, __divsf3, Single, all();
-        f64, __divdf3, Double, all();
+        f32, __divsf3, Single, not(x86_no_sse2);
+        f64, __divdf3, Double, not(x86_no_sse2);
     }
 
     #[cfg(f128_enabled)]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     float! {
-        f128, __divtf3, Quad,
-        // FIXME(llvm): there is a bug in LLVM rt.
-        // See <https://github.com/llvm/llvm-project/issues/91840>.
-        not(any(no_sys_f128, all(target_arch = "aarch64", target_os = "linux")));
-    }
-
-    #[cfg(f128_enabled)]
-    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-    float! {
-        f128, __divkf3, Quad, not(no_sys_f128);
+        f128, __divtf3, Quad, not(no_sys_f128);
     }
 }
