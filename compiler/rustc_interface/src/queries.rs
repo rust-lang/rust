@@ -128,6 +128,18 @@ impl Linker {
         // any more, we can finalize it (which involves renaming it)
         rustc_incremental::finalize_session_directory(sess, incr_comp_session, self.crate_hash);
 
+        // The `HostMetadata` offload pass only writes the kernel manifest.
+        // Codegen was already skipped so there are no files to link.
+        if sess
+            .opts
+            .unstable_opts
+            .offload
+            .iter()
+            .any(|o| matches!(o, config::Offload::HostMetadata(_)))
+        {
+            return;
+        }
+
         if !sess
             .opts
             .output_types

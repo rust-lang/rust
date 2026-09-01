@@ -1679,20 +1679,20 @@ impl<'a, T> CursorMut<'a, T> {
     /// inserted at the start of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn splice_after(&mut self, list: LinkedList<T>) {
+        let Some((splice_head, splice_tail, splice_len)) = list.detach_all_nodes() else {
+            return;
+        };
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let Some((splice_head, splice_tail, splice_len)) = list.detach_all_nodes() else {
-                return;
-            };
             let node_next = match self.current {
                 None => self.list.head,
                 Some(node) => node.as_ref().next,
             };
             self.list.splice_nodes(self.current, node_next, splice_head, splice_tail, splice_len);
-            if self.current.is_none() {
-                // The "ghost" non-element's index has changed.
-                self.index = self.list.len;
-            }
+        }
+        if self.current.is_none() {
+            // The "ghost" non-element's index has changed.
+            self.index = self.list.len;
         }
     }
 
@@ -1702,19 +1702,19 @@ impl<'a, T> CursorMut<'a, T> {
     /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn splice_before(&mut self, list: LinkedList<T>) {
+        let (splice_head, splice_tail, splice_len) = match list.detach_all_nodes() {
+            Some(parts) => parts,
+            _ => return,
+        };
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let (splice_head, splice_tail, splice_len) = match list.detach_all_nodes() {
-                Some(parts) => parts,
-                _ => return,
-            };
             let node_prev = match self.current {
                 None => self.list.tail,
                 Some(node) => node.as_ref().prev,
             };
             self.list.splice_nodes(node_prev, self.current, splice_head, splice_tail, splice_len);
-            self.index += splice_len;
         }
+        self.index += splice_len;
     }
 }
 
@@ -1725,19 +1725,19 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// inserted at the front of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_after(&mut self, item: T) {
+        let spliced_node =
+            Box::into_non_null_with_allocator(Box::new_in(Node::new(item), &self.list.alloc)).0;
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let spliced_node =
-                Box::into_non_null_with_allocator(Box::new_in(Node::new(item), &self.list.alloc)).0;
             let node_next = match self.current {
                 None => self.list.head,
                 Some(node) => node.as_ref().next,
             };
             self.list.splice_nodes(self.current, node_next, spliced_node, spliced_node, 1);
-            if self.current.is_none() {
-                // The "ghost" non-element's index has changed.
-                self.index = self.list.len;
-            }
+        }
+        if self.current.is_none() {
+            // The "ghost" non-element's index has changed.
+            self.index = self.list.len;
         }
     }
 
@@ -1747,17 +1747,17 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_before(&mut self, item: T) {
+        let spliced_node =
+            Box::into_non_null_with_allocator(Box::new_in(Node::new(item), &self.list.alloc)).0;
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let spliced_node =
-                Box::into_non_null_with_allocator(Box::new_in(Node::new(item), &self.list.alloc)).0;
             let node_prev = match self.current {
                 None => self.list.tail,
                 Some(node) => node.as_ref().prev,
             };
             self.list.splice_nodes(node_prev, self.current, spliced_node, spliced_node, 1);
-            self.index += 1;
         }
+        self.index += 1;
     }
 
     /// Removes the current element from the `LinkedList`.
@@ -1799,14 +1799,14 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
 
             unlinked_node.as_mut().prev = None;
             unlinked_node.as_mut().next = None;
-            Some(LinkedList {
-                head: Some(unlinked_node),
-                tail: Some(unlinked_node),
-                len: 1,
-                alloc: self.list.alloc.clone(),
-                marker: PhantomData,
-            })
         }
+        Some(LinkedList {
+            head: Some(unlinked_node),
+            tail: Some(unlinked_node),
+            len: 1,
+            alloc: self.list.alloc.clone(),
+            marker: PhantomData,
+        })
     }
 
     /// Splits the list into two after the current element. This will return a

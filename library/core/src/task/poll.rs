@@ -1,6 +1,5 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
-use crate::convert;
 use crate::ops::{self, ControlFlow};
 
 /// Indicates whether a value is available or if the current task has been
@@ -233,7 +232,7 @@ const impl<T> From<T> for Poll<T> {
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 impl<T, E> ops::Try for Poll<Result<T, E>> {
     type Output = Poll<T>;
-    type Residual = Result<convert::Infallible, E>;
+    type Residual = Result<!, E>;
 
     #[inline]
     fn from_output(c: Self::Output) -> Self {
@@ -251,9 +250,9 @@ impl<T, E> ops::Try for Poll<Result<T, E>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Poll<Result<T, F>> {
+impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Poll<Result<T, F>> {
     #[inline]
-    fn from_residual(x: Result<convert::Infallible, E>) -> Self {
+    fn from_residual(x: Result<!, E>) -> Self {
         match x {
             Err(e) => Poll::Ready(Err(From::from(e))),
         }
@@ -263,7 +262,7 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Pol
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
     type Output = Poll<Option<T>>;
-    type Residual = Result<convert::Infallible, E>;
+    type Residual = Result<!, E>;
 
     #[inline]
     fn from_output(c: Self::Output) -> Self {
@@ -282,11 +281,9 @@ impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>>
-    for Poll<Option<Result<T, F>>>
-{
+impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Poll<Option<Result<T, F>>> {
     #[inline]
-    fn from_residual(x: Result<convert::Infallible, E>) -> Self {
+    fn from_residual(x: Result<!, E>) -> Self {
         match x {
             Err(e) => Poll::Ready(Some(Err(From::from(e)))),
         }

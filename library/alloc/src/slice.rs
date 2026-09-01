@@ -474,12 +474,10 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
     pub const fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+        let len = self.len();
+        let (b, alloc) = Box::into_raw_with_allocator(self);
         // ignore-tidy-undocumented-unsafe
-        unsafe {
-            let len = self.len();
-            let (b, alloc) = Box::into_raw_with_allocator(self);
-            Vec::from_raw_parts_in(b as *mut T, len, len, alloc)
-        }
+        unsafe { Vec::from_raw_parts_in(b as *mut T, len, len, alloc) }
     }
 
     /// Creates a vector by copying a slice `n` times.

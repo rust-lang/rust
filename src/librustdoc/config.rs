@@ -10,8 +10,9 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_lint::Level;
 use rustc_session::config::{
     self, CodegenOptions, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    OptionsTargetModifiers, OutFileName, Sysroot, UnstableOptions, get_cmd_lint_options,
-    nightly_options, parse_crate_types_from_list, parse_externs, parse_target_triple,
+    OptionsTargetModifiers, OutFileName, PrintCategory, PrintRequest, Sysroot, UnstableOptions,
+    collect_print_requests, get_cmd_lint_options, nightly_options, parse_crate_types_from_list,
+    parse_externs, parse_target_triple,
 };
 use rustc_session::search_paths::SearchPath;
 use rustc_session::{EarlyDiagCtxt, getopts};
@@ -105,6 +106,8 @@ pub(crate) struct Options {
     pub(crate) describe_lints: bool,
     /// What level to cap lints at.
     pub(crate) lint_cap: Option<Level>,
+    /// Print requests to hand to the compiler.
+    pub(crate) prints: Vec<PrintRequest>,
 
     // Options specific to running doctests
     /// Whether we should run doctests instead of generating docs.
@@ -198,6 +201,7 @@ impl fmt::Debug for Options {
             .field("lint_opts", &self.lint_opts)
             .field("describe_lints", &self.describe_lints)
             .field("lint_cap", &self.lint_cap)
+            .field("prints", &self.prints)
             .field("should_test", &self.should_test)
             .field("test_args", &self.test_args)
             .field("test_run_directory", &self.test_run_directory)
@@ -336,7 +340,6 @@ impl FromStr for EmitType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            // modern choices
             "html-static-files" => Ok(Self::HtmlStaticFiles),
             "html-non-static-files" => Ok(Self::HtmlNonStaticFiles),
             "dep-info" => Ok(Self::DepInfo(None)),
@@ -409,7 +412,7 @@ impl Options {
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
         let mut collected_options = Default::default();
-        let codegen_options = CodegenOptions::build(early_dcx, matches, &mut collected_options);
+        let mut codegen_options = CodegenOptions::build(early_dcx, matches, &mut collected_options);
         let unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
 
         let remap_path_prefix = match parse_remap_path_prefix(matches) {
@@ -570,6 +573,14 @@ impl Options {
             Ok(ex) => ex,
             Err(err) => dcx.fatal(err),
         };
+
+        let prints = collect_print_requests(
+            early_dcx,
+            &mut codegen_options,
+            &unstable_opts,
+            matches,
+            &[PrintCategory::Target, PrintCategory::Crate],
+        );
 
         let mut parts_out_dir =
             match matches.opt_str("write-doc-meta-dir").map(PathToParts::from_flag).transpose() {
@@ -906,6 +917,7 @@ impl Options {
             lint_opts,
             describe_lints,
             lint_cap,
+            prints,
             should_test,
             test_args,
             show_coverage,

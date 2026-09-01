@@ -1574,9 +1574,9 @@ impl<'a, T> Hole<'a, T> {
     unsafe fn move_to(&mut self, index: usize) {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
+        let ptr = self.data.as_mut_ptr();
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let ptr = self.data.as_mut_ptr();
             let index_ptr: *const _ = ptr.add(index);
             let hole_ptr = ptr.add(self.pos);
             ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
@@ -1589,9 +1589,9 @@ impl<T> Drop for Hole<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // fill the hole again
+        let pos = self.pos;
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let pos = self.pos;
             ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut(pos), 1);
         }
     }

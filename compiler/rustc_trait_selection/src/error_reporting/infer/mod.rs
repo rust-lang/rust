@@ -1374,7 +1374,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (ty::Alias(kind1, alias1), ty::Alias(kind2, alias2)) if kind1 == kind2 => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 match (alias1.kind, alias2.kind) {
-                    (ty::Projection { def_id: def_id1 }, ty::Projection { def_id: def_id2 }) => {
+                    (ty::Projection { def_id: def_id1 }, ty::Projection { def_id: def_id2 })
+                        // RPITIT projections use anonymous associated type and have no item name,
+                        // so it will be ICE from call of `tcx.item_name(def_id)` below, issue #161915.
+                        if !self.tcx.is_impl_trait_in_trait(def_id1)
+                            && !self.tcx.is_impl_trait_in_trait(def_id2) =>
+                    {
                         // `<Type as Trait>::Name<args>`
                         values.0.push_normal("<");
                         values.1.push_normal("<");

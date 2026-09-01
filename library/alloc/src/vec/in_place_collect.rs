@@ -340,12 +340,12 @@ fn write_in_place_with_drop<T>(
     src_end: *const T,
 ) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {
     move |mut sink, item| {
+        // the InPlaceIterable contract cannot be verified precisely here since
+        // try_fold has an exclusive reference to the source pointer
+        // all we can do is check if it's still in range
+        debug_assert!(sink.dst as *const _ <= src_end, "InPlaceIterable contract violation");
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            // the InPlaceIterable contract cannot be verified precisely here since
-            // try_fold has an exclusive reference to the source pointer
-            // all we can do is check if it's still in range
-            debug_assert!(sink.dst as *const _ <= src_end, "InPlaceIterable contract violation");
             ptr::write(sink.dst, item);
             // Since this executes user code which can panic we have to bump the pointer
             // after each step.

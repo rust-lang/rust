@@ -1455,6 +1455,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[doc(alias = "retain_front")]
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
+        if len >= self.len {
+            return;
+        }
+
+        let (front, back) = self.as_mut_slices();
+
         // SAFETY:
         // * Any slice passed to `drop_in_place` is valid; the second case has
         //   `len <= front.len()` and returning on `len > self.len()` ensures
@@ -1462,11 +1468,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // * The head of the VecDeque is moved before calling `drop_in_place`,
         //   so no value is dropped twice if `drop_in_place` panics
         unsafe {
-            if len >= self.len {
-                return;
-            }
-
-            let (front, back) = self.as_mut_slices();
             if len > front.len() {
                 let begin = len - front.len();
                 let drop_back = back.get_unchecked_mut(begin..) as *mut _;
@@ -1508,14 +1509,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[doc(alias = "truncate_front")]
     #[stable(feature = "vec_deque_truncate_front", since = "1.99.0")]
     pub fn retain_back(&mut self, len: usize) {
+        if len >= self.len {
+            // No action is taken
+            return;
+        }
+
+        let (front, back) = self.as_mut_slices();
+
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            if len >= self.len {
-                // No action is taken
-                return;
-            }
-
-            let (front, back) = self.as_mut_slices();
             if len > back.len() {
                 // The 'back' slice remains unchanged.
                 // front.len() + back.len() == self.len, so 'end' is non-negative
@@ -2773,9 +2775,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
 
         self.reserve(other.len);
+        let (left, right) = other.as_slices();
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let (left, right) = other.as_slices();
             self.copy_slice(self.to_wrapped_index(self.len), left);
             // no overflow, because self.capacity() >= old_cap + left.len() >= self.len + left.len()
             self.copy_slice(self.to_wrapped_index(self.len + left.len()), right);
