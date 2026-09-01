@@ -44,7 +44,7 @@
 //! For more details, see the [rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/query.html).
 
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
 use rustc_abi as abi;
@@ -2074,8 +2074,7 @@ rustc_queries! {
     }
 
     /// Gets the paths where the crate came from in the file system.
-    query crate_extern_paths(_: CrateNum) -> &'tcx Vec<PathBuf> {
-        arena_cache
+    query crate_extern_paths(_: CrateNum) -> &'tcx [&'tcx Path] {
         eval_always
         desc { "looking up the paths for extern crates" }
         separate_provide_extern

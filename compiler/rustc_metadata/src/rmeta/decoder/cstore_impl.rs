@@ -418,7 +418,9 @@ provide! { tcx, def_id, other, cdata,
     exported_non_generic_symbols => { cdata.exported_non_generic_symbols(tcx) }
     exported_generic_symbols => { cdata.exported_generic_symbols(tcx) }
 
-    crate_extern_paths => { cdata.source().paths().cloned().collect() }
+    crate_extern_paths => {
+        tcx.arena.alloc_from_iter(cdata.source().paths().map(|p| tcx.arena.alloc_path(p)))
+    }
     expn_that_defined => { cdata.get_expn_that_defined(tcx, def_id.index) }
     default_field => { cdata.get_default_field(tcx, def_id.index) }
     is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
