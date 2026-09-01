@@ -2542,20 +2542,33 @@ pub fn addr_eq<T: PointeeSized, U: PointeeSized>(p: *const T, q: *const U) -> bo
 /// This is the same as `f == g`, but using this function makes clear that the potentially
 /// surprising semantics of function pointer comparison are involved.
 ///
-/// There are **very few guarantees** about how functions are compiled and they have no intrinsic
+/// There are **basically no guarantees** about how functions are compiled as they have no intrinsic
 /// “identity”; in particular, this comparison:
 ///
-/// * May return `true` unexpectedly, in cases where functions are equivalent.
+/// * May return `true` unexpectedly, even in cases where functions are not logically equivalent,
+///   as long as they compile to the same machine code.
 ///
 ///   For example, the following program is likely (but not guaranteed) to print `(true, true)`
 ///   when compiled with optimization:
 ///
 ///   ```
+///   use std::hint::assert_unchecked;
+///
 ///   let f: fn(i32) -> i32 = |x| x;
-///   let g: fn(i32) -> i32 = |x| x + 0;  // different closure, different body
-///   let h: fn(u32) -> u32 = |x| x + 0;  // different signature too
-///   dbg!(std::ptr::fn_addr_eq(f, g), std::ptr::fn_addr_eq(f, h)); // not guaranteed to be equal
+///   let g: fn(u32) -> u32 = |x| x + 0;  // different type, different body
+///   let h: unsafe fn(i32) -> i32 = |x| unsafe { assert_unchecked(x != 0); x };  // different unsafe preconditions
+///   // These three functions are allowed but not guaranteed to compare equal.
+///   dbg!(std::ptr::fn_addr_eq(f, g), std::ptr::fn_addr_eq(f, h));
 ///   ```
+///
+///   In other words, functions that compare equal can have different behavior! Even if
+///   `fn_addr_eq(f, h)` is true, it is still undefined behavior to call `h(0)`, while `f(0)` is
+///   safe to call.
+///
+///   The explanation for this is that function pointers have [provenance][crate::ptr#provenance].
+///   If functions have the same assembly and get merged, their provenance decides which variant of
+///   the function will be called. `f` and `h` therefore end up with the same address but different
+///   provenance, and `fn_addr_eq` only compares the address.
 ///
 /// * May return `false` in any case.
 ///
@@ -2563,26 +2576,12 @@ pub fn addr_eq<T: PointeeSized, U: PointeeSized>(p: *const T, q: *const U) -> bo
 ///   (From an implementation perspective, this is possible because functions may sometimes be
 ///   processed more than once by the compiler, resulting in duplicate machine code.)
 ///
-/// Despite these false positives and false negatives, this comparison can still be useful.
-/// Specifically, if
-///
-/// * `T` is the same type as `U`, `T` is a [subtype] of `U`, or `U` is a [subtype] of `T`, and
-/// * `ptr::fn_addr_eq(f, g)` returns true,
-///
-/// then calling `f` and calling `g` will be equivalent.
-///
-///
-/// # Examples
-///
-/// ```
-/// use std::ptr;
-///
-/// fn a() { println!("a"); }
-/// fn b() { println!("b"); }
-/// assert!(!ptr::fn_addr_eq(a as fn(), b as fn()));
-/// ```
-///
-/// [subtype]: https://doc.rust-lang.org/reference/subtyping.html
+/// These limitations imply that comparing function pointers (via this function or via `==`) is only
+/// useful in extremely niche circumstances. For instance, if a library maintains a set of
+/// callbacks, and doesn't guarantee which of them are actually called (i.e., callbacks can be
+/// spuriously skipped), then it can be legitimate to deduplicate callbacks based on `fn_addr_eq`.
+/// This can never introduce undefined behavior because it only skips executing some of the
+/// registered callbacks.
 #[stable(feature = "ptr_fn_addr_eq", since = "1.85.0")]
 #[inline(always)]
 #[must_use = "function pointer comparison produces a value"]
