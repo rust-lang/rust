@@ -1488,8 +1488,11 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// This method is idempotent, but it not typically not invoked
     /// except during the writeback phase.
-    pub fn fully_resolve<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> FixupResult<T> {
-        match resolve::fully_resolve(self, value) {
+    pub fn deeply_resolve_via_region_graph<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        value: T,
+    ) -> FixupResult<T> {
+        match resolve::deeply_resolve_via_region_graph(self, value) {
             Ok(value) => {
                 if value.has_non_region_infer() {
                     bug!("`{value:?}` is not fully resolved");
