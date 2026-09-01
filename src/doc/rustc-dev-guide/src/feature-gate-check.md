@@ -100,7 +100,7 @@ Beyond syntax, rustc also gates attributes and `cfg` options.
 
 ### Built-in attributes
 
-- [`rustc_ast_passes::check_attribute`] inspects attributes against `BUILTIN_ATTRIBUTE_MAP`.
+- [`rustc_ast_passes::check_attribute`] inspects attributes against `BUILTIN_ATTRIBUTE_SET`.
 - If the attribute is `AttributeGate::Gated` and the feature isn’t enabled,
   `feature_err` is emitted.
 
