@@ -40,4 +40,10 @@ impl StableTrait for fn() -> ! {}
 #[unstable(feature = "l", issue = "none")]
 impl StableTrait for fn() -> UnstableType {}
 
+#[unstable(feature = "m", issue = "none")]
+impl StableTrait for fn(!) {}
+
+#[unstable(feature = "n", issue = "none")]
+impl StableTrait for fn(UnstableType) {}
+
 fn main() {}
