@@ -5,6 +5,7 @@ use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
+use rustc_middle::bug;
 use rustc_middle::ty::{self, FloatTy};
 use std::fmt;
 
@@ -93,6 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 LitFloatType::Suffixed(FloatTy::F32) => Some("f32"),
                 LitFloatType::Suffixed(FloatTy::F64) => Some("f64"),
                 LitFloatType::Suffixed(FloatTy::F128) => Some("f128"),
+                LitFloatType::Suffixed(FloatTy::PpcF128) => bug!("there are no ppcf128 literals"),
                 LitFloatType::Unsuffixed => None,
             };
             let (is_whole, is_inf, mut float_str) = match fty {
@@ -109,6 +111,9 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                     let value = sym_str.parse::<f64>().unwrap();
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
+                },
+                FloatTy::PpcF128 => {
+                    bug!("there are no ppcf128 literals")
                 },
             };
 
@@ -182,6 +187,7 @@ fn max_digits(fty: FloatTy) -> u32 {
         FloatTy::F32 => f32::DIGITS,
         FloatTy::F64 => f64::DIGITS,
         FloatTy::F128 => f128::DIGITS,
+        FloatTy::PpcF128 => bug!("there are no ppcf128 literals"),
     }
 }
 

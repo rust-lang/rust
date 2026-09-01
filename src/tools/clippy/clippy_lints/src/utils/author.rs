@@ -393,6 +393,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                             FloatTy::F32 => "F32",
                             FloatTy::F64 => "F64",
                             FloatTy::F128 => "F128",
+                            FloatTy::PpcF128 => "PpcF128",
                         };
                         format!("LitFloatType::Suffixed(FloatTy::{t})")
                     },

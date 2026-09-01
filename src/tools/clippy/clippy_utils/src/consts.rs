@@ -428,6 +428,7 @@ pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
             FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
             FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
             FloatTy::F128 => Constant::parse_f128(is.as_str()),
+            FloatTy::PpcF128 => bug!("no ppcf128 literals"),
         },
         LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind() {
             ty::Float(FloatTy::F16) => Constant::parse_f16(is.as_str()),
@@ -991,8 +992,9 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     let l = sext(self.tcx, l, ity);
                     let r = sext(self.tcx, r, ity);
 
-                    // Using / or %, where the left-hand argument is the smallest integer of a signed integer type and
-                    // the right-hand argument is -1 always panics, even with overflow-checks disabled
+                    // Using / or %, where the left-hand argument is the smallest integer of a
+                    // signed integer type and the right-hand argument is -1
+                    // always panics, even with overflow-checks disabled
                     if let BinOpKind::Div | BinOpKind::Rem = op
                         && l == ty_min_value
                         && r == -1
@@ -1106,10 +1108,14 @@ pub fn mir_to_const<'tcx>(tcx: TyCtxt<'tcx>, val: ConstValue, ty: Ty<'tcx>) -> O
         (ConstValue::Scalar(Scalar::Int(int)), _) => match ty.kind() {
             ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
             ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.to_bits(int.size()))),
-            ty::Float(FloatTy::F16) => Some(Constant::F16(int.into())),
-            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(int.into()))),
-            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(int.into()))),
-            ty::Float(FloatTy::F128) => Some(Constant::F128(int.into())),
+
+            ty::Float(float) => match float {
+                FloatTy::F16 => Some(Constant::F16(int.into())),
+                FloatTy::F32 => Some(Constant::F32(f32::from_bits(int.into()))),
+                FloatTy::F64 => Some(Constant::F64(f64::from_bits(int.into()))),
+                FloatTy::F128 => Some(Constant::F128(int.into())),
+                FloatTy::PpcF128 => None,
+            },
             ty::RawPtr(_, _) => Some(Constant::RawPtr(int.to_bits(int.size()))),
             _ => None,
         },
@@ -1133,6 +1139,7 @@ pub fn mir_to_const<'tcx>(tcx: TyCtxt<'tcx>, val: ConstValue, ty: Ty<'tcx>) -> O
                     FloatTy::F32 => Constant::F32(f32::from_bits(val.to_u32().discard_err()?)),
                     FloatTy::F64 => Constant::F64(f64::from_bits(val.to_u64().discard_err()?)),
                     FloatTy::F128 => Constant::F128(val.to_u128().discard_err()?),
+                    FloatTy::PpcF128 => return None,
                 });
             }
             Some(Constant::Vec(res))

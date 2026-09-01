@@ -5,6 +5,7 @@ use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::attrs::RustcVersion;
 use rustc_hir::{HirId, Lit};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
+use rustc_middle::bug;
 use rustc_span::{Span, symbol};
 use std::f64::consts as f64;
 
@@ -84,6 +85,7 @@ impl LateLintPass<'_> for ApproxConstant {
                 FloatTy::F32 => self.check_known_consts(cx, lit.span, s, "f32"),
                 FloatTy::F64 => self.check_known_consts(cx, lit.span, s, "f64"),
                 FloatTy::F128 => self.check_known_consts(cx, lit.span, s, "f128"),
+                FloatTy::PpcF128 => bug!("there are no ppcf128 literals"),
             },
             // FIXME(f16_f128): add `f16` and `f128` when these types become stable.
             LitKind::Float(s, LitFloatType::Unsuffixed) => self.check_known_consts(cx, lit.span, s, "f{32, 64}"),
