@@ -37,7 +37,7 @@ use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
 use crate::callee::SplatLoweringInfo;
 use crate::coercion::CoerceMany;
-use crate::diagnostics::{ExprParenthesesNeeded, SuggestPtrNullMut};
+use crate::diagnostics::{ExprParenthesesNeeded, SuggestPtrNullMut, SuggestRawMut, SuggestRefMut};
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::gather_locals::Declaration;
 use crate::inline_asm::InlineAsmCtxt;
@@ -982,23 +982,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit()
     }
 
-    fn suggest_ptr_null_mut(
+    fn suggest_mut_addr(
         &self,
         expected_ty: Ty<'tcx>,
         provided_ty: Ty<'tcx>,
         arg: &hir::Expr<'tcx>,
         err: &mut Diag<'_>,
     ) {
-        if let ty::RawPtr(_, hir::Mutability::Mut) = expected_ty.kind()
-            && let ty::RawPtr(_, hir::Mutability::Not) = provided_ty.kind()
-            && let hir::ExprKind::Call(callee, _) = arg.kind
-            && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = callee.kind
-            && let Res::Def(_, def_id) = path.res
-            && self.tcx.get_diagnostic_item(sym::ptr_null) == Some(def_id)
-        {
+        match (expected_ty.kind(), provided_ty.kind(), arg.kind) {
             // The user provided `ptr::null()`, but the function expects
             // `ptr::null_mut()`.
-            err.subdiagnostic(SuggestPtrNullMut { span: arg.span });
+            (
+                ty::RawPtr(_, hir::Mutability::Mut),
+                ty::RawPtr(_, hir::Mutability::Not),
+                hir::ExprKind::Call(callee, _),
+            ) if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = callee.kind
+                && let Res::Def(_, def_id) = path.res
+                && self.tcx.get_diagnostic_item(sym::ptr_null) == Some(def_id) =>
+            {
+                err.subdiagnostic(SuggestPtrNullMut { span: arg.span });
+            }
+            // &mut T expected, &T or *const/mut T found
+            // suggestion: replace `&` or `&raw const/mut` with `&mut`
+            (
+                ty::Ref(_, expected_ty, hir::Mutability::Mut),
+                ty::Ref(_, provided_ty, hir::Mutability::Not),
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, expr),
+            )
+            | (
+                ty::Ref(_, expected_ty, hir::Mutability::Mut),
+                ty::RawPtr(provided_ty, _),
+                hir::ExprKind::AddrOf(hir::BorrowKind::Raw, _, expr),
+            ) if expected_ty == provided_ty => {
+                let span = arg.span.until(expr.span);
+                err.subdiagnostic(SuggestRefMut { span });
+            }
+            // *mut T expected, *const T found
+            // suggestion: replace `&raw const` with `&raw mut`
+            (
+                ty::RawPtr(expected_ty, hir::Mutability::Mut),
+                ty::RawPtr(provided_ty, hir::Mutability::Not),
+                hir::ExprKind::AddrOf(hir::BorrowKind::Raw, hir::Mutability::Not, expr),
+            ) if expected_ty == provided_ty => {
+                let span = arg.span.until(expr.span);
+                err.subdiagnostic(SuggestRawMut { span });
+            }
+            // *mut T expected, &T found
+            // suggestion: replace `&` `&mut`
+            (
+                ty::RawPtr(expected_ty, hir::Mutability::Mut),
+                ty::Ref(_, provided_ty, hir::Mutability::Not),
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, expr),
+            ) if expected_ty == provided_ty => {
+                let span = arg.span.until(expr.span);
+                err.subdiagnostic(SuggestRefMut { span });
+            }
+            _ => {}
         }
     }
 
@@ -2491,7 +2530,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                 );
             }
 
-            self.suggest_ptr_null_mut(
+            self.suggest_mut_addr(
                 expected_ty,
                 provided_ty,
                 self.provided_args[provided_idx],
