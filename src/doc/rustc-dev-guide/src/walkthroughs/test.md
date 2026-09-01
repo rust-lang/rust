@@ -39,8 +39,10 @@ $ ./x build library
 Here, we use `compiler` as the default profile, since the bug we're fixing is related to the compiler.
 If you're adding a unit test to the standard library, you'd use `./x setup library`.
 
-This will also suggest setting up a `.git/hooks/pre-push` check.
+This will also suggest setting up a [`.git/hooks/pre-push` check][pre-push].
 This is optional, but recommended.
+
+[pre-push]: ../building/suggested.md#installing-a-pre-push-hook
 
 We also started a build in the background with `./x build library`.
 Rust unfortunately takes quite a while to build,
