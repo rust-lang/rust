@@ -1,5 +1,6 @@
 //@ compile-flags:--test
-//@ should-fail
+//@ failure-status: 101
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 #![doc(test(attr(deny(warnings))))]
 

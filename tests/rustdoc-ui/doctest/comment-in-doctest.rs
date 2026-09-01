@@ -1,4 +1,6 @@
 //@ compile-flags:--test
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ check-pass
 
 // comments, both doc comments and regular ones, used to trick rustdoc's doctest parser into
 // thinking that everything after it was part of the regular program. combined with the librustc_ast

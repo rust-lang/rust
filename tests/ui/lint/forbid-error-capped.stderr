@@ -1,5 +1,5 @@
 warning: allow(unused) incompatible with previous forbid
-  --> $DIR/forbid-error-capped.rs:8:10
+  --> $DIR/forbid-error-capped.rs:7:10
    |
 LL | #![forbid(warnings)]
    |           -------- `forbid` level set here
@@ -14,7 +14,7 @@ warning: 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
 warning: allow(unused) incompatible with previous forbid
-  --> $DIR/forbid-error-capped.rs:8:10
+  --> $DIR/forbid-error-capped.rs:7:10
    |
 LL | #![forbid(warnings)]
    |           -------- `forbid` level set here
