@@ -57,7 +57,13 @@ pub enum PassMode {
     /// Pass the argument after casting it.
     Cast { pad_i32_count: u8, cast: Opaque },
     /// Pass the argument indirectly via a hidden pointer.
-    Indirect { attrs: Opaque, meta_attrs: Opaque, on_stack: bool },
+    Indirect {
+        attrs: Opaque,
+        meta_attrs: Opaque,
+        address_space: Option<AddressSpace>,
+        on_stack: bool,
+        by_ref: bool,
+    },
 }
 
 /// The layout of a type, alongside the type itself.

@@ -478,6 +478,11 @@ extern "C" LLVMAttributeRef LLVMRustCreateByValAttr(LLVMContextRef C,
   return wrap(Attribute::getWithByValType(*unwrap(C), unwrap(Ty)));
 }
 
+extern "C" LLVMAttributeRef LLVMRustCreateByRefAttr(LLVMContextRef C,
+                                                    LLVMTypeRef Ty) {
+  return wrap(Attribute::getWithByRefType(*unwrap(C), unwrap(Ty)));
+}
+
 extern "C" LLVMAttributeRef LLVMRustCreateStructRetAttr(LLVMContextRef C,
                                                         LLVMTypeRef Ty) {
   return wrap(Attribute::getWithStructRetType(*unwrap(C), unwrap(Ty)));

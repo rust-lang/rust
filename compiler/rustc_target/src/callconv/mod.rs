@@ -63,6 +63,8 @@ pub enum PassMode {
     /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
     /// argument. (This is the only mode that supports unsized arguments.)
     ///
+    /// `address_space` specifies if the pointer is in a special address space or the default one.
+    ///
     /// `on_stack` defines that the value should be passed at a fixed stack offset in accordance to
     /// the ABI rather than passed using a pointer. This corresponds to the `byval` LLVM argument
     /// attribute. The `byval` argument will use a byte array with the same size as the Rust type
@@ -72,7 +74,19 @@ pub enum PassMode {
     /// match the Rust type's alignment; see documentation of `pass_by_stack_offset` for more info.
     ///
     /// `on_stack` cannot be true for unsized arguments, i.e., when `meta_attrs` is `Some`.
-    Indirect { attrs: ArgAttributes, meta_attrs: Option<ArgAttributes>, on_stack: bool },
+    ///
+    /// `by_ref` defines that the value is passed in by pointer. It behaves like `on_stack` except
+    /// that the pointer does not necessarily point to the stack, no extra copy is made, and the
+    /// passed argument should not be modified. This corresponds to the `byref` LLVM argument
+    /// attribute.
+    /// Only one or none of `on_stack` or `by_ref` can be set at a time.
+    Indirect {
+        attrs: ArgAttributes,
+        meta_attrs: Option<ArgAttributes>,
+        address_space: Option<AddressSpace>,
+        on_stack: bool,
+        by_ref: bool,
+    },
 }
 
 impl PassMode {
@@ -89,13 +103,37 @@ impl PassMode {
                 PassMode::Cast { cast: c2, pad_i32_count: pad2 },
             ) => c1.eq_abi(c2) && pad1 == pad2,
             (
-                PassMode::Indirect { attrs: a1, meta_attrs: None, on_stack: s1 },
-                PassMode::Indirect { attrs: a2, meta_attrs: None, on_stack: s2 },
-            ) => a1.eq_abi(a2) && s1 == s2,
+                PassMode::Indirect {
+                    attrs: a1,
+                    meta_attrs: None,
+                    address_space: as1,
+                    on_stack: s1,
+                    by_ref: r1,
+                },
+                PassMode::Indirect {
+                    attrs: a2,
+                    meta_attrs: None,
+                    address_space: as2,
+                    on_stack: s2,
+                    by_ref: r2,
+                },
+            ) => a1.eq_abi(a2) && as1 == as2 && s1 == s2 && r1 == r2,
             (
-                PassMode::Indirect { attrs: a1, meta_attrs: Some(e1), on_stack: s1 },
-                PassMode::Indirect { attrs: a2, meta_attrs: Some(e2), on_stack: s2 },
-            ) => a1.eq_abi(a2) && e1.eq_abi(e2) && s1 == s2,
+                PassMode::Indirect {
+                    attrs: a1,
+                    meta_attrs: Some(e1),
+                    address_space: as1,
+                    on_stack: s1,
+                    by_ref: r1,
+                },
+                PassMode::Indirect {
+                    attrs: a2,
+                    meta_attrs: Some(e2),
+                    address_space: as2,
+                    on_stack: s2,
+                    by_ref: r2,
+                },
+            ) => a1.eq_abi(a2) && as1 == as2 && e1.eq_abi(e2) && s1 == s2 && r1 == r2,
             _ => false,
         }
     }
@@ -424,7 +462,13 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
         let meta_attrs = layout.is_unsized().then_some(ArgAttributes::new());
 
-        PassMode::Indirect { attrs, meta_attrs, on_stack: false }
+        PassMode::Indirect {
+            attrs,
+            meta_attrs,
+            address_space: None,
+            on_stack: false,
+            by_ref: false,
+        }
     }
 
     /// Pass this argument indirectly, by passing a (thin or wide) pointer to the argument instead.
@@ -435,10 +479,29 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {
                 self.mode = Self::indirect_pass_mode(&self.layout);
             }
-            PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
+            PassMode::Indirect {
+                attrs: _,
+                meta_attrs: _,
+                address_space: _,
+                on_stack: false,
+                by_ref: false,
+            } => {
                 // already indirect
             }
             _ => panic!("Tried to make {:?} indirect", self.mode),
+        }
+    }
+
+    /// Pass this argument indirectly, by passing a (thin or wide) pointer to the argument instead.
+    /// This is valid for both sized and unsized arguments.
+    #[track_caller]
+    pub fn make_indirect_addrspace(&mut self, addrspace: AddressSpace) {
+        self.make_indirect();
+        match self.mode {
+            PassMode::Indirect { ref mut address_space, .. } => {
+                *address_space = Some(addrspace);
+            }
+            _ => unreachable!(),
         }
     }
 
@@ -450,7 +513,13 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Ignore => {
                 self.mode = Self::indirect_pass_mode(&self.layout);
             }
-            PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
+            PassMode::Indirect {
+                attrs: _,
+                meta_attrs: _,
+                address_space: _,
+                on_stack: false,
+                by_ref: false,
+            } => {
                 // already indirect
             }
             _ => panic!("Tried to make {:?} indirect (expected `PassMode::Ignore`)", self.mode),
@@ -477,7 +546,13 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         assert!(!self.layout.is_unsized(), "used byval ABI for unsized layout");
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect { ref mut attrs, meta_attrs: _, ref mut on_stack } => {
+            PassMode::Indirect {
+                ref mut attrs,
+                meta_attrs: _,
+                address_space: _,
+                ref mut on_stack,
+                by_ref: _,
+            } => {
                 *on_stack = true;
 
                 // Some platforms, like 32-bit x86, change the alignment of the type when passing
@@ -487,6 +562,28 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
                     debug_assert!(byval_align >= Align::from_bytes(4).unwrap());
                     attrs.pointee_align = Some(byval_align);
                 }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    /// Pass this argument indirectly.
+    /// This corresponds to the `byref` LLVM argument attribute.
+    ///
+    /// `address_space` specifies the address space of the passed pointer.
+    pub fn pass_by_ref(&mut self, addrspace: Option<AddressSpace>) {
+        assert!(!self.layout.is_unsized(), "used byref ABI for unsized layout");
+        self.make_indirect();
+        match self.mode {
+            PassMode::Indirect {
+                attrs: _,
+                meta_attrs: _,
+                ref mut address_space,
+                on_stack: _,
+                ref mut by_ref,
+            } => {
+                *by_ref = true;
+                *address_space = addrspace;
             }
             _ => unreachable!(),
         }
@@ -545,11 +642,29 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_sized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ })
+        matches!(
+            self.mode,
+            PassMode::Indirect {
+                attrs: _,
+                meta_attrs: None,
+                address_space: _,
+                on_stack: _,
+                by_ref: _
+            }
+        )
     }
 
     pub fn is_unsized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ })
+        matches!(
+            self.mode,
+            PassMode::Indirect {
+                attrs: _,
+                meta_attrs: Some(_),
+                address_space: _,
+                on_stack: _,
+                by_ref: _
+            }
+        )
     }
 
     pub fn is_ignore(&self) -> bool {
@@ -949,7 +1064,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(ArgAbi<'_, usize>, 56);
-    static_assert_size!(FnAbi<'_, usize>, 80);
+    static_assert_size!(ArgAbi<'_, usize>, 64);
+    static_assert_size!(FnAbi<'_, usize>, 88);
     // tidy-alphabetical-end
 }
