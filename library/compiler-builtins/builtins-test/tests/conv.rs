@@ -314,6 +314,13 @@ mod extend {
         pub use compiler_builtins::float::extend::__extendsfdf2;
         #[cfg(f16_enabled)]
         pub use compiler_builtins::float::extend::{__extendhfdf2, __extendhfsf2, __gnu_h2f_ieee};
+
+        #[cfg(f16_enabled)]
+        pub fn check_gnu_h2f_ieee(x: f16) -> f32 {
+            f32::from_bits(compiler_builtins::float::extend::__gnu_h2f_ieee(
+                x.to_bits(),
+            ))
+        }
     }
 
     use super::*;
@@ -322,7 +329,7 @@ mod extend {
     f_to_f! {
         extend,
         f16 => f32, Half => Single, __extendhfsf2, not(no_sys_f16);
-        f16 => f32, Half => Single, __gnu_h2f_ieee, not(no_sys_f16);
+        f16 => f32, Half => Single, check_gnu_h2f_ieee, not(no_sys_f16);
         f16 => f64, Half => Double, __extendhfdf2, not(no_sys_f16_f64_convert);
     }
 
@@ -366,6 +373,11 @@ mod trunc {
         pub use compiler_builtins::float::trunc::__truncdfsf2;
         #[cfg(f16_enabled)]
         pub use compiler_builtins::float::trunc::{__gnu_f2h_ieee, __truncdfhf2, __truncsfhf2};
+
+        #[cfg(f16_enabled)]
+        pub fn check_gnu_f2h_ieee(x: f32) -> f16 {
+            f16::from_bits(compiler_builtins::float::trunc::__gnu_f2h_ieee(x.to_bits()))
+        }
     }
 
     use super::*;
@@ -374,7 +386,7 @@ mod trunc {
     f_to_f! {
         trunc,
         f32 => f16, Single => Half, __truncsfhf2, not(no_sys_f16);
-        f32 => f16, Single => Half, __gnu_f2h_ieee, not(no_sys_f16);
+        f32 => f16, Single => Half, check_gnu_f2h_ieee, not(no_sys_f16);
         f64 => f16, Double => Half, __truncdfhf2, not(no_sys_f16_f64_convert);
     }
 

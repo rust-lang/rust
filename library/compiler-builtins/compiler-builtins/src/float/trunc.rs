@@ -128,10 +128,9 @@ intrinsics! {
         trunc(a)
     }
 
-    #[apple_f16_ret_abi]
     #[cfg(f16_enabled)]
-    pub extern "C" fn __gnu_f2h_ieee(a: f32) -> f16 {
-        trunc(a)
+    pub extern "C" fn __gnu_f2h_ieee(a: u32) -> u16 {
+        trunc::<f32, f16>(f32::from_bits(a)).to_bits()
     }
 
     #[apple_f16_ret_abi]

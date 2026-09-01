@@ -83,10 +83,9 @@ intrinsics! {
         extend(a)
     }
 
-    #[apple_f16_arg_abi]
     #[cfg(f16_enabled)]
-    pub extern "C" fn __gnu_h2f_ieee(a: f16) -> f32 {
-        extend(a)
+    pub extern "C" fn __gnu_h2f_ieee(a: u16) -> u32 {
+        extend::<f16, f32>(f16::from_bits(a)).to_bits()
     }
 
     #[apple_f16_arg_abi]
