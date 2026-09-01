@@ -1,5 +1,6 @@
 import gdb
 import sys
+import os
 
 REPR_COMMAND_RUN = False
 REPR_ERROR = False
@@ -48,11 +49,28 @@ class ReprFinalize(gdb.Command):
             tested_all_variables,
         )
 
+        gdb_version = gdb.execute("show version", to_string=True).splitlines()[0]
+
+        if (
+            REPR_ERROR
+            and (is_ci := os.environ.get("CI")) is not None
+            and is_ci == "true"
+        ):
+            from lldb_providers import FEATURE_FLAGS
+
+            path = os.path.relpath(os.environ["DEBUGGER_TESTER_INPUT_DATA_PATH"])
+
+            print(f"[repr] If you do not have access to this target, you can manually update \
+the test data by overwriting the data in {path} with the following:")
+
+            INPUT_DATA.print_json(
+                BlessMetadata(sys.version, gdb_version, str(FEATURE_FLAGS))
+            )
+
         if not tested_all_variables() or not tested_all_types():
             gdb.execute("exit 1")
 
         if BLESS and not REPR_ERROR:
-            gdb_version = gdb.execute("show version", to_string=True).splitlines()[0]
             metadata = BlessMetadata(sys.version, gdb_version)
             INPUT_DATA.save_blessing(metadata)
 
