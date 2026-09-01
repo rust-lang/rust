@@ -280,10 +280,10 @@ impl<K: Clone, V: Clone, A: AllocatorClone> Clone for BTreeMap<K, V, A> {
 
                             // We can't destructure subtree directly
                             // because BTreeMap implements Drop
-                            // ignore-tidy-undocumented-unsafe
-                            let (subroot, sublength) = unsafe {
+                            let (subroot, sublength) = {
                                 let subtree = ManuallyDrop::new(subtree);
-                                let root = ptr::read(&subtree.root);
+                                // ignore-tidy-undocumented-unsafe
+                                let root = unsafe { ptr::read(&subtree.root) };
                                 let length = subtree.length;
                                 (root, length)
                             };

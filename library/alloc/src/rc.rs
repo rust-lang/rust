@@ -2395,9 +2395,9 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
 
     #[cfg(not(no_global_oom_handling))]
     fn from_box_in(src: Box<T, A>) -> Rc<T, A> {
+        let value_size = size_of_val(&*src);
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let value_size = size_of_val(&*src);
             let ptr = Self::allocate_for_ptr_in(&*src, Box::allocator(&src));
 
             // Copy value as bytes
