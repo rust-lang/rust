@@ -1,117 +1,47 @@
-error: an inner attribute is not permitted in this context
-  --> $DIR/doc-crate-level.rs:27:1
-   |
-LL | #![doc(rust_logo)]
-   | ^^^^^^^^^^^^^^^^^^
-...
-LL | fn main() {}
-   | ------------ the inner attribute doesn't annotate this function
-   |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-
-error: an inner attribute is not permitted in this context
-  --> $DIR/doc-crate-level.rs:29:1
-   |
-LL | #![doc(html_favicon_url = "example.org")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | fn main() {}
-   | ------------ the inner attribute doesn't annotate this function
-   |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-
-error: an inner attribute is not permitted in this context
-  --> $DIR/doc-crate-level.rs:31:1
-   |
-LL | #![doc(html_logo_url = "example.org")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | fn main() {}
-   | ------------ the inner attribute doesn't annotate this function
-   |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-
-error: an inner attribute is not permitted in this context
-  --> $DIR/doc-crate-level.rs:33:1
-   |
-LL | #![doc(html_playground_url = "example.org")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | fn main() {}
-   | ------------ the inner attribute doesn't annotate this function
-   |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-
-error: an inner attribute is not permitted in this context
-  --> $DIR/doc-crate-level.rs:35:1
-   |
-LL | #![doc(issue_tracker_base_url = "example.org")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | fn main() {}
-   | ------------ the inner attribute doesn't annotate this function
-   |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-
-error: an inner attribute is not permitted in this context
-  --> $DIR/doc-crate-level.rs:37:1
-   |
-LL | #![doc(html_root_url = "example.org")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | fn main() {}
-   | ------------ the inner attribute doesn't annotate this function
-   |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-
-error: an inner attribute is not permitted in this context
-  --> $DIR/doc-crate-level.rs:39:1
-   |
-LL | #![doc(html_no_source)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | fn main() {}
-   | ------------ the inner attribute doesn't annotate this function
-   |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-
-error: an inner attribute is not permitted in this context
-  --> $DIR/doc-crate-level.rs:41:1
-   |
-LL | #![doc(test(no_crate_inject))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | fn main() {}
-   | ------------ the inner attribute doesn't annotate this function
-   |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
-
-error: `#![doc(fake_variadic = "...")]` isn't allowed as a crate-level attribute
-  --> $DIR/doc-crate-level.rs:2:8
-   |
-LL | #![doc(fake_variadic)]
-   |        ^^^^^^^^^^^^^
-
-error: `#![doc(alias = "...")]` isn't allowed as a crate-level attribute
-  --> $DIR/doc-crate-level.rs:4:16
-   |
-LL | #![doc(alias = "test")]
-   |                ^^^^^^
-
-error: `#![doc(search_unbox = "...")]` isn't allowed as a crate-level attribute
-  --> $DIR/doc-crate-level.rs:6:8
-   |
-LL | #![doc(search_unbox)]
-   |        ^^^^^^^^^^^^
-
 error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:9:1
+  --> $DIR/doc-crate-level.rs:3:1
    |
 LL | #[doc(rust_logo)]
    | ^^^^^^^^^^^^^^^^^
    |
 note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:25:1
+  --> $DIR/doc-crate-level.rs:19:1
+   |
+LL | fn function() {}
+   | ^^^^^^^^^^^^^^^^
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
+  --> $DIR/doc-crate-level.rs:5:1
+   |
+LL | #[doc(html_favicon_url = "example.org")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/doc-crate-level.rs:19:1
+   |
+LL | fn function() {}
+   | ^^^^^^^^^^^^^^^^
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
+  --> $DIR/doc-crate-level.rs:7:1
+   |
+LL | #[doc(html_logo_url = "example.org")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/doc-crate-level.rs:19:1
+   |
+LL | fn function() {}
+   | ^^^^^^^^^^^^^^^^
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
+  --> $DIR/doc-crate-level.rs:9:1
+   |
+LL | #[doc(html_playground_url = "example.org")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: this attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/doc-crate-level.rs:19:1
    |
 LL | fn function() {}
    | ^^^^^^^^^^^^^^^^
@@ -119,11 +49,11 @@ LL | fn function() {}
 error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
   --> $DIR/doc-crate-level.rs:11:1
    |
-LL | #[doc(html_favicon_url = "example.org")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[doc(issue_tracker_base_url = "example.org")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:25:1
+  --> $DIR/doc-crate-level.rs:19:1
    |
 LL | fn function() {}
    | ^^^^^^^^^^^^^^^^
@@ -131,11 +61,11 @@ LL | fn function() {}
 error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
   --> $DIR/doc-crate-level.rs:13:1
    |
-LL | #[doc(html_logo_url = "example.org")]
+LL | #[doc(html_root_url = "example.org")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:25:1
+  --> $DIR/doc-crate-level.rs:19:1
    |
 LL | fn function() {}
    | ^^^^^^^^^^^^^^^^
@@ -143,11 +73,11 @@ LL | fn function() {}
 error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
   --> $DIR/doc-crate-level.rs:15:1
    |
-LL | #[doc(html_playground_url = "example.org")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[doc(html_no_source)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:25:1
+  --> $DIR/doc-crate-level.rs:19:1
    |
 LL | fn function() {}
    | ^^^^^^^^^^^^^^^^
@@ -155,50 +85,14 @@ LL | fn function() {}
 error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
   --> $DIR/doc-crate-level.rs:17:1
    |
-LL | #[doc(issue_tracker_base_url = "example.org")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:25:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
-
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:19:1
-   |
-LL | #[doc(html_root_url = "example.org")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:25:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
-
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:21:1
-   |
-LL | #[doc(html_no_source)]
-   | ^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:25:1
-   |
-LL | fn function() {}
-   | ^^^^^^^^^^^^^^^^
-
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![doc]`
-  --> $DIR/doc-crate-level.rs:23:1
-   |
 LL | #[doc(test(no_crate_inject))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this attribute does not have an `!`, which means it is applied to this function
-  --> $DIR/doc-crate-level.rs:25:1
+  --> $DIR/doc-crate-level.rs:19:1
    |
 LL | fn function() {}
    | ^^^^^^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 8 previous errors
 
