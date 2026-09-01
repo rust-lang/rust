@@ -411,7 +411,8 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        unsupported()
+        unsafe { cvt(hermit_abi::fsync(self.as_raw_fd()))? };
+        Ok(())
     }
 
     pub fn datasync(&self) -> io::Result<()> {
