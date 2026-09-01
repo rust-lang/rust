@@ -1,13 +1,18 @@
 // Verifies that type metadata identifiers for functions are emitted correctly
 // for primitive types.
 //
+//@ add-minicore
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Cno-prepopulate-passes -Copt-level=0
+//@ compile-flags: -Clto -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
+//@ minicore-compile-flags: -Ccodegen-units=1
 
 #![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
 
-extern crate core;
-use core::ffi::*;
+extern crate minicore;
+use minicore::*;
 
 pub fn foo1(_: ()) {}
 // CHECK: define{{.*}}4foo1{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
