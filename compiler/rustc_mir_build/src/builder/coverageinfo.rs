@@ -232,13 +232,13 @@ impl<'tcx> Builder<'_, 'tcx> {
         *block = join_block;
     }
 
-    /// If branch coverage is enabled, inject marker statements into `then_block`
-    /// and `else_block`, and record their IDs in the table of branch spans.
+    /// If branch coverage is enabled, inject marker statements into `true_block`
+    /// and `false_block`, and record their IDs in the table of branch spans.
     pub(crate) fn visit_coverage_branch_condition(
         &mut self,
         mut expr_id: ExprId,
-        mut then_block: BasicBlock,
-        mut else_block: BasicBlock,
+        mut true_block: BasicBlock,
+        mut false_block: BasicBlock,
     ) {
         // Bail out if coverage is not enabled for this function.
         let Some(coverage_info) = self.coverage_info.as_mut() else { return };
@@ -248,13 +248,13 @@ impl<'tcx> Builder<'_, 'tcx> {
         if let Some(&NotInfo { enclosing_not, is_flipped }) = coverage_info.nots.get(&expr_id) {
             expr_id = enclosing_not;
             if is_flipped {
-                std::mem::swap(&mut then_block, &mut else_block);
+                std::mem::swap(&mut true_block, &mut false_block);
             }
         }
 
         let source_info = SourceInfo { span: self.thir[expr_id].span, scope: self.source_scope };
 
-        coverage_info.register_two_way_branch(&mut self.cfg, source_info, then_block, else_block);
+        coverage_info.register_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
     }
 
     /// If branch coverage is enabled, inject marker statements into `true_block`
