@@ -106,6 +106,8 @@ pub enum TypeKind {
     /// Function pointers.
     FnPtr(FnPtr),
     /// FIXME(#146922): add all the common types
+    /// non exhaustive list:
+    /// - Never
     Other,
 }
 
@@ -208,6 +210,7 @@ pub struct Str {
 }
 
 #[derive(Debug)]
+#[lang = "FnPtr"]
 #[unstable(feature = "type_info", issue = "146922")]
 /// Function pointer, e.g. fn(u8),
 pub struct FnPtr {
@@ -238,12 +241,36 @@ pub struct FnPtr {
 
 impl FnPtr {
     /// Returns the splatted function argument index, or `None` if no argument is splatted.
+    ///
+    /// e.g. in `fn overload(a: u8, #[rustc_splat] b: (f32, usize))` the index is 1,
+    /// and it can be called as `overload(a, 1.0, 2)`.
     pub const fn splatted(&self) -> Option<u8> {
         if self.is_splatted { Some(self.splatted_index) } else { None }
     }
+    /// Whether this function is variadic, e.g. extern "C" fn add(n: usize, mut args: ...);
+    pub const fn is_variadic(&self) -> Option<u8> {
+        if self.is_splatted { Some(self.splatted_index) } else { None }
+    }
+    /// whether this refers to an unsafe function.
+    pub const fn is_unsafe(&self) -> bool {
+        self.unsafety
+    }
+    /// Returns the application binary interface. For example extern "C".
+    pub const fn abi(&self) -> Abi {
+        self.abi
+    }
+    /// The types of the functions parameters
+    pub const fn inputs(&self) -> &'static [TypeId] {
+        self.inputs
+    }
+    /// List of the types returned by the function. For a function with no output
+    /// specified this returns `TypeId::of<()>`.
+    pub const fn output(&self) -> TypeId {
+        self.output
+    }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 #[unstable(feature = "type_info", issue = "146922")]
 /// Abi of [FnPtr]
@@ -589,6 +616,41 @@ impl TypeId {
     #[rustc_comptime]
     pub fn points_mutably(self) -> bool {
         intrinsics::type_id_points_mutably(self)
+    }
+
+    /// Given a `TypeId` that represents a function pointer returns an
+    /// [`FnPtr`]. When called on something else this returns `None`.
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    /// use std::mem::type_info::{Abi, FnPtr};
+    ///
+    /// const F: FnPtr = TypeId::of::<fn(u8, u16) -> usize>()
+    ///     .function_ptr()
+    ///     .expect("TypeId of a function ptr");
+    ///
+    /// assert!(F.inputs() == [TypeId::of::<u8>(), TypeId::of::<u16>()]);
+    /// assert!(F.output() == TypeId::of::<usize>());
+    /// assert!(F.abi() == Abi::default());
+    /// ```
+    /// ```
+    /// #![feature(type_info)]
+    /// # use std::any::TypeId;
+    /// # use std::mem::type_info::{Abi, FnPtr};
+    /// #
+    /// const F: FnPtr = TypeId::of::<unsafe fn()>()
+    ///     .function_ptr()
+    ///     .expect("TypeId of a function ptr");
+    ///
+    /// assert!(F.inputs() == []);
+    /// assert!(F.output() == TypeId::of::<()>());
+    /// assert!(F.abi() == Abi::default());
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn function_ptr(self) -> Option<FnPtr> {
+        intrinsics::type_id_function_ptr(self)
     }
 }
 

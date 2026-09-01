@@ -2168,6 +2168,7 @@ symbols! {
         type_id_eq,
         type_id_field_representing_type,
         type_id_fields,
+        type_id_function_ptr,
         type_id_generics,
         type_id_points_mutably,
         type_id_is_signed,

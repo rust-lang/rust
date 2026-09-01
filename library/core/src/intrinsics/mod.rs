@@ -3098,6 +3098,15 @@ pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'stati
 #[rustc_comptime]
 pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize;
 
+/// Given a `TypeId` that represents a function pointer returns an [`core::mem::type_info::FnPtr`].
+/// When called on something else this returns `None`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::function_ptr`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_function_ptr(_type_id: crate::any::TypeId) -> Option<crate::mem::type_info::FnPtr>;
+
 /// Checks whether this type is non-exhaustive.
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]

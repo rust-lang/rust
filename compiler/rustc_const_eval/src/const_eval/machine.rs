@@ -700,7 +700,19 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 );
                 ecx.write_type_id(frt, dest)?;
             }
-
+            sym::type_id_function_ptr => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let variant_index = if let ty::FnPtr(sig, fn_header) = ty.kind() {
+                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
+                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    let sig = sig.skip_binder();
+                    ecx.write_fn_ptr_type_info(field_place, &sig, fn_header)?;
+                    variant
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+                ecx.write_discriminant(variant_index, dest)?;
+            }
             sym::type_id_points_to => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_index = if let ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) =

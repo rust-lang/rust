@@ -202,6 +202,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_eq
         | sym::type_id_field_representing_type
         | sym::type_id_fields
+        | sym::type_id_function_ptr
         | sym::type_id_generics
         | sym::type_id_points_mutably
         | sym::type_id_is_signed
@@ -319,6 +320,17 @@ pub(crate) fn check_intrinsic_type(
             (0, 0, vec![type_id_ty(), tcx.types.usize, tcx.types.usize], type_id_ty())
         }
         sym::type_id_fields => (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.usize),
+        sym::type_id_function_ptr => {
+            let fn_ptr = tcx.require_lang_item(LangItem::FnPtr, span);
+            let fn_ptr_adt_ref = tcx.adt_def(fn_ptr);
+            let fn_ptr_ty = Ty::new_adt(tcx, fn_ptr_adt_ref, ty::List::empty());
+
+            let option = tcx.require_lang_item(LangItem::Option, span);
+            let option_adt_ref = tcx.adt_def(option);
+            let option_args = tcx.mk_args(&[fn_ptr_ty.into()]);
+            let option_fn_ptr_ty = Ty::new_adt(tcx, option_adt_ref, option_args);
+            (0, 0, vec![type_id_ty()], option_fn_ptr_ty)
+        }
         sym::type_id_is_signed => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_points_mutably => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_points_to => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, type_id_ty())),
