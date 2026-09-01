@@ -30,7 +30,6 @@ use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstra
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::handle_placeholders::{LoweredConstraints, RegionTracker};
-use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
 use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues};
 use crate::type_check::Locations;
@@ -1872,12 +1871,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     pub(crate) fn liveness_constraints(&self) -> &LivenessValues {
         &self.liveness_constraints
-    }
-
-    /// When using `-Zpolonius=next`, records the given live loans for the loan scopes and active
-    /// loans dataflow computations.
-    pub(crate) fn record_live_loans(&mut self, live_loans: LiveLoans) {
-        self.liveness_constraints.record_live_loans(live_loans);
     }
 
     /// Returns whether the `loan_idx` is live at the given `location`: whether its issuing
