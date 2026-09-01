@@ -54,7 +54,7 @@ fn add_ty_alias_where_clause(
 
 impl<'hir> ItemLowerer<'_, 'hir> {
     fn with_lctx(
-        &mut self,
+        &self,
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) -> hir::MaybeOwner<'hir> {
@@ -66,7 +66,7 @@ impl<'hir> ItemLowerer<'_, 'hir> {
     }
 
     #[instrument(level = "debug", skip(self, c))]
-    pub(super) fn lower_crate(&mut self, c: &Crate) -> hir::MaybeOwner<'hir> {
+    pub(super) fn lower_crate(&self, c: &Crate) -> hir::MaybeOwner<'hir> {
         self.with_lctx(CRATE_NODE_ID, |lctx| {
             debug_assert_eq!(lctx.curr_owner.owner_id(), CRATE_OWNER_ID);
             let module = lctx.lower_mod(&c.items, &c.spans);
@@ -76,19 +76,19 @@ impl<'hir> ItemLowerer<'_, 'hir> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn lower_item(&mut self, item: &Item) -> hir::MaybeOwner<'hir> {
+    pub(super) fn lower_item(&self, item: &Item) -> hir::MaybeOwner<'hir> {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
     }
 
-    pub(super) fn lower_trait_item(&mut self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
+    pub(super) fn lower_trait_item(&self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)))
     }
 
-    pub(super) fn lower_impl_item(&mut self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
+    pub(super) fn lower_impl_item(&self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)))
     }
 
-    pub(super) fn lower_foreign_item(&mut self, item: &ForeignItem) -> hir::MaybeOwner<'hir> {
+    pub(super) fn lower_foreign_item(&self, item: &ForeignItem) -> hir::MaybeOwner<'hir> {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item)))
     }
 }

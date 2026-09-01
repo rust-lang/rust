@@ -783,7 +783,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         return fallback_to_ancestor(tcx.local_parent(def_id));
     };
 
-    let mut item_lowerer = item::ItemLowerer { tcx, resolver: &*resolver };
+    let item_lowerer = item::ItemLowerer { tcx, resolver: &*resolver };
 
     let item = match &node {
         // The item existed in the AST.
@@ -982,7 +982,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn lower_res(&mut self, res: Res<NodeId>) -> Res {
+    fn lower_res(&self, res: Res<NodeId>) -> Res {
         let res: Result<Res, ()> = res.apply_id(|id| {
             let owner = self.curr_owner.owner_id();
             let local_id =
@@ -999,11 +999,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         res.unwrap_or(Res::Err)
     }
 
-    fn expect_full_res(&mut self, id: NodeId) -> Res<NodeId> {
+    fn expect_full_res(&self, id: NodeId) -> Res<NodeId> {
         self.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
-    fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
+    fn lower_import_res(&self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
         debug_assert_eq!(id, self.curr_owner.owner.id);
         let per_ns = self.curr_owner.owner.import_res.map(|res| res.map(|res| self.lower_res(res)));
         if per_ns.is_empty() {
@@ -3058,7 +3058,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }))
     }
 
-    fn lower_unsafe_source(&mut self, u: UnsafeSource) -> hir::UnsafeSource {
+    fn lower_unsafe_source(&self, u: UnsafeSource) -> hir::UnsafeSource {
         match u {
             CompilerGenerated => hir::UnsafeSource::CompilerGenerated,
             UserProvided => hir::UnsafeSource::UserProvided,
@@ -3066,7 +3066,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_bound_modifiers(
-        &mut self,
+        &self,
         modifiers: TraitBoundModifiers,
     ) -> hir::TraitBoundModifiers {
         let constness = match modifiers.constness {
