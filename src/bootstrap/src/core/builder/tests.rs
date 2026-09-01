@@ -2385,8 +2385,8 @@ mod snapshot {
                 .arg("compiler-with-tools")
                 .render_steps(), @"
         [build] rustdoc 0 <host>
-        [build] llvm <host>
         [doc] rustc 0 <host> -> rustc 1 <host>
+        [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [doc] rustc 0 <host> -> Rustdoc 1 <host>
         [doc] rustc 0 <host> -> Rustfmt 1 <host>
