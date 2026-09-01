@@ -18,11 +18,12 @@ where
 }
 
 fn main() {
+    assert_eq!(size_of::<f16b>(), 2);
+    assert_eq!(align_of::<f16b>(), 2);
+
     if cfg!(target_has_reliable_f16b) {
         assert_traits::<f16b>();
 
-        assert_eq!(size_of::<f16b>(), 2);
-        assert_eq!(align_of::<f16b>(), 2);
         assert_eq!(f16b::default().to_bits(), 0);
         assert_eq!(ONE_BITS, 0x3f80);
         assert_eq!(f32::from(ONE).to_bits(), 0x3f80_0000);

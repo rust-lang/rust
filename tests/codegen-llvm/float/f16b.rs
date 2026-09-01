@@ -1,8 +1,4 @@
 //@ compile-flags: -Copt-level=3
-//@ ignore-backends: gcc
-//@ ignore-s390x
-//@ ignore-wasm
-//@ ignore-x86
 
 #![crate_type = "lib"]
 #![feature(f16b)]

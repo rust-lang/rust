@@ -1,5 +1,5 @@
 error[E0658]: `cfg(target_has_reliable_f16b)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-target-has-reliable-f16b.rs:6:10
+  --> $DIR/feature-gate-cfg-target-has-reliable-f16b.rs:4:10
    |
 LL |     cfg!(target_has_reliable_f16b);
    |          ^^^^^^^^^^^^^^^^^^^^^^^^

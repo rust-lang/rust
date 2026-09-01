@@ -1,5 +1,5 @@
 error: invalid suffix `f16b` for float literal
-  --> $DIR/feature-gate-f16b.rs:13:13
+  --> $DIR/feature-gate-f16b.rs:11:13
    |
 LL |     let a = 0.0f16b;
    |             ^^^^^^^ invalid suffix `f16b`
@@ -7,7 +7,7 @@ LL |     let a = 0.0f16b;
    = help: valid suffixes are `f32` and `f64`
 
 error[E0658]: use of unstable library feature `f16b`
-  --> $DIR/feature-gate-f16b.rs:5:5
+  --> $DIR/feature-gate-f16b.rs:3:5
    |
 LL | use core::num::f16b;
    |     ^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | use core::num::f16b;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `f16b`
-  --> $DIR/feature-gate-f16b.rs:9:13
+  --> $DIR/feature-gate-f16b.rs:7:13
    |
 LL |     let _ = f16b::from_bits(0);
    |             ^^^^
@@ -27,7 +27,7 @@ LL |     let _ = f16b::from_bits(0);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `f16b`
-  --> $DIR/feature-gate-f16b.rs:16:12
+  --> $DIR/feature-gate-f16b.rs:14:12
    |
 LL |     let _: f16b = 1.0;
    |            ^^^^
@@ -37,7 +37,7 @@ LL |     let _: f16b = 1.0;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `f16b`
-  --> $DIR/feature-gate-f16b.rs:20:13
+  --> $DIR/feature-gate-f16b.rs:18:13
    |
 LL |     let x = f16b::from_bits(0x3f80);
    |             ^^^^
@@ -47,7 +47,7 @@ LL |     let x = f16b::from_bits(0x3f80);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `f16b`
-  --> $DIR/feature-gate-f16b.rs:26:21
+  --> $DIR/feature-gate-f16b.rs:24:21
    |
 LL |     let _ = 1u16 as f16b;
    |                     ^^^^
@@ -57,7 +57,7 @@ LL |     let _ = 1u16 as f16b;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `f16b`
-  --> $DIR/feature-gate-f16b.rs:9:13
+  --> $DIR/feature-gate-f16b.rs:7:13
    |
 LL |     let _ = f16b::from_bits(0);
    |             ^^^^^^^^^^^^^^^
@@ -67,7 +67,7 @@ LL |     let _ = f16b::from_bits(0);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0308]: mismatched types
-  --> $DIR/feature-gate-f16b.rs:16:19
+  --> $DIR/feature-gate-f16b.rs:14:19
    |
 LL |     let _: f16b = 1.0;
    |            ----   ^^^ expected `f16b`, found floating-point number
@@ -75,7 +75,7 @@ LL |     let _: f16b = 1.0;
    |            expected due to this
 
 error[E0658]: use of unstable library feature `f16b`
-  --> $DIR/feature-gate-f16b.rs:20:13
+  --> $DIR/feature-gate-f16b.rs:18:13
    |
 LL |     let x = f16b::from_bits(0x3f80);
    |             ^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL |     let x = f16b::from_bits(0x3f80);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0369]: cannot add `f16b` to `f16b`
-  --> $DIR/feature-gate-f16b.rs:23:15
+  --> $DIR/feature-gate-f16b.rs:21:15
    |
 LL |     let _ = x + x;
    |             - ^ - f16b
@@ -93,18 +93,18 @@ LL |     let _ = x + x;
    |             f16b
    |
 note: `f16b` does not implement `Add`
-  --> $SRC_DIR/core/src/num/f16b.rs:LL:COL
+  --> $SRC_DIR/core/src/num/brain_float.rs:LL:COL
    |
    = note: `f16b` is defined in another crate
 
 error[E0605]: non-primitive cast: `u16` as `f16b`
-  --> $DIR/feature-gate-f16b.rs:26:13
+  --> $DIR/feature-gate-f16b.rs:24:13
    |
 LL |     let _ = 1u16 as f16b;
    |             ^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
 error[E0605]: non-primitive cast: `f16b` as `f32`
-  --> $DIR/feature-gate-f16b.rs:30:13
+  --> $DIR/feature-gate-f16b.rs:28:13
    |
 LL |     let _ = x as f32;
    |             ^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
