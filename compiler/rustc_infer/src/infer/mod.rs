@@ -1242,6 +1242,25 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// Resolve a type variable. Resolving means the following:
+    ///
+    /// - If a `Ty` is a rigid type (like, an integer, or some ADT), do nothing.
+    /// - If a `Ty` is a type infer variable, but has been equated with an actual type,
+    ///   return that type.
+    /// - If a `Ty` is an int or float infer variable, and has been equated with an integer
+    ///   or floating point type, return that type.
+    /// - If a `Ty` is any kind of infer variable that has been equated, but not yet with a rigid
+    ///   type, then this set of equated variables forms an equivalence class. One of the variables
+    ///   in that equivalent class is said to be the root variable, and resolving makes sure to
+    ///   consistently return this root variable. This is beneficial for caching.
+    ///   This behavior, of returning roots, changed in <https://github.com/rust-lang/rust/pull/158447>.
+    ///
+    /// Otherwise, resolving simply does nothing.
+    ///
+    /// The "shallow" part of the name refers to the fact that types may themselves contain more
+    /// type variables. e.g. The field types of a struct. `shallow_resolve` does not recurse into
+    /// these nested variables. If that's what you want, use [`deeply_resolve_ignoring_regions`](Self::deeply_resolve_ignoring_regions),
+    /// or better [`deeply_resolve`](rustc_type_ir::deeply_resolve), if you can, which *does* resolve regions.
     pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Infer(v) = *ty.kind() {
             match v {
@@ -1307,6 +1326,8 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// See docs on [`shallow_resolve`](Self::shallow_resolve) for more explanation.
+    /// It's the same, but for consts.
     pub fn shallow_resolve_const(&self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(infer_ct) => match infer_ct {
@@ -1333,6 +1354,8 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// See docs on [`shallow_resolve`](Self::shallow_resolve) for more explanation.
+    /// It's the same, but for terms (types or consts).
     pub fn shallow_resolve_term(&self, term: ty::Term<'tcx>) -> ty::Term<'tcx> {
         match term.kind() {
             ty::TermKind::Ty(ty) => self.shallow_resolve(ty).into(),
@@ -1399,7 +1422,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    /// Resolves a float var to a rigid int type, if it was constrained to one,
+    /// Resolves a float var to a rigid type, if it was constrained to one,
     /// or else the root float var in the unification table.
     pub fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
         let mut inner = self.inner.borrow_mut();
