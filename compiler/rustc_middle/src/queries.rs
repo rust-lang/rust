@@ -2067,8 +2067,7 @@ rustc_queries! {
 
     /// Gets the extra data to put in each output filename for a crate.
     /// For example, compiling the `foo` crate with `extra-filename=-a` creates a `libfoo-b.rlib` file.
-    query extra_filename(_: CrateNum) -> &'tcx String {
-        arena_cache
+    query extra_filename(_: CrateNum) -> &'tcx str {
         eval_always
         desc { "looking up the extra filename for a crate" }
         separate_provide_extern

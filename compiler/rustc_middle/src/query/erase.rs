@@ -175,6 +175,7 @@ macro_rules! impl_erasable_for_types_with_no_type_params {
 // `[u8; size_of::<Foo>()]`. ('_ lifetimes are allowed.)
 impl_erasable_for_types_with_no_type_params! {
     // tidy-alphabetical-start
+    &'_ str,
     (&'_ ty::CrateInherentImpls, Result<(), ErrorGuaranteed>),
     (),
     (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>, ty::RequiredDepth),
