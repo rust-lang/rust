@@ -1044,6 +1044,11 @@ where
         Ok(())
     }
 
+    // FIXME: this only exists to walk around `delegate` field privacy.
+    pub(super) fn add_inspect_goal(&mut self, goal: Goal<I, I::Predicate>) {
+        self.inspect.add_goal(self.delegate, self.max_input_universe, GoalSource::Misc, goal);
+    }
+
     pub(super) fn next_region_var(&mut self) -> Region<I> {
         let region = self.delegate.next_region_infer();
         self.inspect.add_var_value(region);

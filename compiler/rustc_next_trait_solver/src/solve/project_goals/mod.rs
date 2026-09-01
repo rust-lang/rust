@@ -48,6 +48,7 @@ where
         let unconstrained_term = self.next_term_infer_of_alias_kind(alias);
         let normalizes_to =
             goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });
+        self.add_inspect_goal(normalizes_to);
 
         // We don't want candidate selection when normalizing associated terms to be impacted by
         // the expected term. Normalization should behave like a function of just the alias being
