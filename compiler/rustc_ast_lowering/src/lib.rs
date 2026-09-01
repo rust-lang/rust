@@ -1647,8 +1647,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_array_length_to_const_arg(length),
             ),
             TyKind::TraitObject(bounds, kind) => {
-                let mut lifetime_bound = None;
                 let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
+                    let mut lifetime_bound = None;
                     let bounds =
                         this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| match bound {
                             // We can safely ignore constness here since AST validation
@@ -1681,9 +1681,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 None
                             }
                         }));
-                    let lifetime_bound =
-                        lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span));
-                    (bounds, lifetime_bound)
+                    (bounds, lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span)))
                 });
                 hir::TyKind::TraitObject(bounds, TaggedRef::new(lifetime_bound, *kind))
             }
