@@ -640,14 +640,15 @@ const _: () = ();
 /// Rust normally changes an item's symbol name to encode information such as its module path.
 /// Applying `no_mangle` instead uses the item's identifier as the exported symbol name.
 ///
-/// ```rust
+/// ```
 /// #[unsafe(no_mangle)]
-/// pub extern "C" fn initialize() {}
+/// pub fn initialize() {}
 /// ```
 ///
-/// The attribute controls the symbol name and export behavior, but does not change the function's
-/// calling convention. Functions intended to be called by non-Rust code will usually use an
-/// appropriate `extern` ABI such as `extern "C"`.
+/// In addition to disabling name mangling, `no_mangle` causes the symbol to be publicly exported
+/// from the produced library or object file. It does not change the function's calling convention.
+/// Functions intended to be called by non-Rust code will usually use an appropriate `extern` ABI
+/// such as `extern "C"`.
 ///
 /// Exporting an unmangled name is unsafe because it may collide with another exported or
 /// well-known symbol. Such a collision can lead to undefined behavior.
@@ -667,7 +668,7 @@ const _: () = ();
 /// The `export_name` attribute sets the symbol name that a function or static exposes in the
 /// generated object file. The item's Rust name remains unchanged.
 ///
-/// ```rust
+/// ```
 /// #[unsafe(export_name = "initialize")]
 /// pub extern "C" fn initialize_library() {}
 /// ```
@@ -694,7 +695,7 @@ const _: () = ();
 /// The `link_name` attribute is applied to a declaration inside an `extern` block. It specifies
 /// the symbol that the linker resolves for that declaration.
 ///
-/// ```rust,no_run
+/// ```no_run
 /// unsafe extern "C" {
 ///     #[link_name = "actual_symbol_name"]
 ///     fn name_in_rust();
@@ -702,8 +703,8 @@ const _: () = ();
 /// ```
 ///
 /// In this example, Rust code uses `name_in_rust`, while the linker resolves
-/// `actual_symbol_name`. The attribute can only be applied to function and static declarations
-/// inside an `extern` block.
+/// `actual_symbol_name`. The attribute can only be applied to declarations of static variables and
+/// of functions.
 ///
 /// For more information, see the Reference on [the `link_name` attribute].
 ///
