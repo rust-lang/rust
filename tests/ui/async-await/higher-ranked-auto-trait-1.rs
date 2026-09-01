@@ -1,8 +1,10 @@
 // Repro for <https://github.com/rust-lang/rust/issues/79648#issuecomment-749127947>.
 //@ edition: 2021
-//@ revisions: assumptions no_assumptions
+//@ revisions: assumptions min_coroutines no_assumptions
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
 //@[assumptions] check-pass
+//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines
+//@[min_coroutines] check-pass
 //@[no_assumptions] known-bug: #110338
 
 use std::future::Future;
