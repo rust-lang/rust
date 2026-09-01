@@ -11,7 +11,7 @@ use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_session::{Session, config};
 use rustc_span::bug;
-use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode};
 #[cfg(feature = "master")]
 use rustc_target::spec::Arch;
 
@@ -189,7 +189,12 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     let ty = cast.gcc_type(cx);
                     apply_attrs(ty, &cast.attrs, argument_tys.len())
                 }
-                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: true } => {
+                PassMode::Indirect {
+                    attrs: _,
+                    meta_attrs: None,
+                    address_space: _,
+                    mode: IndirectMode::OnStack,
+                } => {
                     let x86_interrupt_first_arg = {
                         #[cfg(feature = "master")]
                         {
@@ -216,14 +221,32 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         arg.layout.gcc_type(cx)
                     }
                 }
+                PassMode::Indirect {
+                    attrs: _,
+                    meta_attrs: None,
+                    address_space: _,
+                    mode: IndirectMode::AmdgpuKernelArg,
+                } => {
+                    unimplemented!("unsupported amdgpu kernel argument")
+                }
                 PassMode::Direct(attrs) => {
                     apply_attrs(arg.layout.immediate_gcc_type(cx), &attrs, argument_tys.len())
                 }
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
+                PassMode::Indirect {
+                    attrs,
+                    meta_attrs: None,
+                    address_space: _,
+                    mode: IndirectMode::Pointer,
+                } => {
                     apply_attrs(cx.type_ptr_to(arg.layout.gcc_type(cx)), &attrs, argument_tys.len())
                 }
-                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
-                    assert!(!on_stack);
+                PassMode::Indirect {
+                    attrs,
+                    meta_attrs: Some(meta_attrs),
+                    address_space: _,
+                    mode,
+                } => {
+                    assert!(mode == IndirectMode::Pointer);
                     // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
                     // Any two ABI-compatible unsized types have the same metadata type and
                     // moreover the same metadata value leads to the same dynamic size and
