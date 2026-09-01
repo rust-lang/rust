@@ -1,12 +1,12 @@
 
 running 1 test
-test $DIR/doc-cfg-target-feature.rs - foo (line 14) ... FAILED
+test $DIR/doc-cfg-target-feature.rs - foo (line 15) ... FAILED
 
 failures:
 
----- $DIR/doc-cfg-target-feature.rs - foo (line 14) stdout ----
+---- $DIR/doc-cfg-target-feature.rs - foo (line 15) stdout ----
 warning: the feature `cfg_target_feature` has been stable since 1.27.0 and no longer requires an attribute to enable
-  --> $DIR/doc-cfg-target-feature.rs:14:12
+  --> $DIR/doc-cfg-target-feature.rs:15:12
    |
 LL | #![feature(cfg_target_feature)]
    |            ^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ stack backtrace:
    0: __rustc::rust_begin_unwind
    1: core::panicking::panic_fmt
    2: core::panicking::panic
-   3: rust_out::main::_doctest_main__home_imperio_rust_rust_tests_rustdoc_ui_doctest_doc_cfg_target_feature_rs_14_0
+   3: rust_out::main::$PATH
    4: rust_out::main
    5: <fn() as core::ops::function::FnOnce<()>>::call_once
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
@@ -33,7 +33,7 @@ note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose bac
 
 
 failures:
-    $DIR/doc-cfg-target-feature.rs - foo (line 14)
+    $DIR/doc-cfg-target-feature.rs - foo (line 15)
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
