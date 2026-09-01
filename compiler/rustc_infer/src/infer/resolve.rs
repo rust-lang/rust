@@ -124,7 +124,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for DeepRegionResolver<'a, 'tcx> {
 /// Full type resolution replaces all type and region variables with
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
-pub fn fully_resolve<'tcx, T>(infcx: &InferCtxt<'tcx>, value: T) -> FixupResult<T>
+pub fn deeply_resolve_via_region_graph<'tcx, T>(infcx: &InferCtxt<'tcx>, value: T) -> FixupResult<T>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {

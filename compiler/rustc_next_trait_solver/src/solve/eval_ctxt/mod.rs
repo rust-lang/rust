@@ -659,7 +659,8 @@ where
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
 
-        let (goal, opaque_types) = self.delegate.deeply_resolve_via_unification_table((goal, opaque_types));
+        let (goal, opaque_types) =
+            self.delegate.deeply_resolve_via_unification_table((goal, opaque_types));
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
@@ -1604,8 +1605,9 @@ where
 
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
-        let (var_values, mut external_constraints) =
-            self.delegate.deeply_resolve_via_unification_table((self.var_values, external_constraints));
+        let (var_values, mut external_constraints) = self
+            .delegate
+            .deeply_resolve_via_unification_table((self.var_values, external_constraints));
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
