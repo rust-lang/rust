@@ -133,13 +133,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                                 self.project_downcast_named(&field_dest, sym::Str)?;
                             variant
                         }
-                        ty::Ref(_, ty, mutability) => {
-                            let (variant, variant_place) =
+                        ty::Ref(_, _, _) => {
+                            let (variant, _) =
                                 self.project_downcast_named(&field_dest, sym::Reference)?;
-                            let reference_place =
-                                self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_reference_type_info(reference_place, *ty, *mutability)?;
-
                             variant
                         }
                         ty::RawPtr(_, _) => {
@@ -292,31 +288,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             }
         }
 
-        interp_ok(())
-    }
-
-    pub(crate) fn write_reference_type_info(
-        &mut self,
-        place: impl Writeable<'tcx, CtfeProvenance>,
-        ty: Ty<'tcx>,
-        mutability: Mutability,
-    ) -> InterpResult<'tcx> {
-        // Iterate over all fields of `type_info::Reference`.
-        for (field_idx, field) in
-            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
-        {
-            let field_place = self.project_field(&place, field_idx)?;
-
-            match field.name {
-                // Write the `TypeId` of the reference's inner type to the `ty` field.
-                sym::pointee => self.write_type_id(ty, &field_place)?,
-                // Write the boolean representing the reference's mutability to the `mutable` field.
-                sym::mutable => {
-                    self.write_scalar(Scalar::from_bool(mutability.is_mut()), &field_place)?
-                }
-                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
-            }
-        }
         interp_ok(())
     }
 

@@ -271,31 +271,30 @@ fn test_primitives() {
 
 #[test]
 fn test_references() {
+    use TypeKind::Reference;
+
     // Immutable reference.
-    match const { Type::of::<&u8>() }.kind {
-        TypeKind::Reference(reference) => {
-            assert_eq!(reference.pointee, TypeId::of::<u8>());
-            assert!(!reference.mutable);
-        }
-        _ => unreachable!(),
+    let Type { kind: Reference, .. } = Type::of::<&u8>() else { panic!() };
+    const {
+        let ty = TypeId::of::<&u8>();
+        assert!(ty.points_to() == Some(TypeId::of::<u8>()));
+        assert!(!ty.points_mutably());
     }
 
     // Mutable references.
-    match const { Type::of::<&mut u64>() }.kind {
-        TypeKind::Reference(reference) => {
-            assert_eq!(reference.pointee, TypeId::of::<u64>());
-            assert!(reference.mutable);
-        }
-        _ => unreachable!(),
+    let Type { kind: Reference, .. } = Type::of::<&mut u64>() else { panic!() };
+    const {
+        let ty = TypeId::of::<&mut u64>();
+        assert!(ty.points_to() == Some(TypeId::of::<u64>()));
+        assert!(ty.points_mutably());
     }
 
     // Wide references.
-    match const { Type::of::<&dyn Any>() }.kind {
-        TypeKind::Reference(reference) => {
-            assert_eq!(reference.pointee, TypeId::of::<dyn Any>());
-            assert!(!reference.mutable);
-        }
-        _ => unreachable!(),
+    let Type { kind: Reference, .. } = Type::of::<&dyn Any>() else { panic!() };
+    const {
+        let ty = TypeId::of::<&dyn Any>();
+        assert!(ty.points_to() == Some(TypeId::of::<dyn Any>()));
+        assert!(!ty.points_mutably());
     }
 }
 

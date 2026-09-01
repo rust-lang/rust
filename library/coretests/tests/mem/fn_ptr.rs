@@ -43,16 +43,16 @@ fn test_ref() {
         if output != UNIT_TY {
             panic!();
         }
-        let TypeKind::Reference(reference) = ty1.info().kind else {
+        let TypeKind::Reference = ty1.info().kind else {
             panic!();
         };
-        if reference.pointee != U8_TY {
+        if ty1.points_to().unwrap() != U8_TY {
             panic!();
         }
-        let TypeKind::Reference(reference) = ty2.info().kind else {
+        let TypeKind::Reference = ty2.info().kind else {
             panic!();
         };
-        if reference.pointee != U8_TY {
+        if ty1.points_to().unwrap() != U8_TY {
             panic!();
         }
     }
