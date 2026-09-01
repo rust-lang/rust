@@ -11,6 +11,8 @@ use crate::core::builder::{Builder, Step};
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 
+/// Note that this currently only contains panic strategies that we somehow use in bootstrap, not
+/// all possible strategires supported by rustc.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum PanicStrategy {
     Unwind,
@@ -82,6 +84,7 @@ fn create_synthetic_target(
 }
 
 /// Get the JSON target specs from the given compiler.
+/// Note that the set of targets will differ between the stage0 and stage1+ (in-tree) compiler!
 pub fn get_target_specs(
     builder: &Builder<'_>,
     compiler: Compiler,
