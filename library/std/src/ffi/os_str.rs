@@ -1804,10 +1804,10 @@ impl AsInner<Slice> for OsStr {
 
 #[stable(feature = "osstring_from_str", since = "1.45.0")]
 impl FromStr for OsString {
-    type Err = core::convert::Infallible;
+    type Err = !;
 
     #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, !> {
         Ok(OsString::from(s))
     }
 }

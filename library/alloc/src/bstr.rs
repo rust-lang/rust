@@ -333,10 +333,10 @@ impl FromIterator<ByteString> for ByteString {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl FromStr for ByteString {
-    type Err = core::convert::Infallible;
+    type Err = !;
 
     #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, !> {
         Ok(ByteString(s.as_bytes().to_vec()))
     }
 }

@@ -2025,10 +2025,10 @@ impl From<String> for PathBuf {
 
 #[stable(feature = "path_from_str", since = "1.32.0")]
 impl FromStr for PathBuf {
-    type Err = core::convert::Infallible;
+    type Err = !;
 
     #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, !> {
         Ok(PathBuf::from(s))
     }
 }
