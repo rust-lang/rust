@@ -165,10 +165,10 @@ impl<T: ?Sized> DerefMut for ThinBox<T> {
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<T: ?Sized> Drop for ThinBox<T> {
     fn drop(&mut self) {
+        let value = self.deref_mut();
+        let value = value as *mut T;
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let value = self.deref_mut();
-            let value = value as *mut T;
             self.with_header().drop::<T>(value);
         }
     }
@@ -240,34 +240,38 @@ impl<H> WithHeader<H> {
             alloc::handle_alloc_error(Layout::new::<()>());
         };
 
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
-            // we use `layout.dangling()` for this case, which should have a valid
-            // alignment for both `T` and `H`.
-            let ptr = if layout.size() == 0 {
-                // Some paranoia checking, mostly so that the ThinBox tests are
-                // more able to catch issues.
-                debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
-                layout.dangling_ptr()
-            } else {
-                let ptr = alloc::alloc(layout);
-                if ptr.is_null() {
-                    alloc::handle_alloc_error(layout);
-                }
-                // Safety:
-                // - The size is at least `aligned_header_size`.
+        // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
+        // we use `layout.dangling()` for this case, which should have a valid
+        // alignment for both `T` and `H`.
+        let ptr = if layout.size() == 0 {
+            // Some paranoia checking, mostly so that the ThinBox tests are
+            // more able to catch issues.
+            debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
+            layout.dangling_ptr()
+        } else {
+            // ignore-tidy-undocumented-unsafe
+            let ptr = unsafe { alloc::alloc(layout) };
+            if ptr.is_null() {
+                alloc::handle_alloc_error(layout);
+            }
+            // SAFETY:
+            // - The size is at least `aligned_header_size`.
+            unsafe {
                 let ptr = ptr.add(value_offset) as *mut _;
 
                 NonNull::new_unchecked(ptr)
-            };
+            }
+        };
 
-            let result = WithHeader(ptr, PhantomData);
+        let result = WithHeader(ptr, PhantomData);
+
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
             ptr::write(result.header(), header);
             ptr::write(result.value().cast(), value);
-
-            result
         }
+
+        result
     }
 
     /// Non-panicking version of `new`.
@@ -278,35 +282,39 @@ impl<H> WithHeader<H> {
             return Err(core::alloc::AllocError);
         };
 
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
-            // we use `layout.dangling()` for this case, which should have a valid
-            // alignment for both `T` and `H`.
-            let ptr = if layout.size() == 0 {
-                // Some paranoia checking, mostly so that the ThinBox tests are
-                // more able to catch issues.
-                debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
-                layout.dangling_ptr()
-            } else {
-                let ptr = alloc::alloc(layout);
-                if ptr.is_null() {
-                    return Err(core::alloc::AllocError);
-                }
+        // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
+        // we use `layout.dangling()` for this case, which should have a valid
+        // alignment for both `T` and `H`.
+        let ptr = if layout.size() == 0 {
+            // Some paranoia checking, mostly so that the ThinBox tests are
+            // more able to catch issues.
+            debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
+            layout.dangling_ptr()
+        } else {
+            // ignore-tidy-undocumented-unsafe
+            let ptr = unsafe { alloc::alloc(layout) };
+            if ptr.is_null() {
+                return Err(core::alloc::AllocError);
+            }
 
-                // Safety:
-                // - The size is at least `aligned_header_size`.
+            // SAFETY:
+            // - The size is at least `aligned_header_size`.
+            unsafe {
                 let ptr = ptr.add(value_offset) as *mut _;
 
                 NonNull::new_unchecked(ptr)
-            };
+            }
+        };
 
-            let result = WithHeader(ptr, PhantomData);
+        let result = WithHeader(ptr, PhantomData);
+
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
             ptr::write(result.header(), header);
             ptr::write(result.value().cast(), value);
-
-            Ok(result)
         }
+
+        Ok(result)
     }
 
     // `Dyn` is `?Sized` type like `[u32]`, and `T` is ZST type like `[u32; 0]`.
