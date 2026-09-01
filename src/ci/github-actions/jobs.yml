@@ -41,24 +41,24 @@ runners:
     os: ubuntu-24.04-arm
     <<: *base-job
 
-  - &job-aarch64-linux-8c
-    os: ubuntu-24.04-arm64-8core-32gb
+  - &job-linux-x86-8c-ec2
+    os: ec2-x86_64ami-m8a.2xlarge-x64-linux-$github.run_id-$github.run_attempt
     <<: *base-job
 
-  # Codebuild runners are provisioned in
-  # https://github.com/rust-lang/simpleinfra/blob/b7ddd5e6bec8a93ec30510cdddec02c5666fefe9/terragrunt/accounts/ci-prod/ci-runners/terragrunt.hcl#L2
-  - &job-linux-36c-codebuild
-    free_disk: true
-    codebuild: true
-    os: codebuild-ubuntu-22-36c-$github.run_id-$github.run_attempt
+  - &job-linux-x86-16c-ec2
+    os: ec2-x86_64ami-c8a.4xlarge-x64-linux-$github.run_id-$github.run_attempt
     <<: *base-job
 
   - &job-linux-x86-32c-ec2
     os: ec2-x86_64ami-c8a.8xlarge-x64-linux-$github.run_id-$github.run_attempt
     <<: *base-job
 
-  - &job-linux-x86-8c-ec2
-    os: ec2-x86_64ami-m8a.2xlarge-x64-linux-$github.run_id-$github.run_attempt
+  - &job-linux-aarch64-8c-ec2
+    os: ec2-arm64ami-m9g.2xlarge-aarch64-linux-$github.run_id-$github.run_attempt
+    <<: *base-job
+
+  - &job-linux-aarch64-16c-ec2
+    os: ec2-arm64ami-c9g.4xlarge-aarch64-linux-$github.run_id-$github.run_attempt
     <<: *base-job
 
 envs:
@@ -96,6 +96,11 @@ jobs:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist.sh
+  dist-aarch64-linux: &job-dist-aarch64-linux
+    name: dist-aarch64-linux
+    env:
+      IMAGE: dist-aarch64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
 
 
 # Jobs that run on each push to a pull request (PR).
@@ -167,6 +172,17 @@ pr:
 try:
   - <<: [*job-dist-x86_64-linux, *job-linux-x86-32c-ec2]
     name: dist-x86_64-linux-quick
+    env:
+      IMAGE: dist-x86_64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
+      DIST_TRY_BUILD: 1
+  - <<: [*job-dist-aarch64-linux, *job-linux-aarch64-16c-ec2]
+    name: dist-aarch64-linux-quick
+    env:
+      IMAGE: dist-aarch64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+      DIST_TRY_BUILD: 1
 
 # Jobs that only run when explicitly invoked in one of the following ways:
 # - comment `@bors try jobs=<job-name>`
@@ -178,19 +194,20 @@ optional:
     env:
       IMAGE: pr-check-1
     <<: *job-linux-4c
-  - <<: [*job-dist-x86_64-linux, *job-linux-36c-codebuild]
-    name: dist-x86_64-linux-codebuild
-  - <<: [*job-dist-x86_64-linux, *job-linux-36c-codebuild]
-    name: dist-x86_64-linux-quick-codebuild
+  # Duplicate the try jobs here so that we can run them via jobs=...
+  - <<: [*job-dist-x86_64-linux, *job-linux-x86-32c-ec2]
+    name: dist-x86_64-linux-quick
     env:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist.sh
       DIST_TRY_BUILD: 1
-  # We repeat the try job here so that it can be explicitly executed using `@bors try jobs`, to test
-  # full x64 Linux dist try builds on EC2.
-  - <<: [*job-dist-x86_64-linux, *job-linux-x86-32c-ec2]
-    name: dist-x86_64-linux-quick
+  - <<: [*job-dist-aarch64-linux, *job-linux-aarch64-16c-ec2]
+    name: dist-aarch64-linux-quick
+    env:
+      IMAGE: dist-aarch64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+      DIST_TRY_BUILD: 1
 
 # Main CI jobs that have to be green to merge a commit into the default branch.
 #
@@ -218,10 +235,7 @@ auto:
   - name: armhf-gnu
     <<: *job-linux-4c
 
-  - name: dist-aarch64-linux
-    env:
-      CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-aarch64-linux-8c
+  - <<: [*job-dist-aarch64-linux, *job-linux-aarch64-16c-ec2]
 
   - name: dist-android
     <<: *job-linux-4c
@@ -298,7 +312,7 @@ auto:
   - name: dist-x86_64-illumos
     <<: *job-linux-4c
 
-  - <<: [*job-dist-x86_64-linux, *job-linux-x86-32c-ec2]
+  - <<: [*job-dist-x86_64-linux, *job-linux-x86-16c-ec2]
 
   - name: dist-x86_64-linux-alt
     env:
