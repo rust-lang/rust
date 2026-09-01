@@ -860,9 +860,9 @@ impl<T, A: Allocator> Arc<T, A> {
 
         // Now we can properly initialize the inner value and turn our weak
         // reference into a strong reference.
+        let inner = init_ptr.as_ptr();
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let inner = init_ptr.as_ptr();
             ptr::write(&raw mut (*inner).data, data);
 
             // The above write to the data field must be visible to any threads which

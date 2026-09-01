@@ -1875,11 +1875,11 @@ pub(super) mod marker {
 /// # Safety
 /// The slice has more than `idx` elements.
 unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
+    let len = slice.len();
+    debug_assert!(len > idx);
+    let slice_ptr = slice.as_mut_ptr();
     // ignore-tidy-undocumented-unsafe
     unsafe {
-        let len = slice.len();
-        debug_assert!(len > idx);
-        let slice_ptr = slice.as_mut_ptr();
         if len > idx + 1 {
             ptr::copy(slice_ptr.add(idx), slice_ptr.add(idx + 1), len - idx - 1);
         }
@@ -1893,11 +1893,11 @@ unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
 /// # Safety
 /// The slice has more than `idx` elements.
 unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
+    let len = slice.len();
+    debug_assert!(idx < len);
+    let slice_ptr = slice.as_mut_ptr();
     // ignore-tidy-undocumented-unsafe
     unsafe {
-        let len = slice.len();
-        debug_assert!(idx < len);
-        let slice_ptr = slice.as_mut_ptr();
         let ret = (*slice_ptr.add(idx)).assume_init_read();
         ptr::copy(slice_ptr.add(idx + 1), slice_ptr.add(idx), len - idx - 1);
         ret
@@ -1909,9 +1909,9 @@ unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
 /// # Safety
 /// The slice has at least `distance` elements.
 unsafe fn slice_shl<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
+    let slice_ptr = slice.as_mut_ptr();
     // ignore-tidy-undocumented-unsafe
     unsafe {
-        let slice_ptr = slice.as_mut_ptr();
         ptr::copy(slice_ptr.add(distance), slice_ptr, slice.len() - distance);
     }
 }
@@ -1921,9 +1921,9 @@ unsafe fn slice_shl<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
 /// # Safety
 /// The slice has at least `distance` elements.
 unsafe fn slice_shr<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
+    let slice_ptr = slice.as_mut_ptr();
     // ignore-tidy-undocumented-unsafe
     unsafe {
-        let slice_ptr = slice.as_mut_ptr();
         ptr::copy(slice_ptr, slice_ptr.add(distance), slice.len() - distance);
     }
 }
