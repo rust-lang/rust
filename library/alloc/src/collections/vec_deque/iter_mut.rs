@@ -209,13 +209,17 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
     #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
-        // SAFETY: The TrustedRandomAccess contract requires that callers only pass an index
-        // that is in bounds.
-        unsafe {
-            let i1_len = self.i1.len();
-            if idx < i1_len {
+        let i1_len = self.i1.len();
+        if idx < i1_len {
+            // SAFETY: The TrustedRandomAccess contract requires that callers only pass an index
+            // that is in bounds.
+            unsafe {
                 self.i1.__iterator_get_unchecked(idx)
-            } else {
+            }
+        } else {
+            // SAFETY: The TrustedRandomAccess contract requires that callers only pass an index
+            // that is in bounds.
+            unsafe {
                 self.i2.__iterator_get_unchecked(idx - i1_len)
             }
         }
