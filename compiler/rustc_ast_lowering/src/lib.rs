@@ -60,8 +60,9 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
-    self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
-    LifetimeSyntax, MissingLifetimeKind, ParamName, Target, TraitCandidate, find_attr,
+    self as hir, AngleBrackets, CRATE_OWNER_ID, ConstArg, GenericArg, HirId, ItemLocalMap,
+    LifetimeSource, LifetimeSyntax, MissingLifetimeKind, ParamName, Target, TraitCandidate,
+    find_attr,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -783,15 +784,37 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         return fallback_to_ancestor(tcx.local_parent(def_id));
     };
 
-    let item_lowerer = item::ItemLowerer { tcx, resolver: &*resolver };
+    fn with_lctx<'hir>(
+        tcx: TyCtxt<'hir>,
+        resolver: &ResolverAstLowering<'hir>,
+        owner: NodeId,
+        f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
+    ) -> hir::MaybeOwner<'hir> {
+        let mut lctx = LoweringContext::new(tcx, resolver, owner);
+        let item = f(&mut lctx);
+        hir::MaybeOwner::Owner(lctx.curr_owner.into_owner_info(tcx, item))
+    }
 
     let item = match &node {
         // The item existed in the AST.
-        AstOwner::Crate(c) => item_lowerer.lower_crate(&c),
-        AstOwner::Item(item) => item_lowerer.lower_item(&item),
-        AstOwner::TraitItem(item) => item_lowerer.lower_trait_item(&item),
-        AstOwner::ImplItem(item) => item_lowerer.lower_impl_item(&item),
-        AstOwner::ForeignItem(item) => item_lowerer.lower_foreign_item(&item),
+        AstOwner::Crate(c) => with_lctx(tcx, &*resolver, CRATE_NODE_ID, |lctx| {
+            debug_assert_eq!(lctx.curr_owner.owner_id(), CRATE_OWNER_ID);
+            let module = lctx.lower_mod(&c.items, &c.spans);
+            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, c.spans.inner_span, Target::Crate);
+            hir::OwnerNode::Crate(module)
+        }),
+        AstOwner::Item(item) => {
+            with_lctx(tcx, &*resolver, item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
+        }
+        AstOwner::TraitItem(item) => with_lctx(tcx, &*resolver, item.id, |lctx| {
+            hir::OwnerNode::TraitItem(lctx.lower_trait_item(item))
+        }),
+        AstOwner::ImplItem(item) => with_lctx(tcx, &*resolver, item.id, |lctx| {
+            hir::OwnerNode::ImplItem(lctx.lower_impl_item(item))
+        }),
+        AstOwner::ForeignItem(item) => with_lctx(tcx, &*resolver, item.id, |lctx| {
+            hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item))
+        }),
         AstOwner::NestedUseTree(owner_id) => fallback_to_ancestor(*owner_id),
         // The item existed in the AST, but is not a HIR owner.
         // Fetch the correct information from its parent.
