@@ -61,16 +61,22 @@ LL |         i = std::mem::transmute(Foo::A);
    |                       ^^^^^^^^^ help: consider adding missing annotations: `transmute::<Foo, i32>`
 
 error: transmute used without annotations
-  --> tests/ui/missing_transmute_annotations.rs:68:35
+  --> tests/ui/missing_transmute_annotations.rs:72:34
+   |
+LL |     let _ = S(unsafe { std::mem::transmute((0usize, 0usize)) });
+   |                                  ^^^^^^^^^ help: consider adding missing annotations: `transmute::<(usize, usize), *mut dyn T>`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations.rs:77:35
    |
 LL |     let x: _ = unsafe { std::mem::transmute::<_, i32>([1u16, 2u16]) };
    |                                   ^^^^^^^^^^^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
 
 error: transmute used without annotations
-  --> tests/ui/missing_transmute_annotations.rs:71:30
+  --> tests/ui/missing_transmute_annotations.rs:80:30
    |
 LL |         let x: _ = std::mem::transmute::<_, i32>([1u16, 2u16]);
    |                              ^^^^^^^^^^^^^^^^^^^ help: consider adding missing annotations: `transmute::<[u16; 2], i32>`
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 

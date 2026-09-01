@@ -1,6 +1,6 @@
 [relabel]
 allow-unauthenticated = [
-    "A-*", "C-*", "E-*", "I-*", "L-*", "P-*", "S-*", "T-*",
+    "A-*", "C-*", "D-*", "E-*", "I-*", "L-*", "P-*", "S-*", "T-*",
     "good first issue", "beta-nominated"
 ]
 

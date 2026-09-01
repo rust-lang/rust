@@ -50,4 +50,4 @@ error: file is loaded as a module multiple times: `src/from_other_module.rs`
    |
    = help: replace all but one `mod` item with `use` items
 
-error: could not compile `duplicate_mod` (bin "duplicate_mod") due to 4 previous errors
+error: could not compile `duplicate-mod` (bin "duplicate-mod") due to 4 previous errors

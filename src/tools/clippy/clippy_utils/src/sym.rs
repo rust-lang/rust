@@ -433,6 +433,7 @@ generate! {
     module_name_repetitions,
     msrv,
     msrvs,
+    mul_add,
     mut_ptr,
     mutex,
     needless_return,
