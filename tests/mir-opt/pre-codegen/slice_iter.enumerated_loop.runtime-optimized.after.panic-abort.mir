@@ -21,7 +21,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
             debug x => _34;
         }
         scope 18 (inlined <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next) {
-            let mut _22: std::option::Option<std::convert::Infallible>;
+            let mut _22: std::option::Option<!>;
             let mut _27: std::option::Option<&T>;
             let mut _30: (usize, bool);
             let mut _31: (usize, &T);
@@ -32,7 +32,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
             }
             scope 20 {
                 scope 21 {
-                    scope 27 (inlined <Option<(usize, &T)> as FromResidual<Option<Infallible>>>::from_residual) {
+                    scope 27 (inlined <Option<(usize, &T)> as FromResidual<Option<!>>>::from_residual) {
                         let mut _21: isize;
                         let mut _23: bool;
                     }
