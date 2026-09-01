@@ -1143,6 +1143,19 @@ pub fn sinf32(x: f32) -> f32 {
 pub fn sinf64(x: f64) -> f64 {
     libm::likely_available::sin(x)
 }
+#[inline]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub fn tanhf64(x: f64) -> f64 {
+    libm::likely_available::tanh(x)
+}
+#[inline]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub fn tanhf32(x: f32) -> f32 {
+    libm::likely_available::tanhf(x)
+}
+
 /// Returns the sine of an `f128`.
 ///
 /// The stabilized version of this intrinsic is

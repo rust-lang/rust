@@ -214,6 +214,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::sqrtf64
         | sym::sqrtf128
         | sym::sub_with_overflow
+        | sym::tanhf32
+        | sym::tanhf64
         | sym::three_way_compare
         | sym::truncf16
         | sym::truncf32
@@ -445,6 +447,9 @@ pub(crate) fn check_intrinsic_type(
         sym::sinf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
         sym::sinf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
         sym::sinf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+
+        sym::tanhf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
+        sym::tanhf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
 
         sym::cosf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
         sym::cosf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
