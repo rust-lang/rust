@@ -30,11 +30,11 @@ ENV PATH="/node/bin:${PATH}"
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-COPY host-x86_64/pr-check-1/reuse-requirements.txt /tmp/
+COPY host-x86_64/test-pr-check-1/reuse-requirements.txt /tmp/
 RUN pip3 install --no-deps --no-cache-dir --require-hashes -r /tmp/reuse-requirements.txt
 
-COPY host-x86_64/pr-check-1/check-default-config-profiles.sh /scripts/
-COPY host-x86_64/pr-check-1/validate-toolstate.sh /scripts/
+COPY host-x86_64/test-pr-check-1/check-default-config-profiles.sh /scripts/
+COPY host-x86_64/test-pr-check-1/validate-toolstate.sh /scripts/
 
 ENV PUPPETEER_SKIP_DOWNLOAD 1
 

@@ -71,7 +71,7 @@ RUN sh /scripts/sccache.sh
 # Fix rustc_codegen_gcc lto issues.
 ENV GCC_EXEC_PREFIX="/usr/lib/gcc/"
 
-COPY host-x86_64/x86_64-gnu-tools/checktools.sh /tmp/
+COPY host-x86_64/test-x86_64-gnu-tools/checktools.sh /tmp/
 
 # The version used by current `browser-ui-test` version. To be removed once `yarn` can download
 # it without failing...

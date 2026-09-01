@@ -32,7 +32,7 @@ RUN sh /scripts/sccache.sh
 # Fix rustc_codegen_gcc lto issues.
 ENV GCC_EXEC_PREFIX="/usr/lib/gcc/"
 
-COPY host-x86_64/x86_64-gnu-miri/check-miri.sh /tmp/
+COPY host-x86_64/test-x86_64-gnu-miri/check-miri.sh /tmp/
 
 ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
   --enable-new-symbol-mangling"
