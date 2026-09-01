@@ -65,9 +65,6 @@ pub enum AttributeStability {
     Unstable {
         /// The feature gate, for example `rustc_attrs` for rustc_* attributes.
         gate_name: Symbol,
-        /// Check function to be called during the `PostExpansionVisitor` pass, which will be one
-        /// of the `Features::*` functions
-        gate_check: GateFn,
         /// Notes to be displayed when an attempt is made to use the attribute without its feature
         /// gate.
         notes: &'static [&'static str],
