@@ -1769,7 +1769,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Alias(_, alias_const) => match alias_const.kind {
                         ty::AliasConstKind::Projection { def_id }
-                        | ty::AliasConstKind::Inherent { def_id }
+                        | ty::AliasConstKind::InherentSelf { def_id }
+                        | ty::AliasConstKind::InherentImpl { def_id }
                         | ty::AliasConstKind::Free { def_id }
                         | ty::AliasConstKind::Anon { def_id } => Some(UnevaluatedConst {
                             def: def_id,

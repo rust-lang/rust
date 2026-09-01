@@ -658,7 +658,11 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
             ty::IsRigid::No,
             ty::AliasConst::new(
                 self.tcx,
-                ty::AliasConstKind::new_from_def_id(self.tcx, def_id),
+                ty::AliasConstKind::new_from_def_id(
+                    self.tcx,
+                    def_id,
+                    ty::AliasConstInherentArgsKind::Impl,
+                ),
                 args,
             ),
         );

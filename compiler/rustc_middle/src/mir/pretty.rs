@@ -1504,7 +1504,8 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     ty::ConstKind::Alias(_, alias_const) => {
                         let kind = match alias_const.kind {
                             ty::AliasConstKind::Projection { def_id }
-                            | ty::AliasConstKind::Inherent { def_id }
+                            | ty::AliasConstKind::InherentSelf { def_id }
+                            | ty::AliasConstKind::InherentImpl { def_id }
                             | ty::AliasConstKind::Free { def_id }
                             | ty::AliasConstKind::Anon { def_id } => self.tcx.def_path_str(def_id),
                         };

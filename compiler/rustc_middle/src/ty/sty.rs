@@ -478,22 +478,6 @@ impl<'tcx> Ty<'tcx> {
         is_rigid: ty::IsRigid,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> Ty<'tcx> {
-        if cfg!(debug_assertions) {
-            match alias_ty.kind {
-                ty::AliasTyKind::Projection { def_id } => {
-                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
-                }
-                ty::AliasTyKind::Inherent { def_id } => {
-                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
-                }
-                ty::AliasTyKind::Opaque { def_id } => {
-                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::OpaqueTy)
-                }
-                ty::AliasTyKind::Free { def_id } => {
-                    debug_assert_matches!(tcx.def_kind(def_id), DefKind::TyAlias)
-                }
-            }
-        }
         Ty::new(tcx, Alias(is_rigid, alias_ty))
     }
 
