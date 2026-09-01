@@ -66,9 +66,10 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionExt, RegionVid, Ty,
-    TyCtxt, TypeVisitableExt, deeply_resolve,
+    TyCtxt, TypeVisitableExt,
 };
 use rustc_span::Span;
+use rustc_type_ir::InferCtxtLike;
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -335,7 +336,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 // `TypeOutlives` is structural, so we should try to opportunistically resolve all
                 // region vids before processing regions, so we have a better chance to match clauses
                 // in our param-env.
-                let (sup_type, sub_region) = deeply_resolve(self, (sup_type, sub_region));
+                //
+                // We *want* this folder to live in `rustc_type_ir`. Our best way to call into it is
+                // through `InferCtxtLike` and it is not defined as an inherent method on `InferCtxt`.
+                #[allow(rustc::usage_of_type_ir_traits)]
+                let (sup_type, sub_region) = self.deeply_resolve((sup_type, sub_region));
 
                 if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
                     && outlives_env

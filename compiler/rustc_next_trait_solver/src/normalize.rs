@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
     self as ty, AliasTerm, Binder, FallibleTypeFolder, InferCtxtLike, Interner, TypeFoldable,
-    TypeSuperFoldable, TypeVisitableExt, UniverseIndex, deeply_resolve,
+    TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
 };
 use tracing::instrument;
 
@@ -139,8 +139,8 @@ where
 
         if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
-            let original = deeply_resolve(infcx, original);
-            let normalized = deeply_resolve(infcx, normalized);
+            let original = infcx.deeply_resolve(original);
+            let normalized = infcx.deeply_resolve(normalized);
             assert_eq!(original, normalized, "rigid alias is further normalized");
         }
         Ok(normalized)
@@ -189,8 +189,8 @@ where
 
         if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
-            let original = deeply_resolve(infcx, original);
-            let normalized = deeply_resolve(infcx, normalized);
+            let original = infcx.deeply_resolve(original);
+            let normalized = infcx.deeply_resolve(normalized);
             assert_eq!(original, normalized, "rigid alias is further normalized");
         }
 

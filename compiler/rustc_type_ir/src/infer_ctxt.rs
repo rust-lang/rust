@@ -572,6 +572,20 @@ pub trait InferCtxtLike: Sized {
     );
 
     fn reset_opaque_types(&self);
+
+    /// Where possible, replaces type/const/region variables in `value` with their final value.
+    /// If a type/const/region variable has not (yet) been unified, it is left as is.
+    ///
+    /// This is an idempotent operation that does not affect inference state in any way,
+    /// which means it's safe to call this function at will.
+    fn deeply_resolve<T: TypeFoldable<Self::Interner>>(&self, value: T) -> T {
+        if value.has_infer() {
+            let mut folder = DeepVariableResolver::new(self);
+            value.fold_with(&mut folder)
+        } else {
+            value
+        }
+    }
 }
 
 pub fn may_use_unstable_feature<'a, I: Interner, Infcx>(
@@ -615,23 +629,6 @@ where
         | TypingMode::PostBorrowck { .. }
         | TypingMode::PostAnalysis => infcx.cx().features().feature_bound_holds_in_crate(symbol),
         TypingMode::Codegen => true,
-    }
-}
-
-/// Where possible, replaces type/const/region variables in `value` with their final value.
-/// If a type/const/region variable has not (yet) been unified, it is left as is.
-///
-/// This is an idempotent operation that does not affect inference state in any way,
-/// which means it's safe to call this function at will.
-pub fn deeply_resolve<Infcx: InferCtxtLike, T: TypeFoldable<Infcx::Interner>>(
-    infcx: &Infcx,
-    value: T,
-) -> T {
-    if value.has_infer() {
-        let mut folder = DeepVariableResolver::new(infcx);
-        value.fold_with(&mut folder)
-    } else {
-        value
     }
 }
 
