@@ -409,6 +409,9 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::sinf64 => ("sin", 1, fx.tcx.types.f64, types::F64),
         sym::sinf128 => ("sinf128", 1, fx.tcx.types.f128, types::F128),
 
+        sym::tanhf32 => ("tanhf", 1, fx.tcx.types.f32, types::F32),
+        sym::tanhf64 => ("tanh", 1, fx.tcx.types.f64, types::F64),
+
         sym::cosf16 => return false, // has a fallback via f32
         sym::cosf32 => ("cosf", 1, fx.tcx.types.f32, types::F32),
         sym::cosf64 => ("cos", 1, fx.tcx.types.f64, types::F64),

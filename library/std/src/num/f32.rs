@@ -1047,8 +1047,6 @@ impl f32 {
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform, Rust version, and
     /// can even differ within the same execution from one invocation to the next.
-    /// This function currently corresponds to the `tanhf` from libc on Unix
-    /// and Windows. Note that this might change in the future.
     ///
     /// # Examples
     ///
@@ -1068,7 +1066,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tanh(self) -> f32 {
-        cmath::tanhf(self)
+        intrinsics::tanhf32(self)
     }
 
     /// Inverse hyperbolic sine function.

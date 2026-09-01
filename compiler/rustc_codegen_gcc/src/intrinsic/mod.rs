@@ -64,6 +64,8 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::powif64 => "__builtin_powi",
         sym::sinf32 => "sinf",
         sym::sinf64 => "sin",
+        sym::tanhf32 => "tanhf",
+        sym::tanhf64 => "tanh",
         sym::cosf32 => "cosf",
         sym::cosf64 => "cos",
         sym::powf32 => "powf",

@@ -337,6 +337,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             sym::integer_min,
 
             // Fallback via libm, but the LLVM intrinsic is used instead.
+            sym::tanhf32, sym::tanhf64,
             sym::sinf16, sym::sinf32, sym::sinf64,
             sym::cosf16, sym::cosf32, sym::cosf64,
             sym::powf16, sym::powf32, sym::powf64,

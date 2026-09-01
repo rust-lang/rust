@@ -20,7 +20,6 @@ unsafe extern "C" {
     pub safe fn log1pf(n: f32) -> f32;
     pub safe fn sinh(n: f64) -> f64;
     pub safe fn tan(n: f64) -> f64;
-    pub safe fn tanh(n: f64) -> f64;
     pub safe fn tgamma(n: f64) -> f64;
     pub safe fn tgammaf(n: f32) -> f32;
     pub safe fn lgamma_r(n: f64, s: &mut i32) -> f64;

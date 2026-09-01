@@ -71,6 +71,9 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::sinf64 => ("llvm.sin", &[bx.type_f64()]),
         sym::sinf128 => ("llvm.sin", &[bx.type_f128()]),
 
+        sym::tanhf32 => ("llvm.tanh", &[bx.type_f32()]),
+        sym::tanhf64 => ("llvm.tanh", &[bx.type_f64()]),
+
         sym::cosf16 => ("llvm.cos", &[bx.type_f16()]),
         sym::cosf32 => ("llvm.cos", &[bx.type_f32()]),
         sym::cosf64 => ("llvm.cos", &[bx.type_f64()]),

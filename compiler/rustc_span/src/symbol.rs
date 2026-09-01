@@ -2099,6 +2099,8 @@ symbols! {
         sync,
         synthetic,
         t32,
+        tanhf32,
+        tanhf64,
         target,
         target_abi,
         target_arch,
