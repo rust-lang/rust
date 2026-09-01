@@ -188,7 +188,7 @@ where
     /// 2. item bounds. we turn `Alias<T, 'a>: 'b` into `'c: 'b` if `Alias` is
     ///     defined as `type Alias<T, 'a>: 'c`
     /// 3. env assumptions. we defer handling `Alias<T, 'a>: 'b` via where clauses until
-    ///     when exiting the current binder. See [`RegionConstraint::AliasTyOutlivesViaEnv`].
+    ///     when exiting the current binder. See [`LeafRegionConstraint::AliasTyOutlivesViaEnv`].
     #[instrument(level = "debug", skip(self), ret)]
     fn destructure_alias_outlives(&mut self, alias: AliasTy<I>, r: Region<I>) -> Or<I> {
         use LeafRegionConstraint::*;
