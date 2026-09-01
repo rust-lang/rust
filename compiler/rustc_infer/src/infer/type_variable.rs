@@ -89,7 +89,6 @@ pub(crate) struct TypeVariableTable<'a, 'tcx> {
     storage: &'a mut TypeVariableStorage<'tcx>,
 
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
-    stalled_goal_generation: &'a mut Option<u64>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -145,9 +144,8 @@ impl<'tcx> TypeVariableStorage<'tcx> {
     pub(crate) fn with_log<'a>(
         &'a mut self,
         undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
-        stalled_goal_generation: &'a mut Option<u64>,
     ) -> TypeVariableTable<'a, 'tcx> {
-        TypeVariableTable { storage: self, undo_log, stalled_goal_generation }
+        TypeVariableTable { storage: self, undo_log }
     }
 
     #[inline]
@@ -166,13 +164,6 @@ impl<'tcx> TypeVariableStorage<'tcx> {
 }
 
 impl<'tcx> TypeVariableTable<'_, 'tcx> {
-    #[inline]
-    fn bump_stalled_goal_generation(&mut self) {
-        if let Some(generation) = self.stalled_goal_generation.as_mut() {
-            *generation = generation.wrapping_add(1);
-        }
-    }
-
     /// Returns the origin that was given when `vid` was created.
     ///
     /// Note that this function does not return care whether
@@ -188,8 +179,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
 
-        self.bump_stalled_goal_generation();
-
         self.eq_relations().union(a, b);
         self.sub_unification_table().union(a, b);
     }
@@ -201,8 +190,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub(crate) fn sub_unify(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
-
-        self.bump_stalled_goal_generation();
 
         self.sub_unification_table().union(a, b);
     }
@@ -219,8 +206,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             "instantiating type variable `{vid:?}` twice: new-value = {ty:?}, old-value={:?}",
             self.eq_relations().probe_value(vid)
         );
-
-        self.bump_stalled_goal_generation();
 
         self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
     }

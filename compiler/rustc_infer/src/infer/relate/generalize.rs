@@ -245,7 +245,7 @@ impl<'tcx> InferCtxt<'tcx> {
         match (l, r.kind()) {
             (TermVid::Ty(l), ty::TermKind::Ty(r)) => {
                 if let Some(r) = r.ty_vid() {
-                    self.inner.borrow_mut().type_variables().equate(l, r)
+                    self.inner.borrow_mut().equate_ty_vids(l, r)
                 } else {
                     // Ideally, we put this assert into `type_variables().instantiate()`.
                     // But we can't pass the infcx into it as the infcx is already
@@ -253,7 +253,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     debug_assert!(
                         self.try_resolve_ty_var(l).unwrap_err().can_name(ty::max_universe(self, r))
                     );
-                    self.inner.borrow_mut().type_variables().instantiate(l, r)
+                    self.inner.borrow_mut().instantiate_ty_var(l, r)
                 }
             }
             (TermVid::Const(l), ty::TermKind::Const(r)) => {
@@ -528,7 +528,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             // Record that `vid` and `new_var_id` have to be subtypes
                             // of each other. This is currently only used for diagnostics.
                             // To see why, see the docs in the `type_variables` module.
-                            inner.type_variables().sub_unify(vid, new_var_id);
+                            inner.sub_unify_ty_vids(vid, new_var_id);
                             // If we're in the new solver and create a new inference
                             // variable inside of an alias we eagerly constrain that
                             // inference variable to prevent unexpected ambiguity errors.
@@ -548,7 +548,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                                 && !self.infcx.typing_mode_raw().is_coherence()
                                 && self.in_alias
                             {
-                                inner.type_variables().equate(vid, new_var_id);
+                                inner.equate_ty_vids(vid, new_var_id);
                             }
 
                             debug!("replacing original vid={:?} with new={:?}", vid, new_var_id);

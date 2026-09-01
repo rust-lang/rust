@@ -217,7 +217,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
 
     #[inline]
     fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
-        self.type_variable_storage.with_log(&mut self.undo_log, &mut self.stalled_goal_generation)
+        self.type_variable_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
@@ -255,6 +255,24 @@ impl<'tcx> InferCtxtInner<'tcx> {
         if let Some(generation) = &mut self.stalled_goal_generation {
             *generation = generation.wrapping_add(1);
         }
+    }
+
+    #[inline]
+    fn equate_ty_vids(&mut self, a: ty::TyVid, b: ty::TyVid) {
+        self.bump_stalled_goal_generation();
+        self.type_variables().equate(a, b);
+    }
+
+    #[inline]
+    fn sub_unify_ty_vids(&mut self, a: ty::TyVid, b: ty::TyVid) {
+        self.bump_stalled_goal_generation();
+        self.type_variables().sub_unify(a, b);
+    }
+
+    #[inline]
+    fn instantiate_ty_var(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
+        self.bump_stalled_goal_generation();
+        self.type_variables().instantiate(vid, ty);
     }
 
     // These mutations can unblock stalled goals too, so route them through the
@@ -1193,9 +1211,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
         let inner = &mut *self.inner.borrow_mut();
-        let mut type_variables = inner
-            .type_variable_storage
-            .with_log(&mut inner.undo_log, &mut inner.stalled_goal_generation);
+        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
         inner.opaque_type_storage.iter_opaque_types().any(|(_, hidden_ty)| {
             if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind() {
                 let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
@@ -1224,9 +1240,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let inner = &mut *self.inner.borrow_mut();
         // This is iffy, can't call `type_variables()` as we're already
         // borrowing the `opaque_type_storage` here.
-        let mut type_variables = inner
-            .type_variable_storage
-            .with_log(&mut inner.undo_log, &mut inner.stalled_goal_generation);
+        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
         inner
             .opaque_type_storage
             .iter_opaque_types()
@@ -1417,7 +1431,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
-        self.inner.borrow_mut().type_variables().sub_unify(a, b);
+        self.inner.borrow_mut().sub_unify_ty_vids(a, b);
     }
 
     pub fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid {

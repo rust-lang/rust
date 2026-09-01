@@ -198,7 +198,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
-        self.inner.borrow_mut().type_variables().equate(a, b);
+        self.inner.borrow_mut().equate_ty_vids(a, b);
     }
 
     fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
@@ -220,7 +220,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn instantiate_ty_var_raw(&self, vid: ty::TyVid, ty: Ty<'tcx>) {
         let ty = lower_universe(self, self.try_resolve_ty_var(vid).unwrap_err(), ty);
 
-        self.inner.borrow_mut().type_variables().instantiate(vid, ty);
+        self.inner.borrow_mut().instantiate_ty_var(vid, ty);
     }
 
     fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: ty::Const<'tcx>) {
@@ -461,7 +461,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
                             let origin = inner.type_variables().var_origin(vid);
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
-                            inner.type_variables().equate(vid, new_var_id);
+                            inner.equate_ty_vids(vid, new_var_id);
                             Ty::new_var(self.cx(), new_var_id)
                         }
                     }
