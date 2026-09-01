@@ -333,6 +333,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.assumptions_on_binders()
     }
 
+    fn assumptions_on_binders_min_coroutines(self) -> bool {
+        self.assumptions_on_binders_min_coroutines()
+    }
+
     fn renormalize_rigid_aliases(self) -> bool {
         self.renormalize_rigid_aliases()
     }

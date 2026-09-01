@@ -2715,7 +2715,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn assumptions_on_binders(self) -> bool {
-        self.sess.opts.unstable_opts.assumptions_on_binders
+        self.sess.opts.unstable_opts.assumptions_on_binders.is_enabled()
+    }
+
+    pub fn assumptions_on_binders_min_coroutines(self) -> bool {
+        self.sess.opts.unstable_opts.assumptions_on_binders.is_min_coroutines()
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {

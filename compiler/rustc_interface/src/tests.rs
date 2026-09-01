@@ -10,14 +10,15 @@ use rustc_errors::ColorConfig;
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_lint_defs::Level;
 use rustc_session::config::{
-    AnnotateMoves, AutoDiff, BranchProtection, CFGuard, Cfg, CodegenRetagOptions, CoverageLevel,
-    CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
-    Externs, FmtDebug, FunctionReturn, IncrementalStateAssertion, InliningThreshold, Input,
-    InstrumentCoverage, InstrumentMcount, InstrumentMcountOpts, InstrumentXRay, LinkSelfContained,
-    LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options,
-    OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry,
-    Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion,
-    WasiExecModel, build_configuration, build_session_options, rustc_optgroups,
+    AnnotateMoves, AssumptionsOnBinders, AutoDiff, BranchProtection, CFGuard, Cfg,
+    CodegenRetagOptions, CoverageLevel, CoverageOptions, DebugInfo, DumpMonoStatsFormat,
+    ErrorOutputType, ExternEntry, ExternLocation, Externs, FmtDebug, FunctionReturn,
+    IncrementalStateAssertion, InliningThreshold, Input, InstrumentCoverage, InstrumentMcount,
+    InstrumentMcountOpts, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail,
+    LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName, OutputType,
+    OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius,
+    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+    build_configuration, build_session_options, rustc_optgroups,
 };
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib};
@@ -952,7 +953,14 @@ fn test_assumptions_on_binders_enables_next_solver_globally() {
     // `-Zassumptions-on-binders` alone enables the next solver globally.
     let matches = optgroups().parse(&["-Zassumptions-on-binders".to_string()]).unwrap();
     let opts = build_session_options(&mut early_dcx, &matches);
-    assert!(opts.unstable_opts.assumptions_on_binders);
+    assert_eq!(opts.unstable_opts.assumptions_on_binders, AssumptionsOnBinders::All);
+    assert_eq!(opts.unstable_opts.next_solver, globally);
+
+    // The minimal coroutine mode also requires the next solver globally.
+    let matches =
+        optgroups().parse(&["-Zassumptions-on-binders=min_coroutines".to_string()]).unwrap();
+    let opts = build_session_options(&mut early_dcx, &matches);
+    assert_eq!(opts.unstable_opts.assumptions_on_binders, AssumptionsOnBinders::MinCoroutines);
     assert_eq!(opts.unstable_opts.next_solver, globally);
 
     // Flag order must not matter when both `-Zassumptions-on-binders` and `-Znext-solver`
@@ -963,7 +971,7 @@ fn test_assumptions_on_binders_enables_next_solver_globally() {
     ] {
         let matches = optgroups().parse(&args).unwrap();
         let opts = build_session_options(&mut early_dcx, &matches);
-        assert!(opts.unstable_opts.assumptions_on_binders);
+        assert_eq!(opts.unstable_opts.assumptions_on_binders, AssumptionsOnBinders::All);
         assert_eq!(opts.unstable_opts.next_solver, globally);
     }
 
@@ -976,7 +984,7 @@ fn test_assumptions_on_binders_enables_next_solver_globally() {
     ] {
         let matches = optgroups().parse(&args).unwrap();
         let opts = build_session_options(&mut early_dcx, &matches);
-        assert!(opts.unstable_opts.assumptions_on_binders);
+        assert_eq!(opts.unstable_opts.assumptions_on_binders, AssumptionsOnBinders::All);
         assert_eq!(opts.unstable_opts.next_solver, globally);
     }
 }

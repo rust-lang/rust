@@ -857,6 +857,8 @@ mod desc {
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
+    pub(crate) const parse_assumptions_on_binders: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or `min_coroutines`";
     pub(crate) const parse_next_solver_config: &str =
         "either `globally` (when used without an argument), `coherence` (default) or `no`";
     pub(crate) const parse_lto: &str =
@@ -959,6 +961,19 @@ pub mod parse {
             }
             _ => false,
         }
+    }
+
+    pub(crate) fn parse_assumptions_on_binders(
+        slot: &mut AssumptionsOnBinders,
+        v: Option<&str>,
+    ) -> bool {
+        *slot = match v {
+            Some("y") | Some("yes") | Some("on") | Some("true") | None => AssumptionsOnBinders::All,
+            Some("n") | Some("no") | Some("off") | Some("false") => AssumptionsOnBinders::Disabled,
+            Some("min_coroutines") => AssumptionsOnBinders::MinCoroutines,
+            Some(_) => return false,
+        };
+        true
     }
 
     /// Use this for any boolean option that lacks a static default. (The
@@ -2374,9 +2389,10 @@ options! {
          either `loaded` or `not-loaded`."),
     assume_incomplete_release: bool = (false, parse_bool, [TRACKED],
         "make cfg(version) treat the current version as incomplete (default: no)"),
-    assumptions_on_binders: bool = (false, parse_bool, [TRACKED],
-        "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`); \
-         implies `-Znext-solver=globally`"),
+    assumptions_on_binders: AssumptionsOnBinders = (AssumptionsOnBinders::Disabled,
+        parse_assumptions_on_binders, [TRACKED],
+        "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`), or only \
+         coroutine-witness binders with `min_coroutines`; implies `-Znext-solver=globally`"),
     autodiff: Vec<crate::config::AutoDiff> = (Vec::new(), parse_autodiff, [TRACKED],
         "a list of autodiff flags to enable
         Mandatory setting:

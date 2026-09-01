@@ -320,6 +320,8 @@ pub trait Interner:
 
     fn assumptions_on_binders(self) -> bool;
 
+    fn assumptions_on_binders_min_coroutines(self) -> bool;
+
     fn renormalize_rigid_aliases(self) -> bool;
 
     fn coroutine_hidden_types(

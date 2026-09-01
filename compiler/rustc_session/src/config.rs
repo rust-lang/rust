@@ -1020,6 +1020,28 @@ impl ExternEntry {
     }
 }
 
+/// The behavior selected by `-Zassumptions-on-binders`.
+#[derive(Debug, Copy, Clone, Default, Hash, PartialEq, Eq)]
+pub enum AssumptionsOnBinders {
+    /// Do not deduce outlives assumptions when entering binders.
+    #[default]
+    Disabled,
+    /// Deduce outlives assumptions from every binder.
+    All,
+    /// Deduce outlives assumptions only from coroutine-witness binders.
+    MinCoroutines,
+}
+
+impl AssumptionsOnBinders {
+    pub fn is_enabled(self) -> bool {
+        self != AssumptionsOnBinders::Disabled
+    }
+
+    pub fn is_min_coroutines(self) -> bool {
+        self == AssumptionsOnBinders::MinCoroutines
+    }
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct NextSolverConfig {
     /// Whether the new trait solver should be enabled in coherence.
@@ -2718,7 +2740,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     // `-Zassumptions-on-binders` requires the next trait solver globally. Normalize after
     // parsing so the effective config is independent of flag order and so consumers that
     // read `next_solver.globally` directly (e.g. feature-gate checks) see the right value.
-    if unstable_opts.assumptions_on_binders {
+    if unstable_opts.assumptions_on_binders.is_enabled() {
         // `NextSolverConfig::default()` has `coherence: true`; the only way `coherence` is
         // false here is an explicit `-Znext-solver=no`.
         if !unstable_opts.next_solver.coherence {
@@ -3344,11 +3366,11 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
-        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
-        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount,
-        InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
-        MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
+        AnnotateMoves, AssumptionsOnBinders, AutoDiff, BranchProtection, CFGuard, CFProtection,
+        CodegenRetagOptions, CoverageOptions, CrateType, DebugInfo, DebugInfoCompression,
+        ErrorOutputType, FmtDebug, FunctionReturn, InliningThreshold, InstrumentCoverage,
+        InstrumentMcount, InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LocationDetail,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
         OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, ResolveDocLinks,
         SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
         WasiExecModel,
@@ -3395,6 +3417,7 @@ pub(crate) mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(
         (),
         AnnotateMoves,
+        AssumptionsOnBinders,
         AutoDiff,
         Offload,
         bool,
