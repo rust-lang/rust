@@ -59,13 +59,8 @@ impl<'hir> ItemLowerer<'_, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) -> hir::MaybeOwner<'hir> {
-        let mut lctx = LoweringContext::new(
-            self.tcx,
-            self.resolver,
-            owner,
-            false,
-            self.generate_error_delegation,
-        );
+        let mut lctx =
+            LoweringContext::new(self.tcx, self.resolver, owner, self.generate_error_delegation);
 
         let item = f(&mut lctx);
         debug_assert_eq!(lctx.current_hir_id_owner, item.def_id());

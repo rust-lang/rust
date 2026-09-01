@@ -228,7 +228,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         tcx: TyCtxt<'hir>,
         resolver: &'a ResolverAstLowering<'hir>,
         owner: NodeId,
-        _clone_disambig: bool,
         generate_error_delegation: bool,
     ) -> Self {
         let current_ast_owner = &resolver.owners[&owner];
@@ -236,7 +235,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_disambiguator = resolver
             .disambiguators
             .get(&current_hir_id_owner.def_id)
-            .map(|s| s.borrow().clone())
+            .map(|s| {
+                if tcx.resolutions(()).delegation_infos.contains_key(&current_ast_owner.def_id) {
+                    s.borrow().clone()
+                } else {
+                    s.steal()
+                }
+            })
             .unwrap_or_else(|| PerParentDisambiguatorState::new(current_hir_id_owner.def_id));
 
         Self {
@@ -667,8 +672,12 @@ fn index_ast<'tcx>(
 #[instrument(level = "trace", skip(tcx))]
 fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     let maybe_owner = lower_to_hir_internal(tcx, def_id, false);
-    if let Some((_, node)) = tcx.index_ast(()).get(def_id).map(Steal::steal) {
+
+    if tcx.resolutions(()).delegation_infos.contains_key(&def_id) {
+        let (r, node) = tcx.index_ast(()).get(def_id).map(Steal::steal).expect("must be");
+
         tcx.sess.time("drop_ast", || mem::drop(node));
+        let _ = r.disambiguators.get(&def_id).map(Steal::steal);
     }
 
     maybe_owner
