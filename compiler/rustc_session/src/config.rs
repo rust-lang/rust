@@ -35,8 +35,11 @@ use tracing::debug;
 
 pub use crate::config::cfg::{Cfg, CheckCfg, ExpectedValues};
 use crate::config::native_libs::parse_native_libs;
-pub use crate::config::print_request::{PrintKind, PrintRequest};
+pub use crate::config::print_request::{
+    PrintCategory, PrintKind, PrintRequest, collect_print_requests,
+};
 use crate::diagnostics::FileWriteFail;
+use crate::macros::AllVariants;
 pub use crate::options::*;
 use crate::search_paths::SearchPath;
 use crate::utils::CanonicalizedPath;
@@ -1414,12 +1417,11 @@ impl Sysroot {
     }
 }
 
+/// Get the host triple out of the build environment. This ensures that our
+/// idea of the host triple is the same as for the set of libraries we've
+/// actually built. We can't just take LLVM's host triple because they
+/// normalize all ix86 architectures to i386.
 pub fn host_tuple() -> &'static str {
-    // Get the host triple out of the build environment. This ensures that our
-    // idea of the host triple is the same as for the set of libraries we've
-    // actually built. We can't just take LLVM's host triple because they
-    // normalize all ix86 architectures to i386.
-    //
     // Instead of grabbing the host triple (for the current host), we grab (at
     // compile time) the target triple that this rustc is built with and
     // calling that (at runtime) the host triple.
@@ -2879,7 +2881,13 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         ));
     }
 
-    let prints = print_request::collect_print_requests(early_dcx, &mut cg, &unstable_opts, matches);
+    let prints = print_request::collect_print_requests(
+        early_dcx,
+        &mut cg,
+        &unstable_opts,
+        matches,
+        PrintCategory::ALL_VARIANTS,
+    );
 
     // -Zretpoline-external-thunk also requires -Zretpoline
     if unstable_opts.retpoline_external_thunk {
