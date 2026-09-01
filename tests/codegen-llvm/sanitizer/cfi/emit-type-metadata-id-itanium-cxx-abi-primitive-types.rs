@@ -3,12 +3,12 @@
 //
 //@ add-minicore
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Cno-prepopulate-passes -Copt-level=0
+//@ compile-flags: -Cno-prepopulate-passes -Copt-level=0 -C link-dead-code
 //@ compile-flags: -Clto -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
 //@ minicore-compile-flags: -Ccodegen-units=1
 
 #![crate_type = "lib"]
-#![feature(no_core)]
+#![feature(no_core, f16, f128)]
 #![no_core]
 
 extern crate minicore;
@@ -154,6 +154,20 @@ pub fn foo59(_: &str, _: &str) {}
 pub fn foo60(_: &str, _: &str, _: &str) {}
 // CHECK: define{{.*}}5foo60{{.*}}!type ![[TYPE60:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 
+pub fn foo61(_: f16) {}
+// CHECK: define{{.*}}5foo61{{.*}}!type ![[TYPE61:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo62(_: f16, _: f16) {}
+// CHECK: define{{.*}}5foo62{{.*}}!type ![[TYPE62:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo63(_: f16, _: f16, _: f16) {}
+// CHECK: define{{.*}}5foo63{{.*}}!type ![[TYPE63:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
+pub fn foo64(_: f128) {}
+// CHECK: define{{.*}}5foo64{{.*}}!type ![[TYPE64:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo65(_: f128, _: f128) {}
+// CHECK: define{{.*}}5foo65{{.*}}!type ![[TYPE65:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo66(_: f128, _: f128, _: f128) {}
+// CHECK: define{{.*}}5foo66{{.*}}!type ![[TYPE66:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+
 // CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvvE"}
 // CHECK: ![[TYPE4]] = !{i64 0, !"_ZTSFvPvE"}
 // CHECK: ![[TYPE5]] = !{i64 0, !"_ZTSFvPvS_E"}
@@ -212,3 +226,9 @@ pub fn foo60(_: &str, _: &str, _: &str) {}
 // CHECK: ![[TYPE58]] = !{i64 0, !"_ZTSFvu3refIu3strEE"}
 // CHECK: ![[TYPE59]] = !{i64 0, !"_ZTSFvu3refIu3strES0_E"}
 // CHECK: ![[TYPE60]] = !{i64 0, !"_ZTSFvu3refIu3strES0_S0_E"}
+// CHECK: ![[TYPE61]] = !{i64 0, !"_ZTSFvDhE"}
+// CHECK: ![[TYPE62]] = !{i64 0, !"_ZTSFvDhDhE"}
+// CHECK: ![[TYPE63]] = !{i64 0, !"_ZTSFvDhDhDhE"}
+// CHECK: ![[TYPE64]] = !{i64 0, !"_ZTSFvgE"}
+// CHECK: ![[TYPE65]] = !{i64 0, !"_ZTSFvggE"}
+// CHECK: ![[TYPE66]] = !{i64 0, !"_ZTSFvgggE"}
