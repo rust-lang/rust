@@ -7,13 +7,15 @@ use crate::{AttributeParser, ShouldEmit};
 
 #[macro_export]
 macro_rules! unstable {
-    ($feat: ident $(, $notes:expr)*) => {
+    ($feat: ident $(, $notes:expr)*) => {{
+        // Check that the feature exists
+        _ = rustc_feature::Features::$feat;
+
         AttributeStability::Unstable {
             gate_name: rustc_span::sym::$feat,
-            gate_check: rustc_feature::Features::$feat,
             notes: &[$($notes),*],
         }
-    };
+    }};
 }
 
 impl<'sess> AttributeParser<'sess> {
@@ -27,12 +29,11 @@ impl<'sess> AttributeParser<'sess> {
             return;
         }
 
-        let AttributeStability::Unstable { gate_check, gate_name, notes } = expected_stability
-        else {
+        let AttributeStability::Unstable { gate_name, notes } = expected_stability else {
             return;
         };
 
-        if gate_check(self.features()) || attr_span.allows_unstable(gate_name) {
+        if self.features().enabled(gate_name) || attr_span.allows_unstable(gate_name) {
             return;
         }
 
