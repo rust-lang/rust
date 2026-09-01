@@ -1440,7 +1440,6 @@ rustc_queries! {
 
     /// Generates a MIR body for the shim.
     query mir_shims(key: ty::ShimKind<'tcx>) -> &'tcx mir::Body<'tcx> {
-        arena_cache
         desc {
             "generating MIR shim for `{}`, kind={:?}",
             tcx.def_path_str(key.def_id()),

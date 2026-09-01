@@ -28,7 +28,7 @@ use crate::{
 mod async_destructor_ctor;
 
 pub(super) fn provide(providers: &mut Providers) {
-    providers.mir_shims = make_shim;
+    providers.mir_shims = |tcx, shim| tcx.arena.alloc(make_shim(tcx, shim));
 }
 
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
