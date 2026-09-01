@@ -1250,7 +1250,7 @@ fn create_docs_and_gather_artifacts(builder: &Builder<'_>, cargo: builder::Cargo
 /// See https://github.com/rust-lang/cargo/issues/7677.
 ///
 /// To produce a single unified documentation, we want to merge them together.
-/// We do that creating symlinks into the target doc dir that will point to the host doc
+/// We do that by creating symlinks into the target doc dir that will point to the host doc
 /// directories.
 /// The target doc directory will then contain the combined docs.
 fn merge_host_and_target_docs(
