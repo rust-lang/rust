@@ -824,7 +824,7 @@ enum GenericArgsMode {
     ParenSugar,
     /// Allow RTN, don't allow paren sugar.
     ReturnTypeNotation,
-    // Error if parenthesized generics or RTN are encountered.
+    /// Error if parenthesized generics or RTN are encountered.
     Err,
     /// Silence errors when lowering generics. Only used with `Res::Err`.
     Silence,
