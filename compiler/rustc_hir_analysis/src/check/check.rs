@@ -12,7 +12,9 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
-use rustc_lint_defs::builtin::{DEAD_CODE, UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
+use rustc_lint_defs::builtin::{
+    ALIGNED_FIELDS_IN_PACKED, DEAD_CODE, UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS,
+};
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
@@ -1670,6 +1672,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                 }
             }
         }
+
         if repr.align.is_some() {
             struct_span_code_err!(
                 tcx.dcx(),
@@ -1678,51 +1681,60 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                 "type has conflicting packed and align representation hints"
             )
             .emit();
-        } else if let Some(def_spans) = check_packed_inner(tcx, def.did(), &mut vec![]) {
-            let mut err = struct_span_code_err!(
-                tcx.dcx(),
+        } else if repr.c()
+            && let Some(def_spans) = check_packed_inner(tcx, def.did(), &mut vec![])
+        {
+            tcx.emit_node_span_lint(
+                ALIGNED_FIELDS_IN_PACKED,
+                tcx.local_def_id_to_hir_id(def.did().as_local().unwrap()),
                 sp,
-                E0588,
-                "packed type cannot transitively contain a `#[repr(align)]` type"
-            );
-
-            err.span_note(
-                tcx.def_span(def_spans[0].0),
-                format!("`{}` has a `#[repr(align)]` attribute", tcx.item_name(def_spans[0].0)),
-            );
-
-            if def_spans.len() > 2 {
-                let mut first = true;
-                for (adt_def, span) in def_spans.iter().skip(1).rev() {
-                    let ident = tcx.item_name(*adt_def);
-                    err.span_note(
-                        *span,
-                        if first {
-                            format!(
-                                "`{}` contains a field of type `{}`",
-                                tcx.type_of(def.did()).instantiate_identity().skip_norm_wip(),
-                                ident
-                            )
-                        } else {
-                            format!("...which contains a field of type `{ident}`")
-                        },
+                rustc_errors::DiagDecorator(|diag| {
+                    diag.primary_message(
+                        "packed type cannot transitively contain a `#[repr(align)]` type",
                     );
-                    first = false;
-                }
-            }
 
-            err.emit();
+                    diag.span_note(
+                        tcx.def_span(def_spans[0].0),
+                        format!(
+                            "`{}` has a `#[repr(align)]` attribute",
+                            tcx.item_name(def_spans[0].0)
+                        ),
+                    );
+
+                    if def_spans.len() > 2 {
+                        let mut first = true;
+                        for (adt_def, span) in def_spans.iter().skip(1).rev() {
+                            let ident = tcx.item_name(*adt_def);
+                            diag.span_note(
+                                *span,
+                                if first {
+                                    format!(
+                                        "`{}` contains a field of type `{}`",
+                                        tcx.type_of(def.did())
+                                            .instantiate_identity()
+                                            .skip_norm_wip(),
+                                        ident
+                                    )
+                                } else {
+                                    format!("...which contains a field of type `{ident}`")
+                                },
+                            );
+                            first = false;
+                        }
+                    }
+                }),
+            );
         }
     }
 }
 
-pub(super) fn check_packed_inner(
+fn check_packed_inner(
     tcx: TyCtxt<'_>,
     def_id: DefId,
     stack: &mut Vec<DefId>,
 ) -> Option<Vec<(DefId, Span)>> {
     if let ty::Adt(def, args) = tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
-        if def.is_struct() || def.is_union() {
+        if def.repr().c() && (def.is_struct() || def.is_union()) {
             if def.repr().align.is_some() {
                 return Some(vec![(def.did(), DUMMY_SP)]);
             }
