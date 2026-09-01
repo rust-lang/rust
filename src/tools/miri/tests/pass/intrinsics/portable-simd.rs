@@ -16,8 +16,7 @@
 #![cfg_attr(not(miri), allow(unused))]
 
 use std::fmt::{self, Debug, Formatter};
-use std::intrinsics::simd as intrinsics;
-use std::intrinsics::simd::{simd_reduce_max, simd_reduce_min, simd_relaxed_fma};
+use std::intrinsics::simd::*;
 use std::ptr;
 use std::simd::StdFloat;
 use std::simd::prelude::*;
@@ -76,7 +75,7 @@ impl<T: Copy, const N: usize> PackedSimd<T, N> {
 pub const unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
 #[cfg(any(miri, target_has_reliable_f16_math))]
-fn simd_ops_f16() {
+fn test_simd_ops_f16() {
     let a = f16x4::splat(10.0);
     let b = f16x4::from_array([1.0, 2.0, 3.0, -4.0]);
     assert_eq!(-b, f16x4::from_array([-1.0, -2.0, -3.0, 4.0]));
@@ -150,7 +149,7 @@ fn simd_ops_f16() {
     }
 }
 
-fn simd_ops_f32() {
+fn test_simd_ops_f32() {
     let a = f32x4::splat(10.0);
     let b = f32x4::from_array([1.0, 2.0, 3.0, -4.0]);
     assert_eq!(-b, f32x4::from_array([-1.0, -2.0, -3.0, 4.0]));
@@ -172,6 +171,7 @@ fn simd_ops_f32() {
         f32x4::splat(f32::NEG_INFINITY)
     );
 
+    // All intermediate values can be precisely represented so even relaxed FMA are deterministic.
     unsafe {
         assert_eq!(simd_relaxed_fma(a, b, a), (a * b) + a);
         assert_eq!(simd_relaxed_fma(b, b, a), (b * b) + a);
@@ -223,7 +223,7 @@ fn simd_ops_f32() {
     }
 }
 
-fn simd_ops_f64() {
+fn test_simd_ops_f64() {
     let a = f64x4::splat(10.0);
     let b = f64x4::from_array([1.0, 2.0, 3.0, -4.0]);
     assert_eq!(-b, f64x4::from_array([-1.0, -2.0, -3.0, 4.0]));
@@ -245,6 +245,7 @@ fn simd_ops_f64() {
         f64x4::splat(f64::NEG_INFINITY)
     );
 
+    // All intermediate values can be precisely represented so even relaxed FMA are deterministic.
     unsafe {
         assert_eq!(simd_relaxed_fma(a, b, a), (a * b) + a);
         assert_eq!(simd_relaxed_fma(b, b, a), (b * b) + a);
@@ -297,9 +298,7 @@ fn simd_ops_f64() {
 }
 
 #[cfg(any(miri, target_has_reliable_f128_math))]
-fn simd_ops_f128() {
-    use intrinsics::*;
-
+fn test_simd_ops_f128() {
     let a = f128x4::splat(10.0);
     let b = f128x4::from_array([1.0, 2.0, 3.0, -4.0]);
 
@@ -329,6 +328,7 @@ fn simd_ops_f128() {
             f128x4::splat(f128::NEG_INFINITY)
         );
 
+        // All intermediate values can be precisely represented so even relaxed FMA are deterministic.
         assert_eq!(simd_relaxed_fma(a, b, a), simd_add(simd_mul(a, b), a));
         assert_eq!(simd_relaxed_fma(b, b, a), simd_add(simd_mul(b, b), a));
         assert_eq!(simd_relaxed_fma(a, b, b), simd_add(simd_mul(a, b), b));
@@ -385,7 +385,7 @@ fn simd_ops_f128() {
     }
 }
 
-fn simd_ops_i32() {
+fn test_simd_ops_i32() {
     let a = i32x4::splat(10);
     let b = i32x4::from_array([1, 2, 3, -4]);
     assert_eq!(-b, i32x4::from_array([-1, -2, -3, 4]));
@@ -496,17 +496,15 @@ fn simd_ops_i32() {
     let d = u32x4::splat(0x2fe78e45);
 
     unsafe {
-        assert_eq!(intrinsics::simd_funnel_shl(c, d, u32x4::splat(0)), c);
-        assert_eq!(intrinsics::simd_funnel_shl(c, d, u32x4::splat(8)), u32x4::splat(0x0000b32f));
+        assert_eq!(simd_funnel_shl(c, d, u32x4::splat(0)), c);
+        assert_eq!(simd_funnel_shl(c, d, u32x4::splat(8)), u32x4::splat(0x0000b32f));
 
-        assert_eq!(intrinsics::simd_funnel_shr(c, d, u32x4::splat(0)), d);
-        assert_eq!(intrinsics::simd_funnel_shr(c, d, u32x4::splat(8)), u32x4::splat(0xb32fe78e));
+        assert_eq!(simd_funnel_shr(c, d, u32x4::splat(0)), d);
+        assert_eq!(simd_funnel_shr(c, d, u32x4::splat(8)), u32x4::splat(0xb32fe78e));
     }
 }
 
-fn simd_mask() {
-    use std::intrinsics::simd::*;
-
+fn test_simd_mask() {
     let intmask = Mask::from_simd(i32x4::from_array([0, -1, 0, 0]));
     assert_eq!(intmask, Mask::from_array([false, true, false, false]));
     assert_eq!(intmask.to_array(), [false, true, false, false]);
@@ -684,7 +682,7 @@ fn simd_mask() {
     }
 }
 
-fn simd_cast() {
+fn test_simd_cast() {
     // between integer types
     assert_eq!(i32x4::from_array([1, 2, 3, -4]), i16x4::from_array([1, 2, 3, -4]).cast());
     assert_eq!(i16x4::from_array([1, 2, 3, -4]), i32x4::from_array([1, 2, 3, -4]).cast());
@@ -762,7 +760,7 @@ fn simd_cast() {
     }
 }
 
-fn simd_swizzle() {
+fn test_simd_swizzle() {
     let a = f32x4::splat(10.0);
     let b = f32x4::from_array([1.0, 2.0, 3.0, -4.0]);
 
@@ -771,7 +769,7 @@ fn simd_swizzle() {
     assert_eq!(simd_swizzle!(b, a, [3, 4]), f32x2::from_array([-4.0, 10.0]));
 }
 
-fn simd_swizzle_dyn() {
+fn test_simd_swizzle_dyn() {
     if cfg!(target_arch = "loongarch64") {
         // We don't support the required intrinsic here.
         return;
@@ -794,7 +792,7 @@ fn simd_swizzle_dyn() {
     check_swizzle_dyn::<64>();
 }
 
-fn simd_gather_scatter() {
+fn test_simd_gather_scatter() {
     let mut vec: Vec<i16> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     let idxs = Simd::from_array([9, 3, 0, 17]);
     let result = Simd::gather_or_default(&vec, idxs); // Note the lane that is out-of-bounds.
@@ -810,7 +808,7 @@ fn simd_gather_scatter() {
         Simd::from_array([ptr::null(), ptr::addr_of!(val), ptr::addr_of!(val), ptr::addr_of!(val)]);
     let default = u8x4::splat(0);
     let mask = i8x4::from_array([0, !0, 0, !0]);
-    let vals = unsafe { intrinsics::simd_gather(default, ptrs, mask) };
+    let vals = unsafe { simd_gather(default, ptrs, mask) };
     assert_eq!(vals, u8x4::from_array([0, 42, 0, 42]),);
 
     let mut val1 = 0u8;
@@ -822,7 +820,7 @@ fn simd_gather_scatter() {
         ptr::addr_of_mut!(val2),
     ]);
     let vals = u8x4::from_array([1, 2, 3, 4]);
-    unsafe { intrinsics::simd_scatter(vals, ptrs, mask) };
+    unsafe { simd_scatter(vals, ptrs, mask) };
     assert_eq!(val1, 2);
     assert_eq!(val2, 4);
 
@@ -835,11 +833,11 @@ fn simd_gather_scatter() {
         ptr::addr_of_mut!(val),
     ]);
     let vals = u8x4::from_array([1, 2, 3, 4]);
-    unsafe { intrinsics::simd_scatter(vals, ptrs, mask) };
+    unsafe { simd_scatter(vals, ptrs, mask) };
     assert_eq!(val, 4);
 }
 
-fn simd_round() {
+fn test_simd_round() {
     #[cfg(any(miri, target_has_reliable_f16_math))]
     {
         assert_eq!(
@@ -855,7 +853,7 @@ fn simd_round() {
             f16x4::from_array([1.0, 1.0, 2.0, -5.0])
         );
         assert_eq!(
-            unsafe { intrinsics::simd_round_ties_even(f16x4::from_array([0.9, 1.001, 2.0, -4.5])) },
+            f16x4::from_array([0.9, 1.001, 2.0, -4.5]).round_ties_even(),
             f16x4::from_array([1.0, 1.0, 2.0, -4.0])
         );
         assert_eq!(
@@ -877,7 +875,7 @@ fn simd_round() {
         f32x4::from_array([1.0, 1.0, 2.0, -5.0])
     );
     assert_eq!(
-        unsafe { intrinsics::simd_round_ties_even(f32x4::from_array([0.9, 1.001, 2.0, -4.5])) },
+        unsafe { simd_round_ties_even(f32x4::from_array([0.9, 1.001, 2.0, -4.5])) },
         f32x4::from_array([1.0, 1.0, 2.0, -4.0])
     );
     assert_eq!(
@@ -898,7 +896,7 @@ fn simd_round() {
         f64x4::from_array([1.0, 1.0, 2.0, -5.0])
     );
     assert_eq!(
-        unsafe { intrinsics::simd_round_ties_even(f64x4::from_array([0.9, 1.001, 2.0, -4.5])) },
+        unsafe { simd_round_ties_even(f64x4::from_array([0.9, 1.001, 2.0, -4.5])) },
         f64x4::from_array([1.0, 1.0, 2.0, -4.0])
     );
     assert_eq!(
@@ -908,8 +906,6 @@ fn simd_round() {
 
     #[cfg(any(miri, target_has_reliable_f128_math))]
     unsafe {
-        use intrinsics::*;
-
         assert_eq!(
             simd_ceil(f128x4::from_array([0.9, 1.001, 2.0, -4.5])),
             f128x4::from_array([1.0, 2.0, 2.0, -4.0])
@@ -933,9 +929,7 @@ fn simd_round() {
     }
 }
 
-fn simd_intrinsics() {
-    use intrinsics::*;
-
+fn test_simd_intrinsics() {
     unsafe {
         // Make sure simd_eq returns all-1 for `true`
         let a = i32x4::splat(10);
@@ -989,9 +983,7 @@ fn simd_intrinsics() {
     }
 }
 
-fn simd_float_intrinsics() {
-    use intrinsics::*;
-
+fn test_simd_float_intrinsics() {
     // These are just smoke tests to ensure the intrinsics can be called.
     unsafe {
         let a = f16x8::splat(10.0);
@@ -1035,9 +1027,7 @@ fn simd_float_intrinsics() {
     }
 }
 
-fn simd_masked_loadstore() {
-    use intrinsics::*;
-
+fn test_simd_masked_loadstore() {
     // The buffer is deliberarely too short, so reading the last element would be UB.
     let buf = [3i32; 3];
     let default = i32x4::splat(0);
@@ -1125,7 +1115,7 @@ fn simd_masked_loadstore() {
     assert_eq!(buf, vals);
 }
 
-fn simd_ops_non_pow2() {
+fn test_simd_ops_non_pow2() {
     // Just a little smoke test for operations on non-power-of-two vectors.
     #[repr(simd, packed)]
     #[derive(Copy, Clone)]
@@ -1136,31 +1126,31 @@ fn simd_ops_non_pow2() {
 
     let x = SimdPacked([1u32; 3]);
     let y = SimdPacked([2u32; 3]);
-    let z = unsafe { intrinsics::simd_add(x, y) };
+    let z = unsafe { simd_add(x, y) };
     assert_eq!(unsafe { *(&raw const z).cast::<[u32; 3]>() }, [3u32; 3]);
 
     let x = SimdPadded([1u32; 3]);
     let y = SimdPadded([2u32; 3]);
-    let z = unsafe { intrinsics::simd_add(x, y) };
+    let z = unsafe { simd_add(x, y) };
     assert_eq!(unsafe { *(&raw const z).cast::<[u32; 3]>() }, [3u32; 3]);
 }
 
 fn main() {
-    simd_mask();
+    test_simd_mask();
     #[cfg(any(miri, target_has_reliable_f16_math))]
-    simd_ops_f16();
-    simd_ops_f32();
-    simd_ops_f64();
+    test_simd_ops_f16();
+    test_simd_ops_f32();
+    test_simd_ops_f64();
     #[cfg(any(miri, target_has_reliable_f128_math))]
-    simd_ops_f128();
-    simd_ops_i32();
-    simd_ops_non_pow2();
-    simd_cast();
-    simd_swizzle();
-    simd_swizzle_dyn();
-    simd_gather_scatter();
-    simd_round();
-    simd_intrinsics();
-    simd_float_intrinsics();
-    simd_masked_loadstore();
+    test_simd_ops_f128();
+    test_simd_ops_i32();
+    test_simd_ops_non_pow2();
+    test_simd_cast();
+    test_simd_swizzle();
+    test_simd_swizzle_dyn();
+    test_simd_gather_scatter();
+    test_simd_round();
+    test_simd_intrinsics();
+    test_simd_float_intrinsics();
+    test_simd_masked_loadstore();
 }
