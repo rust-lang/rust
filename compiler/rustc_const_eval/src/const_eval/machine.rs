@@ -614,12 +614,11 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
             sym::type_id_points_mutably => {
                 let ty = ecx.read_type_id(&args[0])?;
-                let ret = if let ty::RawPtr(_, mutability) = ty.kind() {
-                    mutability.is_mut()
-                } else {
-                    false
-                };
-                ecx.write_scalar(Scalar::from_bool(ret), dest)?;
+                let is_mutable = matches!(
+                    ty.kind(),
+                    ty::RawPtr(_, Mutability::Mut) | &ty::Ref(_, _, Mutability::Mut)
+                );
+                ecx.write_scalar(Scalar::from_bool(is_mutable), dest)?;
             }
 
             sym::size_of_type_id => {
@@ -704,7 +703,9 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
             sym::type_id_points_to => {
                 let ty = ecx.read_type_id(&args[0])?;
-                let variant_index = if let ty::RawPtr(pointee_ty, _) = ty.kind() {
+                let variant_index = if let ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) =
+                    ty.kind()
+                {
                     let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
                     let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
                     ecx.write_type_id(*pointee_ty, &field_place)?;

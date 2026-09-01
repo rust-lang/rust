@@ -566,6 +566,11 @@ impl TypeId {
     /// use std::any::TypeId;
     ///
     /// assert_eq!(
+    ///     const { TypeId::of::<&i32>().points_to() },
+    ///     const { Some(TypeId::of::<i32>()) },
+    /// );
+    ///
+    /// assert_eq!(
     ///     const { TypeId::of::<*const i32>().points_to() },
     ///     const { Some(TypeId::of::<i32>()) },
     /// );
@@ -583,6 +588,9 @@ impl TypeId {
     /// ```
     /// #![feature(type_info)]
     /// use std::any::TypeId;
+    ///
+    /// assert!(const { TypeId::of::<&mut i32>().points_mutably() });
+    /// assert!(const { !TypeId::of::<&i32>().points_mutably() });
     ///
     /// assert!(!const { TypeId::of::<*const i32>().points_mutably() });
     /// assert!(const { TypeId::of::<*mut i32>().points_mutably() });
