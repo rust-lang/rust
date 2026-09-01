@@ -1,5 +1,7 @@
 //@ check-pass
-//@ compile-flags: -Zassumptions-on-binders -Znext-solver=globally
+//@ revisions: assumptions min_coroutines
+//@[assumptions] compile-flags: -Zassumptions-on-binders
+//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines
 
 #![feature(test_binder_constraints, non_lifetime_binders)]
 #![expect(incomplete_features)]
@@ -19,6 +21,7 @@ core::test_binder_constraints! {
 
 // FIXME(-Zassumptions-on-binders): this should be `impl<'b, 'c: 'b>`, not
 // `impl<'b, 'c: 'b + 'static>`, but OR isn't actually implemented yet
+#[cfg(assumptions)]
 core::test_binder_constraints! {
     impl<'b, 'c: 'b + 'static> {
         forall<'a> where 'b: 'a {
@@ -87,6 +90,17 @@ core::test_binder_constraints! {
         forall<'a> where TParam: 'a { },
         forall<'a> where TParam::Assoc: 'a { },
         forall<'a, T> where T: 'a { },
+    }
+}
+
+#[cfg(min_coroutines)]
+core::test_binder_constraints! {
+    impl {
+        // Minimal mode directly discharges constraints proven by the current binder without
+        // rewriting either placeholder into a lower universe.
+        forall<'a, 'b> where 'b: 'a {
+            'b: 'a,
+        } expect {}
     }
 }
 
