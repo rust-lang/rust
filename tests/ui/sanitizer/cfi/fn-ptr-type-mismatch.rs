@@ -1,12 +1,14 @@
 // Verifies that calling a function pointer with a mismatched type triggers a
 // CFI violation and causes the process to trap.
 
-//@ revisions: cfi kcfi
+//@ revisions: cfi cfi-minimal-runtime kcfi
 // FIXME(#122848) Remove only-linux once OSX CFI binaries work
 //@ only-linux
 //@ ignore-backends: gcc
 //@ [cfi] needs-sanitizer-cfi
 //@ [cfi] needs-sanitizer-support
+//@ [cfi-minimal-runtime] needs-sanitizer-cfi
+//@ [cfi-minimal-runtime] needs-sanitizer-support
 //@ [kcfi] needs-sanitizer-kcfi
 //@ compile-flags: -C target-feature=-crt-static
 //@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
@@ -14,6 +16,11 @@
 //@ [cfi] compile-flags: -C prefer-dynamic=off
 //@ [cfi] compile-flags: -Z sanitizer=cfi
 //@ [cfi] compile-flags: -Z sanitizer-cfi-diag=true
+//@ [cfi-minimal-runtime] compile-flags: -C opt-level=0 -C codegen-units=1 -C lto
+//@ [cfi-minimal-runtime] compile-flags: -C prefer-dynamic=off
+//@ [cfi-minimal-runtime] compile-flags: -Z sanitizer=cfi
+//@ [cfi-minimal-runtime] compile-flags: -Z sanitizer-cfi-diag=true
+//@ [cfi-minimal-runtime] compile-flags: -Z sanitizer-cfi-minimal-runtime=true
 //@ [kcfi] compile-flags: -Z sanitizer=kcfi
 //@ [kcfi] compile-flags: -C panic=abort -C prefer-dynamic=off
 //@ run-fail-or-crash

@@ -2043,17 +2043,31 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             let is_diag = self.tcx.sess.opts.unstable_opts.sanitizer_cfi_diag.unwrap_or(false);
             let is_recover =
                 self.tcx.sess.opts.unstable_opts.sanitizer_cfi_recover.unwrap_or(false);
+            let is_minimal =
+                self.tcx.sess.opts.unstable_opts.sanitizer_cfi_minimal_runtime.unwrap_or(false);
 
             if is_diag || is_recover {
-                let fty = self.cx.type_func(
-                    &[self.cx.type_ptr(), self.cx.type_isize(), self.cx.type_isize()],
-                    self.cx.type_void(),
-                );
+                let fty = if is_minimal {
+                    self.cx.type_func(&[], self.cx.type_void())
+                } else {
+                    self.cx.type_func(
+                        &[self.cx.type_ptr(), self.cx.type_isize(), self.cx.type_isize()],
+                        self.cx.type_void(),
+                    )
+                };
                 let ubsan_handler = self.declare_cfn(
                     if is_recover {
-                        "__ubsan_handle_cfi_check_fail"
+                        if is_minimal {
+                            "__ubsan_handle_cfi_check_fail_minimal"
+                        } else {
+                            "__ubsan_handle_cfi_check_fail"
+                        }
                     } else {
-                        "__ubsan_handle_cfi_check_fail_abort"
+                        if is_minimal {
+                            "__ubsan_handle_cfi_check_fail_minimal_abort"
+                        } else {
+                            "__ubsan_handle_cfi_check_fail_abort"
+                        }
                     },
                     llvm::UnnamedAddr::Global,
                     fty,
@@ -2079,15 +2093,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     self.generate_ubsan_cfi_diag_data(self.span, expected_ty, check_kind);
 
                 let function_address = self.ptrtoint(llfn, self.cx.type_isize());
-                self.call(
-                    fty,
-                    None,
-                    None,
-                    ubsan_handler,
-                    &[diag_data, function_address, self.const_usize(0)],
-                    None,
-                    None,
-                );
+                let arguments: &[_] = if is_minimal {
+                    &[]
+                } else {
+                    &[diag_data, function_address, self.const_usize(0)]
+                };
+                self.call(fty, None, None, ubsan_handler, arguments, None, None);
                 if is_recover {
                     self.br(bb_pass);
                 } else {
