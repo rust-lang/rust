@@ -62,8 +62,7 @@ impl<'hir> ItemLowerer<'_, 'hir> {
 
         let item = f(&mut lctx);
 
-        let info = lctx.curr_owner.into_owner_info(self.tcx, item);
-        hir::MaybeOwner::Owner(lctx.arena.alloc(info))
+        hir::MaybeOwner::Owner(lctx.curr_owner.into_owner_info(self.tcx, item))
     }
 
     #[instrument(level = "debug", skip(self, c))]
