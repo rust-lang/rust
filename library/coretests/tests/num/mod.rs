@@ -152,6 +152,36 @@ fn test_int_from_str_overflow() {
 }
 
 #[test]
+fn test_from_str_radix_10_swar_boundaries() {
+    // SWAR batches up to 16 leading digits for 64-bit types. These
+    // cases sit on the batch boundaries and put invalid digits inside
+    // the batched window.
+    test_parse::<u64>("9999999999999999", Ok(9_999_999_999_999_999));
+    test_parse::<u64>("10000000000000000", Ok(10_000_000_000_000_000));
+    test_parse::<u64>("18446744073709551615", Ok(18_446_744_073_709_551_615));
+    test_parse::<u64>("18446744073709551616", Err(IntErrorKind::PosOverflow));
+    test_parse::<u64>("99999999999999999999", Err(IntErrorKind::PosOverflow));
+
+    test_parse::<u64>("1234567890123456x", Err(IntErrorKind::InvalidDigit));
+    test_parse::<u64>("x2345678901234567", Err(IntErrorKind::InvalidDigit));
+    test_parse::<u64>("1234567890x2345678", Err(IntErrorKind::InvalidDigit));
+    test_parse::<u64>("12345678901234567x", Err(IntErrorKind::InvalidDigit));
+
+    test_parse::<i64>("9223372036854775807", Ok(9_223_372_036_854_775_807));
+    test_parse::<i64>("-9223372036854775808", Ok(-9_223_372_036_854_775_808));
+    test_parse::<i64>("9223372036854775808", Err(IntErrorKind::PosOverflow));
+    test_parse::<i64>("-9223372036854775809", Err(IntErrorKind::NegOverflow));
+    test_parse::<i64>("-123456789012345678x", Err(IntErrorKind::InvalidDigit));
+    test_parse::<i64>("123456789012345x6", Err(IntErrorKind::InvalidDigit));
+
+    // Short inputs must not be affected by the SWAR path.
+    test_parse::<u64>("0", Ok(0));
+    test_parse::<u64>("+42", Ok(42));
+    test_parse::<i64>("-42", Ok(-42));
+    test_parse::<u64>("12a34", Err(IntErrorKind::InvalidDigit));
+}
+
+#[test]
 fn test_can_not_overflow() {
     fn can_overflow<T>(radix: u32, input: &str) -> bool
     where
