@@ -66,6 +66,7 @@ macro impl_for_float($t:ty) {
     #[unstable(feature = "clamp_bounds", issue = "147781")]
     #[rustc_const_unstable(feature = "clamp_bounds", issue = "147781")]
     const impl ClampBounds<$t> for RangeFrom<$t> {
+        #[inline]
         fn clamp(self, value: $t) -> $t {
             assert!(!self.start.is_nan(), "start was NaN");
             value.max(self.start)
@@ -75,6 +76,7 @@ macro impl_for_float($t:ty) {
     #[unstable(feature = "clamp_bounds", issue = "147781")]
     #[rustc_const_unstable(feature = "clamp_bounds", issue = "147781")]
     const impl ClampBounds<$t> for RangeToInclusive<$t> {
+        #[inline]
         fn clamp(self, value: $t) -> $t {
             assert!(!self.end.is_nan(), "end was NaN");
             value.min(self.end)
@@ -88,6 +90,7 @@ macro impl_for_float($t:ty) {
             clippy::neg_cmp_op_on_partial_ord,
             reason = "NaN check is intentionally included in comparison"
         )]
+        #[inline]
         fn clamp(self, value: $t) -> $t {
             let (start, end) = self.into_inner();
             assert!(start <= end, "start > end, or either was NaN");
