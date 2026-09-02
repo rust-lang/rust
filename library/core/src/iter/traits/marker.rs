@@ -116,4 +116,4 @@ pub unsafe trait InPlaceIterable {
 #[unstable(feature = "trusted_step", issue = "85731")]
 #[rustc_specialization_trait]
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-pub const unsafe trait TrustedStep: [const] Step + Copy {}
+pub const unsafe trait TrustedStep: const Step + Copy {}
