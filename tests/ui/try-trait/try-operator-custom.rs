@@ -43,7 +43,7 @@ impl<U, V> Residual<U> for MyResult<Never, V> {
     type TryType = MyResult<U, V>;
 }
 
-type ResultResidual<E> = Result<std::convert::Infallible, E>;
+type ResultResidual<E> = Result<!, E>;
 
 impl<U, V, W> FromResidual<ResultResidual<V>> for MyResult<U, W>
 where
