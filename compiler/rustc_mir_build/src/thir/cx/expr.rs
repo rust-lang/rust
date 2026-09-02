@@ -312,7 +312,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         // using a coercion (or is a no-op).
         if self.typeck_results.is_coercion_cast(source.hir_id) {
             // Convert the lexpr to a vexpr.
-            ExprKind::Use { source: self.mirror_expr(source) }
+            ExprKind::ValueExpr { source: self.mirror_expr(source) }
         } else if self.typeck_results.expr_ty(source).is_ref() {
             // Special cased so that we can type check that the element
             // type of the source matches the pointed to type of the
@@ -1178,7 +1178,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::WrapUnsafeBinder { source: mirrored }
             }
 
-            hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },
+            hir::ExprKind::DropTemps(source) => {
+                ExprKind::ValueExpr { source: self.mirror_expr(source) }
+            }
             hir::ExprKind::Array(fields) => ExprKind::Array { fields: self.mirror_exprs(fields) },
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
@@ -1605,7 +1607,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     name: field,
                 },
                 HirProjectionKind::OpaqueCast => {
-                    ExprKind::Use { source: self.thir.exprs.push(captured_place_expr) }
+                    ExprKind::ValueExpr { source: self.thir.exprs.push(captured_place_expr) }
                 }
                 HirProjectionKind::UnwrapUnsafeBinder => ExprKind::PlaceUnwrapUnsafeBinder {
                     source: self.thir.exprs.push(captured_place_expr),
