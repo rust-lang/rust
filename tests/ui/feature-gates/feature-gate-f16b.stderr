@@ -93,7 +93,7 @@ LL |     let _ = x + x;
    |             f16b
    |
 note: `f16b` does not implement `Add`
-  --> $SRC_DIR/core/src/num/brain_float.rs:LL:COL
+  --> $SRC_DIR/core/src/num/bfloat.rs:LL:COL
    |
    = note: `f16b` is defined in another crate
 

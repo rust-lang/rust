@@ -43,7 +43,7 @@ mod int_macros; // import int_impl!
 #[macro_use]
 mod uint_macros; // import uint_impl!
 
-mod brain_float;
+mod bfloat;
 mod complex;
 mod error;
 #[cfg(not(no_fp_fmt_parse))]
@@ -58,7 +58,7 @@ mod wrapping;
 pub mod niche_types;
 
 #[unstable(feature = "f16b", issue = "160630")]
-pub use brain_float::f16b;
+pub use bfloat::f16b;
 #[unstable(feature = "complex_numbers", issue = "154023")]
 pub use complex::Complex;
 #[stable(feature = "int_error_matching", since = "1.55.0")]
