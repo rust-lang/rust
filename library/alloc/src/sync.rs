@@ -19,8 +19,6 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-#[cfg(not(no_global_oom_handling))]
-use core::mem::DropGuard;
 use core::mem::{self, Alignment, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
@@ -860,9 +858,9 @@ impl<T, A: Allocator> Arc<T, A> {
 
         // Now we can properly initialize the inner value and turn our weak
         // reference into a strong reference.
+        let inner = init_ptr.as_ptr();
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let inner = init_ptr.as_ptr();
             ptr::write(&raw mut (*inner).data, data);
 
             // The above write to the data field must be visible to any threads which
@@ -1217,8 +1215,6 @@ impl<T, A: Allocator> Arc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(smart_pointer_try_map)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let r = Arc::new(7);
@@ -1226,7 +1222,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// assert_eq!(*new, 14);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    #[stable(feature = "smart_pointer_map", since = "CURRENT_RUSTC_VERSION")]
     pub fn map<U>(this: Self, f: impl FnOnce(&T) -> U) -> Arc<U, A> {
         if size_of::<T>() == size_of::<U>()
             && align_of::<T>() == align_of::<U>()
@@ -2419,31 +2415,47 @@ impl<T> Arc<[T]> {
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn from_iter_exact(iter: impl Iterator<Item = T>, len: usize) -> Arc<[T]> {
+        // Panic guard while cloning T elements.
+        // In the event of a panic, elements that have been written
+        // into the new ArcInner will be dropped, then the memory freed.
+        struct Guard<T> {
+            mem: NonNull<u8>,
+            elems: *mut T,
+            layout: Layout,
+            n_elems: usize,
+        }
+
+        impl<T> Drop for Guard<T> {
+            fn drop(&mut self) {
+                // ignore-tidy-undocumented-unsafe
+                unsafe {
+                    let slice = from_raw_parts_mut(self.elems, self.n_elems);
+                    ptr::drop_in_place(slice);
+
+                    Global.deallocate(self.mem, self.layout);
+                }
+            }
+        }
+
         // ignore-tidy-undocumented-unsafe
         unsafe {
             let ptr = Self::allocate_for_slice(len);
+
+            let mem = ptr as *mut _ as *mut u8;
             let layout = Layout::for_value_raw(ptr);
 
             // Pointer to first element
-            let elems = (&raw mut (*ptr).data).as_mut_ptr();
+            let elems = (&raw mut (*ptr).data) as *mut T;
 
-            // Panic guard while cloning T elements.
-            // In the event of a panic, elements that have been written
-            // into the new ArcInner will be dropped, then the memory freed.
-            let mut guard = DropGuard::new(0, |n_elems| {
-                let slice = from_raw_parts_mut(elems, n_elems);
-                ptr::drop_in_place(slice);
-
-                Global.deallocate(NonNull::new_unchecked(ptr.cast()), layout);
-            });
+            let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
 
             for (i, item) in iter.enumerate() {
                 ptr::write(elems.add(i), item);
-                *guard += 1;
+                guard.n_elems += 1;
             }
 
-            // All clear. Dismiss the guard so it doesn't free the new ArcInner.
-            DropGuard::dismiss(guard);
+            // All clear. Forget the guard so it doesn't free the new ArcInner.
+            mem::forget(guard);
 
             Self::from_ptr(ptr)
         }
@@ -2664,7 +2676,15 @@ impl<T: ?Sized + CloneToUninit, A: AllocatorClone> Arc<T, A> {
             // If we unwind before the Arc is overwritten, we expose a strong
             // count of 0, resulting in a UAF (#155746, #157203).
             // Until the new Arc is written, the old Arc must remain valid
-            let guard = DropGuard::new(this.inner(), |inner| inner.strong.store(1, Release));
+            struct Guard<'a, T: ?Sized> {
+                inner: &'a ArcInner<T>,
+            }
+            impl<'a, T: ?Sized> Drop for Guard<'a, T> {
+                fn drop(&mut self) {
+                    self.inner.strong.store(1, Release);
+                }
+            }
+            let guard = Guard { inner: this.inner() };
 
             // Can just steal the data, all that's left is Weaks
             // Note that this can panic in two ways:
@@ -2685,7 +2705,7 @@ impl<T: ?Sized + CloneToUninit, A: AllocatorClone> Arc<T, A> {
                 );
 
                 // We are now safe from panics.
-                DropGuard::dismiss(guard);
+                mem::forget(guard);
 
                 // Materialize our own implicit weak pointer, so that it can clean
                 // up the ArcInner as needed.
@@ -4796,7 +4816,6 @@ impl<T> UniqueArc<T, Global> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(smart_pointer_try_map)]
     /// #![feature(unique_rc_arc)]
     ///
     /// use std::sync::UniqueArc;
@@ -4806,7 +4825,7 @@ impl<T> UniqueArc<T, Global> {
     /// assert_eq!(*new, 14);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
     pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> UniqueArc<U> {
         if size_of::<T>() == size_of::<U>()
             && align_of::<T>() == align_of::<U>()

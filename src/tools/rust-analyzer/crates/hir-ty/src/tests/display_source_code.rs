@@ -91,6 +91,19 @@ fn foo(foo: &dyn for<'a> Foo<'a>) {}
 }
 
 #[test]
+fn render_dyn_ty_under_enclosing_binder() {
+    check_types_source_code(
+        r#"
+//- minicore: fn
+fn test(f: impl for<'b> Fn(&dyn Fn() -> &'b u8)) {
+    f;
+  //^ impl Fn(&(dyn Fn() -> &u8 + 'static))
+}
+"#,
+    );
+}
+
+#[test]
 fn sized_bounds_apit() {
     check_types_source_code(
         r#"

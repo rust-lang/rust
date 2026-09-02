@@ -544,7 +544,7 @@
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
-use crate::{convert, fmt, hint};
+use crate::{fmt, hint};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -2164,7 +2164,7 @@ impl<T, E, V: FromIterator<T>> FromIterator<Result<T, E>> for Result<V, E> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 const impl<T, E> ops::Try for Result<T, E> {
     type Output = T;
-    type Residual = Result<convert::Infallible, E>;
+    type Residual = Result<!, E>;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -2182,12 +2182,10 @@ const impl<T, E> ops::Try for Result<T, E> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T, E, F: [const] From<E>> ops::FromResidual<Result<convert::Infallible, E>>
-    for Result<T, F>
-{
+const impl<T, E, F: [const] From<E>> ops::FromResidual<Result<!, E>> for Result<T, F> {
     #[inline]
     #[track_caller]
-    fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
+    fn from_residual(residual: Result<!, E>) -> Self {
         match residual {
             Err(e) => Err(From::from(e)),
         }
@@ -2205,6 +2203,6 @@ const impl<T, E, F: [const] From<E>> ops::FromResidual<ops::Yeet<E>> for Result<
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-const impl<T, E> ops::Residual<T> for Result<convert::Infallible, E> {
+const impl<T, E> ops::Residual<T> for Result<!, E> {
     type TryType = Result<T, E>;
 }

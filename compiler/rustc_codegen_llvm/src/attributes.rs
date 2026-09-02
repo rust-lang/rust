@@ -1,10 +1,10 @@
 //! Set and unset common attributes on LLVM values.
-use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr, RtsanSetting};
+use rustc_attr_ir::{
+    InlineAttr, InstructionSetAttr, InstrumentFnAttr, OptimizeAttr, RtsanSetting, find_attr,
+};
 use rustc_hir::def_id::DefId;
-use rustc_hir::find_attr;
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, InstrumentFnAttr, PatchableFunctionEntry, SanitizerFnAttrs,
-    TargetFeature,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs, TargetFeature,
 };
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_sanitizers::ignorelist::SanitizerIgnoreList;
@@ -252,7 +252,7 @@ fn function_return_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll 
 fn instrument_function_attr<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
-    instrument_fn: InstrumentFnAttr,
+    instrument_fn: Option<InstrumentFnAttr>,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
     if sess.opts.unstable_opts.instrument_mcount != InstrumentMcount::Disabled {
@@ -260,8 +260,8 @@ fn instrument_function_attr<'ll>(
         // `post-inline-ee-instrument` LLVM pass.
 
         let instrument_entry = match instrument_fn {
-            InstrumentFnAttr::Default | InstrumentFnAttr::On => true,
-            InstrumentFnAttr::Off => false,
+            Some(InstrumentFnAttr::On) | None => true,
+            Some(InstrumentFnAttr::Off) => false,
         };
 
         if instrument_entry {
@@ -306,13 +306,13 @@ fn instrument_function_attr<'ll>(
 
         // always and never may be overridden by the #[instrument_fn = ...] attribute.
         match instrument_fn {
-            InstrumentFnAttr::Default => {}
-            InstrumentFnAttr::On => {
+            Some(InstrumentFnAttr::On) => {
                 always = true;
             }
-            InstrumentFnAttr::Off => {
+            Some(InstrumentFnAttr::Off) => {
                 never = true;
             }
+            None => {}
         }
 
         if never {

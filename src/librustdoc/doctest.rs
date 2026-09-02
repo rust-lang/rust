@@ -176,6 +176,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         unstable_opts: options.unstable_opts.clone(),
         error_format: options.error_format.clone(),
         target_modifiers: options.target_modifiers.clone(),
+        describe_lints: options.describe_lints,
         ..config::Options::default()
     };
 
@@ -215,8 +216,17 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
 
     let extract_doctests = options.output_format == OutputFormat::Doctest;
     let save_temps = options.codegen_options.save_temps;
+    let registered_lints = config.register_lints.is_some();
     let result = interface::run_compiler(config, |compiler| {
-        let krate = rustc_interface::passes::parse(&compiler.sess);
+        let sess = &compiler.sess;
+
+        // -W help
+        if sess.opts.describe_lints {
+            rustc_driver::describe_lints(sess, registered_lints);
+            return Ok(None);
+        }
+
+        let krate = rustc_interface::passes::parse(sess);
 
         let (collector, _incr_comp_session) =
             rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {

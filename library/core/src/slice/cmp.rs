@@ -176,7 +176,7 @@ const trait SliceChain: Sized {
     fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
 }
 
-type AlwaysBreak<B> = ControlFlow<B, crate::convert::Infallible>;
+type AlwaysBreak<B> = ControlFlow<B, !>;
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<A: [const] PartialOrd> SlicePartialOrd for A {

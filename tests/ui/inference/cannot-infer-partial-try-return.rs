@@ -10,7 +10,7 @@ where
     }
 }
 
-fn infallible() -> Result<(), std::convert::Infallible> {
+fn infallible() -> Result<(), !> {
     Ok(())
 }
 

@@ -61,8 +61,11 @@ use crate::{mem, ptr};
 mod bounds;
 pub mod fallback;
 pub mod gpu;
+mod macros;
 pub mod mir;
 pub mod simd;
+
+use macros::intrinsic_dispatch_on_type;
 
 // These imports are used for simplifying intra-doc links
 #[allow(unused_imports)]
@@ -1110,92 +1113,46 @@ pub fn powif64(a: f64, x: i32) -> f64;
 #[rustc_nounwind]
 pub fn powif128(a: f128, x: i32) -> f128;
 
-/// Returns the sine of an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::sin`](../../std/primitive.f16.html#method.sin)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf16(x: f16) -> f16 {
-    sinf32(x as f32) as f16
-}
-/// Returns the sine of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::sin`](../../std/primitive.f32.html#method.sin)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf32(x: f32) -> f32 {
-    cfg_select! {
-        all(target_env = "msvc", target_arch = "x86") => sinf64(x as f64) as f32,
-        _ => libm::likely_available::sinf(x),
+intrinsic_dispatch_on_type! {
+    /// Returns the sine of a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `sin` method. For example, [`f32::sin`](../../std/primitive.f32.html#method.sin).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn sin<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { sin(x as f32) as f16 }
+    f32 => {
+        cfg_select! {
+            all(target_env = "msvc", target_arch = "x86") => sin(x as f64) as f32,
+            _ => libm::likely_available::sinf(x),
+        }
     }
-}
-/// Returns the sine of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::sin`](../../std/primitive.f64.html#method.sin)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf64(x: f64) -> f64 {
-    libm::likely_available::sin(x)
-}
-/// Returns the sine of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::sin`](../../std/primitive.f128.html#method.sin)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn sinf128(x: f128) -> f128 {
-    libm::maybe_available::sinf128(x)
+    f64 => { libm::likely_available::sin(x) }
+    f128 => { libm::maybe_available::sinf128(x) }
 }
 
-/// Returns the cosine of an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::cos`](../../std/primitive.f16.html#method.cos)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf16(x: f16) -> f16 {
-    cosf32(x as f32) as f16
-}
-/// Returns the cosine of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::cos`](../../std/primitive.f32.html#method.cos)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf32(x: f32) -> f32 {
-    cfg_select! {
-        all(target_env = "msvc", target_arch = "x86") => cosf64(x as f64) as f32,
-        _ => libm::likely_available::cosf(x),
+intrinsic_dispatch_on_type! {
+    /// Returns the cosine of a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `cos` method. For example, [`f32::cos`](../../std/primitive.f32.html#method.cos).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn cos<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { cos(x as f32) as f16 }
+    f32 => {
+        cfg_select! {
+            all(target_env = "msvc", target_arch = "x86") => cos(x as f64) as f32,
+            _ => libm::likely_available::cosf(x),
+        }
     }
-}
-/// Returns the cosine of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::cos`](../../std/primitive.f64.html#method.cos)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf64(x: f64) -> f64 {
-    libm::likely_available::cos(x)
-}
-/// Returns the cosine of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::cos`](../../std/primitive.f128.html#method.cos)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn cosf128(x: f128) -> f128 {
-    libm::maybe_available::cosf128(x)
+    f64 => { libm::likely_available::cos(x) }
+    f128 => { libm::maybe_available::cosf128(x) }
 }
 
 /// Raises an `f16` to an `f16` power.
@@ -1242,224 +1199,109 @@ pub fn powf128(a: f128, x: f128) -> f128 {
     libm::maybe_available::powf128(a, x)
 }
 
-/// Returns the exponential of an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::exp`](../../std/primitive.f16.html#method.exp)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf16(x: f16) -> f16 {
-    expf32(x as f32) as f16
-}
-/// Returns the exponential of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::exp`](../../std/primitive.f32.html#method.exp)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf32(x: f32) -> f32 {
-    cfg_select! {
-        all(target_env = "msvc", target_arch = "x86") => expf64(x as f64) as f32,
-        _ => libm::likely_available::expf(x),
+intrinsic_dispatch_on_type! {
+    /// Returns the exponential of a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `exp` method. For example, [`f32::exp`](../../std/primitive.f32.html#method.exp).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn exp<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { exp(x as f32) as f16 }
+    f32 => {
+        cfg_select! {
+            all(target_env = "msvc", target_arch = "x86") => exp(x as f64) as f32,
+            _ => libm::likely_available::expf(x),
+        }
     }
-}
-/// Returns the exponential of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::exp`](../../std/primitive.f64.html#method.exp)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf64(x: f64) -> f64 {
-    libm::likely_available::exp(x)
-}
-/// Returns the exponential of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::exp`](../../std/primitive.f128.html#method.exp)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn expf128(x: f128) -> f128 {
-    libm::maybe_available::expf128(x)
+    f64 => { libm::likely_available::exp(x) }
+    f128 => { libm::maybe_available::expf128(x) }
 }
 
-/// Returns 2 raised to the power of an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::exp2`](../../std/primitive.f16.html#method.exp2)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f16(x: f16) -> f16 {
-    exp2f32(x as f32) as f16
-}
-/// Returns 2 raised to the power of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::exp2`](../../std/primitive.f32.html#method.exp2)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f32(x: f32) -> f32 {
-    cfg_select! {
-        all(target_env = "msvc", target_arch = "x86") => exp2f64(x as f64) as f32,
-        _ => libm::likely_available::exp2f(x),
+intrinsic_dispatch_on_type! {
+    /// Returns 2 raised to the power of a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `exp2` method. For example, [`f32::exp2`](../../std/primitive.f32.html#method.exp2).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn exp2<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { exp2(x as f32) as f16 }
+    f32 => {
+        cfg_select! {
+            all(target_env = "msvc", target_arch = "x86") => exp2(x as f64) as f32,
+            _ => libm::likely_available::exp2f(x),
+        }
     }
-}
-/// Returns 2 raised to the power of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::exp2`](../../std/primitive.f64.html#method.exp2)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f64(x: f64) -> f64 {
-    libm::likely_available::exp2(x)
-}
-/// Returns 2 raised to the power of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::exp2`](../../std/primitive.f128.html#method.exp2)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn exp2f128(x: f128) -> f128 {
-    libm::maybe_available::exp2f128(x)
+    f64 => { libm::likely_available::exp2(x) }
+    f128 => { libm::maybe_available::exp2f128(x) }
 }
 
-/// Returns the natural logarithm of an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::ln`](../../std/primitive.f16.html#method.ln)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf16(x: f16) -> f16 {
-    logf32(x as f32) as f16
-}
-/// Returns the natural logarithm of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::ln`](../../std/primitive.f32.html#method.ln)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf32(x: f32) -> f32 {
-    cfg_select! {
-        all(target_env = "msvc", target_arch = "x86") => logf64(x as f64) as f32,
-        _ => libm::likely_available::logf(x),
+intrinsic_dispatch_on_type! {
+    /// Returns the natural logarithm of a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `ln` method. For example, [`f32::ln`](../../std/primitive.f32.html#method.ln).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn log<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { log(x as f32) as f16 }
+    f32 => {
+        cfg_select! {
+            all(target_env = "msvc", target_arch = "x86") => log(x as f64) as f32,
+            _ => libm::likely_available::logf(x),
+        }
     }
-}
-/// Returns the natural logarithm of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::ln`](../../std/primitive.f64.html#method.ln)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf64(x: f64) -> f64 {
-    libm::likely_available::log(x)
-}
-/// Returns the natural logarithm of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::ln`](../../std/primitive.f128.html#method.ln)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn logf128(x: f128) -> f128 {
-    libm::maybe_available::logf128(x)
+    f64 => { libm::likely_available::log(x) }
+    f128 => { libm::maybe_available::logf128(x) }
 }
 
-/// Returns the base 10 logarithm of an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::log10`](../../std/primitive.f16.html#method.log10)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f16(x: f16) -> f16 {
-    log10f32(x as f32) as f16
-}
-/// Returns the base 10 logarithm of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::log10`](../../std/primitive.f32.html#method.log10)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f32(x: f32) -> f32 {
-    cfg_select! {
-        all(target_env = "msvc", target_arch = "x86") => log10f64(x as f64) as f32,
-        _ => libm::likely_available::log10f(x),
+intrinsic_dispatch_on_type! {
+    /// Returns the base 10 logarithm of a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `log10` method. For example, [`f32::log10`](../../std/primitive.f32.html#method.log10).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn log10<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { log10(x as f32) as f16 }
+    f32 => {
+        cfg_select! {
+            all(target_env = "msvc", target_arch = "x86") => log10(x as f64) as f32,
+            _ => libm::likely_available::log10f(x),
+        }
     }
-}
-/// Returns the base 10 logarithm of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::log10`](../../std/primitive.f64.html#method.log10)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f64(x: f64) -> f64 {
-    libm::likely_available::log10(x)
-}
-/// Returns the base 10 logarithm of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::log10`](../../std/primitive.f128.html#method.log10)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log10f128(x: f128) -> f128 {
-    libm::maybe_available::log10f128(x)
+    f64 => { libm::likely_available::log10(x) }
+    f128 => { libm::maybe_available::log10f128(x) }
 }
 
-/// Returns the base 2 logarithm of an `f16`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::log2`](../../std/primitive.f16.html#method.log2)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f16(x: f16) -> f16 {
-    log2f32(x as f32) as f16
-}
-/// Returns the base 2 logarithm of an `f32`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::log2`](../../std/primitive.f32.html#method.log2)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f32(x: f32) -> f32 {
-    cfg_select! {
-        all(target_env = "msvc", target_arch = "x86") => log2f64(x as f64) as f32,
-        _ => libm::likely_available::log2f(x),
+intrinsic_dispatch_on_type! {
+    /// Returns the base 2 logarithm of a floating-point value.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `log2` method. For example, [`f32::log2`](../../std/primitive.f32.html#method.log2).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    pub fn log2<T: bounds::FloatPrimitive>(x: T) -> T;
+
+    f16 => { log2(x as f32) as f16 }
+    f32 => {
+        cfg_select! {
+            all(target_env = "msvc", target_arch = "x86") => log2(x as f64) as f32,
+            _ => libm::likely_available::log2f(x),
+        }
     }
-}
-/// Returns the base 2 logarithm of an `f64`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::log2`](../../std/primitive.f64.html#method.log2)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f64(x: f64) -> f64 {
-    libm::likely_available::log2(x)
-}
-/// Returns the base 2 logarithm of an `f128`.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::log2`](../../std/primitive.f128.html#method.log2)
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub fn log2f128(x: f128) -> f128 {
-    libm::maybe_available::log2f128(x)
+    f64 => { libm::likely_available::log2(x) }
+    f128 => { libm::maybe_available::log2f128(x) }
 }
 
 /// Returns `a * b + c` without rounding the intermediate result for `f16` values.

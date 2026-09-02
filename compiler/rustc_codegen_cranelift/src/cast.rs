@@ -148,10 +148,6 @@ pub(crate) fn clif_int_or_float_cast(
             fx.bcx.ins().fcvt_to_uint_sat(to_ty, from)
         };
 
-        if let Some(false) = fx.tcx.sess.opts.unstable_opts.saturating_float_casts {
-            return val;
-        }
-
         let is_not_nan = fx.bcx.ins().fcmp(FloatCC::Equal, from, from);
         let zero = type_zero_value(&mut fx.bcx, to_ty);
         fx.bcx.ins().select(is_not_nan, val, zero)

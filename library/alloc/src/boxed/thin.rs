@@ -11,7 +11,7 @@ use core::marker::PhantomData;
 use core::marker::Unsize;
 #[cfg(not(no_global_oom_handling))]
 use core::mem;
-use core::mem::{DropGuard, SizedTypeProperties};
+use core::mem::SizedTypeProperties;
 use core::ops::{Deref, DerefMut};
 use core::ptr::{self, NonNull, Pointee};
 
@@ -165,10 +165,10 @@ impl<T: ?Sized> DerefMut for ThinBox<T> {
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<T: ?Sized> Drop for ThinBox<T> {
     fn drop(&mut self) {
+        let value = self.deref_mut();
+        let value = value as *mut T;
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let value = self.deref_mut();
-            let value = value as *mut T;
             self.with_header().drop::<T>(value);
         }
     }
@@ -240,34 +240,38 @@ impl<H> WithHeader<H> {
             alloc::handle_alloc_error(Layout::new::<()>());
         };
 
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
-            // we use `layout.dangling()` for this case, which should have a valid
-            // alignment for both `T` and `H`.
-            let ptr = if layout.size() == 0 {
-                // Some paranoia checking, mostly so that the ThinBox tests are
-                // more able to catch issues.
-                debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
-                layout.dangling_ptr()
-            } else {
-                let ptr = alloc::alloc(layout);
-                if ptr.is_null() {
-                    alloc::handle_alloc_error(layout);
-                }
-                // Safety:
-                // - The size is at least `aligned_header_size`.
+        // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
+        // we use `layout.dangling()` for this case, which should have a valid
+        // alignment for both `T` and `H`.
+        let ptr = if layout.size() == 0 {
+            // Some paranoia checking, mostly so that the ThinBox tests are
+            // more able to catch issues.
+            debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
+            layout.dangling_ptr()
+        } else {
+            // ignore-tidy-undocumented-unsafe
+            let ptr = unsafe { alloc::alloc(layout) };
+            if ptr.is_null() {
+                alloc::handle_alloc_error(layout);
+            }
+            // SAFETY:
+            // - The size is at least `aligned_header_size`.
+            unsafe {
                 let ptr = ptr.add(value_offset) as *mut _;
 
                 NonNull::new_unchecked(ptr)
-            };
+            }
+        };
 
-            let result = WithHeader(ptr, PhantomData);
+        let result = WithHeader(ptr, PhantomData);
+
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
             ptr::write(result.header(), header);
             ptr::write(result.value().cast(), value);
-
-            result
         }
+
+        result
     }
 
     /// Non-panicking version of `new`.
@@ -278,35 +282,39 @@ impl<H> WithHeader<H> {
             return Err(core::alloc::AllocError);
         };
 
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
-            // we use `layout.dangling()` for this case, which should have a valid
-            // alignment for both `T` and `H`.
-            let ptr = if layout.size() == 0 {
-                // Some paranoia checking, mostly so that the ThinBox tests are
-                // more able to catch issues.
-                debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
-                layout.dangling_ptr()
-            } else {
-                let ptr = alloc::alloc(layout);
-                if ptr.is_null() {
-                    return Err(core::alloc::AllocError);
-                }
+        // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
+        // we use `layout.dangling()` for this case, which should have a valid
+        // alignment for both `T` and `H`.
+        let ptr = if layout.size() == 0 {
+            // Some paranoia checking, mostly so that the ThinBox tests are
+            // more able to catch issues.
+            debug_assert!(value_offset == 0 && T::IS_ZST && H::IS_ZST);
+            layout.dangling_ptr()
+        } else {
+            // ignore-tidy-undocumented-unsafe
+            let ptr = unsafe { alloc::alloc(layout) };
+            if ptr.is_null() {
+                return Err(core::alloc::AllocError);
+            }
 
-                // Safety:
-                // - The size is at least `aligned_header_size`.
+            // SAFETY:
+            // - The size is at least `aligned_header_size`.
+            unsafe {
                 let ptr = ptr.add(value_offset) as *mut _;
 
                 NonNull::new_unchecked(ptr)
-            };
+            }
+        };
 
-            let result = WithHeader(ptr, PhantomData);
+        let result = WithHeader(ptr, PhantomData);
+
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
             ptr::write(result.header(), header);
             ptr::write(result.value().cast(), value);
-
-            Ok(result)
         }
+
+        Ok(result)
     }
 
     // `Dyn` is `?Sized` type like `[u32]`, and `T` is ZST type like `[u32; 0]`.
@@ -364,23 +372,37 @@ impl<H> WithHeader<H> {
     // - Assumes that either `value` can be dereferenced, or is the
     //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
-        // SAFETY: Caller ensures `value` is valid.
-        let value_layout = unsafe { Layout::for_value_raw(value) };
-
-        let _guard;
-
-        // All ZST are allocated statically.
-        if value_layout.size() != 0 {
-            _guard = DropGuard::new(self.0, |ptr| {
-                let layout = WithHeader::<H>::alloc_layout(value_layout);
-                // SAFETY: Layout must have been computable if we're in this callback
-                let (layout, value_offset) = unsafe { layout.unwrap_unchecked() };
-                // Since we only allocate for non-ZSTs, the layout size cannot be zero.
-                debug_assert_ne!(layout.size(), 0);
-                // SAFETY: We own the allocation with `layout` at `ptr - value_offset`.
-                unsafe { alloc::dealloc(ptr.as_ptr().sub(value_offset), layout) };
-            });
+        struct DropGuard<H> {
+            ptr: NonNull<u8>,
+            value_layout: Layout,
+            _marker: PhantomData<H>,
         }
+
+        impl<H> Drop for DropGuard<H> {
+            fn drop(&mut self) {
+                // All ZST are allocated statically.
+                if self.value_layout.size() == 0 {
+                    return;
+                }
+
+                let (layout, value_offset) =
+                    // SAFETY: Layout must have been computable if we're in drop
+                    unsafe { WithHeader::<H>::alloc_layout(self.value_layout).unwrap_unchecked() };
+
+                // Since we only allocate for non-ZSTs, the layout size cannot be zero.
+                debug_assert!(layout.size() != 0);
+                // SAFETY: We own the allocation with `layout` at `ptr - value_offset`.
+                unsafe { alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout) };
+            }
+        }
+
+        // `_guard` will deallocate the memory when dropped, even if `drop_in_place` unwinds.
+        let _guard = DropGuard {
+            ptr: self.0,
+            // SAFETY: Caller ensures `value` is valid.
+            value_layout: unsafe { Layout::for_value_raw(value) },
+            _marker: PhantomData::<H>,
+        };
 
         // We only drop the value because the Pointee trait requires that the metadata is copy
         // aka trivially droppable.

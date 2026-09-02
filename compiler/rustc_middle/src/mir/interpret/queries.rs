@@ -104,8 +104,11 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let def_id = match ct.kind {
+            ty::AliasConstKind::InherentSelf { .. } => {
+                bug!("got AliasConstKind::InherentSelf in const_eval_resolve_for_typeck")
+            }
             ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
             | ty::AliasConstKind::Free { def_id }
             | ty::AliasConstKind::Anon { def_id } => def_id,
         };
