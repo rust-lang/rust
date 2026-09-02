@@ -680,9 +680,9 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("a", Stable, &["zaamo", "zalrsc"]),
     ("b", Stable, &["zba", "zbb", "zbs"]),
     ("c", Stable, &["zca"]),
-    ("d", CfgStableToggleUnstable(sym::riscv_target_feature), &["f"]),
+    ("d", Stable, &["f"]),
     ("e", Unstable(sym::riscv_target_feature), &[]), // negative feature! needs special care.
-    ("f", CfgStableToggleUnstable(sym::riscv_target_feature), &["zicsr"]),
+    ("f", Stable, &["zicsr"]),
     (
         "forced-atomics",
         // Not implied by any CPU model or other feature.
