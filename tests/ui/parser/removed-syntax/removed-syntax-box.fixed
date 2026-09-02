@@ -6,9 +6,9 @@ fn main() {
         a: u8,
         b: u8,
     }
-    let _ = Box::new(()); //~ ERROR `box_syntax` has been removed
-    let _ = Box::new(1); //~ ERROR `box_syntax` has been removed
-    let _ = Box::new(T { a: 12, b: 18 }); //~ ERROR `box_syntax` has been removed
-    let _ = Box::new([5; 30]); //~ ERROR `box_syntax` has been removed
-    let _: Box<()> = Box::new(()); //~ ERROR `box_syntax` has been removed
+    let _ = Box::new(()); //~ ERROR `box` expressions have been removed
+    let _ = Box::new(1); //~ ERROR `box` expressions have been removed
+    let _ = Box::new(T { a: 12, b: 18 }); //~ ERROR `box` expressions have been removed
+    let _ = Box::new([5; 30]); //~ ERROR `box` expressions have been removed
+    let _: Box<()> = Box::new(()); //~ ERROR `box` expressions have been removed
 }

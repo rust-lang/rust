@@ -1,4 +1,4 @@
-error: `box_syntax` has been removed
+error: `box` expressions have been removed (feature `box_syntax`)
   --> $DIR/removed-syntax-box.rs:9:13
    |
 LL |     let _ = box ();
@@ -10,7 +10,7 @@ LL -     let _ = box ();
 LL +     let _ = Box::new(());
    |
 
-error: `box_syntax` has been removed
+error: `box` expressions have been removed (feature `box_syntax`)
   --> $DIR/removed-syntax-box.rs:10:13
    |
 LL |     let _ = box 1;
@@ -22,7 +22,7 @@ LL -     let _ = box 1;
 LL +     let _ = Box::new(1);
    |
 
-error: `box_syntax` has been removed
+error: `box` expressions have been removed (feature `box_syntax`)
   --> $DIR/removed-syntax-box.rs:11:13
    |
 LL |     let _ = box T { a: 12, b: 18 };
@@ -34,7 +34,7 @@ LL -     let _ = box T { a: 12, b: 18 };
 LL +     let _ = Box::new(T { a: 12, b: 18 });
    |
 
-error: `box_syntax` has been removed
+error: `box` expressions have been removed (feature `box_syntax`)
   --> $DIR/removed-syntax-box.rs:12:13
    |
 LL |     let _ = box [5; 30];
@@ -46,7 +46,7 @@ LL -     let _ = box [5; 30];
 LL +     let _ = Box::new([5; 30]);
    |
 
-error: `box_syntax` has been removed
+error: `box` expressions have been removed (feature `box_syntax`)
   --> $DIR/removed-syntax-box.rs:13:22
    |
 LL |     let _: Box<()> = box ();

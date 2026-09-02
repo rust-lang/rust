@@ -3728,12 +3728,12 @@ impl HelpUseLatestEdition {
 }
 
 #[derive(Diagnostic)]
-#[diag("`box_syntax` has been removed")]
-pub(crate) struct BoxSyntaxRemoved {
+#[diag("`box` expressions have been removed (feature `box_syntax`)")]
+pub(crate) struct BoxExprsRemoved {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: AddBoxNew,
+    pub sugg: UseBoxNew,
 }
 
 #[derive(Subdiagnostic)]
@@ -3742,7 +3742,7 @@ pub(crate) struct BoxSyntaxRemoved {
     applicability = "machine-applicable",
     style = "verbose"
 )]
-pub(crate) struct AddBoxNew {
+pub(crate) struct UseBoxNew {
     #[suggestion_part(code = "Box::new(")]
     pub box_kw_and_lo: Span,
     #[suggestion_part(code = ")")]
@@ -3750,10 +3750,44 @@ pub(crate) struct AddBoxNew {
 }
 
 #[derive(Diagnostic)]
-#[diag("`box_patterns` has been removed")]
-pub(crate) struct BoxPatternsRemoved {
+#[diag("`box` patterns have been removed (feature `box_patterns`)")]
+#[help("enable feature `deref_patterns` instead and...")]
+pub(crate) struct BoxPatsRemoved {
     #[primary_span]
     pub span: Span,
+    #[suggestion(
+        "...if possible just remove keyword `box`...",
+        code = "",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    pub sugg_removal: Span,
+    #[subdiagnostic]
+    pub sugg_deref_macro_call: UseDerefMacro,
+}
+
+pub(crate) struct UseDerefMacro {
+    pub field: Option<(Span, Ident)>,
+    pub before: Span,
+    pub after: Span,
+}
+
+impl Subdiagnostic for UseDerefMacro {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        let Self { field, before, after } = self;
+
+        let mut parts = Vec::new();
+        if let Some((span, field)) = field {
+            parts.push((span, format!("{field}: ")));
+        }
+        parts.push((before, "deref!(".into()));
+        parts.push((after, ")".into()));
+        diag.multipart_suggestion(
+            "...otherwise replace it with an invocation of macro `deref`",
+            parts,
+            Applicability::MaybeIncorrect,
+        );
+    }
 }
 
 #[derive(Diagnostic)]

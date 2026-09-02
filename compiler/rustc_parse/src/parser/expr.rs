@@ -590,8 +590,8 @@ impl<'a> Parser<'a> {
         // Make a multipart suggestion instead of `span_to_snippet` in case source isn't available
         let box_kw_and_lo = box_kw.until(self.interpolated_or_expr_span(&expr));
         let hi = span.shrink_to_hi();
-        let sugg = diagnostics::AddBoxNew { box_kw_and_lo, hi };
-        let guar = self.dcx().emit_err(diagnostics::BoxSyntaxRemoved { span, sugg });
+        let sugg = diagnostics::UseBoxNew { box_kw_and_lo, hi };
+        let guar = self.dcx().emit_err(diagnostics::BoxExprsRemoved { span, sugg });
         Ok((span, ExprKind::Err(guar)))
     }
 
