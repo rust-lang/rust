@@ -1,4 +1,7 @@
 //@ add-minicore
+//@ revisions: OPT-0 OPT-3
+//@[OPT-0] compile-flags: -Copt-level=0
+//@[OPT-3] compile-flags: -Copt-level=3
 //@ compile-flags: --target aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
 
