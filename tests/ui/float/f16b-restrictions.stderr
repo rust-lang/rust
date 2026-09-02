@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/f16b-restrictions.rs:11:19
+  --> $DIR/f16b-restrictions.rs:8:19
    |
 LL |     let _: f16b = 1.0;
    |            ----   ^^^ expected `f16b`, found floating-point number
@@ -7,7 +7,7 @@ LL |     let _: f16b = 1.0;
    |            expected due to this
 
 error[E0369]: cannot add `f16b` to `f16b`
-  --> $DIR/f16b-restrictions.rs:15:15
+  --> $DIR/f16b-restrictions.rs:12:15
    |
 LL |     let _ = x + x;
    |             - ^ - f16b
@@ -20,13 +20,13 @@ note: `f16b` does not implement `Add`
    = note: `f16b` is defined in another crate
 
 error[E0605]: non-primitive cast: `u16` as `f16b`
-  --> $DIR/f16b-restrictions.rs:18:13
+  --> $DIR/f16b-restrictions.rs:15:13
    |
 LL |     let _ = 1u16 as f16b;
    |             ^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
 error[E0605]: non-primitive cast: `f16b` as `f32`
-  --> $DIR/f16b-restrictions.rs:21:13
+  --> $DIR/f16b-restrictions.rs:18:13
    |
 LL |     let _ = x as f32;
    |             ^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object

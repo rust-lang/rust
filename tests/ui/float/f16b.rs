@@ -6,11 +6,16 @@
 extern crate core;
 
 use core::num::f16b;
+#[cfg(target_has_reliable_f16b)]
 use std::fmt::{Debug, LowerExp, UpperExp};
 
+#[cfg(target_has_reliable_f16b)]
 const ONE: f16b = f16b::from_bits(0x3f80);
+
+#[cfg(target_has_reliable_f16b)]
 const ONE_BITS: u16 = ONE.to_bits();
 
+#[cfg(target_has_reliable_f16b)]
 fn assert_traits<T>()
 where
     T: Default + Copy + Clone + Debug + LowerExp + UpperExp + PartialEq + PartialOrd,
@@ -21,7 +26,8 @@ fn main() {
     assert_eq!(size_of::<f16b>(), 2);
     assert_eq!(align_of::<f16b>(), 2);
 
-    if cfg!(target_has_reliable_f16b) {
+    #[cfg(target_has_reliable_f16b)]
+    {
         assert_traits::<f16b>();
 
         assert_eq!(f16b::default().to_bits(), 0);

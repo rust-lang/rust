@@ -65,7 +65,7 @@ impl f16b {
     /// ```no_run
     /// #![feature(f16b)]
     /// # #[cfg(target_has_reliable_f16b)] {
-    /// # use core::num::f16b;
+    /// use core::num::f16b;
     ///
     /// let v = f16b::from_bits(0x4148);
     /// assert_eq!(f32::from(v), 12.5);
@@ -92,7 +92,7 @@ impl f16b {
     /// ```no_run
     /// #![feature(f16b)]
     /// # #[cfg(target_has_reliable_f16b)] {
-    /// # use core::num::f16b;
+    /// use core::num::f16b;
     ///
     /// assert_eq!(f16b::from_bits(0x4148).to_bits(), 0x4148);
     /// # }

@@ -1,6 +1,3 @@
-//@ ignore-s390x
-//@ ignore-wasm
-
 #![feature(f16b)]
 
 extern crate core;
