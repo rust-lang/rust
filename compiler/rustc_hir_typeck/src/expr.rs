@@ -428,6 +428,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::UnOp::Deref => {
                 // Dereferencing must distinguish builtin pointers from
                 // overloaded `Deref`, so it still requires a structurally resolved type.
+                //
+                // This is necessary as raw pointers do not implement `Deref`.
                 let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
                 self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
                     let mut err =
