@@ -41,7 +41,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::middle::resolve_bound_vars::ResolveBoundVars;
+use rustc_middle::middle::resolve_bound_vars::{ResolveBoundVars, ResolvedArg};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
@@ -584,17 +584,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         lifetime: &hir::Lifetime,
         reason: RegionInferReason<'_>,
     ) -> ty::Region<'tcx> {
-        let resolved = self
-            .opt_preset_rbv()
-            .map(|rbv| rbv.defs.get(&lifetime.hir_id.local_id).cloned())
-            .unwrap_or_else(|| self.tcx().named_bound_var(lifetime.hir_id));
-
-        if let Some(resolved) = resolved {
+        if let Some(resolved) = self.resolve_bound_var(lifetime.hir_id) {
             let region = self.lower_resolved_lifetime(resolved);
             self.check_param_uses_if_mcg(region, lifetime.ident.span, false)
         } else {
             self.re_infer(lifetime.ident.span, reason)
         }
+    }
+
+    #[inline]
+    fn resolve_bound_var(&self, hir_id: HirId) -> Option<ResolvedArg> {
+        self.opt_preset_rbv()
+            .map(|rbv| rbv.defs.get(&hir_id.local_id).cloned())
+            .unwrap_or_else(|| self.tcx().named_bound_var(hir_id))
     }
 
     /// Lower a lifetime from the HIR to our internal notion of a lifetime called a *region*.
@@ -2348,7 +2350,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub(crate) fn lower_ty_param(&self, hir_id: HirId) -> Ty<'tcx> {
         let tcx = self.tcx();
 
-        let ty = match tcx.named_bound_var(hir_id) {
+        let ty = match self.resolve_bound_var(hir_id) {
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
                 let br = ty::BoundTy {
                     var: ty::BoundVar::from_u32(index),
@@ -2375,7 +2377,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub(crate) fn lower_const_param(&self, param_def_id: DefId, path_hir_id: HirId) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let ct = match tcx.named_bound_var(path_hir_id) {
+        let ct = match self.resolve_bound_var(path_hir_id) {
             Some(rbv::ResolvedArg::EarlyBound(_)) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.

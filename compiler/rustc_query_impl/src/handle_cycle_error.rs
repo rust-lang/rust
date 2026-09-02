@@ -9,6 +9,7 @@ use rustc_errors::{Applicability, Diag, MultiSpan, pluralize, struct_span_code_e
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::bug;
+use rustc_middle::hir::ProjectedMaybeOwner;
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::QueryCycle;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -20,13 +21,13 @@ pub(crate) fn hir_owner<'tcx>(
     def_id: LocalDefId,
     _: QueryCycle<'tcx>,
     err: Diag<'_>,
-) -> rustc_middle::hir::ProjectedMaybeOwner<'tcx> {
+) -> ProjectedMaybeOwner<'tcx> {
     if !tcx.is_delegation(def_id) {
         err.emit().raise_fatal();
     }
 
     err.cancel();
-    rustc_middle::hir::ProjectedMaybeOwner::new(tcx.delegation_error(def_id))
+    ProjectedMaybeOwner::new(tcx.delegation_error(def_id))
 }
 
 pub(crate) fn lower_to_hir<'tcx>(

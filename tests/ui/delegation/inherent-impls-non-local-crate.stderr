@@ -4,6 +4,12 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL | reuse inherent_impl::X::foo as x_foo;
    |       ^^^^^^^^^^^^^^^^ not allowed in type signatures
 
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-non-local-crate.rs:26:26
+   |
+LL | reuse inherent_impl::X::<_>::foo as x_foo_3;
+   |                          ^ not allowed in type signatures
+
 error[E0599]: no associated function or constant named `not_existing` found for struct `S` in the current scope
   --> $DIR/inherent-impls-non-local-crate.rs:7:25
    |
@@ -43,7 +49,26 @@ LL | reuse inherent_impl::X::foo as x_foo;
    = note: candidate #1 is defined in an impl for the type `X<String>`
    = note: candidate #2 is defined in an impl for the type `X<usize>`
 
-error: aborting due to 6 previous errors
+error[E0034]: multiple applicable items in scope
+  --> $DIR/inherent-impls-non-local-crate.rs:26:30
+   |
+LL | reuse inherent_impl::X::<_>::foo as x_foo_3;
+   |                              ^^^ multiple `foo` found
+   |
+   = note: candidate #1 is defined in an impl for the type `X<String>`
+   = note: candidate #2 is defined in an impl for the type `X<usize>`
+
+error[E0599]: no associated function or constant named `foo` found for struct `X<()>` in the current scope
+  --> $DIR/inherent-impls-non-local-crate.rs:30:31
+   |
+LL | reuse inherent_impl::X::<()>::foo as x_foo_4;
+   |                               ^^^ associated function or constant not found in `X<()>`
+   |
+   = note: the associated function or constant was found for
+           - `X<String>`
+           - `X<usize>`
+
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0034, E0121, E0599, E0618.
 For more information about an error, try `rustc --explain E0034`.
