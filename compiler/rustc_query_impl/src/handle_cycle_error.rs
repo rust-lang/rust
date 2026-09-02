@@ -50,7 +50,7 @@ pub(crate) fn clauses_of<'tcx>(
     _: QueryCycle<'tcx>,
     err: Diag<'_>,
 ) -> rustc_middle::ty::GenericClauses<'tcx> {
-    if def_id.as_local().is_some_and(|def_id| !tcx.is_delegation(def_id)) {
+    if def_id.as_local().is_none_or(|def_id| !tcx.is_delegation(def_id)) {
         err.emit().raise_fatal();
     }
 
@@ -64,7 +64,7 @@ pub(crate) fn explicit_clauses_of<'tcx>(
     _: QueryCycle<'tcx>,
     err: Diag<'_>,
 ) -> rustc_middle::ty::GenericClauses<'tcx> {
-    if def_id.as_local().is_some_and(|def_id| !tcx.is_delegation(def_id)) {
+    if def_id.as_local().is_none_or(|def_id| !tcx.is_delegation(def_id)) {
         err.emit().raise_fatal();
     }
 
