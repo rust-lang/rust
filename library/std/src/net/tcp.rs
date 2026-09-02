@@ -200,7 +200,7 @@ impl TcpStream {
     /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// assert_eq!(stream.peer_addr().unwrap(),
-    ///     SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 0)));
+    ///            SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 0)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
