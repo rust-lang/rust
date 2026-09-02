@@ -1,0 +1,15 @@
+error: expected `fn`, found keyword `const`
+  --> $DIR/wrong-const-async-unsafe-abi.rs:7:12
+   |
+LL | extern "C" const async unsafe fn b() {}
+   |            ^^^^^ expected `fn`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+help: `const` must come before `extern "C"`
+   |
+LL - extern "C" const async unsafe fn b() {}
+LL + const extern "C" async unsafe fn b() {}
+   |
+
+error: aborting due to 1 previous error
+

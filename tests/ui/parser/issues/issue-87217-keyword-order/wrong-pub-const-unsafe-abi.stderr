@@ -1,0 +1,14 @@
+error: expected `fn`, found keyword `pub`
+  --> $DIR/wrong-pub-const-unsafe-abi.rs:9:12
+   |
+LL | extern "C" pub const unsafe fn c() {}
+   |            ^^^ expected `fn`
+   |
+help: visibility `pub` must come before `extern "C"`
+   |
+LL - extern "C" pub const unsafe fn c() {}
+LL + pub extern "C" const unsafe fn c() {}
+   |
+
+error: aborting due to 1 previous error
+
