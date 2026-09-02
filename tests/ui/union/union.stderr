@@ -31,7 +31,15 @@ LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:47:23
+  --> $DIR/union.rs:50:30
+   |
+LL |                     topping: Some { .. }
+   |                              ^^^^^^^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:57:23
    |
 LL |         Foo { tuple: (_a,) } => {}
    |                       ^^ access to union field
@@ -39,7 +47,7 @@ LL |         Foo { tuple: (_a,) } => {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:50:41
+  --> $DIR/union.rs:60:41
    |
 LL |         Foo { tuple_struct: TupleStruct(_a) } => {}
    |                                         ^^ access to union field
@@ -47,13 +55,13 @@ LL |         Foo { tuple_struct: TupleStruct(_a) } => {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:53:23
+  --> $DIR/union.rs:63:23
    |
 LL |         Foo { array: [_a, _] } => {}
    |                       ^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0133`.
