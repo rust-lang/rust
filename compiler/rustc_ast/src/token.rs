@@ -308,14 +308,18 @@ impl LitKind {
 }
 
 pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: IdentIsRaw) -> bool {
+    // WARNING: Take care when modifying this function! It will change the stable(!) set of
+    //          tokens that are allowed to match an `expr` nonterminal which is user observable.
+
     let ident_token = Token::new(Ident(name, is_raw), span);
 
+    // FIXME: Remove `box` from this list given we officially no longer support box expressions
+    //        (#108471) (needs lang FCP as it affects stable macro matching behavior).
     !ident_token.is_reserved_ident()
         || ident_token.is_path_segment_keyword()
         || [
             kw::Async,
             kw::Do,
-            // FIXME: Remove this (needs lang FCP as it affects stable macro matching behavior).
             kw::Box,
             kw::Break,
             kw::Const,
@@ -341,6 +345,9 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: IdentIsRaw) -> boo
 }
 
 fn ident_can_begin_type(name: Symbol, span: Span, is_raw: IdentIsRaw) -> bool {
+    // WARNING: Take care when modifying this function! It will change the stable(!) set of
+    //          tokens that are allowed to match an `ty` nonterminal which is user observable.
+
     let ident_token = Token::new(Ident(name, is_raw), span);
 
     !ident_token.is_reserved_ident()
@@ -662,10 +669,10 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of an expression.
-    ///
-    /// **NB**: Take care when modifying this function, since it will change
-    /// the stable set of tokens that are allowed to match an expr nonterminal.
     pub fn can_begin_expr(&self) -> bool {
+        // WARNING: Take care when modifying this function! It will change the stable(!) set of
+        //          tokens that are allowed to match an `expr` nonterminal which is user observable.
+
         match self.uninterpolate().kind {
             Ident(name, is_raw)              =>
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
@@ -696,9 +703,10 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of a pattern.
-    ///
-    /// Shamelessly borrowed from `can_begin_expr`.
     pub fn can_begin_pattern(&self, pat_kind: NtPatKind) -> bool {
+        // WARNING: Take care when modifying this function! It will change the stable(!) set of
+        //          tokens that are allowed to match an `pat` nonterminal which is user observable.
+
         match &self.uninterpolate().kind {
             // box, ref, mut, and other identifiers (can stricten)
             Ident(..) | NtIdent(..) |
@@ -728,6 +736,12 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of a type.
     pub fn can_begin_type(&self) -> bool {
+        // WARNING: Take care when modifying this function! It will change the stable(!) set of
+        //          tokens that are allowed to match an `ty` nonterminal which is user observable.
+
+        // FIXME: Arguably, `use` should be included in this list since it can begin bare trait
+        //        object types (consider `use<>+` and `use<T> + Trait` for example).
+
         match self.uninterpolate().kind {
             Ident(name, is_raw) =>
                 ident_can_begin_type(name, self.span, is_raw), // type name or keyword
