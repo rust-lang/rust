@@ -347,7 +347,6 @@ macro_rules! for_each_ast_visit_hook {
             visit_mac_call(MacCall) => walk_mac;
             visit_macro_def(MacroDef) => walk_macro_def;
             visit_mut_restriction(MutRestriction) => walk_mut_restriction;
-            //visit_nested_use_tree((UseTree, NodeId)) => walk_nested_use_tree;
             visit_param(Param) => walk_param;
             visit_param_bound(GenericBound, _ctxt: BoundKind) => walk_param_bound;
             visit_pat(Pat) => walk_pat;
@@ -477,6 +476,7 @@ macro_rules! common_visitor_and_walkers {
             ThinVec<TestBinderExists>,
             ThinVec<TestBinderForall>,
             ThinVec<TyPat>,
+            ThinVec<UseTree>,
             // tidy-alphabetical-end
         }
 
@@ -681,13 +681,6 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_stmt(&mut self, s: &$lt Stmt) -> Self::Result {
                     walk_stmt(self, s)
                 }
-
-                fn visit_nested_use_tree(&mut self, use_tree: &$lt UseTree, id: NodeId)
-                    -> Self::Result
-                {
-                    try_visit!(self.visit_id(id));
-                    self.visit_use_tree(use_tree)
-                }
             )?
 
             // `MutVisitor`-only methods
@@ -811,14 +804,6 @@ macro_rules! common_visitor_and_walkers {
                 vis: &mut V,
             ) -> V::Result;
         }
-
-        $(impl_visitable!(|&$lt self: ThinVec<(UseTree, NodeId)>, vis: &mut V| {
-            for (nested_tree, nested_id) in self {
-                try_visit!(vis.visit_nested_use_tree(nested_tree, *nested_id));
-            }
-            V::Result::output()
-        });)?
-        $(${ignore($mut)} impl_visitable_list!(ThinVec<(UseTree, NodeId)>,);)?
 
         fn walk_item_inner<$($lt,)? K: WalkItemKind, V: $Visitor$(<$lt>)?>(
             visitor: &mut V,

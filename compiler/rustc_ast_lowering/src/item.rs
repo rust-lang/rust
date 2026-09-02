@@ -245,11 +245,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::ExternCrate(*orig_name, ident)
             }
             ItemKind::Use(use_tree) => {
+                assert_eq!(use_tree.id, id);
                 // Start with an empty prefix.
                 let prefix =
                     Path { segments: ThinVec::new(), span: use_tree.prefix.span.shrink_to_lo() };
 
-                self.lower_use_tree(use_tree, &prefix, id, vis_span, attrs)
+                self.lower_use_tree(use_tree, &prefix, vis_span, attrs)
             }
             ItemKind::Static(ast::StaticItem {
                 ident,
@@ -600,7 +601,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         tree: &UseTree,
         prefix: &Path,
-        id: NodeId,
         vis_span: Span,
         attrs: &'hir [hir::Attribute],
     ) -> hir::ItemKind<'hir> {
@@ -624,13 +624,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
 
-                let res = self.lower_import_res(id, path.span);
+                let res = self.lower_import_res(tree.id, path.span);
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 let ident = self.lower_ident(ident);
                 hir::ItemKind::Use(path, hir::UseKind::Single(ident))
             }
             UseTreeKind::Glob(_) => {
-                let res = self.expect_full_res(id);
+                let res = self.expect_full_res(tree.id);
                 let res = self.lower_res(res);
                 // Put the result in the appropriate namespace.
                 let res = match res {
@@ -680,19 +680,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let prefix = Path { segments, span };
 
                 // Add all the nested `PathListItem`s to the HIR.
-                for &(ref use_tree, id) in trees {
-                    let owner_id = self.owner_id(id);
+                for use_tree in trees {
+                    let owner_id = self.owner_id(use_tree.id);
 
                     // Each `use` import is an item and thus are owners of the
                     // names in the path. Up to this point the nested import is
                     // the current owner, since we want each desugared import to
                     // own its own names, we have to adjust the owner before
                     // lowering the rest of the import.
-                    self.with_hir_id_owner(id, |this| {
+                    self.with_hir_id_owner(use_tree.id, |this| {
                         // `prefix` is lowered multiple times, but in different HIR owners.
                         // So each segment gets renewed `HirId` with the same
                         // `ItemLocalId` and the new owner. (See `lower_node_id`)
-                        let kind = this.lower_use_tree(use_tree, &prefix, id, vis_span, attrs);
+                        let kind = this.lower_use_tree(use_tree, &prefix, vis_span, attrs);
                         if !attrs.is_empty() {
                             this.curr_owner.attrs.insert(hir::ItemLocalId::ZERO, attrs);
                         }
@@ -716,7 +716,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 {
                     // For empty lists we need to lower the prefix so it is checked for things
                     // like stability later.
-                    let res = self.lower_import_res(id, span);
+                    let res = self.lower_import_res(tree.id, span);
                     self.lower_use_path(res, &prefix, ParamMode::Explicit)
                 } else {
                     // For non-empty lists we can just drop all the data, the prefix is already

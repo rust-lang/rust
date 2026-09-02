@@ -69,6 +69,7 @@ pub fn inject(
         ast::ItemKind::Use(ast::UseTree {
             prefix: cx.path(span, import_path),
             kind: ast::UseTreeKind::Glob(span),
+            id: ast::DUMMY_NODE_ID,
         }),
     );
 

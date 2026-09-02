@@ -1329,7 +1329,11 @@ impl InvocationCollectorNode for Box<ast::Item> {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_items()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(mut self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+        // A special case: the top-level `UseTree` gets assigned the same id as its item.
+        if let ItemKind::Use(tree) = &mut self.kind {
+            tree.id = self.id;
+        }
         walk_flat_map_item(collector, self)
     }
     fn is_mac_call(&self) -> bool {
@@ -1463,7 +1467,7 @@ impl DeclaredIdents for Box<ast::Item> {
                     ast::UseTreeKind::Glob(_) => {}
                     ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
                     ast::UseTreeKind::Nested { items, .. } => {
-                        for (ut, _) in items {
+                        for ut in items {
                             collect_use_tree_leaves(ut, idents);
                         }
                     }
