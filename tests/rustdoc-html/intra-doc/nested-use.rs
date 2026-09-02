@@ -1,6 +1,7 @@
 // Regression test for issue #113896: Intra-doc links on nested use items.
 
 #![crate_name = "foo"]
+#![allow(rustdoc::unportable_markdown)]
 
 //@ has foo/struct.Foo.html
 //@ has - '//a[@href="struct.Foo.html"]' 'Foo'

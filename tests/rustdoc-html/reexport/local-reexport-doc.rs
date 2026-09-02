@@ -2,6 +2,7 @@
 // the reexport.
 
 #![crate_name = "foo"]
+#![allow(rustdoc::unportable_markdown)]
 
 //@ has 'foo/fn.g.html'
 //@ has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' \
