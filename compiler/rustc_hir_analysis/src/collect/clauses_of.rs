@@ -89,7 +89,8 @@ pub(super) fn clauses_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericClauses<'
 }
 
 /// Returns a list of user-specified type clauses for the definition with ID `def_id`.
-/// N.B., this does not include any implied/inferred constraints.
+/// N.B., this does not include any implied/inferred constraints,
+///       including instead default bounds like `Move`
 #[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericClauses<'_> {
     use rustc_hir::*;
