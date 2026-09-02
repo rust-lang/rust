@@ -1,16 +1,32 @@
 error: an `#[unstable]` annotation here has no effect
-  --> $DIR/stability-attribute-trait-impl.rs:32:1
+  --> $DIR/stability-attribute-trait-impl.rs:25:1
    |
-LL | #[unstable(feature = "j", issue = "none")]
+LL | #[unstable(feature = "h", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
    = note: `#[deny(ineffective_unstable_trait_impl)]` on by default
 
 error: an `#[unstable]` annotation here has no effect
-  --> $DIR/stability-attribute-trait-impl.rs:36:1
+  --> $DIR/stability-attribute-trait-impl.rs:33:1
+   |
+LL | #[unstable(feature = "j", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
+
+error: an `#[unstable]` annotation here has no effect
+  --> $DIR/stability-attribute-trait-impl.rs:37:1
    |
 LL | #[unstable(feature = "k", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
+
+error: an `#[unstable]` annotation here has no effect
+  --> $DIR/stability-attribute-trait-impl.rs:44:1
+   |
+LL | #[unstable(feature = "m", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
@@ -26,5 +42,5 @@ LL | | #[stable(feature = "a", since = "3.3.3")]
 LL | | fn main() {}
    | |____________^
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
