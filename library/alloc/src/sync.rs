@@ -2970,7 +2970,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
         // This function was moved locally since there is only one caller,
         // and makes it easier to reason about the the outlined fence.
         #[inline(never)]
-        unsafe fn drop_slow(&mut self) {
+        unsafe fn drop_slow<T: ?Sized, A: Allocator>(this: &mut Arc<T, A>) {
             // This fence is needed to prevent reordering of use of the data and
             // deletion of the data. Because it is marked `Release`, the decreasing
             // of the reference count synchronizes with this `Acquire` fence. This
@@ -2999,20 +2999,20 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
             //
             // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
             // [2]: (https://github.com/rust-lang/rust/pull/41714)
-            acquire!(self.inner().strong);
+            acquire!(this.inner().strong);
 
             // Drop the weak ref collectively held by all strong references when this
             // variable goes out of scope. This ensures that the memory is deallocated
             // even if the destructor of `T` panics.
             // Take a reference to `self.alloc` instead of cloning because 1. it'll last long
             // enough, and 2. you should be able to drop `Arc`s with unclonable allocators
-            let _weak = Weak { ptr: self.ptr, alloc: &self.alloc };
+            let _weak = Weak { ptr: this.ptr, alloc: &this.alloc };
 
             // Destroy the data at this time, even though we must not free the box
             // allocation itself (there might still be weak pointers lying around).
             // We cannot use `get_mut_unchecked` here, because `self.alloc` is borrowed.
             // ignore-tidy-undocumented-unsafe
-            unsafe { ptr::drop_in_place(&mut (*self.ptr.as_ptr()).data) };
+            unsafe { ptr::drop_in_place(&mut (*this.ptr.as_ptr()).data) };
         }
 
         // Because `fetch_sub` is already atomic, we do not need to synchronize
@@ -3035,7 +3035,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
 
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            self.drop_slow();
+            drop_slow(self);
         }
     }
 }
