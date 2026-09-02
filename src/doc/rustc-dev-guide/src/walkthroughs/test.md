@@ -112,7 +112,7 @@ If that passes, your test is ready.
 
 ## Open a PR
 
-Follow the instructions in [Using Git](../git.md):
+Follow the instructions in [PR lifecycle](../pr-lifecycle.md).
 
 First, run the pre-push check if you didn't set it up earlier:
 
@@ -132,4 +132,4 @@ git push --set-upstream personal issue-59333-test
 
 ## Review and feedback
 
-See [Opening a PR](../git.md#opening-a-pr).
+See [PR lifecycle](../pr-lifecycle.md) for information about review and merging.

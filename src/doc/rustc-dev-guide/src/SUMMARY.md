@@ -51,6 +51,7 @@
 # Contributing to Rust
 
 - [Contribution procedures](./contributing.md)
+- [PR lifecycle](./pr-lifecycle.md)
 - [Writing rustc-dev-guide documentation](./contributing-to-guide.md)
 - [About the compiler team](./compiler-team.md)
 - [Using Git](./git.md)
