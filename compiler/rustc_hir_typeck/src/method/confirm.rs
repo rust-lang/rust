@@ -347,7 +347,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 })
             }
 
-            probe::TraitPick(_) => {
+            probe::TraitPick { .. } => {
                 let trait_def_id = pick.item.container_id(self.tcx);
 
                 // Make a trait reference `$0 : Trait<$1...$n>`
@@ -756,7 +756,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         pick: &probe::Pick<'_>,
         segment: &hir::PathSegment<'tcx>,
     ) {
-        if pick.kind != probe::PickKind::TraitPick(true) {
+        if pick.kind != (probe::PickKind::TraitPick { is_ambiguously_imported: true }) {
             return;
         }
         let trait_name = self.tcx.item_name(pick.item.container_id(self.tcx));
