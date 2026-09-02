@@ -44,6 +44,16 @@ pub fn main() {
         } => {}
     }
     match foo {
+        Foo {
+            pizza:
+                Pizza {
+                    topping: Some { .. }
+                    //~^ ERROR access to union field is unsafe
+                },
+        } => {}
+        _ => {}
+    }
+    match foo {
         Foo { tuple: (_a,) } => {} //~ ERROR access to union field is unsafe
     }
     match foo {
