@@ -503,7 +503,7 @@ impl<'a> Parser<'a> {
     fn check_noexpect_past_close_delim(&self, tok: &TokenKind) -> bool {
         matches!(
             self.token_cursor.look_ahead_past_close_delim(),
-            Some(TokenTree::Token(token::Token { kind, .. }, _)) if kind == tok
+            Some(TokenTree::Token(token::Token { kind, .. }, _)) if kind == *tok
         )
     }
 

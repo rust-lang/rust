@@ -7,7 +7,7 @@
 use std::borrow::Cow;
 use std::hash::Hash;
 use std::ops::Range;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{cmp, fmt, iter, mem};
 
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
@@ -885,12 +885,13 @@ struct TokenTreeCursor {
     stream: TokenStream,
     /// Points to the next token tree (or one past the end of the stream).
     next_idx: usize,
+    parent: Option<TokenTreeCursorId>,
 }
 
 impl TokenTreeCursor {
     #[inline]
-    fn new(stream: TokenStream) -> Self {
-        TokenTreeCursor { stream, next_idx: 0 }
+    fn new(stream: TokenStream, parent: Option<TokenTreeCursorId>) -> Self {
+        TokenTreeCursor { stream, next_idx: 0, parent }
     }
 
     /// Gets the current token tree within this cursor. In a debug build it panics on a cursor that
@@ -940,17 +941,18 @@ pub struct TokenCursor {
     // in `self.stack.last()`; if that is `None` we are in the outermost token
     // stream which never has delimiters.
     curr: TokenTreeCursor,
-
-    // Token streams surrounding the current one. The `next_idx` within each cursor
-    // is always greater than zero and always points one past the current
-    // `TokenTree::Delimited`.
-    stack: Vec<TokenTreeCursor>,
+    depth: usize,
+    parents: Arc<Mutex<TokenTreeCursorParents>>,
 }
 
 impl TokenCursor {
     #[inline]
     pub fn new(stream: TokenStream) -> Self {
-        TokenCursor { curr: TokenTreeCursor::new(stream), stack: vec![] }
+        TokenCursor {
+            curr: TokenTreeCursor::new(stream, None),
+            depth: 0,
+            parents: Arc::new(Mutex::new(TokenTreeCursorParents::default())),
+        }
     }
 
     /// Gets the next token and advances the cursor by one.
@@ -968,15 +970,24 @@ impl TokenCursor {
     /// Returns the first token tree (if there is one) past the close delimiter of the enclosing
     /// delimited sequence. Panics if we are not within a delimited sequence.
     #[inline]
-    pub fn look_ahead_past_close_delim(&self) -> Option<&TokenTree> {
-        self.stack.last().unwrap().next()
+    pub fn look_ahead_past_close_delim(&self) -> Option<TokenTree> {
+        self.with_parent_cursor(|parent| parent.next().cloned())
     }
 
     /// Clones the `TokenTree::Delimited` that we are currently within. Panics if we are not within
     /// a delimited sequence.
     #[inline]
     pub fn clone_enclosing_delim(&self) -> TokenTree {
-        self.stack.last().unwrap().curr().unwrap().clone()
+        self.with_parent_cursor(|parent| parent.curr().unwrap().clone())
+    }
+
+    fn with_parent_cursor<F, R>(&self, func: F) -> R
+    where
+        F: FnOnce(&TokenTreeCursor) -> R,
+    {
+        let parents = self.parents.lock().unwrap();
+        let parent = parents.get(self.curr.parent.unwrap()).unwrap();
+        func(parent)
     }
 
     /// For skipping to the end of the current sequence, in rare circumstances.
@@ -988,14 +999,16 @@ impl TokenCursor {
     /// Note: the outermost stream has depth of 0.
     #[inline]
     pub fn depth(&self) -> usize {
-        self.stack.len()
+        self.depth
     }
 
     /// Returns details about the parent delimited sequence, if there is one.
     #[inline]
     pub fn parent_delim_and_span(&self) -> Option<(Delimiter, DelimSpan)> {
-        if let Some(last) = self.stack.last()
-            && let Some(TokenTree::Delimited(span, _, delim, _)) = last.curr()
+        let parents = self.parents.lock().unwrap();
+        if let Some(last) = self.curr.parent.as_ref()
+            && let Some(parent) = parents.get(*last)
+            && let Some(TokenTree::Delimited(span, _, delim, _)) = parent.curr()
         {
             Some((*delim, *span))
         } else {
@@ -1019,16 +1032,23 @@ impl TokenCursor {
                         return res;
                     }
                     &TokenTree::Delimited(sp, spacing, delim, ref tts) => {
-                        let trees = TokenTreeCursor::new(tts.clone());
+                        let trees = TokenTreeCursor::new(tts.clone(), None);
                         self.curr.bump(); // move past the `Delimited`
-                        self.stack.push(mem::replace(&mut self.curr, trees));
+                        self.depth += 1;
+
+                        let parent = std::mem::replace(&mut self.curr, trees);
+                        let parent_id = self.parents.lock().unwrap().insert(parent);
+                        self.curr.parent = Some(parent_id);
                         if !delim.skip() {
                             return (Token::new(delim.as_open_token_kind(), sp.open), spacing.open);
                         }
                         // No open delimiter to return; continue on to the next iteration.
                     }
                 };
-            } else if let Some(parent) = self.stack.pop() {
+            } else if let Some(parent) = self.curr.parent.take() {
+                self.depth -= 1;
+
+                let parent = self.parents.lock().unwrap().get(parent).unwrap().clone();
                 // We have exhausted this token stream. Move back to its parent token stream.
                 let Some(&TokenTree::Delimited(span, spacing, delim, _)) = parent.curr() else {
                     panic!("parent should be Delimited")
@@ -1082,6 +1102,26 @@ pub struct DelimSpacing {
 impl DelimSpacing {
     pub fn new(open: Spacing, close: Spacing) -> DelimSpacing {
         DelimSpacing { open, close }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+struct TokenTreeCursorId(u32);
+
+#[derive(Default, Debug)]
+pub(crate) struct TokenTreeCursorParents {
+    parents: Vec<TokenTreeCursor>,
+}
+
+impl TokenTreeCursorParents {
+    fn insert(&mut self, cursor: TokenTreeCursor) -> TokenTreeCursorId {
+        let index = self.parents.len();
+        self.parents.push(cursor);
+        TokenTreeCursorId(index as u32)
+    }
+
+    fn get(&self, id: TokenTreeCursorId) -> Option<&TokenTreeCursor> {
+        self.parents.get(id.0 as usize)
     }
 }
 
