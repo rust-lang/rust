@@ -1,3 +1,5 @@
+use std::debug_assert_matches;
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
@@ -265,11 +267,25 @@ impl<I: Interner> AliasTerm<I> {
 /// The following methods work only with (trait) associated term projections.
 // FIXME: Replace by an impl on Alias<ProjectionAliasTermKind>
 impl<I: Interner> AliasTerm<I> {
+    fn debug_assert_has_self(self) {
+        // InherentConstImpl is deliberately omitted here, it is not self-format args
+        debug_assert_matches!(
+            self.kind,
+            AliasTermKind::ProjectionTy { .. }
+                | AliasTermKind::ProjectionConst { .. }
+                | AliasTermKind::InherentTy { .. }
+                | AliasTermKind::InherentConstSelf { .. },
+            "AliasTerm::self_ty is only valid on projection and inherent aliases"
+        );
+    }
+
     pub fn self_ty(self) -> I::Ty {
+        self.debug_assert_has_self();
         self.args.type_at(0)
     }
 
     pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
+        self.debug_assert_has_self();
         AliasTerm::new(
             interner,
             self.kind,
