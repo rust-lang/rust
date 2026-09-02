@@ -45,7 +45,7 @@ You may use an LLM to privately review a disclosure you have written, but not to
 **Write your own PR description and comments**.
 We want to hear from you, not from your agent.
 LLM-created PR descriptions are banned.
-LLM-created Github comments are banned.
+LLM-created GitHub comments are banned.
 
 ## Guidelines
 
