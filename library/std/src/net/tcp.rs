@@ -833,7 +833,7 @@ impl TcpListener {
     /// ```
     ///
     /// Creates a TCP listener bound to a port assigned by the operating system
-    /// at `[::1]`.
+    /// at `::1`.
     ///
     /// ```no_run
     /// use std::net::TcpListener;
