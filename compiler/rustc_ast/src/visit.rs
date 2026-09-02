@@ -343,7 +343,7 @@ macro_rules! common_visitor_and_walkers {
         }
 
         // This macro generates `impl Visitable` and `impl MutVisitable` that do nothing.
-        impl_visitable_noop!(<$($lt)? $($mut)?>
+        impl_visitable_noop!($(<$lt>)?
             AttrId,
             bool,
             rustc_span::ByteSymbol,
@@ -372,7 +372,7 @@ macro_rules! common_visitor_and_walkers {
         // This macro generates `impl Visitable` and `impl MutVisitable` that simply iterate over
         // their contents. We do not use a generic impl for `ThinVec` because we want to allow
         // custom visits for the `MutVisitor`.
-        impl_visitable_list!(<$($lt)? $($mut)?>
+        impl_visitable_list!($(<$lt>)?
             ThinVec<AngleBracketedArg>,
             ThinVec<Attribute>,
             ThinVec<GenericBound>,
@@ -393,7 +393,7 @@ macro_rules! common_visitor_and_walkers {
         // This macro generates `impl Visitable` and `impl MutVisitable` that forward to `Walkable`
         // or `MutWalkable`. By default, all types that do not have a custom visit method in the
         // visitor should appear here.
-        impl_visitable_direct!(<$($lt)? $($mut)?>
+        impl_visitable_direct!($(<$lt>)?
             AngleBracketedArg,
             AngleBracketedArgs,
             AsmMacro,
@@ -546,7 +546,7 @@ macro_rules! common_visitor_and_walkers {
             // This macro defines a custom visit method for each listed type.
             // It implements `impl Visitable` and `impl MutVisitable` to call those methods on the
             // visitor.
-            impl_visitable_calling_walkable!(<$($lt)? $($mut)?>
+            impl_visitable_calling_walkable!($(<$lt>)?
                 fn visit_anon_const(AnonConst);
                 fn visit_arm(Arm);
                 //fn visit_assoc_item(AssocItem, _ctxt: AssocCtxt);
@@ -765,7 +765,7 @@ macro_rules! common_visitor_and_walkers {
             }
             V::Result::output()
         });)?
-        $(impl_visitable_list!(<$mut> ThinVec<(UseTree, NodeId)>,);)?
+        $(${ignore($mut)} impl_visitable_list!(ThinVec<(UseTree, NodeId)>,);)?
 
         fn walk_item_inner<$($lt,)? K: WalkItemKind, V: $Visitor$(<$lt>)?>(
             visitor: &mut V,

@@ -181,7 +181,7 @@ macro_rules! impl_walkable {
 }
 
 macro_rules! impl_visitable_noop {
-    (<mut> $($ty:ty,)*) => {
+    ($($ty:ty,)*) => {
         $(
             impl_visitable!(|&mut self: $ty, _vis: &mut V, _extra: ()| {});
         )*
@@ -189,7 +189,7 @@ macro_rules! impl_visitable_noop {
 }
 
 macro_rules! impl_visitable_list {
-    (<mut> $($ty:ty,)*) => {
+    ($($ty:ty,)*) => {
         $(impl<V: MutVisitor, T> MutVisitable<V> for $ty
         where
             for<'a> &'a mut $ty: IntoIterator<Item = &'a mut T>,
@@ -208,7 +208,7 @@ macro_rules! impl_visitable_list {
 }
 
 macro_rules! impl_visitable_direct {
-    (<mut> $($ty:ty,)*) => {
+    ($($ty:ty,)*) => {
         $(impl_visitable!(
             |&mut self: $ty, visitor: &mut V, _extra: ()| {
                 MutWalkable::walk_mut(self, visitor)
@@ -218,7 +218,7 @@ macro_rules! impl_visitable_direct {
 }
 
 macro_rules! impl_visitable_calling_walkable {
-    (<mut>
+    (
         $( fn $method:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?); )*
     ) => {
         $(fn $method(&mut self, node: &mut $ty $(, $extra_name:$extra_ty)?) {
