@@ -210,8 +210,8 @@ pub struct PerOwnerResolverData<'tcx> {
     pub node_id_to_def_id: NodeMap<LocalDefId> = Default::default(),
     /// Whether lifetime elision was successful.
     pub lifetime_elision_allowed: bool = false,
-    /// Resolutions for labels.
-    /// Maps from NodeId of the break/continue expression to the NodeId of their corresponding blocks or loops.
+    /// Resolutions for labels. Maps from NodeId of the break/continue expression to the NodeId of
+    /// their corresponding blocks or loops.
     pub label_res_map: NodeMap<ast::NodeId> = Default::default(),
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes> = Default::default(),
@@ -221,7 +221,8 @@ pub struct PerOwnerResolverData<'tcx> {
     /// Resolution for import nodes, which have multiple resolutions in different namespaces.
     pub import_res: hir::def::PerNS<Option<Res<ast::NodeId>>> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
-    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, hir::MissingLifetimeKind)>> = Default::default(),
+    pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, hir::MissingLifetimeKind)>> =
+        Default::default(),
 
     /// The id of the owner
     pub id: ast::NodeId,
