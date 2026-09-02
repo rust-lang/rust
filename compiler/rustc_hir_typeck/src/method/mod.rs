@@ -121,6 +121,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// The number of arguments, not counting the receiver, that the method `method_name` on
+    /// `self_ty` takes. Returns `0` when the method cannot be found.
+    pub(crate) fn method_param_count_for_diagnostic(
+        &self,
+        method_name: Ident,
+        self_ty: Ty<'tcx>,
+        call_expr: &hir::Expr<'tcx>,
+    ) -> usize {
+        self.lookup_probe_for_diagnostic(
+            method_name,
+            self_ty,
+            call_expr,
+            ProbeScope::TraitsInScope,
+            None,
+        )
+        .map(|pick| {
+            let sig = self.tcx.fn_sig(pick.item.def_id);
+            sig.skip_binder().inputs().skip_binder().len().saturating_sub(1)
+        })
+        .unwrap_or(0)
+    }
+
     /// Adds a suggestion to call the given method to the provided diagnostic.
     #[instrument(level = "debug", skip(self, err, call_expr))]
     pub(crate) fn suggest_method_call(
@@ -132,19 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &hir::Expr<'tcx>,
         span: Option<Span>,
     ) {
-        let params = self
-            .lookup_probe_for_diagnostic(
-                method_name,
-                self_ty,
-                call_expr,
-                ProbeScope::TraitsInScope,
-                None,
-            )
-            .map(|pick| {
-                let sig = self.tcx.fn_sig(pick.item.def_id);
-                sig.skip_binder().inputs().skip_binder().len().saturating_sub(1)
-            })
-            .unwrap_or(0);
+        let params = self.method_param_count_for_diagnostic(method_name, self_ty, call_expr);
 
         // Account for `foo.bar<T>`;
         let sugg_span = span.unwrap_or(call_expr.span).shrink_to_hi();
