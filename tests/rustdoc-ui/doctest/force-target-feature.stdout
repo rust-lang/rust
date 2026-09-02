@@ -1,0 +1,27 @@
+
+running 1 test
+test $DIR/force-target-feature.rs - SomeStruct (line 11) ... FAILED
+
+failures:
+
+---- $DIR/force-target-feature.rs - SomeStruct (line 11) stdout ----
+Test executable failed (exit status: 101).
+
+stderr:
+
+thread 'main' ($TID) panicked at $DIR/force-target-feature.rs:3:1:
+oh no
+stack backtrace:
+   0: std::panicking::begin_panic::<&str>
+   1: rust_out::main::$PATH
+   2: rust_out::main
+   3: <fn() as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+
+failures:
+    $DIR/force-target-feature.rs - SomeStruct (line 11)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
