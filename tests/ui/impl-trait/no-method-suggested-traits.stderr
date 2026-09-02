@@ -7,9 +7,9 @@ LL |     1u32.method();
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `method` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use foo::Bar;
+LL + use crate::foo::Bar;
    |
-LL + use no_method_suggested_traits::foo::PubPub;
+LL + use crate::no_method_suggested_traits::foo::PubPub;
    |
 help: there is a method `method2` with a similar name
    |
@@ -25,9 +25,9 @@ LL |     std::rc::Rc::new(&mut Box::new(&1u32)).method();
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `method` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use foo::Bar;
+LL + use crate::foo::Bar;
    |
-LL + use no_method_suggested_traits::foo::PubPub;
+LL + use crate::no_method_suggested_traits::foo::PubPub;
    |
 help: there is a method `method2` with a similar name
    |
@@ -46,7 +46,7 @@ LL |     'a'.method();
    = help: items from traits can only be used if the trait is in scope
 help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use foo::Bar;
+LL + use crate::foo::Bar;
    |
 help: there is a method `method2` with a similar name
    |
@@ -62,7 +62,7 @@ LL |     std::rc::Rc::new(&mut Box::new(&'a')).method();
    = help: items from traits can only be used if the trait is in scope
 help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use foo::Bar;
+LL + use crate::foo::Bar;
    |
 help: there is a method `method2` with a similar name
    |
@@ -83,7 +83,7 @@ LL |         fn method(&self) {}
    = help: items from traits can only be used if the trait is in scope
 help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use no_method_suggested_traits::foo::PubPub;
+LL + use crate::no_method_suggested_traits::foo::PubPub;
    |
 help: there is a method `method3` with a similar name
    |
@@ -99,7 +99,7 @@ LL |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
    = help: items from traits can only be used if the trait is in scope
 help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use no_method_suggested_traits::foo::PubPub;
+LL + use crate::no_method_suggested_traits::foo::PubPub;
    |
 help: there is a method `method3` with a similar name
    |
