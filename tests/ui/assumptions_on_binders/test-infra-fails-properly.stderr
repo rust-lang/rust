@@ -39,7 +39,7 @@ LL |         dyn for<'b> Trait<'b>: 'a,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: it is a (dyn for<'b> Trait<'b> + 'static)
-   = note: and here it is `Debug`ged :3 dyn [Binder { value: Trait(Trait<'b>), bound_vars: [Region(BrNamed(DefId(0:11 ~ test_infra_fails_properly[2377]::{test_binder_constraints#1}::'b)))] }, Binder { value: AutoTrait(DefId(2:43117 ~ core[ad49]::marker::Move)), bound_vars: [] }] + 'static
+   = note: and here it is `Debug`ged :3 dyn [Binder { value: Trait(Trait<'b>), bound_vars: [Region(BrNamed(DefId(0:11 ~ test_infra_fails_properly[2377]::{test_binder_constraints#1}::'b)))] }, Binder { value: AutoTrait(DefId(2:43179 ~ core[ad49]::marker::Move)), bound_vars: [] }] + 'static
 
 error: the lhs of a ty outlives must be a placeholder
   --> $DIR/test-infra-fails-properly.rs:50:13
