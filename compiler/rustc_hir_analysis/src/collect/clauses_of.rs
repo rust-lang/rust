@@ -283,20 +283,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
         clauses.insert((ty::ClauseKind::UnstableFeature(*feat_name).upcast(tcx), *span));
     }
 
-    // Filter out the move trait if the feature is not active
-    let mut clauses: Vec<_> = if !tcx.features().move_trait() {
-        clauses
-            .into_iter()
-            .filter(|(clause, _)| {
-                !clause.as_trait_clause().is_some_and(|p| {
-                    p.polarity() == ClausePolarity::Positive
-                        && matches!(tcx.as_lang_item(p.def_id()), Some(LangItem::Move))
-                })
-            })
-            .collect()
-    } else {
-        clauses.into_iter().collect()
-    };
+    let mut clauses: Vec<_> = clauses.into_iter().collect();
 
     // Subtle: before we store the clauses into the tcx, we
     // sort them so that clauses like `T: Foo<Item=U>` come
