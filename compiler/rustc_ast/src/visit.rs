@@ -220,7 +220,6 @@ macro_rules! impl_visitable {
 macro_rules! impl_walkable {
     (|&$lt:lifetime $self:ident: $self_ty:ty,
       $vis:ident: &mut $vis_ty:ident| $block:block) => {
-        #[allow(unused_parens, non_local_definitions)]
         impl<$lt, $vis_ty: Visitor<$lt>> Walkable<$lt, $vis_ty> for $self_ty {
             fn walk_ref(&$lt $self, $vis: &mut $vis_ty) -> V::Result {
                 $block
