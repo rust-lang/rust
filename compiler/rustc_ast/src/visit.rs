@@ -539,7 +539,7 @@ macro_rules! common_visitor_and_walkers {
                 impl_visitable!(|&$($lt)? $($mut)? self: Ident, visitor: &mut V, _extra: ()| {
                     visitor.visit_ident(self)
                 });
-                visit_visitable!($($mut)? self, span);
+                visit_visitable!(self, span);
                 Self::Result::output()
             }
 
@@ -773,9 +773,9 @@ macro_rules! common_visitor_and_walkers {
             ctxt: K::Ctxt,
         ) -> V::Result {
             let Item { attrs, id, kind, vis, span, tokens: _ } = item;
-            visit_visitable!($($mut)? visitor, id, attrs, vis);
+            visit_visitable!(visitor, id, attrs, vis);
             try_visit!(kind.walk(attrs, *span, *id, vis, ctxt, visitor));
-            visit_visitable!($($mut)? visitor, span);
+            visit_visitable!(visitor, span);
             V::Result::output()
         }
 
@@ -813,46 +813,46 @@ macro_rules! common_visitor_and_walkers {
                         try_visit!(vis.visit_fn(kind, attrs, span, id));
                     }
                     ItemKind::ExternCrate(orig_name, ident) =>
-                        visit_visitable!($($mut)? vis, orig_name, ident),
+                        visit_visitable!(vis, orig_name, ident),
                     ItemKind::Use(use_tree) =>
-                        visit_visitable!($($mut)? vis, use_tree),
+                        visit_visitable!(vis, use_tree),
                     ItemKind::Static(item) =>
-                        visit_visitable!($($mut)? vis, item),
+                        visit_visitable!(vis, item),
                     ItemKind::ConstBlock(item) =>
-                        visit_visitable!($($mut)? vis, item),
+                        visit_visitable!(vis, item),
                     ItemKind::Const(item) =>
-                        visit_visitable!($($mut)? vis, item),
+                        visit_visitable!(vis, item),
                     ItemKind::Mod(safety, ident, mod_kind) =>
-                        visit_visitable!($($mut)? vis, safety, ident, mod_kind),
+                        visit_visitable!(vis, safety, ident, mod_kind),
                     ItemKind::ForeignMod(nm) =>
-                        visit_visitable!($($mut)? vis, nm),
+                        visit_visitable!(vis, nm),
                     ItemKind::GlobalAsm(asm) =>
-                        visit_visitable!($($mut)? vis, asm),
+                        visit_visitable!(vis, asm),
                     ItemKind::TyAlias(ty_alias) =>
-                        visit_visitable!($($mut)? vis, ty_alias),
+                        visit_visitable!(vis, ty_alias),
                     ItemKind::Enum(ident, generics, enum_definition) =>
-                        visit_visitable!($($mut)? vis, ident, generics, enum_definition),
+                        visit_visitable!(vis, ident, generics, enum_definition),
                     ItemKind::Struct(ident, generics, variant_data)
                     | ItemKind::Union(ident, generics, variant_data) =>
-                        visit_visitable!($($mut)? vis, ident, generics, variant_data),
+                        visit_visitable!(vis, ident, generics, variant_data),
                     ItemKind::Impl(impl_) =>
-                        visit_visitable!($($mut)? vis, impl_),
+                        visit_visitable!(vis, impl_),
                     ItemKind::Trait(trait_) =>
-                        visit_visitable!($($mut)? vis, trait_),
+                        visit_visitable!(vis, trait_),
                     ItemKind::TraitAlias(TraitAlias { constness, ident, generics, bounds}) => {
-                        visit_visitable!($($mut)? vis, constness, ident, generics);
-                        visit_visitable_with!($($mut)? vis, bounds, BoundKind::Bound)
+                        visit_visitable!(vis, constness, ident, generics);
+                        visit_visitable_with!(vis, bounds, BoundKind::Bound)
                     }
                     ItemKind::MacCall(m) =>
-                        visit_visitable!($($mut)? vis, m),
+                        visit_visitable!(vis, m),
                     ItemKind::MacroDef(ident, def) =>
-                        visit_visitable!($($mut)? vis, ident, def),
+                        visit_visitable!(vis, ident, def),
                     ItemKind::Delegation(delegation) =>
-                        visit_visitable!($($mut)? vis, delegation),
+                        visit_visitable!(vis, delegation),
                     ItemKind::DelegationMac(dm) =>
-                        visit_visitable!($($mut)? vis, dm),
+                        visit_visitable!(vis, dm),
                     ItemKind::TestBinderConstraints(item) =>
-                        visit_visitable!($($mut)? vis, item),
+                        visit_visitable!(vis, item),
                 }
                 V::Result::output()
             }
@@ -871,19 +871,19 @@ macro_rules! common_visitor_and_walkers {
             ) -> V::Result {
                 match self {
                     AssocItemKind::Const(item) =>
-                        visit_visitable!($($mut)? vis, item),
+                        visit_visitable!(vis, item),
                     AssocItemKind::Fn(func) => {
                         let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), visibility, &$($mut)? *func);
                         try_visit!(vis.visit_fn(kind, attrs, span, id))
                     }
                     AssocItemKind::Type(alias) =>
-                        visit_visitable!($($mut)? vis, alias),
+                        visit_visitable!(vis, alias),
                     AssocItemKind::MacCall(mac) =>
-                        visit_visitable!($($mut)? vis, mac),
+                        visit_visitable!(vis, mac),
                     AssocItemKind::Delegation(delegation) =>
-                        visit_visitable!($($mut)? vis, delegation),
+                        visit_visitable!(vis, delegation),
                     AssocItemKind::DelegationMac(dm) =>
-                        visit_visitable!($($mut)? vis, dm),
+                        visit_visitable!(vis, dm),
                 }
                 V::Result::output()
             }
@@ -902,15 +902,15 @@ macro_rules! common_visitor_and_walkers {
             ) -> V::Result {
                 match self {
                     ForeignItemKind::Static(item) =>
-                        visit_visitable!($($mut)? vis, item),
+                        visit_visitable!(vis, item),
                     ForeignItemKind::Fn(func) => {
                         let kind = FnKind::Fn(FnCtxt::Foreign, visibility, &$($mut)?*func);
                         try_visit!(vis.visit_fn(kind, attrs, span, id))
                     }
                     ForeignItemKind::TyAlias(alias) =>
-                        visit_visitable!($($mut)? vis, alias),
+                        visit_visitable!(vis, alias),
                     ForeignItemKind::MacCall(mac) =>
-                        visit_visitable!($($mut)? vis, mac),
+                        visit_visitable!(vis, mac),
                 }
                 V::Result::output()
             }
@@ -925,13 +925,13 @@ macro_rules! common_visitor_and_walkers {
                     Fn { defaultness, ident, sig, generics, contract, body, define_opaque, eii_impl },
                 ) => {
                     let FnSig { header, decl, span } = sig;
-                    visit_visitable!($($mut)? vis,
+                    visit_visitable!(vis,
                         defaultness, ident, header, generics, decl,
                         contract, body, span, define_opaque, eii_impl
                     );
                 }
                 FnKind::Closure(binder, coroutine_marker, decl, body) =>
-                    visit_visitable!($($mut)? vis, binder, coroutine_marker, decl, body),
+                    visit_visitable!(vis, binder, coroutine_marker, decl, body),
             }
             V::Result::output()
         }
@@ -941,10 +941,10 @@ macro_rules! common_visitor_and_walkers {
             try_visit!(vis.visit_generics(generics));
             if let Some(of_trait) = of_trait {
                 let TraitImplHeader { defaultness, safety, polarity, trait_ref } = of_trait;
-                visit_visitable!($($mut)? vis, defaultness, safety, polarity, trait_ref);
+                visit_visitable!(vis, defaultness, safety, polarity, trait_ref);
             }
             try_visit!(vis.visit_ty(self_ty));
-            visit_visitable_with!($($mut)? vis, items, AssocCtxt::Impl { of_trait: of_trait.is_some() });
+            visit_visitable_with!(vis, items, AssocCtxt::Impl { of_trait: of_trait.is_some() });
             V::Result::output()
         });
 
@@ -952,48 +952,48 @@ macro_rules! common_visitor_and_walkers {
         impl_walkable!(|&$($mut)? $($lt)? self: MethodCall, vis: &mut V| {
             let MethodCall { seg, receiver, args, span } = self;
             try_visit!(vis.visit_method_receiver_expr(receiver));
-            visit_visitable!($($mut)? vis, seg, args, span);
+            visit_visitable!(vis, seg, args, span);
             V::Result::output()
         });
 
         impl_walkable!(|&$($mut)? $($lt)? self: Expr, vis: &mut V| {
             let Expr { id, kind, span, attrs, tokens: _ } = self;
-            visit_visitable!($($mut)? vis, id, attrs);
+            visit_visitable!(vis, id, attrs);
             match kind {
                 ExprKind::Array(exprs) =>
-                    visit_visitable!($($mut)? vis, exprs),
+                    visit_visitable!(vis, exprs),
                 ExprKind::ConstBlock(anon_const) =>
-                    visit_visitable!($($mut)? vis, anon_const),
+                    visit_visitable!(vis, anon_const),
                 ExprKind::Repeat(element, count) =>
-                    visit_visitable!($($mut)? vis, element, count),
+                    visit_visitable!(vis, element, count),
                 ExprKind::Struct(se) =>
-                    visit_visitable!($($mut)? vis, se),
+                    visit_visitable!(vis, se),
                 ExprKind::Tup(exprs) =>
-                    visit_visitable!($($mut)? vis, exprs),
+                    visit_visitable!(vis, exprs),
                 ExprKind::Call(callee_expression, arguments) =>
-                    visit_visitable!($($mut)? vis, callee_expression, arguments),
+                    visit_visitable!(vis, callee_expression, arguments),
                 ExprKind::MethodCall(mc) =>
-                    visit_visitable!($($mut)? vis, mc),
+                    visit_visitable!(vis, mc),
                 ExprKind::Binary(op, lhs, rhs) =>
-                    visit_visitable!($($mut)? vis, op, lhs, rhs),
+                    visit_visitable!(vis, op, lhs, rhs),
                 ExprKind::AddrOf(kind, mutbl, subexpression) =>
-                    visit_visitable!($($mut)? vis, kind, mutbl, subexpression),
+                    visit_visitable!(vis, kind, mutbl, subexpression),
                 ExprKind::Unary(op, subexpression) =>
-                    visit_visitable!($($mut)? vis, op, subexpression),
+                    visit_visitable!(vis, op, subexpression),
                 ExprKind::Cast(subexpression, typ) | ExprKind::Type(subexpression, typ) =>
-                    visit_visitable!($($mut)? vis, subexpression, typ),
+                    visit_visitable!(vis, subexpression, typ),
                 ExprKind::Let(pat, expr, span, _recovered) =>
-                    visit_visitable!($($mut)? vis, pat, expr, span),
+                    visit_visitable!(vis, pat, expr, span),
                 ExprKind::If(head_expression, if_block, optional_else) =>
-                    visit_visitable!($($mut)? vis, head_expression, if_block, optional_else),
+                    visit_visitable!(vis, head_expression, if_block, optional_else),
                 ExprKind::While(subexpression, block, opt_label) =>
-                    visit_visitable!($($mut)? vis, subexpression, block, opt_label),
+                    visit_visitable!(vis, subexpression, block, opt_label),
                 ExprKind::ForLoop(ForLoop { pat, iter, body, label, kind }) =>
-                    visit_visitable!($($mut)? vis, pat, iter, body, label, kind),
+                    visit_visitable!(vis, pat, iter, body, label, kind),
                 ExprKind::Loop(block, opt_label, span) =>
-                    visit_visitable!($($mut)? vis, block, opt_label, span),
+                    visit_visitable!(vis, block, opt_label, span),
                 ExprKind::Match(subexpression, arms, kind) =>
-                    visit_visitable!($($mut)? vis, subexpression, arms, kind),
+                    visit_visitable!(vis, subexpression, arms, kind),
                 ExprKind::Closure(Closure {
                     binder,
                     capture_clause,
@@ -1005,73 +1005,73 @@ macro_rules! common_visitor_and_walkers {
                     fn_decl_span,
                     fn_arg_span,
                 }) => {
-                    visit_visitable!($($mut)? vis, constness, movability, capture_clause);
+                    visit_visitable!(vis, constness, movability, capture_clause);
                     let kind = FnKind::Closure(binder, coroutine_marker, fn_decl, body);
                     try_visit!(vis.visit_fn(kind, attrs, *span, *id));
-                    visit_visitable!($($mut)? vis, fn_decl_span, fn_arg_span);
+                    visit_visitable!(vis, fn_decl_span, fn_arg_span);
                 }
                 ExprKind::Block(block, opt_label) =>
-                    visit_visitable!($($mut)? vis, block, opt_label),
+                    visit_visitable!(vis, block, opt_label),
                 ExprKind::Gen(capt, body, kind, decl_span) =>
-                    visit_visitable!($($mut)? vis, capt, body, kind, decl_span),
+                    visit_visitable!(vis, capt, body, kind, decl_span),
                 ExprKind::Await(expr, span)
                 | ExprKind::Move(expr, span)
                 | ExprKind::Use(expr, span) =>
-                    visit_visitable!($($mut)? vis, expr, span),
+                    visit_visitable!(vis, expr, span),
                 ExprKind::Assign(lhs, rhs, span) =>
-                    visit_visitable!($($mut)? vis, lhs, rhs, span),
+                    visit_visitable!(vis, lhs, rhs, span),
                 ExprKind::AssignOp(op, lhs, rhs) =>
-                    visit_visitable!($($mut)? vis, op, lhs, rhs),
+                    visit_visitable!(vis, op, lhs, rhs),
                 ExprKind::Field(subexpression, ident) =>
-                    visit_visitable!($($mut)? vis, subexpression, ident),
+                    visit_visitable!(vis, subexpression, ident),
                 ExprKind::Index(main_expression, index_expression, span) =>
-                    visit_visitable!($($mut)? vis, main_expression, index_expression, span),
+                    visit_visitable!(vis, main_expression, index_expression, span),
                 ExprKind::Range(start, end, limit) =>
-                    visit_visitable!($($mut)? vis, start, end, limit),
+                    visit_visitable!(vis, start, end, limit),
                 ExprKind::Underscore => {}
                 ExprKind::Path(maybe_qself, path) =>
-                    visit_visitable!($($mut)? vis, maybe_qself, path),
+                    visit_visitable!(vis, maybe_qself, path),
                 ExprKind::Break(opt_label, opt_expr) =>
-                    visit_visitable!($($mut)? vis, opt_label, opt_expr),
+                    visit_visitable!(vis, opt_label, opt_expr),
                 ExprKind::Continue(opt_label) =>
-                    visit_visitable!($($mut)? vis, opt_label),
+                    visit_visitable!(vis, opt_label),
                 ExprKind::Ret(optional_expression) | ExprKind::Yeet(optional_expression) =>
-                    visit_visitable!($($mut)? vis, optional_expression),
+                    visit_visitable!(vis, optional_expression),
                 ExprKind::Become(expr) =>
-                    visit_visitable!($($mut)? vis, expr),
+                    visit_visitable!(vis, expr),
                 ExprKind::MacCall(mac) =>
-                    visit_visitable!($($mut)? vis, mac),
+                    visit_visitable!(vis, mac),
                 ExprKind::Paren(subexpression) =>
-                    visit_visitable!($($mut)? vis, subexpression),
+                    visit_visitable!(vis, subexpression),
                 ExprKind::InlineAsm(asm) =>
-                    visit_visitable!($($mut)? vis, asm),
+                    visit_visitable!(vis, asm),
                 ExprKind::FormatArgs(f) =>
-                    visit_visitable!($($mut)? vis, f),
+                    visit_visitable!(vis, f),
                 ExprKind::OffsetOf(container, fields) =>
-                    visit_visitable!($($mut)? vis, container, fields),
+                    visit_visitable!(vis, container, fields),
                 ExprKind::Yield(kind) =>
-                    visit_visitable!($($mut)? vis, kind),
+                    visit_visitable!(vis, kind),
                 ExprKind::Try(subexpression) =>
-                    visit_visitable!($($mut)? vis, subexpression),
+                    visit_visitable!(vis, subexpression),
                 ExprKind::TryBlock(body, optional_type) =>
-                    visit_visitable!($($mut)? vis, body, optional_type),
+                    visit_visitable!(vis, body, optional_type),
                 ExprKind::Lit(token) =>
-                    visit_visitable!($($mut)? vis, token),
+                    visit_visitable!(vis, token),
                 ExprKind::IncludedBytes(bytes) =>
-                    visit_visitable!($($mut)? vis, bytes),
+                    visit_visitable!(vis, bytes),
                 ExprKind::UnsafeBinderCast(kind, expr, ty) =>
-                    visit_visitable!($($mut)? vis, kind, expr, ty),
+                    visit_visitable!(vis, kind, expr, ty),
                 ExprKind::DirectConstArg(expr) =>
-                    visit_visitable!($($mut)? vis, expr),
+                    visit_visitable!(vis, expr),
                 ExprKind::Err(_guar) => {}
                 ExprKind::Dummy => {}
             }
 
-            visit_visitable!($($mut)? vis, span);
+            visit_visitable!(vis, span);
             V::Result::output()
         });
 
-        define_named_walk!($(($mut))? $Visitor$(<$lt>)?
+        define_named_walk!($Visitor$(<$lt>)?
             pub fn walk_anon_const(AnonConst);
             pub fn walk_arm(Arm);
             //pub fn walk_assoc_item(AssocItem, _ctxt: AssocCtxt);

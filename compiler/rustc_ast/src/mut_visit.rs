@@ -144,13 +144,13 @@ pub trait MutWalkable<V: MutVisitor> {
 }
 
 macro_rules! visit_visitable {
-    (mut $visitor:expr, $($expr:expr),* $(,)?) => {{
+    ($visitor:expr, $($expr:expr),* $(,)?) => {{
         $(MutVisitable::visit_mut($expr, $visitor, ());)*
     }};
 }
 
 macro_rules! visit_visitable_with {
-    (mut $visitor:expr, $expr:expr, $extra:expr $(,)?) => {
+    ($visitor:expr, $expr:expr, $extra:expr $(,)?) => {
         MutVisitable::visit_mut($expr, $visitor, $extra)
     };
 }
@@ -232,7 +232,7 @@ macro_rules! impl_visitable_calling_walkable {
 }
 
 macro_rules! define_named_walk {
-    ((mut) $Visitor:ident
+    ($Visitor:ident
         $( pub fn $method:ident($ty:ty); )*
     ) => {
         $(pub fn $method<V: $Visitor>(visitor: &mut V, node: &mut $ty) {
