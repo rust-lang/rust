@@ -344,7 +344,7 @@ pub enum ExprKind<'tcx> {
     /// expression. This is inserted in some places where an operation would
     /// otherwise be erased completely (e.g. some no-op casts), but we still
     /// need to ensure that its operand is treated as a value and not a place.
-    Use {
+    ValueExpr {
         source: ExprId,
     },
     /// A coercion from `!` to any type.
