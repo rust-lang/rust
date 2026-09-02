@@ -767,11 +767,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             segment.hir_id,
             rustc_errors::DiagDecorator(|diag| {
                 diag.primary_message(format!(
-                    "Use of ambiguously glob imported trait `{trait_name}`"
+                    "use of ambiguously glob imported trait `{trait_name}`"
                 ))
                 .span(segment.ident.span)
                 .span_label(import_span, format!("`{trait_name}` imported ambiguously here"))
-                .help(format!("Import `{trait_name}` explicitly"));
+                .help(format!("import `{trait_name}` explicitly"));
             }),
         );
     }
