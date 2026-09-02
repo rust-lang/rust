@@ -773,9 +773,9 @@ impl<T: AtomicLoadStore> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::Atomic;
+    /// use std::sync::atomic::AtomicBool;
     ///
-    /// let atomic = Atomic::<bool>:new(true);
+    /// let atomic = AtomicBool::new(true);
     /// ```
     #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
     #[rustc_const_stable(feature = "const_atomic_new", since = "1.34.0")]
@@ -794,9 +794,9 @@ impl<T: AtomicLoadStore> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::Atomic;
+    /// use std::sync::atomic::AtomicBool;
     ///
-    /// let some_bool = Atomic::<bool>::new(true);
+    /// let some_bool = AtomicBool::new(true);
     /// assert_eq!(some_bool.into_inner(), true);
     /// ```
     #[inline]
@@ -830,13 +830,13 @@ impl<T: AtomicLoadStore> Atomic<T> {
     /// # Examples
     ///
     /// ```ignore (extern-declaration)
-    /// use std::sync::atomic::Atomic;
+    /// use std::sync::atomic::AtomicBool;
     ///
     /// extern "C" {
     ///     fn my_atomic_op(arg: *mut bool);
     /// }
     ///
-    /// let mut atomic = Atomic::<bool>::new(true);
+    /// let mut atomic = AtomicBool::new(true);
     /// unsafe {
     ///     my_atomic_op(atomic.as_ptr());
     /// }
@@ -857,16 +857,16 @@ impl<T: AtomicLoadStore> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// // Get a pointer to an allocated value
     /// let ptr: *mut bool = Box::into_raw(Box::new(false));
     ///
-    /// assert!(ptr.cast::<Atomic::<bool>>().is_aligned());
+    /// assert!(ptr.cast::<AtomicBool>().is_aligned());
     ///
     /// {
     ///     // Create an atomic view of the allocated value
-    ///     let atomic = unsafe { Atomic::<bool>::from_ptr(ptr) };
+    ///     let atomic = unsafe { AtomicBool::from_ptr(ptr) };
     ///
     ///     // Use `atomic` for atomic operations, possibly share it with other threads
     ///     atomic.store(true, Ordering::Relaxed);
@@ -916,9 +916,9 @@ impl<T: AtomicLoadStore> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
-    /// let mut some_bool = Atomic::<bool>::new(true);
+    /// let mut some_bool = AtomicBool::new(true);
     /// assert_eq!(*some_bool.get_mut(), true);
     /// *some_bool.get_mut() = false;
     /// assert_eq!(some_bool.load(Ordering::SeqCst), false);
@@ -942,11 +942,11 @@ impl<T: AtomicLoadStore> Atomic<T> {
     /// # Examples
     ///
     /// ```rust,ignore-wasm
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
-    /// let mut some_bools = [const { Atomic::<bool>::new(false) }; 10];
+    /// let mut some_bools = [const { AtomicBool::new(false) }; 10];
     ///
-    /// let view: &mut [bool] = Atomic::<bool>::get_mut_slice(&mut some_bools);
+    /// let view: &mut [bool] = AtomicBool::get_mut_slice(&mut some_bools);
     /// assert_eq!(view, [false; 10]);
     /// view[..5].copy_from_slice(&[true; 5]);
     ///
@@ -980,9 +980,9 @@ impl<T: AtomicLoadStore> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
-    /// let some_bool = Atomic::<bool>::new(true);
+    /// let some_bool = AtomicBool::new(true);
     ///
     /// assert_eq!(some_bool.load(Ordering::Relaxed), true);
     /// ```
@@ -1032,11 +1032,11 @@ impl<T: AtomicLoadStore> Atomic<T> {
     ///
     /// ```rust,no_run
     /// #![feature(atomic_volatile)]
-    /// use std::sync::atomic::{fence, Atomic, Ordering};
+    /// use std::sync::atomic::{fence, AtomicPtr, Ordering};
     /// use std::ptr;
     ///
     /// const MMIO_ADDR: *mut *mut u8 = ptr::without_provenance_mut(0xCAF0);
-    /// let atomic_ptr = Atomic::<*mut u8>::from_ptr_raw(MMIO_ADDR);
+    /// let atomic_ptr = AtomicPtr::<u8>::from_ptr_raw(MMIO_ADDR);
     ///
     /// // Spin until we see a non-zero value.
     /// let buf = 'buf: loop {
@@ -1077,9 +1077,9 @@ impl<T: AtomicLoadStore> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
-    /// let some_bool = Atomic::<bool>::new(true);
+    /// let some_bool = AtomicBool::new(true);
     ///
     /// some_bool.store(false, Ordering::Relaxed);
     /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
@@ -1130,11 +1130,11 @@ impl<T: AtomicLoadStore> Atomic<T> {
     ///
     /// ```rust,no_run
     /// #![feature(atomic_volatile)]
-    /// use std::sync::atomic::{fence, Atomic, Ordering};
+    /// use std::sync::atomic::{fence, AtomicPtr, Ordering};
     /// use std::ptr;
     ///
     /// const MMIO_ADDR: *mut *mut u8 = ptr::without_provenance_mut(0xCAF0);
-    /// let atomic_ptr = Atomic::<*mut u8>::from_ptr_raw(MMIO_ADDR);
+    /// let atomic_ptr = AtomicPtr::<u8>::from_ptr_raw(MMIO_ADDR);
     ///
     /// // Prepare some data for the DMA device.
     /// # fn get_dma_buffer() -> *mut u8 { panic!() }
@@ -1175,9 +1175,9 @@ impl<T: AtomicCas> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let some_atomic = Atomic::<u32>::new(5);
+    /// let some_atomic = AtomicU32::new(5);
     /// let value = some_atomic.swap(10, Ordering::Relaxed);
     /// ```
     #[inline]
@@ -1228,9 +1228,9 @@ impl<T: AtomicCas> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let some_atomic = Atomic::<u32>::new(5);
+    /// let some_atomic = AtomicU32::new(5);
     ///
     /// let value = some_atomic.compare_and_swap(5, 10, Ordering::Relaxed);
     /// ```
@@ -1324,9 +1324,9 @@ impl<T: AtomicCas> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let some_atomic = Atomic::<u32>::new(5);
+    /// let some_atomic = AtomicU32::new(5);
     ///
     /// let mut old = some_atomic.load(Ordering::Relaxed);
     /// loop {
@@ -1423,9 +1423,9 @@ impl<T: AtomicCas> Atomic<T> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let some_atomic = Atomic::<u32>::new(5);
+    /// let some_atomic = AtomicU32::new(5);
     ///
     /// assert_eq!(some_atomic.try_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(5));
     /// let result = some_atomic.try_update(Ordering::SeqCst, Ordering::SeqCst, |x| {
@@ -1495,12 +1495,12 @@ impl<T: AtomicCas> Atomic<T> {
     ///
     /// ```rust
     ///
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let some_atomic = Atomic::new(5);
+    /// let some_atomic = AtomicU32::new(5);
     ///
     /// let result = some_atomic.update(Ordering::SeqCst, Ordering::SeqCst, |_| 10);
-    /// assert_eq!(result, ptr);
+    /// assert_eq!(result, 5);
     /// assert_eq!(some_atomic.load(Ordering::SeqCst), 10);
     /// ```
     #[inline]
@@ -1532,10 +1532,10 @@ impl<T: AtomicAlignedPrimitive> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bool = true;
-    /// let a = Atomic::<bool>::from_mut(&mut some_bool);
+    /// let a = AtomicBool::from_mut(&mut some_bool);
     /// a.store(false, Ordering::Relaxed);
     /// assert_eq!(some_bool, false);
     /// ```
@@ -1569,10 +1569,10 @@ impl<T: AtomicAlignedPrimitive> Atomic<T> {
     /// # Examples
     ///
     /// ```rust,ignore-wasm
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bools = [false; 10];
-    /// let a = &*Atomic::<bool>::from_mut_slice(&mut some_bools);
+    /// let a = &*AtomicBool::from_mut_slice(&mut some_bools);
     /// std::thread::scope(|s| {
     ///     for i in 0..a.len() {
     ///         s.spawn(move || a[i].store(true, Ordering::Relaxed));
@@ -1613,9 +1613,9 @@ impl<T: AtomicInteger> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(0);
+    /// let foo = AtomicU32::new(0);
     /// assert_eq!(foo.fetch_add(10, Ordering::SeqCst), 0);
     /// assert_eq!(foo.load(Ordering::SeqCst), 10);
     /// ```
@@ -1641,9 +1641,9 @@ impl<T: AtomicInteger> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(20);
+    /// let foo = AtomicU32::new(20);
     /// assert_eq!(foo.fetch_sub(10, Ordering::SeqCst), 20);
     /// assert_eq!(foo.load(Ordering::SeqCst), 10);
     /// ```
@@ -1672,9 +1672,9 @@ impl<T: AtomicInteger> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(23);
+    /// let foo = AtomicU32::new(23);
     /// assert_eq!(foo.fetch_max(42, Ordering::SeqCst), 23);
     /// assert_eq!(foo.load(Ordering::SeqCst), 42);
     /// ```
@@ -1682,9 +1682,9 @@ impl<T: AtomicInteger> Atomic<T> {
     /// If you want to obtain the maximum value in one step, you can use the following:
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(23);
+    /// let foo = AtomicU32::new(23);
     /// let bar = 42;
     /// let max_foo = foo.fetch_max(bar, Ordering::SeqCst).max(bar);
     /// assert!(max_foo == 42);
@@ -1719,9 +1719,9 @@ impl<T: AtomicInteger> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(23);
+    /// let foo = AtomicU32::new(23);
     /// assert_eq!(foo.fetch_min(42, Ordering::Relaxed), 23);
     /// assert_eq!(foo.load(Ordering::Relaxed), 23);
     /// assert_eq!(foo.fetch_min(22, Ordering::Relaxed), 23);
@@ -1731,9 +1731,9 @@ impl<T: AtomicInteger> Atomic<T> {
     /// If you want to obtain the minimum value in one step, you can use the following:
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(23);
+    /// let foo = AtomicU32::new(23);
     /// let bar = 12;
     /// let min_foo = foo.fetch_min(bar, Ordering::SeqCst).min(bar);
     /// assert_eq!(min_foo, 12);
@@ -1770,9 +1770,9 @@ impl<T: AtomicBitwise> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(0x13);
+    /// let foo = AtomicU32::new(0x13);
     /// assert_eq!(foo.fetch_nand(0x31, Ordering::SeqCst), 0x13);
     /// assert_eq!(foo.load(Ordering::SeqCst), !(0x13 & 0x31));
     /// ```
@@ -1801,9 +1801,9 @@ impl<T: AtomicBitwise> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(0b101101);
+    /// let foo = AtomicU32::new(0b101101);
     /// assert_eq!(foo.fetch_and(0b110011, Ordering::SeqCst), 0b101101);
     /// assert_eq!(foo.load(Ordering::SeqCst), 0b100001);
     /// ```
@@ -1832,9 +1832,9 @@ impl<T: AtomicBitwise> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(0b101101);
+    /// let foo = AtomicU32::new(0b101101);
     /// assert_eq!(foo.fetch_or(0b110011, Ordering::SeqCst), 0b101101);
     /// assert_eq!(foo.load(Ordering::SeqCst), 0b111111);
     /// ```
@@ -1863,9 +1863,9 @@ impl<T: AtomicBitwise> Atomic<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::atomic::{Atomic, Ordering};
+    /// use std::sync::atomic::{AtomicU32, Ordering};
     ///
-    /// let foo = Atomic::<u32>::new(0b101101);
+    /// let foo = AtomicU32::new(0b101101);
     /// assert_eq!(foo.fetch_xor(0b110011, Ordering::SeqCst), 0b101101);
     /// assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
     /// ```
