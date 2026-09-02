@@ -1695,10 +1695,11 @@ impl<T: AtomicInteger> Atomic<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_should_not_be_called_on_const_items]
     pub const fn fetch_max(&self, val: T, order: Ordering) -> T {
-        // SAFETY: data races are prevented by atomic intrinsics.
         if T::IS_SIGNED {
+            // SAFETY: data races are prevented by atomic intrinsics.
             unsafe { atomic_max(self.as_ptr(), val, order) }
         } else {
+            // SAFETY: data races are prevented by atomic intrinsics.
             unsafe { atomic_umax(self.as_ptr(), val, order) }
         }
     }
@@ -1743,10 +1744,11 @@ impl<T: AtomicInteger> Atomic<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_should_not_be_called_on_const_items]
     pub const fn fetch_min(&self, val: T, order: Ordering) -> T {
-        // SAFETY: data races are prevented by atomic intrinsics.
         if <T as AtomicInteger>::IS_SIGNED {
+            // SAFETY: data races are prevented by atomic intrinsics.
             unsafe { atomic_min(self.as_ptr(), val, order) }
         } else {
+            // SAFETY: data races are prevented by atomic intrinsics.
             unsafe { atomic_umin(self.as_ptr(), val, order) }
         }
     }
