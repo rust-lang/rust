@@ -23,31 +23,6 @@ This target is cross-compiled. Dynamic linking is unsupported.
 
 `#![no_std]` crates can be built using `build-std` to build `core` and `panic_abort` and optionally `alloc`. Unwinding panics are not yet supported on this target.
 
-`std` has only partial support due to platform limitations. Notably:
-
-- `std::process` and `std::net` are unimplemented. `std::thread` only supports sleeping and yielding, as this is a single-threaded environment.
-- `std::time` has full support for `Instant`, but no support for `SystemTime`.
-- `std::io` has full support for `stdin`/`stdout`/`stderr`. `stdout` and `stderr` both write to USB channel 1 on this platform and are not differentiated.
-- `std::fs` has limited support for reading or writing to files. The following features are unsupported:
-  - All directory operations (including `mkdir` and `readdir`), although reading directories is possible through [third-party crates](https://docs.rs/vex-sdk/latest/vex_sdk/file/fn.vexFileDirectoryGet.html)
-  - Deleting files and directories
-  - File metadata other than file size and type (that is, file vs. directory)
-  - Opening files with an uncommon combination of open options, such as read + write at the same time.
-    The supported modes for opening files are in read-only mode, append mode, or write mode (with or without truncation).
-- A global allocator implemented on top of `dlmalloc` is provided.
-- Modules that do not need to interact with the OS beyond allocation, such as `std::collections`, `std::hash`, `std::future`, `std::sync`, etc., are fully supported.
-- Random number generation and hashing is insecure, as there is no reliable source of entropy on this platform.
-
-When compiling for this target, the "C" calling convention maps to AAPCS with VFP registers (hard float ABI) and the "system" calling convention maps to AAPCS without VFP registers (softfp ABI).
-
-This target generates binaries in the ELF format that may be uploaded to the brain with external tools.
-
-### Platform SDKs
-
-To use most platform-specific APIs, users must configure a supporting runtime SDK for `libstd` to link against. Official *VEXcode* SDKs from VEX can be downloaded and linked via the [`vex-sdk-vexcode`](https://crates.io/crates/vex-sdk-vexcode) crate, but they have a restrictive redistribution policy that might not be suitable for all projects. The suggested SDK for open-source projects is the community-supported [`vex-sdk-jumptable`](https://crates.io/crates/vex-sdk-jumptable) crate. SDK implementations are generally thin wrappers over system calls, so projects should not expect to see significant differences in behavior depending on which SDK they use.
-
-Libraries may access symbols from the active VEX SDK without depending on a specific implementation by using the [`vex-sdk`](https://crates.io/crates/vex-sdk) crate.
-
 ## Building the target
 
 You can build Rust with support for this target by adding it to the `target` list in `bootstrap.toml`, and then running `./x build --target thumbv7a-vex-v5 compiler`.
@@ -99,6 +74,68 @@ fn main() {
     println!("Hello, world");
 }
 ```
+
+## Environment
+
+The `main` function is entered on a Zynq 7000's CPU1 in the *System* processor mode in *Secure* state. Programs or runtimes should periodically call `std::thread::yield_now` to flush buffers and fetch the latest peripheral state.
+
+Developers writing programs for this target should use a high-level runtime such as [vexide](https://vexide.dev) or a lower-level system access crate such as [`vex-sdk`](https://crates.io/crates/vex-sdk) to access peripherals such as motors and sensors.
+
+When compiling for this target, the "C" calling convention maps to AAPCS with VFP registers (hard float ABI) and the "system" calling convention maps to AAPCS without VFP registers (softfp ABI).
+
+This target generates binaries in the ELF format that may be uploaded to the brain with external tools.
+
+See Also: [VEX V5 Environment](https://internals.vexide.dev/technical/environment).
+
+### Platform SDKs
+
+To use most platform-specific APIs, users must configure a supporting runtime SDK for `libstd` to link against. Official *VEXcode* SDKs from VEX can be downloaded and linked via the [`vex-sdk-vexcode`](https://crates.io/crates/vex-sdk-vexcode) crate, but they have a restrictive redistribution policy that might not be suitable for all projects. The suggested SDK for open-source projects is the community-supported [`vex-sdk-jumptable`](https://crates.io/crates/vex-sdk-jumptable) crate. SDK implementations are generally thin wrappers over system calls, so projects should not expect to see significant differences in behavior depending on which SDK they use.
+
+Libraries may access symbols from the active VEX SDK without depending on a specific implementation by using the [`vex-sdk`](https://crates.io/crates/vex-sdk) crate.
+
+### Standard Library Support
+
+`std` has only partial support due to platform limitations. Notably:
+
+- `std::process` and `std::net` are unimplemented. `std::thread` only supports sleeping and yielding.
+- `std::time` has full support for `Instant`, but no support for `SystemTime`.
+- `std::io` has full support for `stdin`/`stdout`/`stderr`. `stdout` and `stderr` both write to USB channel 1 on this platform and are not differentiated.
+- `std::fs` has limited support for reading or writing to files. The following features are unsupported:
+  - All directory operations (including `mkdir` and `readdir`), although reading directories is possible through [third-party crates](https://docs.rs/vex-sdk/latest/vex_sdk/file/fn.vexFileDirectoryGet.html)
+  - Deleting files and directories
+  - File metadata other than file size and type (that is, file vs. directory)
+  - Opening files with an uncommon combination of open options, such as read + write at the same time.
+    The supported modes for opening files are in read-only mode, append mode, or write mode (with or without truncation).
+- A global allocator implemented on top of `dlmalloc` is provided.
+- Modules that do not need to interact with the OS beyond allocation, such as `std::collections`, `std::hash`, `std::future`, `std::sync`, etc., are fully supported.
+- Random number generation and hashing is insecure, as there is no reliable source of entropy on this platform.
+
+### Thread Safety and Synchronization
+
+*This section only applies to programs that use the `std` crate.*
+
+When executing on this target, the `std` crate only supports one Rust execution context plus any user-installed Armv7-A exception handlers (configured using the `VBAR` register), provided they properly synchronize access to shared resources. `std` on this target is not aware of any execution inside a task scheduler, so `thread_local` globals will always have the same identity.
+
+#### VEXos Task Scheduler
+
+This target begins execution outside of the context of the builtin [VEXos task scheduler](https://internals.vexide.dev/sdk/tasks). Programs should periodically tick it by calling `std::thread::yield_now` to keep system Simple Tasks up to date. Spawning VEXos Full Tasks (for example, via [`vexTaskAdd`](https://docs.rs/vex-sdk/latest/vex_sdk/task/fn.vexTaskAdd.html)) is forbidden to allow programs to assume that [`vexTasksRun`](https://docs.rs/vex-sdk/latest/vex_sdk/task/fn.vexTasksRun.html) and `std::thread::yield_now` will never switch stacks.
+
+Code running inside a VEXos Simple Task context (for example, inside a user touchscreen callback) is forbidden from ticking the task scheduler reentrantly. Thus, it is invalid for task code to:
+
+- call `vexTasksRun`, `thread::yield_now`, or `thread::sleep`,
+- use blocking methods in `std::sync`,
+- or access standard I/O streams via `std::io`.
+
+#### Exception Handlers
+
+`std::sync` may be used to synchronize resources shared between ISRs and the main thread, although ISRs must not use blocking functions such as `Mutex::lock`, `Condvar::wait`, `LazyLock::deref`, or `OnceLock::get_or_init`. Synchronization primitives are implemented as simple spinlocks over `yield_now`.
+
+ARM exception handlers are forbidden from:
+
+- accessing the default allocator or `std::fs`, since they are not synchronized,
+- accessing `thread_local` values without proper additional synchronization,
+- using blocking methods in `std::sync`, to prevent deadlocks,
+- or accessing standard I/O streams via `std::io`, since these are not synchronized.
 
 ## Testing
 
