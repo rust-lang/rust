@@ -159,42 +159,34 @@ pub(crate) struct FfiUnwindCall {
     pub foreign: bool,
 }
 
-pub(crate) struct FnItemRef<'tcx> {
-    pub span: Span,
-    pub fn_sig: Binder<'tcx, FnSig<'tcx>>,
-    pub fn_args: GenericArgsRef<'tcx>,
-    pub ident: Ident,
+pub(crate) struct GenericArgsPrinter<'tcx>(pub GenericArgsRef<'tcx>);
+
+impl core::fmt::Display for GenericArgsPrinter<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let Self(args) = self;
+        if args.is_empty() {
+            return Ok(());
+        }
+        f.write_str("::<")?;
+        for (i, arg) in args.terms().enumerate() {
+            write!(f, "{}{arg}", if i == 0 { "" } else { ", " })?
+        }
+        f.write_str(">")
+    }
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for FnItemRef<'_> {
-    #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        use itertools::Itertools;
-
-        let Self { span, fn_sig, fn_args, ident } = self;
-
-        let suggestion = format!(
-            "{ident}{params} as {fn_sig}",
-            params = if fn_args.is_empty() {
-                String::from("")
-            } else {
-                format!("::<{}>", fn_args.terms().join(", "))
-            },
-        );
-
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            msg!("taking a reference to a function item does not give a function pointer"),
-        );
-        diag.arg("ident", ident).span_suggestion(
-            span,
-            msg!("cast `{$ident}` to obtain a function pointer"),
-            suggestion,
-            Applicability::Unspecified,
-        );
-        diag
-    }
+#[derive(Diagnostic)]
+#[diag("taking a reference to a function item does not give a function pointer")]
+pub(crate) struct FnItemRef<'tcx> {
+    #[suggestion(
+        "cast `{$ident}` to obtain a function pointer",
+        code = "{ident}{fn_args} as {fn_sig}",
+        applicability = "unspecified"
+    )]
+    pub span: Span,
+    pub fn_sig: Binder<'tcx, FnSig<'tcx>>,
+    pub fn_args: GenericArgsPrinter<'tcx>,
+    pub ident: Ident,
 }
 
 #[derive(Diagnostic)]

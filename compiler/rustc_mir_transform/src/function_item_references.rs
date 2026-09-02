@@ -163,7 +163,12 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             FUNCTION_ITEM_REFERENCES,
             lint_root,
             span,
-            diagnostics::FnItemRef { span, fn_sig, fn_args, ident },
+            diagnostics::FnItemRef {
+                span,
+                fn_sig,
+                fn_args: diagnostics::GenericArgsPrinter(fn_args),
+                ident,
+            },
         );
     }
 }
