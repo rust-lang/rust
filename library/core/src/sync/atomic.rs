@@ -902,7 +902,7 @@ impl<T: AtomicLoadStore> Atomic<T> {
     /// a reference to the destination.
     #[inline]
     #[unstable(feature = "atomic_volatile", issue = "158947")]
-    pub const fn from_ptr_raw(ptr: *mut T) -> *const T {
+    pub const fn from_ptr_raw(ptr: *mut T) -> *const Self {
         ptr.cast_const().cast()
     }
 
