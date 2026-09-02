@@ -57,6 +57,7 @@ use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, RustcVersion
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, StabilityLevel, StableSince};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::DUMMY_SP;
@@ -3020,27 +3021,49 @@ pub(super) fn render_attributes_in_code_with_options(
     if render_doc_hidden && item.is_doc_hidden() {
         render_code_attribute(&prefix, "doc(hidden)", w)?;
     }
-    for attr in &item.attrs.other_attrs {
-        let hir::Attribute::Parsed(kind) = attr else { continue };
-        let attr = match kind {
-            AttributeKind::LinkSection { name, .. } => {
-                Cow::Owned(format!("unsafe(link_section = {})", Escape(&format!("{name:?}"))))
-            }
-            AttributeKind::NoMangle(..) => Cow::Borrowed("unsafe(no_mangle)"),
-            AttributeKind::ExportName { name, .. } => {
-                Cow::Owned(format!("unsafe(export_name = {})", Escape(&format!("{name:?}"))))
-            }
-            AttributeKind::NonExhaustive(..) => Cow::Borrowed("non_exhaustive"),
-            _ => continue,
-        };
-        render_code_attribute(&prefix, attr.as_ref(), w)?;
+
+    let Some(def_id) = item.def_id() else { return Ok(()) };
+    let tcx = cx.tcx();
+    let kind = tcx.def_kind(def_id);
+
+    if kind.has_codegen_attrs() {
+        let attrs = tcx.codegen_fn_attrs(def_id);
+
+        if let Some(name) = attrs.link_section {
+            render_code_attribute(
+                &prefix,
+                &format!("unsafe(link_section = {})", Escape(&format!("{name:?}"))),
+                w,
+            )?;
+        }
+
+        if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+            render_code_attribute(&prefix, "unsafe(no_mangle)", w)?;
+        }
+
+        if !attrs.flags.contains(CodegenFnAttrFlags::FOREIGN_ITEM)
+            && let Some(name) = attrs.symbol_name
+        {
+            render_code_attribute(
+                &prefix,
+                &format!("unsafe(export_name = {})", Escape(&format!("{name:?}"))),
+                w,
+            )?;
+        }
     }
 
-    if let Some(def_id) = item.def_id()
-        && let Some(repr) = repr_attribute(cx.tcx(), cx.cache(), def_id)
+    if let DefKind::Enum | DefKind::Struct | DefKind::Variant = kind
+        && item.is_non_exhaustive()
+    {
+        render_code_attribute(&prefix, "non_exhaustive", w)?;
+    }
+
+    if kind.is_adt()
+        && let Some(repr) = repr_attribute(tcx, cx.cache(), def_id)
     {
         render_code_attribute(prefix, &repr, w)?;
     }
+
     Ok(())
 }
 
@@ -3049,7 +3072,9 @@ fn render_repr_attribute_in_code(
     cx: &Context<'_>,
     def_id: DefId,
 ) -> fmt::Result {
-    if let Some(repr) = repr_attribute(cx.tcx(), cx.cache(), def_id) {
+    if cx.tcx().def_kind(def_id).is_adt()
+        && let Some(repr) = repr_attribute(cx.tcx(), cx.cache(), def_id)
+    {
         render_code_attribute("", &repr, w)?;
     }
     Ok(())
@@ -3063,7 +3088,7 @@ fn render_code_attribute(
     write!(w, "<div class=\"code-attribute\">{prefix}#[{attr}]</div>")
 }
 
-/// Compute the *public* `#[repr]` of the item given by `DefId`.
+/// Compute the *public* `#[repr]` of the ADT given by `DefId`.
 ///
 /// Read more about it here:
 /// <https://doc.rust-lang.org/nightly/rustdoc/advanced-features.html#repr-documenting-the-representation-of-a-type>.
@@ -3072,10 +3097,7 @@ fn repr_attribute<'tcx>(
     cache: &Cache,
     def_id: DefId,
 ) -> Option<Cow<'static, str>> {
-    let adt = match tcx.def_kind(def_id) {
-        DefKind::Struct | DefKind::Enum | DefKind::Union => tcx.adt_def(def_id),
-        _ => return None,
-    };
+    let adt = tcx.adt_def(def_id);
     let repr = adt.repr();
 
     let is_visible = |def_id| cache.document_hidden || !tcx.is_doc_hidden(def_id);

@@ -41,7 +41,7 @@ impl AttributeKind {
             DocComment { .. } => Yes,
             EiiDeclaration(_) => Yes,
             EiiImpl(..) => No,
-            ExportName { .. } => Yes,
+            ExportName { .. } => No,
             ExportStable => No,
             Feature(..) => No,
             FfiConst => No,
@@ -53,9 +53,9 @@ impl AttributeKind {
             InstrumentFn(..) => No,
             Lang(..) => Yes,
             Link(..) => No,
-            LinkName { .. } => Yes, // Needed for rustdoc
+            LinkName { .. } => No,
             LinkOrdinal { .. } => No,
-            LinkSection { .. } => Yes, // Needed for rustdoc
+            LinkSection { .. } => No,
             Linkage(..) => No,
             LoopMatch(..) => No,
             MacroEscape => No,
@@ -74,9 +74,9 @@ impl AttributeKind {
             NoImplicitPrelude => No,
             NoLink => No,
             NoMain => No,
-            NoMangle(..) => Yes, // Needed for rustdoc
+            NoMangle(..) => No,
             NoStd => No,
-            NonExhaustive(..) => Yes, // Needed for rustdoc
+            NonExhaustive(..) => Yes,
             OnConst { .. } => Yes,
             OnMove { .. } => Yes,
             OnTypeError { .. } => Yes,
