@@ -2970,7 +2970,7 @@ atomic_int! { "i64", i64, AtomicI64 }
 #[cfg(target_has_atomic_load_store = "64")]
 atomic_int! { "u64", u64, AtomicU64 }
 
-#[cfg(target_has_atomic_load_store = "128")]
+#[cfg(any(target_has_atomic_load_store = "128", doc))]
 macro_rules! atomic_int_legacy {
     ($cfg_base:meta,
      $cfg_cas:meta,
