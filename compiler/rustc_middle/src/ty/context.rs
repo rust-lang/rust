@@ -63,7 +63,10 @@ use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
-use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
+use crate::traits::solve::{
+    CanonicalInput, CanonicalInputData, ExternalConstraints, ExternalConstraintsData,
+    PredefinedOpaques,
+};
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::region::RegionExt;
 use crate::ty::{
@@ -162,6 +165,7 @@ pub struct CtxtInterners<'tcx> {
     valtree: InternedSet<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
     outlives: InternedSet<'tcx, List<ty::ArgOutlivesClause<'tcx>>>,
+    canonical_inputs: InternedSet<'tcx, CanonicalInputData<TyCtxt<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -200,6 +204,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             valtree: InternedSet::with_capacity(N),
             patterns: InternedSet::with_capacity(N),
             outlives: InternedSet::with_capacity(N),
+            canonical_inputs: InternedSet::with_capacity(N),
         }
     }
 
@@ -1990,6 +1995,7 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
+    canonical_inputs: intern_canonical_input(CanonicalInputData<TyCtxt<'tcx>>): CanonicalInput -> CanonicalInput<'tcx>,
 }
 
 macro_rules! slice_interners {
