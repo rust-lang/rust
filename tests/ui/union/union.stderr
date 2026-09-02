@@ -1,5 +1,5 @@
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:33:20
+  --> $DIR/union.rs:35:20
    |
 LL |         Foo { bar: _a } => {}
    |                    ^^ access to union field
@@ -7,7 +7,7 @@ LL |         Foo { bar: _a } => {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:39:30
+  --> $DIR/union.rs:41:30
    |
 LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping::Pineapple) | None,
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ access to union field
@@ -15,7 +15,7 @@ LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:39:59
+  --> $DIR/union.rs:41:59
    |
 LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping::Pineapple) | None,
    |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ access to union field
@@ -23,7 +23,7 @@ LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:39:91
+  --> $DIR/union.rs:41:91
    |
 LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping::Pineapple) | None,
    |                                                                                           ^^^^ access to union field
@@ -31,7 +31,7 @@ LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:50:30
+  --> $DIR/union.rs:52:30
    |
 LL |                     topping: Some { .. }
    |                              ^^^^^^^^^^^ access to union field
@@ -39,7 +39,7 @@ LL |                     topping: Some { .. }
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:57:23
+  --> $DIR/union.rs:59:23
    |
 LL |         Foo { tuple: (_a,) } => {}
    |                       ^^ access to union field
@@ -47,7 +47,7 @@ LL |         Foo { tuple: (_a,) } => {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:60:41
+  --> $DIR/union.rs:62:41
    |
 LL |         Foo { tuple_struct: TupleStruct(_a) } => {}
    |                                         ^^ access to union field
@@ -55,7 +55,7 @@ LL |         Foo { tuple_struct: TupleStruct(_a) } => {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:63:23
+  --> $DIR/union.rs:65:23
    |
 LL |         Foo { array: [_a, _] } => {}
    |                       ^^ access to union field

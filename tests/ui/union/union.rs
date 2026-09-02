@@ -24,6 +24,8 @@ struct TupleStruct(i32);
 
 fn do_nothing(_x: &mut Foo) {}
 
+const UNIT: () = ();
+
 pub fn main() {
     let mut foo = Foo { bar: 5 };
     do_nothing(&mut foo);
@@ -69,6 +71,9 @@ pub fn main() {
     }
     match foo {
         Foo { zst: (..) } => {}
+    }
+    match foo {
+        Foo { zst: UNIT } => {}
     }
     match foo {
         Foo { tuple: (..) } => {}
