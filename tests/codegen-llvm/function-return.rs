@@ -19,7 +19,7 @@ use minicore::*;
 
 #[no_mangle]
 pub fn foo() {
-    // CHECK: @foo() unnamed_addr #0
+    // CHECK: @foo()
 
     // unset-NOT: fn_ret_thunk_extern
     // keep-NOT: fn_ret_thunk_extern

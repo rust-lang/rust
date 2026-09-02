@@ -16,7 +16,7 @@ use minicore::*;
 
 #[no_mangle]
 pub fn foo() {
-    // CHECK: @foo() unnamed_addr #0
+    // CHECK: @foo() local_unnamed_addr #0
 
     // unset-NOT: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+reserve-x18{{.*}} }
     // set: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+reserve-x18{{.*}} }

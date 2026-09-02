@@ -13,8 +13,8 @@ pub fn fun0() {}
 #[patchable_function_entry(section = "bar_section")]
 pub fn fun1() {}
 
-// CHECK: @fun0() unnamed_addr #0
-// CHECK: @fun1() unnamed_addr #1
+// CHECK: @fun0(){{.*}} #0
+// CHECK: @fun1(){{.*}} #1
 
 // CHECK: attributes #0 = { {{.*}}"patchable-function-entry"="5"{{.*}}"patchable-function-entry-section"="default_foo_section"{{.*}}"patchable-function-prefix"="10" {{.*}} }
 // CHECK: attributes #1 = { {{.*}}"patchable-function-entry"="5"{{.*}}"patchable-function-entry-section"="bar_section"{{.*}}"patchable-function-prefix"="10" {{.*}} }

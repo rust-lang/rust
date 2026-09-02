@@ -59,16 +59,16 @@ pub fn fun8() {}
 #[patchable_function_entry(entry_nops = 5, section = "baz")]
 pub fn fun9() {}
 
-// CHECK: @fun0() unnamed_addr #0
-// CHECK: @fun1() unnamed_addr #1
-// CHECK: @fun2() unnamed_addr #2
-// CHECK: @fun3() unnamed_addr #3
-// CHECK: @fun4() unnamed_addr #4
-// CHECK: @fun5() unnamed_addr #5
-// CHECK: @fun6() unnamed_addr #6
-// CHECK: @fun7() unnamed_addr #7
-// CHECK: @fun8() unnamed_addr #8
-// CHECK: @fun9() unnamed_addr #9
+// CHECK: @fun0(){{.*}} #0
+// CHECK: @fun1(){{.*}} #1
+// CHECK: @fun2(){{.*}} #2
+// CHECK: @fun3(){{.*}} #3
+// CHECK: @fun4(){{.*}} #4
+// CHECK: @fun5(){{.*}} #5
+// CHECK: @fun6(){{.*}} #6
+// CHECK: @fun7(){{.*}} #7
+// CHECK: @fun8(){{.*}} #8
+// CHECK: @fun9(){{.*}} #9
 
 // CHECK: attributes #0 = { {{.*}}"patchable-function-entry"="5"{{.*}}"patchable-function-prefix"="10" {{.*}} }
 // CHECK: attributes #1 = { {{.*}}"patchable-function-entry"="2"{{.*}}"patchable-function-prefix"="1" {{.*}} }

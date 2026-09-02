@@ -22,10 +22,10 @@ pub fn fun2() {}
 #[patchable_function_entry(prefix_nops = 4)]
 pub fn fun3() {}
 
-// CHECK: @fun0() unnamed_addr #0
-// CHECK: @fun1() unnamed_addr #1
-// CHECK: @fun2() unnamed_addr #2
-// CHECK: @fun3() unnamed_addr #3
+// CHECK: @fun0(){{.*}} #0
+// CHECK: @fun1(){{.*}} #1
+// CHECK: @fun2(){{.*}} #2
+// CHECK: @fun3(){{.*}} #3
 
 // CHECK-NOT: attributes #0 = { {{.*}}patchable-function-entry{{.*}} }
 // CHECK-NOT: attributes #0 = { {{.*}}patchable-function-prefix{{.*}} }

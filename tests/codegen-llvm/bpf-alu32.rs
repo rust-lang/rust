@@ -11,7 +11,7 @@ use minicore::*;
 
 #[no_mangle]
 #[target_feature(enable = "alu32")]
-// CHECK: define {{.*}}i8 @foo(i8 {{.*}}%arg) unnamed_addr #0
+// CHECK: define {{.*}}i8 @foo(i8 {{.*}}%arg) #0
 // CHECK: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+alu32{{.*}} }
 pub unsafe fn foo(arg: u8) -> u8 {
     arg

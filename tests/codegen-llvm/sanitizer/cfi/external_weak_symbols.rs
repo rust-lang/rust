@@ -21,4 +21,4 @@ fn main() {
     }
 }
 
-// CHECK: declare !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}} extern_weak void @FOO(double) unnamed_addr #{{[0-9]+}}
+// CHECK: declare !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}} extern_weak void @FOO(double) #{{[0-9]+}}

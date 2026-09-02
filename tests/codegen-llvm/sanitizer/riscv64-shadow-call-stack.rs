@@ -11,7 +11,7 @@ extern crate minicore;
 use minicore::*;
 
 // CHECK: ; Function Attrs:{{.*}}shadowcallstack
-// CHECK: define dso_local void @foo() unnamed_addr #0
+// CHECK: define dso_local void @foo() local_unnamed_addr #0
 #[no_mangle]
 pub fn foo() {}
 

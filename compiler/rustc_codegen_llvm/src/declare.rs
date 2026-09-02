@@ -178,13 +178,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
-        // Function addresses in Rust are never significant, allowing functions to
-        // be merged.
         let llfn = declare_raw_fn(
             self,
             name,
             fn_abi.llvm_cconv(self),
-            llvm::UnnamedAddr::Global,
+            llvm::UnnamedAddr::No,
             llvm::Visibility::Default,
             fn_abi.llvm_type(self),
         );

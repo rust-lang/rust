@@ -12,7 +12,7 @@ use minicore::*;
 #[no_mangle]
 
 pub fn test_packedstack() {
-    // CHECK: @test_packedstack() unnamed_addr #0
+    // CHECK: @test_packedstack() local_unnamed_addr #0
 }
 
 // CHECK: attributes #0 = { {{.*}}"packed-stack"{{.*}} }

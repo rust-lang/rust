@@ -7,7 +7,7 @@ pub enum EmptyEnum {}
 
 #[no_mangle]
 pub fn empty(x: &EmptyEnum) -> EmptyEnum {
-    // CHECK: @empty({{.*}}) unnamed_addr #0
+    // CHECK: @empty({{.*}}) #0
     // CHECK-NOT: ret void
     // CHECK: call void @llvm.trap()
     // CHECK: unreachable
@@ -18,7 +18,7 @@ pub struct Foo(String, EmptyEnum);
 
 #[no_mangle]
 pub fn foo(x: String, y: &EmptyEnum) -> Foo {
-    // CHECK: @foo({{.*}}) unnamed_addr #0
+    // CHECK: @foo({{.*}}) #0
     // CHECK-NOT: ret %Foo
     // CHECK: call void @llvm.trap()
     // CHECK: unreachable

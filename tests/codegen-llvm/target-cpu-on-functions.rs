@@ -7,7 +7,7 @@
 
 #![crate_type = "staticlib"]
 
-// CHECK-LABEL: define {{.*}} @exported() {{.*}} #0
+// CHECK-LABEL: define {{.*}} @exported(){{.*}} #0
 #[no_mangle]
 pub extern "C" fn exported() {
     not_exported();
@@ -15,7 +15,7 @@ pub extern "C" fn exported() {
 
 // CHECK-LABEL: ; target_cpu_on_functions::not_exported
 // CHECK-NEXT: ; Function Attrs:
-// CHECK-NEXT: define {{.*}}() {{.*}} #1
+// CHECK-NEXT: define {{.*}}(){{.*}} #1
 #[inline(never)]
 fn not_exported() {}
 
