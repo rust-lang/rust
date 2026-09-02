@@ -5,6 +5,7 @@ use std::{env, fs};
 
 use super::{Builder, Kind};
 use crate::core::build_steps::compile::is_lto_stage;
+use crate::core::build_steps::llvm::Llvm;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::SourceType;
 use crate::core::compiler::Compiler;
@@ -1243,12 +1244,18 @@ impl Builder<'_> {
         if (mode == Mode::ToolRustcPrivate || mode == Mode::Codegen)
             && self.is_llvm_enabled_for(target)
         {
-            let llvm_libdir_raw = command(self.host_llvm_config())
-                .cached()
-                .arg("--libdir")
-                .run_capture_stdout(self)
-                .stdout();
-            let llvm_libdir = llvm_libdir_raw.trim();
+            let llvm_libdir = if self.config.is_host_target(target) {
+                command(self.host_llvm_config())
+                    .cached()
+                    .arg("--libdir")
+                    .run_capture_stdout(self)
+                    .stdout()
+                    .trim()
+                    .to_owned()
+            } else {
+                let llvm_output = self.ensure(Llvm { target });
+                llvm_output.root_dir().join("lib").to_string_lossy().into_owned()
+            };
             if target.is_msvc() {
                 rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
             } else {
