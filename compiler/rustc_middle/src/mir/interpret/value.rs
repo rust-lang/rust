@@ -2,7 +2,7 @@ use std::fmt;
 use std::num::NonZero;
 
 use either::{Either, Left, Right};
-use rustc_abi::{HasDataLayout, Size};
+use rustc_abi::{Endian, HasDataLayout, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::ppc::DoubleDouble;
@@ -91,13 +91,6 @@ impl<Prov> From<Quad> for Scalar<Prov> {
     #[inline(always)]
     fn from(f: Quad) -> Self {
         Scalar::from_f128(f)
-    }
-}
-
-impl<Prov> From<DoubleDouble> for Scalar<Prov> {
-    #[inline(always)]
-    fn from(f: DoubleDouble) -> Self {
-        Scalar::from_ppcf128(f)
     }
 }
 
@@ -238,8 +231,8 @@ impl<Prov> Scalar<Prov> {
     }
 
     #[inline]
-    pub fn from_ppcf128(f: DoubleDouble) -> Self {
-        Scalar::Int(f.into())
+    pub fn from_ppcf128(f: DoubleDouble, target_endian: Endian) -> Self {
+        Scalar::Int(ScalarInt::from_ppcf128(f, target_endian))
     }
 
     /// This is almost certainly not the method you want!  You should dispatch on the type
@@ -466,7 +459,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     }
 
     #[inline]
-    pub fn to_ppcf128(self) -> InterpResult<'tcx, DoubleDouble> {
-        self.to_float()
+    pub fn to_ppcf128(self, target_endian: Endian) -> InterpResult<'tcx, DoubleDouble> {
+        self.to_scalar_int().map(|scalar_int| scalar_int.to_ppcf128(target_endian))
     }
 }

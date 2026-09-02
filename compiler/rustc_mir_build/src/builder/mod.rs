@@ -21,7 +21,7 @@
 //! to the builder as `this` (and never `self`), even when not nested.
 
 use itertools::Itertools;
-use rustc_abi::{ExternAbi, FieldIdx};
+use rustc_abi::{Endian, ExternAbi, FieldIdx};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::ppc::DoubleDouble;
@@ -1093,14 +1093,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-fn parse_float_into_constval(num: Symbol, float_ty: ty::FloatTy, neg: bool) -> Option<ConstValue> {
-    parse_float_into_scalar(num, float_ty, neg).map(|s| ConstValue::Scalar(s.into()))
+fn parse_float_into_constval(
+    num: Symbol,
+    float_ty: ty::FloatTy,
+    neg: bool,
+    target_endian: Endian,
+) -> Option<ConstValue> {
+    parse_float_into_scalar(num, float_ty, neg, target_endian).map(|s| ConstValue::Scalar(s.into()))
 }
 
 pub(crate) fn parse_float_into_scalar(
     num: Symbol,
     float_ty: ty::FloatTy,
     neg: bool,
+    target_endian: Endian,
 ) -> Option<ScalarInt> {
     let num = num.as_str();
     match float_ty {
@@ -1171,7 +1177,7 @@ pub(crate) fn parse_float_into_scalar(
             if neg {
                 f = -f;
             }
-            Some(ScalarInt::from(f))
+            Some(ScalarInt::from_ppcf128(f, target_endian))
         }
     }
 }

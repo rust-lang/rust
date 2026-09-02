@@ -101,11 +101,13 @@ pub(crate) fn lit_to_const<'tcx>(
                 ast::FloatTy::F128 => ty::FloatTy::F128,
                 ast::FloatTy::PpcF128 => ty::FloatTy::PpcF128,
             };
-            let bits = parse_float_into_scalar(n, fty, neg)?;
+            let target_endian = tcx.sess.target.options.endian;
+            let bits = parse_float_into_scalar(n, fty, neg, target_endian)?;
             (ty::ValTree::from_scalar_int(tcx, bits), Ty::new_float(tcx, fty))
         }
         (ast::LitKind::Float(n, ast::LitFloatType::Unsuffixed), Some(ty::Float(fty))) => {
-            let bits = parse_float_into_scalar(n, *fty, neg)?;
+            let target_endian = tcx.sess.target.options.endian;
+            let bits = parse_float_into_scalar(n, *fty, neg, target_endian)?;
             (ty::ValTree::from_scalar_int(tcx, bits), Ty::new_float(tcx, *fty))
         }
         (ast::LitKind::Char(c), _) => (ty::ValTree::from_scalar_int(tcx, c.into()), tcx.types.char),

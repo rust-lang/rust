@@ -1381,7 +1381,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             FloatTy::F64 => float_to_int_inner(self, src.to_scalar().to_f64()?, cast_to, round),
             FloatTy::F128 => float_to_int_inner(self, src.to_scalar().to_f128()?, cast_to, round),
             FloatTy::PpcF128 => {
-                float_to_int_inner(self, src.to_scalar().to_ppcf128()?, cast_to, round)
+                let target_endian = self.tcx.sess.target.options.endian;
+                float_to_int_inner(self, src.to_scalar().to_ppcf128(target_endian)?, cast_to, round)
             }
         };
 

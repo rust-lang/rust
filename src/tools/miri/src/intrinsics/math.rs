@@ -127,12 +127,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let ty::Float(fty) = x.layout.ty.kind() else {
                         bug!("float_finite: non-float input type {}", x.layout.ty)
                     };
+                    let target_endian = this.tcx.sess.target.options.endian;
                     interp_ok(match fty {
                         FloatTy::F16 => x.to_scalar().to_f16()?.is_finite(),
                         FloatTy::F32 => x.to_scalar().to_f32()?.is_finite(),
                         FloatTy::F64 => x.to_scalar().to_f64()?.is_finite(),
                         FloatTy::F128 => x.to_scalar().to_f128()?.is_finite(),
-                        FloatTy::PpcF128 => x.to_scalar().to_ppcf128()?.is_finite(),
+                        FloatTy::PpcF128 => x.to_scalar().to_ppcf128(target_endian)?.is_finite(),
                     })
                 };
                 match (float_finite(&a)?, float_finite(&b)?) {

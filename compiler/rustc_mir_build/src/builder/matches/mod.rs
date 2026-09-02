@@ -2985,7 +2985,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
             Constructor::PpcF128Range(l, h, end) => {
-                let actual = valtree.to_leaf().to_ppcf128();
+                let target_endian = self.tcx.sess.target.options.endian;
+                let actual = valtree.to_leaf().to_ppcf128(target_endian);
                 match end {
                     RangeEnd::Included => (*l..=*h).contains(&actual),
                     RangeEnd::Excluded => (*l..*h).contains(&actual),

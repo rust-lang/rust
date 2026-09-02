@@ -6,7 +6,6 @@ use std::ops::{Deref, DerefMut};
 use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_apfloat::ppc::DoubleDouble;
 use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
@@ -18,6 +17,7 @@ use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
 use rustc_structures::Limit;
+use rustc_target::spec::HasTargetSpec;
 use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
 use smallvec::SmallVec;
 
@@ -1802,7 +1802,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     write!(self, "{}{}f128", val, if val.is_finite() { "" } else { "_" })?;
                 }
                 ty::FloatTy::PpcF128 => {
-                    let val = DoubleDouble::try_from(int).unwrap();
+                    let target_endian = self.tcx().target_spec().endian;
+                    let val = int.to_ppcf128(target_endian);
                     write!(self, "{}{}ppcf128", val, if val.is_finite() { "" } else { "_" })?;
                 }
             },
