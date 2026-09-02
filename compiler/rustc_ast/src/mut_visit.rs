@@ -244,49 +244,35 @@ macro_rules! define_named_walk {
 super::common_visitor_and_walkers!((mut) MutVisitor);
 
 macro_rules! generate_flat_map_visitor_fns {
-    ($($name:ident, $Ty:ty, $flat_map_fn:ident$(, $param:ident: $ParamTy:ty)*;)+) => {
+    ($($flat_map_fn:ident, $Ty:ty $(, $param:ident: $ParamTy:ty)?;)+) => {
         $(
             #[allow(unused_parens)]
             impl<V: MutVisitor> MutVisitable<V> for ThinVec<$Ty> {
-                type Extra = ($($ParamTy),*);
+                type Extra = ($($ParamTy)?);
 
                 #[inline]
-                fn visit_mut(
-                    &mut self,
-                    visitor: &mut V,
-                    ($($param),*): Self::Extra,
-                ) -> V::Result {
-                    $name(visitor, self $(, $param)*)
+                fn visit_mut(&mut self, visitor: &mut V, ($($param)?): Self::Extra) -> V::Result {
+                    self.flat_map_in_place(|value| visitor.$flat_map_fn(value $(, $param)?));
                 }
-            }
-
-            fn $name<V: MutVisitor>(
-                vis: &mut V,
-                values: &mut ThinVec<$Ty>,
-                $(
-                    $param: $ParamTy,
-                )*
-            ) {
-                values.flat_map_in_place(|value| vis.$flat_map_fn(value$(,$param)*));
             }
         )+
     }
 }
 
 generate_flat_map_visitor_fns! {
-    visit_items, Box<Item>, flat_map_item;
-    visit_foreign_items, Box<ForeignItem>, flat_map_foreign_item;
-    visit_generic_params, GenericParam, flat_map_generic_param;
-    visit_stmts, Stmt, flat_map_stmt;
-    visit_exprs, Box<Expr>, filter_map_expr;
-    visit_expr_fields, ExprField, flat_map_expr_field;
-    visit_pat_fields, PatField, flat_map_pat_field;
-    visit_variants, Variant, flat_map_variant;
-    visit_assoc_items, Box<AssocItem>, flat_map_assoc_item, ctxt: AssocCtxt;
-    visit_where_predicates, WherePredicate, flat_map_where_predicate;
-    visit_params, Param, flat_map_param;
-    visit_field_defs, FieldDef, flat_map_field_def;
-    visit_arms, Arm, flat_map_arm;
+    flat_map_item, Box<Item>;
+    flat_map_foreign_item, Box<ForeignItem>;
+    flat_map_generic_param, GenericParam;
+    flat_map_stmt, Stmt;
+    filter_map_expr, Box<Expr>; // the odd one out; it works because `Option` impls `IntoIterator`
+    flat_map_expr_field, ExprField;
+    flat_map_pat_field, PatField;
+    flat_map_variant, Variant;
+    flat_map_assoc_item, Box<AssocItem>, ctxt: AssocCtxt;
+    flat_map_where_predicate, WherePredicate;
+    flat_map_param, Param;
+    flat_map_field_def, FieldDef;
+    flat_map_arm, Arm;
 }
 
 pub fn walk_flat_map_pat_field<T: MutVisitor>(

@@ -1137,50 +1137,36 @@ macro_rules! common_visitor_and_walkers {
 common_visitor_and_walkers!(Visitor<'a>);
 
 macro_rules! generate_list_visit_fns {
-    ($($name:ident, $Ty:ty, $visit_fn:ident$(, $param:ident: $ParamTy:ty)*;)+) => {
+    ($($visit_fn:ident, $Ty:ty $(, $param:ident: $ParamTy:ty)?;)+) => {
         $(
             #[allow(unused_parens)]
             impl<'a, V: Visitor<'a>> Visitable<'a, V> for ThinVec<$Ty> {
-                type Extra = ($($ParamTy),*);
+                type Extra = ($($ParamTy)?);
 
                 #[inline]
-                fn visit(
-                    &'a self,
-                    visitor: &mut V,
-                    ($($param),*): Self::Extra,
-                ) -> V::Result {
-                    $name(visitor, self $(, $param)*)
+                fn visit(&'a self, visitor: &mut V, ($($param)?): Self::Extra) -> V::Result {
+                    walk_list!(visitor, $visit_fn, self $(, $param)?);
+                    V::Result::output()
                 }
-            }
-
-            fn $name<'a, V: Visitor<'a>>(
-                vis: &mut V,
-                values: &'a ThinVec<$Ty>,
-                $(
-                    $param: $ParamTy,
-                )*
-            ) -> V::Result {
-                walk_list!(vis, $visit_fn, values$(,$param)*);
-                V::Result::output()
             }
         )+
     }
 }
 
 generate_list_visit_fns! {
-    visit_items, Box<Item>, visit_item;
-    visit_foreign_items, Box<ForeignItem>, visit_foreign_item;
-    visit_generic_params, GenericParam, visit_generic_param;
-    visit_stmts, Stmt, visit_stmt;
-    visit_exprs, Box<Expr>, visit_expr;
-    visit_expr_fields, ExprField, visit_expr_field;
-    visit_pat_fields, PatField, visit_pat_field;
-    visit_variants, Variant, visit_variant;
-    visit_assoc_items, Box<AssocItem>, visit_assoc_item, ctxt: AssocCtxt;
-    visit_where_predicates, WherePredicate, visit_where_predicate;
-    visit_params, Param, visit_param;
-    visit_field_defs, FieldDef, visit_field_def;
-    visit_arms, Arm, visit_arm;
+    visit_item, Box<Item>;
+    visit_foreign_item, Box<ForeignItem>;
+    visit_generic_param, GenericParam;
+    visit_stmt, Stmt;
+    visit_expr, Box<Expr>;
+    visit_expr_field, ExprField;
+    visit_pat_field, PatField;
+    visit_variant, Variant;
+    visit_assoc_item, Box<AssocItem>, ctxt: AssocCtxt;
+    visit_where_predicate, WherePredicate;
+    visit_param, Param;
+    visit_field_def, FieldDef;
+    visit_arm, Arm;
 }
 
 pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V::Result {
