@@ -204,34 +204,6 @@ impl<I: Interner, S: Clone + std::fmt::Debug> TypeFoldable<I> for RegionConstrai
             }
         })
     }
-
-    fn fold_with<F: TypeFolder<I>>(self, f: &mut F) -> Self {
-        use RegionConstraint::*;
-        match self {
-            Ambiguity(_) => self,
-            RegionOutlives(a, b, span) => RegionOutlives(a.fold_with(f), b.fold_with(f), span),
-            AliasTyOutlivesViaEnv(outlives, span) => {
-                AliasTyOutlivesViaEnv(outlives.fold_with(f), span)
-            }
-            PlaceholderTyOutlives(a, b, span) => {
-                PlaceholderTyOutlives(a.fold_with(f), b.fold_with(f), span)
-            }
-            And(and) => {
-                let mut new_and = Vec::new();
-                for a in and {
-                    new_and.push(a.fold_with(f));
-                }
-                And(new_and.into_boxed_slice())
-            }
-            Or(or) => {
-                let mut new_or = Vec::new();
-                for a in or {
-                    new_or.push(a.fold_with(f));
-                }
-                Or(new_or.into_boxed_slice())
-            }
-        }
-    }
 }
 
 impl<I: Interner, S: std::fmt::Debug> TypeVisitable<I> for RegionConstraint<I, S> {

@@ -11,7 +11,7 @@ use crate::intern::Interned;
 use crate::relate::{Relate, RelateResult, TypeRelation};
 use crate::{
     BoundRegion, BoundRegionKind, BoundVar, BoundVarIndexKind, DebruijnIndex, FallibleTypeFolder,
-    Flags, Interner, PlaceholderRegion, RegionKind, RegionVid, TypeFlags, TypeFoldable, TypeFolder,
+    Flags, Interner, PlaceholderRegion, RegionKind, RegionVid, TypeFlags, TypeFoldable,
     TypeVisitable, TypeVisitor,
 };
 
@@ -207,10 +207,6 @@ impl<I: Interner> TypeVisitable<I> for Region<I> {
 impl<I: Interner> TypeFoldable<I> for Region<I> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_region(self)
-    }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        folder.fold_region(self)
     }
 }
 
