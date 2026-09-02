@@ -587,7 +587,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             // Important: we don't use `self.next_id()` as we want to execute
-            // `lower_node_id` routine so param's id is added to `self.children`.
+            // `lower_node_id` routine so param's id is added to `self.curr_owner.children`.
             let hir_id = self.lower_node_id(node_id);
 
             Some(hir::GenericParam {
