@@ -97,7 +97,7 @@ Libraries may access symbols from the active VEX SDK without depending on a spec
 
 `std` has only partial support due to platform limitations. Notably:
 
-- `std::process` and `std::net` are unimplemented. `std::thread` only supports sleeping and yielding.
+- `std::process` and `std::net` are unimplemented. `std::thread` only supports sleeping, yielding, and parking.
 - `std::time` has full support for `Instant`, but no support for `SystemTime`.
 - `std::io` has full support for `stdin`/`stdout`/`stderr`. `stdout` and `stderr` both write to USB channel 1 on this platform and are not differentiated.
 - `std::fs` has limited support for reading or writing to files. The following features are unsupported:
@@ -107,7 +107,8 @@ Libraries may access symbols from the active VEX SDK without depending on a spec
   - Opening files with an uncommon combination of open options, such as read + write at the same time.
     The supported modes for opening files are in read-only mode, append mode, or write mode (with or without truncation).
 - A global allocator implemented on top of `dlmalloc` is provided.
-- Modules that do not need to interact with the OS beyond allocation, such as `std::collections`, `std::hash`, `std::future`, `std::sync`, etc., are fully supported.
+- `std::sync`'s synchronization primitives are implemented over simple spinlocks on `std::thread::yield_now`.
+- Modules that do not need to interact with the OS beyond allocation, such as `std::collections`, `std::hash`, `std::future`, etc., are fully supported.
 - Random number generation and hashing is insecure, as there is no reliable source of entropy on this platform.
 
 ### Thread Safety and Synchronization
@@ -118,22 +119,23 @@ When executing on this target, the `std` crate only supports one Rust execution 
 
 #### VEXos Task Scheduler
 
-This target begins execution outside of the context of the builtin [VEXos task scheduler](https://internals.vexide.dev/sdk/tasks). Programs should periodically tick it by calling `std::thread::yield_now` to keep system Simple Tasks up to date. Spawning VEXos Full Tasks through VEX's undocumented scheduler API (e.g. using the `vexTaskAdd` function) is strictly forbidden on this target and will result in undefined behavior. Rust programs may assume that `vexTasksRun` and `std::thread::yield_now` will never switch stacks.
+This target begins execution outside of the context of the builtin [VEXos task scheduler](https://internals.vexide.dev/sdk/tasks). Spawning VEXos Full Tasks through VEX's undocumented scheduler API (e.g. using the `vexTaskAdd` function) or using any other stack-switching scheduler (including FreeRTOS) is strictly forbidden on this target and will result in undefined behavior. Rust programs may assume that `vexTasksRun` and `std::thread::yield_now` will never switch stacks.
 
 Code running inside a VEXos Simple Task context (for example, inside a user touchscreen callback) is forbidden from ticking the task scheduler reentrantly. Thus, it is invalid for task code to:
 
-- call `vexTasksRun`, `thread::yield_now`, or `thread::sleep`,
-- use blocking methods in `std::sync`,
+- call `vexTasksRun`, `thread::yield_now`, `thread::sleep`, `thread::park`, or derivatives,
+- use blocking methods in `std::sync` including `LazyLock::deref` and `OnceLock::get_or_init`,
 - or access standard I/O streams via `std::io`.
 
 #### Exception Handlers
 
-`std::sync` may be used to synchronize resources shared between ISRs and the main thread. However, ISRs should avoid using blocking functions such as `Mutex::lock`, `Condvar::wait`, `LazyLock::deref`, or `OnceLock::get_or_init` to prevent deadlocks and stack overflows from ticking the scheduler on the small IRQ stack. Synchronization primitives are implemented as simple spinlocks over `yield_now`.
+`std::sync` may be used to synchronize resources shared between ISRs and the main thread. However, ISRs should not use blocking functions such as `Mutex::lock`, `Condvar::wait`, `LazyLock::deref`, or `OnceLock::get_or_init` to prevent deadlocks and stack overflows (from ticking the scheduler on the small IRQ stack).
 
 ARM exception handlers are forbidden from:
 
 - accessing the default allocator or `std::fs`,
-- accessing `thread_local` values without proper additional synchronization,
+- accessing `thread_local!` values whatsoever,
+- panicking, which indirectly accesses thread locals,
 - or accessing standard I/O streams via `std::io`
 
 since these features are not synchronized.
