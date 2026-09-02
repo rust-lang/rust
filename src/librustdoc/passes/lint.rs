@@ -7,6 +7,7 @@ mod html_tags;
 mod invalid_markdown_table;
 mod redundant_explicit_links;
 mod unescaped_backticks;
+mod unportable_markdown;
 
 use crate::clean::*;
 use crate::core::DocContext;
@@ -50,6 +51,9 @@ impl DocVisitor<'_> for Linter<'_, '_> {
             }
             if may_have_table {
                 invalid_markdown_table::visit_item(self.cx, item, hir_id, &dox);
+            }
+            if item.inner.attrs.doc_strings.iter().any(|frag| frag.item_id.is_some()) {
+                unportable_markdown::visit_item(self.cx, item, hir_id, &dox);
             }
         }
 

@@ -520,6 +520,24 @@ pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
     Some(first_fragment.span.to(last_fragment.span))
 }
 
+/// Matches a range of bytes from parsed markdown to the item it comes from.
+///
+/// Returns `None` if the DocFragment itself has no attached `item_id`,
+/// and, if that happens, the ID of the Item itself should be used.
+pub fn item_defid_for_markdown_position(
+    mut md_pos: usize,
+    fragments: &[DocFragment],
+) -> Option<DefId> {
+    for frag in fragments {
+        let s = frag.doc.as_str();
+        if md_pos <= s.len() {
+            return frag.item_id;
+        }
+        md_pos -= s.len()
+    }
+    None
+}
+
 /// Attempts to match a range of bytes from parsed markdown to a `Span` in the source code.
 ///
 /// This method does not always work, because markdown bytes don't necessarily match source bytes,

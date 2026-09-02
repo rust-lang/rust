@@ -220,6 +220,14 @@ declare_rustdoc_lint! {
     "detects unescaped pipe in table rows in doc comments"
 }
 
+declare_rustdoc_lint! {
+    /// Detects if re-export doc comments are used in a way that might break.
+    /// This is a compatibility lint, and will eventually be removed.
+    UNPORTABLE_MARKDOWN,
+    Warn,
+    "detects Markdown that may parse differently in a new version"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -236,6 +244,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         BROKEN_FOOTNOTE,
         UNUSED_FOOTNOTE_DEFINITION,
         INVALID_MARKDOWN_TABLE,
+        UNPORTABLE_MARKDOWN,
     ]
 });
 
@@ -259,5 +268,4 @@ pub(crate) fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
         .register_renamed("intra_doc_link_resolution_failure", "rustdoc::broken_intra_doc_links");
     lint_store.register_renamed("non_autolinks", "rustdoc::bare_urls");
     lint_store.register_renamed("rustdoc::non_autolinks", "rustdoc::bare_urls");
-    lint_store.register_removed("rustdoc::unportable_markdown", "old parser removed");
 }
