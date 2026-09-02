@@ -2599,6 +2599,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
                 let dst_ty = dst_field.ty(tcx, dst_args).skip_norm_wip();
                 let src_ty = src_field.ty(tcx, src_args).skip_norm_wip();
+
+                // These field types can still contain projections from the source or target type
+                // and normalize them before handing them to `NllTypeRelating`
+                let dst_ty =
+                    self.normalize(ty::Unnormalized::new_wip(dst_ty), location.to_locations());
+                let src_ty =
+                    self.normalize(ty::Unnormalized::new_wip(src_ty), location.to_locations());
+
                 if let (
                     ty::Ref(src_region, _, Mutability::Mut),
                     ty::Ref(dst_region, _, Mutability::Not),
