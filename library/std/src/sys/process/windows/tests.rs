@@ -1,7 +1,6 @@
 use super::child_pipe::{Pipes, child_pipe};
 use super::{Arg, make_command_line};
 use crate::ffi::{OsStr, OsString};
-use crate::mem::DropGuard;
 use crate::os::windows::io::AsHandle;
 use crate::process::{Command, Stdio};
 use crate::time::Duration;
@@ -37,9 +36,14 @@ fn test_thread_handle() {
     assert!(p.is_ok());
 
     // Ensure the process is killed in the event something goes wrong.
-    let mut p = DropGuard::new(p.unwrap(), |mut p| {
-        let _: Result<(), crate::io::Error> = p.kill();
-    });
+    struct DropGuard(crate::process::Child);
+    impl Drop for DropGuard {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+        }
+    }
+    let mut p = DropGuard(p.unwrap());
+    let p = &mut p.0;
 
     unsafe extern "system" {
         unsafe fn ResumeThread(hHandle: BorrowedHandle<'_>) -> u32;

@@ -17,7 +17,7 @@ use core::iter::{ByRefSized, repeat_n, repeat_with};
 // failures in linkchecker even though rustdoc built the docs just fine.
 #[allow(unused_imports)]
 use core::mem;
-use core::mem::{DropGuard, ManuallyDrop, SizedTypeProperties};
+use core::mem::{ManuallyDrop, SizedTypeProperties};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::{fmt, ptr, slice};
 
@@ -653,25 +653,37 @@ impl<T, A: Allocator> VecDeque<T, A> {
         mut iter: impl Iterator<Item = T>,
         len: usize,
     ) -> usize {
+        struct Guard<'a, T, A: Allocator> {
+            deque: &'a mut VecDeque<T, A>,
+            written: usize,
+        }
+
+        impl<'a, T, A: Allocator> Drop for Guard<'a, T, A> {
+            fn drop(&mut self) {
+                self.deque.len += self.written;
+            }
+        }
+
         let head_room = self.capacity() - dst.as_index();
 
-        let mut guard = DropGuard::new((self, 0), |(deque, written)| {
-            deque.len += written;
-        });
-        let (deque, written) = &mut *guard;
+        let mut guard = Guard { deque: self, written: 0 };
 
         if head_room >= len {
             // ignore-tidy-undocumented-unsafe
-            unsafe { deque.write_iter(dst, iter, written) };
+            unsafe { guard.deque.write_iter(dst, iter, &mut guard.written) };
         } else {
             // ignore-tidy-undocumented-unsafe
             unsafe {
-                deque.write_iter(dst, ByRefSized(&mut iter).take(head_room), written);
-                deque.write_iter(WrappedIndex::zero(), iter, written)
+                guard.deque.write_iter(
+                    dst,
+                    ByRefSized(&mut iter).take(head_room),
+                    &mut guard.written,
+                );
+                guard.deque.write_iter(WrappedIndex::zero(), iter, &mut guard.written)
             };
         }
 
-        *written
+        guard.written
     }
 
     /// Frobs the head and tail sections around to handle the fact that we
