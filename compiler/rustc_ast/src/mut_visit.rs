@@ -155,12 +155,6 @@ macro_rules! visit_visitable_with {
     };
 }
 
-macro_rules! walk_walkable {
-    ($visitor:expr, $expr:expr, mut) => {
-        MutWalkable::walk_mut($expr, $visitor)
-    };
-}
-
 macro_rules! impl_visitable {
     (|&mut $self:ident: $self_ty:ty,
       $vis:ident: &mut $vis_ty:ident,
@@ -233,7 +227,7 @@ macro_rules! impl_visitable_calling_walkable {
                 let ($($extra_name)?) = extra;
                 visitor.$method(self $(, $extra_name)?);
             });
-            walk_walkable!(self, node, mut)
+            MutWalkable::walk_mut(node, self)
         })*
     }
 }
@@ -243,7 +237,7 @@ macro_rules! define_named_walk {
         $( pub fn $method:ident($ty:ty); )*
     ) => {
         $(pub fn $method<V: $Visitor>(visitor: &mut V, node: &mut $ty) {
-            walk_walkable!(visitor, node, mut)
+            MutWalkable::walk_mut(node, visitor)
         })*
     };
 }

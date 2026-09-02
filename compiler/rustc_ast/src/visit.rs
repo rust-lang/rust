@@ -203,12 +203,6 @@ macro_rules! visit_visitable_with {
     };
 }
 
-macro_rules! walk_walkable {
-    ($visitor:expr, $expr:expr, ) => {
-        Walkable::walk_ref($expr, $visitor)
-    };
-}
-
 macro_rules! impl_visitable {
     (|&$lt:lifetime $self:ident: $self_ty:ty,
       $vis:ident: &mut $vis_ty:ident,
@@ -284,7 +278,7 @@ macro_rules! impl_visitable_calling_walkable {
                 let ($($extra_name)?) = extra;
                 visitor.$method(self $(, $extra_name)?)
             });
-            walk_walkable!(self, node, )
+            Walkable::walk_ref(node, self)
         })*
     };
 }
@@ -294,7 +288,7 @@ macro_rules! define_named_walk {
         $( pub fn $method:ident($ty:ty); )*
     ) => {
         $(pub fn $method<$lt, V: $Visitor<$lt>>(visitor: &mut V, node: &$lt $ty) -> V::Result {
-            walk_walkable!(visitor, node,)
+            Walkable::walk_ref(node, visitor)
         })*
     };
 }
