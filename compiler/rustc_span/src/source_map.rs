@@ -192,6 +192,7 @@ pub struct SourceMapInputs {
     pub path_mapping: FilePathMapping,
     pub hash_kind: SourceFileHashAlgorithm,
     pub checksum_hash_kind: Option<SourceFileHashAlgorithm>,
+    pub verbose: bool,
 }
 
 pub struct SourceMap {
@@ -213,6 +214,10 @@ pub struct SourceMap {
     ///
     /// If this is equal to `hash_kind` then the checksum won't be computed twice.
     checksum_hash_kind: Option<SourceFileHashAlgorithm>,
+
+    /// Whether `--verbose` was passed. Diagnostics then print paths without
+    /// lexical normalization.
+    verbose: bool,
 }
 
 impl std::fmt::Debug for SourceMap {
@@ -224,6 +229,7 @@ impl std::fmt::Debug for SourceMap {
             working_dir,
             hash_kind,
             checksum_hash_kind,
+            verbose,
         } = self;
 
         f.debug_struct("SourceMap")
@@ -233,6 +239,7 @@ impl std::fmt::Debug for SourceMap {
             .field("working_dir", working_dir)
             .field("hash_kind", hash_kind)
             .field("checksum_hash_kind", checksum_hash_kind)
+            .field("verbose", verbose)
             .finish()
     }
 }
@@ -244,11 +251,12 @@ impl SourceMap {
             path_mapping,
             hash_kind: SourceFileHashAlgorithm::Md5,
             checksum_hash_kind: None,
+            verbose: false,
         })
     }
 
     pub fn with_inputs(
-        SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind }: SourceMapInputs,
+        SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind, verbose }: SourceMapInputs,
     ) -> SourceMap {
         let cwd = file_loader
             .current_directory()
@@ -262,6 +270,7 @@ impl SourceMap {
             path_mapping,
             hash_kind,
             checksum_hash_kind,
+            verbose,
         }
     }
 
@@ -520,8 +529,15 @@ impl SourceMap {
         self.lookup_char_pos(sp.lo()).file.name.clone()
     }
 
+    /// Paths are normalized lexically, which can name the wrong file if a
+    /// component is a symlink. `--verbose` skips normalization and prints the
+    /// path as given.
     pub fn filename_for_diagnostics<'a>(&self, filename: &'a FileName) -> FileNameDisplay<'a> {
-        filename.display(RemapPathScopeComponents::DIAGNOSTICS)
+        if self.verbose {
+            filename.display(RemapPathScopeComponents::DIAGNOSTICS)
+        } else {
+            filename.display_normalized(RemapPathScopeComponents::DIAGNOSTICS)
+        }
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
