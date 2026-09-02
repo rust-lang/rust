@@ -2440,7 +2440,7 @@ impl<'a> Formatter<'a> {
     ///     format!("{:?}", Foo {
     ///         bar: 10,
     ///         baz: "Hello World".to_string(),
-    ///         addr: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
+    ///         addr: Ipv6Addr::LOCALHOST,
     ///     })
     /// );
     /// ```

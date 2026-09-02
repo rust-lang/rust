@@ -200,12 +200,7 @@ impl TcpStream {
     /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// assert_eq!(stream.peer_addr().unwrap(),
-    ///            SocketAddr::V6(SocketAddrV6::new(
-    ///                 Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
-    ///                 8080,
-    ///                 0,
-    ///                 0
-    /// )));
+    ///     SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 0)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -222,7 +217,7 @@ impl TcpStream {
     /// let stream = TcpStream::connect("[::1]:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// assert_eq!(stream.local_addr().unwrap().ip(),
-    ///            IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)));
+    ///            IpAddr::V6(Ipv6Addr::LOCALHOST));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -854,12 +849,7 @@ impl TcpListener {
     ///
     /// let listener = TcpListener::bind("[::1]:8080").unwrap();
     /// assert_eq!(listener.local_addr().unwrap(),
-    ///            SocketAddr::V6(SocketAddrV6::new(
-    ///                 Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
-    ///                 8080,
-    ///                 0,
-    ///                 0
-    /// )));
+    ///            SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 0)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
