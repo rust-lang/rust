@@ -30,7 +30,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_lint_defs::builtin::{ELIDED_LIFETIMES_IN_PATHS, UNUSED_LABELS};
 use rustc_middle::middle::resolve_bound_vars::Set1;
-use rustc_middle::ty::{AssocTag, DelegationInfo, DelegationInhFuncKind, Visibility};
+use rustc_middle::ty::{AssocTag, DelegationInfo, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::ResolveDocLinks;
 use rustc_session::diagnostics::feature_err;
@@ -3515,7 +3515,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(
             &generics.params,
-            RibKind::Item(HasGenericParams::Yes(generics.span), self.r.tcx.def_kind(self.r.current_owner.def_id)),
+            RibKind::Item(
+                HasGenericParams::Yes(generics.span),
+                self.r.tcx.def_kind(self.r.current_owner.def_id),
+            ),
             item_id,
             LifetimeBinderKind::ImplBlock,
             generics.span,
@@ -3525,7 +3528,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     this.with_lifetime_rib(
                         LifetimeRibKind::AnonymousCreateParameter {
                             binder: item_id,
-                            report_in_path: true
+                            report_in_path: true,
                         },
                         |this| {
                             // Resolve the trait reference, if necessary.
@@ -3564,16 +3567,22 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                         let self_type_def_id = of_trait
                                             .is_none()
                                             .then(|| {
-                                                this.r.partial_res_map.get(&self_type.id).and_then(|res| {
-                                                    res.full_res()
-                                                        .and_then(|r| r.opt_def_id())
-                                                        .and_then(|id| id.as_local())
-                                                })
+                                                this.r.partial_res_map.get(&self_type.id).and_then(
+                                                    |res| {
+                                                        res.full_res()
+                                                            .and_then(|r| r.opt_def_id())
+                                                            .and_then(|id| id.as_local())
+                                                    },
+                                                )
                                             })
                                             .flatten();
 
                                         if let Some(id) = self_type_def_id {
-                                            this.r.delegation_types_to_inh_impls.entry(id).or_default().push(this.r.current_owner.def_id);
+                                            this.r
+                                                .delegation_types_to_inh_impls
+                                                .entry(id)
+                                                .or_default()
+                                                .push(this.r.current_owner.def_id);
                                         }
 
                                         // Resolve the items within the impl.
@@ -3588,7 +3597,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                                             &mut seen_trait_items,
                                                             trait_id,
                                                             of_trait.is_some(),
-                                                            self_type_def_id
                                                         );
                                                     })
                                                 }
@@ -3632,7 +3640,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         seen_trait_items: &mut FxHashMap<DefId, Span>,
         trait_id: Option<DefId>,
         is_in_trait_impl: bool,
-        self_type_def_id: Option<LocalDefId>,
     ) {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
@@ -3734,10 +3741,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     },
                 );
 
-                if let Some(self_type_def_id) = self_type_def_id {
-                    self.fill_delegation_inh_functions_map(self_type_def_id, ident);
-                }
-
                 self.resolve_define_opaques(define_opaque);
             }
             AssocItemKind::Type(TyAlias { ident, generics, .. }) => {
@@ -3780,14 +3783,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeBinderKind::Function,
                     delegation.path.segments.last().unwrap().ident.span,
                     |this| {
-                        if let Some(self_type_def_id) = self_type_def_id {
-                            this.fill_delegation_inh_functions_map(
-                                self_type_def_id,
-                                // If rename is specified then ident equals rename.
-                                &delegation.ident,
-                            );
-                        }
-
                         this.check_trait_item(
                             item.id,
                             delegation.ident,
@@ -3810,20 +3805,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         }
         self.diag_metadata.current_impl_item = prev;
-    }
-
-    fn fill_delegation_inh_functions_map(&mut self, self_type_def_id: LocalDefId, ident: &Ident) {
-        let map = self.r.delegation_inh_functions_map.entry(self_type_def_id).or_default();
-
-        match map.get(ident) {
-            None => {
-                map.insert(*ident, DelegationInhFuncKind::Single(self.r.current_owner.def_id));
-            }
-            Some(DelegationInhFuncKind::Single(..)) => {
-                map.insert(*ident, DelegationInhFuncKind::Ambig);
-            }
-            _ => {}
-        };
     }
 
     fn check_trait_item<F>(

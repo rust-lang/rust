@@ -51,7 +51,6 @@ pub(super) struct DelegationResolution {
 
 pub(super) mod resolver {
     use rustc_ast::NodeId;
-    use rustc_hir::HirId;
     use rustc_hir::def_id::{DefId, LocalDefId};
     use rustc_middle::ty::{TyCtxt, TypeRelativeDelegationRes};
     use rustc_span::ErrorGuaranteed;
@@ -113,19 +112,22 @@ pub(super) mod resolver {
         ) -> TypeRelativeDelegationRes {
             let tcx = self.tcx();
 
-            let nodes = &self.tcx().lower_to_hir(def_id).unwrap().nodes;
+            let Some(nodes) = &self.tcx().lower_to_hir(def_id).as_owner().map(|o| &o.nodes) else {
+                return TypeRelativeDelegationRes::Error;
+            };
 
             if let Some((ty_hir_id, span, ident)) =
                 nodes.node().fn_decl().unwrap().opt_error_delegation_ty_id()
             {
-                if ty_hir_id == HirId::INVALID {
-                    TypeRelativeDelegationRes::Error
-                } else {
-                    let ty = nodes.nodes[ty_hir_id.local_id].node.expect_ty();
+                match ty_hir_id {
+                    None => TypeRelativeDelegationRes::Error,
+                    Some(ty_hir_id) => {
+                        let ty = nodes.nodes[ty_hir_id.local_id].node.expect_ty();
 
-                    tcx.resolve_delegation_sig(span, def_id, ty, ident)
-                        .map(|sig_id| TypeRelativeDelegationRes::Ok(sig_id))
-                        .unwrap_or(TypeRelativeDelegationRes::Error)
+                        tcx.resolve_delegation_sig(span, def_id, ty, ident)
+                            .map(|sig_id| TypeRelativeDelegationRes::Ok(sig_id))
+                            .unwrap_or(TypeRelativeDelegationRes::Error)
+                    }
                 }
             } else {
                 tcx.hir_opt_delegation_sig_id(def_id)

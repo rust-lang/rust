@@ -57,8 +57,13 @@ mod test_2 {
     //~| ERROR: multiple applicable items in scope [E0034]
 
     reuse X::<M1, usize>::foo as foo1;
+    reuse X::<M1, usize>::foo_self as foo_self1;
+    reuse X::<M2, ()>::foo as foo2;
+    reuse X::<M2, ()>::foo_self as foo_self2;
 
-    reuse X::<M2, String>::foo_self as foo_self1;
+    reuse X::<M2, String>::foo as foo3;
+    //~^ ERROR: no associated function or constant named `foo` found for struct `test_2::X<M2, String>` in the current scope
+    reuse X::<M2, String>::foo_self as foo_self3;
     //~^ ERROR: no associated function or constant named `foo_self` found for struct `test_2::X<M2, String>` in the current scope
 }
 

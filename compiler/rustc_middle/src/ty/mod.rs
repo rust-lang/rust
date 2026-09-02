@@ -203,8 +203,6 @@ pub struct ResolverGlobalCtxt {
     // Information about delegations which is used when handling recursive delegations
     // and ensures easy access to delegation-only `LocalDefId`s.
     pub delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
-    pub delegation_inh_functions_map:
-        FxIndexMap<LocalDefId, FxIndexMap<Ident, DelegationInhFuncKind>>,
     pub delegation_types_to_inh_impls: FxIndexMap<LocalDefId, Vec<LocalDefId>>,
 }
 
@@ -294,12 +292,6 @@ pub enum TypeRelativeDelegationRes {
     Ok(DefId),
     Ambig,
     Error,
-}
-
-#[derive(Debug, StableHash)]
-pub enum DelegationInhFuncKind {
-    Single(LocalDefId),
-    Ambig,
 }
 
 #[derive(Clone, Copy, Debug, StableHash)]

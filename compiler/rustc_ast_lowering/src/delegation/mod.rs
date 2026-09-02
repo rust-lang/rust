@@ -621,8 +621,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
 
             let ty_id = match path {
-                QPath::Resolved(_, _) => HirId::INVALID,
-                QPath::TypeRelative(ty, _) => ty.hir_id,
+                QPath::Resolved(_, _) => None,
+                QPath::TypeRelative(ty, _) => Some(ty.hir_id),
             };
 
             if let [.., parent, child] = &delegation.path.segments[..]

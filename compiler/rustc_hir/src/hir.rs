@@ -3550,7 +3550,7 @@ pub enum InferDelegation<'hir> {
     DefId(DefId),
     /// Used during signature inheritance, `DefId` corresponds to the signature function.
     Sig(DefId, InferDelegationSig<'hir>),
-    Err(&'hir (HirId, Span, Ident)),
+    Err(&'hir (Option<HirId>, Span, Ident)),
 }
 
 /// The various kinds of types recognized by the compiler.
@@ -3908,7 +3908,7 @@ impl<'hir> FnDecl<'hir> {
         None
     }
 
-    pub fn opt_error_delegation_ty_id(&self) -> Option<(HirId, Span, Ident)> {
+    pub fn opt_error_delegation_ty_id(&self) -> Option<(Option<HirId>, Span, Ident)> {
         if let FnRetTy::Return(ty) = self.output
             && let TyKind::InferDelegation(InferDelegation::Err(data)) = ty.kind
         {
