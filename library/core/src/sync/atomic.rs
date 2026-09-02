@@ -811,7 +811,7 @@ impl<T: AtomicLoadStore> Atomic<T> {
         unsafe {
             // We can't use UnsafeCell's into_inner despite it being "older" (present since 1.0.0)
             // because it's const variant wasn't stabilized until 1.83.0 and the const variant of
-            // this function was stablizied earlier in 1.79.0
+            // this function was stabilized earlier in 1.79.0
             transmute_unchecked(self)
         }
     }
