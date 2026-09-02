@@ -2948,7 +2948,7 @@ macro_rules! atomic_int {
                 fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
             }
         }
-    }
+    };
 }
 
 #[cfg(target_has_atomic_load_store = "8")]
