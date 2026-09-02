@@ -1,5 +1,3 @@
-use itertools::Itertools;
-use rustc_abi::ExternAbi;
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_middle::mir::visit::Visitor;
@@ -156,33 +154,16 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             .as_ref()
             .unwrap_crate_local()
             .lint_root;
-        // FIXME: use existing printing routines to print the function signature
+
         let fn_sig = self.tcx.fn_sig(fn_id).instantiate(self.tcx, fn_args).skip_norm_wip();
-        let unsafety = fn_sig.safety().prefix_str();
-        let abi = match fn_sig.abi() {
-            ExternAbi::Rust => String::from(""),
-            other_abi => format!("extern {other_abi} "),
-        };
+
         let ident = self.tcx.item_ident(fn_id);
-        let params = fn_args.terms().map(|term| format!("{term}")).join(", ");
-        let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
-        let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
-        let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
-        let sugg = format!(
-            "{} as {}{}fn({}{}){}",
-            if params.is_empty() { ident.to_string() } else { format!("{ident}::<{params}>") },
-            unsafety,
-            abi,
-            vec!["_"; num_args].join(", "),
-            variadic,
-            ret,
-        );
 
         self.tcx.emit_node_span_lint(
             FUNCTION_ITEM_REFERENCES,
             lint_root,
             span,
-            diagnostics::FnItemRef { span, sugg, ident },
+            diagnostics::FnItemRef { span, fn_sig, fn_args, ident },
         );
     }
 }

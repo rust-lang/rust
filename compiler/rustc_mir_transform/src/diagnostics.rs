@@ -7,7 +7,7 @@ use rustc_lint_defs::Lint;
 use rustc_lint_defs::builtin::{ARITHMETIC_OVERFLOW, UNCONDITIONAL_PANIC};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{Binder, FnSig, GenericArgsRef, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
 
@@ -159,17 +159,51 @@ pub(crate) struct FfiUnwindCall {
     pub foreign: bool,
 }
 
-#[derive(Diagnostic)]
-#[diag("taking a reference to a function item does not give a function pointer")]
-pub(crate) struct FnItemRef {
-    #[suggestion(
-        "cast `{$ident}` to obtain a function pointer",
-        code = "{sugg}",
-        applicability = "unspecified"
-    )]
+pub(crate) struct FnItemRef<'tcx> {
     pub span: Span,
-    pub sugg: String,
+    pub fn_sig: Binder<'tcx, FnSig<'tcx>>,
+    pub fn_args: GenericArgsRef<'tcx>,
     pub ident: Ident,
+}
+
+impl<G: EmissionGuarantee> Diagnostic<'_, G> for FnItemRef<'_> {
+    #[track_caller]
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+        use itertools::Itertools;
+
+        let Self { span, fn_sig, fn_args, ident } = self;
+
+        // FIXME: use existing printing routines to print the function signature
+        let suggestion = format!(
+            "{ident}{params} as {unsafety}{abi}fn({args}{variadic}){ret}",
+            params = if fn_args.is_empty() {
+                String::from("")
+            } else {
+                format!("::<{}>", fn_args.terms().join(", "))
+            },
+            unsafety = fn_sig.safety().prefix_str(),
+            abi = match fn_sig.abi() {
+                rustc_abi::ExternAbi::Rust => String::from(""),
+                other_abi => format!("extern {other_abi} "),
+            },
+            args = core::iter::repeat_n("_", fn_sig.inputs().skip_binder().len()).join(", "),
+            variadic = if fn_sig.c_variadic() { ", ..." } else { "" },
+            ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" }
+        );
+
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            msg!("taking a reference to a function item does not give a function pointer"),
+        );
+        diag.arg("ident", ident).span_suggestion(
+            span,
+            msg!("cast `{$ident}` to obtain a function pointer"),
+            suggestion,
+            Applicability::Unspecified,
+        );
+        diag
+    }
 }
 
 #[derive(Diagnostic)]
