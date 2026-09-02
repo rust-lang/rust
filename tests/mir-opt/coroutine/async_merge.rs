@@ -1,4 +1,4 @@
-// This test makes sure that the collapse_yields MIR pass eliminates
+// This test makes sure that the MergeYields MIR pass eliminates
 // identical yields so the statemachine will be smaller
 
 //@ edition:2018

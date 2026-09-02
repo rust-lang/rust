@@ -136,7 +136,7 @@ declare_passes! {
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
 
     mod copy_prop : CopyProp;
-    mod collapse_yields : CollapseIdenticalYields;
+    mod merge_yields : MergeYields;
     mod coroutine : StateTransform;
     mod coverage : InstrumentCoverage;
     mod ctfe_limit : CtfeLimit;
@@ -662,7 +662,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
         &erase_deref_temps::EraseDerefTemps,
         &elaborate_box_derefs::ElaborateBoxDerefs,
-        &collapse_yields::CollapseIdenticalYields,
+        &merge_yields::MergeYields,
         &coroutine::StateTransform,
         &Lint(known_panics_lint::KnownPanicsLint),
     ];

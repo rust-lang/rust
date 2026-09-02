@@ -20,17 +20,13 @@ use crate::MirPass;
 use crate::pass_manager::PassPolicy;
 use crate::simplify::remove_dead_blocks;
 
-pub(super) struct CollapseIdenticalYields;
+pub(super) struct MergeYields;
 
-impl<'tcx> MirPass<'tcx> for CollapseIdenticalYields {
+impl<'tcx> MirPass<'tcx> for MergeYields {
     #[instrument(level = "debug", skip(self, tcx, body), ret)]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if body.coroutine_kind().is_none() {
             return;
-        }
-
-        if let Some(dumper) = MirDumper::new(tcx, "collapse_yields_before", body) {
-            dumper.dump_mir(body);
         }
 
         tracing::debug!("running pass for {}", tcx.def_path_debug_str(body.source.def_id()));
@@ -49,13 +45,13 @@ impl<'tcx> MirPass<'tcx> for CollapseIdenticalYields {
         // Sort so we always translate from high bbs to low bbs
         yields.sort_unstable_by(|y1, y2| y1.basic_block.cmp(&y2.basic_block).reverse());
 
-        let mut collapsed_yields = FxHashSet::default();
+        let mut merged_yields = FxHashSet::default();
 
         for compare_yields in yields.iter().combinations(2) {
             let base_yield = compare_yields[0];
             let compare_yield = compare_yields[1];
 
-            if collapsed_yields.contains(&compare_yield) {
+            if merged_yields.contains(&compare_yield) {
                 continue;
             }
 
@@ -81,7 +77,7 @@ impl<'tcx> MirPass<'tcx> for CollapseIdenticalYields {
                 translation
             );
 
-            collapsed_yields.insert(compare_yield);
+            merged_yields.insert(compare_yield);
 
             translation.redirect_entry_points(tcx, body);
         }
