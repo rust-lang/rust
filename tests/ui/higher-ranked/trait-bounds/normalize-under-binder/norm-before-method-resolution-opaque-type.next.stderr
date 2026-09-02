@@ -4,6 +4,7 @@ error[E0282]: type annotations needed for `<X as Trait<'static>>::Out<_>`
 LL |     let x = *x;
    |         ^
    |
+   = note: cannot infer type of hidden type of opaque
 help: consider giving `x` an explicit type, where the placeholders `_` are specified
    |
 LL |     let x: <_ as Trait<'static>>::Out<_> = *x;

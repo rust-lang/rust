@@ -12,6 +12,8 @@ error[E0282]: type annotations needed
    |
 LL |     fn convert(_i: In) -> Self::Out {
    |                           ^^^^^^^^^ cannot infer type
+   |
+   = note: cannot infer type of hidden type of opaque
 
 error: aborting due to 2 previous errors
 
