@@ -50,8 +50,11 @@ where
             }
             ty::AliasTermKind::InherentConstImpl { def_id } if cx.is_type_const(def_id.into()) => {
                 let inherent = cx.const_of_item(def_id.into()).instantiate(cx, inherent_args);
-                let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
-                inherent.into()
+                let normalized_ct = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
+                let normalized = normalized_ct.into();
+                let term = ty::AliasTerm::new_from_args(cx, inherent_kind, inherent_args);
+                self.push_const_arg_has_type_goal(goal.param_env, term, normalized)?;
+                normalized
             }
             ty::AliasTermKind::InherentConstImpl { .. } => {
                 let term = ty::AliasTerm::new_from_args(cx, inherent_kind, inherent_args);
@@ -68,11 +71,6 @@ where
             kind => panic!("expected inherent alias, found {kind:?}"),
         };
 
-        self.push_const_arg_has_type_goal(
-            goal.param_env,
-            goal.predicate.projection_term,
-            normalized,
-        )?;
         self.eq(goal.param_env, goal.predicate.term, normalized)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
