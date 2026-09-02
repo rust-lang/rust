@@ -2238,23 +2238,6 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         unsafe { self.ptr.as_ref() }
     }
 
-    // Non-inlined part of `drop`.
-    #[inline(never)]
-    unsafe fn drop_slow(&mut self) {
-        // Drop the weak ref collectively held by all strong references when this
-        // variable goes out of scope. This ensures that the memory is deallocated
-        // even if the destructor of `T` panics.
-        // Take a reference to `self.alloc` instead of cloning because 1. it'll last long
-        // enough, and 2. you should be able to drop `Arc`s with unclonable allocators
-        let _weak = Weak { ptr: self.ptr, alloc: &self.alloc };
-
-        // Destroy the data at this time, even though we must not free the box
-        // allocation itself (there might still be weak pointers lying around).
-        // We cannot use `get_mut_unchecked` here, because `self.alloc` is borrowed.
-        // ignore-tidy-undocumented-unsafe
-        unsafe { ptr::drop_in_place(&mut (*self.ptr.as_ptr()).data) };
-    }
-
     /// Returns `true` if the two `Arc`s point to the same allocation in a vein similar to
     /// [`ptr::eq`]. This function ignores the metadata of  `dyn Trait` pointers.
     ///
@@ -2983,42 +2966,61 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
     /// ```
     #[inline]
     fn drop(&mut self) {
+        // Non-inlined part of `drop`.
+        // This function was moved locally since there is only one caller,
+        // and makes it easier to reason about the the outlined fence.
+        #[inline(never)]
+        unsafe fn drop_slow(&mut self) {
+            // This fence is needed to prevent reordering of use of the data and
+            // deletion of the data. Because it is marked `Release`, the decreasing
+            // of the reference count synchronizes with this `Acquire` fence. This
+            // means that use of the data happens before decreasing the reference
+            // count, which happens before this fence, which happens before the
+            // deletion of the data.
+            //
+            // As explained in the [Boost documentation][1],
+            //
+            // > It is important to enforce any possible access to the object in one
+            // > thread (through an existing reference) to *happen before* deleting
+            // > the object in a different thread. This is achieved by a "release"
+            // > operation after dropping a reference (any access to the object
+            // > through this reference must obviously happened before), and an
+            // > "acquire" operation before deleting the object.
+            //
+            // In particular, while the contents of an Arc are usually immutable, it's
+            // possible to have interior writes to something like a Mutex<T>. Since a
+            // Mutex is not acquired when it is deleted, we can't rely on its
+            // synchronization logic to make writes in thread A visible to a destructor
+            // running in thread B.
+            //
+            // Also note that the Acquire fence here could probably be replaced with an
+            // Acquire load, which could improve performance in highly-contended
+            // situations. See [2].
+            //
+            // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
+            // [2]: (https://github.com/rust-lang/rust/pull/41714)
+            acquire!(self.inner().strong);
+
+            // Drop the weak ref collectively held by all strong references when this
+            // variable goes out of scope. This ensures that the memory is deallocated
+            // even if the destructor of `T` panics.
+            // Take a reference to `self.alloc` instead of cloning because 1. it'll last long
+            // enough, and 2. you should be able to drop `Arc`s with unclonable allocators
+            let _weak = Weak { ptr: self.ptr, alloc: &self.alloc };
+
+            // Destroy the data at this time, even though we must not free the box
+            // allocation itself (there might still be weak pointers lying around).
+            // We cannot use `get_mut_unchecked` here, because `self.alloc` is borrowed.
+            // ignore-tidy-undocumented-unsafe
+            unsafe { ptr::drop_in_place(&mut (*self.ptr.as_ptr()).data) };
+        }
+
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
         // same logic applies to the below `fetch_sub` to the `weak` count.
         if self.inner().strong.fetch_sub(1, Release) != 1 {
             return;
         }
-
-        // This fence is needed to prevent reordering of use of the data and
-        // deletion of the data. Because it is marked `Release`, the decreasing
-        // of the reference count synchronizes with this `Acquire` fence. This
-        // means that use of the data happens before decreasing the reference
-        // count, which happens before this fence, which happens before the
-        // deletion of the data.
-        //
-        // As explained in the [Boost documentation][1],
-        //
-        // > It is important to enforce any possible access to the object in one
-        // > thread (through an existing reference) to *happen before* deleting
-        // > the object in a different thread. This is achieved by a "release"
-        // > operation after dropping a reference (any access to the object
-        // > through this reference must obviously happened before), and an
-        // > "acquire" operation before deleting the object.
-        //
-        // In particular, while the contents of an Arc are usually immutable, it's
-        // possible to have interior writes to something like a Mutex<T>. Since a
-        // Mutex is not acquired when it is deleted, we can't rely on its
-        // synchronization logic to make writes in thread A visible to a destructor
-        // running in thread B.
-        //
-        // Also note that the Acquire fence here could probably be replaced with an
-        // Acquire load, which could improve performance in highly-contended
-        // situations. See [2].
-        //
-        // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        // [2]: (https://github.com/rust-lang/rust/pull/41714)
-        acquire!(self.inner().strong);
 
         // Make sure we aren't trying to "drop" the shared static for empty slices
         // used by Default::default.
@@ -3027,6 +3029,9 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
             "Arcs backed by a static should never reach a strong count of 0. \
             Likely decrement_strong_count or from_raw were called too many times.",
         );
+
+        // Note: don't mark `drop_slow` as `#[cold]`, that has other side effects
+        core::hint::cold_path();
 
         // ignore-tidy-undocumented-unsafe
         unsafe {
