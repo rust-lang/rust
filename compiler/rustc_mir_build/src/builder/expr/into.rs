@@ -569,7 +569,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block.unit()
                 }
             }
-            ExprKind::Use { source } => this.expr_into_dest(destination, block, source),
+            ExprKind::ValueExpr { source } => this.expr_into_dest(destination, block, source),
             ExprKind::Borrow { arg, borrow_kind } => {
                 // We don't do this in `as_rvalue` because we use `as_place`
                 // for borrow expressions, so we cannot create an `RValue` that

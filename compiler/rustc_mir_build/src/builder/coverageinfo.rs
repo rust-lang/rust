@@ -120,7 +120,7 @@ impl CoverageInfoBuilder {
                 self.visit_with_not_info(thir, arg, not_info);
             }
             ExprKind::Scope { value, .. } => self.visit_with_not_info(thir, value, not_info),
-            ExprKind::Use { source } => self.visit_with_not_info(thir, source, not_info),
+            ExprKind::ValueExpr { source } => self.visit_with_not_info(thir, source, not_info),
             // All other expressions (including `&&` and `||`) don't need any
             // special handling of their contents, so stop visiting.
             _ => {}
@@ -190,7 +190,7 @@ impl<'tcx> Builder<'_, 'tcx> {
         };
 
         // Remove any wrappers, so that we can inspect the real underlying expression.
-        while let ExprKind::Use { source: inner } | ExprKind::Scope { value: inner, .. } =
+        while let ExprKind::ValueExpr { source: inner } | ExprKind::Scope { value: inner, .. } =
             self.thir[expr_id].kind
         {
             expr_id = inner;

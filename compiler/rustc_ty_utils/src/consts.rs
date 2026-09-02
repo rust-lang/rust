@@ -119,10 +119,10 @@ fn recurse_build<'tcx>(
                 maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(node.span))?
             }
         }
-        // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
+        // `ExprKind::ValueExpr` happens when a `hir::ExprKind::Cast` is a
         // "coercion cast" i.e. using a coercion or is a no-op.
         // This is important so that `N as usize as usize` doesn't unify with `N as usize`. (untested)
-        &ExprKind::Use { source } => {
+        &ExprKind::ValueExpr { source } => {
             let value_ty = body.exprs[source].ty;
             let value = recurse_build(tcx, body, source, root_span)?;
             ty::Const::new_expr(tcx, Expr::new_cast(tcx, CastKind::Use, value_ty, value, node.ty))
@@ -279,7 +279,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::LogicalOp { .. }
             | thir::ExprKind::Unary { .. }
             | thir::ExprKind::Cast { .. }
-            | thir::ExprKind::Use { .. }
+            | thir::ExprKind::ValueExpr { .. }
             | thir::ExprKind::NeverToAny { .. }
             | thir::ExprKind::PointerCoercion { .. }
             | thir::ExprKind::Loop { .. }
