@@ -542,9 +542,6 @@ impl<'a> Parser<'a> {
                 let operand_expr = this.parse_expr_dot_or_call(attrs)?;
                 this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
             }
-            token::Ident(..) if this.token.is_keyword(kw::Box) => {
-                make_it!(this, attrs, |this, _| this.parse_expr_box(lo))
-            }
             token::Ident(..)
                 if this.token.is_keyword(kw::Move)
                     && this.look_ahead(1, |t| *t == token::OpenParen) =>
@@ -580,19 +577,6 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(diagnostics::TildeAsUnaryOperator(lo));
 
         self.parse_expr_unary(lo, UnOp::Not)
-    }
-
-    /// Parse `box expr` - this syntax has been removed, but we still parse this
-    /// for now to provide a more useful error
-    fn parse_expr_box(&mut self, box_kw: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump(); // `box`
-        let (span, expr) = self.parse_expr_prefix_common(box_kw)?;
-        // Make a multipart suggestion instead of `span_to_snippet` in case source isn't available
-        let box_kw_and_lo = box_kw.until(self.interpolated_or_expr_span(&expr));
-        let hi = span.shrink_to_hi();
-        let sugg = diagnostics::AddBoxNew { box_kw_and_lo, hi };
-        let guar = self.dcx().emit_err(diagnostics::BoxSyntaxRemoved { span, sugg });
-        Ok((span, ExprKind::Err(guar)))
     }
 
     fn parse_expr_move(&mut self, move_kw: Span) -> PResult<'a, (Span, ExprKind)> {
