@@ -374,7 +374,7 @@ pub enum ObligationCauseCode<'tcx> {
 
     AwaitableExpr(HirId),
 
-    ForLoopIterator,
+    ForLoopIterator(HirId),
 
     QuestionMark,
 

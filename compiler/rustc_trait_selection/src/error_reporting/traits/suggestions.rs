@@ -1119,12 +1119,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .collect::<Vec<_>>()
             .join(", ");
 
-        if let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
-            && obligation.cause.span.can_be_used_for_suggestions()
-        {
+        let callee_hir_id = match obligation.cause.code() {
+            ObligationCauseCode::FunctionArg { arg_hir_id, .. }
+                if obligation.cause.span.can_be_used_for_suggestions() =>
+            {
+                Some(*arg_hir_id)
+            }
+            // The iterator of a `for` loop is passed to `IntoIterator::into_iter`, so the failing
+            // `Iterator` goal is a derived obligation and `cause.span` carries the loop's
+            // desugaring context. The expression is still the user's, which its own span attests.
+            code => match code.peel_derives() {
+                ObligationCauseCode::ForLoopIterator(iter_hir_id)
+                    if self.tcx.hir_span(*iter_hir_id).can_be_used_for_suggestions() =>
+                {
+                    Some(*iter_hir_id)
+                }
+                _ => None,
+            },
+        };
+
+        if let Some(callee_hir_id) = callee_hir_id {
             let span = obligation.cause.span;
 
-            let arg_expr = match self.tcx.hir_node(*arg_hir_id) {
+            let arg_expr = match self.tcx.hir_node(callee_hir_id) {
                 hir::Node::Expr(expr) => Some(expr),
                 _ => None,
             };
@@ -3779,7 +3796,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::ReturnValue(_)
             | ObligationCauseCode::BlockTailExpression(..)
             | ObligationCauseCode::AwaitableExpr(_)
-            | ObligationCauseCode::ForLoopIterator
+            | ObligationCauseCode::ForLoopIterator(_)
             | ObligationCauseCode::QuestionMark
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
