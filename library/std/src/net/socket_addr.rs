@@ -73,7 +73,7 @@ use crate::{io, iter, option, slice, vec};
 /// ```no_run
 /// use std::net::{SocketAddr, ToSocketAddrs};
 ///
-/// // assuming 'localhost' resolves to [::1]
+/// // assuming 'localhost' resolves to ::1
 /// let mut addrs_iter = "localhost:443".to_socket_addrs().unwrap();
 /// assert_eq!(addrs_iter.next(), Some(SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], 443))));
 /// assert!(addrs_iter.next().is_none());
