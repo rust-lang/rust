@@ -3018,19 +3018,19 @@ pub(super) fn render_attributes_in_code_with_options(
 ) -> fmt::Result {
     w.write_str(open_tag)?;
     if render_doc_hidden && item.is_doc_hidden() {
-        render_code_attribute(&prefix, "#[doc(hidden)]", w)?;
+        render_code_attribute(&prefix, "doc(hidden)", w)?;
     }
     for attr in &item.attrs.other_attrs {
         let hir::Attribute::Parsed(kind) = attr else { continue };
         let attr = match kind {
             AttributeKind::LinkSection { name, .. } => {
-                Cow::Owned(format!("#[unsafe(link_section = {})]", Escape(&format!("{name:?}"))))
+                Cow::Owned(format!("unsafe(link_section = {})", Escape(&format!("{name:?}"))))
             }
-            AttributeKind::NoMangle(..) => Cow::Borrowed("#[unsafe(no_mangle)]"),
+            AttributeKind::NoMangle(..) => Cow::Borrowed("unsafe(no_mangle)"),
             AttributeKind::ExportName { name, .. } => {
-                Cow::Owned(format!("#[unsafe(export_name = {})]", Escape(&format!("{name:?}"))))
+                Cow::Owned(format!("unsafe(export_name = {})", Escape(&format!("{name:?}"))))
             }
-            AttributeKind::NonExhaustive(..) => Cow::Borrowed("#[non_exhaustive]"),
+            AttributeKind::NonExhaustive(..) => Cow::Borrowed("non_exhaustive"),
             _ => continue,
         };
         render_code_attribute(&prefix, attr.as_ref(), w)?;
@@ -3060,7 +3060,7 @@ fn render_code_attribute(
     attr: impl fmt::Display,
     w: &mut impl fmt::Write,
 ) -> fmt::Result {
-    write!(w, "<div class=\"code-attribute\">{prefix}{attr}</div>")
+    write!(w, "<div class=\"code-attribute\">{prefix}#[{attr}]</div>")
 }
 
 /// Compute the *public* `#[repr]` of the item given by `DefId`.
@@ -3115,7 +3115,7 @@ fn repr_attribute<'tcx>(
 
         // Since the transparent repr can't have any other reprs or
         // repr modifiers beside it, we can safely return early here.
-        return is_public.then(|| "#[repr(transparent)]".into());
+        return is_public.then(|| "repr(transparent)".into());
     }
 
     // The repr is public iff all components are public and visible.
@@ -3154,5 +3154,5 @@ fn repr_attribute<'tcx>(
         result.push(format!("align({})", align.bytes()).into());
     }
 
-    (!result.is_empty()).then(|| format!("#[repr({})]", result.join(", ")).into())
+    (!result.is_empty()).then(|| format!("repr({})", result.join(", ")).into())
 }
