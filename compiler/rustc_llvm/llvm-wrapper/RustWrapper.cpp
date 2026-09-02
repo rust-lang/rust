@@ -885,10 +885,6 @@ extern "C" uint32_t LLVMRustDebugMetadataVersion() {
   return DEBUG_METADATA_VERSION;
 }
 
-extern "C" uint32_t LLVMRustVersionPatch() { return LLVM_VERSION_PATCH; }
-
-extern "C" uint32_t LLVMRustVersionMinor() { return LLVM_VERSION_MINOR; }
-
 extern "C" uint32_t LLVMRustVersionMajor() { return LLVM_VERSION_MAJOR; }
 
 // FFI equivalent of LLVM's `llvm::Module::ModFlagBehavior`.
