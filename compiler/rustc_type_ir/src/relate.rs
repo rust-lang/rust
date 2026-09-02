@@ -262,7 +262,8 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                 | ty::AliasTermKind::FreeConst { .. }
                 | ty::AliasTermKind::FreeTy { .. }
                 | ty::AliasTermKind::InherentTy { .. }
-                | ty::AliasTermKind::InherentConst { .. }
+                | ty::AliasTermKind::InherentConstSelf { .. }
+                | ty::AliasTermKind::InherentConstImpl { .. }
                 | ty::AliasTermKind::AnonConst { .. }
                 | ty::AliasTermKind::ProjectionConst { .. } => {
                     relate_args_invariantly(relation, a.args, b.args)?
@@ -281,8 +282,14 @@ impl<I: Interner> Relate<I> for ty::ExistentialProjection<I> {
     ) -> RelateResult<I, ty::ExistentialProjection<I>> {
         if a.def_id != b.def_id {
             Err(TypeError::ProjectionMismatched(ExpectedFound::new(
-                relation.cx().alias_term_kind_from_def_id(a.def_id.into()),
-                relation.cx().alias_term_kind_from_def_id(b.def_id.into()),
+                relation.cx().alias_term_kind_from_def_id(
+                    a.def_id.into(),
+                    ty::AliasConstInherentArgsKind::WithSelf,
+                ),
+                relation.cx().alias_term_kind_from_def_id(
+                    b.def_id.into(),
+                    ty::AliasConstInherentArgsKind::WithSelf,
+                ),
             )))
         } else {
             let term = relation.relate_with_variance(

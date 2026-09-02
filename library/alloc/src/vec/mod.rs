@@ -1733,10 +1733,10 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_boxed_slice(mut self) -> Box<[T], A> {
+        self.shrink_to_fit();
+        let me = ManuallyDrop::new(self);
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            self.shrink_to_fit();
-            let me = ManuallyDrop::new(self);
             let buf = ptr::read(&me.buf);
             let len = me.len();
             buf.into_box(len).assume_init()
@@ -2449,10 +2449,10 @@ impl<T, A: Allocator> Vec<T, A> {
         if index >= len {
             return None;
         }
+        // infallible
+        let ret;
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            // infallible
-            let ret;
             {
                 // the place we are taking from.
                 let ptr = self.as_mut_ptr().add(index);
@@ -2464,8 +2464,8 @@ impl<T, A: Allocator> Vec<T, A> {
                 ptr::copy(ptr.add(1), ptr, len - index - 1);
             }
             self.set_len(len - 1);
-            Some(ret)
         }
+        Some(ret)
     }
 
     /// Retains only the elements specified by the predicate.
@@ -2906,9 +2906,9 @@ impl<T, A: Allocator> Vec<T, A> {
         if self.len == 0 {
             None
         } else {
+            self.len -= 1;
             // ignore-tidy-undocumented-unsafe
             unsafe {
-                self.len -= 1;
                 core::hint::assert_unchecked(self.len < self.capacity());
                 Some(ptr::read(self.as_ptr().add(self.len())))
             }
@@ -4067,9 +4067,9 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     /// ```
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
+        let me = ManuallyDrop::new(self);
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let me = ManuallyDrop::new(self);
             let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
             let buf = me.buf.non_null();
             let begin = buf.as_ptr();
@@ -4175,10 +4175,10 @@ impl<T, A: Allocator> Vec<T, A> {
                 (low, high)
             );
             self.reserve(additional);
+            let ptr = self.as_mut_ptr();
+            let mut local_len = SetLenOnDrop::new(&mut self.len);
             // ignore-tidy-undocumented-unsafe
             unsafe {
-                let ptr = self.as_mut_ptr();
-                let mut local_len = SetLenOnDrop::new(&mut self.len);
                 iterator.for_each(move |element| {
                     ptr::write(ptr.add(local_len.current_len()), element);
                     // Since the loop executes user code which can panic we have to update

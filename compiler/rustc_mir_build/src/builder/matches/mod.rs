@@ -40,18 +40,26 @@ mod test;
 mod user_ty;
 mod util;
 
-/// Arguments to [`Builder::then_else_break_inner`] that are usually forwarded
+/// Arguments to [`Builder::lower_if_condition`] that are usually forwarded
 /// to recursive invocations.
 #[derive(Clone, Copy)]
-struct ThenElseArgs {
+pub(crate) struct LowerIfCondArgs {
     /// Used as the temp scope for lowering `expr`. If absent (for match guards),
     /// `self.local_scope()` is used.
-    temp_scope_override: Option<region::Scope>,
-    variable_source_info: SourceInfo,
+    pub(crate) temp_scope_override: Option<region::Scope>,
+    pub(crate) variable_source_info: SourceInfo,
     /// Determines how bindings should be handled when lowering `let` expressions.
     ///
     /// Forwarded to [`Builder::lower_let_expr`] when lowering [`ExprKind::Let`].
-    declare_let_bindings: DeclareLetBindings,
+    pub(crate) declare_let_bindings: DeclareLetBindings,
+}
+
+impl LowerIfCondArgs {
+    /// Returns a copy of `self` with [`DeclareLetBindings::LetNotPermitted`].
+    /// Used when recursing into a sub-condition that does not permit `let` (e.g. `||` or `!`).
+    fn let_not_permitted(self) -> Self {
+        LowerIfCondArgs { declare_let_bindings: DeclareLetBindings::LetNotPermitted, ..self }
+    }
 }
 
 /// Should lowering a `let` expression also declare its bindings?
@@ -83,32 +91,19 @@ pub(crate) enum ScheduleDrops {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Lowers a condition in a way that ensures that variables bound in any let
-    /// expressions are definitely initialized in the if body.
+    /// Lowers the condition for an `if`-expression or similar construct
+    /// (including `&&` and `||` expressions, and match-guard conditions).
     ///
-    /// If `declare_let_bindings` is false then variables created in `let`
-    /// expressions will not be declared. This is for if let guards on arms with
-    /// an or pattern, where the guard is lowered multiple times.
-    pub(crate) fn then_else_break(
-        &mut self,
-        block: BasicBlock,
-        expr_id: ExprId,
-        temp_scope_override: Option<region::Scope>,
-        variable_source_info: SourceInfo,
-        declare_let_bindings: DeclareLetBindings,
-    ) -> BlockAnd<()> {
-        self.then_else_break_inner(
-            block,
-            expr_id,
-            ThenElseArgs { temp_scope_override, variable_source_info, declare_let_bindings },
-        )
-    }
-
-    fn then_else_break_inner(
+    /// Must be called within [`Builder::in_if_then_scope`], which keeps track
+    /// of drop scope and knows where to break to if the condition is false.
+    ///
+    /// Returns the block for the *true* arm of the condition check.
+    /// The *true* and *false* arms are returned by [`Builder::in_if_then_scope`].
+    pub(crate) fn lower_if_condition(
         &mut self,
         block: BasicBlock, // Block that the condition and branch will be lowered into
         expr_id: ExprId,   // Condition expression to lower
-        args: ThenElseArgs,
+        args: LowerIfCondArgs,
     ) -> BlockAnd<()> {
         let this = self; // See "LET_THIS_SELF".
         let expr = &this.thir[expr_id];
@@ -116,44 +111,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match expr.kind {
             ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
-                let lhs_then_block = this.then_else_break_inner(block, lhs, args).into_block();
-                let rhs_then_block =
-                    this.then_else_break_inner(lhs_then_block, rhs, args).into_block();
-                rhs_then_block.unit()
+                // A condition of `lhs && rhs` is fairly straightforward.
+                // We can just lower them in sequence, and break if either is false.
+                let lhs_true_block = this.lower_if_condition(block, lhs, args).into_block();
+                let rhs_true_block =
+                    this.lower_if_condition(lhs_true_block, rhs, args).into_block();
+                rhs_true_block.unit()
             }
             ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
+                // A condition of `lhs || rhs` is more complicated, because we need to
+                // short-circuit if `lhs` is *true*. So an inner condition-scope is needed.
+                // See <https://github.com/rust-lang/rust/pull/111752>.
                 let local_scope = this.local_scope();
-                let (lhs_success_block, failure_block) =
+                let (lhs_true_block, lhs_false_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
-                        this.then_else_break_inner(
-                            block,
-                            lhs,
-                            ThenElseArgs {
-                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                                ..args
-                            },
-                        )
+                        this.lower_if_condition(block, lhs, args.let_not_permitted())
                     });
-                let rhs_success_block = this
-                    .then_else_break_inner(
-                        failure_block,
-                        rhs,
-                        ThenElseArgs {
-                            declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                            ..args
-                        },
-                    )
+                let rhs_true_block = this
+                    .lower_if_condition(lhs_false_block, rhs, args.let_not_permitted())
                     .into_block();
 
-                // Make the LHS and RHS success arms converge to a common block.
-                // (We can't just make LHS goto RHS, because `rhs_success_block`
+                // Make the LHS-true and RHS-true arms converge to a common block.
+                // (We can't just make LHS goto RHS, because `rhs_true_block`
                 // might contain statements that we don't want on the LHS path.)
                 let success_block = this.cfg.start_new_block();
-                this.cfg.goto(lhs_success_block, args.variable_source_info, success_block);
-                this.cfg.goto(rhs_success_block, args.variable_source_info, success_block);
+                this.cfg.goto(lhs_true_block, args.variable_source_info, success_block);
+                this.cfg.goto(rhs_true_block, args.variable_source_info, success_block);
                 success_block.unit()
             }
             ExprKind::Unary { op: UnOp::Not, arg } => {
+                // For a condition of `!cond`, lower `cond` as its own condition,
+                // then invert the meaning of the true/false blocks.
+                // This avoids an intermediate temporary for negating the condition value.
+                // See <https://github.com/rust-lang/rust/pull/111752>.
+
                 // Improve branch coverage instrumentation by noting conditions
                 // nested within one or more `!` expressions.
                 // (Skipped if branch coverage is not enabled.)
@@ -162,32 +153,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 let local_scope = this.local_scope();
-                let (success_block, failure_block) =
+                let (true_block, false_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
                         // Help out coverage instrumentation by injecting a dummy statement with
                         // the original condition's span (including `!`). This fixes #115468.
                         if this.tcx.sess.instrument_coverage() {
                             this.cfg.push_coverage_span_marker(block, this.source_info(expr_span));
                         }
-                        this.then_else_break_inner(
-                            block,
-                            arg,
-                            ThenElseArgs {
-                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
-                                ..args
-                            },
-                        )
+                        this.lower_if_condition(block, arg, args.let_not_permitted())
                     });
-                this.break_for_else(success_block, args.variable_source_info);
-                failure_block.unit()
+                // Break if the condition was true; proceed if the condition was false.
+                this.break_from_if_then_scope(true_block, args.variable_source_info);
+                false_block.unit()
             }
             ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, this.source_info(expr_span));
                 this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
-                    this.then_else_break_inner(block, value, args)
+                    this.lower_if_condition(block, value, args)
                 })
             }
-            ExprKind::Use { source } => this.then_else_break_inner(block, source, args),
+            ExprKind::Use { source } => this.lower_if_condition(block, source, args),
             ExprKind::Let { expr, ref pat } => this.lower_let_expr(
                 block,
                 expr,
@@ -196,7 +181,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 args.variable_source_info.span,
                 args.declare_let_bindings,
             ),
+
             _ => {
+                // The condition is an ordinary boolean-valued expression,
+                // so lower it normally and branch on the result.
                 let mut block = block;
                 let temp_scope = args.temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
@@ -215,19 +203,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let operand = Operand::Move(Place::from(place));
 
-                let then_block = this.cfg.start_new_block();
-                let else_block = this.cfg.start_new_block();
-                let term = TerminatorKind::if_(operand, then_block, else_block);
+                let true_block = this.cfg.start_new_block();
+                let false_block = this.cfg.start_new_block();
+                let term = TerminatorKind::if_(operand, true_block, false_block);
 
                 // Record branch coverage info for this condition.
                 // (Does nothing if branch coverage is not enabled.)
-                this.visit_coverage_branch_condition(expr_id, then_block, else_block);
+                this.visit_coverage_branch_condition(expr_id, true_block, false_block);
 
                 let source_info = this.source_info(expr_span);
                 this.cfg.terminate(block, source_info, term);
-                this.break_for_else(else_block, source_info);
+                this.break_from_if_then_scope(false_block, source_info);
 
-                then_block.unit()
+                true_block.unit()
             }
         }
     }
@@ -1030,7 +1018,7 @@ struct Candidate<'tcx> {
     ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
     ///
     /// Invariants:
-    /// - All or-patterns ([`TestableCase::Or`]) have been sorted to the end.
+    /// - All or-patterns ([`MatchPairKind::Or`]) have been sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
@@ -1116,14 +1104,14 @@ impl<'tcx> Candidate<'tcx> {
 
     /// Restores the invariant that or-patterns must be sorted to the end.
     fn sort_match_pairs(&mut self) {
-        self.match_pairs.sort_by_key(|pair| matches!(pair.testable_case, TestableCase::Or { .. }));
+        self.match_pairs.sort_by_key(|pair| matches!(pair.kind, MatchPairKind::Or { .. }));
     }
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
     fn starts_with_or_pattern(&self) -> bool {
         matches!(
-            &*self.match_pairs,
-            [MatchPairTree { testable_case: TestableCase::Or { .. }, .. }, ..]
+            self.match_pairs.first(),
+            Some(MatchPairTree { kind: MatchPairKind::Or { .. }, .. })
         )
     }
 
@@ -1223,7 +1211,6 @@ enum TestableCase<'tcx> {
     Slice { len: u64, op: SliceLenOp },
     Deref { temp: Place<'tcx>, mutability: Mutability },
     Never,
-    Or { pats: Box<[FlatPat<'tcx>]> },
 }
 
 impl<'tcx> TestableCase<'tcx> {
@@ -1261,30 +1248,30 @@ enum PatConstKind {
 /// Each node also has a list of subpairs (possibly empty) that must also match,
 /// and some additional information from the THIR pattern it represents.
 #[derive(Debug, Clone)]
-pub(crate) struct MatchPairTree<'tcx> {
-    /// This place...
-    ///
-    /// ---
-    /// This can be `None` if it referred to a non-captured place in a closure.
-    ///
-    /// Invariant: Can only be `None` when `testable_case` is `Or`.
-    /// Therefore this must be `Some(_)` after or-pattern expansion.
-    place: Option<Place<'tcx>>,
-
-    /// ... must pass this test...
-    testable_case: TestableCase<'tcx>,
-
-    /// ... and these subpairs must match.
-    ///
-    /// ---
-    /// Subpairs typically represent tests that can only be performed after their
-    /// parent has succeeded. For example, the pattern `Some(3)` might have an
-    /// outer match pair that tests for the variant `Some`, and then a subpair
-    /// that tests its field for the value `3`.
-    subpairs: Vec<Self>,
+struct MatchPairTree<'tcx> {
+    kind: MatchPairKind<'tcx>,
 
     /// Span field of the THIR pattern this node was created from.
     pattern_span: Span,
+}
+
+#[derive(Debug, Clone)]
+enum MatchPairKind<'tcx> {
+    Or {
+        or_subpats: Box<[FlatPat<'tcx>]>,
+    },
+    Testable {
+        /// Place that will be tested.
+        place: Place<'tcx>,
+        /// Test to perform against the place, and the desired outcome.
+        testable_case: TestableCase<'tcx>,
+
+        /// Further tests that can only be performed after this test has succeeded.
+        /// For example, in the pattern `Some(3)` this node might represent a test
+        /// for the variant `Some`, while a subpair would test its field for the
+        /// value `3`.
+        subpairs: Vec<MatchPairTree<'tcx>>,
+    },
 }
 
 /// A runtime test to perform to determine which candidates match a scrutinee place.
@@ -1948,10 +1935,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'tcx>,
         match_pair: MatchPairTree<'tcx>,
     ) {
-        let TestableCase::Or { pats } = match_pair.testable_case else { bug!() };
-        debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
+        let MatchPairKind::Or { or_subpats } = match_pair.kind else { bug!() };
+        debug!("expanding or-pattern: candidate={:#?}\nor_subpats={:#?}", candidate, or_subpats);
         candidate.or_span = Some(match_pair.pattern_span);
-        candidate.subcandidates = pats
+        candidate.subcandidates = or_subpats
             .into_iter()
             .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
@@ -2116,7 +2103,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug_assert!(
             remaining_match_pairs
                 .iter()
-                .all(|match_pair| matches!(match_pair.testable_case, TestableCase::Or { .. }))
+                .all(|match_pair| matches!(match_pair.kind, MatchPairKind::Or { .. }))
         );
 
         // Visit each leaf candidate within this subtree, add a copy of the remaining
@@ -2167,8 +2154,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates[0].match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
-        // Unwrap is ok after simplification.
-        let match_place = match_pair.place.unwrap();
+
+        let MatchPairKind::Testable { place: match_place, .. } = match_pair.kind else {
+            bug!("match pair must be testable")
+        };
         debug!(?test, ?match_pair);
 
         (match_place, test)
@@ -2336,6 +2325,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Use [`DeclareLetBindings`] to control whether the `let` bindings are
     /// declared or not.
+    ///
+    /// Must be called within a [`Builder::in_if_then_scope`], to indicate where
+    /// to break to if the `let` fails to match.
     pub(crate) fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
@@ -2357,7 +2349,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         let [branch] = built_tree.branches.try_into().unwrap();
 
-        self.break_for_else(built_tree.otherwise_block, self.source_info(expr_span));
+        // If pattern-matching failed, break out of the enclosing if-then scope.
+        self.break_from_if_then_scope(built_tree.otherwise_block, self.source_info(expr_span));
 
         match declare_let_bindings {
             DeclareLetBindings::Yes => {
@@ -2445,15 +2438,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let mut guard_span = rustc_span::DUMMY_SP;
 
-            let (post_guard_block, otherwise_post_guard_block) =
+            let (guard_true_block, guard_false_block) =
                 self.in_if_then_scope(match_scope, guard_span, |this| {
                     guard_span = this.thir[guard].span;
-                    this.then_else_break(
+                    this.lower_if_condition(
                         block,
                         guard,
-                        None, // Use `self.local_scope()` as the temp scope
-                        this.source_info(arm.span),
-                        DeclareLetBindings::No, // For guards, `let` bindings are declared separately
+                        LowerIfCondArgs {
+                            temp_scope_override: None, // Use `this.local_scope()`.
+                            variable_source_info: this.source_info(arm.span),
+                            // For guards, `let` bindings are declared separately.
+                            declare_let_bindings: DeclareLetBindings::No,
+                        },
                     )
                 });
 
@@ -2471,10 +2467,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             for &(_, temp, _) in fake_borrows {
                 let cause = FakeReadCause::ForMatchGuard;
-                self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(temp));
+                self.cfg.push_fake_read(guard_true_block, guard_end, cause, Place::from(temp));
             }
 
-            self.cfg.goto(otherwise_post_guard_block, source_info, sub_branch.otherwise_block);
+            self.cfg.goto(guard_false_block, source_info, sub_branch.otherwise_block);
 
             // We want to ensure that the matched candidates are bound
             // after we have confirmed this candidate *and* any
@@ -2511,16 +2507,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for binding in by_value_bindings.clone() {
                 let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
                 let cause = FakeReadCause::ForGuardBinding;
-                self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(local_id));
+                self.cfg.push_fake_read(guard_true_block, guard_end, cause, Place::from(local_id));
             }
             // Only schedule drops for the last sub-branch we lower.
             self.bind_matched_candidate_for_arm_body(
-                post_guard_block,
+                guard_true_block,
                 schedule_drops,
                 by_value_bindings,
             );
 
-            post_guard_block
+            guard_true_block
         } else {
             // (Here, it is not too early to bind the matched
             // candidate on `block`, because there is no guard result

@@ -85,6 +85,7 @@ fn field_fix(ctx: &DiagnosticsContext<'_, '_>, d: &hir::UnresolvedField<'_>) -> 
 
     if !is_editable_crate(target_module.krate(ctx.sema.db), ctx.sema.db)
         || SyntaxKind::from_keyword(field_name, ctx.edition).is_some()
+        || !syntax::utils::is_identifier(field_name, ctx.edition)
     {
         return None;
     }
@@ -148,11 +149,7 @@ fn add_field_to_struct_fix(
                 Some(make::visibility_pub_crate())
             };
 
-            let field_name = match field_name.chars().next() {
-                Some(ch) if ch.is_numeric() => return None,
-                Some(_) => make::name(field_name),
-                None => return None,
-            };
+            let field_name = make::name(field_name);
 
             let (offset, record_field) = record_field_layout(
                 visibility,
@@ -180,12 +177,7 @@ fn add_field_to_struct_fix(
             // Add a field list to the Unit Struct
             let mut src_change_builder =
                 SourceChangeBuilder::new(struct_range.file_id.file_id(ctx.sema.db));
-            let field_name = match field_name.chars().next() {
-                // FIXME : See match arm below regarding tuple structs.
-                Some(ch) if ch.is_numeric() => return None,
-                Some(_) => make::name(field_name),
-                None => return None,
-            };
+            let field_name = make::name(field_name);
             let visibility = if error_range.file_id == struct_range.file_id {
                 None
             } else {
@@ -521,6 +513,18 @@ impl Kek {
 
 fn main() {}
             "#,
+        )
+    }
+
+    #[test]
+    fn no_fix_when_indexed_on_union() {
+        check_no_fix(
+            r#"
+union U { a: u32 }
+fn main(u: U) {
+    u.0$0;
+}
+"#,
         )
     }
 

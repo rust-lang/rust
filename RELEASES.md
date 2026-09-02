@@ -1,3 +1,10 @@
+Version 1.98.1 (2026-09-03)
+===========================
+
+<a id="1.98.1"></a>
+
+* [rustc: fix miscompilation in generating vtables](https://github.com/rust-lang/rust/issues/161441)
+
 Version 1.98.0 (2026-08-20)
 ==========================
 

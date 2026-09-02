@@ -5,7 +5,7 @@ use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::{FusedIterator, TrustedLen};
 use core::marker::PhantomData;
-use core::mem::{self, DropGuard, ManuallyDrop};
+use core::mem::{self, ManuallyDrop};
 use core::ops::{Bound, Index, RangeBounds};
 use core::ptr;
 
@@ -280,10 +280,10 @@ impl<K: Clone, V: Clone, A: AllocatorClone> Clone for BTreeMap<K, V, A> {
 
                             // We can't destructure subtree directly
                             // because BTreeMap implements Drop
-                            // ignore-tidy-undocumented-unsafe
-                            let (subroot, sublength) = unsafe {
+                            let (subroot, sublength) = {
                                 let subtree = ManuallyDrop::new(subtree);
-                                let root = ptr::read(&subtree.root);
+                                // ignore-tidy-undocumented-unsafe
+                                let root = unsafe { ptr::read(&subtree.root) };
                                 let length = subtree.length;
                                 (root, length)
                             };
@@ -1912,18 +1912,24 @@ impl<K, V, A: AllocatorClone> IntoIterator for BTreeMap<K, V, A> {
 #[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V, A: AllocatorClone> Drop for IntoIter<K, V, A> {
     fn drop(&mut self) {
-        while let Some(kv) = self.dying_next() {
-            let guard = DropGuard::new(&mut *self, |this| {
+        struct DropGuard<'a, K, V, A: AllocatorClone>(&'a mut IntoIter<K, V, A>);
+
+        impl<'a, K, V, A: AllocatorClone> Drop for DropGuard<'a, K, V, A> {
+            fn drop(&mut self) {
                 // Continue the same loop we perform below. This only runs when unwinding, so we
                 // don't have to care about panics this time (they'll abort).
-                while let Some(kv) = this.dying_next() {
+                while let Some(kv) = self.0.dying_next() {
                     // SAFETY: we consume the dying handle immediately.
                     unsafe { kv.drop_key_val() };
                 }
-            });
+            }
+        }
+
+        while let Some(kv) = self.dying_next() {
+            let guard = DropGuard(self);
             // SAFETY: we don't touch the tree before consuming the dying handle.
             unsafe { kv.drop_key_val() };
-            DropGuard::dismiss(guard);
+            mem::forget(guard);
         }
     }
 }

@@ -7,7 +7,6 @@
 use crate::borrow::{Borrow, BorrowMut};
 use crate::clone::TrivialClone;
 use crate::cmp::Ordering;
-use crate::convert::Infallible;
 use crate::error::Error;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
@@ -195,8 +194,8 @@ impl Error for TryFromSliceError {}
 
 #[stable(feature = "try_from_slice_error", since = "1.36.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-const impl From<Infallible> for TryFromSliceError {
-    fn from(x: Infallible) -> TryFromSliceError {
+const impl From<!> for TryFromSliceError {
+    fn from(x: !) -> TryFromSliceError {
         match x {}
     }
 }

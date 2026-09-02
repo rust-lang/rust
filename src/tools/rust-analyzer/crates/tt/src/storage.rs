@@ -12,9 +12,6 @@ use std::{assert_matches, collections::hash_map, fmt::Debug, hint::cold_path, me
 #[cfg(all(debug_assertions, not(miri)))]
 use std::cell::Cell;
 
-#[cfg(not(all(debug_assertions, not(miri))))]
-use std::mem::MaybeUninit;
-
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Span, SpanAnchor, SyntaxContext, TextRange, TextSize};
@@ -105,7 +102,7 @@ struct UninitBuffer {
     #[cfg(all(debug_assertions, not(miri)))]
     buffer: Box<[u8]>,
     #[cfg(not(all(debug_assertions, not(miri))))]
-    buffer: Box<[MaybeUninit<u8>]>,
+    buffer: Box<[std::mem::MaybeUninit<u8>]>,
 }
 
 impl UninitBuffer {
@@ -807,10 +804,6 @@ unsafe fn decode_extended_span(
     }
 }
 
-// FIXME: It'll probably be better to ensure this ourselves via a `#[repr(C, align(4))]` wrapper, even though practically
-// this holds for all 32- and 64-bit targets (Rust does not guarantee this).
-const _: () = assert!(align_of::<*const *const str>() >= 4); // Needed for the tagging of idents.
-
 unsafe fn decode_symbol<'a>(
     mut ptr: BufferReader<'a>,
     first_byte: u8,
@@ -830,8 +823,6 @@ unsafe fn decode_symbol<'a>(
     (ptr, symbols[symbol_idx as usize].clone())
 }
 
-/// We need `MaybeUninit` to preserve provenance.
-///
 /// The returned `u32` is the length of the children *in bytes*, if we read a subtree. Otherwise it's zero.
 unsafe fn decode<'a>(
     mut ptr: BufferReader<'a>,

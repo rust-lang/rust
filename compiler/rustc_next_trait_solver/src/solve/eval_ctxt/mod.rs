@@ -1074,7 +1074,8 @@ where
             | ty::AliasTermKind::OpaqueTy { .. }
             | ty::AliasTermKind::FreeTy { .. } => self.next_ty_infer().into(),
             ty::AliasTermKind::FreeConst { .. }
-            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. }
             | ty::AliasTermKind::AnonConst { .. }
             | ty::AliasTermKind::ProjectionConst { .. } => self.next_const_infer().into(),
         }
@@ -1440,12 +1441,15 @@ where
                 if self.resolve_vars_if_possible(alias_const).has_non_region_infer() {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 } else {
+                    // Evaluation failed because the const was too generic or was an invalid type
+                    // for const generics. The result of normalization is the alias itself,
+                    // unchanged, but marked as rigid.
+                    //
                     // We do not instantiate to the `alias_const` passed in, but rather
-                    // `goal.predicate.alias`. The `alias_const` passed in might correspond to the `impl`
-                    // form of a constant (with generic arguments corresponding to the impl block),
-                    // however, we want to structurally instantiate to the original, non-rebased,
-                    // trait `Self` form of the constant (with generic arguments being the trait
-                    // `Self` type).
+                    // `projection_term`, which is the unprocessed, original alias contained within
+                    // the goal. The `alias_const` passed in might be a Projection whose DefId is an
+                    // impl of the trait, however, we want to structurally instantiate to the
+                    // original DefId on the trait itself.
                     self.eq(
                         param_env,
                         projection_term.to_term(self.cx(), ty::IsRigid::Yes),
