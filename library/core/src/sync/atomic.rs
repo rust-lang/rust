@@ -290,6 +290,26 @@ mod private {
 /// `Self` reference/pointer to `Self::Storage`. Transmuting a `Self` reference/pointer to
 /// `Self::Storage` can only be done if the reference/pointer has the same alignment as
 /// `Self::Storage`.
+#[unstable(
+    feature = "atomic_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
+pub impl(self) unsafe trait AtomicPrimitive: Sized + Copy {
+    /// Temporary implementation detail.
+    type Storage: Sized;
+}
+
+/// A marker trait for primitive types which can perform load/store operations atomically.
+///
+/// This is an implementation detail for <code>[Atomic]\<T></code> which may disappear or be
+/// replaced at any time.
+///
+/// # Safety
+///
+/// Types implementing this trait must be primitives that can perform load/store operations
+/// atomically.
+///
 ///
 /// The associated `Self::OpType` type must be an integer or pointer type that is the same size as
 /// `Self`. This is the type used with the atomic_load and atomic_store functions. Transmuting
@@ -311,9 +331,7 @@ mod private {
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-pub impl(self) unsafe trait AtomicPrimitive: Sized + Copy {
-    /// Temporary implementation detail.
-    type Storage: Sized;
+pub impl(self) unsafe trait AtomicLoadStore: Sized + Copy + AtomicPrimitive {
     /// Temporary implementation detail.
     type OpType: Sized + Copy;
 }
@@ -342,7 +360,7 @@ pub impl(self) unsafe trait AtomicPrimitive: Sized + Copy {
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-pub impl(self) unsafe trait AtomicCas: AtomicPrimitive {}
+pub impl(self) unsafe trait AtomicCas: AtomicLoadStore {}
 
 /// A market trait for primitive types which have the same alignment as their atomic counter-parts.
 ///
@@ -362,7 +380,7 @@ pub impl(self) unsafe trait AtomicCas: AtomicPrimitive {}
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-pub impl(self) unsafe trait AtomicAlignedPrimitive: AtomicPrimitive {}
+pub impl(self) unsafe trait AtomicAlignedPrimitive: AtomicLoadStore {}
 
 /// A marker trait for atomic integer types.
 ///
@@ -429,8 +447,7 @@ macro_rules! impl_atomic_traits {
             issue = "none"
         )]
         #[cfg(any(target_has_atomic_load_store = $size, doc))]
-        unsafe impl $(<$T>)? AtomicPrimitive for $Primitive {
-            type Storage = private::$Storage<$Operand>;
+        unsafe impl $(<$T>)? AtomicLoadStore for $Primitive {
             type OpType = $Operand;
         }
     };
@@ -511,20 +528,40 @@ macro_rules! impl_atomic_traits {
 
     (
         [$T:ident] $Primitive:ty as $Storage:ident<$Operand:ty>,
-        size($size:literal), $($trait:ident),+ $(,)?
+        size($size:literal) $(, $trait:ident)*
     ) => {
+        #[unstable(
+            feature = "atomic_internals",
+            reason = "implementation detail which may disappear or be replaced at any time",
+            issue = "none"
+        )]
+        #[cfg(any(target_has_atomic_load_store = $size, doc))]
+        unsafe impl <$T> AtomicPrimitive for $Primitive {
+            type Storage = private::$Storage<$Operand>;
+        }
+
         $(
             impl_atomic_traits!(@impl [$T] $Primitive as $Storage<$Operand>, size($size), $trait);
-        )+
+        )*
     };
 
     (
         $Primitive:ty as $Storage:ident<$Operand:ty>,
-        size($size:literal), $($trait:ident),+ $(,)?
+        size($size:literal) $(, $trait:ident)*
     ) => {
+        #[unstable(
+            feature = "atomic_internals",
+            reason = "implementation detail which may disappear or be replaced at any time",
+            issue = "none"
+        )]
+        #[cfg(any(target_has_atomic_load_store = $size, doc))]
+        unsafe impl AtomicPrimitive for $Primitive {
+            type Storage = private::$Storage<$Operand>;
+        }
+
         $(
             impl_atomic_traits!(@impl [] $Primitive as $Storage<$Operand>, size($size), $trait);
-        )+
+        )*
     };
 }
 
@@ -538,28 +575,8 @@ impl_atomic_traits!(i32 as Align4<i32>, size("32"), load_store, cas, aligned, si
 impl_atomic_traits!(u32 as Align4<u32>, size("32"), load_store, cas, aligned, unsigned, bitwise);
 impl_atomic_traits!(i64 as Align8<i64>, size("64"), load_store, cas, aligned, signed, bitwise);
 impl_atomic_traits!(u64 as Align8<u64>, size("64"), load_store, cas, aligned, unsigned, bitwise);
-
-#[unstable(
-    feature = "atomic_internals",
-    reason = "implementation detail which may disappear or be replaced at any time",
-    issue = "none"
-)]
-#[cfg(any(target_has_atomic_load_store = "128", doc))]
-unsafe impl AtomicPrimitive for i128 {
-    type Storage = private::Align16<i128>;
-    type OpType = i128;
-}
-
-#[unstable(
-    feature = "atomic_internals",
-    reason = "implementation detail which may disappear or be replaced at any time",
-    issue = "none"
-)]
-#[cfg(any(target_has_atomic_load_store = "128", doc))]
-unsafe impl AtomicPrimitive for u128 {
-    type Storage = private::Align16<u128>;
-    type OpType = u128;
-}
+impl_atomic_traits!(u128 as Align16<u128>, size("128"));
+impl_atomic_traits!(i128 as Align16<i128>, size("128"));
 
 #[cfg(target_pointer_width = "16")]
 impl_atomic_traits!(isize as Align2<isize>, size("ptr"), load_store, cas, aligned, signed, bitwise);
@@ -748,7 +765,7 @@ pub enum Ordering {
     SeqCst,
 }
 
-impl<T: AtomicPrimitive> Atomic<T> {
+impl<T: AtomicLoadStore> Atomic<T> {
     /// Creates a new `Atomic<T>` with the given value.
     ///
     /// # Examples
@@ -1860,7 +1877,7 @@ impl<T: AtomicBitwise> Atomic<T> {
 }
 
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
-impl<T: AtomicPrimitive + Default> Default for Atomic<T> {
+impl<T: AtomicLoadStore + Default> Default for Atomic<T> {
     #[inline]
     fn default() -> Self {
         Self::new(T::default())
@@ -1869,7 +1886,7 @@ impl<T: AtomicPrimitive + Default> Default for Atomic<T> {
 
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: AtomicPrimitive> From<T> for Atomic<T> {
+impl<T: AtomicLoadStore> From<T> for Atomic<T> {
     fn from(value: T) -> Self {
         Self::new(value)
     }
