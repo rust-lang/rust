@@ -7,7 +7,7 @@
 use std::borrow::Cow;
 use std::hash::Hash;
 use std::ops::Range;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::{cmp, fmt, iter, mem};
 
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
@@ -419,6 +419,11 @@ fn make_attr_token_stream(
     AttrTokenStream::new(stack_top.inner)
 }
 
+/// A shared empty attr token stream, used to avoid an unnecessary `Arc` allocation for every empty
+/// token stream.
+static EMPTY_ATTR_TOKEN_STREAM: LazyLock<AttrTokenStream> =
+    LazyLock::new(|| AttrTokenStream(Arc::new(Vec::new())));
+
 /// Like `TokenTree`, but for `AttrTokenStream`.
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub enum AttrTokenTree {
@@ -431,8 +436,12 @@ pub enum AttrTokenTree {
 }
 
 impl AttrTokenStream {
-    pub fn new(tokens: Vec<AttrTokenTree>) -> AttrTokenStream {
-        AttrTokenStream(Arc::new(tokens))
+    pub fn new(tts: Vec<AttrTokenTree>) -> AttrTokenStream {
+        if tts.is_empty() {
+            EMPTY_ATTR_TOKEN_STREAM.clone()
+        } else {
+            AttrTokenStream(Arc::new(tts))
+        }
     }
 
     /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`. During
@@ -620,13 +629,18 @@ pub enum Spacing {
     JointHidden,
 }
 
+/// A shared empty token stream, used to avoid an unnecessary `Arc` allocation for every empty
+/// token stream.
+static EMPTY_TOKEN_STREAM: LazyLock<TokenStream> =
+    LazyLock::new(|| TokenStream(Arc::new(Vec::new())));
+
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encodable, Decodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct TokenStream(Arc<Vec<TokenTree>>);
 
 impl TokenStream {
     pub fn new(tts: Vec<TokenTree>) -> TokenStream {
-        TokenStream(Arc::new(tts))
+        if tts.is_empty() { TokenStream::default() } else { TokenStream(Arc::new(tts)) }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -837,6 +851,12 @@ impl TokenStream {
             return Some((TokenStream::new(new_stream), sp));
         }
         None
+    }
+}
+
+impl Default for TokenStream {
+    fn default() -> TokenStream {
+        EMPTY_TOKEN_STREAM.clone()
     }
 }
 
