@@ -540,7 +540,8 @@ macro_rules! common_visitor_and_walkers {
                 impl_visitable!(|&$($lt)? $($mut)? self: Ident, visitor: &mut V, _extra: ()| {
                     visitor.visit_ident(self)
                 });
-                visit_span(self, span)
+                visit_visitable!($($mut)? self, span);
+                Self::Result::output()
             }
 
             // This macro defines a custom visit method for each listed type.
@@ -757,17 +758,6 @@ macro_rules! common_visitor_and_walkers {
                 ctxt: Self::Ctxt,
                 vis: &mut V,
             ) -> V::Result;
-        }
-
-        // This is only used by the MutVisitor. We include this symmetry here to make writing other
-        // functions easier.
-        $(${ignore($lt)}
-            #[expect(unused, rustc::disallowed_pass_by_ref)]
-            #[inline]
-        )?
-        fn visit_span<$($lt,)? V: $Visitor$(<$lt>)?>(vis: &mut V, span: &$($lt)? $($mut)? Span) -> V::Result {
-            $(${ignore($mut)} vis.visit_span(span))?;
-            V::Result::output()
         }
 
         $(impl_visitable!(|&$lt self: ThinVec<(UseTree, NodeId)>, vis: &mut V, _extra: ()| {
@@ -1078,7 +1068,8 @@ macro_rules! common_visitor_and_walkers {
                 ExprKind::Dummy => {}
             }
 
-            visit_span(vis, span)
+            visit_visitable!($($mut)? vis, span);
+            V::Result::output()
         });
 
         define_named_walk!($(($mut))? $Visitor$(<$lt>)?
