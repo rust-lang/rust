@@ -24,7 +24,7 @@ use crate::{
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
     ty::CanonicalQueryInput<I, QueryInput<I, T>>;
-pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
+pub type CanonicalResponse<I> = Canonical<I, ResponseAndExternalConstraints<I>>;
 /// The result of evaluating a canonical query.
 ///
 /// FIXME: We use a different type than the existing canonical queries. This is because
@@ -598,11 +598,19 @@ pub enum FetchEligibleAssocItemResponse<I: Interner> {
 pub struct Response<I: Interner> {
     pub certainty: Certainty,
     pub var_values: CanonicalVarValues<I>,
+}
+
+impl<I: Interner> Eq for Response<I> {}
+
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub struct ResponseAndExternalConstraints<I: Interner> {
+    pub response: Response<I>,
     /// Additional constraints returned by this query.
     pub external_constraints: I::ExternalConstraints,
 }
 
-impl<I: Interner> Eq for Response<I> {}
+impl<I: Interner> Eq for ResponseAndExternalConstraints<I> {}
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]

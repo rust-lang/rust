@@ -54,27 +54,25 @@ pub enum HasChanged {
 
 // FIXME(trait-system-refactor-initiative#117): we don't detect whether a response
 // ended up pulling down any universes.
-fn has_no_inference_or_external_constraints<I: Interner>(
-    response: ty::Canonical<I, Response<I>>,
-) -> bool {
+fn has_no_inference_or_external_constraints<I: Interner>(response: CanonicalResponse<I>) -> bool {
     let ExternalConstraintsData {
         ref region_constraints,
         ref opaque_types,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
-    response.value.var_values.is_identity()
+    response.value.response.var_values.is_identity()
         && region_constraints.is_empty()
         && opaque_types.is_empty()
         && normalization_nested_goals.is_empty()
 }
 
-fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<I>>) -> bool {
+fn has_only_region_constraints<I: Interner>(response: CanonicalResponse<I>) -> bool {
     let ExternalConstraintsData {
         region_constraints: _,
         ref opaque_types,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
-    response.value.var_values.is_identity_modulo_regions()
+    response.value.response.var_values.is_identity_modulo_regions()
         && opaque_types.is_empty()
         && normalization_nested_goals.is_empty()
 }
@@ -308,7 +306,7 @@ where
         }
 
         let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
-            candidate.result.value.certainty == Certainty::Yes
+            candidate.result.value.response.certainty == Certainty::Yes
                 && has_no_inference_or_external_constraints(candidate.result)
         });
         if let Some((i, c)) = always_applicable {
@@ -329,7 +327,7 @@ where
             // We pull down the certainty of `Certainty::Yes` to ambiguity when combining
             // these responses, b/c we're combining more than one response and this we
             // don't know which one applies.
-            match candidate.result.value.certainty {
+            match candidate.result.value.response.certainty {
                 Certainty::Yes => maybe,
                 Certainty::Maybe(cand_maybe) => maybe.or(cand_maybe),
             }

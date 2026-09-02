@@ -393,7 +393,7 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
     let goal_evaluation = &initial_result.1;
     match goal_evaluation.result {
         Err(_) => return,
-        Ok(response) if !response.value.certainty.is_overflow() => return,
+        Ok(response) if !response.value.response.certainty.is_overflow() => return,
         Ok(_) => {}
     }
 
@@ -405,7 +405,10 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
             delegate.cx().recursion_limit() * 2,
         );
 
-        if new_goal_evaluation.result.is_ok_and(|response| response.value.certainty.is_overflow()) {
+        if new_goal_evaluation
+            .result
+            .is_ok_and(|response| response.value.response.certainty.is_overflow())
+        {
             Err(())
         } else {
             Ok((new_result, new_goal_evaluation))
@@ -1615,11 +1618,8 @@ where
         let canonical = canonicalize_response(
             self.delegate,
             self.max_input_universe,
-            Response {
-                var_values,
-                certainty,
-                external_constraints: self.cx().mk_external_constraints(external_constraints),
-            },
+            Response { var_values, certainty },
+            external_constraints,
         );
 
         Ok(canonical)

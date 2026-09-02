@@ -86,9 +86,9 @@ where
         match result.0 {
             Ok(response) => {
                 if has_no_inference_or_external_constraints(response) {
-                    if response.value.certainty == Certainty::Yes {
+                    if response.value.response.certainty == Certainty::Yes {
                         return Some(PathKind::Coinductive);
-                    } else if response.value.certainty == Certainty::overflow(false) {
+                    } else if response.value.response.certainty == Certainty::overflow(false) {
                         return Some(PathKind::Unknown);
                     }
                 }
@@ -117,9 +117,9 @@ where
     fn is_ambiguous_result(result: (QueryResult<I>, AccessedOpaques<I>)) -> Option<Certainty> {
         result.0.ok().and_then(|response| {
             if has_no_inference_or_external_constraints(response)
-                && matches!(response.value.certainty, Certainty::Maybe { .. })
+                && matches!(response.value.response.certainty, Certainty::Maybe { .. })
             {
-                Some(response.value.certainty)
+                Some(response.value.response.certainty)
             } else {
                 None
             }

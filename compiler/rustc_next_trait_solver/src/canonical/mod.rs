@@ -28,7 +28,7 @@ use crate::delegate::SolverDelegate;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData,
     ExternalRegionConstraints, Goal, NestedNormalizationGoals, QueryInput, Response,
-    VisibleForLeakCheck, inspect,
+    ResponseAndExternalConstraints, VisibleForLeakCheck, inspect,
 };
 
 pub mod canonicalizer;
@@ -40,6 +40,12 @@ trait ResponseT<I: Interner> {
 impl<I: Interner> ResponseT<I> for Response<I> {
     fn var_values(&self) -> CanonicalVarValues<I> {
         self.var_values
+    }
+}
+
+impl<I: Interner> ResponseT<I> for ResponseAndExternalConstraints<I> {
+    fn var_values(&self) -> CanonicalVarValues<I> {
+        self.response.var_values
     }
 }
 
@@ -76,17 +82,25 @@ where
     (orig_values, query_input)
 }
 
-pub(super) fn canonicalize_response<D, I, T>(
+pub(super) fn canonicalize_response<D, I>(
     delegate: &D,
     max_input_universe: ty::UniverseIndex,
-    value: T,
-) -> ty::Canonical<I, T>
+    response: Response<I>,
+    external_constraints: ExternalConstraintsData<I>,
+) -> CanonicalResponse<I>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
-    T: TypeFoldable<I>,
 {
-    Canonicalizer::canonicalize_response(delegate, max_input_universe, value)
+    Canonicalizer::canonicalize_response(
+        delegate,
+        max_input_universe,
+        (response, external_constraints),
+    )
+    .unchecked_map(|(response, external_constraints)| ResponseAndExternalConstraints {
+        response,
+        external_constraints: delegate.cx().mk_external_constraints(external_constraints),
+    })
 }
 
 /// After calling a canonical query, we apply the constraints returned
@@ -111,13 +125,18 @@ where
     let instantiation =
         compute_query_response_instantiation_values(delegate, &original_values, &response, span);
 
-    let Response { var_values, external_constraints, certainty } =
-        delegate.instantiate_canonical(response, instantiation);
+    let (Response { certainty, var_values }, external_constraints) = delegate
+        .instantiate_canonical(
+            response.unchecked_map(|response| {
+                (response.response, (&*response.external_constraints).clone())
+            }),
+            instantiation,
+        );
 
     unify_query_var_values(delegate, param_env, &original_values, var_values, span);
 
     let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
-        &*external_constraints;
+        external_constraints;
 
     match region_constraints {
         ExternalRegionConstraints::Old(r) => register_region_constraints(
@@ -137,7 +156,7 @@ where
             delegate.register_solver_region_constraint(r.clone(), span)
         }
     };
-    register_new_opaque_types(delegate, opaque_types, span);
+    register_new_opaque_types(delegate, &opaque_types, span);
 
     (normalization_nested_goals.clone(), certainty)
 }
@@ -621,12 +640,14 @@ pub fn response_no_constraints_raw<I: Interner>(
     ty::Canonical {
         max_universe,
         var_kinds,
-        value: Response {
-            var_values: ty::CanonicalVarValues::make_identity(cx, var_kinds),
-            // FIXME: maybe we should store the "no response" version in cx, like
-            // we do for cx.types and stuff.
+        value: ResponseAndExternalConstraints {
+            response: Response {
+                var_values: ty::CanonicalVarValues::make_identity(cx, var_kinds),
+                // FIXME: maybe we should store the "no response" version in cx, like
+                // we do for cx.types and stuff.
+                certainty,
+            },
             external_constraints: cx.mk_external_constraints(ExternalConstraintsData::new(cx)),
-            certainty,
         },
     }
 }

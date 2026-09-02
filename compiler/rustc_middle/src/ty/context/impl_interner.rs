@@ -11,8 +11,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::{
-    BoundVar, CollectAndApply, DebruijnIndex, Interner, TypeFoldable, Unnormalized, VisitorResult,
-    search_graph, try_visit,
+    BoundVar, CollectAndApply, DebruijnIndex, Interner, TypeFoldable, TypeVisitableExt,
+    Unnormalized, VisitorResult, search_graph, try_visit,
 };
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
