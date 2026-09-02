@@ -2,35 +2,35 @@
 //@ assembly-output: emit-asm
 //
 //@ revisions: AARCH64_LINUX AARCH64_BE AARCH64_DARWIN AARCH64_MSVC ARM64EC_MSVC X64_LINUX X64_WINDOWS_GNU X64_WINDOWS_MSVC RISCV64 LOONGARCH64
-//@ [AARCH64_LINUX] compile-flags: -Copt-level=3 --target aarch64-unknown-linux-gnu
-//@ [AARCH64_LINUX] needs-llvm-components: aarch64
-//@ [AARCH64_LINUX] filecheck-flags: --check-prefixes AARCH64,AARCH64-NOTAPPLE
-//@ [AARCH64_BE] compile-flags: -Copt-level=3 --target aarch64_be-unknown-linux-gnu
-//@ [AARCH64_BE] needs-llvm-components: aarch64
-//@ [AARCH64_BE] filecheck-flags: --check-prefixes AARCH64,AARCH64-NOTAPPLE
-//@ [AARCH64_DARWIN] compile-flags: -Copt-level=3 --target aarch64-apple-darwin
-//@ [AARCH64_DARWIN] needs-llvm-components: aarch64
-//@ [AARCH64_DARWIN] filecheck-flags: --check-prefixes AARCH64,AARCH64-APPLE
-//@ [AARCH64_MSVC] compile-flags: -Copt-level=3 --target aarch64-pc-windows-msvc
-//@ [AARCH64_MSVC] needs-llvm-components: aarch64
-//@ [AARCH64_MSVC] filecheck-flags: --check-prefixes AARCH64,AARCH64-NOTAPPLE
-//@ [ARM64EC_MSVC] compile-flags: -Copt-level=3 --target arm64ec-pc-windows-msvc
-//@ [ARM64EC_MSVC] needs-llvm-components: aarch64
-//@ [ARM64EC_MSVC] min-llvm-version: 23
-//@ [ARM64EC_MSVC] filecheck-flags: --check-prefixes AARCH64,AARCH64-NOTAPPLE
-//@ [X64_LINUX] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel --target x86_64-unknown-linux-gnu
-//@ [X64_LINUX] needs-llvm-components: x86
-//@ [X64_LINUX] filecheck-flags: --check-prefixes X64,X64-LINUX
-//@ [X64_WINDOWS_GNU] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel --target x86_64-pc-windows-gnu
-//@ [X64_WINDOWS_GNU] needs-llvm-components: x86
-//@ [X64_WINDOWS_GNU] filecheck-flags: --check-prefixes X64,X64-WINDOWS
-//@ [X64_WINDOWS_MSVC] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel --target x86_64-pc-windows-msvc
-//@ [X64_WINDOWS_MSVC] needs-llvm-components: x86
-//@ [X64_WINDOWS_MSVC] filecheck-flags: --check-prefixes X64,X64-WINDOWS
-//@ [RISCV64] compile-flags: -Copt-level=3 --target riscv64gc-unknown-linux-gnu
-//@ [RISCV64] needs-llvm-components: riscv
-//@ [LOONGARCH64] compile-flags: -Copt-level=3 --target loongarch64-unknown-linux-gnu
-//@ [LOONGARCH64] needs-llvm-components: loongarch
+//@[AARCH64_LINUX] compile-flags: -Copt-level=3 --target aarch64-unknown-linux-gnu
+//@[AARCH64_LINUX] needs-llvm-components: aarch64
+//@[AARCH64_LINUX] filecheck-flags: --check-prefixes AARCH64,AARCH64-NOTAPPLE
+//@[AARCH64_BE] compile-flags: -Copt-level=3 --target aarch64_be-unknown-linux-gnu
+//@[AARCH64_BE] needs-llvm-components: aarch64
+//@[AARCH64_BE] filecheck-flags: --check-prefixes AARCH64,AARCH64-NOTAPPLE
+//@[AARCH64_DARWIN] compile-flags: -Copt-level=3 --target aarch64-apple-darwin
+//@[AARCH64_DARWIN] needs-llvm-components: aarch64
+//@[AARCH64_DARWIN] filecheck-flags: --check-prefixes AARCH64,AARCH64-APPLE
+//@[AARCH64_MSVC] compile-flags: -Copt-level=3 --target aarch64-pc-windows-msvc
+//@[AARCH64_MSVC] needs-llvm-components: aarch64
+//@[AARCH64_MSVC] filecheck-flags: --check-prefixes AARCH64,AARCH64-NOTAPPLE
+//@[ARM64EC_MSVC] compile-flags: -Copt-level=3 --target arm64ec-pc-windows-msvc
+//@[ARM64EC_MSVC] needs-llvm-components: aarch64
+//@[ARM64EC_MSVC] min-llvm-version: 23
+//@[ARM64EC_MSVC] filecheck-flags: --check-prefixes AARCH64,AARCH64-NOTAPPLE
+//@[X64_LINUX] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel --target x86_64-unknown-linux-gnu
+//@[X64_LINUX] needs-llvm-components: x86
+//@[X64_LINUX] filecheck-flags: --check-prefixes X64,X64-LINUX
+//@[X64_WINDOWS_GNU] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel --target x86_64-pc-windows-gnu
+//@[X64_WINDOWS_GNU] needs-llvm-components: x86
+//@[X64_WINDOWS_GNU] filecheck-flags: --check-prefixes X64,X64-WINDOWS
+//@[X64_WINDOWS_MSVC] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel --target x86_64-pc-windows-msvc
+//@[X64_WINDOWS_MSVC] needs-llvm-components: x86
+//@[X64_WINDOWS_MSVC] filecheck-flags: --check-prefixes X64,X64-WINDOWS
+//@[RISCV64] compile-flags: -Copt-level=3 --target riscv64gc-unknown-linux-gnu
+//@[RISCV64] needs-llvm-components: riscv
+//@[LOONGARCH64] compile-flags: -Copt-level=3 --target loongarch64-unknown-linux-gnu
+//@[LOONGARCH64] needs-llvm-components: loongarch
 
 #![feature(f16b, no_core)]
 #![no_core]
