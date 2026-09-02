@@ -2908,27 +2908,27 @@ macro_rules! if_8_bit {
 #[cfg(target_has_atomic_load_store)]
 macro_rules! atomic_int {
     (
-     $s_int_type:literal, $int_type:ident, $atomic_type:ident
+        $s_int_type:literal, $int_type:ident, $atomic_type:ident
     ) => {
         /// An integer type which can be safely shared between threads.
         ///
         /// This type has the same
         #[doc = if_8_bit!(
-            $int_type,
-            yes = ["size, alignment, and bit validity"],
-            no = ["size and bit validity"],
-        )]
+                            $int_type,
+                            yes = ["size, alignment, and bit validity"],
+                            no = ["size and bit validity"],
+                        )]
         /// as the underlying integer type, [`
         #[doc = $s_int_type]
         /// `].
         #[doc = if_8_bit! {
-            $int_type,
-            no = [
-                "However, the alignment of this type is always equal to its ",
-                "size, even on targets where [`", $s_int_type, "`] has a ",
-                "lesser alignment."
-            ],
-        }]
+                            $int_type,
+                            no = [
+                                "However, the alignment of this type is always equal to its ",
+                                "size, even on targets where [`", $s_int_type, "`] has a ",
+                                "lesser alignment."
+                            ],
+                        }]
         /// For more about the differences between atomic types and
         /// non-atomic types as well as information about the portability of
         /// this type, please see the [module-level documentation].
