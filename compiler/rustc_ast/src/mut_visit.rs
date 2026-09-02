@@ -97,16 +97,6 @@ where
     }
 }
 
-impl<V: MutVisitor, T> MutVisitable<V> for (T,)
-where
-    T: MutVisitable<V>,
-{
-    type Extra = T::Extra;
-    fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
-        self.0.visit_mut(visitor, extra);
-    }
-}
-
 impl<V: MutVisitor, T1, T2> MutVisitable<V> for (T1, T2)
 where
     T1: MutVisitable<V, Extra = ()>,
