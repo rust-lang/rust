@@ -113,31 +113,6 @@ pub(super) mod resolver {
         ) -> TypeRelativeDelegationRes {
             let tcx = self.tcx();
 
-            // let resolver_and_node = tcx.index_ast(()).get(def_id).map(Steal::borrow);
-            // let Some(resolver_and_node) = resolver_and_node else { unreachable!() };
-            // let (r, node) = &*resolver_and_node;
-
-            // let (delegation, id) = match node {
-            //     AstOwner::Item(Item { kind: ItemKind::Delegation(d), id, .. })
-            //     | AstOwner::TraitItem(Item { kind: AssocItemKind::Delegation(d), id, .. })
-            //     | AstOwner::ImplItem(Item { kind: AssocItemKind::Delegation(d), id, .. }) => {
-            //         (d, id)
-            //     }
-            //     _ => unreachable!("we are processing only delegations"),
-            // };
-
-            // let mut ctxt = LoweringContext::new(self.tcx(), r, *id, true, false);
-
-            // let path = ctxt.lower_qpath(
-            //     delegation.id,
-            //     &delegation.qself,
-            //     &delegation.path,
-            //     ParamMode::Optional,
-            //     AllowReturnTypeNotation::No,
-            //     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-            //     None,
-            // );
-
             let nodes = &self.tcx().lower_to_hir(def_id).unwrap().nodes;
 
             if let Some((ty_hir_id, span, ident)) =
@@ -146,13 +121,11 @@ pub(super) mod resolver {
                 if ty_hir_id == HirId::INVALID {
                     TypeRelativeDelegationRes::Error
                 } else {
-                    let ty = nodes.nodes.get(ty_hir_id.local_id).unwrap().node.expect_ty();
+                    let ty = nodes.nodes[ty_hir_id.local_id].node.expect_ty();
 
-                    if let Some(sig_id) = tcx.resolve_delegation_sig(span, def_id, ty, ident) {
-                        TypeRelativeDelegationRes::Ok(sig_id)
-                    } else {
-                        TypeRelativeDelegationRes::Error
-                    }
+                    tcx.resolve_delegation_sig(span, def_id, ty, ident)
+                        .map(|sig_id| TypeRelativeDelegationRes::Ok(sig_id))
+                        .unwrap_or(TypeRelativeDelegationRes::Error)
                 }
             } else {
                 tcx.hir_opt_delegation_sig_id(def_id)

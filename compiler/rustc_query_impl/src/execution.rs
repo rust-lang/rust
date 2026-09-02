@@ -8,6 +8,7 @@ use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{
     DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
 };
+use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::{
     ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryMode,
     QueryState, QueryVTable,
@@ -19,7 +20,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_structures::Limit;
 
-use crate::diagnostics::{QueryOverflow, QueryOverflowNote};
+use crate::diagnostics::{QueryCycleWhileLoweringDelegation, QueryOverflow, QueryOverflowNote};
 use crate::handle_cycle_error;
 use crate::incremental::should_verify_loaded_value;
 use crate::job::{
@@ -54,13 +55,26 @@ fn handle_cycle<'tcx, C: QueryCache>(
     }
     let _guard = defer(|| *tcx.query_system.cycle_handler_nesting.lock() -= 1);
 
-    let error = handle_cycle_error::create_cycle_error(tcx, &cycle, nested);
+    match (query.create_tagged_key)(key) {
+        TaggedQueryKey::lower_to_hir(def_id) | TaggedQueryKey::hir_owner(def_id)
+            if tcx.is_delegation(def_id) =>
+        {
+            let error = tcx.dcx().create_err(QueryCycleWhileLoweringDelegation {
+                span: tcx.untracked().source_span.get(def_id).unwrap_or(DUMMY_SP),
+            });
 
-    if nested {
-        // Avoid custom handlers and only use the robust `create_cycle_error` for nested cycle errors
-        (query.handle_cycle_error_fn)(tcx, key, cycle, error)
-    } else {
-        (query.handle_cycle_error_fn)(tcx, key, cycle, error)
+            (query.handle_cycle_error_fn)(tcx, key, cycle, error)
+        }
+        _ => {
+            let error = handle_cycle_error::create_cycle_error(tcx, &cycle, nested);
+
+            if nested {
+                // Avoid custom handlers and only use the robust `create_cycle_error` for nested cycle errors
+                handle_cycle_error::default(error)
+            } else {
+                (query.handle_cycle_error_fn)(tcx, key, cycle, error)
+            }
+        }
     }
 }
 

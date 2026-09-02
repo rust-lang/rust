@@ -1020,6 +1020,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.coroutine_kind(def_id).is_some()
     }
 
+    pub fn is_delegation(self, def_id: LocalDefId) -> bool {
+        self.resolutions(()).delegation_infos.contains_key(&def_id)
+    }
+
     pub fn is_async_drop_in_place_coroutine(self, def_id: DefId) -> bool {
         self.is_lang_item(self.parent(def_id), LangItem::AsyncDropInPlace)
     }

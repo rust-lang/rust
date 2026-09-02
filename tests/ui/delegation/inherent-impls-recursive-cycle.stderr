@@ -1,11 +1,19 @@
-error[E0391]: cycle detected when collecting associated items of `<impl at $DIR/inherent-impls-recursive-cycle.rs:50:1: 50:8>`
+error[E0391]: cycle detected when collecting associated items of `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>`
+  --> $DIR/inherent-impls-recursive-cycle.rs:37:1
    |
-   = note: ...which requires computing associated item data for `<impl at $DIR/inherent-impls-recursive-cycle.rs:50:1: 50:8>::trait_foo`...
-   = note: ...which requires getting owner for `<impl at $DIR/inherent-impls-recursive-cycle.rs:50:1: 50:8>::trait_foo`...
-   = note: ...which requires lowering HIR for `<impl at $DIR/inherent-impls-recursive-cycle.rs:50:1: 50:8>::trait_foo`...
-   = note: ...which again requires collecting associated items of `<impl at $DIR/inherent-impls-recursive-cycle.rs:50:1: 50:8>`, completing the cycle
+LL | impl S4 {
+   | ^^^^^^^
+   |
+note: ...which requires computing associated item data for `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>::trait_foo`...
+  --> $DIR/inherent-impls-recursive-cycle.rs:39:11
+   |
+LL |     reuse trait_foo;
+   |           ^^^^^^^^^
+   = note: ...which requires getting owner for `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>::trait_foo`...
+   = note: ...which requires lowering HIR for `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>::trait_foo`...
+   = note: ...which again requires collecting associated items of `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>`, completing the cycle
 note: cycle used when lowering HIR for `trait_foo_reused`
-  --> $DIR/inherent-impls-recursive-cycle.rs:55:11
+  --> $DIR/inherent-impls-recursive-cycle.rs:42:11
    |
 LL | reuse S4::trait_foo as trait_foo_reused;
    |           ^^^^^^^^^

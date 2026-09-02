@@ -18,9 +18,13 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 pub(crate) fn hir_owner<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    _: Cycle<'tcx>,
+    _: QueryCycle<'tcx>,
     err: Diag<'_>,
 ) -> rustc_middle::hir::ProjectedMaybeOwner<'tcx> {
+    if !tcx.is_delegation(def_id) {
+        err.emit().raise_fatal();
+    }
+
     err.cancel();
     rustc_middle::hir::ProjectedMaybeOwner::new(tcx.delegation_error(def_id))
 }
@@ -28,29 +32,41 @@ pub(crate) fn hir_owner<'tcx>(
 pub(crate) fn lower_to_hir<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    _: Cycle<'tcx>,
+    _: QueryCycle<'tcx>,
     err: Diag<'_>,
 ) -> rustc_hir::MaybeOwner<'tcx> {
+    if !tcx.is_delegation(def_id) {
+        err.emit().raise_fatal();
+    }
+
     err.cancel();
     tcx.delegation_error(def_id)
 }
 
 pub(crate) fn clauses_of<'tcx>(
-    _: TyCtxt<'_>,
-    _: DefId,
-    _: Cycle<'tcx>,
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    _: QueryCycle<'tcx>,
     err: Diag<'_>,
 ) -> rustc_middle::ty::GenericClauses<'tcx> {
+    if def_id.as_local().is_some_and(|def_id| !tcx.is_delegation(def_id)) {
+        err.emit().raise_fatal();
+    }
+
     err.cancel();
     Default::default()
 }
 
 pub(crate) fn explicit_clauses_of<'tcx>(
-    _: TyCtxt<'_>,
-    _: DefId,
-    _: Cycle<'tcx>,
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    _: QueryCycle<'tcx>,
     err: Diag<'_>,
 ) -> rustc_middle::ty::GenericClauses<'tcx> {
+    if def_id.as_local().is_some_and(|def_id| !tcx.is_delegation(def_id)) {
+        err.emit().raise_fatal();
+    }
+
     err.cancel();
     Default::default()
 }
@@ -391,7 +407,7 @@ pub(crate) fn create_cycle_error<'tcx>(
 ) -> Diag<'tcx> {
     assert!(!frames.is_empty());
 
-    let span = DUMMY_SP;
+    let span = frames[0].tagged_key.catch_default_span(tcx, frames[1 % frames.len()].span);
 
     let mut cycle_stack = Vec::new();
 
@@ -406,7 +422,7 @@ pub(crate) fn create_cycle_error<'tcx>(
     let mut prev = span;
     for i in 1..frames.len() {
         let frame = &frames[i];
-        let span = DUMMY_SP;
+        let span = frame.tagged_key.catch_default_span(tcx, frames[(i + 1) % frames.len()].span);
         cycle_stack.push(crate::diagnostics::CycleStack {
             span: if span == prev { DUMMY_SP } else { span },
             desc: frame.tagged_key.catch_description(tcx),
