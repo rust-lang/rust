@@ -224,7 +224,7 @@ declare_rustdoc_lint! {
     /// Detects if re-export doc comments are used in a way that might break.
     /// This is a compatibility lint, and will eventually be removed.
     UNPORTABLE_MARKDOWN,
-    Warn,
+    Deny,
     "detects Markdown that may parse differently in a new version"
 }
 
