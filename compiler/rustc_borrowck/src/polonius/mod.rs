@@ -41,7 +41,7 @@ mod liveness_constraints;
 use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::bit_set::SparseBitMatrix;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
@@ -55,7 +55,28 @@ use crate::dataflow::BorrowIndex;
 use crate::region_infer::values::LivenessValues;
 use crate::universal_regions::UniversalRegions;
 
-pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
+#[derive(Clone)]
+pub(crate) struct LiveLoans {
+    num_points: usize,
+    // This matrix always has more rows (PointIndex) than columns (BorrowIndex),
+    // and the borrow dimension is usually very low (single digit in 90% of cases in our benchmark suite),
+    // so we store it packed in a single bitset. Rows are points, columns are borrows.
+    flat_matrix: DenseBitSet<usize>,
+}
+
+impl LiveLoans {
+    pub(crate) fn new(num_points: usize, num_borrows: usize) -> Self {
+        Self { num_points, flat_matrix: DenseBitSet::new_empty(num_points * num_borrows) }
+    }
+    pub(crate) fn insert(&mut self, row: PointIndex, col: BorrowIndex) {
+        let bit_index = row.index() + self.num_points * col.index();
+        self.flat_matrix.insert(bit_index);
+    }
+    pub(crate) fn contains(&self, row: PointIndex, col: BorrowIndex) -> bool {
+        let bit_index = row.index() + self.num_points * col.index();
+        self.flat_matrix.contains(bit_index)
+    }
+}
 
 /// This struct holds the necessary
 ///  - liveness data, created during MIR typeck, and which will be used to lazily compute the
@@ -109,6 +130,7 @@ impl PoloniusContext {
         universal_regions: &UniversalRegions<'tcx>,
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
+        num_points: usize,
     ) {
         // We don't need to prepare the graph (index NLL constraints, etc.) if we have no loans to
         // trace throughout localized constraints.
@@ -118,7 +140,7 @@ impl PoloniusContext {
             // step in the chain (the NLL loan scope and active loans computations).
             let graph = LocalizedConstraintGraph::new(liveness, outlives_constraints);
 
-            let mut live_loans = LiveLoans::new(borrow_set.len());
+            let mut live_loans = LiveLoans::new(num_points, borrow_set.len());
             let mut visitor = LoanLivenessVisitor { liveness, live_loans: &mut live_loans };
             graph.traverse(
                 body,
