@@ -354,7 +354,7 @@ pub impl(self) unsafe trait AtomicCas: AtomicPrimitive {}
 /// Types implementing this trait must be primitives whose alignment is the same as their atomic
 /// counter parts. Implementing this trait automatically implements the following methods for
 /// <code>[Atomic]\<Self></code>:
-/// 
+///
 /// - from_mut
 /// - from_mut_slice
 #[unstable(
@@ -373,7 +373,7 @@ pub impl(self) unsafe trait AtomicAlignedPrimitive: AtomicPrimitive {}
 ///
 /// Types implementing this trait must be primitive integer types. Implementing this trait
 /// automatically implements the following atomic methods for <code>[Atomic]\<Self></code>:
-/// 
+///
 /// - fetch_add
 /// - fetch_sub
 /// - fetch_max
@@ -540,7 +540,13 @@ impl_atomic_traits!(i64 as Align8<i64>, size("64"), load_store, cas, aligned, si
 impl_atomic_traits!(u64 as Align8<u64>, size("64"), load_store, cas, aligned, unsigned, bitwise);
 impl_atomic_traits!(i128 as Align16<i128>, size("128"), load_store, cas, aligned, signed, bitwise);
 impl_atomic_traits!(
-    u128 as Align16<u128>, size("128"), load_store, cas, aligned, unsigned, bitwise
+    u128 as Align16<u128>,
+    size("128"),
+    load_store,
+    cas,
+    aligned,
+    unsigned,
+    bitwise
 );
 
 #[cfg(target_pointer_width = "16")]
@@ -552,15 +558,33 @@ impl_atomic_traits!(isize as Align8<isize>, size("ptr"), load_store, cas, aligne
 
 #[cfg(target_pointer_width = "16")]
 impl_atomic_traits!(
-    usize as Align2<usize>, size("ptr"), load_store, cas, aligned, unsigned, bitwise
+    usize as Align2<usize>,
+    size("ptr"),
+    load_store,
+    cas,
+    aligned,
+    unsigned,
+    bitwise
 );
 #[cfg(target_pointer_width = "32")]
 impl_atomic_traits!(
-    usize as Align4<usize>, size("ptr"), load_store, cas, aligned, unsigned, bitwise
+    usize as Align4<usize>,
+    size("ptr"),
+    load_store,
+    cas,
+    aligned,
+    unsigned,
+    bitwise
 );
 #[cfg(target_pointer_width = "64")]
 impl_atomic_traits!(
-    usize as Align8<usize>, size("ptr"), load_store, cas, aligned, unsigned, bitwise
+    usize as Align8<usize>,
+    size("ptr"),
+    load_store,
+    cas,
+    aligned,
+    unsigned,
+    bitwise
 );
 
 #[cfg(target_pointer_width = "16")]
@@ -619,7 +643,7 @@ const EMULATE_ATOMIC_BOOL: bool = cfg!(any(
 /// loads and stores of `u8`.
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type AtomicBool = Atomic::<bool>;
+pub type AtomicBool = Atomic<bool>;
 
 /// A raw pointer type which can be safely shared between threads.
 ///
@@ -722,16 +746,15 @@ impl<T: AtomicPrimitive> Atomic<T> {
     ///
     /// let atomic = Atomic::<bool>:new(true);
     /// ```
-    #[inline]
-    #[stable(feature = "integer_atomics_stable", since="1.34.0")]
-    #[rustc_const_stable(feature= "const_atomic_new", since="1.34.0")]
+    #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
+    #[rustc_const_stable(feature = "const_atomic_new", since = "1.34.0")]
     #[must_use]
     pub const fn new(v: T) -> Self {
         Self {
             // SAFETY:
             // By the contract of AtomicPrimitive, it is guaranteed that transmuting between T and
             // T::Storage is valid.
-            v: UnsafeCell::new(unsafe { transmute_unchecked(v) })
+            v: UnsafeCell::new(unsafe { transmute_unchecked(v) }),
         }
     }
 
@@ -940,9 +963,10 @@ impl<T: AtomicPrimitive> Atomic<T> {
         // SAFETY: any data races are prevented by atomic intrinsics and the raw
         // pointer passed in is valid because we got it from a reference.
         unsafe {
-            transmute_unchecked(
-                atomic_load::<_, /* VOLATILE */ false>(self.v.get().cast::<T::OpType>(), order)
-            )
+            transmute_unchecked(atomic_load::<_, /* VOLATILE */ false>(
+                self.v.get().cast::<T::OpType>(),
+                order,
+            ))
         }
     }
 
@@ -1003,9 +1027,10 @@ impl<T: AtomicPrimitive> Atomic<T> {
     pub const unsafe fn load_volatile(self: *const Self, order: Ordering) -> T {
         // SAFETY: follows from our own safety requirements.
         unsafe {
-            transmute_unchecked(
-                atomic_load::<_, /* VOLATILE */ true>(self.cast::<T::OpType>(), order)
-            )
+            transmute_unchecked(atomic_load::<_, /* VOLATILE */ true>(
+                self.cast::<T::OpType>(),
+                order,
+            ))
         }
     }
 
@@ -1038,7 +1063,9 @@ impl<T: AtomicPrimitive> Atomic<T> {
         // pointer passed in is valid because we got it from a reference.
         unsafe {
             atomic_store::<_, /* VOLATILE */ false>(
-                self.v.get().cast::<T::OpType>(), transmute_unchecked::<_, T::OpType>(val), order
+                self.v.get().cast::<T::OpType>(),
+                transmute_unchecked::<_, T::OpType>(val),
+                order,
             );
         }
     }
@@ -1098,7 +1125,9 @@ impl<T: AtomicPrimitive> Atomic<T> {
         // SAFETY: follows from our own safety requirements.
         unsafe {
             atomic_store::<_, /* VOLATILE */ true>(
-                self.cast::<T::OpType>().cast_mut(), transmute_unchecked::<_, T::OpType>(val), order
+                self.cast::<T::OpType>().cast_mut(),
+                transmute_unchecked::<_, T::OpType>(val),
+                order,
             );
         }
     }
@@ -1127,7 +1156,7 @@ impl<T: AtomicCas> Atomic<T> {
     #[rustc_should_not_be_called_on_const_items]
     pub const fn swap(&self, v: T, order: Ordering) -> T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {  atomic_swap(self.as_ptr(), v, order) }
+        unsafe { atomic_swap(self.as_ptr(), v, order) }
     }
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
@@ -1319,12 +1348,7 @@ impl<T: AtomicCas> Atomic<T> {
         note = "renamed to `try_update` for consistency",
         suggestion = "try_update"
     )]
-    pub fn fetch_update<F>(
-        &self,
-        set_order: Ordering,
-        fetch_order: Ordering,
-        f: F,
-    ) -> Result<T, T>
+    pub fn fetch_update<F>(&self, set_order: Ordering, fetch_order: Ordering, f: F) -> Result<T, T>
     where
         F: FnMut(T) -> Option<T>,
     {
@@ -1643,8 +1667,7 @@ impl<T: AtomicInteger> Atomic<T> {
         // SAFETY: data races are prevented by atomic intrinsics.
         if T::IS_SIGNED {
             unsafe { atomic_max(self.as_ptr(), val, order) }
-        }
-        else {
+        } else {
             unsafe { atomic_umax(self.as_ptr(), val, order) }
         }
     }
@@ -1692,8 +1715,7 @@ impl<T: AtomicInteger> Atomic<T> {
         // SAFETY: data races are prevented by atomic intrinsics.
         if <T as AtomicInteger>::IS_SIGNED {
             unsafe { atomic_min(self.as_ptr(), val, order) }
-        }
-        else {
+        } else {
             unsafe { atomic_umin(self.as_ptr(), val, order) }
         }
     }
@@ -2876,7 +2898,6 @@ macro_rules! atomic_int {
                 "lesser alignment."
             ],
         }]
-        ///
         /// For more about the differences between atomic types and
         /// non-atomic types as well as information about the portability of
         /// this type, please see the [module-level documentation].
