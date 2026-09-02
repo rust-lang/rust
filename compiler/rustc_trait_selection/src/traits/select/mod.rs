@@ -1818,8 +1818,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         // We prefer `Sized` candidates over everything.
         let mut sized_candidates = candidates.iter().filter(|c| {
-            matches!(c.candidate, SizedCandidate) // nia: prefmode::marker && matches(AutoImpl)
-                || (matches!(candidate_preference_mode, CandidatePreferenceMode::Marker) && c.candidate.is_impl_candidate())
+            matches!(c.candidate, SizedCandidate)
+            // nia: prefmode::marker && matches(AutoImpl)
+            //
+            // zannabianca1997: to do: how to match sized behaviour for auto. Idk how to catch just
+            // `Move` and match <https://github.com/rust-lang/rust/pull/138176> and similar. nia
+            // edits matches too large and change some behaviour. Go back here if something do not
+            // choose the correct implementation of Move in the old solver.
         });
         if let Some(sized_candidate) = sized_candidates.next() {
             // There should only ever be a single sized candidate
