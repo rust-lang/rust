@@ -1,11 +1,11 @@
 warning: unnecessary braces around `for` iterator expression
-  --> $DIR/unused-braces-for-iterator-temp-scope-issue-160741.rs:18:18
+  --> $DIR/unused-braces-for-iterator-temp-scope-issue-160741.rs:20:18
    |
 LL |     for value in { data.lock().unwrap().values.clone() } {
    |                  ^^                                   ^^
    |
 note: the lint level is defined here
-  --> $DIR/unused-braces-for-iterator-temp-scope-issue-160741.rs:6:9
+  --> $DIR/unused-braces-for-iterator-temp-scope-issue-160741.rs:8:9
    |
 LL | #![warn(unused_braces)]
    |         ^^^^^^^^^^^^^
