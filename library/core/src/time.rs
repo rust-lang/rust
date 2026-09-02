@@ -401,6 +401,8 @@ impl Duration {
 
     /// Creates a new `Duration` from the specified number of hours.
     ///
+    /// For this method, one hour is defined as 60 minutes, or 3,600 seconds.
+    ///
     /// # Panics
     ///
     /// Panics if the given number of hours overflows the `Duration` size.
@@ -428,6 +430,8 @@ impl Duration {
     }
 
     /// Creates a new `Duration` from the specified number of minutes.
+    ///
+    /// For this method, one minute is defined as 60 seconds.
     ///
     /// # Panics
     ///
