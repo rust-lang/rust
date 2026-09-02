@@ -421,13 +421,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
-        // `Not` and `Neg` can be selected using an unresolved operand type,
-        // later constraints may still determine that type,
-        // so we call `resolve_vars_with_obligations` for them.
+        // Resolve what we can for `Not` and `Neg`, but allow later constraints
+        // to determine an unresolved operand type,
+        // so we call `deeply_resolve_ignoring_regions_with_obligations` for them.
         match unop {
             hir::UnOp::Deref => {
                 // Dereferencing must distinguish builtin pointers from
                 // overloaded `Deref`, so it still requires a structurally resolved type.
+                //
+                // This is necessary as raw pointers do not implement `Deref`.
                 let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
                 self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
                     let mut err =
@@ -450,13 +452,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
             }
             hir::UnOp::Not => {
-                let oprnd_t = self.resolve_vars_with_obligations(oprnd_t);
+                let oprnd_t = self.deeply_resolve_ignoring_regions_with_obligations(oprnd_t);
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
             }
             hir::UnOp::Neg => {
-                let oprnd_t = self.resolve_vars_with_obligations(oprnd_t);
+                let oprnd_t = self.deeply_resolve_ignoring_regions_with_obligations(oprnd_t);
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_numeric() { oprnd_t } else { result }
