@@ -6,12 +6,8 @@ LL |     FOO.fetch_add(1, Ordering::Relaxed)
    |
 note: inside `Atomic::<usize>::fetch_add`
   --> $SRC_DIR/core/src/sync/atomic.rs:LL:COL
-  ::: $SRC_DIR/core/src/sync/atomic.rs:LL:COL
-   |
-   = note: in this macro invocation
 note: inside `atomic::atomic_add::<usize, usize>`
   --> $SRC_DIR/core/src/sync/atomic.rs:LL:COL
-   = note: this error originates in the macro `atomic_int` which comes from the expansion of the macro `atomic_int_ptr_sized` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refers_to_static.rs:16:14
