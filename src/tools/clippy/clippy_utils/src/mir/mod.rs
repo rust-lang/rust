@@ -1,11 +1,13 @@
-use std::iter;
+use std::{iter, mem};
 
 use rustc_data_structures::either::Either;
 use rustc_hir::{Expr, HirId};
+use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    BasicBlock, Body, InlineAsmOperand, Local, Location, Place, START_BLOCK, StatementKind, TerminatorKind, traversal,
+    BasicBlock, BasicBlockData, Body, InlineAsmOperand, Local, Location, Place, START_BLOCK, StatementKind,
+    TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 
@@ -29,33 +31,119 @@ pub fn visit_local_usage<const N: usize>(
     mir: &Body<'_>,
     location: Location,
 ) -> Option<[LocalUsage; N]> {
-    let init = [const {
-        LocalUsage {
-            local_use_locs: Vec::new(),
-            local_consume_or_mutate_locs: Vec::new(),
+    let live_on_entry = reachable_while_storage_live(&locals, mir, location)?;
+
+    let mut v = V {
+        locals: &locals,
+        location,
+        results: [const {
+            LocalUsage {
+                local_use_locs: Vec::new(),
+                local_consume_or_mutate_locs: Vec::new(),
+            }
+        }; N],
+    };
+
+    for &tbb in mir.basic_blocks.reverse_postorder() {
+        if live_on_entry[tbb] != 0 {
+            v.visit_basic_block_data(tbb, &mir.basic_blocks[tbb]);
         }
-    }; N];
+    }
 
-    traversal::Postorder::new(&mir.basic_blocks, location.block, None)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .try_fold(init, |usage, tbb| {
-            let tdata = &mir.basic_blocks[tbb];
+    Some(v.results)
+}
 
-            // Give up on loops
-            if tdata.terminator().successors().any(|s| s == location.block) {
+/// Starting from the specified location, determines which blocks may be entered while any of the
+/// `locals` are still live.
+///
+/// Returns:
+/// - `None` if `location.block` may be re-entered while any of the locals are live.
+/// - `Some` with (for each [`BasicBlock`]) a bitset representing which of the locals are potentially live at the start
+///   of the block. Bit `i` stands for `locals[i]`. The exception is `location.block`, which is entered at `location`
+///   and therefore has every bit set.
+fn reachable_while_storage_live<const N: usize>(
+    locals: &[Local; N],
+    mir: &Body<'_>,
+    location: Location,
+) -> Option<IndexVec<BasicBlock, u8>> {
+    fn join(base: &mut u8, other: u8) -> bool {
+        let new = *base | other;
+        mem::replace(base, new) != new
+    }
+    fn enqueue(state: &mut u8) -> bool {
+        let new = *state | ENQUEUED_FLAG;
+        mem::replace(state, new) != new
+    }
+    fn dequeue(state: &mut u8) {
+        *state &= !ENQUEUED_FLAG;
+    }
+
+    const ENQUEUED_FLAG: u8 = 0b1000_0000;
+    const {
+        assert!(
+            N <= ENQUEUED_FLAG.trailing_zeros() as usize,
+            "implementation isn't well suited for handling a larger number locals nor do we have any reason to pass a larger number"
+        );
+    }
+
+    // Kills every local which is `StorageDead`-ed by a statement of `bb_data` at or after `start`.
+    let apply_deaths = |bb_data: &BasicBlockData<'_>, start: usize, mut live: u8| {
+        // `start` is past the end when `location` points at the terminator.
+        for stmt in bb_data.statements.get(start..).unwrap_or_default() {
+            if let StatementKind::StorageDead(killed) = stmt.kind
+                && let Some(slot) = locals.iter().position(|&local| local == killed)
+            {
+                live &= !(1 << slot);
+            }
+        }
+        live
+    };
+
+    // Walk forward over the successors of `location`.
+    // Each block's state packs the locals which are live on entry into the low `N` bits, plus a flag
+    // marking the block as queued.
+
+    let mut states = IndexVec::from_raw(vec![0; mir.basic_blocks.len()]);
+    let mut queue = Vec::new();
+    // Assumed to have all locals live, so fully filled
+    let init = u8::MAX >> (u8::BITS as usize - N);
+    states[location.block] = init;
+
+    // `location.block` is the only block entered part-way through, so it is walked separately.
+    // Reaching it again in the loop below means a cycle closed around `location`.
+    let bb_data = &mir.basic_blocks[location.block];
+    let result = apply_deaths(bb_data, location.statement_index + 1, init);
+    // A path is not followed past the point where every local is dead, as no statement there can
+    // refer to the values being tracked.
+    // A local declared inside a loop is therefore treated as distinct on each iteration.
+    if result != 0 {
+        for succ in bb_data.terminator().successors() {
+            if succ == location.block {
                 return None;
             }
+            if join(&mut states[succ], result) && enqueue(&mut states[succ]) {
+                queue.push(succ);
+            }
+        }
+    }
 
-            let mut v = V {
-                locals: &locals,
-                location,
-                results: usage,
-            };
-            v.visit_basic_block_data(tbb, tdata);
-            Some(v.results)
-        })
+    while let Some(bb) = queue.pop() {
+        dequeue(&mut states[bb]);
+        let bb_data = &mir.basic_blocks[bb];
+        let result = apply_deaths(bb_data, 0, states[bb]);
+        if result != 0 {
+            for succ in bb_data.terminator().successors() {
+                if succ == location.block {
+                    return None;
+                }
+                if join(&mut states[succ], result) && enqueue(&mut states[succ]) {
+                    queue.push(succ);
+                }
+            }
+        }
+    }
+
+    Some(states)
 }
 
 struct V<'a, const N: usize> {

@@ -3,7 +3,7 @@
 # will set it up here.
 
 [package]
-name = "undocumented_unsafe_blocks"
+name = "undocumented-unsafe-blocks"
 edition = "2024"
 publish = false
 version = "0.1.0"
