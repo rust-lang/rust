@@ -1,14 +1,56 @@
-error: `box_patterns` has been removed
+error: `box` patterns have been removed (feature `box_patterns`)
   --> $DIR/removed-syntax-box-patterns.rs:2:9
    |
 LL |     let box x = Box::new('c');
-   |         ^^^^^
+   |         ^^^
+   |
+   = help: enable feature `deref_patterns` instead and...
+help: ...if possible just remove keyword `box`...
+   |
+LL -     let box x = Box::new('c');
+LL +     let x = Box::new('c');
+   |
+help: ...otherwise replace it with an invocation of macro `deref`
+   |
+LL -     let box x = Box::new('c');
+LL +     let deref!(x) = Box::new('c');
+   |
 
-error: `box_patterns` has been removed
+error: `box` patterns have been removed (feature `box_patterns`)
   --> $DIR/removed-syntax-box-patterns.rs:7:18
    |
 LL |     let Packet { box x } = Packet { x: Box::new(0) };
    |                  ^^^
+   |
+   = help: enable feature `deref_patterns` instead and...
+help: ...if possible just remove keyword `box`...
+   |
+LL -     let Packet { box x } = Packet { x: Box::new(0) };
+LL +     let Packet { x } = Packet { x: Box::new(0) };
+   |
+help: ...otherwise replace it with an invocation of macro `deref`
+   |
+LL -     let Packet { box x } = Packet { x: Box::new(0) };
+LL +     let Packet { x: deref!(x) } = Packet { x: Box::new(0) };
+   |
 
-error: aborting due to 2 previous errors
+error: `box` patterns have been removed (feature `box_patterns`)
+  --> $DIR/removed-syntax-box-patterns.rs:10:18
+   |
+LL |     let Packet { box ref mut x };
+   |                  ^^^
+   |
+   = help: enable feature `deref_patterns` instead and...
+help: ...if possible just remove keyword `box`...
+   |
+LL -     let Packet { box ref mut x };
+LL +     let Packet { ref mut x };
+   |
+help: ...otherwise replace it with an invocation of macro `deref`
+   |
+LL -     let Packet { box ref mut x };
+LL +     let Packet { x: deref!(ref mut x) };
+   |
+
+error: aborting due to 3 previous errors
 
