@@ -3,6 +3,7 @@
 
 //@ check-pass
 
+#![allow(rustdoc::unportable_markdown)]
 #![allow(rustdoc::private_intra_doc_links)]
 
 mod m {
