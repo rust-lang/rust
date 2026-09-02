@@ -118,7 +118,7 @@ use crate::{io, iter, option, slice, vec};
 /// ```no_run
 /// use std::net::{TcpStream, Ipv6Addr};
 ///
-/// let stream = TcpStream::connect(("[::1]", 443));
+/// let stream = TcpStream::connect(("::1", 443));
 /// // or
 /// let stream = TcpStream::connect("[::1]:443");
 /// // or
