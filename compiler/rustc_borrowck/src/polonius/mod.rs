@@ -36,15 +36,18 @@
 mod constraints;
 mod dump;
 pub(crate) mod legacy;
+mod liveness;
 mod liveness_constraints;
 
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_middle::mir::{Body, Local};
-use rustc_middle::ty::RegionVid;
-use rustc_mir_dataflow::points::PointIndex;
+use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 
 pub(self) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;
@@ -52,7 +55,9 @@ pub(crate) use self::liveness_constraints::record_live_region_variance;
 use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
+pub(crate) use crate::polonius::liveness::DeferredLocals;
 use crate::region_infer::values::LivenessValues;
+use crate::type_check::liveness::{LivenessCalculation, LocalUseMap};
 use crate::universal_regions::UniversalRegions;
 
 pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
@@ -62,7 +67,7 @@ pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
 ///    polonius localized constraints, during NLL region inference as well as MIR dumping,
 ///  - data needed by the borrowck error computation and diagnostics.
 #[derive(Default)]
-pub(crate) struct PoloniusContext {
+pub(crate) struct PoloniusContext<'tcx> {
     /// The graph from which we extract the localized outlives constraints.
     graph: Option<LocalizedConstraintGraph>,
 
@@ -75,6 +80,10 @@ pub(crate) struct PoloniusContext {
     /// currently has more boring locals than NLLs so we record the latter to use in errors and
     /// diagnostics, to focus on the locals we consider relevant and match NLL diagnostics.
     pub(crate) boring_nll_locals: FxHashSet<Local>,
+
+    pub(crate) deferred_locals_for_liveness: DeferredLocals<'tcx>,
+
+    pub(crate) local_use_map: Option<LocalUseMap>,
 }
 
 /// The direction a constraint can flow into. Used to create liveness constraints according to
@@ -91,7 +100,7 @@ pub(crate) enum ConstraintDirection {
     Bidirectional,
 }
 
-impl PoloniusContext {
+impl<'tcx> PoloniusContext<'tcx> {
     /// Computes live loans using the set of loans model for `-Zpolonius=next`.
     ///
     /// First, creates a constraint graph combining regions and CFG points, by:
@@ -102,12 +111,15 @@ impl PoloniusContext {
     /// loan scope and active loans computations.
     ///
     /// The constraint data will be used to compute errors and diagnostics.
-    pub(crate) fn compute_loan_liveness<'tcx>(
+    pub(crate) fn compute_loan_liveness(
         &mut self,
+        tcx: TyCtxt<'tcx>,
         liveness: &mut LivenessValues,
         outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
         universal_regions: &UniversalRegions<'tcx>,
         body: &Body<'tcx>,
+        move_data: &MoveData<'tcx>,
+        location_map: &DenseLocationMap,
         borrow_set: &BorrowSet<'tcx>,
     ) {
         // We don't need to prepare the graph (index NLL constraints, etc.) if we have no loans to
@@ -116,23 +128,90 @@ impl PoloniusContext {
             // From the outlives constraints, liveness, and variances, we can compute reachability
             // on the lazy localized constraint graph to trace the liveness of loans, for the next
             // step in the chain (the NLL loan scope and active loans computations).
-            let graph = LocalizedConstraintGraph::new(liveness, outlives_constraints);
-
-            let mut live_loans = LiveLoans::new(borrow_set.len());
-            let mut visitor = LoanLivenessVisitor { liveness, live_loans: &mut live_loans };
-            graph.traverse(
-                body,
-                liveness,
-                &self.live_region_variances,
-                universal_regions,
-                borrow_set,
-                &mut visitor,
+            let graph = LocalizedConstraintGraph::new(
+                Rc::clone(liveness.location_map()),
+                outlives_constraints,
             );
+
+            let local_use_map = self
+                .local_use_map
+                .as_ref()
+                .expect("local use map should be computed before loan liveness");
+            let deferred_locals_for_liveness =
+                std::mem::take(&mut self.deferred_locals_for_liveness);
+            let mut live_loans = LiveLoans::new(borrow_set.len());
+            let calc = LivenessCalculation::new(tcx, body, location_map, move_data, &local_use_map);
+            let mut traversal = LoanLivenessTraversal {
+                liveness,
+                live_region_variances: &mut self.live_region_variances,
+                live_loans: &mut live_loans,
+                universal_regions,
+                deferred_locals_for_liveness,
+                calc,
+            };
+            graph.traverse(body, universal_regions, borrow_set, &mut traversal);
             liveness.record_live_loans(live_loans);
 
             // The graph can be traversed again during MIR dumping, so we store it here.
             self.graph = Some(graph);
         }
+    }
+}
+
+struct LoanLivenessTraversal<'a, 'tcx> {
+    liveness: &'a mut LivenessValues,
+    live_region_variances: &'a mut BTreeMap<RegionVid, ConstraintDirection>,
+    live_loans: &'a mut LiveLoans,
+    universal_regions: &'a UniversalRegions<'tcx>,
+    deferred_locals_for_liveness: DeferredLocals<'tcx>,
+    calc: LivenessCalculation<'a, 'tcx>,
+}
+
+impl LocalizedConstraintGraphTraversal for LoanLivenessTraversal<'_, '_> {
+    type Visitor<'a>
+        = LoanLivenessVisitor<'a>
+    where
+        Self: 'a;
+
+    fn mk_visitor(
+        &mut self,
+        region: RegionVid,
+    ) -> (&LivenessValues, &BTreeMap<RegionVid, ConstraintDirection>, Self::Visitor<'_>) {
+        if let Some((local, drop_args)) =
+            self.deferred_locals_for_liveness.use_deferred_local(region)
+        {
+            self.calc.compute(local);
+
+            if !self.calc.use_live_at.is_empty() || !self.calc.drop_live_at.is_empty() {
+                record_live_region_variance(
+                    self.calc.tcx,
+                    &mut self.live_region_variances,
+                    self.universal_regions,
+                    self.calc.body.local_decls[local].ty,
+                );
+            }
+            if !self.calc.use_live_at.is_empty() {
+                let local_ty = self.calc.body.local_decls[local].ty;
+                self.calc.tcx.for_each_free_region(&local_ty, |live_region| {
+                    let region = self.universal_regions.to_region_vid(live_region);
+                    self.liveness.add_points(region, &self.calc.use_live_at);
+                });
+            }
+            if !self.calc.drop_live_at.is_empty() {
+                for drop_arg in drop_args {
+                    self.calc.tcx.for_each_free_region(&drop_arg, |live_region| {
+                        let region = self.universal_regions.to_region_vid(live_region);
+                        self.liveness.add_points(region, &self.calc.drop_live_at);
+                    });
+                }
+            }
+        }
+
+        (
+            self.liveness,
+            self.live_region_variances,
+            LoanLivenessVisitor { liveness: self.liveness, live_loans: self.live_loans },
+        )
     }
 }
 

@@ -1877,7 +1877,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// region is contained within the type of a variable that is live at this point.
     /// Note: for now, the sets of live loans is only available when using `-Zpolonius=next`.
     pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, location: Location) -> bool {
-        let point = self.liveness_constraints.point_from_location(location);
+        let point = self.liveness_constraints.location_map().point_from_location(location);
         self.liveness_constraints.is_loan_live_at(loan_idx, point)
     }
 }
