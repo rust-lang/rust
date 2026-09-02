@@ -173,22 +173,13 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for FnItemRef<'_> {
 
         let Self { span, fn_sig, fn_args, ident } = self;
 
-        // FIXME: use existing printing routines to print the function signature
         let suggestion = format!(
-            "{ident}{params} as {unsafety}{abi}fn({args}{variadic}){ret}",
+            "{ident}{params} as {fn_sig}",
             params = if fn_args.is_empty() {
                 String::from("")
             } else {
                 format!("::<{}>", fn_args.terms().join(", "))
             },
-            unsafety = fn_sig.safety().prefix_str(),
-            abi = match fn_sig.abi() {
-                rustc_abi::ExternAbi::Rust => String::from(""),
-                other_abi => format!("extern {other_abi} "),
-            },
-            args = core::iter::repeat_n("_", fn_sig.inputs().skip_binder().len()).join(", "),
-            variadic = if fn_sig.c_variadic() { ", ..." } else { "" },
-            ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" }
         );
 
         let mut diag = Diag::new(
