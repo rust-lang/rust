@@ -118,7 +118,7 @@ When executing on this target, the `std` crate only supports one Rust execution 
 
 #### VEXos Task Scheduler
 
-This target begins execution outside of the context of the builtin [VEXos task scheduler](https://internals.vexide.dev/sdk/tasks). Programs should periodically tick it by calling `std::thread::yield_now` to keep system Simple Tasks up to date. Spawning VEXos Full Tasks (for example, via [`vexTaskAdd`](https://docs.rs/vex-sdk/latest/vex_sdk/task/fn.vexTaskAdd.html)) is forbidden to allow programs to assume that [`vexTasksRun`](https://docs.rs/vex-sdk/latest/vex_sdk/task/fn.vexTasksRun.html) and `std::thread::yield_now` will never switch stacks.
+This target begins execution outside of the context of the builtin [VEXos task scheduler](https://internals.vexide.dev/sdk/tasks). Programs should periodically tick it by calling `std::thread::yield_now` to keep system Simple Tasks up to date. Spawning VEXos Full Tasks through VEX's undocumented scheduler API (e.g. using the `vexTaskAdd` function) is strictly forbidden on this target and will result in undefined behavior. Rust programs may assume that `vexTasksRun` and `std::thread::yield_now` will never switch stacks.
 
 Code running inside a VEXos Simple Task context (for example, inside a user touchscreen callback) is forbidden from ticking the task scheduler reentrantly. Thus, it is invalid for task code to:
 
@@ -128,14 +128,15 @@ Code running inside a VEXos Simple Task context (for example, inside a user touc
 
 #### Exception Handlers
 
-`std::sync` may be used to synchronize resources shared between ISRs and the main thread, although ISRs must not use blocking functions such as `Mutex::lock`, `Condvar::wait`, `LazyLock::deref`, or `OnceLock::get_or_init`. Synchronization primitives are implemented as simple spinlocks over `yield_now`.
+`std::sync` may be used to synchronize resources shared between ISRs and the main thread. However, ISRs should avoid using blocking functions such as `Mutex::lock`, `Condvar::wait`, `LazyLock::deref`, or `OnceLock::get_or_init` to prevent deadlocks and stack overflows from ticking the scheduler on the small IRQ stack. Synchronization primitives are implemented as simple spinlocks over `yield_now`.
 
 ARM exception handlers are forbidden from:
 
-- accessing the default allocator or `std::fs`, since they are not synchronized,
+- accessing the default allocator or `std::fs`,
 - accessing `thread_local` values without proper additional synchronization,
-- using blocking methods in `std::sync`, to prevent deadlocks,
-- or accessing standard I/O streams via `std::io`, since these are not synchronized.
+- or accessing standard I/O streams via `std::io`
+
+since these features are not synchronized.
 
 ## Testing
 
