@@ -89,6 +89,7 @@ fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
             stalled_maybe_info: MaybeInfo::AMBIGUOUS,
             opaques: GoalStalledOnOpaques::Yes {
                 num_opaques_in_storage: 0,
+                num_bounds_for_hidden_tys_in_storage: 0,
                 // This function should only be called when not in erased mode,
                 // otherwise this is wrong. The `compute_goal_fast_path` does this
                 // through `known_no_opaque_types_in_storage`

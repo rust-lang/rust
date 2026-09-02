@@ -78,13 +78,14 @@ where
         GoalStalledOnOpaques::No => {}
         &GoalStalledOnOpaques::Yes {
             num_opaques_in_storage,
+            num_bounds_for_hidden_tys_in_storage,
             ref previously_succeeded_in_erased,
         } => {
             // If any opaques changed in the opaque type storage,
             // rerunning might make progress so we should rerun.
             if delegate
                 .opaque_types_storage_num_entries()
-                .needs_reevaluation(num_opaques_in_storage)
+                .needs_reevaluation(num_opaques_in_storage, num_bounds_for_hidden_tys_in_storage)
             {
                 // Unless this goal previously succeeded in erased mode.
                 // If the stalled goal successfully evaluated while erasing opaque types,

@@ -82,7 +82,8 @@ where
             current_goal_kind: outer.current_goal_kind,
             max_input_universe,
             initial_opaque_types_storage_num_entries: outer
-                .initial_opaque_types_storage_num_entries,
+                .initial_opaque_types_storage_num_entries
+                .clone(),
             search_graph: outer.search_graph,
             nested_goals: propagated_nested_goals,
             origin_span: outer.origin_span,

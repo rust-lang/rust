@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::mem;
 
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::solve::{Goal, QueryInput};
+use rustc_type_ir::solve::{ExternalConstraintsData, Goal, QueryInput, Response};
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalVarKind, CanonicalizerState,
     Flags, InferCtxtLike, Interner, PlaceholderConst, PlaceholderType, Region, TypeFlags,
@@ -88,6 +88,86 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         } else {
             value
         };
+        debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
+        debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
+        let (max_universe, _variables, var_kinds) = canonicalizer.finalize();
+
+        Canonical { max_universe, var_kinds, value }
+    }
+
+    pub(super) fn canonicalize_query_response(
+        delegate: &'a D,
+        max_input_universe: ty::UniverseIndex,
+        value: Response<I>,
+    ) -> ty::Canonical<I, Response<I>> {
+        let mut canonicalizer =
+            Canonicalizer::new(delegate, CanonicalizeMode::Response { max_input_universe });
+
+        let Response { certainty, var_values, external_constraints } = value;
+        let var_values = if var_values.has_type_flags(NEEDS_CANONICAL) {
+            var_values.fold_with(&mut canonicalizer)
+        } else {
+            var_values
+        };
+
+        // FIXME: Too verbose and tons of clones. Refactor `ExternalConstraintsData`, maybe?
+        let ExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            hidden_types_of_opaques,
+            normalization_nested_goals,
+        } = &*external_constraints;
+        let region_constraints = if region_constraints.has_type_flags(NEEDS_CANONICAL) {
+            region_constraints.clone().fold_with(&mut canonicalizer)
+        } else {
+            region_constraints.clone()
+        };
+        let opaque_types = if opaque_types.has_type_flags(NEEDS_CANONICAL) {
+            opaque_types.iter().map(|opaque| opaque.fold_with(&mut canonicalizer)).collect()
+        } else {
+            opaque_types.clone()
+        };
+        let normalization_nested_goals =
+            if normalization_nested_goals.has_type_flags(NEEDS_CANONICAL) {
+                normalization_nested_goals.clone().fold_with(&mut canonicalizer)
+            } else {
+                normalization_nested_goals.clone()
+            };
+
+        // Filter out irrelevant hidden tys, in a fixed-point iteration to make them less bulky.
+        let mut hidden_types_of_opaques_candidates = hidden_types_of_opaques.clone();
+        let mut hidden_types_of_opaques = vec![];
+        while !hidden_types_of_opaques_candidates.is_empty() {
+            let prev_len = hidden_types_of_opaques.len();
+            hidden_types_of_opaques_candidates.retain(|bounds @ (hidden_ty, _)| {
+                if let ty::Infer(ty::TyVar(vid)) = hidden_ty.kind()
+                    && canonicalizer
+                        .state
+                        .sub_root_lookup_table
+                        .contains_key(&delegate.sub_unification_table_root_var(vid))
+                {
+                    hidden_types_of_opaques.push(bounds.clone().fold_with(&mut canonicalizer));
+                    false
+                } else {
+                    true
+                }
+            });
+            if hidden_types_of_opaques.len() == prev_len {
+                break;
+            }
+        }
+
+        let value = Response {
+            certainty,
+            var_values,
+            external_constraints: delegate.cx().mk_external_constraints(ExternalConstraintsData {
+                region_constraints,
+                opaque_types,
+                hidden_types_of_opaques,
+                normalization_nested_goals,
+            }),
+        };
+
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, _variables, var_kinds) = canonicalizer.finalize();
@@ -219,7 +299,36 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 predefined_opaques_in_body
             };
 
-        let value = QueryInput { goal, predefined_opaques_in_body };
+        // Filter out irrelevant hidden tys, in a fixed-point iteration. Otherwise it would make
+        // the query heavy and less cache-friendly.
+        let mut hidden_types_of_opaques_in_body_candidates =
+            input.hidden_types_of_opaques_in_body.to_vec();
+        let mut hidden_types_of_opaques_in_body = vec![];
+        while !hidden_types_of_opaques_in_body_candidates.is_empty() {
+            let prev_len = hidden_types_of_opaques_in_body.len();
+            hidden_types_of_opaques_in_body_candidates.retain(|bound @ (hidden_ty, _)| {
+                if let ty::Infer(ty::TyVar(vid)) = hidden_ty.kind()
+                    && rest_canonicalizer
+                        .state
+                        .sub_root_lookup_table
+                        .contains_key(&delegate.sub_unification_table_root_var(vid))
+                {
+                    hidden_types_of_opaques_in_body.push(bound.fold_with(&mut rest_canonicalizer));
+                    false
+                } else {
+                    true
+                }
+            });
+            if hidden_types_of_opaques_in_body.len() == prev_len {
+                break;
+            }
+        }
+
+        let hidden_types_of_opaques_in_body =
+            delegate.cx().mk_opaque_hidden_ty_bounds_in_body(&hidden_types_of_opaques_in_body);
+
+        let value =
+            QueryInput { goal, predefined_opaques_in_body, hidden_types_of_opaques_in_body };
 
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");

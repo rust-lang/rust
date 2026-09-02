@@ -22,6 +22,7 @@ pub type GoalStalledOnOpaques<'tcx> = ir::solve::GoalStalledOnOpaques<TyCtxt<'tc
 pub type SucceededInErased<'tcx> = ir::solve::SucceededInErased<TyCtxt<'tcx>>;
 
 pub type PredefinedOpaques<'tcx> = &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>;
+pub type OpaqueHiddenTyBounds<'tcx> = &'tcx ty::List<(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, StableHash)]
 pub struct ExternalConstraints<'tcx>(
@@ -60,6 +61,19 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
                 .iter()
                 .map(|opaque| opaque.try_fold_with(folder))
                 .collect::<Result<_, F::Error>>()?,
+            hidden_types_of_opaques: self
+                .hidden_types_of_opaques
+                .iter()
+                .map(|(hidden_ty, bounds)| -> Result<_, F::Error> {
+                    Ok((
+                        (*hidden_ty).try_fold_with(folder)?,
+                        bounds
+                            .iter()
+                            .map(|bound| (*bound).try_fold_with(folder))
+                            .collect::<Result<_, F::Error>>()?,
+                    ))
+                })
+                .collect::<Result<_, F::Error>>()?,
             normalization_nested_goals: self
                 .normalization_nested_goals
                 .clone()
@@ -78,6 +92,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         TypeFolder::cx(folder).mk_external_constraints(ExternalConstraintsData {
             region_constraints: self.region_constraints.clone().fold_with(folder),
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
+            hidden_types_of_opaques: self.hidden_types_of_opaques.clone().fold_with(folder),
             normalization_nested_goals: self.normalization_nested_goals.clone().fold_with(folder),
         })
     }
@@ -88,11 +103,13 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         let ExternalConstraintsData {
             region_constraints,
             opaque_types,
+            hidden_types_of_opaques,
             normalization_nested_goals,
         } = &**self;
 
         try_visit!(region_constraints.visit_with(visitor));
         try_visit!(opaque_types.visit_with(visitor));
+        try_visit!(hidden_types_of_opaques.visit_with(visitor));
         normalization_nested_goals.visit_with(visitor)
     }
 }
@@ -104,6 +121,6 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(GoalStalledOn<'_>, 56);
+    static_assert_size!(GoalStalledOn<'_>, 64);
     // tidy-alphabetical-end
 }

@@ -57,6 +57,7 @@ pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
+    hidden_types_of_opaques: &[(I::Ty, ty::OpaqueHiddenTyBound<I>)],
     typing_mode: TypingMode<I>,
 ) -> (ThinVec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
 where
@@ -68,6 +69,9 @@ where
         QueryInput {
             goal,
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
+            hidden_types_of_opaques_in_body: delegate
+                .cx()
+                .mk_opaque_hidden_ty_bounds_in_body(hidden_types_of_opaques),
         },
     );
 
@@ -76,17 +80,16 @@ where
     (orig_values, query_input)
 }
 
-pub(super) fn canonicalize_response<D, I, T>(
+pub(super) fn canonicalize_response<D, I>(
     delegate: &D,
     max_input_universe: ty::UniverseIndex,
-    value: T,
-) -> ty::Canonical<I, T>
+    value: Response<I>,
+) -> ty::Canonical<I, Response<I>>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
-    T: TypeFoldable<I>,
 {
-    Canonicalizer::canonicalize_response(delegate, max_input_universe, value)
+    Canonicalizer::canonicalize_query_response(delegate, max_input_universe, value)
 }
 
 /// After calling a canonical query, we apply the constraints returned
@@ -116,8 +119,12 @@ where
 
     unify_query_var_values(delegate, param_env, &original_values, var_values, span);
 
-    let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
-        &*external_constraints;
+    let ExternalConstraintsData {
+        region_constraints,
+        opaque_types,
+        hidden_types_of_opaques,
+        normalization_nested_goals,
+    } = &*external_constraints;
 
     match region_constraints {
         ExternalRegionConstraints::Old(r) => register_region_constraints(
@@ -138,6 +145,12 @@ where
         }
     };
     register_new_opaque_types(delegate, opaque_types, span);
+    for (hidden_ty, bounds) in hidden_types_of_opaques {
+        let hidden_ty = delegate.resolve_vars_if_possible(*hidden_ty);
+        if hidden_ty.is_ty_var() {
+            delegate.add_hidden_type_of_opaque_in_storage(hidden_ty, bounds.iter().copied());
+        }
+    }
 
     (normalization_nested_goals.clone(), certainty)
 }

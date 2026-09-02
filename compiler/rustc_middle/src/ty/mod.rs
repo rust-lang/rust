@@ -83,7 +83,7 @@ pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShimKind};
 pub(crate) use self::list::RawList;
 pub use self::list::{List, ListWithCachedTypeInfo};
-pub use self::opaque_types::OpaqueTypeKey;
+pub use self::opaque_types::{OpaqueHiddenTyBound, OpaqueTypeKey};
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
     AliasTerm, AliasTermKind, ArgOutlivesClause, Clause, ClauseKind, CoercePredicate,

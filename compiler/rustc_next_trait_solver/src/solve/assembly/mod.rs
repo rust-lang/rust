@@ -14,9 +14,9 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
 };
 use rustc_type_ir::{
-    self as ty, AliasTy, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode, Unnormalized, Upcast, elaborate,
+    self as ty, AliasTy, Interner, MayBeErased, Region, TypeFlags, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    Upcast, elaborate,
 };
 use tracing::{debug, instrument};
 
@@ -392,6 +392,25 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
+
+    fn consider_hidden_types_of_opaques_bound_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        bound: ty::OpaqueHiddenTyBound<I>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        let assumption = bound.instantiate(ecx.cx(), goal.predicate.self_ty());
+        Self::probe_and_match_goal_against_assumption(
+            ecx,
+            CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
+            goal,
+            assumption,
+            |ecx| {
+                // We want to reprove this goal once we've inferred the
+                // hidden type, so we force the certainty to `Maybe`.
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            },
+        )
+    }
 }
 
 /// Allows callers of `assemble_and_evaluate_candidates` to choose whether to limit
@@ -1086,8 +1105,10 @@ where
     ) -> Result<(), RerunNonErased> {
         let self_ty = goal.predicate.self_ty();
         // We only use this hack during HIR typeck.
-        let opaque_types = match self.typing_mode() {
-            TypingMode::Typeck { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
+        let hidden_types_of_opaques = match self.typing_mode() {
+            TypingMode::Typeck { .. } => {
+                self.hidden_types_of_opaques_modulo_sub_unification(self_ty)
+            }
             TypingMode::Coherence
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
@@ -1101,62 +1122,24 @@ where
             }
         };
 
-        if opaque_types.is_empty() {
+        if hidden_types_of_opaques.is_empty() {
             candidates.extend(self.forced_ambiguity(MaybeInfo::AMBIGUOUS));
             return Ok(());
         }
 
-        for &opaque_ty in &opaque_types {
-            debug!("self ty is sub unified with {opaque_ty:?}");
+        for (hidden_ty, bounds) in hidden_types_of_opaques {
+            debug!("self ty is sub unified with {hidden_ty:?}");
 
-            struct ReplaceOpaque<I: Interner> {
-                cx: I,
-                opaque_ty: ty::OpaqueAliasTy<I>,
-                self_ty: I::Ty,
-            }
-            impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
-                fn cx(&self) -> I {
-                    self.cx
-                }
-                fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-                    if let ty::Alias(is_rigid, alias_ty) = ty.kind()
-                        && let Some(opaque_ty) = alias_ty.try_to_opaque()
-                    {
-                        if opaque_ty == self.opaque_ty {
-                            debug_assert_eq!(is_rigid, ty::IsRigid::No);
-                            return self.self_ty;
-                        }
-                    }
-                    ty.super_fold_with(self)
-                }
-            }
-
-            // We look at all item-bounds of the opaque, replacing the
-            // opaque with the current self type before considering
-            // them as a candidate. Imagine we've got `?x: Trait<?y>`
-            // and `?x` has been sub-unified with the hidden type of
-            // `impl Trait<u32>`, We take the item bound `opaque: Trait<u32>`
+            // We look at all item-bounds of the hidden types, replacing the
+            // instantiating the self type of the bound with the current self
+            // type before considering them as a candidate. Imagine we've got
+            // `?x: Trait<?y>` and `?x` has been sub-unified with the hidden
+            // type of `impl Trait<u32>`, We take the item bound `opaque: Trait<u32>`
             // and replace all occurrences of `opaque` with `?x`. This results
             // in a `?x: Trait<u32>` alias-bound candidate.
-            for item_bound in self
-                .cx()
-                .item_self_bounds(opaque_ty.kind.into())
-                .iter_instantiated(self.cx(), opaque_ty.args)
-                .map(Unnormalized::skip_norm_wip)
-            {
-                let assumption =
-                    item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), opaque_ty, self_ty });
-                candidates.extend(G::probe_and_match_goal_against_assumption(
-                    self,
-                    CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
-                    goal,
-                    assumption,
-                    |ecx| {
-                        // We want to reprove this goal once we've inferred the
-                        // hidden type, so we force the certainty to `Maybe`.
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    },
-                ));
+            for bound in bounds {
+                candidates
+                    .extend(G::consider_hidden_types_of_opaques_bound_candidate(self, goal, bound));
             }
         }
 
