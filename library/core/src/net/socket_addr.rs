@@ -204,7 +204,9 @@ impl SocketAddr {
     /// ```
     /// use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     ///
+    /// // [::1]
     /// let mut socket = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), 8080);
+    /// // [2001:db8::1]
     /// socket.set_ip(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)));
     /// assert_eq!(socket.ip(), IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)));
     /// ```
