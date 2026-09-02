@@ -1,13 +1,13 @@
 // This test is duplicated (with changes) at
-// src/tools/miri/tests/pass/async-panic-track-caller.rs
+// tests/ui/async-await/track-caller/panic-track-caller.rs
 
-// FIXME: catch_unwind is broken in gcc. Will be fixed in the next rustc_codegen_gcc sync.
-//@ ignore-backends: gcc
-//@ run-pass
 //@ edition:2021
 //@ revisions: afn cls afn_cls nofeat
-//@ needs-unwind
-// gate-test-async_fn_track_caller
+//@ run-native
+//
+//
+//
+// Padding comment so that the line numbers are the same as panic-track-caller.rs
 #![feature(stmt_expr_attributes)]
 #![cfg_attr(any(afn, afn_cls), feature(async_fn_track_caller))]
 #![cfg_attr(any(cls, afn_cls), feature(closure_track_caller))]
@@ -56,8 +56,8 @@ async fn foo() {
     future.await;
 }
 
+#[cfg_attr(any(cls, nofeat), expect(ungated_async_fn_track_caller))]
 #[track_caller]
-//[cls,nofeat]~^ WARN `#[track_caller]` on async functions is a no-op
 async fn bar_track_caller() {
     panic!()
 }
@@ -70,8 +70,8 @@ async fn foo_track_caller() {
 struct Foo;
 
 impl Foo {
+    #[cfg_attr(any(cls, nofeat), expect(ungated_async_fn_track_caller))]
     #[track_caller]
-    //[cls,nofeat]~^ WARN `#[track_caller]` on async functions is a no-op
     async fn bar_assoc() {
         panic!();
     }
@@ -105,8 +105,8 @@ async fn foo_block() {
     future.await;
 }
 
+#[cfg_attr(any(cls, nofeat), expect(ungated_async_fn_track_caller))]
 #[track_caller]
-//[cls,nofeat]~^ WARN `#[track_caller]` on async functions is a no-op
 async fn bar_manual_poll() {
     panic!();
 }
