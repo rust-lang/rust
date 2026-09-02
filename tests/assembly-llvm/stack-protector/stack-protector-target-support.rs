@@ -177,13 +177,15 @@
 //@ compile-flags: -C opt-level=2
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, sanitize)]
 #![crate_type = "lib"]
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
 
+// We only do this because we can't disable default sanitizers via compile-flags.
+#[sanitize(safestack = "off")]
 #[no_mangle]
 pub fn foo() {
     // CHECK: foo{{:|()}}
