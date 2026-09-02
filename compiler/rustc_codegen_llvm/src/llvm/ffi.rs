@@ -2172,9 +2172,13 @@ unsafe extern "C" {
 
     pub(crate) safe fn LLVMRustCoverageMappingVersion() -> u32;
     pub(crate) fn LLVMRustDebugMetadataVersion() -> u32;
+
+    /// Returns the LLVM major version that the compiler was built with.
+    ///
+    /// Note that this is hard-coded as `LLVM_VERSION_MAJOR` when `RustWrapper.cpp` is built. This
+    /// could be different than what the runtime LLVM library reports in `LLVMGetVersion`, so we
+    /// assert their equality in `configure_llvm`.
     pub(crate) fn LLVMRustVersionMajor() -> u32;
-    pub(crate) fn LLVMRustVersionMinor() -> u32;
-    pub(crate) fn LLVMRustVersionPatch() -> u32;
 
     /// Add LLVM module flags.
     ///
