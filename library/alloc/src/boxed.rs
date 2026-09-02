@@ -2568,3 +2568,11 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+#[unstable(feature = "random", issue = "130703")]
+impl<R: core::random::Rng + ?Sized, A: Allocator> core::random::Rng for Box<R, A> {
+    #[inline]
+    fn fill_bytes(&mut self, bytes: &mut [u8]) {
+        (**self).fill_bytes(bytes)
+    }
+}
