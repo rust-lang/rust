@@ -7,7 +7,7 @@ fn make_result<T>(t: T) -> Result<T, ()> {
 }
 
 // The return type should behave as `T` as the `Err` variant is uninhabited
-fn make_result_uninhabited_err<T>(t: T) -> Result<T, std::convert::Infallible> {
+fn make_result_uninhabited_err<T>(t: T) -> Result<T, !> {
     Ok(t)
 }
 

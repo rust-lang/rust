@@ -99,8 +99,16 @@ fn main() {
     //~| NOTE: you might want to preserve the comments from inside the `match`
 
     // lint here
-    use std::convert::Infallible;
-    if let Ok(a) = Result::<i32, &Infallible>::Ok(1) { println!("${:?}", a) } else {
+    if let Ok(a) = Result::<i32, &!>::Ok(1) { println!("${:?}", a) } else {
+        println!("else block");
+        return;
+    }
+    //~^^^^^^^ single_match_else
+
+    enum Uninhabited {}
+
+    // lint here
+    if let Ok(a) = Result::<i32, &Uninhabited>::Ok(1) { println!("${:?}", a) } else {
         println!("else block");
         return;
     }
