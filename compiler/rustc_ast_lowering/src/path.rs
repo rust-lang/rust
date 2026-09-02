@@ -425,7 +425,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         segment_ident_span: Span,
         generic_args: &mut GenericArgsCtor<'hir>,
     ) {
-        let (start, end) = match self.owner.get_lifetime_res(segment_id) {
+        let (start, end) = match self.curr_owner.owner.get_lifetime_res(segment_id) {
             Some(LifetimeRes::ElidedAnchor { start, end }) => (start, end),
             None => return,
             Some(res) => {
