@@ -1,4 +1,5 @@
 //@ only-x86_64
+//@ only-linux
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ normalize-stdout: "rust_out::main::.+" -> "rust_out::main::$$PATH"
 //@ compile-flags:--test

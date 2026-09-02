@@ -1,12 +1,12 @@
 
 running 1 test
-test $DIR/doc-cfg-target-feature.rs - foo (line 15) ... FAILED
+test $DIR/doc-cfg-target-feature.rs - foo (line 16) ... FAILED
 
 failures:
 
----- $DIR/doc-cfg-target-feature.rs - foo (line 15) stdout ----
+---- $DIR/doc-cfg-target-feature.rs - foo (line 16) stdout ----
 warning: the feature `cfg_target_feature` has been stable since 1.27.0 and no longer requires an attribute to enable
-  --> $DIR/doc-cfg-target-feature.rs:15:12
+  --> $DIR/doc-cfg-target-feature.rs:16:12
    |
 LL | #![feature(cfg_target_feature)]
    |            ^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose bac
 
 
 failures:
-    $DIR/doc-cfg-target-feature.rs - foo (line 15)
+    $DIR/doc-cfg-target-feature.rs - foo (line 16)
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

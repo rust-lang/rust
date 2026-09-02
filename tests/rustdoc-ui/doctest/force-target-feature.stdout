@@ -1,10 +1,10 @@
 
 running 1 test
-test $DIR/force-target-feature.rs - SomeStruct (line 11) ... FAILED
+test $DIR/force-target-feature.rs - SomeStruct (line 12) ... FAILED
 
 failures:
 
----- $DIR/force-target-feature.rs - SomeStruct (line 11) stdout ----
+---- $DIR/force-target-feature.rs - SomeStruct (line 12) stdout ----
 Test executable failed (exit status: 101).
 
 stderr:
@@ -21,7 +21,7 @@ note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose bac
 
 
 failures:
-    $DIR/force-target-feature.rs - SomeStruct (line 11)
+    $DIR/force-target-feature.rs - SomeStruct (line 12)
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
