@@ -331,7 +331,9 @@ pub impl(self) unsafe trait AtomicPrimitive: Sized + Copy {
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-pub impl(self) unsafe trait AtomicLoadStore: Sized + Copy + AtomicPrimitive {
+pub impl(self) unsafe trait AtomicLoadStore:
+    Sized + Copy + AtomicPrimitive
+{
     /// Temporary implementation detail.
     type OpType: Sized + Copy;
 }
