@@ -247,10 +247,9 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         self.item_span = item.span_with_attributes();
         match &item.kind {
-            // Ignore is_public import statements because there's no way to be sure
-            // whether they're used or not. Also ignore imports with a dummy span
-            // because this means that they were generated in some fashion by the
-            // compiler and we don't need to consider them.
+            // Ignore imports with a dummy span because this means that they
+            // were generated in some fashion by the compiler and we don't need
+            // to consider them.
             ast::ItemKind::Use(..) if item.span.is_dummy() => return,
             // Use the base UseTree's NodeId as the item id
             // This allows the grouping of all the lints in the same item
