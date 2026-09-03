@@ -1,5 +1,5 @@
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:35:20
+  --> $DIR/union.rs:41:20
    |
 LL |         Foo { bar: _a } => {}
    |                    ^^ access to union field
@@ -7,7 +7,7 @@ LL |         Foo { bar: _a } => {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:41:30
+  --> $DIR/union.rs:47:30
    |
 LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping::Pineapple) | None,
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ access to union field
@@ -15,7 +15,7 @@ LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:41:59
+  --> $DIR/union.rs:47:59
    |
 LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping::Pineapple) | None,
    |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ access to union field
@@ -23,7 +23,7 @@ LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:41:91
+  --> $DIR/union.rs:47:91
    |
 LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping::Pineapple) | None,
    |                                                                                           ^^^^ access to union field
@@ -31,7 +31,7 @@ LL |                     topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:52:30
+  --> $DIR/union.rs:58:30
    |
 LL |                     topping: Some { .. }
    |                              ^^^^^^^^^^^ access to union field
@@ -39,7 +39,7 @@ LL |                     topping: Some { .. }
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:59:23
+  --> $DIR/union.rs:65:23
    |
 LL |         Foo { tuple: (_a,) } => {}
    |                       ^^ access to union field
@@ -47,7 +47,7 @@ LL |         Foo { tuple: (_a,) } => {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:62:41
+  --> $DIR/union.rs:68:41
    |
 LL |         Foo { tuple_struct: TupleStruct(_a) } => {}
    |                                         ^^ access to union field
@@ -55,13 +55,21 @@ LL |         Foo { tuple_struct: TupleStruct(_a) } => {}
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union.rs:65:23
+  --> $DIR/union.rs:71:23
    |
 LL |         Foo { array: [_a, _] } => {}
    |                       ^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error: aborting due to 8 previous errors
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:74:36
+   |
+LL |         Foo { single_variant_enum: SingleVariant::Single {} } => {}
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0133`.
