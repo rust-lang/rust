@@ -1,7 +1,5 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/161578>: the fake borrow on `x`
 //! below was ignored previously because the fake read keeping it live was unreachable.
-//@ check-pass
-// TODO: this should be check-fail
 
 #![feature(explicit_tail_calls)]
 
@@ -11,7 +9,7 @@ fn main() {
     let mut x: Option<Box<u64>> = Some(Box::new(7));
     match x {
         Some(_) if { x = None; false } && return => {}
-        // TODO: ERROR: cannot assign `x` in match guard
+        //~^ ERROR: cannot assign `x` in match guard
         Some(b) => println!("{b}"),
         None => println!("none"),
     }
@@ -23,7 +21,7 @@ fn always_return_after_mutation() {
     let mut x: Option<Box<u64>> = Some(Box::new(7));
     match x {
         Some(_) if { x = None; return } => {}
-        // TODO: ERROR: cannot assign `x` in match guard
+        //~^ ERROR: cannot assign `x` in match guard
         Some(b) => println!("{b}"),
         None => println!("none"),
     }
@@ -33,7 +31,7 @@ fn always_panic_after_mutation() {
     let mut x: Option<Box<u64>> = Some(Box::new(7));
     match x {
         Some(_) if { x = None; panic!() } => {}
-        // TODO: ERROR: cannot assign `x` in match guard
+        //~^ ERROR: cannot assign `x` in match guard
         Some(b) => println!("{b}"),
         None => println!("none"),
     }
@@ -44,7 +42,7 @@ fn always_break_after_mutation() {
     'b: {
         match x {
             Some(_) if { x = None; break 'b } => {}
-            // TODO: ERROR: cannot assign `x` in match guard
+            //~^ ERROR: cannot assign `x` in match guard
             Some(b) => println!("{b}"),
             None => println!("none"),
         }
@@ -56,7 +54,7 @@ fn always_continue_after_mutation() {
     loop {
         match x {
             Some(_) if { x = None; continue } => {}
-            // TODO: ERROR: cannot assign `x` in match guard
+            //~^ ERROR: cannot assign `x` in match guard
             Some(ref b) => println!("{b}"),
             None => println!("none"),
         }
@@ -67,7 +65,7 @@ fn always_become_after_mutation() {
     let mut x: Option<Box<u64>> = Some(Box::new(7));
     match x {
         Some(_) if { x = None; become always_become_after_mutation() } => {}
-        // TODO: ERROR: cannot assign `x` in match guard
+        //~^ ERROR: cannot assign `x` in match guard
         Some(b) => println!("{b}"),
         None => println!("none"),
     }

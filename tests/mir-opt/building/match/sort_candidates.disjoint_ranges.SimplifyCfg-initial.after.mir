@@ -79,6 +79,7 @@ fn disjoint_ranges(_1: i32, _2: bool) -> u32 {
 
     bb13: {
         StorageDead(_8);
+        FakeRead(ForMatchGuard, _3);
         falseEdge -> [real: bb1, imaginary: bb3];
     }
 

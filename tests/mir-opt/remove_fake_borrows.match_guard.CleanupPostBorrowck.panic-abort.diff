@@ -48,10 +48,10 @@
   
       bb5: {
           StorageDead(_8);
--         FakeRead(ForMatchGuard, _3);
--         FakeRead(ForMatchGuard, _4);
--         FakeRead(ForMatchGuard, _5);
 -         FakeRead(ForMatchGuard, _6);
+-         FakeRead(ForMatchGuard, _5);
+-         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForMatchGuard, _3);
 +         nop;
 +         nop;
 +         nop;
@@ -62,7 +62,15 @@
   
       bb6: {
           StorageDead(_8);
+-         FakeRead(ForMatchGuard, _6);
+-         FakeRead(ForMatchGuard, _5);
+-         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForMatchGuard, _3);
 -         falseEdge -> [real: bb1, imaginary: bb1];
++         nop;
++         nop;
++         nop;
++         nop;
 +         goto -> bb1;
       }
   

@@ -14,7 +14,7 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
-use rustc_middle::middle::region::{self, TempLifetime};
+use rustc_middle::middle::region::{self, ScopeData, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
@@ -2436,21 +2436,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
-            let mut guard_span = rustc_span::DUMMY_SP;
+            let guard_span = self.thir[guard].span;
+            let source_info = self.source_info(guard_span);
 
-            let (guard_true_block, guard_false_block) =
-                self.in_if_then_scope(match_scope, guard_span, |this| {
-                    guard_span = this.thir[guard].span;
-                    this.lower_if_condition(
-                        block,
-                        guard,
-                        LowerIfCondArgs {
-                            temp_scope_override: None, // Use `this.local_scope()`.
-                            variable_source_info: this.source_info(arm.span),
-                            // For guards, `let` bindings are declared separately.
-                            declare_let_bindings: DeclareLetBindings::No,
-                        },
-                    )
+            let fake_borrow_scope = region::Scope {
+                data: ScopeData::MatchFakeBorrows,
+                local_id: self.thir[guard].temp_scope_id,
+            };
+            let BlockAnd(guard_true_block, guard_false_block) =
+                self.in_scope((fake_borrow_scope, source_info), LintLevel::Inherited, |this| {
+                    // Schedule fake reads on guard exit to keep fake borrows alive on every path.
+                    let cause = FakeReadCause::ForMatchGuard;
+                    for &(_, temp, _) in fake_borrows {
+                        this.schedule_drop_fake_read(guard_span, fake_borrow_scope, temp, cause);
+                    }
+
+                    let (guard_true_block, guard_false_block) =
+                        this.in_if_then_scope(match_scope, guard_span, |this| {
+                            this.lower_if_condition(
+                                block,
+                                guard,
+                                LowerIfCondArgs {
+                                    temp_scope_override: None, // Use `this.local_scope()`.
+                                    variable_source_info: this.source_info(arm.span),
+                                    // For guards, `let` bindings are declared separately.
+                                    declare_let_bindings: DeclareLetBindings::No,
+                                },
+                            )
+                        });
+                    guard_true_block.and(guard_false_block)
                 });
 
             // If this isn't the final sub-branch being lowered, we need to unschedule drops of
@@ -2460,15 +2474,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.clear_match_arm_and_guard_scopes(arm.scope);
             }
 
-            let source_info = self.source_info(guard_span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
             let guard_frame = self.guard_context.pop().unwrap();
             debug!("Exiting guard building context with locals: {:?}", guard_frame);
-
-            for &(_, temp, _) in fake_borrows {
-                let cause = FakeReadCause::ForMatchGuard;
-                self.cfg.push_fake_read(guard_true_block, guard_end, cause, Place::from(temp));
-            }
 
             self.cfg.goto(guard_false_block, source_info, sub_branch.otherwise_block);
 
