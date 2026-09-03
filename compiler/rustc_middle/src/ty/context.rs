@@ -55,8 +55,8 @@ use crate::hir::{ProjectedMaybeOwner, ProjectedOwnerInfo};
 use crate::ich::StableHashState;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
-use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
+use crate::middle::resolve::{ModChild, ResolverAstLowering};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
@@ -2878,7 +2878,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn resolver_for_lowering(
         self,
-    ) -> (&'tcx Steal<ty::ResolverAstLowering<'tcx>>, &'tcx Steal<ast::Crate>) {
+    ) -> (&'tcx Steal<ResolverAstLowering<'tcx>>, &'tcx Steal<ast::Crate>) {
         let (resolver, krate, _) = self.resolver_for_lowering_raw(());
         (resolver, krate)
     }

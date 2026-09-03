@@ -6,7 +6,8 @@ use rustc_errors::{
     Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level, MultiSpan, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::{MainDefinition, Ty};
+use rustc_middle::middle::resolve::MainDefinition;
+use rustc_middle::ty::Ty;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 
 use crate::check_attr::ProcMacroKind;

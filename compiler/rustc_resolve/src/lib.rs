@@ -53,22 +53,20 @@ use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind}
 use rustc_feature::{BUILTIN_ATTRIBUTES, Features};
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{
-    self, CtorOf, DefKind, DocLinkResMap, MacroKinds, NonMacroAttrKind, PartialRes, PerNS,
-};
+use rustc_hir::def::{self, CtorOf, DefKind, MacroKinds, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
 use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::PRIVATE_MACRO_USE;
 use rustc_metadata::creader::CStore;
-use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
-use rustc_middle::query::Providers;
-use rustc_middle::ty::{
-    self, DelegationInfo, MainDefinition, PerOwnerResolverData, RegisteredTools,
-    ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
+use rustc_middle::middle::resolve::{
+    AmbigModChild, DelegationInfo, DocLinkResMap, MainDefinition, ModChild, PartialRes,
+    PerOwnerResolverData, Reexport, ResolverAstLowering, ResolverGlobalCtxt,
 };
+use rustc_middle::query::Providers;
+use rustc_middle::ty::{self, RegisteredTools, TyCtxt, TyCtxtFeed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
@@ -1993,7 +1991,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             stripped_cfg_items,
             delegation_infos: self.delegation_infos,
         };
-        let ast_lowering = ty::ResolverAstLowering {
+        let ast_lowering = ResolverAstLowering {
             partial_res_map: self.partial_res_map,
             next_node_id: self.next_node_id,
             owners: self.owners,

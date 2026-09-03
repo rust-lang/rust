@@ -77,7 +77,6 @@ pub mod hooks;
 pub mod ich;
 pub mod infer;
 pub mod lint;
-pub mod metadata;
 pub mod middle;
 pub mod mir;
 pub mod mono;

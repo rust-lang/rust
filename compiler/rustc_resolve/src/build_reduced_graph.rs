@@ -23,7 +23,7 @@ use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::metadata::{ModChild, Reexport};
+use rustc_middle::middle::resolve::{ModChild, PartialRes, Reexport};
 use rustc_middle::ty::{TyCtxtFeed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{CRATE_MOD_ID, ModId};

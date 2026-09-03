@@ -65,7 +65,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, DocLinkResMap};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
 use rustc_index::IndexVec;
@@ -79,7 +79,6 @@ use rustc_target::spec::PanicStrategy;
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
-use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
 use crate::middle::dead_code::DeadCodeLivenessSummary;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -87,6 +86,9 @@ use crate::middle::deduced_param_attrs::DeducedParamAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
+use crate::middle::resolve::{
+    AstOwner, DocLinkResMap, ModChild, ResolverAstLowering, ResolverGlobalCtxt,
+};
 use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
 use crate::middle::stability::DeprecationEntry;
 use crate::mir::interpret::{
@@ -186,16 +188,16 @@ rustc_queries! {
         desc { "get the value of an environment variable" }
     }
 
-    query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
+    query resolutions(_: ()) -> &'tcx ResolverGlobalCtxt {
         desc { "getting the resolver outputs" }
     }
 
     query resolver_for_lowering_raw(_: ()) -> (
         // Those two fields are consumed by `index_ast`.
         // We want them to be eventually dropped after lowering.
-        &'tcx Steal<ty::ResolverAstLowering<'tcx>>,
+        &'tcx Steal<ResolverAstLowering<'tcx>>,
         &'tcx Steal<ast::Crate>,
-        &'tcx ty::ResolverGlobalCtxt,
+        &'tcx ResolverGlobalCtxt,
     ) {
         eval_always
         no_hash
@@ -206,8 +208,8 @@ rustc_queries! {
         // There is only a single `ResolverAstLowering` for all owners.
         // We want to drop it once the whole HIR has been lowered.
         // We rely on reference counting to know when all definitions have been stolen.
-        Arc<ty::ResolverAstLowering<'tcx>>,
-        ast::AstOwner,
+        Arc<ResolverAstLowering<'tcx>>,
+        AstOwner,
     )>> {
         arena_cache
         eval_always

@@ -8,14 +8,14 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, BufferedEarlyLint, Diagnostic};
 use rustc_expand::base::SyntaxExtensionKind;
-use rustc_hir::def::{self, DefKind, PartialRes};
+use rustc_hir::def::{self, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_lint_defs::LintId;
 use rustc_lint_defs::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
     PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
-use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
+use rustc_middle::middle::resolve::{AmbigModChild, ModChild, PartialRes, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
 use rustc_session::diagnostics::feature_err;

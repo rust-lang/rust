@@ -25,12 +25,13 @@ use rustc_errors::{
     StashKey, Suggestions, elided_lifetime_in_path_suggestion, pluralize,
 };
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_hir::def::{CtorKind, DefKind, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_lint_defs::builtin::{ELIDED_LIFETIMES_IN_PATHS, UNUSED_LABELS};
+use rustc_middle::middle::resolve::{DelegationInfo, LifetimeRes, PartialRes};
 use rustc_middle::middle::resolve_bound_vars::Set1;
-use rustc_middle::ty::{AssocTag, DelegationInfo, Visibility};
+use rustc_middle::ty::{AssocTag, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::ResolveDocLinks;
 use rustc_session::diagnostics::feature_err;
