@@ -94,6 +94,8 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         | StatementKind::PlaceMention(..)
         | StatementKind::AscribeUserType(_, _) => Some(statement.source_info.span),
 
+        StatementKind::Coverage(CoverageKind::Point { .. }) => None,
+
         // Block markers are used for branch coverage, so ignore them here.
         StatementKind::Coverage(CoverageKind::BlockMarker { .. }) => None,
 
