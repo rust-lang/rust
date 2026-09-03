@@ -58,12 +58,6 @@ fn main() {
     if cfg.target_arch == "arm"
         || cfg.target_vendor == "apple"
         || cfg.target_env == "msvc"
-        // GCC and LLVM disagree on the ABI of `f16` and `f128` with MinGW. See
-        // <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>.
-        || (cfg.target_os == "windows" && cfg.target_env == "gnu")
-        // FIXME(llvm): There is an ABI incompatibility between GCC and Clang on 32-bit x86.
-        // See <https://github.com/llvm/llvm-project/issues/77401>.
-        || cfg.target_arch == "x86"
         // 32-bit PowerPC and 64-bit LE gets code generated that Qemu cannot handle. See
         // <https://github.com/rust-lang/compiler-builtins/pull/606#issuecomment-2105635926>.
         || cfg.target_arch == "powerpc"
