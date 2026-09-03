@@ -677,7 +677,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
     };
 
     for i in 0..sig.len() {
-        let sig_self_type = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
+        let to_replace = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
         let replacement = match def_kind {
             FnKind::Free => unreachable!(),
 
@@ -685,7 +685,23 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
             _ => tcx.type_of(tcx.parent(def_id.to_def_id())).instantiate_identity().skip_norm_wip(),
         };
 
-        sig[i] = sig[i].replace(tcx, sig_self_type, replacement);
+        struct Replacer<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            to_replace: Ty<'tcx>,
+            replacement: Ty<'tcx>,
+        }
+
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Replacer<'tcx> {
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                if t == self.to_replace { self.replacement } else { t.super_fold_with(self) }
+            }
+
+            fn cx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+        }
+
+        sig[i] = sig[i].fold_with(&mut Replacer { tcx, to_replace, replacement })
     }
 }
 
