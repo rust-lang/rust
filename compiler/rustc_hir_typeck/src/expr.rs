@@ -430,6 +430,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(sp) = tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
                     err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                 }
+                // The operand may be an uncalled function, in which case it is its return type
+                // the user meant to dereference. Only suggest the call when that return type is
+                // itself dereferenceable, mirroring the checks `lookup_derefing` just failed.
+                self.suggest_fn_call(&mut err, oprnd, oprnd_t, |output| {
+                    output.builtin_deref(true).is_some()
+                        || self.tcx.lang_items().deref_trait().is_some_and(|deref_trait| {
+                            self.type_implements_trait(deref_trait, [output], self.param_env)
+                                .may_apply()
+                        })
+                });
                 Ty::new_error(tcx, err.emit())
             }),
             hir::UnOp::Not => {
@@ -555,7 +565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 LangItem::IntoIterIntoIter | LangItem::IteratorNext
                     if expr.span.is_desugaring(DesugaringKind::ForLoop) =>
                 {
-                    Some(ObligationCauseCode::ForLoopIterator)
+                    Some(ObligationCauseCode::ForLoopIterator(arg.hir_id))
                 }
                 LangItem::TryTraitFromOutput
                     if expr.span.is_desugaring(DesugaringKind::TryBlock) =>
