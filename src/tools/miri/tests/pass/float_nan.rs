@@ -1,20 +1,13 @@
 // This test's runtime explodes if the GC interval is set to 1 (which we do in CI), so we
 // override it internally back to the default frequency.
 //@compile-flags: -Zmiri-provenance-gc=10000
-#![feature(float_gamma, portable_simd, core_intrinsics)]
+#![feature(float_gamma, float_exponent_methods, portable_simd, core_intrinsics)]
 use std::fmt;
 use std::hint::black_box;
 
 #[path = "../utils/mod.rs"]
 mod utils;
 use utils::check_all_outcomes;
-
-fn ldexp(a: f64, b: i32) -> f64 {
-    extern "C" {
-        fn ldexp(x: f64, n: i32) -> f64;
-    }
-    unsafe { ldexp(a, b) }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Sign {
@@ -402,7 +395,7 @@ fn test_f64() {
         F64::from(nan.atan2(nan))
     });
     check_all_outcomes([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)], || {
-        F64::from(ldexp(nan, 1))
+        F64::from(nan.scalbn(1))
     });
     check_all_outcomes([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)], || {
         F64::from(nan.ln_gamma().0)
