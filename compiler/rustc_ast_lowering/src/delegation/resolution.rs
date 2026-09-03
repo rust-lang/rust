@@ -62,6 +62,20 @@ pub(crate) fn resolve_type_relative_delegations(
         let res = res.and_then(|res| res.base_res().opt_def_id());
         let ident = delegation.path.segments.last().map(|s| s.ident);
 
+        let span = delegation.last_segment_span();
+
+        let ambig_error_res = || {
+            TypeRelativeDelegationRes::Ambig(
+                tcx.dcx().span_delayed_bug(span, "ambigous delegation to inherent impl"),
+            )
+        };
+
+        let default_error_res = || {
+            TypeRelativeDelegationRes::Error(
+                tcx.dcx().span_delayed_bug(span, "failed to resolve delegation to inherent impl"),
+            )
+        };
+
         let res = if let Some(res) = res
             && let Some(ident) = ident
         {
@@ -71,12 +85,12 @@ pub(crate) fn resolve_type_relative_delegations(
 
                     match res {
                         Some(res) => match res {
-                            DelegationInhFuncKind::Ambig => TypeRelativeDelegationRes::Ambig,
+                            DelegationInhFuncKind::Ambig => ambig_error_res(),
                             DelegationInhFuncKind::Single(res) => {
                                 TypeRelativeDelegationRes::Ok(res.to_def_id())
                             }
                         },
-                        _ => TypeRelativeDelegationRes::Error,
+                        _ => default_error_res(),
                     }
                 }
                 None => {
@@ -89,7 +103,7 @@ pub(crate) fn resolve_type_relative_delegations(
 
                         while let Some(candidate) = candidates.next() {
                             if sig_res.is_some() {
-                                sig_res = Some(TypeRelativeDelegationRes::Ambig);
+                                sig_res = Some(ambig_error_res());
                                 break 'inh_loop;
                             } else {
                                 sig_res = Some(TypeRelativeDelegationRes::Ok(candidate.def_id));
@@ -97,11 +111,11 @@ pub(crate) fn resolve_type_relative_delegations(
                         }
                     }
 
-                    sig_res.unwrap_or(TypeRelativeDelegationRes::Error)
+                    sig_res.unwrap_or_else(default_error_res)
                 }
             }
         } else {
-            TypeRelativeDelegationRes::Error
+            default_error_res()
         };
 
         type_relative_resolutions.insert(def_id, res);
@@ -283,10 +297,10 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         }
 
         match tcx.resolve_type_relative_delegations(()).get(&def_id) {
-            Some(res) => match res {
-                TypeRelativeDelegationRes::Ok(sig_id) => Ok(*sig_id),
-                TypeRelativeDelegationRes::Error => unresolved_error(),
-                TypeRelativeDelegationRes::Ambig => {
+            Some(res) => match *res {
+                TypeRelativeDelegationRes::Ok(sig_id) => Ok(sig_id),
+                TypeRelativeDelegationRes::Error(err) => Err(err),
+                TypeRelativeDelegationRes::Ambig(_) => {
                     Err(tcx.dcx().emit_err(AmbiguousDelegationToInherentImpl { span }))
                 }
             },

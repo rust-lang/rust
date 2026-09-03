@@ -288,8 +288,8 @@ pub struct DelegationInfo {
 #[derive(Debug, StableHash)]
 pub enum TypeRelativeDelegationRes {
     Ok(DefId),
-    Ambig,
-    Error,
+    Ambig(ErrorGuaranteed),
+    Error(ErrorGuaranteed),
 }
 
 #[derive(Debug, StableHash)]
