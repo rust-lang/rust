@@ -1,5 +1,5 @@
 //@ edition: 2021..
-#![feature(forced_keywords, builtin_syntax)]
+#![feature(forced_keywords, internal_syntax)]
 
 use std::mem::offset_of;
 
