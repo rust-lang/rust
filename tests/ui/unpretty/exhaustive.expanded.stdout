@@ -513,7 +513,7 @@ mod patterns {
     /// PatKind::Tuple
     fn pat_tuple() { let (); let (true,); let (true, false); }
     /// PatKind::Deref
-    fn pat_deref() { let deref!(pat); }
+    fn pat_deref() { let k#deref(pat); }
     /// PatKind::Ref
     fn pat_ref() { let &pat; let &mut pat; }
     /// PatKind::Expr
