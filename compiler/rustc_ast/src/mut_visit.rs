@@ -259,19 +259,21 @@ macro_rules! generate_flat_map_visitor_fns {
 }
 
 generate_flat_map_visitor_fns! {
-    flat_map_item, Box<Item>;
+    // tidy-alphabetical-start
+    filter_map_expr, Box<Expr>; // the odd one out; it works because `Option` impls `IntoIterator`
+    flat_map_arm, Arm;
+    flat_map_assoc_item, Box<AssocItem>, ctxt: AssocCtxt;
+    flat_map_expr_field, ExprField;
+    flat_map_field_def, FieldDef;
     flat_map_foreign_item, Box<ForeignItem>;
     flat_map_generic_param, GenericParam;
-    flat_map_stmt, Stmt;
-    filter_map_expr, Box<Expr>; // the odd one out; it works because `Option` impls `IntoIterator`
-    flat_map_expr_field, ExprField;
-    flat_map_pat_field, PatField;
-    flat_map_variant, Variant;
-    flat_map_assoc_item, Box<AssocItem>, ctxt: AssocCtxt;
-    flat_map_where_predicate, WherePredicate;
+    flat_map_item, Box<Item>;
     flat_map_param, Param;
-    flat_map_field_def, FieldDef;
-    flat_map_arm, Arm;
+    flat_map_pat_field, PatField;
+    flat_map_stmt, Stmt;
+    flat_map_variant, Variant;
+    flat_map_where_predicate, WherePredicate;
+    // tidy-alphabetical-end
 }
 
 pub fn walk_flat_map_pat_field<T: MutVisitor>(
@@ -296,16 +298,18 @@ macro_rules! generate_walk_flat_map_fns {
 }
 
 generate_walk_flat_map_fns! {
+    // tidy-alphabetical-start
     walk_flat_map_arm(Arm) => visit_arm;
-    walk_flat_map_variant(Variant) => visit_variant;
-    walk_flat_map_param(Param) => visit_param;
-    walk_flat_map_generic_param(GenericParam) => visit_generic_param;
-    walk_flat_map_where_predicate(WherePredicate) => visit_where_predicate;
-    walk_flat_map_field_def(FieldDef) => visit_field_def;
-    walk_flat_map_expr_field(ExprField) => visit_expr_field;
-    walk_flat_map_item(Box<Item>) => visit_item;
-    walk_flat_map_foreign_item(Box<ForeignItem>) => visit_foreign_item;
     walk_flat_map_assoc_item(Box<AssocItem>, ctxt: AssocCtxt) => visit_assoc_item;
+    walk_flat_map_expr_field(ExprField) => visit_expr_field;
+    walk_flat_map_field_def(FieldDef) => visit_field_def;
+    walk_flat_map_foreign_item(Box<ForeignItem>) => visit_foreign_item;
+    walk_flat_map_generic_param(GenericParam) => visit_generic_param;
+    walk_flat_map_item(Box<Item>) => visit_item;
+    walk_flat_map_param(Param) => visit_param;
+    walk_flat_map_variant(Variant) => visit_variant;
+    walk_flat_map_where_predicate(WherePredicate) => visit_where_predicate;
+    // tidy-alphabetical-end
 }
 
 pub fn walk_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: Box<Expr>) -> Option<Box<Expr>> {
