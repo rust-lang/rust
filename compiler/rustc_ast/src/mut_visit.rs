@@ -197,7 +197,6 @@ macro_rules! impl_visitable_list {
         {
             type Extra = <T as MutVisitable<V>>::Extra;
 
-            #[inline]
             fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
                 for i in self {
                     i.visit_mut(visitor, extra);
@@ -252,17 +251,10 @@ super::common_visitor_and_walkers!((mut) MutVisitor);
 
 macro_rules! generate_flat_map_visitor_fns {
     ($($flat_map_fn:ident, $ty:ty $(, $extra:ident: $extra_ty:ty)?;)+) => {
-        $(
-            #[allow(unused_parens)]
-            impl<V: MutVisitor> MutVisitable<V> for ThinVec<$ty> {
-                type Extra = ($($extra_ty)?);
-
-                #[inline]
-                fn visit_mut(&mut self, visitor: &mut V, ($($extra)?): Self::Extra) -> V::Result {
-                    self.flat_map_in_place(|value| visitor.$flat_map_fn(value $(, $extra)?));
-                }
-            }
-        )+
+        $(impl_visitable!(|&mut self: ThinVec<$ty>, visitor: &mut V, extra: ($($extra_ty)?)| {
+            let ($($extra)?) = extra;
+            self.flat_map_in_place(|value| visitor.$flat_map_fn(value $(, $extra)?));
+        });)+
     }
 }
 
