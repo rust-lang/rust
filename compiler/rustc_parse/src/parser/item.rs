@@ -370,9 +370,6 @@ impl<'a> Parser<'a> {
             // UNION ITEM
             self.bump(); // `union`
             self.parse_item_union()?
-        } else if self.is_builtin() {
-            // BUILTIN# ITEM
-            return self.parse_item_builtin();
         } else if self.eat_keyword_case(exp!(Macro), case) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
@@ -576,11 +573,6 @@ impl<'a> Parser<'a> {
         };
 
         if let Some(err) = err { Err(self.dcx().create_err(err)) } else { Ok(()) }
-    }
-
-    fn parse_item_builtin(&mut self) -> PResult<'a, Option<ItemKind>> {
-        // To be expanded
-        Ok(None)
     }
 
     /// Parses an item macro, e.g., `item!();`.

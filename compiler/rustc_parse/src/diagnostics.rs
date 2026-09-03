@@ -4132,21 +4132,6 @@ impl IntoDiagArg for Case {
 }
 
 #[derive(Diagnostic)]
-#[diag("unknown `builtin #` construct `{$name}`")]
-pub(crate) struct UnknownBuiltinConstruct {
-    #[primary_span]
-    pub span: Span,
-    pub name: Ident,
-}
-
-#[derive(Diagnostic)]
-#[diag("expected identifier after `builtin #`")]
-pub(crate) struct ExpectedBuiltinIdent {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("static items may not have generic parameters")]
 pub(crate) struct StaticWithGenerics {
     #[primary_span]

@@ -855,10 +855,9 @@ impl<'a> State<'a> {
                 self.print_block_with_attrs(blk, attrs, cb, ib)
             }
             ast::ExprKind::UnsafeBinderCast(kind, expr, ty) => {
-                self.word("builtin # ");
                 match kind {
-                    ast::UnsafeBinderCastKind::Wrap => self.word("wrap_binder"),
-                    ast::UnsafeBinderCastKind::Unwrap => self.word("unwrap_binder"),
+                    ast::UnsafeBinderCastKind::Wrap => self.word("k#wrap_binder"),
+                    ast::UnsafeBinderCastKind::Unwrap => self.word("k#unwrap_binder"),
                 }
                 self.popen();
                 let ib = self.ibox(0);
