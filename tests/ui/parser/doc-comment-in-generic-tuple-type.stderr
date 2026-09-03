@@ -1,11 +1,8 @@
-error: expected type, found doc comment `/// Docstring`
+error: doc comments cannot be applied to types
   --> $DIR/doc-comment-in-generic-tuple-type.rs:4:9
    |
-LL | struct Foo {
-   |        --- while parsing this struct
-LL |     a: Vec<(
 LL |         /// Docstring
-   |         ^^^^^^^^^^^^^ expected type
+   |         ^^^^^^^^^^^^^ doc comments are not allowed here
 
 error: aborting due to 1 previous error
 

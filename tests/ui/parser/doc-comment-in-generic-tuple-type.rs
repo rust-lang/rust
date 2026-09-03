@@ -2,7 +2,7 @@
 struct Foo {
     a: Vec<(
         /// Docstring
-        //~^ ERROR expected type, found doc comment
+        //~^ ERROR doc comments cannot be applied to types
         f32,
         f32,
     )>,
