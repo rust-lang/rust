@@ -464,7 +464,7 @@ where
 
         // Vars that show up in the rest of the goal substs may have been constrained by
         // normalizing the self type as well, since type variables are not uniquified.
-        let goal = self.resolve_vars_if_possible(goal);
+        let goal = self.deeply_resolve_ignoring_regions(goal);
 
         if self.typing_mode().is_coherence()
             && let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal)

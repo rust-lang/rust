@@ -19,7 +19,7 @@ use rustc_type_ir::solve::{
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
     OpaqueTypeKey, PredicateKind, Region, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode, eager_resolve_vars,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -658,7 +658,7 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let (goal, opaque_types) = eager_resolve_vars(&**self.delegate, (goal, opaque_types));
+        let (goal, opaque_types) = self.delegate.deeply_resolve((goal, opaque_types));
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
@@ -1097,7 +1097,7 @@ where
             }
             ty::TermKind::Const(ct) => {
                 if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
-                    self.delegate.universe_of_ct(vid).unwrap()
+                    self.delegate.universe_of_const(vid).unwrap()
                 } else {
                     return false;
                 }
@@ -1164,7 +1164,7 @@ where
                             return ControlFlow::Break(());
                         }
 
-                        self.check_nameable(self.delegate.universe_of_ct(vid).unwrap())
+                        self.check_nameable(self.delegate.universe_of_const(vid).unwrap())
                     }
                     ty::ConstKind::Placeholder(p) => self.check_nameable(p.universe()),
                     _ => {
@@ -1299,11 +1299,11 @@ where
         })
     }
 
-    pub(super) fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    pub(super) fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<I>,
     {
-        self.delegate.resolve_vars_if_possible(value)
+        self.delegate.deeply_resolve_ignoring_regions(value)
     }
 
     pub(super) fn shallow_resolve(&self, ty: I::Ty) -> I::Ty {
@@ -1312,7 +1312,7 @@ where
 
     pub(super) fn eager_resolve_region(&self, r: Region<I>) -> Region<I> {
         if let ty::ReVar(vid) = r.kind() {
-            self.delegate.opportunistic_resolve_lt_var(vid)
+            self.delegate.shallow_resolve_region_var(vid)
         } else {
             r
         }
@@ -1431,14 +1431,14 @@ where
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None if self.cx().features().generic_const_args() => {
-                // HACK(khyperia): calling `resolve_vars_if_possible` here shouldn't be necessary,
-                // `try_evaluate_const` calls `resolve_vars_if_possible` already. However, we want
+                // HACK(khyperia): calling `deeply_resolve_ignoring_regions` here shouldn't be necessary,
+                // `try_evaluate_const` calls `deeply_resolve_ignoring_regions` already. However, we want
                 // to check `has_non_region_infer` against the type with vars resolved (i.e. check
                 // if there are vars we failed to resolve), so we need to call it again here.
                 // Perhaps we could split EvaluateConstErr::HasGenericsOrInfers into HasGenerics and
                 // HasInfers or something, make evaluate_const return that, and make this branch be
                 // based on that, rather than checking `has_non_region_infer`.
-                if self.resolve_vars_if_possible(alias_const).has_non_region_infer() {
+                if self.deeply_resolve_ignoring_regions(alias_const).has_non_region_infer() {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 } else {
                     // Evaluation failed because the const was too generic or was an invalid type
@@ -1604,7 +1604,7 @@ where
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
         let (var_values, mut external_constraints) =
-            eager_resolve_vars(&**self.delegate, (self.var_values, external_constraints));
+            self.delegate.deeply_resolve((self.var_values, external_constraints));
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
@@ -1702,7 +1702,7 @@ where
         param_env: I::ParamEnv,
         value: ty::Unnormalized<I, T>,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
-        let value = self.delegate.resolve_vars_if_possible(value.skip_normalization());
+        let value = self.delegate.deeply_resolve_ignoring_regions(value.skip_normalization());
 
         if !self.cx().renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
             return Ok(value);
@@ -1725,7 +1725,7 @@ where
                 }
             };
 
-            Ok((self.resolve_vars_if_possible(infer_term), normalization_was_ambiguous))
+            Ok((self.deeply_resolve_ignoring_regions(infer_term), normalization_was_ambiguous))
         });
         value.try_fold_with(&mut folder)
     }
@@ -1859,7 +1859,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     root_depth: usize,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
-    let (goal, opaque_types) = eager_resolve_vars(&**delegate, (goal, opaque_types));
+    let (goal, opaque_types) = delegate.deeply_resolve((goal, opaque_types));
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
 
     let (orig_values, canonical_goal) =

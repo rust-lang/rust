@@ -19,7 +19,7 @@ use rustc_type_ir::relate::{
 };
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner, Region,
-    TypeFoldable, TypingMode, TypingModeEqWrapper, eager_resolve_vars,
+    TypeFoldable, TypingMode, TypingModeEqWrapper,
 };
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -568,7 +568,7 @@ where
 {
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
-    let state = eager_resolve_vars(&**delegate, state);
+    let state = delegate.deeply_resolve(state);
     Canonicalizer::canonicalize_response(delegate, max_input_universe, state)
 }
 

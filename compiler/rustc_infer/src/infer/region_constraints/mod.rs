@@ -672,7 +672,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     /// Resolves a region var to its value in the unification table, if it exists.
     /// Otherwise, it is resolved to the root `ReVar` in the table.
-    pub fn opportunistic_resolve_var(
+    pub fn shallow_resolve_region_var(
         &mut self,
         tcx: TyCtxt<'tcx>,
         vid: ty::RegionVid,
@@ -685,7 +685,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn probe_value(
+    pub fn try_resolve_region_var(
         &mut self,
         vid: ty::RegionVid,
     ) -> Result<ty::Region<'tcx>, ty::UniverseIndex> {
@@ -743,7 +743,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             | ty::ReEarlyParam(..)
             | ty::ReError(_) => ty::UniverseIndex::ROOT,
             ty::RePlaceholder(placeholder) => placeholder.universe,
-            ty::ReVar(vid) => match self.probe_value(vid) {
+            ty::ReVar(vid) => match self.try_resolve_region_var(vid) {
                 Ok(value) => self.universe(value),
                 Err(universe) => universe,
             },

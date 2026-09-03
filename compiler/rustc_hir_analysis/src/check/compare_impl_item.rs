@@ -584,9 +584,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .iter()
         .map(|(_, &(ty, _))| {
             assert!(
-                infcx.resolve_vars_if_possible(ty) == ty && ty.is_ty_var(),
+                infcx.deeply_resolve_ignoring_regions(ty) == ty && ty.is_ty_var(),
                 "{ty:?} should not have been constrained via normalization",
-                ty = infcx.resolve_vars_if_possible(ty)
+                ty = infcx.deeply_resolve_ignoring_regions(ty)
             );
             idx += 1;
             (
@@ -708,7 +708,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let mut remapped_types = DefIdMap::default();
     for (def_id, (ty, args)) in collected_types {
-        match infcx.fully_resolve(ty) {
+        match infcx.deeply_resolve_and_assert_fully_resolved(ty) {
             Ok(ty) => {
                 // `ty` contains free regions that we created earlier while liberating the
                 // trait fn signature. However, projection normalization expects `ty` to
@@ -1296,7 +1296,7 @@ fn check_region_late_boundedness<'tcx>(
                 .inner
                 .borrow_mut()
                 .unwrap_region_constraints()
-                .opportunistic_resolve_var(tcx, vid)
+                .shallow_resolve_region_var(tcx, vid)
             && let ty::ReLateParam(ty::LateParamRegion {
                 kind: ty::LateParamRegionKind::Named(trait_param_def_id),
                 ..
@@ -1321,7 +1321,7 @@ fn check_region_late_boundedness<'tcx>(
                 .inner
                 .borrow_mut()
                 .unwrap_region_constraints()
-                .opportunistic_resolve_var(tcx, vid)
+                .shallow_resolve_region_var(tcx, vid)
             && let ty::ReLateParam(ty::LateParamRegion {
                 kind: ty::LateParamRegionKind::Named(impl_param_def_id),
                 ..

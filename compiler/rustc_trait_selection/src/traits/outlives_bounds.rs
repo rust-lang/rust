@@ -1,6 +1,6 @@
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::canonical::QueryRegionConstraint;
-use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::infer::resolve::DeepRegionResolver;
 use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
@@ -39,8 +39,8 @@ fn implied_outlives_bounds<'a, 'tcx>(
     ty: Ty<'tcx>,
     disable_implied_bounds_hack: bool,
 ) -> Vec<OutlivesBound<'tcx>> {
-    let ty = infcx.resolve_vars_if_possible(ty);
-    let ty = OpportunisticRegionResolver::new(infcx).fold_ty(ty);
+    let ty = infcx.deeply_resolve_ignoring_regions(ty);
+    let ty = DeepRegionResolver::new(infcx).fold_ty(ty);
 
     // We do not expect existential variables in implied bounds.
     // We may however encounter unconstrained lifetime variables
