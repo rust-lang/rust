@@ -499,4 +499,6 @@ pub fn provide(providers: &mut Providers) {
         |tcx, trait_id| tcx.resolutions(()).trait_impls.get(&trait_id).map_or(&[], |xs| &xs[..]);
     providers.expn_that_defined =
         |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
+    providers.paths_from_private_deps =
+        |tcx, id| tcx.lower_to_hir(id).as_owner().map(|owner| &owner.paths_from_private_deps);
 }

@@ -56,7 +56,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
@@ -182,6 +182,7 @@ struct LoweringContext<'a, 'hir> {
     owner: &'a PerOwnerResolverData<'hir>,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<&'hir [TraitCandidate<'hir>]>,
+    paths_from_private_deps: SortedMap<hir::ItemLocalId, CrateNum>,
 
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
@@ -254,6 +255,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             relowering_checker: Default::default(),
 
             trait_map: Default::default(),
+            paths_from_private_deps: SortedMap::default(),
             next_node_id: resolver.next_node_id,
             node_id_to_def_id: NodeMap::default(),
             partial_res_overrides: NodeMap::default(),
@@ -843,6 +845,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         #[cfg(debug_assertions)]
         let current_relowering_checker = mem::take(&mut self.relowering_checker);
         let current_trait_map = mem::take(&mut self.trait_map);
+        let current_paths_from_private_deps = mem::take(&mut self.paths_from_private_deps);
         let current_owner = mem::replace(&mut self.current_hir_id_owner, owner_id);
         let current_local_counter =
             mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
@@ -878,6 +881,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.relowering_checker = current_relowering_checker;
         }
         self.trait_map = current_trait_map;
+        self.paths_from_private_deps = current_paths_from_private_deps;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
         self.impl_trait_defs = current_impl_trait_defs;
@@ -895,6 +899,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut bodies = mem::take(&mut self.bodies);
         let define_opaque = mem::take(&mut self.define_opaque);
         let trait_map = mem::take(&mut self.trait_map);
+        let paths_from_private_deps = mem::take(&mut self.paths_from_private_deps);
         let delayed_lints = Steal::new(mem::take(&mut self.delayed_lints).into_boxed_slice());
         let children = mem::take(&mut self.children);
 
@@ -926,6 +931,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 parenting.stable_hash(&mut hcx, &mut stable_hasher);
                 trait_map.stable_hash(&mut hcx, &mut stable_hasher);
                 children.stable_hash(&mut hcx, &mut stable_hasher);
+                paths_from_private_deps.stable_hash(&mut hcx, &mut stable_hasher);
                 stable_hasher.finish()
             })
         });
@@ -938,6 +944,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             trait_map,
             delayed_lints,
             children,
+            paths_from_private_deps,
         })
     }
 
@@ -962,6 +969,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if let Some(traits) = self.owner.trait_map.get(&ast_node_id) {
             self.trait_map.insert(hir_id.local_id, *traits);
+        }
+
+        if let Some(&krate) = self.owner.paths_from_private_deps.get(&ast_node_id) {
+            self.paths_from_private_deps.insert(hir_id.local_id, krate);
         }
 
         // Check whether the same `NodeId` is lowered more than once.

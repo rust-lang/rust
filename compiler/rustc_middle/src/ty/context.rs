@@ -1273,6 +1273,10 @@ impl<'tcx> TyCtxt<'tcx> {
             None => Err(VarError::NotPresent),
         }
     }
+
+    pub fn path_pointing_to_private_crate(self, hir_id: HirId) -> Option<CrateNum> {
+        self.paths_from_private_deps(hir_id.owner)?.get(&hir_id.local_id).copied()
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {

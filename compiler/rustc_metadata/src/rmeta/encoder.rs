@@ -2107,6 +2107,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     kind: self.tcx.crate_dep_kind(cnum),
                     extra_filename: self.tcx.extra_filename(cnum).clone(),
                     is_private: self.tcx.is_private_dep(cnum),
+                    is_extern_private_dep: self.tcx.is_extern_private_dep(cnum),
                 };
                 (cnum, dep)
             })
