@@ -1493,14 +1493,31 @@ where
         }
     }
 
+    fn has_distinct_impl_candidates(
+        &self,
+        trait_def_id: I::TraitId,
+        candidates: &[Candidate<I>],
+    ) -> bool {
+        let impls =
+            candidates.iter().filter(|c| matches!(c.source, CandidateSource::Impl(_))).count();
+        let builtin_impls =
+            candidates.iter().any(|c| matches!(c.source, CandidateSource::BuiltinImpl(_)));
+        impls + builtin_impls as usize > 1 && !self.cx().trait_is_marker(trait_def_id)
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
-        candidate_preference_mode: CandidatePreferenceMode,
+        trait_def_id: I::TraitId,
         mut candidates: Vec<Candidate<I>>,
         failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
+        let candidate_preference_mode = CandidatePreferenceMode::compute(self.cx(), trait_def_id);
         if self.typing_mode().is_coherence() {
+            if self.has_distinct_impl_candidates(trait_def_id, &candidates) {
+                return self.flounder(&candidates).map(|r| (r, None));
+            }
+
             return if let Some((response, _)) = self.try_merge_candidates(&candidates) {
                 Ok((response, Some(TraitGoalProvenVia::Misc)))
             } else {
@@ -1613,6 +1630,10 @@ where
             TraitGoalProvenVia::Misc
         };
 
+        if self.has_distinct_impl_candidates(trait_def_id, &candidates) {
+            return self.flounder(&candidates).map(|r| (r, None));
+        }
+
         if let Some((response, _)) = self.try_merge_candidates(&candidates) {
             Ok((response, Some(proven_via)))
         } else {
@@ -1628,9 +1649,7 @@ where
     {
         let (candidates, failed_candidate_info) =
             self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All)?;
-        let candidate_preference_mode =
-            CandidatePreferenceMode::compute(self.cx(), goal.predicate.def_id());
-        self.merge_trait_candidates(candidate_preference_mode, candidates, failed_candidate_info)
+        self.merge_trait_candidates(goal.predicate.def_id(), candidates, failed_candidate_info)
             .map_err(Into::into)
     }
 
