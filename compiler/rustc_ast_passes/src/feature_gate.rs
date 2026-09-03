@@ -241,9 +241,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 // Function pointers cannot be `const`
                 self.check_late_bound_lifetime_defs(&fn_ptr_ty.generic_params);
             }
-            ast::TyKind::Pat(..) => {
-                gate!(self, pattern_types, ty.span, "pattern types are unstable");
-            }
             ast::TyKind::View(..) => {
                 gate!(self, view_types, ty.span, "view types are unstable");
             }

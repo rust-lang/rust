@@ -255,6 +255,8 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"mini_core",
         &"--crate-type",
         &crate_types,
+        &"--edition",
+        &"2024",
         &"--target",
         &args.config_info.target_triple,
     ]);

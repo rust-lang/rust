@@ -2,7 +2,7 @@
 //! Check that we can codegen setting and getting discriminants, including non-null niches,
 //! for enums with a pointer-like ABI. This used to crash llvm.
 
-#![feature(rustc_attrs, pattern_types, pattern_type_macro)]
+#![feature(rustc_attrs, pattern_types)]
 use std::{ptr, mem, pat::pattern_type};
 
 #[derive(Copy, Clone)]
