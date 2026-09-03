@@ -520,62 +520,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut segment = segment.clone();
 
-        /// There may be cases with delegations to inherent impls where
-        /// while lowering path segment through default AST -> HIR
-        /// lowering routine infer lifetimes are inserted. This means
-        /// that HIR ids were allocated and if we will just replace them
-        /// with our generated args we will trigger assert that there are
-        /// unused HIR ids, so we need to reuse those HIR ids.
-        #[derive(Debug)]
-        enum NewArgsCreationKind {
-            Propagate(Vec<HirId> /* first `N` HIR ids to reuse */),
-            ExistingWithInfers,
-        }
+        let mut args_iter = result.generics.create_args_iterator();
 
-        let args_creation_kind = segment
+        let new_args = segment
             .args
             .filter(|args| !args.is_empty())
             .map(|args| {
-                let ids_to_reuse = args
-                    .args
-                    .iter()
-                    .copied()
-                    .take_while(|a| {
-                        let hir::GenericArg::Lifetime(lt) = a else { return false };
-
-                        lt.kind == hir::LifetimeKind::Infer
-                            && lt.syntax == hir::LifetimeSyntax::Implicit
-                    })
-                    .map(|a| a.hir_id())
-                    .collect::<Vec<_>>();
-
-                if ids_to_reuse.len() == args.args.len() {
-                    NewArgsCreationKind::Propagate(ids_to_reuse)
-                } else {
-                    NewArgsCreationKind::ExistingWithInfers
-                }
-            })
-            .unwrap_or(NewArgsCreationKind::Propagate(vec![]));
-
-        let mut args_iter = result.generics.create_args_iterator();
-        let new_args = match args_creation_kind {
-            NewArgsCreationKind::Propagate(ids_to_reuse) => {
-                let consumed_args = args_iter.consume_all(self, ids_to_reuse);
-                match consumed_args.is_empty() {
-                    true => segment.args.map(|args| args.args).unwrap_or_default(),
-                    false => self.arena.alloc_from_iter(consumed_args),
-                }
-            }
-            NewArgsCreationKind::ExistingWithInfers => self.arena.alloc_from_iter(
-                segment.args.expect("must be Some").args.iter().enumerate().map(|(idx, arg)| {
+                self.arena.alloc_from_iter(args.args.iter().enumerate().map(|(idx, arg)| {
                     if infer_indices.contains(&idx) {
                         args_iter.next(self, |_| arg.hir_id()).expect("arg must exist for infer")
                     } else {
                         *arg
                     }
-                }),
-            ),
-        };
+                }))
+            })
+            .unwrap_or_else(|| self.arena.alloc_from_iter(args_iter.consume_all(self)));
 
         // Do not omit constraints as there might be some and they must be present in HIR (#158812).
         let has_constraints = segment.args.is_some_and(|a| !a.constraints.is_empty());
