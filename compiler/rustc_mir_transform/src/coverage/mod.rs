@@ -58,10 +58,10 @@ impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
 }
 
 fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
-    let def_id = mir_body.source.def_id();
-    let _span = debug_span!("instrument_function_for_coverage", ?def_id).entered();
+    let _span = debug_span!("instrument_function_for_coverage", def_id = ?mir_body.source.def_id())
+        .entered();
 
-    let hir_info = hir_info::extract_hir_info(tcx, def_id.expect_local());
+    let hir_info = hir_info::extract_hir_info(tcx, mir_body);
 
     // Build the coverage graph, which is a simplified view of the MIR control-flow
     // graph that ignores some details not relevant to coverage instrumentation.

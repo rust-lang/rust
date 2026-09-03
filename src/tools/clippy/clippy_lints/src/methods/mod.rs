@@ -1775,7 +1775,7 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// # use std::ffi::CStr;
-    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
+    /// # mod libc { pub unsafe fn puts(_: *const std::ffi::c_char) {} }
     /// fn needs_cstr(_: &CStr) {}
     ///
     /// needs_cstr(CStr::from_bytes_with_nul(b"Hello\0").unwrap());
@@ -1784,7 +1784,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```no_run
     /// # use std::ffi::CStr;
-    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
+    /// # mod libc { pub unsafe fn puts(_: *const std::ffi::c_char) {} }
     /// fn needs_cstr(_: &CStr) {}
     ///
     /// needs_cstr(c"Hello");

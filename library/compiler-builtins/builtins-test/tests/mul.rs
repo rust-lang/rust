@@ -96,7 +96,7 @@ macro_rules! float_mul {
         $(
             #[test]
             fn $fn() {
-                use compiler_builtins::float::mul::$fn;
+                use imp::$fn;
                 use compiler_builtins::support::Float;
                 use core::ops::Mul;
 
@@ -115,8 +115,22 @@ macro_rules! float_mul {
     };
 }
 
-#[cfg(not(x86_no_sse2))]
 mod float_mul {
+    mod imp {
+        #[cfg(f16_enabled)]
+        pub use compiler_builtins::float::mul::__mulhf3;
+        pub use compiler_builtins::float::mul::{__muldf3, __mulsf3};
+        #[cfg(f128_enabled)]
+        cfg_select! {
+            any(target_arch = "powerpc", target_arch = "powerpc64") => {
+                pub use compiler_builtins::float::mul::__mulkf3 as __multf3;
+            }
+            _ => {
+                pub use compiler_builtins::float::mul::__multf3;
+            }
+        }
+    }
+
     use super::*;
 
     #[cfg(f16_enabled)]
@@ -124,34 +138,14 @@ mod float_mul {
         f16, __mulhf3, Half, all();
     }
 
-    // FIXME(#616): Stop ignoring arches that don't have native support once fix for builtins is in
-    // nightly.
+    // Hard float is inaccurate on i586 but we can still test against apfloat.
     float_mul! {
-        f32, __mulsf3, Single, not(target_arch = "arm");
-        f64, __muldf3, Double, not(target_arch = "arm");
+        f32, __mulsf3, Single, not(x86_no_sse2);
+        f64, __muldf3, Double, not(x86_no_sse2);
     }
-}
 
-#[cfg(f128_enabled)]
-#[cfg(not(x86_no_sse2))]
-#[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
-mod float_mul_f128 {
-    use super::*;
-
+    #[cfg(f128_enabled)]
     float_mul! {
-        f128, __multf3, Quad,
-        // FIXME(llvm): there is a bug in LLVM rt.
-        // See <https://github.com/llvm/llvm-project/issues/91840>.
-        not(any(no_sys_f128, all(target_arch = "aarch64", target_os = "linux")));
-    }
-}
-
-#[cfg(f128_enabled)]
-#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-mod float_mul_f128_ppc {
-    use super::*;
-
-    float_mul! {
-        f128, __mulkf3, Quad, not(no_sys_f128);
+        f128, __multf3, Quad, not(no_sys_f128);
     }
 }

@@ -2,9 +2,9 @@ error: import ending with `::{self}`
   --> tests/ui/unnecessary_self_imports.rs:4:1
    |
 LL | use std::fs::{self as alias};
-   | ^^^^^^^^^--------------------
+   | ^^^^^^^^^-------------------^
    |          |
-   |          help: consider omitting `::{self}`: `fs as alias;`
+   |          help: consider omitting `::{self}`: `fs as alias`
    |
    = note: this will slightly change semantics; any non-module items at the same path will also be imported
    = note: `-D clippy::unnecessary-self-imports` implied by `-D warnings`
@@ -14,11 +14,43 @@ error: import ending with `::{self}`
   --> tests/ui/unnecessary_self_imports.rs:7:1
    |
 LL | use std::rc::{self};
-   | ^^^^^^^^^-----------
+   | ^^^^^^^^^----------^
    |          |
-   |          help: consider omitting `::{self}`: `rc;`
+   |          help: consider omitting `::{self}`: `rc`
    |
    = note: this will slightly change semantics; any non-module items at the same path will also be imported
 
-error: aborting due to 2 previous errors
+error: import ending with `::{self}`
+  --> tests/ui/unnecessary_self_imports.rs:25:9
+   |
+LL |         b::{self},
+   |         ^^^^^^^^^ help: consider omitting `::{self}`: `b`
+   |
+   = note: this will slightly change semantics; any non-module items at the same path will also be imported
+
+error: import ending with `::{self}`
+  --> tests/ui/unnecessary_self_imports.rs:28:13
+   |
+LL |             c::{self},
+   |             ^^^^^^^^^ help: consider omitting `::{self}`: `c`
+   |
+   = note: this will slightly change semantics; any non-module items at the same path will also be imported
+
+error: import ending with `::{self}`
+  --> tests/ui/unnecessary_self_imports.rs:34:13
+   |
+LL |             e::{self},
+   |             ^^^^^^^^^ help: consider omitting `::{self}`: `e`
+   |
+   = note: this will slightly change semantics; any non-module items at the same path will also be imported
+
+error: import ending with `::{self}`
+  --> tests/ui/unnecessary_self_imports.rs:37:17
+   |
+LL |                 f::{self}
+   |                 ^^^^^^^^^ help: consider omitting `::{self}`: `f`
+   |
+   = note: this will slightly change semantics; any non-module items at the same path will also be imported
+
+error: aborting due to 6 previous errors
 

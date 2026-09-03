@@ -8,9 +8,3 @@ rust_llvm_version=23.1-2026-07-22
 
 curl -L --retry 3 -o code.tar.gz "https://github.com/rust-lang/llvm-project/archive/rustc/${rust_llvm_version}.tar.gz"
 tar xzf code.tar.gz --strip-components 1 llvm-project-rustc-${rust_llvm_version}/compiler-rt
-
-cd compiler-rt
-
-for p in ../ci/compiler-rt-patches/*; do
-    cat "$p" | patch -p 2
-done

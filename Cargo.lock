@@ -683,6 +683,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "clippy-dev"
+version = "0.0.1"
+dependencies = [
+ "annotate-snippets 0.12.16",
+ "anstream 0.6.21",
+ "chrono",
+ "clap",
+ "indoc",
+ "itertools",
+ "memchr",
+ "opener",
+ "rustc-literal-escaper",
+ "walkdir",
+]
+
+[[package]]
 name = "clippy_config"
 version = "0.1.100"
 dependencies = [
@@ -690,19 +706,6 @@ dependencies = [
  "clippy_utils",
  "itertools",
  "toml 1.1.0+spec-1.1.0",
- "walkdir",
-]
-
-[[package]]
-name = "clippy_dev"
-version = "0.0.1"
-dependencies = [
- "chrono",
- "clap",
- "indoc",
- "itertools",
- "opener",
- "rustc-literal-escaper",
  "walkdir",
 ]
 

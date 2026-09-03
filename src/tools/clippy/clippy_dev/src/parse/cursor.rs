@@ -1,4 +1,7 @@
-use core::slice;
+use crate::utils::{StrBuf, VecBuf};
+use crate::{DiagCx, SourceFile, Span};
+use core::{ptr, slice};
+use rustc_arena::DroplessArena;
 use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
 
 /// A token pattern used for searching and matching by the [`Cursor`].
@@ -8,31 +11,95 @@ use rustc_lexer::{self as lex, LiteralKind, Token, TokenKind};
 /// `DoubleColon` will consume the first `:` and then fail to match, leaving the cursor at
 /// the `*`.
 #[derive(Clone, Copy)]
-pub enum Pat<'a> {
+pub enum Pat {
     /// Matches any number of comments and doc comments.
-    AnyComment,
-    Ident(&'a str),
+    AnyComments,
     CaptureDocLines,
     CaptureIdent,
-    LitStr,
+    CaptureLifetime,
     CaptureLitStr,
+    AnyIdent,
+    At,
     Bang,
-    CloseBrace,
     CloseBracket,
     CloseParen,
     Comma,
     DoubleColon,
     Eq,
     FatArrow,
-    Lifetime,
-    Lt,
     Gt,
+    Ident(IdentPat),
+    Lifetime,
+    Lit,
+    LitStr,
+    Lt,
     OpenBrace,
     OpenBracket,
     OpenParen,
-    CaptureOptLifetimeArg,
     Pound,
     Semi,
+}
+impl Pat {
+    pub fn desc(self) -> &'static str {
+        match self {
+            Self::AnyComments => "comments",
+            Self::CaptureDocLines => "doc line comments",
+            Self::AnyIdent | Self::CaptureIdent => "an identifier",
+            Self::At => "`@`",
+            Self::Bang => "`!`",
+            Self::CloseBracket => "`]`",
+            Self::CloseParen => "`)`",
+            Self::Comma => "`,`",
+            Self::DoubleColon => "`::`",
+            Self::Eq => "`=`",
+            Self::FatArrow => "`=>`",
+            Self::Gt => "`>`",
+            Self::Ident(x) => x.desc(),
+            Self::Lifetime | Self::CaptureLifetime => "a lifetime",
+            Self::Lit => "a literal",
+            Self::LitStr | Self::CaptureLitStr => "a string literal",
+            Self::Lt => "`<`",
+            Self::OpenBrace => "`{`",
+            Self::OpenBracket => "`[`",
+            Self::OpenParen => "`(`",
+            Self::Pound => "`#`",
+            Self::Semi => "`;`",
+        }
+    }
+}
+
+macro_rules! ident_or_lit {
+    ($ident:ident) => {
+        stringify!($ident)
+    };
+    ($_ident:ident $lit:literal) => {
+        $lit
+    };
+}
+macro_rules! decl_ident_pats {
+    ($($ident:ident $(= $s:literal)?,)*) => {
+        #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
+        #[derive(Clone, Copy)]
+        pub enum IdentPat { $($ident),* }
+        impl IdentPat {
+            pub fn as_str(self) -> &'static str {
+                match self { $(Self::$ident => ident_or_lit!($ident $($s)?)),* }
+            }
+
+            pub fn desc(self) -> &'static str {
+                match self { $(Self::$ident => concat!("`", ident_or_lit!($ident $($s)?), "`")),* }
+            }
+        }
+    }
+}
+decl_ident_pats! {
+    DEPRECATED,
+    DEPRECATED_VERSION,
+    RENAMED,
+    RENAMED_VERSION,
+    clippy,
+    r#pub = "pub",
+    version,
 }
 
 #[derive(Clone, Copy)]
@@ -42,6 +109,13 @@ pub struct Capture {
 }
 impl Capture {
     pub const EMPTY: Self = Self { pos: 0, len: 0 };
+
+    pub fn mk_sp<'cx>(self, file: &'cx SourceFile<'cx>) -> Span<'cx> {
+        Span {
+            file,
+            range: self.pos..self.pos + self.len,
+        }
+    }
 }
 
 /// A unidirectional cursor over a token stream that is lexed on demand.
@@ -96,12 +170,6 @@ impl<'txt> Cursor<'txt> {
         self.pos
     }
 
-    /// Gets whether the cursor has exhausted its input.
-    #[must_use]
-    pub fn at_end(&self) -> bool {
-        self.next_token.kind == TokenKind::Eof
-    }
-
     /// Advances the cursor to the next token. If the stream is exhausted this will set
     /// the next token to [`TokenKind::Eof`].
     pub fn step(&mut self) {
@@ -110,28 +178,44 @@ impl<'txt> Cursor<'txt> {
         self.next_token = self.inner.advance_token();
     }
 
+    #[track_caller]
+    pub fn emit_unexpected<'cx>(&self, dcx: &mut DiagCx, file: &'cx SourceFile<'cx>, expected: &'static str) {
+        let sp = Span::new(file, self.pos..self.pos + self.next_token.len);
+        let msg = if matches!(self.next_token.kind, TokenKind::Eof) {
+            "end of file"
+        } else {
+            "token"
+        };
+        dcx.emit_spanned_err(sp, format!("unexpected {msg}, expected {expected}"));
+    }
+
     /// Consumes tokens until the given pattern is either fully matched of fails to match.
     /// Returns whether the pattern was fully matched.
     ///
     /// For each capture made by the pattern one item will be taken from the capture
     /// sequence with the result placed inside.
-    #[expect(clippy::too_many_lines)]
-    fn match_impl(&mut self, pat: Pat<'_>, captures: &mut slice::IterMut<'_, Capture>) -> bool {
+    fn match_impl(&mut self, pat: Pat, captures: &mut slice::IterMut<'_, Capture>) -> bool {
         loop {
             match (pat, self.next_token.kind) {
                 #[rustfmt::skip] // rustfmt bug: https://github.com/rust-lang/rustfmt/issues/6697
                 (_, TokenKind::Whitespace)
                 | (
-                    Pat::AnyComment,
+                    Pat::AnyComments,
                     TokenKind::BlockComment { terminated: true, .. } | TokenKind::LineComment { .. },
                 ) => self.step(),
-                (Pat::Bang, TokenKind::Bang)
-                | (Pat::CloseBrace, TokenKind::CloseBrace)
+                (Pat::AnyComments, _) => return true,
+
+                (Pat::Ident(x), TokenKind::Ident) if x.as_str() == self.peek_text() => break,
+                (Pat::Lit, TokenKind::Ident) if matches!(self.peek_text(), "true" | "false") => break,
+                (Pat::At, TokenKind::At)
+                | (Pat::AnyIdent, TokenKind::Ident | TokenKind::RawIdent)
+                | (Pat::Bang, TokenKind::Bang)
                 | (Pat::CloseBracket, TokenKind::CloseBracket)
                 | (Pat::CloseParen, TokenKind::CloseParen)
                 | (Pat::Comma, TokenKind::Comma)
                 | (Pat::Eq, TokenKind::Eq)
                 | (Pat::Lifetime, TokenKind::Lifetime { .. })
+                | (Pat::Lit, TokenKind::Literal { .. })
                 | (Pat::Lt, TokenKind::Lt)
                 | (Pat::Gt, TokenKind::Gt)
                 | (Pat::OpenBrace, TokenKind::OpenBrace)
@@ -145,58 +229,17 @@ impl<'txt> Cursor<'txt> {
                         kind: LiteralKind::Str { terminated: true } | LiteralKind::RawStr { .. },
                         ..
                     },
-                ) => {
+                ) => break,
+
+                (Pat::DoubleColon, TokenKind::Colon) if self.inner.as_str().starts_with(':') => {
                     self.step();
-                    return true;
+                    break;
                 },
-                (Pat::Ident(x), TokenKind::Ident) if x == self.peek_text() => {
+                (Pat::FatArrow, TokenKind::Eq) if self.inner.as_str().starts_with('>') => {
                     self.step();
-                    return true;
+                    break;
                 },
-                (Pat::DoubleColon, TokenKind::Colon) => {
-                    self.step();
-                    if matches!(self.next_token.kind, TokenKind::Colon) {
-                        self.step();
-                        return true;
-                    }
-                    return false;
-                },
-                (Pat::FatArrow, TokenKind::Eq) => {
-                    self.step();
-                    if matches!(self.next_token.kind, TokenKind::Gt) {
-                        self.step();
-                        return true;
-                    }
-                    return false;
-                },
-                (Pat::CaptureOptLifetimeArg, TokenKind::Lt) => {
-                    self.step();
-                    loop {
-                        match self.next_token.kind {
-                            TokenKind::Lifetime { .. } => break,
-                            TokenKind::Whitespace => self.step(),
-                            _ => return false,
-                        }
-                    }
-                    *captures.next().unwrap() = Capture {
-                        pos: self.pos,
-                        len: self.next_token.len,
-                    };
-                    self.step();
-                    loop {
-                        match self.next_token.kind {
-                            TokenKind::Gt => break,
-                            TokenKind::Whitespace => self.step(),
-                            _ => return false,
-                        }
-                    }
-                    self.step();
-                    return true;
-                },
-                (Pat::CaptureOptLifetimeArg, _) => {
-                    *captures.next().unwrap() = Capture { pos: 0, len: 0 };
-                    return true;
-                },
+
                 #[rustfmt::skip]
                 (
                     Pat::CaptureLitStr,
@@ -207,11 +250,13 @@ impl<'txt> Cursor<'txt> {
                         ..
                     },
                 )
-                | (Pat::CaptureIdent, TokenKind::Ident) => {
+                | (Pat::CaptureIdent, TokenKind::Ident)
+                | (Pat::CaptureLifetime, TokenKind::Lifetime { .. }) => {
                     *captures.next().unwrap() = Capture { pos: self.pos, len: self.next_token.len };
                     self.step();
                     return true;
                 },
+
                 (Pat::CaptureDocLines, TokenKind::LineComment { doc_style: Some(_) }) => {
                     let pos = self.pos;
                     loop {
@@ -233,39 +278,22 @@ impl<'txt> Cursor<'txt> {
                     *captures.next().unwrap() = Capture::EMPTY;
                     return true;
                 },
-                (Pat::AnyComment, _) => return true,
+
                 _ => return false,
             }
         }
+
+        self.step();
+        true
     }
 
-    /// Consumes all tokens until the specified identifier is found and returns its
-    /// position. Returns `None` if the identifier could not be found.
-    ///
-    /// The cursor will be positioned immediately after the identifier, or at the end if
-    /// it is not.
-    pub fn find_ident(&mut self, ident: &str) -> Option<u32> {
+    /// Consumes and captures the next non-whitespace token if it's an identifier. Returns
+    /// `None` otherwise.
+    #[must_use]
+    pub fn capture_ident(&mut self) -> Option<Capture> {
         loop {
             match self.next_token.kind {
-                TokenKind::Ident if self.peek_text() == ident => {
-                    let pos = self.pos;
-                    self.step();
-                    return Some(pos);
-                },
-                TokenKind::Eof => return None,
-                _ => self.step(),
-            }
-        }
-    }
-
-    /// Consumes all tokens until the next identifier is found and captures it. Returns
-    /// `None` if no identifier could be found.
-    ///
-    /// The cursor will be positioned immediately after the identifier, or at the end if
-    /// it is not.
-    pub fn find_any_ident(&mut self) -> Option<Capture> {
-        loop {
-            match self.next_token.kind {
+                TokenKind::Whitespace => self.step(),
                 TokenKind::Ident => {
                     let res = Capture {
                         pos: self.pos,
@@ -274,60 +302,108 @@ impl<'txt> Cursor<'txt> {
                     self.step();
                     return Some(res);
                 },
+                _ => return None,
+            }
+        }
+    }
+
+    /// Consumes all tokens up to and including the next identifier. Returns either the
+    /// captured identifier or `None` if one was not found.
+    #[must_use]
+    pub fn find_capture_ident(&mut self) -> Option<Capture> {
+        loop {
+            match self.next_token.kind {
                 TokenKind::Eof => return None,
+                TokenKind::Ident => {
+                    let res = Capture {
+                        pos: self.pos,
+                        len: self.next_token.len,
+                    };
+                    self.step();
+                    return Some(res);
+                },
                 _ => self.step(),
             }
         }
     }
 
-    /// Consume the returns the position of the next non-whitespace token if it's the
-    /// specified identifier. Returns `None` otherwise.
-    pub fn match_ident(&mut self, s: &str) -> Option<u32> {
-        loop {
-            match self.next_token.kind {
-                TokenKind::Ident if s == self.peek_text() => {
-                    let pos = self.pos;
-                    self.step();
-                    return Some(pos);
-                },
-                TokenKind::Whitespace => self.step(),
-                _ => return None,
-            }
-        }
-    }
-
-    /// Consumes and captures the next non-whitespace token if it's an identifier. Returns
-    /// `None` otherwise.
-    pub fn capture_ident(&mut self) -> Option<Capture> {
-        loop {
-            match self.next_token.kind {
-                TokenKind::Ident => {
-                    let pos = self.pos;
-                    let len = self.next_token.len;
-                    self.step();
-                    return Some(Capture { pos, len });
-                },
-                TokenKind::Whitespace => self.step(),
-                _ => return None,
-            }
-        }
-    }
-
-    /// Continually attempt to match the pattern on subsequent tokens until a match is
-    /// found. Returns whether the pattern was successfully matched.
+    /// Consumes and captures the text of a path without any internal whitespace. Returns
+    /// `Err` if the path ends with `::`, and `None` if no path component exists at the
+    /// current position.
     ///
-    /// Not generally suitable for multi-token patterns or patterns that can match
-    /// nothing.
-    #[must_use]
-    pub fn find_pat(&mut self, pat: Pat<'_>) -> bool {
-        let mut capture = [].iter_mut();
-        while !self.match_impl(pat, &mut capture) {
-            self.step();
-            if self.at_end() {
-                return false;
+    /// Only paths containing identifiers separated by `::` with a possible leading `::`.
+    /// Generic arguments and qualified paths are not considered.
+    pub fn capture_opt_path(
+        &mut self,
+        buf: &mut StrBuf,
+        arena: &'txt DroplessArena,
+    ) -> Result<Option<&'txt str>, &'static str> {
+        #[derive(Clone, Copy)]
+        enum State {
+            Start,
+            Sep,
+            Ident,
+        }
+
+        buf.with(|buf| {
+            let start = self.pos;
+            let mut state = State::Start;
+            loop {
+                match (state, self.next_token.kind) {
+                    (_, TokenKind::Whitespace) => self.step(),
+                    (State::Start | State::Ident, TokenKind::Colon) if self.inner.first() == ':' => {
+                        state = State::Sep;
+                        buf.push_str("::");
+                        self.step();
+                        self.step();
+                    },
+                    (State::Start | State::Sep, TokenKind::Ident) => {
+                        state = State::Ident;
+                        buf.push_str(self.peek_text());
+                        self.step();
+                    },
+                    (State::Ident, _) => break,
+                    (State::Start, _) => return Ok(None),
+                    (State::Sep, _) => return Err(Pat::AnyIdent.desc()),
+                }
+            }
+            let text = self.text[start as usize..self.pos as usize].trim();
+            Ok(Some(if text.len() == buf.len() {
+                text
+            } else {
+                arena.alloc_str(buf)
+            }))
+        })
+    }
+
+    pub fn eat_list(&mut self, mut f: impl FnMut(&mut Self) -> Result<bool, &'static str>) -> Result<(), &'static str> {
+        while f(self)? {
+            if !self.eat_comma() {
+                break;
             }
         }
-        true
+        Ok(())
+    }
+
+    pub fn capture_list<'cx, T: Copy>(
+        &mut self,
+        buf: &mut VecBuf<T>,
+        arena: &'cx DroplessArena,
+        mut f: impl FnMut(&mut Self) -> Result<Option<T>, &'static str>,
+    ) -> Result<&'cx mut [T], &'static str> {
+        buf.with(|buf| {
+            while let Some(x) = f(self)? {
+                buf.push(x);
+                if !self.eat_comma() {
+                    break;
+                }
+            }
+            Ok(if buf.is_empty() {
+                &mut []
+            } else {
+                arena.alloc_slice(buf)
+            })
+        })
     }
 
     /// Attempts to match a sequence of patterns at the current position. Returns whether
@@ -339,19 +415,93 @@ impl<'txt> Cursor<'txt> {
     /// unmodified.
     ///
     /// If the match fails the cursor will be positioned at the first failing token.
-    #[must_use]
-    pub fn match_all(&mut self, pats: &[Pat<'_>], captures: &mut [Capture]) -> bool {
+    pub fn match_all(&mut self, pats: &[Pat], captures: &mut [Capture]) -> Result<(), &'static str> {
         let mut captures = captures.iter_mut();
-        pats.iter().all(|&p| self.match_impl(p, &mut captures))
+        pats.iter()
+            .try_for_each(|&pat| self.match_impl(pat, &mut captures).ok_or(pat.desc()))
     }
 
-    /// Attempts to match a single pattern at the current position. Returns whether the
-    /// pattern was successfully matched.
+    /// Attempts to match a sequence of patterns at the current position. Returns whether
+    /// all patterns were successfully matched.
     ///
-    /// If the pattern attempts to capture anything this will panic. If the match fails
-    /// the cursor will be positioned at the first failing token.
-    #[must_use]
-    pub fn match_pat(&mut self, pat: Pat<'_>) -> bool {
-        self.match_impl(pat, &mut [].iter_mut())
+    /// Captures will be written to the given slice in the order they're matched. If a
+    /// capture is matched, but there are no more capture slots this will panic. If the
+    /// match is completed without filling all the capture slots they will be left
+    /// unmodified.
+    ///
+    /// If the match fails the cursor will be positioned at the first failing token.
+    pub fn opt_match_all(&mut self, pats: &[Pat], captures: &mut [Capture]) -> Result<bool, &'static str> {
+        let mut captures = captures.iter_mut();
+        match pats
+            .iter()
+            .try_for_each(|p| self.match_impl(*p, &mut captures).ok_or(p))
+        {
+            Ok(()) => Ok(true),
+            Err(p) if ptr::addr_eq(pats.as_ptr(), p) => Ok(false),
+            Err(p) => Err(p.desc()),
+        }
     }
+}
+
+macro_rules! mk_tk_methods {
+    ($(
+        [$desc:literal]
+        $name:ident(&mut $self:tt $($params:tt)*)
+            { $pat:pat $(if $guard:expr)? $(=> $extra:block)? }
+    )*) => {
+        #[allow(dead_code)]
+        impl Cursor<'_> {$(
+            #[doc = "Consumes the next non-whitespace token if it's "]
+            #[doc = $desc]
+            #[doc = " and returns whether the token was found."]
+            #[must_use]
+            pub fn ${concat(eat_, $name)}(&mut $self $($params)*) -> bool {
+                loop {
+                    match $self.next_token.kind {
+                        TokenKind::Whitespace => $self.step(),
+                        $pat $(if $guard)? => {
+                            $self.step();
+                            return true;
+                        },
+                        _ => return false,
+                    }
+                }
+            }
+
+            #[doc = "Consumes all tokens up to and including "]
+            #[doc = $desc]
+            #[doc = " and returns whether the token was found."]
+            #[must_use]
+            pub fn ${concat(find_, $name)}(&mut $self $($params)*) -> bool {
+                loop {
+                    match $self.next_token.kind {
+                        TokenKind::Eof => return false,
+                        $pat $(if $guard)? => {
+                            $self.step();
+                            return true;
+                        },
+                        _ => $self.step(),
+                    }
+                }
+            }
+        )*}
+    }
+}
+mk_tk_methods! {
+    ["`!`"]
+    bang(&mut self) { TokenKind::Bang }
+    ["`}`"]
+    close_brace(&mut self) { TokenKind::CloseBrace }
+    ["`]`"]
+    close_bracket(&mut self) { TokenKind::CloseBracket }
+    ["`,`"]
+    comma(&mut self) { TokenKind::Comma }
+    ["`::`"]
+    double_colon(&mut self) {
+        TokenKind::Colon if self.inner.as_str().starts_with(':') => { self.step(); }
+    }
+    ["the specified identifier"]
+    ident(&mut self, s: &str) { TokenKind::Ident if self.peek_text() == s }
+    ["`;`"]
+    semi(&mut self) { TokenKind::Semi }
 }

@@ -24,6 +24,7 @@
     - [Method Checking](development/method_checking.md)
     - [Macro Expansions](development/macro_expansions.md)
     - [Common Tools](development/common_tools_writing_lints.md)
+    - [LLM usage](development/llm_usage.md)
     - [Infrastructure](development/infrastructure/README.md)
         - [Syncing changes between Clippy and rust-lang/rust](development/infrastructure/sync.md)
         - [Backporting Changes](development/infrastructure/backport.md)
