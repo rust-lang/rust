@@ -166,14 +166,14 @@ fn cs_clone_simple(
 }
 
 fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
-    let ctor_path;
-    let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
-    let subcall = |cx: &ExtCtxt<'_>, field: &FieldInfo| {
-        let args = thin_vec![field.self_expr.clone()];
+    let subcall = |field: FieldInfo| {
+        let args = thin_vec![field.self_expr];
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
 
+    let ctor_path;
+    let all_fields;
     let vdata;
     match substr.fields {
         Struct(vdata_, af) => {
@@ -192,23 +192,14 @@ fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> Blo
     let expr = match *vdata {
         VariantData::Struct { .. } => {
             let fields = all_fields
-                .iter()
-                .map(|field| {
-                    let Some(ident) = field.name else {
-                        cx.dcx().span_bug(
-                            trait_span,
-                            "unnamed field in normal struct in `derive(Clone)`",
-                        );
-                    };
-                    let call = subcall(cx, field);
-                    cx.field_imm(field.span, ident, call)
-                })
+                .into_iter()
+                .map(|field| cx.field_imm(field.span, field.name.unwrap(), subcall(field)))
                 .collect::<ThinVec<_>>();
 
             cx.expr_struct(trait_span, ctor_path, fields)
         }
         VariantData::Tuple(..) => {
-            let subcalls = all_fields.iter().map(|f| subcall(cx, f)).collect();
+            let subcalls = all_fields.into_iter().map(subcall).collect();
             let path = cx.expr_path(ctor_path);
             cx.expr_call(trait_span, path, subcalls)
         }
