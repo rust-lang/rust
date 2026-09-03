@@ -296,7 +296,7 @@ impl GenericArg {
         }
     }
 
-    pub fn is_infer(&self) -> bool {
+    pub fn is_maybe_parenthesised_infer(&self) -> bool {
         match self {
             GenericArg::Lifetime(lt) => lt.ident.name == kw::UnderscoreLifetime,
             GenericArg::Type(ty) => ty.is_maybe_parenthesised_infer(),

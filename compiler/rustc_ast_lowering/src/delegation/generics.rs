@@ -475,7 +475,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
                 .iter()
                 .all(|arg| {
                     let AngleBracketedArg::Arg(arg) = arg else { return false };
-                    !arg.is_infer()
+                    !arg.is_maybe_parenthesised_infer()
                 })
                 .ok_or_else(|| {
                     self.tcx().dcx().emit_err(DelegationToInherentImplParentContainsInfer { span })
@@ -516,7 +516,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         let params = &params[usize::from(add_first_self)..];
         for (idx, (arg, param)) in args.args.iter().zip(params).enumerate() {
             let AngleBracketedArg::Arg(arg) = arg else { continue };
-            let is_infer = arg.is_infer();
+            let is_infer = arg.is_maybe_parenthesised_infer();
 
             // If `'_` is used instead of `_` (or vice versa) we emit a meaningful
             // error instead of processing this infer or leaving it as is for signature
