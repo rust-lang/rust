@@ -53,7 +53,7 @@ jobs:
       run: cargo test
       working-directory: rustc_tools_util
 
-    - name: Test clippy_dev
+    - name: Test clippy-dev
       run: cargo test
       working-directory: clippy_dev
 

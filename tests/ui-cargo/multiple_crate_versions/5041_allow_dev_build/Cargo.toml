@@ -1,7 +1,7 @@
 # Should not lint for dev or build dependencies. See issue 5041.
 
 [package]
-name = "multiple_crate_versions"
+name = "multiple-crate-versions"
 version = "0.1.0"
 publish = false
 

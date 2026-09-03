@@ -23,4 +23,4 @@ help: consider removing the safety comment
 4 | // SAFETY: ...
   |    ^^^^^^^
 
-error: could not compile `undocumented_unsafe_blocks` (bin "undocumented_unsafe_blocks") due to 2 previous errors
+error: could not compile `undocumented-unsafe-blocks` (bin "undocumented-unsafe-blocks") due to 2 previous errors

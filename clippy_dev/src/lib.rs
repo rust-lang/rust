@@ -1,5 +1,6 @@
 #![feature(
     exit_status_error,
+    macro_metavar_expr_concat,
     new_range,
     os_str_slice,
     os_string_truncate,
@@ -20,6 +21,7 @@ extern crate rustc_data_structures;
 #[expect(unused_extern_crates, reason = "required to link to rustc crates")]
 extern crate rustc_driver;
 extern crate rustc_lexer;
+extern crate termize;
 
 pub mod dogfood;
 pub mod edit_lints;
@@ -31,9 +33,11 @@ pub mod serve;
 pub mod setup;
 pub mod sync;
 
+mod diag;
 mod generate;
 mod parse;
 mod utils;
 
+pub use self::diag::DiagCx;
 pub use self::parse::{ParseCx, new_parse_cx};
-pub use self::utils::{ClippyInfo, UpdateMode};
+pub use self::utils::{ClippyInfo, SourceFile, Span, UpdateMode};

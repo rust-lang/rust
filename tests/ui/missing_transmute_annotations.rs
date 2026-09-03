@@ -9,7 +9,7 @@ extern crate macro_rules;
 macro_rules! local_bad_transmute {
     ($e:expr) => {
         std::mem::transmute($e)
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
     };
 }
 
@@ -36,18 +36,18 @@ unsafe fn foo2() -> i32 {
     unsafe {
         let mut i: i32 = 0;
         i = std::mem::transmute([1u16, 2u16]);
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
         i = std::mem::transmute::<_, _>([1u16, 2u16]);
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
         i = std::mem::transmute::<_, i32>([1u16, 2u16]);
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
         i = std::mem::transmute::<[u16; 2], _>([1u16, 2u16]);
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
 
         let x: i32 = bar(std::mem::transmute::<[u16; 2], _>([1u16, 2u16]));
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
         bar(std::mem::transmute::<[u16; 2], _>([1u16, 2u16]));
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
 
         i = local_bad_transmute!([1u16, 2u16]);
 
@@ -55,21 +55,30 @@ unsafe fn foo2() -> i32 {
         i = bad_transmute!([1u16, 2u16]);
 
         i = std::mem::transmute([0i16, 0i16]);
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
 
         i = std::mem::transmute(Foo::A);
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
 
         i
     }
 }
 
+#[expect(invalid_value)]
+// https://github.com/rust-lang/rust-clippy/issues/15839
+fn function_name_in_suggestion() {
+    trait T {}
+    struct S(*mut dyn T);
+    let _ = S(unsafe { std::mem::transmute((0usize, 0usize)) });
+    //~^ missing_transmute_annotations
+}
+
 fn main() {
     let x: _ = unsafe { std::mem::transmute::<_, i32>([1u16, 2u16]) };
-    //~^ ERROR: transmute used without annotations
+    //~^ missing_transmute_annotations
     unsafe {
         let x: _ = std::mem::transmute::<_, i32>([1u16, 2u16]);
-        //~^ ERROR: transmute used without annotations
+        //~^ missing_transmute_annotations
 
         // Should not warn.
         std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);

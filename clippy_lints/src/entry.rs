@@ -350,10 +350,8 @@ struct Insertion<'tcx> {
 
 /// This visitor needs to do multiple things:
 /// * Find all usages of the map. An insertion can only be made before any other usages of the map.
-/// * Determine if there's an insertion using the same key. There's no need for the entry api
-///   otherwise.
-/// * Determine if the final statement executed is an insertion. This is needed to use
-///   `or_insert_with`.
+/// * Determine if there's an insertion using the same key. There's no need for the entry api otherwise.
+/// * Determine if the final statement executed is an insertion. This is needed to use `or_insert_with`.
 /// * Determine if there's any sub-expression that can't be placed in a closure.
 /// * Determine if there's only a single insert statement. `or_insert` can be used in this case.
 #[expect(clippy::struct_excessive_bools)]

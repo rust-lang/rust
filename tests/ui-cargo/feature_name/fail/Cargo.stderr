@@ -42,4 +42,4 @@ error: the "with_" prefix in the feature name "with_owo" is redundant
   |
   = help: consider renaming the feature to "owo"
 
-error: could not compile `feature_name` (bin "feature_name") due to 10 previous errors
+error: could not compile `feature-name` (bin "feature-name") due to 10 previous errors

@@ -1,5 +1,5 @@
 [package]
-name = "clippy_test_deps"
+name = "clippy-test-deps"
 version = "0.1.0"
 edition = "2021"
 

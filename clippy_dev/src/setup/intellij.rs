@@ -96,7 +96,7 @@ fn inject_deps_into_project(rustc_source_dir: &Path, project: &ClippyProjectInfo
     }
 }
 
-/// `clippy_dev` expects to be executed in the root directory of Clippy. This function
+/// `clippy-dev` expects to be executed in the root directory of Clippy. This function
 /// loads the given file or returns an error. Having it in this extra function ensures
 /// that the error message looks nice.
 fn read_project_file(file_path: &str) -> Result<String, ()> {

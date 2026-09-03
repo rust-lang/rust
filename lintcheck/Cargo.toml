@@ -2,7 +2,6 @@
 name = "lintcheck"
 version = "0.0.1"
 description = "tool to monitor impact of changes in Clippy's lints on a part of the ecosystem"
-readme = "README.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-clippy"
 categories = ["development-tools"]
