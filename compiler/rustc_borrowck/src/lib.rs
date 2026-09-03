@@ -2097,7 +2097,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ProjectionKind::Subslice { .. }
                     | ProjectionKind::Downcast(..)
                     | ProjectionKind::OpaqueCast(..)
-                    | ProjectionKind::UnwrapUnsafeBinder(..),
+                    | ProjectionKind::UnwrapUnsafeBinder(..)
+                    | ProjectionKind::PhantomDeref,
             } => maybe_uninits.contains(mpi).then_some(mpi),
 
             LookupResult::None => bug!("should have move path for every Local"),
