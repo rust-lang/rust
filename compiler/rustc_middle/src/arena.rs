@@ -194,9 +194,13 @@ macro_rules! impl_ref_decodable_into_arena {
 //
 // Types in this list must be `ArenaAllocatable`, either because they are `Copy`
 // or because they are listed in the `declare_arena!` invocation.
+//
+// Types in this list must also implement `Decodable<D>` for all `D: TyDecoder<'tcx>`.
 impl_ref_decodable_into_arena! {
     // tidy-alphabetical-start
     (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
+    (rustc_middle::ty::Clause<'tcx>, rustc_span::Span),
+    (rustc_middle::ty::PolyTraitRef<'tcx>, rustc_span::Span),
     rustc_ast::InlineAsmTemplatePiece,
     rustc_ast::tokenstream::TokenStream,
     rustc_data_structures::unord::UnordMap<rustc_span::def_id::DefId, rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>>,
@@ -211,6 +215,7 @@ impl_ref_decodable_into_arena! {
     rustc_middle::ty::Variance,
     rustc_span::Ident,
     rustc_span::Span,
+    rustc_span::Spanned<rustc_middle::mono::MonoItem<'tcx>>,
     rustc_span::def_id::DefId,
     rustc_span::def_id::LocalDefId,
     // tidy-alphabetical-end
