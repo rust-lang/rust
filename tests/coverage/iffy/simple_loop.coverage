@@ -11,13 +11,12 @@
    LL|       |
    LL|       |    if
    LL|      1|        is_true
-   LL|      1|    {
+   LL|       |    {
    LL|      1|        countdown
    LL|      1|        =
    LL|      1|            10
-   LL|      1|        ;
-   LL|      1|    }
-                  ^0
+   LL|       |        ;
+   LL|      0|    }
    LL|       |
    LL|       |    loop
    LL|       |    {

@@ -23,7 +23,7 @@ Number of file 0 mappings: 4
 Highest counter ID seen: (none)
 
 Function name: let_else_loop::loopy
-Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 09, 01, 00, 15, 01, 01, 10, 00, 14, 09, 00, 1c, 00, 23, 02, 01, 01, 00, 02]
+Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 09, 01, 00, 15, 01, 01, 10, 00, 14, 05, 00, 1c, 00, 23, 02, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => $DIR/let_else_loop.rs
 Number of expressions: 1
@@ -31,8 +31,8 @@ Number of expressions: 1
 Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 9, 1) to (start + 0, 21)
 - Code(Counter(0)) at (prev + 1, 16) to (start + 0, 20)
-- Code(Counter(2)) at (prev + 0, 28) to (start + 0, 35)
+- Code(Counter(1)) at (prev + 0, 28) to (start + 0, 35)
 - Code(Expression(0, Sub)) at (prev + 1, 1) to (start + 0, 2)
     = (c0 - c1)
-Highest counter ID seen: c2
+Highest counter ID seen: c1
 

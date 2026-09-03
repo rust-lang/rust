@@ -17,7 +17,7 @@
    LL|      6|    while x > 0 {
    LL|      5|        x -= 1;
    LL|      5|        say("decreased x");
-   LL|      5|    }
+   LL|       |    }
    LL|      1|    say("goodbye");
    LL|      1|}
    LL|       |

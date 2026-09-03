@@ -12,17 +12,16 @@
    LL|      1|        a = 1;
    LL|      1|        b = 10;
    LL|      1|        c = 100;
-   LL|      1|    }
-                  ^0
+   LL|      0|    }
    LL|       |    let
-   LL|      1|        somebool
+   LL|       |        somebool
    LL|       |        =
    LL|      1|            a < b
    LL|       |        ||
    LL|      0|            b < c
    LL|       |    ;
    LL|       |    let
-   LL|      1|        somebool
+   LL|       |        somebool
    LL|       |        =
    LL|      1|            b < a
    LL|       |        ||
@@ -35,22 +34,22 @@
    LL|       |    if
    LL|      1|        !
    LL|      1|        is_true
-   LL|      0|    {
+   LL|       |    {
    LL|      0|        a = 2
-   LL|      0|        ;
+   LL|       |        ;
    LL|      1|    }
    LL|       |
    LL|       |    if
    LL|      1|        is_true
-   LL|      1|    {
+   LL|       |    {
    LL|      1|        b = 30
-   LL|      1|        ;
-   LL|      1|    }
+   LL|       |        ;
+   LL|       |    }
    LL|       |    else
-   LL|      0|    {
+   LL|       |    {
    LL|      0|        c = 400
-   LL|      0|        ;
-   LL|      0|    }
+   LL|       |        ;
+   LL|       |    }
    LL|       |
    LL|      1|    if !is_true {
    LL|      0|        a = 2;
@@ -58,8 +57,8 @@
    LL|       |
    LL|      1|    if is_true {
    LL|      1|        b = 30;
-   LL|      1|    } else {
+   LL|       |    } else {
    LL|      0|        c = 400;
-   LL|      0|    }
+   LL|       |    }
    LL|      1|}
 

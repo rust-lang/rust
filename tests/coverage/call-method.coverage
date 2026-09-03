@@ -9,11 +9,11 @@
    LL|      1|    let thing = Thing;
    LL|       |
    LL|      1|    thing
-   LL|       |        .
+   LL|      1|        .
    LL|      1|        method
-   LL|       |        (
+   LL|      1|        (
    LL|      1|            "arg"
-   LL|       |        )
+   LL|      1|        )
    LL|       |    ;
    LL|       |
    LL|      1|    thing
@@ -22,11 +22,11 @@
    LL|      1|        (
    LL|      1|            "arg"
    LL|      1|        )
-   LL|       |        .
+   LL|      1|        .
    LL|      1|        method
-   LL|       |        (
+   LL|      1|        (
    LL|      1|            "arg"
-   LL|       |        )
+   LL|      1|        )
    LL|       |    ;
    LL|      1|}
    LL|       |
