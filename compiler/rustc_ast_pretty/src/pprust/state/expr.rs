@@ -497,7 +497,7 @@ impl<'a> State<'a> {
                 self.print_type(ty);
             }
             ast::ExprKind::Type(expr, ty) => {
-                self.word("builtin # type_ascribe");
+                self.word("k#type_ascribe");
                 self.popen();
                 let ib = self.ibox(0);
                 self.print_expr(expr, FixupContext::default());
