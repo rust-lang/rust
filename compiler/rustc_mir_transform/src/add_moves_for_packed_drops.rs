@@ -47,7 +47,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
         let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
 
         for (bb, data) in body.basic_blocks.iter_enumerated() {
-            let loc = Location { block: bb, statement_index: data.statements.len() };
+            let loc = Location { block: bb, statement_index: data.statements.len().into() };
             let terminator = data.terminator();
 
             match terminator.kind {

@@ -593,7 +593,7 @@ fn save_as_intervals<'tcx>(
         }
 
         let block_data = &body.basic_blocks[block];
-        let loc = Location { block, statement_index: block_data.statements.len() };
+        let loc = Location { block, statement_index: block_data.statements.len().into() };
         state.current = two_step_loc(loc, Effect::After);
 
         // Setup the new block.

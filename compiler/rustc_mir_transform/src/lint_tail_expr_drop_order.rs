@@ -85,7 +85,7 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
                     // consult with the maybe-initialization information.
                     self.maybe_init.seek_before_primary_effect(Location {
                         block,
-                        statement_index: data.statements.len(),
+                        statement_index: data.statements.len().into(),
                     });
 
                     // Check if the drop of `place` under inspection is really in effect. This is

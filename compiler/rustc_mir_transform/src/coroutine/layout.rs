@@ -113,7 +113,7 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
     for (block, data) in body.basic_blocks.iter_enumerated() {
         let TerminatorKind::Yield { .. } = data.terminator().kind else { continue };
 
-        let loc = Location { block, statement_index: data.statements.len() };
+        let loc = Location { block, statement_index: data.statements.len().into() };
 
         liveness.seek_to_block_end(block);
         let mut live_locals = liveness.get().clone();

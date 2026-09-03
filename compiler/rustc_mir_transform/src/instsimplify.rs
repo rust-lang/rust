@@ -217,7 +217,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     fn simplify_primitive_clone(
         &self,
         terminator: &mut Terminator<'tcx>,
-        statements: &mut Vec<Statement<'tcx>>,
+        statements: &mut IndexVec<StatementIndex, Statement<'tcx>>,
     ) {
         let TerminatorKind::Call {
             func, args, destination, target: Some(destination_block), ..
@@ -273,7 +273,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     fn simplify_size_or_align_of_val(
         &self,
         terminator: &mut Terminator<'tcx>,
-        statements: &mut Vec<Statement<'tcx>>,
+        statements: &mut IndexVec<StatementIndex, Statement<'tcx>>,
     ) {
         let source_info = terminator.source_info;
         if let TerminatorKind::Call {
@@ -324,7 +324,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     fn simplify_raw_eq(
         &mut self,
         terminator: &mut Terminator<'tcx>,
-        statements: &mut Vec<Statement<'tcx>>,
+        statements: &mut IndexVec<StatementIndex, Statement<'tcx>>,
     ) {
         let tcx = self.tcx;
         let source_info = terminator.source_info;

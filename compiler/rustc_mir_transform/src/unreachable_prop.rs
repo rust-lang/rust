@@ -53,7 +53,7 @@ impl crate::MirPass<'_> for UnreachablePropagation {
         // The order in which we clear bb statements does not matter.
         #[allow(rustc::potential_query_instability)]
         for bb in unreachable_blocks {
-            body.basic_blocks_mut()[bb].statements.clear();
+            body.basic_blocks_mut()[bb].statements.raw.clear();
         }
     }
 }

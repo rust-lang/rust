@@ -588,7 +588,7 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_field = tcx.mk_place_field(SELF_ARG.into(), FieldIdx::ZERO, ref_coroutine_ty);
 
     let statements = &mut body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK].statements;
-    statements.insert(
+    statements.raw.insert(
         0,
         Statement::new(
             source_info,
@@ -652,7 +652,7 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         indexvec![Operand::Move(nonnull_local.into())],
     );
     let resume_assign = StatementKind::Assign(Box::new((resume_local.into(), resume_rhs)));
-    body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK].statements.splice(
+    body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK].statements.raw.splice(
         0..0,
         [Statement::new(source_info, nonnull_assign), Statement::new(source_info, resume_assign)],
     );
@@ -1151,7 +1151,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // If we want to save their values inside the coroutine state, we need to do so explicitly.
         let source_info = SourceInfo::outermost(body.span);
         let args_iter = body.args_iter();
-        body.basic_blocks.as_mut()[START_BLOCK].statements.splice(
+        body.basic_blocks.as_mut()[START_BLOCK].statements.raw.splice(
             0..0,
             args_iter.filter_map(|local| {
                 let (ty, variant_index, idx) = transform.remap[local]?;

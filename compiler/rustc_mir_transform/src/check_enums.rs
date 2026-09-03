@@ -39,7 +39,7 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
         // our current location after every insertion. By iterating backwards, we dodge this issue:
         // The only Locations that an insertion changes have already been handled.
         for block in basic_blocks.indices().rev() {
-            for statement_index in (0..basic_blocks[block].statements.len()).rev() {
+            for statement_index in basic_blocks[block].statements.indices().rev() {
                 let location = Location { block, statement_index };
                 let statement = &basic_blocks[block].statements[statement_index];
                 let source_info = statement.source_info;
@@ -248,7 +248,7 @@ fn split_block(
 
     // Drain every statement after this one and move the current terminator to a new basic block.
     let new_block = BasicBlockData::new_stmts(
-        block_data.statements.split_off(location.statement_index),
+        block_data.statements.raw.split_off(location.statement_index.index()),
         block_data.terminator.take(),
         block_data.is_cleanup,
     );

@@ -979,7 +979,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
                 n += 1;
             }
         }
-        caller_body[block].statements.rotate_right(n);
+        caller_body[block].statements.raw.rotate_right(n);
     }
 
     // Insert all of the (mapped) parts of the callee body into the caller.
@@ -1157,6 +1157,7 @@ fn new_call_temp<'tcx>(
     if let Some(block) = return_block {
         caller_body[block]
             .statements
+            .raw
             .insert(0, Statement::new(callsite.source_info, StatementKind::StorageDead(local)));
     }
 

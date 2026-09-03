@@ -434,7 +434,7 @@ fn emit_mermaid_constraint_graph<'tcx>(
     let location_name = |location: Location| {
         // A MIR location looks like `bb5[2]`. As that is not a syntactically valid mermaid node id,
         // transform it into `BB5_2`.
-        format!("BB{}_{}", location.block.index(), location.statement_index)
+        format!("BB{}_{}", location.block.index(), location.statement_index.index())
     };
     let region_name = |region: RegionVid| format!("'{}", region.index());
     let node_name = |region: RegionVid, point: PointIndex| {

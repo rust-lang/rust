@@ -781,7 +781,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     }
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
-                } else if location.statement_index == block.statements.len() {
+                } else if location.statement_index.index() == block.statements.len() {
                     if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
                         &block.terminator().kind
                     {

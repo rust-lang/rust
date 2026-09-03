@@ -443,7 +443,7 @@ fn pretty_print_region_elements<'tcx>(
             RegionElement::Location(l) => {
                 if let Some((location1, location2)) = open_location {
                     if location2.block == l.block
-                        && location2.statement_index == l.statement_index - 1
+                        && location2.statement_index.index() == l.statement_index.index() - 1
                     {
                         open_location = Some((location1, l));
                         continue;
@@ -496,7 +496,7 @@ fn pretty_print_region_elements<'tcx>(
             assert_eq!(location1.block, location2.block);
             s.push_str(&format!(
                 "{:?}[{}..={}]",
-                location1.block, location1.statement_index, location2.statement_index
+                location1.block, location1.statement_index.index(), location2.statement_index.index()
             ));
         }
     }

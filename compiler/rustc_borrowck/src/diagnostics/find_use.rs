@@ -52,7 +52,7 @@ impl<'a, 'tcx> UseFinder<'a, 'tcx> {
                 def_use_result: None,
             };
 
-            let is_statement = p.statement_index < block_data.statements.len();
+            let is_statement = p.statement_index.index() < block_data.statements.len();
 
             if is_statement {
                 visitor.visit_statement(&block_data.statements[p.statement_index], p);

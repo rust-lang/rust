@@ -49,7 +49,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 
     for (bb, bb_data) in traversal::preorder(body) {
         if let TerminatorKind::Call { ref args, ref destination, .. } = bb_data.terminator().kind {
-            let loc = Location { block: bb, statement_index: bb_data.statements.len() };
+            let loc = Location { block: bb, statement_index: bb_data.statements.len().into() };
 
             // Position ourselves between the evaluation of `args` and the write to `destination`.
             live.seek_to_block_end(bb);

@@ -122,7 +122,7 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
             let parent_op = parent_op.to_copy();
             let parent_ty = parent_op.ty(body.local_decls(), tcx);
             let statements_before = bbs[parent].statements.len();
-            let parent_end = Location { block: parent, statement_index: statements_before };
+            let parent_end = Location { block: parent, statement_index: statements_before.into() };
 
             let mut patch = MirPatch::new(body);
 
@@ -272,7 +272,7 @@ fn evaluate_candidate<'tcx>(
             Statement {
                 kind: StatementKind::Assign((_, Rvalue::Discriminant(child_place))), ..
             },
-        ] = bbs[child].statements.as_slice()
+        ] = bbs[child].statements.raw.as_slice()
         else {
             return None;
         };
@@ -386,7 +386,7 @@ fn verify_candidate_branch<'tcx>(
     }
     if need_hoist_discriminant {
         // If we need hoist discriminant, the branch must have exactly one statement.
-        let [statement] = branch.statements.as_slice() else {
+        let [statement] = branch.statements.raw.as_slice() else {
             return false;
         };
         // The statement must assign the discriminant of `place`.

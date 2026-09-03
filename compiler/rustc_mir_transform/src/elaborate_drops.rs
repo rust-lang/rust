@@ -473,7 +473,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
             debug!("drop_flags_for_locs({:?})", data);
             for i in (0..(data.statements.len() + 1)).map(StatementIndex::from_usize) {
-                debug!("drop_flag_for_locs: stmt {}", i);
+                debug!("drop_flag_for_locs: stmt {:?}", i);
                 if i.index() == data.statements.len() {
                     match data.terminator().kind {
                         TerminatorKind::Drop { .. } => {
@@ -512,7 +512,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
             {
                 assert!(!self.patch.is_term_patched(bb));
 
-                let loc = Location { block: bb, statement_index: data.statements.len() };
+                let loc = Location { block: bb, statement_index: data.statements.len().into() };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
                 on_lookup_result_bits(self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)

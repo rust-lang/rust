@@ -382,7 +382,7 @@ fn find_self_assignments<'tcx>(
                     (Operand::Copy(lhs), _),
                 ) => {
                     // Checked binary ops only appear at the end of the block, before the assertion.
-                    if statement_index + 1 != bb_data.statements.len() {
+                    if statement_index.index() + 1 != bb_data.statements.len() {
                         continue;
                     }
 
@@ -392,7 +392,7 @@ fn find_self_assignments<'tcx>(
                     else {
                         continue;
                     };
-                    let Some(assign) = body.basic_blocks[*target].statements.first() else {
+                    let Some(assign) = body.basic_blocks[*target].statements.raw.first() else {
                         continue;
                     };
                     let StatementKind::Assign((dest, Rvalue::Use(Operand::Move(temp), _))) =

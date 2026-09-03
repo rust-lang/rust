@@ -43,7 +43,7 @@ fn insert_alignment_check<'tcx>(
     pointee_ty: Ty<'tcx>,
     _context: PlaceContext,
     local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
-    stmts: &mut Vec<Statement<'tcx>>,
+    stmts: &mut IndexVec<StatementIndex, Statement<'tcx>>,
     source_info: SourceInfo,
 ) -> PointerCheck<'tcx> {
     // Cast the pointer to a *const ().

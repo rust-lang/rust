@@ -35,7 +35,7 @@ fn get_switched_on_type<'tcx>(
     // Only bother checking blocks which terminate by switching on a local.
     let local = get_discriminant_local(&terminator.kind)?;
 
-    let stmt_before_term = block_data.statements.last()?;
+    let stmt_before_term = block_data.statements.raw.last()?;
 
     if let StatementKind::Assign((l, Rvalue::Discriminant(place))) = stmt_before_term.kind
         && l.as_local() == Some(local)

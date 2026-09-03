@@ -3,7 +3,8 @@ use std::iter;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{
-    BasicBlock, BinOp, Body, Operand, Place, Rvalue, StatementKind, SwitchTargets, TerminatorKind,
+    BasicBlock, BinOp, Body, Operand, Place, Rvalue, StatementIndex, StatementKind, SwitchTargets,
+    TerminatorKind,
 };
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
@@ -204,7 +205,7 @@ struct OptimizationInfo<'tcx> {
     /// Basic block to apply the optimization
     bb_idx: BasicBlock,
     /// Statement index of Eq/Ne assignment
-    bin_op_stmt_idx: usize,
+    bin_op_stmt_idx: StatementIndex,
     /// Place that needs to be switched on. This place is of type integral
     to_switch_on: Place<'tcx>,
     /// Constant to use in switch target value

@@ -804,7 +804,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         // First, take the Rvalue or Call out of the source MIR,
         // or duplicate it, depending on keep_original.
-        if loc.statement_index < num_stmts {
+        if loc.statement_index.index() < num_stmts {
             let (mut rvalue, source_info) = {
                 let statement = &mut self.source[loc.block].statements[loc.statement_index];
                 let StatementKind::Assign((_, rhs)) = &mut statement.kind else {
@@ -967,7 +967,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         assert_eq!(self.new_block(), START_BLOCK);
         self.visit_rvalue(
             &mut rvalue,
-            Location { block: START_BLOCK, statement_index: usize::MAX },
+            Location { block: START_BLOCK, statement_index: usize::MAX.into() },
         );
 
         let span = self.promoted.span;
@@ -1074,7 +1074,7 @@ fn promote_candidates<'tcx>(
     // has to be done in reverse location order, to not invalidate the rest.
     extra_statements.sort_by_key(|&(loc, _)| cmp::Reverse(loc));
     for (loc, statement) in extra_statements {
-        body[loc.block].statements.insert(loc.statement_index, statement);
+        body[loc.block].statements.raw.insert(loc.statement_index.index(), statement);
     }
 
     // Eliminate assignments to, and drops of promoted temps.

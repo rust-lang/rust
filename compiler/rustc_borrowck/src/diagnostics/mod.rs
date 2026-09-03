@@ -571,7 +571,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     let InitLocation::Statement(loc) = init.location else { continue };
 
                     let bbd = &self.body[loc.block];
-                    let is_terminator = bbd.statements.len() == loc.statement_index;
+                    let is_terminator = bbd.statements.len() == loc.statement_index.index();
                     debug!(
                         "borrowed_content_source: loc={:?} is_terminator={:?}",
                         loc, is_terminator,
@@ -1155,7 +1155,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             if let TerminatorKind::Drop { target: drop_target, .. } =
                 self.body[location.block].terminator().kind
             {
-                self.body[drop_target].statements.first()
+                self.body[drop_target].statements.raw.first()
             } else {
                 None
             };
@@ -1165,7 +1165,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         for stmt in statements.chain(maybe_additional_statement) {
             if let StatementKind::Assign((_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
-                let (&def_id, is_coroutine) = match kind {
+                let (def_id, is_coroutine) = match **kind {
                     AggregateKind::Closure(def_id, _) => (def_id, false),
                     AggregateKind::Coroutine(def_id, _) => (def_id, true),
                     _ => continue,
@@ -1177,7 +1177,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     def_id, is_coroutine, places
                 );
                 if let Some((args_span, closure_kind, capture_kind_span, path_span)) =
-                    self.closure_span(def_id, Place::from(target).as_ref(), places)
+                    self.closure_span(def_id, Place::from(target).as_ref(), &places)
                 {
                     return ClosureUse { closure_kind, args_span, capture_kind_span, path_span };
                 } else {

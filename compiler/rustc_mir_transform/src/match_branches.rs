@@ -239,7 +239,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         let &Statement {
             kind: StatementKind::Assign((discr_place, Rvalue::Discriminant(copy_src_place))),
             ..
-        } = bbs[self.switch_bb].statements.last()?
+        } = bbs[self.switch_bb].statements.raw.last()?
         else {
             return None;
         };
@@ -412,13 +412,13 @@ fn simplify_match<'tcx>(
     let stmt_len = body.basic_blocks[first_case_bb].statements.len();
     let mut cases = Vec::with_capacity(stmt_len);
     // Check at each position in the basic blocks whether these statements can be unified.
-    for index in 0..stmt_len {
+    for index in body.basic_blocks[first_case_bb].statements.indices() {
         cases.clear();
         let otherwise = otherwise.map(|bb| &body.basic_blocks[bb].statements[index].kind);
         for &(case, bb) in &reachable_cases {
             cases.push((case, &body.basic_blocks[bb].statements[index].kind));
         }
-        let Some(new_stmt) = simplify_match.try_unify_stmts(index, &cases, otherwise) else {
+        let Some(new_stmt) = simplify_match.try_unify_stmts(index.index(), &cases, otherwise) else {
             return false;
         };
         new_stmts.push(new_stmt);
@@ -427,7 +427,7 @@ fn simplify_match<'tcx>(
     let discr = discr.clone();
 
     let statement_index = body.basic_blocks[switch_bb].statements.len();
-    let parent_end = Location { block: switch_bb, statement_index };
+    let parent_end = Location { block: switch_bb, statement_index: statement_index.into() };
     let mut patch = simplify_match.patch;
     if let Some(discr_local) = simplify_match.discr_local {
         patch.add_statement(parent_end, StatementKind::StorageLive(discr_local));
