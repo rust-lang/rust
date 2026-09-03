@@ -1,8 +1,8 @@
 error[E0658]: `builtin #` syntax is unstable
-  --> $DIR/feature-gate-builtin_syntax.rs:6:15
+  --> $DIR/feature-gate-builtin_syntax.rs:9:5
    |
-LL |     builtin # offset_of(Foo, v);
-   |               ^^^^^^^^^
+LL |     k#offset_of(Foo, v);
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #110680 <https://github.com/rust-lang/rust/issues/110680> for more information
    = help: add `#![feature(builtin_syntax)]` to the crate attributes to enable
