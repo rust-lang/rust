@@ -1326,10 +1326,7 @@ macro_rules! nonzero_integer {
             /// # See also
             ///
             /// If the characters to be parsed is in base 10 (decimal),
-            /// [`from_ascii_bytes`] can also be used.
-            ///
-            // FIXME(#122566): This HTML link work around a rustdoc-json test failure.
-            /// [`from_ascii_bytes`]: #method.from_ascii_bytes
+            /// [`from_ascii_bytes`][Self::from_ascii_bytes] can also be used.
             ///
             /// # Examples
             ///
@@ -1409,11 +1406,7 @@ macro_rules! nonzero_integer {
             /// # See also
             ///
             /// If the string to be parsed is in base 10 (decimal),
-            /// [`from_str`] or [`str::parse`] can also be used.
-            ///
-            // FIXME(#122566): These HTML links work around a rustdoc-json test failure.
-            /// [`from_str`]: #method.from_str
-            /// [`str::parse`]: primitive.str.html#method.parse
+            /// [`from_str`][Self::from_str] or [`str::parse`] can also be used.
             ///
             /// # Examples
             ///
