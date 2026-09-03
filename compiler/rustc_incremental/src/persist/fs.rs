@@ -702,8 +702,10 @@ pub(crate) fn garbage_collect_session_directories(
         lock_file_to_session_dir.items().filter_map(|(lock_file_name, directory_name)| {
             debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
 
-            if directory_name.as_str() == current_session_directory_name {
-                // Skipping our own directory is, unfortunately, important for correctness.
+            if directory_name.as_str() == current_session_directory_name
+                && !is_finalized(directory_name)
+            {
+                // Skipping our own active directory is important for correctness.
                 //
                 // To summarize #147821: we will try to lock directories before deciding they can be
                 // garbage collected, but the ability of `flock::Lock` to detect a lock held *by the
@@ -722,6 +724,8 @@ pub(crate) fn garbage_collect_session_directories(
                 // It's not clear that `flock::Lock` can be fixed for this in general, and our own
                 // incremental session directory is the only one which this process may own, so skip
                 // it here and avoid the problem. We know it's not garbage anyway: we're using it.
+                // Once finalized, its lock is released. Include it in collection so we keep only
+                // the newest completed session.
                 return None;
             }
 
