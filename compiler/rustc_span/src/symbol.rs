@@ -124,7 +124,6 @@ symbols! {
         // Matching predicates: `is_weak`
         // tidy-alphabetical-start
         Auto:               "auto",
-        Builtin:            "builtin",
         Catch:              "catch",
         ContractEnsures:    "contract_ensures",
         ContractRequires:   "contract_requires",
@@ -139,6 +138,8 @@ symbols! {
         Safe:               "safe",
         TypeAscribe:        "type_ascribe",
         Union:              "union",
+        UnwrapBinder:       "unwrap_binder",
+        WrapBinder:         "wrap_binder",
         Yeet:               "yeet",
         // tidy-alphabetical-end
     }
@@ -2321,7 +2322,6 @@ symbols! {
         unwind_attributes,
         unwind_safe_trait,
         unwrap,
-        unwrap_binder,
         unwrap_or,
         update,
         use_cloned,
@@ -2409,7 +2409,6 @@ symbols! {
         windows,
         windows_subsystem,
         with_negative_coherence,
-        wrap_binder,
         wrapping_add,
         wrapping_div,
         wrapping_mul,
