@@ -1827,22 +1827,6 @@ pub(crate) struct ParenthesesInMatchPatSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag("documentation comments cannot be applied to a function parameter's type")]
-pub(crate) struct DocCommentOnParamType {
-    #[primary_span]
-    #[label("doc comments are not allowed here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("attributes cannot be applied to a function parameter's type")]
-pub(crate) struct AttributeOnParamType {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("attributes cannot be applied to generic arguments")]
 pub(crate) struct AttributeOnGenericArg {
     #[primary_span]

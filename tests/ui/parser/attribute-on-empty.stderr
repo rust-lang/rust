@@ -6,7 +6,7 @@ LL |     let _: Baz<#[cfg(false)]> = todo!();
    |          |
    |          while parsing the type for `_`
 
-error: attributes cannot be applied to a function parameter's type
+error: attributes cannot be applied to types
   --> $DIR/attribute-on-empty.rs:10:14
    |
 LL | fn g(_param: #[attr]) {}
