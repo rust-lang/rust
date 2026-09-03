@@ -79,7 +79,6 @@ use crate::error_reporting::traits::ambiguity::{
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
-use crate::solve::deeply_normalize_for_diagnostics;
 use crate::traits::{
     MatchExpressionArmCause, Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
     specialization_graph,
@@ -1577,10 +1576,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let (expected_found, exp_found, is_simple_error, values, param_env) = match values {
             None => (None, Mismatch::Fixed("type"), false, None, None),
             Some(ty::ParamEnvAnd { param_env, value: values }) => {
-                let mut values = self.resolve_vars_if_possible(values);
-                if self.next_trait_solver() {
-                    values = deeply_normalize_for_diagnostics(self, param_env, values);
-                }
+                let values = self.resolve_vars_if_possible(values);
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Terms(ExpectedFound { expected, found }) => {
                         match (expected.kind(), found.kind()) {
