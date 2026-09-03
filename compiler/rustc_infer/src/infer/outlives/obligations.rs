@@ -66,7 +66,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
-    TypeVisitableExt, eager_resolve_vars,
+    TypeVisitableExt, Upcast, eager_resolve_vars,
 };
 use rustc_span::Span;
 use rustc_type_ir::region_constraint::{self, LeafRegionConstraint};
@@ -235,8 +235,10 @@ impl<'tcx> InferCtxt<'tcx> {
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
         let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
-            outlives_env.known_type_outlives().into_iter().cloned().collect(),
+            self,
+            type_outlives_clauses(self.tcx, outlives_env.known_type_outlives().iter().copied()),
             outlives_env.free_region_map().relation.clone(),
+            ty::UniverseIndex::ROOT,
         );
         self.destructure_solver_region_constraints(assumptions, self);
     }
@@ -249,8 +251,10 @@ impl<'tcx> InferCtxt<'tcx> {
         region_outlives: TransitiveRelation<RegionVid>,
     ) {
         let assumptions = region_constraint::Assumptions::new(
-            known_type_outlives.into_iter().cloned().collect(),
+            self,
+            type_outlives_clauses(self.tcx, known_type_outlives.iter().copied()),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
+            ty::UniverseIndex::ROOT,
         );
         self.destructure_solver_region_constraints(assumptions, conversion);
     }
@@ -374,6 +378,18 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         }
     }
+}
+
+/// Turns type outlives where clauses into clauses for
+/// [`region_constraint::Assumptions::new`] to elaborate.
+fn type_outlives_clauses<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    type_outlives: impl IntoIterator<Item = PolyTypeOutlivesClause<'tcx>>,
+) -> Vec<ty::Clause<'tcx>> {
+    type_outlives
+        .into_iter()
+        .map(|c| c.map_bound(ty::ClauseKind::TypeOutlives).upcast(tcx))
+        .collect()
 }
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
