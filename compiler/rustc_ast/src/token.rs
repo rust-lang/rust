@@ -313,6 +313,8 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, kind: IdentKind) -> bool {
     // WARNING: Take care when modifying this function! It will change the stable(!) set of
     //          tokens that are allowed to match an `expr` nonterminal which is user observable.
 
+    // NOTE: We don't care about forced keywords that are gated behind `builtin_syntax`.
+
     let ident_token = Token::new(Ident(name, kind), span);
 
     // FIXME: Remove `box` from this list given we officially no longer support box expressions

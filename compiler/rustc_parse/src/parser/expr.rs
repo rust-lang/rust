@@ -1439,6 +1439,8 @@ impl<'a> Parser<'a> {
                     return Ok(expr);
                 }
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
+            } else if this.eat_forced_keyword_noexpect(kw::OffsetOf) {
+                this.parse_expr_offset_of(lo)
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 let at_async = this.check_keyword(exp!(Async));
@@ -1883,7 +1885,6 @@ impl<'a> Parser<'a> {
     fn parse_expr_builtin(&mut self) -> PResult<'a, Box<Expr>> {
         self.parse_builtin(|this, lo, ident| {
             Ok(match ident.name {
-                sym::offset_of => Some(this.parse_expr_offset_of(lo)?),
                 sym::type_ascribe => Some(this.parse_expr_type_ascribe(lo)?),
                 sym::wrap_binder => {
                     Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Wrap)?)
@@ -1929,8 +1930,9 @@ impl<'a> Parser<'a> {
         ret
     }
 
-    /// Built-in macro for `offset_of!` expressions.
     pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
+
         let container = self.parse_ty()?;
         self.expect(exp!(Comma))?;
 
@@ -1953,7 +1955,13 @@ impl<'a> Parser<'a> {
             }
         }
 
+        // FIXME: Odd not include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly.
         let span = lo.to(self.token.span);
+        self.expect(exp!(CloseParen))?;
+
+        self.psess.gated_spans.gate(sym::builtin_syntax, lo.to(self.token.span));
+
         Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
     }
 
