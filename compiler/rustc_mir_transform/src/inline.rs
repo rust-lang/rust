@@ -48,12 +48,16 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
     fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
         match ctx.opts.unstable_opts.inline_mir {
             Some(enabled) => PassPolicy::optional(enabled),
-            None => PassPolicy::optional(match (ctx.mir_opt_level(), ctx.opts.optimize) {
-                (0 | 1, _) => false,
-                // Inlining reduces incremental effectiveness.
-                (2, OptLevel::More | OptLevel::Aggressive) => ctx.opts.incremental.is_none(),
-                // Don't inline if the global `-Copt-level` is 1/s/z
-                (2, _) => false,
+            None => PassPolicy::optional(match ctx.mir_opt_level() {
+                0 | 1 => false,
+                // Only inline for `-Copt-level >= 2`, and don't inline
+                // in incremental mode to increase incremental effectiveness.
+                // FIXME: This should be cleaned up to not rely on inspecting the global opt level.
+                2 => {
+                    (ctx.opts.optimize == OptLevel::More
+                        || ctx.opts.optimize == OptLevel::Aggressive)
+                        && ctx.opts.incremental.is_none()
+                }
                 _ => true,
             }),
         }
