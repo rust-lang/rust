@@ -1493,7 +1493,7 @@ https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
 cc = ["@rust-lang/lang-docs"]
 
 [mentions."src/doc/rustc-dev-guide"]
-message = "The rustc-dev-guide subtree was changed."
+message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the subtree, consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls), otherwise thank you for your changes."
 cc = ["@BoxyUwU", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
