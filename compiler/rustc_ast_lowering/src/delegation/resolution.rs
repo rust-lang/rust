@@ -23,11 +23,14 @@ use crate::diagnostics::{
     DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
 };
 
+/// Simple (hack or heuristic) resolution of some delegations to inherent impls
+/// while correct resolution through `ProbeContext` is not available
+/// during AST -> HIR lowering due to query cycles.
+/// FIXME(fn_delegation): correct resolution through `ProbeContext` engine
 pub(crate) fn resolve_type_relative_delegations(
     tcx: TyCtxt<'_>,
     _: (),
 ) -> FxIndexMap<LocalDefId, TypeRelativeDelegationRes> {
-    // FIXME(fn_delegation): correct resolution through `ProbeContext` engine.
     let ast_index = tcx.index_ast(());
     let resolutions = tcx.resolutions(());
 
