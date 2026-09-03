@@ -1054,6 +1054,7 @@ where
                 // the only allowed region constraints may be constraints also present on the default impl.
                 if matches!(allow_inference_constraints, AllowInferenceConstraints::Yes)
                     || has_only_region_constraints(c.result)
+                    || c.result == candidates[i].result
                 {
                     if self.cx().impl_specializes(other_def_id, victim_def_id) {
                         candidates.remove(i);
