@@ -1249,9 +1249,12 @@ macro_rules! nonzero_integer {
                     " `+` "
                 }
             }]
-            /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
-            /// also represent an error.
+            /// sign followed by only digits.
+            ///
+            /// # Errors
+            ///
+            /// Leading and trailing non-digit characters (including whitespace) represent an error.
+            /// Underscores (which are accepted in Rust literals) also represent an error.
             ///
             /// # See also
             ///
@@ -1303,15 +1306,18 @@ macro_rules! nonzero_integer {
                     " `+` "
                 }
             }]
-            /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
-            /// also represent an error.
+            /// sign followed by only digits.
             ///
             /// Digits are a subset of these characters, depending on `radix`:
             ///
             /// - `0-9`
             /// - `a-z`
             /// - `A-Z`
+            ///
+            /// # Errors
+            ///
+            /// Leading and trailing non-digit characters (including whitespace) represent an error.
+            /// Underscores (which are accepted in Rust literals) also represent an error.
             ///
             /// # Panics
             ///
@@ -1383,15 +1389,18 @@ macro_rules! nonzero_integer {
                     " `+` "
                 }
             }]
-            /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
-            /// also represent an error.
+            /// sign followed by only digits.
             ///
             /// Digits are a subset of these characters, depending on `radix`:
             ///
             /// - `0-9`
             /// - `a-z`
             /// - `A-Z`
+            ///
+            /// # Errors
+            ///
+            /// Leading and trailing non-digit characters (including whitespace) represent an error.
+            /// Underscores (which are accepted in Rust literals) also represent an error.
             ///
             /// # Panics
             ///
