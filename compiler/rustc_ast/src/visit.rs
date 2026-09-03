@@ -247,7 +247,6 @@ macro_rules! impl_visitable_list {
         {
             type Extra = <T as Visitable<$lt, V>>::Extra;
 
-            #[inline]
             fn visit(&$lt self, visitor: &mut V, extra: Self::Extra) -> V::Result {
                 for i in self {
                     try_visit!(i.visit(visitor, extra));
@@ -1137,18 +1136,11 @@ common_visitor_and_walkers!(Visitor<'a>);
 
 macro_rules! generate_list_visit_fns {
     ($($visit_fn:ident, $ty:ty $(, $extra:ident: $extra_ty:ty)?;)+) => {
-        $(
-            #[allow(unused_parens)]
-            impl<'a, V: Visitor<'a>> Visitable<'a, V> for ThinVec<$ty> {
-                type Extra = ($($extra_ty)?);
-
-                #[inline]
-                fn visit(&'a self, visitor: &mut V, ($($extra)?): Self::Extra) -> V::Result {
-                    walk_list!(visitor, $visit_fn, self $(, $extra)?);
-                    V::Result::output()
-                }
-            }
-        )+
+        $(impl_visitable!(|&'a self: ThinVec<$ty>, visitor: &mut V, extra: ($($extra_ty)?)| {
+            let ($($extra)?) = extra;
+            walk_list!(visitor, $visit_fn, self $(, $extra)?);
+            V::Result::output()
+        });)+
     }
 }
 
