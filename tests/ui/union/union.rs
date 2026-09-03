@@ -5,6 +5,7 @@ union Foo {
     pizza: Pizza,
     tuple_struct: TupleStruct,
     array: [u32; 2],
+    single_variant_enum: SingleVariant,
 }
 
 #[derive(Clone, Copy)]
@@ -21,6 +22,11 @@ enum PizzaTopping {
 
 #[derive(Clone, Copy)]
 struct TupleStruct(i32);
+
+#[derive(Clone, Copy)]
+enum SingleVariant {
+    Single {},
+}
 
 fn do_nothing(_x: &mut Foo) {}
 
@@ -63,6 +69,9 @@ pub fn main() {
     }
     match foo {
         Foo { array: [_a, _] } => {} //~ ERROR access to union field is unsafe
+    }
+    match foo {
+        Foo { single_variant_enum: SingleVariant::Single {} } => {} //~ ERROR access to union field is unsafe
     }
 
     // binding to a tuple, struct, or array pattern is okay if no fields are read
