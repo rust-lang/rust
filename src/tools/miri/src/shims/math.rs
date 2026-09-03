@@ -1,4 +1,3 @@
-use rustc_apfloat::Float;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -203,23 +202,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     math::clamp_float_value(link_name.as_str(), res)
                 });
                 let res = ecx.adjust_nan(res, &[f1, f2]);
-                ecx.write_scalar(res, dest)?;
-            }
-            #[rustfmt::skip]
-            | "_ldexp"
-            | "ldexp"
-            | "scalbn"
-            => {
-                let [x, exp] = &ecx.check_shim_sig(
-                    shim_sig!(extern "C" fn(f64, i32) -> f64),
-                    (link_name, abi, args),
-                )?;
-                // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
-                let x = ecx.read_scalar(x)?.to_f64()?;
-                let exp = ecx.read_scalar(exp)?.to_i32()?;
-
-                let res = x.scalbn(exp);
-                let res = ecx.adjust_nan(res, &[x]);
                 ecx.write_scalar(res, dest)?;
             }
             "lgammaf_r" => {

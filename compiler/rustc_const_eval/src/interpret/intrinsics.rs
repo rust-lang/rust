@@ -654,6 +654,47 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
+            sym::scalbn => {
+                let arg = self.read_immediate(&args[0])?;
+                let exp = self.read_immediate(&args[1])?;
+
+                let ty::Float(float_ty) = arg.layout.ty.kind() else {
+                    span_bug!(
+                        self.cur_span(),
+                        "non-float type for float intrinsic: {}",
+                        arg.layout.ty,
+                    );
+                };
+
+                let res = match float_ty {
+                    FloatTy::F16 => self.scalbn_intrinsic::<Half>(arg, exp)?,
+                    FloatTy::F32 => self.scalbn_intrinsic::<Single>(arg, exp)?,
+                    FloatTy::F64 => self.scalbn_intrinsic::<Double>(arg, exp)?,
+                    FloatTy::F128 => self.scalbn_intrinsic::<Quad>(arg, exp)?,
+                };
+                self.write_scalar(res, dest)?;
+            }
+
+            sym::ilogb => {
+                let arg = self.read_immediate(&args[0])?;
+
+                let ty::Float(float_ty) = arg.layout.ty.kind() else {
+                    span_bug!(
+                        self.cur_span(),
+                        "non-float type for float intrinsic: {}",
+                        arg.layout.ty,
+                    );
+                };
+
+                let res = match float_ty {
+                    FloatTy::F16 => self.ilogb_intrinsic::<Half>(arg)?,
+                    FloatTy::F32 => self.ilogb_intrinsic::<Single>(arg)?,
+                    FloatTy::F64 => self.ilogb_intrinsic::<Double>(arg)?,
+                    FloatTy::F128 => self.ilogb_intrinsic::<Quad>(arg)?,
+                };
+                self.write_scalar(res, dest)?;
+            }
+
             sym::va_copy => {
                 let va_list = self.deref_pointer(&args[0])?;
 
@@ -1171,7 +1212,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let x: F = arg.to_scalar().to_float()?;
         match name {
-            // bitwise, no NaN adjustments
+            // fabs is bitwise, no NaN adjustments.
             sym::fabs => interp_ok(x.abs().into()),
 
             sym::floor => self.float_round(x, rustc_apfloat::Round::TowardNegative),
@@ -1182,6 +1223,45 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             _ => bug!("not a unary float intrinsic: {}", name),
         }
+    }
+
+    fn scalbn_intrinsic<F>(
+        &self,
+        arg: ImmTy<'tcx, M::Provenance>,
+        exp: ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let arg: F = arg.to_scalar().to_float()?;
+        let exp: i32 = exp.to_scalar().to_i32()?;
+
+        let res = arg.scalbn(exp);
+        let res = self.adjust_nan(res, &[arg]);
+        interp_ok(res.into())
+    }
+
+    fn ilogb_intrinsic<F>(
+        &mut self,
+        arg: ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = arg.to_scalar().to_float()?;
+
+        // We handle the special values manually, according to the intrinsic docs:
+        // 0 and NaN are UB, infinity returns i32::MAX.
+
+        if x.is_zero() {
+            throw_ub_format!("`ilogb` called on zero");
+        }
+
+        if x.is_nan() {
+            throw_ub_format!("`ilogb` called on NaN");
+        }
+
+        interp_ok(Scalar::from_i32(if x.is_infinite() { i32::MAX } else { x.ilogb() }))
     }
 
     fn binop_float_intrinsic<F>(
