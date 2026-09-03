@@ -1927,7 +1927,7 @@ pub(crate) mod builtin {
     )]
     #[diagnostic::opaque]
     pub macro deref($pat:pat) {
-        builtin # deref($pat)
+        k#deref($pat)
     }
 
     /// Derive macro generating an impl of the trait `From`.
