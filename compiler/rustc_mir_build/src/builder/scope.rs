@@ -431,47 +431,41 @@ impl DropTree {
                     cfg.terminate(block, drop_node.data.source_info, terminator);
                 }
                 DropKind::ForLint => {
-                    let stmt = Statement::new(
-                        drop_node.data.source_info,
-                        StatementKind::BackwardIncompatibleDropHint {
-                            place: Box::new(drop_node.data.local.into()),
-                            reason: BackwardIncompatibleDropReason::Edition2024,
-                        },
-                    );
-                    cfg.push(block, stmt);
-                    let target = blocks[drop_node.next].unwrap();
-                    if target != block {
-                        // Diagnostics don't use this `Span` but debuginfo
-                        // might. Since we don't want breakpoints to be placed
-                        // here, especially when this is on an unwind path, we
-                        // use `DUMMY_SP`.
-                        let source_info =
-                            SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
-                        let terminator = TerminatorKind::Goto { target };
-                        cfg.terminate(block, source_info, terminator);
-                    }
+                    let kind = StatementKind::BackwardIncompatibleDropHint {
+                        place: Box::new(drop_node.data.local.into()),
+                        reason: BackwardIncompatibleDropReason::Edition2024,
+                    };
+                    self.link_statement(cfg, blocks, block, drop_node, kind);
                 }
                 // Root nodes don't correspond to a drop.
                 DropKind::Storage if drop_idx == ROOT_NODE => {}
                 DropKind::Storage => {
-                    let stmt = Statement::new(
-                        drop_node.data.source_info,
-                        StatementKind::StorageDead(drop_node.data.local),
-                    );
-                    cfg.push(block, stmt);
-                    let target = blocks[drop_node.next].unwrap();
-                    if target != block {
-                        // Diagnostics don't use this `Span` but debuginfo
-                        // might. Since we don't want breakpoints to be placed
-                        // here, especially when this is on an unwind path, we
-                        // use `DUMMY_SP`.
-                        let source_info =
-                            SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
-                        let terminator = TerminatorKind::Goto { target };
-                        cfg.terminate(block, source_info, terminator);
-                    }
+                    let kind = StatementKind::StorageDead(drop_node.data.local);
+                    self.link_statement(cfg, blocks, block, drop_node, kind);
                 }
             }
+        }
+    }
+
+    /// For drops that lower to a statement, adds a goto if the next drop is in a different block.
+    fn link_statement<'tcx>(
+        &self,
+        cfg: &mut CFG<'tcx>,
+        blocks: &IndexSlice<DropIdx, Option<BasicBlock>>,
+        block: BasicBlock,
+        drop_node: &DropNode,
+        kind: StatementKind<'tcx>,
+    ) {
+        cfg.push(block, Statement::new(drop_node.data.source_info, kind));
+        let target = blocks[drop_node.next].unwrap();
+        if target != block {
+            // Diagnostics don't use this `Span` but debuginfo
+            // might. Since we don't want breakpoints to be placed
+            // here, especially when this is on an unwind path, we
+            // use `DUMMY_SP`.
+            let source_info = SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
+            let terminator = TerminatorKind::Goto { target };
+            cfg.terminate(block, source_info, terminator);
         }
     }
 }
