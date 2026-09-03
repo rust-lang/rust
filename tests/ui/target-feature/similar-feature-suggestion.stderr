@@ -1,6 +1,8 @@
 warning: unknown and unstable feature specified for `-Ctarget-feature`: `rdrnd`
    |
    = note: it is still passed through to the codegen backend, but use of this feature might be unsound and the behavior of this feature can change in the future
+   = note: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162235 <https://github.com/rust-lang/rust/issues/162235>
    = help: you might have meant: `rdrand`
 
 warning: 1 warning emitted
