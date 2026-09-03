@@ -1009,14 +1009,6 @@ impl Rewrite for ast::Ty {
                 })
             }
             ast::TyKind::CVarArgs => Ok("...".to_owned()),
-            ast::TyKind::FieldOf(ref ty, ref variant, ref field) => {
-                let ty = ty.rewrite_result(context, shape)?;
-                if let Some(variant) = variant {
-                    Ok(format!("builtin # field_of({ty}, {variant}.{field})"))
-                } else {
-                    Ok(format!("builtin # field_of({ty}, {field})"))
-                }
-            }
             ast::TyKind::UnsafeBinder(ref binder) => {
                 let mut result = String::new();
                 if binder.generic_params.is_empty() {
@@ -1043,7 +1035,10 @@ impl Rewrite for ast::Ty {
                 result.push_str(&rewrite);
                 Ok(result)
             }
-            ast::TyKind::Pat(..) | ast::TyKind::View(..) | ast::TyKind::GcaMacro(..) => {
+            ast::TyKind::FieldOf(..)
+            | ast::TyKind::GcaMacro(..)
+            | ast::TyKind::Pat(..)
+            | ast::TyKind::View(..) => {
                 // These don't normally occur in the AST because macros aren't expanded. However,
                 // rustfmt tries to parse macro arguments when formatting macros, so it's not
                 // totally impossible for rustfmt to come across these nodes when formatting a file.

@@ -134,7 +134,7 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Ord
 // it to `FieldRepresentingType<...>`. Thus stabilizing this requires careful thought about the
 // completeness of the trait impls for `FieldRepresentingType`.
 pub macro field_of($Container:ty, $($fields:expr)+ $(,)?) {
-    builtin # field_of($Container, $($fields)+)
+    k#field_of($Container, $($fields)+)
 }
 
 /// Type representing a field of a `struct`, `union`, `enum` variant or tuple.
