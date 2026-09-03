@@ -83,7 +83,10 @@ impl<'a, 'tcx> UseFinder<'a, 'tcx> {
                                     Some(&mir::UnwindAction::Cleanup(bb))
                                         != block_data.terminator().unwind()
                                 })
-                                .map(|bb| Location { statement_index: mir::START_STATEMENT, block: bb }),
+                                .map(|bb| Location {
+                                    statement_index: mir::START_STATEMENT,
+                                    block: bb,
+                                }),
                         );
                     }
                 }

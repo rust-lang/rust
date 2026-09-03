@@ -35,7 +35,9 @@
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, BasicBlock, BasicBlockData, CallReturnPlaces, Location, StatementIndex, TerminatorEdges};
+use rustc_middle::mir::{
+    self, BasicBlock, BasicBlockData, CallReturnPlaces, Location, StatementIndex, TerminatorEdges,
+};
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 

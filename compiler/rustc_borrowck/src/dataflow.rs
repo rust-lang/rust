@@ -1,6 +1,8 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
-use rustc_middle::mir::{self, BasicBlock, Body, CallReturnPlaces, Location, Place, StatementIndex};
+use rustc_middle::mir::{
+    self, BasicBlock, Body, CallReturnPlaces, Location, Place, StatementIndex,
+};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{
@@ -180,7 +182,10 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
             first_lo.index(),
             first_hi,
         ) {
-            let kill_location = Location { block: first_block, statement_index: StatementIndex::from_usize(kill_stmt) };
+            let kill_location = Location {
+                block: first_block,
+                statement_index: StatementIndex::from_usize(kill_stmt),
+            };
             // If region does not contain a point at the location, then add to list and skip
             // successor locations.
             debug!("borrow {:?} gets killed at {:?}", borrow_index, kill_location);
@@ -310,9 +315,13 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
         while let Some(block) = self.visit_stack.pop() {
             let bb_data = &self.body[block];
             let num_stmts = bb_data.statements.len();
-            if let Some(kill_location) =
-                self.loan_kill_location(loan_idx, loan_issued_at, block, mir::START_STATEMENT, num_stmts)
-            {
+            if let Some(kill_location) = self.loan_kill_location(
+                loan_idx,
+                loan_issued_at,
+                block,
+                mir::START_STATEMENT,
+                num_stmts,
+            ) {
                 debug!("loan {:?} gets killed at {:?}", loan_idx, kill_location);
                 self.loans_out_of_scope_at_location
                     .entry(kill_location)

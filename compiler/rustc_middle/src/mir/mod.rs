@@ -1303,7 +1303,6 @@ rustc_index::newtype_index! {
     }
 }
 
-
 rustc_index::newtype_index! {
     #[stable_hash]
     #[encodable]

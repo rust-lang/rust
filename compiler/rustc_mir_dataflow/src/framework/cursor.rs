@@ -134,7 +134,10 @@ where
         if A::Direction::IS_FORWARD {
             self.seek_to_block_entry(block)
         } else {
-            self.seek_after(Location { block, statement_index: mir::START_STATEMENT }, Effect::Primary)
+            self.seek_after(
+                Location { block, statement_index: mir::START_STATEMENT },
+                Effect::Primary,
+            )
         }
     }
 

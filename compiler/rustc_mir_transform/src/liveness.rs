@@ -435,7 +435,8 @@ fn find_self_assignments<'tcx>(
                             statement_index: bb_data.statements.len().into(),
                         });
                         // Target block
-                        self_assign.insert(Location { block: *target, statement_index: START_STATEMENT });
+                        self_assign
+                            .insert(Location { block: *target, statement_index: START_STATEMENT });
                     }
                 }
                 // Straight self-assignment.
@@ -466,9 +467,15 @@ fn find_self_assignments<'tcx>(
                         && len >= 2
                     {
                         // BitAnd of two checks.
-                        self_assign.insert(Location { block: pred, statement_index: StatementIndex::from_usize(len - 1) });
+                        self_assign.insert(Location {
+                            block: pred,
+                            statement_index: StatementIndex::from_usize(len - 1),
+                        });
                         // `lhs == MIN`.
-                        self_assign.insert(Location { block: pred, statement_index: StatementIndex::from_usize(len - 2) });
+                        self_assign.insert(Location {
+                            block: pred,
+                            statement_index: StatementIndex::from_usize(len - 2),
+                        });
                     }
                 }
                 _ => {}

@@ -80,8 +80,8 @@ fn emit_move_facts(
         }
     }
 
-    let fn_entry_start =
-        location_table.start_index(Location { block: START_BLOCK, statement_index: START_STATEMENT });
+    let fn_entry_start = location_table
+        .start_index(Location { block: START_BLOCK, statement_index: START_STATEMENT });
 
     // initialized_at
     for init in move_data.inits.iter() {
@@ -101,7 +101,8 @@ fn emit_move_facts(
 
                         // The initialization happened in (or rather, when arriving at)
                         // the successors, but not in the unwind block.
-                        let first_statement = Location { block: successor, statement_index: START_STATEMENT };
+                        let first_statement =
+                            Location { block: successor, statement_index: START_STATEMENT };
                         facts
                             .path_assigned_at_base
                             .push((init.path, location_table.start_index(first_statement)));

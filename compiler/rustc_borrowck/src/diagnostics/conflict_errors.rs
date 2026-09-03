@@ -18,7 +18,12 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::traits::TraitErrors;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
-use rustc_middle::mir::{self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory, FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm, VarDebugInfoContents, START_STATEMENT};
+use rustc_middle::mir::{
+    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
+    FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind,
+    Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, START_STATEMENT, Statement,
+    StatementKind, Terminator, TerminatorKind, VarBindingForm, VarDebugInfoContents,
+};
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
     self, PredicateKind, RegionExt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,

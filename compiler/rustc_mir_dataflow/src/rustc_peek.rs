@@ -87,7 +87,10 @@ where
             .statements
             .iter()
             .enumerate()
-            .find_map(|(i, stmt)| value_assigned_to_local(stmt, call.arg).map(|rval| (StatementIndex::from_usize(i), rval)))
+            .find_map(|(i, stmt)| {
+                value_assigned_to_local(stmt, call.arg)
+                    .map(|rval| (StatementIndex::from_usize(i), rval))
+            })
             .expect(
                 "call to rustc_peek should be preceded by \
                     assignment to temporary holding its argument",

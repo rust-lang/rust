@@ -2,7 +2,10 @@ use std::ops::Deref;
 
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::mir::{Body, Const, ConstValue, Operand, Place, Rvalue, StatementKind, TerminatorKind, UnevaluatedConst, RETURN_PLACE, START_BLOCK, START_STATEMENT};
+use rustc_middle::mir::{
+    Body, Const, ConstValue, Operand, Place, RETURN_PLACE, Rvalue, START_BLOCK, START_STATEMENT,
+    StatementKind, TerminatorKind, UnevaluatedConst,
+};
 use rustc_middle::ty::{AnonConstKind, Ty, TyCtxt, TypeVisitableExt};
 
 /// If the given def is a trivial const, returns the value and type the const evaluates to.

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_index::interval::SparseIntervalMatrix;
-use rustc_middle::mir::{Body, Location, StatementIndex, START_STATEMENT};
+use rustc_middle::mir::{Body, Location, START_STATEMENT, StatementIndex};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
 
@@ -176,7 +176,8 @@ impl LocalizedConstraintGraph {
                     // Inter-block edges, from the block's terminator to each successor block's
                     // entry point.
                     for successor_block in body[location.block].terminator().successors() {
-                        let next_location = Location { block: successor_block, statement_index: START_STATEMENT };
+                        let next_location =
+                            Location { block: successor_block, statement_index: START_STATEMENT };
                         let next_point = liveness.point_from_location(next_location);
                         if let Some(succ) = compute_forward_successor(
                             node.region,
@@ -212,7 +213,9 @@ impl LocalizedConstraintGraph {
                         for &pred_block in &predecessors[location.block] {
                             let previous_location = Location {
                                 block: pred_block,
-                                statement_index: StatementIndex::from_usize(body[pred_block].statements.len()),
+                                statement_index: StatementIndex::from_usize(
+                                    body[pred_block].statements.len(),
+                                ),
                             };
                             let previous_point = liveness.point_from_location(previous_location);
                             if let Some(succ) = compute_backward_successor(

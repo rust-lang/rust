@@ -253,12 +253,12 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             if trivial_goto_chain {
                 let mut pred_debuginfos =
                     std::mem::take(&mut self.basic_blocks[current].after_last_stmt_debuginfos);
-                let debuginfos = if let Some(stmt) = self.basic_blocks[last].statements.raw.first_mut()
-                {
-                    &mut stmt.debuginfos
-                } else {
-                    &mut self.basic_blocks[last].after_last_stmt_debuginfos
-                };
+                let debuginfos =
+                    if let Some(stmt) = self.basic_blocks[last].statements.raw.first_mut() {
+                        &mut stmt.debuginfos
+                    } else {
+                        &mut self.basic_blocks[last].after_last_stmt_debuginfos
+                    };
                 debuginfos.prepend(&mut pred_debuginfos);
             }
             *changed |= *target != last;

@@ -496,7 +496,9 @@ fn pretty_print_region_elements<'tcx>(
             assert_eq!(location1.block, location2.block);
             s.push_str(&format!(
                 "{:?}[{}..={}]",
-                location1.block, location1.statement_index.index(), location2.statement_index.index()
+                location1.block,
+                location1.statement_index.index(),
+                location2.statement_index.index()
             ));
         }
     }

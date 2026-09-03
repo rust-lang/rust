@@ -418,7 +418,8 @@ fn simplify_match<'tcx>(
         for &(case, bb) in &reachable_cases {
             cases.push((case, &body.basic_blocks[bb].statements[index].kind));
         }
-        let Some(new_stmt) = simplify_match.try_unify_stmts(index.index(), &cases, otherwise) else {
+        let Some(new_stmt) = simplify_match.try_unify_stmts(index.index(), &cases, otherwise)
+        else {
             return false;
         };
         new_stmts.push(new_stmt);
