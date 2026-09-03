@@ -27,7 +27,7 @@ pub(crate) fn resolve_type_relative_delegations(
     tcx: TyCtxt<'_>,
     _: (),
 ) -> FxIndexMap<LocalDefId, TypeRelativeDelegationRes> {
-    // FIXME(fn_delegation): fair resolution through `ProbeContext` engine.
+    // FIXME(fn_delegation): correct resolution through `ProbeContext` engine.
     let ast_index = tcx.index_ast(());
     let resolutions = tcx.resolutions(());
 
