@@ -287,7 +287,7 @@ struct GenericsResolution<'a, 'tcx> {
     /// `reuse <_ as Trait>::foo;`.
     qself_is_infer: bool,
     /// Whether we should generate `Self` generic param.
-    generate_self: bool,
+    generate_free_to_trait_self: bool,
 }
 
 impl<'hir> DelegationResolver<'_, 'hir> {
@@ -335,7 +335,8 @@ impl<'hir> DelegationResolver<'_, 'hir> {
             qself_is_none,
             qself_is_infer,
             free_to_trait_delegation,
-            generate_self: free_to_trait_delegation && (qself_is_none || qself_is_infer),
+            generate_free_to_trait_self: free_to_trait_delegation
+                && (qself_is_none || qself_is_infer),
             trait_impl: matches!(delegation_parent_kind, DefKind::Impl { of_trait: true }),
             sig_child_params: &tcx.generics_of(sig_id).own_params,
             child_args: self.get_user_args(
@@ -369,7 +370,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
     ) -> Result<GenericsGenerationResults<'hir>, ErrorGuaranteed> {
         let res @ GenericsResolution {
             trait_impl,
-            generate_self,
+            generate_free_to_trait_self,
             sig_child_params,
             sig_parent_params,
             ..
@@ -396,14 +397,18 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         self.check_delegation_to_inherent_impl(&res.parent_args, sig_id, span)?;
 
         let tcx = self.tcx();
-        let skip_self = !generate_self && tcx.def_kind(tcx.parent(sig_id)) == DefKind::Trait;
+
+        // If parent is inherent impl then there is no `Self` param to skip, so add additional check.
+        let skip_self =
+            !generate_free_to_trait_self && tcx.def_kind(tcx.parent(sig_id)) == DefKind::Trait;
+
         let parent_generics = match res.parent_args {
             ParentSegmentArgs::Specified(args) => DelegationGenerics {
                 data: Self::create_slots_from_args(
                     tcx,
                     args,
                     &sig_parent_params[usize::from(skip_self)..],
-                    generate_self,
+                    generate_free_to_trait_self,
                 ),
                 pos: GenericsPosition::Parent,
                 trait_impl,
