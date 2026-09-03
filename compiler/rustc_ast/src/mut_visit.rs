@@ -254,7 +254,7 @@ macro_rules! fn_walk {
     };
 }
 
-super::common_visitor_and_walkers!((mut) MutVisitor);
+crate::visit::common_visitor_and_walkers!((mut) MutVisitor);
 
 macro_rules! generate_flat_map_visitor_fns {
     ($($flat_map_fn:ident, $ty:ty $(, $extra:ident: $extra_ty:ty)?;)+) => {
