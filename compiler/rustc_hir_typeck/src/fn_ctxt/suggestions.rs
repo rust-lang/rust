@@ -2367,7 +2367,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             return false;
         };
-        if is_ctor || !self.may_coerce(args.type_at(0), expected) {
+        let inner_ty = args.type_at(0);
+        // Do not use `!`'s coercion to justify an extraction suggestion,
+        // It is only useful when the expected type itself is `!`.
+        if is_ctor
+            || !self.may_coerce(inner_ty, expected)
+            || (inner_ty.is_never() && !expected.is_never())
+        {
             return false;
         }
 
