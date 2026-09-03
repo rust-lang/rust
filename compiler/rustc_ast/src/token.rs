@@ -350,6 +350,8 @@ fn ident_can_begin_type(name: Symbol, span: Span, kind: IdentKind) -> bool {
     // WARNING: Take care when modifying this function! It will change the stable(!) set of
     //          tokens that are allowed to match an `ty` nonterminal which is user observable.
 
+    // NOTE: We don't care about forced keywords that are gated behind `builtin_syntax`.
+
     let ident_token = Token::new(Ident(name, kind), span);
 
     !ident_token.is_reserved_ident()
@@ -936,6 +938,10 @@ impl Token {
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: Symbol) -> bool {
         self.non_raw_ident().is_some_and(|id| id.name == kw)
+    }
+
+    pub fn is_forced_keyword(&self, kw: Symbol) -> bool {
+        self.ident().is_some_and(|(id, kind)| id.name == kw && kind == IdentKind::ForcedKeyword)
     }
 
     /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this

@@ -129,6 +129,7 @@
 #![feature(f128)]
 #![feature(field_projections)]
 #![feature(final_associated_functions)]
+#![feature(forced_keywords)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(funnel_shifts)]
