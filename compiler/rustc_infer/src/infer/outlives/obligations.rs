@@ -236,7 +236,11 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
             self,
-            type_outlives_clauses(self.tcx, outlives_env.known_type_outlives().iter().copied()),
+            assumed_type_outlives(
+                self.tcx,
+                outlives_env.known_type_outlives(),
+                outlives_env.region_bound_pairs(),
+            ),
             outlives_env.free_region_map().relation.clone(),
             ty::UniverseIndex::ROOT,
         );
@@ -248,11 +252,12 @@ impl<'tcx> InferCtxt<'tcx> {
         // this is always ConstraintConversion but lol
         conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
+        region_bound_pairs: &RegionBoundPairs<'tcx>,
         region_outlives: TransitiveRelation<RegionVid>,
     ) {
         let assumptions = region_constraint::Assumptions::new(
             self,
-            type_outlives_clauses(self.tcx, known_type_outlives.iter().copied()),
+            assumed_type_outlives(self.tcx, known_type_outlives, region_bound_pairs),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
             ty::UniverseIndex::ROOT,
         );
@@ -380,14 +385,24 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-/// Turns type outlives where clauses into clauses for
+/// The type outlives assumptions available in the root context, as clauses for
 /// [`region_constraint::Assumptions::new`] to elaborate.
-fn type_outlives_clauses<'tcx>(
+///
+/// `known_type_outlives` only contains the explicit `Ty: 'a` where clauses. The implied bounds,
+/// e.g. `T: 'a` from a `&'a T` argument, are only tracked in `region_bound_pairs` so we have to
+/// pull them in separately. Without them we'd fail to prove `T: 'a` for a `&'a T` argument
+/// whenever the only explicit bound on `T` mentions a different region.
+fn assumed_type_outlives<'tcx>(
     tcx: TyCtxt<'tcx>,
-    type_outlives: impl IntoIterator<Item = PolyTypeOutlivesClause<'tcx>>,
+    known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
+    region_bound_pairs: &RegionBoundPairs<'tcx>,
 ) -> Vec<ty::Clause<'tcx>> {
-    type_outlives
-        .into_iter()
+    known_type_outlives
+        .iter()
+        .copied()
+        .chain(region_bound_pairs.iter().map(|&ty::OutlivesClause(kind, r)| {
+            ty::Binder::dummy(ty::OutlivesClause(kind.to_ty(tcx), r))
+        }))
         .map(|c| c.map_bound(ty::ClauseKind::TypeOutlives).upcast(tcx))
         .collect()
 }
