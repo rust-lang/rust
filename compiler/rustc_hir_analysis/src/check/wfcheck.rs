@@ -2395,8 +2395,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             for &(r1, r2) in &body.region_outlives {
                 builder.add(r1, r2);
             }
-            let assumptions =
-                ty::region_constraint::Assumptions::new(body.type_outlives, builder.freeze());
+            let assumptions = ty::region_constraint::Assumptions::new(
+                self.tcx(),
+                body.type_outlives,
+                builder.freeze(),
+            );
             self.infcx.insert_placeholder_assumptions(u, Some(assumptions));
             self.check_test_binder_body(body.value);
             let solver_region_constraint = self.infcx.get_solver_region_constraint();

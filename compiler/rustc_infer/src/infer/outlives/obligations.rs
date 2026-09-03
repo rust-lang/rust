@@ -235,6 +235,7 @@ impl<'tcx> InferCtxt<'tcx> {
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
         let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
+            self.tcx,
             outlives_env.known_type_outlives().into_iter().cloned().collect(),
             outlives_env.free_region_map().relation.clone(),
         );
@@ -249,6 +250,7 @@ impl<'tcx> InferCtxt<'tcx> {
         region_outlives: TransitiveRelation<RegionVid>,
     ) {
         let assumptions = region_constraint::Assumptions::new(
+            self.tcx,
             known_type_outlives.into_iter().cloned().collect(),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
         );
