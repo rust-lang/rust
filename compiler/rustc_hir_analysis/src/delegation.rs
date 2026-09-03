@@ -7,8 +7,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{DelegationSelfTyPropagationKind, PathSegment};
 use rustc_middle::ty::{
-    self, EarlyBinder, RegionExt, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    self, ConstKind, EarlyBinder, GenericArg, GenericArgKind, RegionExt, RegionKind, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
@@ -194,7 +194,31 @@ fn create_mapping<'tcx>(
                 unreachable!("parent of inherent function in delegation can be only struct or enum")
             };
 
-            args.iter().map(|a| a.opt_param_info()).collect::<Vec<_>>()
+            let opt_param_info = |arg: GenericArg<'_>| match arg.kind() {
+                GenericArgKind::Lifetime(r) => (
+                    match r.kind() {
+                        RegionKind::ReEarlyParam(p) => Some(p.index),
+                        _ => None,
+                    },
+                    false,
+                ),
+                GenericArgKind::Type(t) => (
+                    match t.kind() {
+                        ty::Param(p) => Some(p.index),
+                        _ => None,
+                    },
+                    true,
+                ),
+                GenericArgKind::Const(c) => (
+                    match c.kind() {
+                        ConstKind::Param(p) => Some(p.index),
+                        _ => None,
+                    },
+                    true,
+                ),
+            };
+
+            args.iter().map(opt_param_info).collect::<Vec<_>>()
         }
         FnKind::AssocTrait => parent_generics
             .expect("trait must have generics")
