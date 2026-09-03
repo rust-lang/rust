@@ -207,7 +207,7 @@ macro_rules! impl_visitable {
     (|&$lt:lifetime $self:ident: $self_ty:ty,
       $vis:ident: &mut $vis_ty:ident,
       $extra:ident: $extra_ty:ty| $block:block) => {
-        #[allow(unused_parens, non_local_definitions)]
+        #[allow(unused_parens)]
         impl<$lt, $vis_ty: Visitor<$lt>> Visitable<$lt, $vis_ty> for $self_ty {
             type Extra = $extra_ty;
             fn visit(&$lt $self, $vis: &mut $vis_ty, $extra: Self::Extra) -> V::Result {
@@ -268,21 +268,28 @@ macro_rules! impl_visitable_direct {
     };
 }
 
-macro_rules! impl_visitable_calling_walkable {
+macro_rules! fn_visit {
     ($Visitor:ident<$lt:lifetime>
         $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
         $(fn $visit(&mut self, node: &$lt $ty $(, $extra_name: $extra_ty)?) -> Self::Result {
-            impl_visitable!(|&$lt self: $ty, visitor: &mut V, extra: ($($extra_ty)?)| {
-                let ($($extra_name)?) = extra;
-                visitor.$visit(self $(, $extra_name)?)
-            });
             Walkable::walk_ref(node, self)
         })*
     };
 }
 
-macro_rules! define_named_walk {
+macro_rules! impl_visitable_visit {
+    ($Visitor:ident<$lt:lifetime>
+        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
+    ) => {
+        $(impl_visitable!(|&$lt self: $ty, visitor: &mut V, extra: ($($extra_ty)?)| {
+            let ($($extra_name)?) = extra;
+            visitor.$visit(self $(, $extra_name)?)
+        });)*
+    };
+}
+
+macro_rules! fn_walk {
     ($Visitor:ident<$lt:lifetime>
         $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
@@ -618,27 +625,14 @@ macro_rules! common_visitor_and_walkers {
             fn visit_ident(&mut self, Ident { name: _, span }: &$($lt)? $($mut)? Ident)
                 -> Self::Result
             {
-                impl_visitable!(|&$($lt)? $($mut)? self: Ident, visitor: &mut V, _extra: ()| {
-                    visitor.visit_ident(self)
-                });
                 visit_visitable!(self, span);
                 Self::Result::output()
             }
 
-            crate::for_each_ast_visit_hook!($Visitor$(<$lt>)? impl_visitable_calling_walkable!);
+            crate::for_each_ast_visit_hook!($Visitor$(<$lt>)? fn_visit!);
 
             // We want `Visitor` to take the `NodeId` by value.
             fn visit_id(&mut self, _id: $(&$mut)? NodeId) -> Self::Result {
-                $(impl_visitable!(
-                    |&$lt self: NodeId, visitor: &mut V, _extra: ()| {
-                        visitor.visit_id(*self)
-                    }
-                );)?
-                $(impl_visitable!(
-                    |&$mut self: NodeId, visitor: &mut V, _extra: ()| {
-                        visitor.visit_id(self)
-                    }
-                );)?
                 Self::Result::output()
             }
 
@@ -649,25 +643,16 @@ macro_rules! common_visitor_and_walkers {
             }
 
             fn visit_item(&mut self, item: &$($lt)? $($mut)? Item) -> Self::Result {
-                impl_visitable!(|&$($lt)? $($mut)? self: Item, vis: &mut V, _extra: ()| {
-                    vis.visit_item(self)
-                });
                 walk_item(self, item)
             }
 
             fn visit_foreign_item(&mut self, item: &$($lt)? $($mut)? ForeignItem) -> Self::Result {
-                impl_visitable!(|&$($lt)? $($mut)? self: ForeignItem, vis: &mut V, _extra: ()| {
-                    vis.visit_foreign_item(self)
-                });
                 walk_item(self, item)
             }
 
             fn visit_assoc_item(&mut self, item: &$($lt)? $($mut)? AssocItem, ctxt: AssocCtxt)
                 -> Self::Result
             {
-                impl_visitable!(|&$($lt)? $($mut)? self: AssocItem, vis: &mut V, ctxt: AssocCtxt| {
-                    vis.visit_assoc_item(self, ctxt)
-                });
                 walk_assoc_item(self, item, ctxt)
             }
 
@@ -702,9 +687,6 @@ macro_rules! common_visitor_and_walkers {
                 // in case it's needed for something like #127241.
                 #[inline]
                 fn visit_span(&mut self, _sp: &$mut Span) {
-                    impl_visitable!(|&mut self: Span, visitor: &mut V, _extra: ()| {
-                        visitor.visit_span(self)
-                    });
                     // Do nothing.
                 }
 
@@ -772,6 +754,41 @@ macro_rules! common_visitor_and_walkers {
                 }
             )?
         }
+
+        crate::for_each_ast_visit_hook!($Visitor$(<$lt>)? impl_visitable_visit!);
+
+        impl_visitable!(|&$($lt)? $($mut)? self: Ident, visitor: &mut V, _extra: ()| {
+            visitor.visit_ident(self)
+        });
+
+        $(
+            impl_visitable!(
+                |&$lt self: NodeId, visitor: &mut V, _extra: ()| {
+                    visitor.visit_id(*self)
+                }
+            );
+        )?
+        $(
+            impl_visitable!(
+                |&$mut self: NodeId, visitor: &mut V, _extra: ()| {
+                    visitor.visit_id(self)
+                }
+            );
+
+            impl_visitable!(|&mut self: Span, visitor: &mut V, _extra: ()| {
+                visitor.visit_span(self)
+            });
+        )?
+
+        impl_visitable!(|&$($lt)? $($mut)? self: Item, vis: &mut V, _extra: ()| {
+            vis.visit_item(self)
+        });
+        impl_visitable!(|&$($lt)? $($mut)? self: ForeignItem, vis: &mut V, _extra: ()| {
+            vis.visit_foreign_item(self)
+        });
+        impl_visitable!(|&$($lt)? $($mut)? self: AssocItem, vis: &mut V, ctxt: AssocCtxt| {
+            vis.visit_assoc_item(self, ctxt)
+        });
 
         pub trait WalkItemKind {
             type Ctxt;
@@ -1110,7 +1127,7 @@ macro_rules! common_visitor_and_walkers {
             V::Result::output()
         });
 
-        crate::for_each_ast_visit_hook!($Visitor$(<$lt>)? define_named_walk!);
+        crate::for_each_ast_visit_hook!($Visitor$(<$lt>)? fn_walk!);
     };
 }
 
