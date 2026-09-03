@@ -2,6 +2,8 @@
 //!
 //! For more information about delegation design, see the tracking issue #118212.
 
+use std::assert_matches;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -727,13 +729,16 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
 
     let ctx = ItemCtxt::new_for_delegation(tcx, def_id);
     let lowerer = ctx.lowerer();
+
     let parent_args = info
         .parent_seg_id_for_sig
         .and_then(get_segment)
-        .filter(|(_, def_id)| {
-            matches!(tcx.def_kind(*def_id), DefKind::Trait | DefKind::Struct | DefKind::Enum)
-        })
+        .filter(|(_, def_id)| !matches!(tcx.def_kind(*def_id), DefKind::Mod))
         .map(|(segment, def_id)| {
+            // After lowering parent segment can be resolved only to those variants (and `DefKind::Mod`),
+            // which we do not process here.
+            assert_matches!(tcx.def_kind(def_id), DefKind::Trait | DefKind::Struct | DefKind::Enum);
+
             let self_ty = (tcx.def_kind(def_id) == DefKind::Trait)
                 .then(|| Ty::new_param(tcx, 0, kw::SelfUpper));
 
@@ -743,17 +748,12 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
                 .as_slice()
         });
 
-    let child_args = info
-        .child_seg_id_for_sig
-        .and_then(get_segment)
-        .filter(|(_, def_id)| matches!(tcx.def_kind(*def_id), DefKind::Fn | DefKind::AssocFn))
-        .map(|(segment, def_id)| {
-            let parent = tcx.parent(def_id);
+    let child_args = info.child_seg_id_for_sig.and_then(get_segment).map(|(segment, def_id)| {
+        assert_matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn);
+        let parent = tcx.parent(def_id);
 
-            let parent_args = if matches!(
-                tcx.def_kind(parent),
-                DefKind::Impl { of_trait: false } | DefKind::Trait
-            ) {
+        let parent_args =
+            if matches!(tcx.def_kind(parent), DefKind::Impl { of_trait: false } | DefKind::Trait) {
                 ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
             } else if let Some(parent_args) = parent_args {
                 parent_args
@@ -761,13 +761,13 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
                 &[]
             };
 
-            let args = lowerer
-                .lower_generic_args_of_path(segment.ident.span, def_id, parent_args, segment, None)
-                .0;
+        let args = lowerer
+            .lower_generic_args_of_path(segment.ident.span, def_id, parent_args, segment, None)
+            .0;
 
-            let synth_params_count = tcx.generics_of(def_id).own_synthetic_params_count();
-            &args[parent_args.len()..args.len() - synth_params_count]
-        });
+        let synth_params_count = tcx.generics_of(def_id).own_synthetic_params_count();
+        &args[parent_args.len()..args.len() - synth_params_count]
+    });
 
     (parent_args.unwrap_or_default(), child_args.unwrap_or_default())
 }

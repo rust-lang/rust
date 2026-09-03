@@ -1,3 +1,5 @@
+use std::assert_matches;
+
 use hir::HirId;
 use hir::def::{DefKind, Res};
 use rustc_ast::*;
@@ -309,10 +311,12 @@ impl<'hir> DelegationResolver<'_, 'hir> {
 
         let parent_args = if let [.., parent_segment, _] = &delegation.path.segments[..] {
             let res = self.get_resolution_id(parent_segment.id)?;
-            if matches!(
-                tcx.def_kind(res),
-                DefKind::Trait | DefKind::Struct | DefKind::Enum | DefKind::TraitAlias
-            ) {
+            if !matches!(tcx.def_kind(res), DefKind::Mod) {
+                assert_matches!(
+                    tcx.def_kind(res),
+                    DefKind::Trait | DefKind::Struct | DefKind::Enum
+                );
+
                 sig_parent_params = &tcx.generics_of(res).own_params;
                 self.get_user_args(parent_segment)
                     .map(|args| ParentSegmentArgs::Specified(args))

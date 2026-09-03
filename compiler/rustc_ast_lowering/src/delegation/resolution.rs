@@ -230,6 +230,29 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         // in illegal places such as function bodies in extern blocks (see #151356).
         let sig_id = self.resolve_delegation_sig(def_id, span)?;
 
+        let create_invalid_path_error =
+            || tcx.dcx().span_delayed_bug(span, "invalid delegation path");
+
+        match &delegation.path.segments[..] {
+            [] => return Err(create_invalid_path_error()),
+            [child] => {
+                let res = self.get_resolution_id(child.id)?;
+                if tcx.def_kind(res) != DefKind::Fn {
+                    return Err(create_invalid_path_error());
+                }
+            }
+            [.., parent, _] => {
+                let child_res = self.get_call_path_res(delegation, span)?;
+                let parent_res = self.get_resolution_id(parent.id)?;
+
+                match (tcx.def_kind(child_res), tcx.def_kind(parent_res)) {
+                    (DefKind::Fn, DefKind::Mod) => {}
+                    (DefKind::AssocFn, DefKind::Trait | DefKind::Struct | DefKind::Enum) => {}
+                    _ => return Err(create_invalid_path_error()),
+                }
+            }
+        }
+
         self.check_for_cycles(sig_id, span)?;
 
         let is_method = tcx.is_method(sig_id);
