@@ -7,8 +7,8 @@
 #![feature(core_intrinsics, f16, f128)]
 
 use std::intrinsics::{
-    ceil, copysign, fabs, floor, fma, fmuladd, maximum, maximum_number_nsz, minimum,
-    minimum_number_nsz, round, round_ties_even, trunc,
+    ceil, copysign, fabs, floor, fma, fmuladd, ilogb, maximum, maximum_number_nsz, minimum,
+    minimum_number_nsz, round, round_ties_even, scalbn, trunc,
 };
 
 macro_rules! check {
@@ -29,6 +29,12 @@ macro_rules! check {
             assert!(round(2.5 as $ty) == 3.0);
             assert!(fma(3.0 as $ty, 4.0 as $ty, 5.0 as $ty) == 17.0);
             assert!(fmuladd(3.0 as $ty, 4.0 as $ty, 5.0 as $ty) == 17.0);
+
+            assert!(scalbn(3.0 as $ty, 2i32) == 12.0);
+            assert!(scalbn(1024 as $ty, -10i32) == 1.0);
+            assert!(ilogb(1.0 as $ty) == 0);
+            assert!(ilogb(4.0 as $ty) == 2);
+            assert!(ilogb(0.25 as $ty) == -2);
         };
     };
 }
