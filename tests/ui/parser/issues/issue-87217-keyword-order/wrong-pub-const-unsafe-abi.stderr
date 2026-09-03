@@ -1,5 +1,5 @@
 error: expected `fn`, found keyword `pub`
-  --> $DIR/wrong-pub-const-unsafe-abi.rs:9:12
+  --> $DIR/wrong-pub-const-unsafe-abi.rs:10:12
    |
 LL | extern "C" pub const unsafe fn c() {}
    |            ^^^ expected `fn`

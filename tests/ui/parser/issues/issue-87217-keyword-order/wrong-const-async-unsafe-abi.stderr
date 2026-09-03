@@ -1,5 +1,5 @@
 error: expected `fn`, found keyword `const`
-  --> $DIR/wrong-const-async-unsafe-abi.rs:7:12
+  --> $DIR/wrong-const-async-unsafe-abi.rs:8:12
    |
 LL | extern "C" const async unsafe fn b() {}
    |            ^^^^^ expected `fn`
