@@ -463,9 +463,7 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         sig_id: DefId,
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
-        if !self.is_delegation_to_inherent_impl(sig_id) {
-            return Ok(());
-        }
+        let Some((did, _)) = self.opt_inherent_impl_adt(sig_id) else { return Ok(()) };
 
         let tcx = self.tcx();
         match parent_args {
@@ -480,23 +478,22 @@ impl<'hir> DelegationResolver<'_, 'hir> {
                 .ok_or_else(|| {
                     self.tcx().dcx().emit_err(DelegationToInherentImplParentContainsInfer { span })
                 }),
-            ParentSegmentArgs::NotSpecified => {
-                let Some((did, _)) = self.opt_inherent_impl_adt(sig_id) else { unreachable!() };
-
-                match tcx.generics_of(did).own_params.len() {
-                    0 => Ok(()),
-                    _ => Err(self
-                        .tcx()
-                        .dcx()
-                        .emit_err(DelegationToInherentImplMustContainParentGenerics { span })),
-                }
-            }
+            ParentSegmentArgs::NotSpecified => match tcx.generics_of(did).own_params.len() {
+                0 => Ok(()),
+                _ => Err(self
+                    .tcx()
+                    .dcx()
+                    .emit_err(DelegationToInherentImplMustContainParentGenerics { span })),
+            },
         }
     }
 
     fn opt_inherent_impl_adt(&self, sig_id: DefId) -> Option<(DefId, ty::GenericArgsRef<'hir>)> {
         let tcx = self.tcx();
-        if !self.is_delegation_to_inherent_impl(sig_id) {
+
+        if !(tcx.def_kind(sig_id) == DefKind::AssocFn
+            && matches!(tcx.def_kind(tcx.parent(sig_id)), DefKind::Impl { of_trait: false }))
+        {
             return None;
         }
 
@@ -505,13 +502,6 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         };
 
         Some((def.did(), args))
-    }
-
-    fn is_delegation_to_inherent_impl(&self, sig_id: DefId) -> bool {
-        let tcx = self.tcx();
-
-        tcx.def_kind(sig_id) == DefKind::AssocFn
-            && matches!(tcx.def_kind(tcx.parent(sig_id)), DefKind::Impl { of_trait: false })
     }
 
     /// Generates generic argument slots for user-specified `args` and
