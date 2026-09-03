@@ -777,12 +777,12 @@ impl<'a> State<'a> {
                 self.print_expr(result, fixup.rightmost_subexpression());
             }
             ast::ExprKind::InlineAsm(a) => {
-                // FIXME: Print `builtin # asm` once macro `asm` uses `builtin_syntax`.
+                // FIXME: Print `k#asm` once macro `asm` uses `internal_syntax`.
                 self.word(format!("{}!", a.asm_macro.macro_name()));
                 self.print_inline_asm(a);
             }
             ast::ExprKind::FormatArgs(fmt) => {
-                // FIXME: Print `builtin # format_args` once macro `format_args` uses `builtin_syntax`.
+                // FIXME: Print `k#format_args` once macro `format_args` uses `internal_syntax`.
                 self.word("format_args!");
                 self.popen();
                 let ib = self.ibox(0);

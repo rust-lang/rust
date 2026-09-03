@@ -832,7 +832,7 @@ impl<'a> Parser<'a> {
         let span = self.token.span;
         self.expect(exp!(CloseParen))?;
 
-        self.psess.gated_spans.gate(sym::builtin_syntax, lo.to(self.token.span));
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
 
         match *fields {
             [] => Err(self
