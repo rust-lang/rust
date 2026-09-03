@@ -376,7 +376,7 @@ impl StorageLiveLocals {
             storage_live[local] = Set1::One(DefLocation::Argument);
         }
         for (block, bbdata) in body.basic_blocks.iter_enumerated() {
-            for (statement_index, statement) in bbdata.statements.iter().enumerate() {
+            for (statement_index, statement) in bbdata.statements.iter_enumerated() {
                 if let StatementKind::StorageLive(local) = statement.kind {
                     storage_live[local]
                         .insert(DefLocation::Assignment(Location { block, statement_index }));

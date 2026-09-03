@@ -478,7 +478,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         for arm_block in arm_end_blocks {
             let block = &self.cfg.basic_blocks[arm_block];
-            let last_location = block.statements.last().map(|s| s.source_info);
+            let last_location = block.statements.raw.last().map(|s| s.source_info);
 
             self.cfg.goto(arm_block, last_location.unwrap_or(end_brace), end_block);
         }

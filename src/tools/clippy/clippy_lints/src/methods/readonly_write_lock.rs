@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, receiver
             mir,
             Location {
                 block: START_BLOCK,
-                statement_index: 0,
+                statement_index: mir::START_STATEMENT,
             },
         )
     {

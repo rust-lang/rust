@@ -301,7 +301,7 @@ impl<'tcx> MirPatch<'tcx> {
             debug!("MirPatch: patching block {:?}", src);
             let bb = &mut bbs[src];
             if let TerminatorKind::Unreachable = patch {
-                bb.statements.clear();
+                bb.statements.raw.clear();
             }
             bb.terminator_mut().kind = patch;
         }

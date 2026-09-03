@@ -393,7 +393,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             // If this is a `Call` terminator, use the `fn_span` instead.
             let block = &frame.body.basic_blocks[loc.block];
-            if loc.statement_index == block.statements.len() {
+            if loc.statement_index.index() == block.statements.len() {
                 debug!(
                     "find_closest_untracked_caller_location: got terminator {:?} ({:?})",
                     block.terminator(),
@@ -522,7 +522,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Jump to the given block.
     #[inline]
     pub fn go_to_block(&mut self, target: mir::BasicBlock) {
-        self.frame_mut().loc = Left(mir::Location { block: target, statement_index: 0 });
+        self.frame_mut().loc = Left(mir::Location { block: target, statement_index: mir::START_STATEMENT });
     }
 
     /// *Return* to the given `target` basic block.
@@ -549,7 +549,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     #[cold] // usually we have normal returns, not unwinding
     pub fn unwind_to_block(&mut self, target: mir::UnwindAction) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
-            mir::UnwindAction::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
+            mir::UnwindAction::Cleanup(block) => Left(mir::Location { block, statement_index: mir::START_STATEMENT }),
             mir::UnwindAction::Continue => Right(self.frame_mut().body.span),
             mir::UnwindAction::Unreachable => {
                 throw_ub_format!("unwinding past a stack frame that does not allow unwinding");

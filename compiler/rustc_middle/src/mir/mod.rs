@@ -3,9 +3,10 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use std::borrow::Cow;
+use std::convert::Into;
 use std::fmt::{self, Debug, Formatter};
 use std::iter;
-use std::ops::{Index, IndexMut};
+use std::ops::{Add, Index, IndexMut};
 
 pub use basic_blocks::BasicBlocks;
 use either::Either;
@@ -514,10 +515,10 @@ impl<'tcx> Body<'tcx> {
         let block = &self[location.block];
         let stmts = &block.statements;
         let idx = location.statement_index;
-        if idx < stmts.len() {
+        if idx.index() < stmts.len() {
             &stmts[idx].source_info
         } else {
-            assert_eq!(idx, stmts.len());
+            assert_eq!(idx.index(), stmts.len());
             &block.terminator().source_info
         }
     }
@@ -537,7 +538,7 @@ impl<'tcx> Body<'tcx> {
     /// Gets the location of the terminator for the given block.
     #[inline]
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
-        Location { block: bb, statement_index: self[bb].statements.len() }
+        Location { block: bb, statement_index: self[bb].statements.len().into() }
     }
 
     pub fn stmt_at(&self, location: Location) -> Either<&Statement<'tcx>, &Terminator<'tcx>> {
@@ -1302,9 +1303,19 @@ rustc_index::newtype_index! {
     }
 }
 
+
+rustc_index::newtype_index! {
+    #[stable_hash]
+    #[encodable]
+    #[orderable]
+    pub struct StatementIndex {
+        const START_STATEMENT = 0;
+    }
+}
+
 impl BasicBlock {
     pub fn start_location(self) -> Location {
-        Location { block: self, statement_index: 0 }
+        Location { block: self, statement_index: START_STATEMENT }
     }
 }
 
@@ -1318,7 +1329,7 @@ impl BasicBlock {
 #[non_exhaustive]
 pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
-    pub statements: Vec<Statement<'tcx>>,
+    pub statements: IndexVec<StatementIndex, Statement<'tcx>>,
 
     /// All debuginfos happen before the statement.
     /// Put debuginfos here when the last statement is eliminated.
@@ -1352,7 +1363,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         is_cleanup: bool,
     ) -> BasicBlockData<'tcx> {
         BasicBlockData {
-            statements,
+            statements: IndexVec::from_raw(statements),
             after_last_stmt_debuginfos: StmtDebugInfos::default(),
             terminator,
             is_cleanup,
@@ -1399,7 +1410,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         // Place debuginfos into the next retained statement,
         // this `debuginfos` variable is used to cache debuginfos between two retained statements.
         let mut debuginfos = StmtDebugInfos::default();
-        self.statements.retain_mut(|stmt| {
+        self.statements.raw.retain_mut(|stmt| {
             let retain = f(stmt);
             if retain {
                 stmt.debuginfos.prepend(&mut debuginfos);
@@ -1581,17 +1592,17 @@ pub struct Location {
     /// The block that the location is within.
     pub block: BasicBlock,
 
-    pub statement_index: usize,
+    pub statement_index: StatementIndex,
 }
 
 impl fmt::Debug for Location {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{:?}[{}]", self.block, self.statement_index)
+        write!(fmt, "{:?}[{}]", self.block, self.statement_index.index())
     }
 }
 
 impl Location {
-    pub const START: Location = Location { block: START_BLOCK, statement_index: 0 };
+    pub const START: Location = Location { block: START_BLOCK, statement_index: START_STATEMENT };
 
     /// Returns the location immediately after this one within the enclosing block.
     ///
@@ -1599,7 +1610,7 @@ impl Location {
     /// resulting location would be out of bounds and invalid.
     #[inline]
     pub fn successor_within_block(&self) -> Location {
-        Location { block: self.block, statement_index: self.statement_index + 1 }
+        Location { block: self.block, statement_index: self.statement_index.add(1) }
     }
 
     /// Returns `true` if `other` is earlier in the control flow graph than `self`.

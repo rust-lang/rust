@@ -536,9 +536,9 @@ where
             if A::Direction::IS_FORWARD { it.next().unwrap() } else { it.next_back().unwrap() }
         };
 
-        for (i, statement) in self.cursor.body()[block].statements.iter().enumerate() {
+        for (i, statement) in self.cursor.body()[block].statements.iter_enumerated() {
             let statement_str = format!("{statement:?}");
-            let index_str = format!("{i}");
+            let index_str = format!("{}", i.as_usize());
 
             let after = next_in_dataflow_order(&mut diffs_after);
             let before = diffs_before.as_mut().map(next_in_dataflow_order);

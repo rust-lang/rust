@@ -624,7 +624,7 @@ impl EverInitializedPlaces<'_, '_> {
 
         let basic_blocks = &body.basic_blocks;
         let init_block_data = &basic_blocks[init_loc.block];
-        if init_loc.statement_index < init_block_data.statements.len() {
+        if init_loc.statement_index.index() < init_block_data.statements.len() {
             // This case mirrors `apply_primary_statement_effect`.
             queue.push(init_loc.successor_within_block());
         } else if init.kind == InitKind::NonPanicPathOnly {
@@ -647,7 +647,7 @@ impl EverInitializedPlaces<'_, '_> {
             }
             // Walk from `loc` to the end of its block, looking for `target` or a kill.
             let block_data = &basic_blocks[loc.block];
-            for statement_index in loc.statement_index..=block_data.statements.len() {
+            for statement_index in loc.statement_index..=block_data.statements.len().into() {
                 if target == (Location { block: loc.block, statement_index }) {
                     return true;
                 }

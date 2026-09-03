@@ -347,12 +347,12 @@ pub(super) fn gather_moves<'tcx>(
     builder.gather_args();
 
     for (bb, block) in body.basic_blocks.iter_enumerated() {
-        for (i, stmt) in block.statements.iter().enumerate() {
+        for (i, stmt) in block.statements.iter_enumerated() {
             builder.loc = Location { block: bb, statement_index: i };
             builder.gather_statement(stmt);
         }
 
-        builder.loc = Location { block: bb, statement_index: block.statements.len() };
+        builder.loc = Location { block: bb, statement_index: block.statements.len().into() };
         builder.gather_terminator(block.terminator());
     }
 

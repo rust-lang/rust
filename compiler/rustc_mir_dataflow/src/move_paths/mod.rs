@@ -215,7 +215,7 @@ pub struct LocationMap<T> {
 impl<T> LocationMap<T> {
     #[inline]
     fn offset(&self, loc: Location) -> usize {
-        let offset = self.block_starts[loc.block] + loc.statement_index;
+        let offset = self.block_starts[loc.block] + loc.statement_index.index();
         if cfg!(debug_assertions) {
             // A block's entries run until the next block's start, or the end of
             // `data` for the last block.

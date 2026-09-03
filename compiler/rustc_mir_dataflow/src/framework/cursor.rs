@@ -134,7 +134,7 @@ where
         if A::Direction::IS_FORWARD {
             self.seek_to_block_entry(block)
         } else {
-            self.seek_after(Location { block, statement_index: 0 }, Effect::Primary)
+            self.seek_after(Location { block, statement_index: mir::START_STATEMENT }, Effect::Primary)
         }
     }
 
@@ -178,7 +178,7 @@ where
         if self.state_needs_reset || self.pos.block != target.block {
             self.seek_to_block_entry(target.block);
         } else if let Some(curr_effect) = self.pos.curr_effect_index {
-            let mut ord = curr_effect.statement_index.cmp(&target.statement_index);
+            let mut ord = curr_effect.statement_index.cmp(&target.statement_index.index());
             if A::Direction::IS_BACKWARD {
                 ord = ord.reverse()
             }
@@ -199,7 +199,7 @@ where
             || A::Direction::first_index(block_data),
             |idx| A::Direction::next_index(idx),
         );
-        let target_effect_index = effect.at_index(target.statement_index);
+        let target_effect_index = effect.at_index(target.statement_index.as_usize());
 
         let mut idx = next_effect;
         loop {

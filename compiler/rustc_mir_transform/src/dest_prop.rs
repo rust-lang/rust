@@ -621,7 +621,7 @@ fn save_as_intervals<'tcx>(
         debug_assert_eq!(state.current, two_step_loc(loc, Effect::Before));
         LivenessTransferFunction(&mut state).visit_terminator(term, loc);
 
-        for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
+        for (statement_index, stmt) in block_data.statements.iter_enumerated().rev() {
             let loc = Location { block, statement_index };
             state.current = state.current + 1;
             debug_assert_eq!(state.current, two_step_loc(loc, Effect::After));

@@ -84,7 +84,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
             }
         }
 
-        for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
+        for (statement_index, statement) in bb_data.statements.iter_enumerated().rev() {
             if let Some(destination) = MaybeTransitiveLiveLocals::can_be_removed_if_dead(
                 &statement.kind,
                 &borrowed_locals,

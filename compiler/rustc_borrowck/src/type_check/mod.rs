@@ -594,7 +594,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
-            let mut location = Location { block, statement_index: 0 };
+            let mut location = Location { block, statement_index: START_STATEMENT };
             for stmt in &block_data.statements {
                 self.visit_statement(stmt, location);
                 location.statement_index += 1;

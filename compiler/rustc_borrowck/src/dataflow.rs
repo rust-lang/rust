@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
-use rustc_middle::mir::{self, BasicBlock, Body, CallReturnPlaces, Location, Place};
+use rustc_middle::mir::{self, BasicBlock, Body, CallReturnPlaces, Location, Place, Statement, StatementIndex};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{
@@ -177,10 +177,10 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
         if let Some(kill_stmt) = self.regioncx.first_non_contained_inclusive(
             borrow_region,
             first_block,
-            first_lo,
+            first_lo.index(),
             first_hi,
         ) {
-            let kill_location = Location { block: first_block, statement_index: kill_stmt };
+            let kill_location = Location { block: first_block, statement_index: StatementIndex::from_usize(kill_stmt) };
             // If region does not contain a point at the location, then add to list and skip
             // successor locations.
             debug!("borrow {:?} gets killed at {:?}", borrow_index, kill_location);

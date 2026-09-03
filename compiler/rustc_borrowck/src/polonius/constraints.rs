@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_index::interval::SparseIntervalMatrix;
-use rustc_middle::mir::{Body, Location};
+use rustc_middle::mir::{Body, Location, StatementIndex, START_STATEMENT};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
 
@@ -176,7 +176,7 @@ impl LocalizedConstraintGraph {
                     // Inter-block edges, from the block's terminator to each successor block's
                     // entry point.
                     for successor_block in body[location.block].terminator().successors() {
-                        let next_location = Location { block: successor_block, statement_index: 0 };
+                        let next_location = Location { block: successor_block, statement_index: START_STATEMENT };
                         let next_point = liveness.point_from_location(next_location);
                         if let Some(succ) = compute_forward_successor(
                             node.region,
@@ -193,7 +193,7 @@ impl LocalizedConstraintGraph {
                 // 2b. the liveness edges that flow *backward*, from this node's point to its
                 // predecessors in the CFG.
                 if !is_universal_region {
-                    if location.statement_index > 0 {
+                    if location.statement_index > START_STATEMENT {
                         // Backward edges to the predecessor point in the same block.
                         let previous_point = PointIndex::from(node.point.as_usize() - 1);
                         if let Some(succ) = compute_backward_successor(
@@ -212,7 +212,7 @@ impl LocalizedConstraintGraph {
                         for &pred_block in &predecessors[location.block] {
                             let previous_location = Location {
                                 block: pred_block,
-                                statement_index: body[pred_block].statements.len(),
+                                statement_index: StatementIndex::from_usize(body[pred_block].statements.len()),
                             };
                             let previous_point = liveness.point_from_location(previous_location);
                             if let Some(succ) = compute_backward_successor(

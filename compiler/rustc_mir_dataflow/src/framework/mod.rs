@@ -35,9 +35,7 @@
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{
-    self, BasicBlock, BasicBlockData, CallReturnPlaces, Location, TerminatorEdges,
-};
+use rustc_middle::mir::{self, BasicBlock, BasicBlockData, CallReturnPlaces, Location, StatementIndex, TerminatorEdges};
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 
@@ -136,8 +134,8 @@ pub trait Analysis<'tcx> {
         block_data: &'mir BasicBlockData<'tcx>,
         idx: EffectIndex,
     ) {
-        let statement_index = idx.statement_index;
-        let terminator_index = block_data.statements.len();
+        let statement_index = StatementIndex::from_usize(idx.statement_index);
+        let terminator_index = StatementIndex::from_usize(block_data.statements.len());
         let loc = Location { block, statement_index };
         let is_terminator = statement_index == terminator_index;
 

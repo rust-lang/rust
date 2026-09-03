@@ -53,7 +53,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
         'blocks: for (bb, block) in body.basic_blocks.iter_enumerated() {
             let mut pre_place_const: Option<(Place<'tcx>, &ConstOperand<'tcx>)> = None;
 
-            for (statement_index, stmt) in block.statements.iter().enumerate() {
+            for (statement_index, stmt) in block.statements.iter_enumerated() {
                 let has_place_const = pre_place_const.take();
                 // Simplify `assume` of a known value: either a NOP or unreachable.
                 if let StatementKind::Intrinsic(ref intrinsic) = stmt.kind

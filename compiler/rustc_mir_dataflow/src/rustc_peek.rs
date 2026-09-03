@@ -1,6 +1,6 @@
 use rustc_hir::attrs::RustcMirKind;
 use rustc_hir::find_attr;
-use rustc_middle::mir::{self, Body, Local, Location};
+use rustc_middle::mir::{self, Body, Local, Location, StatementIndex};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{Span, sym};
 use tracing::{debug, info};
@@ -87,7 +87,7 @@ where
             .statements
             .iter()
             .enumerate()
-            .find_map(|(i, stmt)| value_assigned_to_local(stmt, call.arg).map(|rval| (i, rval)))
+            .find_map(|(i, stmt)| value_assigned_to_local(stmt, call.arg).map(|rval| (StatementIndex::from_usize(i), rval)))
             .expect(
                 "call to rustc_peek should be preceded by \
                     assignment to temporary holding its argument",

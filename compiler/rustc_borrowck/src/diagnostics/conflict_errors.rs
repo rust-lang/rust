@@ -18,12 +18,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::traits::TraitErrors;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
-use rustc_middle::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
-    FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind,
-    Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement, StatementKind,
-    Terminator, TerminatorKind, VarBindingForm, VarDebugInfoContents,
-};
+use rustc_middle::mir::{self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory, FakeBorrowKind, FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, MutBorrowKind, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm, VarDebugInfoContents, START_STATEMENT};
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
     self, PredicateKind, RegionExt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
@@ -3847,12 +3842,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             body: &mir::Body<'tcx>,
             location: Location,
         ) -> impl Iterator<Item = Location> {
-            if location.statement_index == 0 {
+            if location.statement_index == START_STATEMENT {
                 let predecessors = body.basic_blocks.predecessors()[location.block].to_vec();
                 Either::Left(predecessors.into_iter().map(move |bb| body.terminator_loc(bb)))
             } else {
                 Either::Right(std::iter::once(Location {
-                    statement_index: location.statement_index - 1,
+                    statement_index: (location.statement_index.index() - 1).into(),
                     ..location
                 }))
             }

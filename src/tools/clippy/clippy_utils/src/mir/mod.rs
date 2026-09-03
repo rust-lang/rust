@@ -123,7 +123,7 @@ pub fn used_exactly_once(mir: &Body<'_>, local: Local) -> Option<bool> {
         mir,
         Location {
             block: START_BLOCK,
-            statement_index: 0,
+            statement_index: mir::START_STATEMENT,
         },
     )
     .map(|[local_usage]| {

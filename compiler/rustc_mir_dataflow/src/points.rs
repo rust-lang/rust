@@ -1,5 +1,5 @@
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::mir::{BasicBlock, Body, Location};
+use rustc_middle::mir::{BasicBlock, Body, Location, StatementIndex};
 
 /// Maps between a `Location` and a `PointIndex` (and vice versa).
 pub struct DenseLocationMap {
@@ -31,7 +31,7 @@ impl DenseLocationMap {
         for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
             basic_blocks.extend((0..=bb_data.statements.len()).map(|loc| Location {
                 block: bb,
-                statement_index: loc,
+                statement_index: StatementIndex::from_usize(loc),
             }));
         }
         // Invariant: no block is preceded by more than all statements.
@@ -54,7 +54,7 @@ impl DenseLocationMap {
         // Note the invariant in [`Self::new()`]; if the indexing
         // operation above did not panic then this holds by construction.
         debug_assert!(start_index < self.num_points);
-        PointIndex::new(start_index + statement_index)
+        PointIndex::new(start_index + statement_index.index())
     }
 
     /// Returns the `PointIndex` for the first statement in the given `BasicBlock`. O(1).
@@ -67,7 +67,7 @@ impl DenseLocationMap {
     /// Return the PointIndex for the block start of this index.
     #[inline]
     pub fn to_block_start(&self, index: PointIndex) -> PointIndex {
-        PointIndex::new(index.index() - self.basic_blocks[index].statement_index)
+        PointIndex::new(index.index() - self.basic_blocks[index].statement_index.index())
     }
 
     /// Converts a `PointIndex` back to a location. O(1).

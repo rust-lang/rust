@@ -307,12 +307,12 @@ macro_rules! make_mir_visitor {
 
                 let mut index = 0;
                 for statement in statements {
-                    let location = Location { block, statement_index: index };
+                    let location = Location { block, statement_index: StatementIndex::from_usize(index) };
                     self.visit_statement(statement, location);
                     index += 1;
                 }
 
-                let location = Location { block, statement_index: index };
+                let location = Location { block, statement_index: StatementIndex::from_usize(index) };
                 for debuginfo in after_last_stmt_debuginfos as & $($mutability)? [_] {
                     self.visit_statement_debuginfo(debuginfo, location);
                 }
@@ -997,7 +997,7 @@ macro_rules! make_mir_visitor {
             ) {
                 let basic_block =
                     & $($mutability)? basic_blocks!(body, $($mutability, true)?)[location.block];
-                if basic_block.statements.len() == location.statement_index {
+                if basic_block.statements.len() == location.statement_index.index() {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
                         self.visit_terminator(terminator, location)
                     }

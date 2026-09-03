@@ -68,10 +68,10 @@ impl Direction for Backward {
         A: Analysis<'tcx>,
     {
         let terminator = block_data.terminator();
-        let location = Location { block, statement_index: block_data.statements.len() };
+        let location = Location { block, statement_index: block_data.statements.len().into() };
         analysis.apply_early_terminator_effect(state, terminator, location);
         analysis.apply_primary_terminator_effect(state, terminator, location);
-        for (statement_index, statement) in block_data.statements.iter().enumerate().rev() {
+        for (statement_index, statement) in block_data.statements.iter_enumerated().rev() {
             let location = Location { block, statement_index };
             analysis.apply_early_statement_effect(state, statement, location);
             analysis.apply_primary_statement_effect(state, statement, location);
@@ -113,14 +113,14 @@ impl Direction for Backward {
     ) where
         A: Analysis<'tcx>,
     {
-        let loc = Location { block, statement_index: block_data.statements.len() };
+        let loc = Location { block, statement_index: block_data.statements.len().into() };
         let term = block_data.terminator();
         analysis.apply_early_terminator_effect(state, term, loc);
         vis.visit_after_early_terminator_effect(state, term, loc);
         analysis.apply_primary_terminator_effect(state, term, loc);
         vis.visit_after_primary_terminator_effect(state, term, loc);
 
-        for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
+        for (statement_index, stmt) in block_data.statements.iter_enumerated().rev() {
             let loc = Location { block, statement_index };
             analysis.apply_early_statement_effect(state, stmt, loc);
             vis.visit_after_early_statement_effect(state, stmt, loc);
@@ -158,13 +158,13 @@ impl Direction for Forward {
     ) where
         A: Analysis<'tcx>,
     {
-        for (statement_index, statement) in block_data.statements.iter().enumerate() {
+        for (statement_index, statement) in block_data.statements.iter_enumerated() {
             let location = Location { block, statement_index };
             analysis.apply_early_statement_effect(state, statement, location);
             analysis.apply_primary_statement_effect(state, statement, location);
         }
         let terminator = block_data.terminator();
-        let location = Location { block, statement_index: block_data.statements.len() };
+        let location = Location { block, statement_index: block_data.statements.len().into() };
         analysis.apply_early_terminator_effect(state, terminator, location);
         // Edges are obtained *before* calling `apply_primary_terminator_effect`.
         let edges = analysis.get_terminator_edges(state, terminator, location);
@@ -228,7 +228,7 @@ impl Direction for Forward {
     ) where
         A: Analysis<'tcx>,
     {
-        for (statement_index, stmt) in block_data.statements.iter().enumerate() {
+        for (statement_index, stmt) in block_data.statements.iter_enumerated() {
             let loc = Location { block, statement_index };
             analysis.apply_early_statement_effect(state, stmt, loc);
             vis.visit_after_early_statement_effect(state, stmt, loc);
@@ -236,7 +236,7 @@ impl Direction for Forward {
             vis.visit_after_primary_statement_effect(state, stmt, loc);
         }
 
-        let loc = Location { block, statement_index: block_data.statements.len() };
+        let loc = Location { block, statement_index: block_data.statements.len().into() };
         let term = block_data.terminator();
         analysis.apply_early_terminator_effect(state, term, loc);
         vis.visit_after_early_terminator_effect(state, term, loc);

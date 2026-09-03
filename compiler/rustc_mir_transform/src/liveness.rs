@@ -373,7 +373,7 @@ fn find_self_assignments<'tcx>(
     const FIELD_1: FieldIdx = FieldIdx::from_u32(1);
 
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
-        for (statement_index, stmt) in bb_data.statements.iter().enumerate() {
+        for (statement_index, stmt) in bb_data.statements.iter_enumerated() {
             let StatementKind::Assign((first_place, rvalue)) = &stmt.kind else { continue };
             match rvalue {
                 // For checked binary ops, the MIR builder inserts an assertion in between.
@@ -428,14 +428,14 @@ fn find_self_assignments<'tcx>(
                         // Original block
                         self_assign.insert(Location {
                             block: bb,
-                            statement_index: bb_data.statements.len() - 1,
+                            statement_index: (bb_data.statements.len() - 1).into(),
                         });
                         self_assign.insert(Location {
                             block: bb,
-                            statement_index: bb_data.statements.len(),
+                            statement_index: bb_data.statements.len().into(),
                         });
                         // Target block
-                        self_assign.insert(Location { block: *target, statement_index: 0 });
+                        self_assign.insert(Location { block: *target, statement_index: START_STATEMENT });
                     }
                 }
                 // Straight self-assignment.
@@ -457,7 +457,7 @@ fn find_self_assignments<'tcx>(
                     // Checked division verifies overflow before performing the division, so we
                     // need to go and ignore this check in the predecessor block.
                     if let BinOp::Div | BinOp::Rem = op
-                        && statement_index == 0
+                        && statement_index == START_STATEMENT
                         && let &[pred] = body.basic_blocks.predecessors()[bb].as_slice()
                         && let TerminatorKind::Assert { msg, .. } =
                             &body.basic_blocks[pred].terminator().kind
@@ -466,9 +466,9 @@ fn find_self_assignments<'tcx>(
                         && len >= 2
                     {
                         // BitAnd of two checks.
-                        self_assign.insert(Location { block: pred, statement_index: len - 1 });
+                        self_assign.insert(Location { block: pred, statement_index: StatementIndex::from_usize(len - 1) });
                         // `lhs == MIN`.
-                        self_assign.insert(Location { block: pred, statement_index: len - 2 });
+                        self_assign.insert(Location { block: pred, statement_index: StatementIndex::from_usize(len - 2) });
                     }
                 }
                 _ => {}
@@ -720,7 +720,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 _ => {}
             }
 
-            for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
+            for (statement_index, statement) in bb_data.statements.iter_enumerated().rev() {
                 let location = Location { block: bb, statement_index };
                 cursor.seek_before_primary_effect(location);
                 let live = cursor.get();

@@ -261,7 +261,7 @@ fn build_adrop_for_coroutine_shim<'tcx>(
 
     // _cor_ref = cor_ref_tmp
     let projected_pin = Place::from(SELF_ARG).project_deeper(&pin_proxy_to_cor_projection, tcx);
-    body.basic_blocks_mut()[START_BLOCK].statements.insert(
+    body.basic_blocks_mut()[START_BLOCK].statements.raw.insert(
         0,
         Statement::new(
             source_info,

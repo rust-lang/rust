@@ -394,7 +394,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         visitor.visit_body(body);
         for suspension in &mut self.suspension_points {
             let ctxt = PlaceContext::MutatingUse(MutatingUseContext::Yield);
-            let location = Location { block: START_BLOCK, statement_index: 0 };
+            let location = Location { block: START_BLOCK, statement_index: START_STATEMENT };
             visitor.visit_place(&mut suspension.resume_arg, ctxt, location);
         }
     }
@@ -490,7 +490,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     Operand::Move(Place::return_place()),
                     source_info,
                     true,
-                    &mut data.statements,
+                    &mut data.statements.raw,
                 );
                 // Return state.
                 let state = VariantIdx::new(CoroutineArgs::RETURNED);
@@ -500,7 +500,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             TerminatorKind::Yield { ref value, resume, mut resume_arg, drop } => {
                 let source_info = data.terminator().source_info;
                 // We must assign the value first in case it gets declared dead below
-                self.make_state(value.clone(), source_info, false, &mut data.statements);
+                self.make_state(value.clone(), source_info, false, &mut data.statements.raw);
                 // Yield state.
                 let state = CoroutineArgs::RESERVED_VARIANTS + self.suspension_points.len();
 

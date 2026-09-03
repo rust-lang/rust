@@ -1,5 +1,5 @@
 use rustc_index::IndexVec;
-use rustc_middle::mir::{BasicBlock, Body, Location};
+use rustc_middle::mir::{BasicBlock, Body, Location, StatementIndex};
 use tracing::debug;
 
 /// Maps between a MIR Location, which identifies a particular
@@ -56,13 +56,13 @@ impl PoloniusLocationTable {
     pub fn start_index(&self, location: Location) -> LocationIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
-        LocationIndex::from_usize(start_index + statement_index * 2)
+        LocationIndex::from_usize(start_index + statement_index.index() * 2)
     }
 
     pub fn mid_index(&self, location: Location) -> LocationIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
-        LocationIndex::from_usize(start_index + statement_index * 2 + 1)
+        LocationIndex::from_usize(start_index + statement_index.index() * 2 + 1)
     }
 
     pub fn to_rich_location(&self, index: LocationIndex) -> RichLocation {
@@ -90,7 +90,7 @@ impl PoloniusLocationTable {
             .rfind(|&(_, &first_index)| first_index <= point_index)
             .unwrap();
 
-        let statement_index = (point_index - first_index) / 2;
+        let statement_index = StatementIndex::from_usize((point_index - first_index) / 2);
         if index.is_start() {
             RichLocation::Start(Location { block, statement_index })
         } else {

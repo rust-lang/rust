@@ -839,7 +839,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             debug!("was_captured_by_trait: target={:?}", target);
             let block = &self.body[current_location.block];
             // We need to check the current location to find out if it is a terminator.
-            let is_terminator = current_location.statement_index == block.statements.len();
+            let is_terminator = current_location.statement_index.index() == block.statements.len();
             if !is_terminator {
                 let stmt = &block.statements[current_location.statement_index];
                 debug!("was_captured_by_trait_object: stmt={:?}", stmt);

@@ -206,7 +206,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
 
     let mut ty_dropped_components = UnordMap::default();
     for (block, data) in body.basic_blocks.iter_enumerated() {
-        for (statement_index, stmt) in data.statements.iter().enumerate() {
+        for (statement_index, stmt) in data.statements.iter_enumerated() {
             if let StatementKind::BackwardIncompatibleDropHint { place, reason: _ } = &stmt.kind {
                 let ty = place.ty(body, tcx).ty;
                 if ty_dropped_components

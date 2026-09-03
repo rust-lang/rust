@@ -126,7 +126,7 @@ impl<'tcx> OptimizationFinder<'_, 'tcx> {
                 }
 
                 // find the statement that assigns the place being switched on
-                bb.statements.iter().enumerate().rev().find_map(|(stmt_idx, stmt)| {
+                bb.statements.iter_enumerated().rev().find_map(|(stmt_idx, stmt)| {
                     match &stmt.kind {
                         rustc_middle::mir::StatementKind::Assign((lhs, rhs))
                             if *lhs == place_switched_on =>

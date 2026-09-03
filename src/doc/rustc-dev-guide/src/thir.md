@@ -190,7 +190,7 @@ Thir {
     stmts: [
         Stmt {
             kind: Let {
-                remainder_scope: Remainder { block: 1, first_statement_index: 0},
+                remainder_scope: Remainder { block: 1, first_statement_index: mir::START_STATEMENT},
                 init_scope: Node(2),
                 pattern: Pat {
                     ty: i32,

@@ -255,7 +255,7 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
                 check_call_site_abi(tcx, callee_ty, body.source.instance, || {
                     let loc = Location {
                         block: bb,
-                        statement_index: body.basic_blocks[bb].statements.len(),
+                        statement_index: body.basic_blocks[bb].statements.len().into(),
                     };
                     (
                         *fn_span,
