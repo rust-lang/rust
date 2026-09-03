@@ -91,6 +91,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
 /// For types not defined in this crate, including slices/tuples/collections
 /// of local types, [`Decodable`] cannot use a blanket impl and must be
 /// implemented for specific decoders instead.
+///
+/// See invocations of `impl_decodable_via_ref_decodable_for_foreign_type!` for examples.
 macro_rules! impl_decodable_via_ref_decodable_for_local_type {
     (
         $(
@@ -111,6 +113,7 @@ impl_decodable_via_ref_decodable_for_local_type!(
     // tidy-alphabetical-start
     &'tcx mir::Body<'tcx>,
     &'tcx traits::ImplSource<'tcx, ()>,
+    &'tcx traits::specialization_graph::Graph,
     &'tcx ty::List<Ty<'tcx>>,
     &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
     &'tcx ty::List<ty::Const<'tcx>>,
@@ -120,3 +123,32 @@ impl_decodable_via_ref_decodable_for_local_type!(
     &'tcx ty::TypeckResults<'tcx>,
     // tidy-alphabetical-end
 );
+
+/// Implements [`Decodable<$Decoder>`](Decodable) for `&'tcx T`,
+/// where [`T: RefDecodable`](RefDecodable) and T is defined outside `rustc_middle`.
+/// Note that slices/tuples/collections of local types are considered foreign types.
+///
+/// Due to orphan-rule restrictions, these foreign impls cannot use a blanket
+/// [`D: TyDecoder`](TyDecoder), and must instead implement [`Decodable`] for a
+/// specific decoder, which is specified after `@decoder:` in the macro arguments.
+///
+/// For types defined in `rustc_middle`, add an entry to the invocation of
+/// `impl_decodable_via_ref_decodable_for_local_type!` instead.
+#[rustc_macro_transparency = "transparent"]
+pub macro impl_decodable_via_ref_decodable_for_foreign_type {
+    (
+        @decoder: $Decoder:ty,
+        $(
+            &'tcx $T:ty,
+        )*
+    ) => {
+        // Use fully-qualified paths so that this macro works from any crate.
+        $(
+            impl<'tcx> rustc_serialize::Decodable<$Decoder> for &'tcx $T {
+                fn decode(decoder: &mut $Decoder) -> Self {
+                    rustc_middle::ty::codec::RefDecodable::decode(decoder)
+                }
+            }
+        )*
+    }
+}

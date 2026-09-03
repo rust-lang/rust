@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{SpanDecoder, SpanEncoder};
 
-pub use self::ref_decodable::RefDecodable;
+pub use self::ref_decodable::{RefDecodable, impl_decodable_via_ref_decodable_for_foreign_type};
 use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
 use crate::mir;
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};

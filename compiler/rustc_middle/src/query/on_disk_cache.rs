@@ -29,7 +29,7 @@ use crate::dep_graph::{DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::mono::MonoItem;
-use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
+use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::{self, Ty, TyCtxt};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
@@ -689,88 +689,22 @@ impl<'a, 'tcx> BlobDecoder for CacheDecoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>
-{
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>
-{
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsmTemplatePiece] {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Spanned<MonoItem<'tcx>>] {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx crate::traits::specialization_graph::Graph
-{
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx rustc_ast::tokenstream::TokenStream {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-macro_rules! impl_ref_decoder {
-    (<$tcx:tt> $($ty:ty,)*) => {
-        $(impl<'a, $tcx> Decodable<CacheDecoder<'a, $tcx>> for &$tcx [$ty] {
-            #[inline]
-            fn decode(d: &mut CacheDecoder<'a, $tcx>) -> Self {
-                RefDecodable::decode(d)
-            }
-        })*
-    };
-}
-
-impl_ref_decoder! {<'tcx>
-    Span,
-    rustc_hir::Attribute,
-    rustc_span::Ident,
-    ty::Variance,
-    rustc_span::def_id::DefId,
-    rustc_span::def_id::LocalDefId,
-    (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
-    rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
+crate::ty::codec::impl_decodable_via_ref_decodable_for_foreign_type! {
+    @decoder: CacheDecoder<'_, 'tcx>,
+    // tidy-alphabetical-start
+    &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>,
+    &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>,
+    &'tcx UnordSet<LocalDefId>,
+    &'tcx [(
+        rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>,
+        rustc_middle::middle::exported_symbols::SymbolExportInfo,
+    )],
+    &'tcx [(ty::Clause<'tcx>, Span)],
+    &'tcx [DefId],
+    &'tcx [Spanned<MonoItem<'tcx>>],
+    &'tcx [ty::Variance],
+    &'tcx rustc_ast::tokenstream::TokenStream,
+    // tidy-alphabetical-end
 }
 
 //- ENCODING -------------------------------------------------------------------
