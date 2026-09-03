@@ -941,10 +941,7 @@ impl<'a> Parser<'a> {
             match self.parse_ty() {
                 Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {
-                    let stopped_at_doc_comment = matches!(self.token.kind, token::DocComment(..));
-
-                    if !stopped_at_doc_comment
-                        && let Some(snapshot) = snapshot
+                    if let Some(snapshot) = snapshot
                         && let Some(expr) =
                             self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
                     {
