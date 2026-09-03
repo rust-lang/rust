@@ -23,5 +23,5 @@
 
 fn main() {
     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
-    //[alignment_mismatch]~^ ERROR no associated function or constant named `from_mut` found for struct `Atomic<u64>`
+    //[alignment_mismatch]~^ERROR: the associated function or constant `from_mut` exists for struct `Atomic<u64>`, but its trait bounds were not satisfied [E0599]
 }
