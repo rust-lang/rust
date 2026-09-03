@@ -1544,6 +1544,14 @@ cc = ["@mejrs"]
 message = "Some changes occurred to diagnostic attributes."
 cc = ["@mejrs"]
 
+[mentions."RELEASES.md"]
+message = """
+`RELEASES.md` was changed, upon landing each section will be automatically synced with it's \
+corresponding GitHub releases, but **only from the `main` branch**.
+
+If it's not already the case make sure to also merge the changes in the `main` branch.
+"""
+
 # Content-based mentions
 
 [mentions."miri"]
