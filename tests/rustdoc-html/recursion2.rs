@@ -1,13 +1,13 @@
-#![crate_type = "lib"]
+pub mod longhands {
+    pub use super::*;
 
-mod m {
-    pub use self::a::Foo;
+    pub use super::common_types::computed::compute_CSSColor as to_computed_value;
 
-    mod a {
-        pub struct Foo;
-    }
+    pub fn computed_as_specified() {}
+}
 
-    mod b {
-        pub use super::*;
+pub mod common_types {
+    pub mod computed {
+        pub use super::super::longhands::computed_as_specified as compute_CSSColor;
     }
 }
