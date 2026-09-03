@@ -140,9 +140,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let id = match source {
                             DelegationSource::Single => None,
                             DelegationSource::List(expn_id) => Some(expn_id),
-                            DelegationSource::Glob => {
-                                Some(self.tcx.expn_that_defined(self.owner.def_id).expect_local())
-                            }
+                            DelegationSource::Glob => Some(
+                                self.tcx
+                                    .expn_that_defined(self.curr_owner.owner.def_id)
+                                    .expect_local(),
+                            ),
                         };
 
                         id.map(|id| (id, unused_target_expr))
@@ -335,7 +337,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let overwrites = self_resolver.overwrites;
 
         // Target expr needs to lower `self` path.
-        self.ident_and_label_to_local_id.insert(pat_node_id, param_local_id);
+        self.curr_owner.ident_and_label_to_local_id.insert(pat_node_id, param_local_id);
 
         let block = cfg_select! {
             debug_assertions => {

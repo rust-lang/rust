@@ -16,8 +16,9 @@ usage that need to be distinguished:
   associated to their manipulation, and cannot be used as general purpose memory. Here, any address
   value is possible, including 0 and [`usize::MAX`], so long as the semantics of such a write are
   well-defined by the target hardware. The provenance of the pointer is irrelevant, and it can be
-  created with [`without_provenance_mut`][crate::ptr::without_provenance_mut]. The access must not
-  trap. It can cause side-effects, but those must not affect Rust-allocated memory in any way.
+  created with [`without_provenance_mut`][crate::ptr::without_provenance_mut]. The access is allowed
+  to trap, which must immediately abort the process. It can also cause other side-effects, but those
+  must not affect Rust-allocated memory in any way.
 
 In both cases, the access is also considered atomic with the given `order`. This allows
 synchronization with other threads or devices that share memory with this program.
