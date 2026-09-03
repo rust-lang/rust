@@ -19,6 +19,7 @@
 #![feature(clone_to_uninit)]
 #![feature(cmp_minmax)]
 #![feature(cmp_splat)]
+#![feature(complex_numbers)]
 #![feature(const_array)]
 #![feature(const_bool)]
 #![feature(const_cell_traits)]
