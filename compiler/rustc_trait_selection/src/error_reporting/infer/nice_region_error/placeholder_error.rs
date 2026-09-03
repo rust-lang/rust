@@ -273,16 +273,12 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 (false, None, None, Some(span), String::new())
             };
 
-        let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new_from_args(
-            self.cx.tcx,
-            trait_def_id,
-            expected_args,
-        ));
-        let actual_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new_from_args(
-            self.cx.tcx,
-            trait_def_id,
-            actual_args,
-        ));
+        let expected_trait_ref = self.cx.deeply_resolve_ignoring_regions(
+            ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, expected_args),
+        );
+        let actual_trait_ref = self.cx.deeply_resolve_ignoring_regions(
+            ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, actual_args),
+        );
 
         // Search the expected and actual trait references to see (a)
         // whether the sub/sup placeholders appear in them (sometimes
@@ -402,7 +398,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         // the confusing lifetime-generality error into an actionable hint, e.g.:
         //   |buf|  →  |buf: &mut [u8]|
         if self.tcx().is_fn_trait(trait_def_id) {
-            let actual_self_ty = self.cx.resolve_vars_if_possible(
+            let actual_self_ty = self.cx.deeply_resolve_ignoring_regions(
                 ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, actual_args).self_ty(),
             );
             if let ty::Closure(closure_def_id, _) = *actual_self_ty.kind()

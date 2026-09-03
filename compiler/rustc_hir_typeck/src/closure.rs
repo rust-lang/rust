@@ -60,9 +60,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
         let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => {
-                self.deduce_closure_signature(self.resolve_vars_with_obligations(ty), closure.kind)
-            }
+            Some(ty) => self.deduce_closure_signature(
+                self.deeply_resolve_ignoring_regions_with_obligations(ty),
+                closure.kind,
+            ),
             None => (None, None),
         };
 
@@ -285,7 +286,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given the expected type, figures out what it can about this closure we
-    /// are about to type check:
+    /// are about to type check.
+    ///
+    /// WARNING: `expected_ty` must be resolved, to ensure that tyvars refer to root vids.
     #[instrument(skip(self), level = "debug", ret)]
     fn deduce_closure_signature(
         &self,
@@ -312,13 +315,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|did| self.tcx.fn_trait_kind_from_def_id(did));
                 (sig, kind)
             }
-            ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
-                Ty::new_var(self.tcx, self.root_var(vid)),
-                closure_kind,
-                self.obligations_for_self_ty(vid, UseSubtyping::No)
-                    .into_iter()
-                    .filter_map(|obl| Some((obl.predicate.as_clause()?, obl.cause.span))),
-            ),
+            ty::Infer(ty::TyVar(vid)) => {
+                // assert that the precondition (documented in the doc comments) is maintained.
+                debug_assert_eq!(self.root_ty_var(vid), vid);
+                self.deduce_closure_signature_from_predicates(
+                    Ty::new_var(self.tcx, vid),
+                    closure_kind,
+                    self.obligations_for_self_ty(vid, UseSubtyping::No)
+                        .into_iter()
+                        .filter_map(|obl| Some((obl.predicate.as_clause()?, obl.cause.span))),
+                )
+            }
             ty::FnPtr(sig_tys, hdr) => match closure_kind {
                 hir::ClosureKind::Closure => {
                     let expected_sig = ExpectedSig { cause_span: None, sig: sig_tys.with(hdr) };
@@ -411,7 +418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let inferred_fnptr_sig = Ty::new_fn_ptr(self.tcx, inferred_sig.sig);
                     self.demand_eqtype(span, inferred_fnptr_sig, generalized_fnptr_sig);
 
-                    let resolved_sig = self.resolve_vars_if_possible(generalized_fnptr_sig);
+                    let resolved_sig = self.deeply_resolve_ignoring_regions(generalized_fnptr_sig);
 
                     if resolved_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
                         expected_sig = Some(ExpectedSig {
@@ -517,7 +524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause_span: Option<Span>,
         projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
-        let projection = self.resolve_vars_if_possible(projection);
+        let projection = self.deeply_resolve_ignoring_regions(projection);
 
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         debug!(?arg_param_ty);
@@ -562,7 +569,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause_span: Option<Span>,
         projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
-        let projection = self.resolve_vars_if_possible(projection);
+        let projection = self.deeply_resolve_ignoring_regions(projection);
 
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         debug!(?arg_param_ty);
@@ -851,8 +858,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )?;
             all_obligations.extend(obligations);
 
-            let inputs =
-                supplied_sig.inputs().into_iter().map(|&ty| self.resolve_vars_if_possible(ty));
+            let inputs = supplied_sig
+                .inputs()
+                .into_iter()
+                .map(|&ty| self.deeply_resolve_ignoring_regions(ty));
 
             let fn_sig_kind = FnSigKind::default()
                 .set_abi(ExternAbi::RustCall)
@@ -959,7 +968,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let closure_span = self.tcx.def_span(body_def_id);
         let ret_ty = ret_coercion.borrow().expected_ty();
-        let ret_ty = self.resolve_vars_with_obligations(ret_ty);
+        let ret_ty = self.deeply_resolve_ignoring_regions_with_obligations(ret_ty);
 
         let get_future_output = |clause: ty::Clause<'tcx>, span| {
             // Search for a pending obligation like
@@ -1064,7 +1073,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type from the projection. Note that there can
         // be no bound variables in this type because the "self type"
         // does not have any regions in it.
-        let output_ty = self.resolve_vars_if_possible(predicate.term);
+        let output_ty = self.deeply_resolve_ignoring_regions(predicate.term);
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
         // This is a projection on a Fn trait so will always be a type.
         Some(output_ty.expect_type())

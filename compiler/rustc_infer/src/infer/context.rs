@@ -82,14 +82,14 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         }
     }
 
-    fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
-        match self.inner.borrow_mut().unwrap_region_constraints().probe_value(lt) {
+    fn universe_of_region(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
+        match self.inner.borrow_mut().unwrap_region_constraints().try_resolve_region_var(lt) {
             Err(universe) => Some(universe),
             Ok(_) => None,
         }
     }
 
-    fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex> {
+    fn universe_of_const(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex> {
         match self.try_resolve_const_var(ct) {
             Err(universe) => Some(universe),
             Ok(_) => None,
@@ -97,7 +97,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid {
-        self.root_var(var)
+        self.root_ty_var(var)
     }
 
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid {
@@ -118,30 +118,27 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.root_const_var(var)
     }
 
-    fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
-        match self.try_resolve_ty_var(vid) {
-            Ok(ty) => ty,
-            Err(_) => Ty::new_var(self.tcx, self.root_var(vid)),
-        }
+    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
+        self.shallow_resolve_ty_var(vid)
     }
 
-    fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
-        self.opportunistic_resolve_int_var(vid)
+    fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> Ty<'tcx> {
+        self.shallow_resolve_int_var(vid)
     }
 
-    fn opportunistic_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
-        self.opportunistic_resolve_float_var(vid)
+    fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> Ty<'tcx> {
+        self.shallow_resolve_float_var(vid)
     }
 
-    fn opportunistic_resolve_ct_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
-        match self.try_resolve_const_var(vid) {
-            Ok(ct) => ct,
-            Err(_) => ty::Const::new_var(self.tcx, self.root_const_var(vid)),
-        }
+    fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
+        self.shallow_resolve_const_var(vid)
     }
 
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
-        self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
+    fn shallow_resolve_region_var(&self, vid: ty::RegionVid) -> ty::Region<'tcx> {
+        self.inner
+            .borrow_mut()
+            .unwrap_region_constraints()
+            .shallow_resolve_region_var(self.tcx, vid)
     }
 
     fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool {
@@ -278,11 +275,11 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.shallow_resolve_const(ct)
     }
 
-    fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.resolve_vars_if_possible(value)
+        self.deeply_resolve_ignoring_regions(value)
     }
 
     fn probe<T>(&self, probe: impl FnOnce() -> T) -> T {
@@ -452,7 +449,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
 
         let folded = match t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
-                let vid = self.infcx.root_var(*vid);
+                let vid = self.infcx.root_ty_var(*vid);
                 let probe = self.infcx.inner.borrow_mut().type_variables().probe(vid);
                 match probe {
                     TypeVariableValue::Known { value: u } => u.super_fold_with(self),
@@ -484,8 +481,8 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
 
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                let vid = self.infcx.root_const_var(vid);
-                let universe = match self.infcx.try_resolve_const_var(vid) {
+                let (res, vid) = self.infcx.try_resolve_const_var_with_root(vid);
+                let universe = match res {
                     Ok(value) => return value.fold_with(self),
                     Err(universe) => universe,
                 };

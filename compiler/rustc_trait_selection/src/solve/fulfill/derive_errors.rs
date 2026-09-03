@@ -124,14 +124,14 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                 span_bug!(
                     root_obligation.cause.span,
                     "did not expect successful goal when collecting ambiguity errors for `{:?}`",
-                    infcx.resolve_vars_if_possible(root_obligation.predicate),
+                    infcx.deeply_resolve_ignoring_regions(root_obligation.predicate),
                 )
             }
             Err(_) => {
                 span_bug!(
                     root_obligation.cause.span,
                     "did not expect selection error when collecting ambiguity errors for `{:?}`",
-                    infcx.resolve_vars_if_possible(root_obligation.predicate),
+                    infcx.deeply_resolve_ignoring_regions(root_obligation.predicate),
                 )
             }
         }
@@ -165,7 +165,7 @@ fn find_best_leaf_obligation<'tcx>(
     obligation: &PredicateObligation<'tcx>,
     consider_ambiguities: bool,
 ) -> PredicateObligation<'tcx> {
-    let obligation = infcx.resolve_vars_if_possible(obligation.clone());
+    let obligation = infcx.deeply_resolve_ignoring_regions(obligation.clone());
     // FIXME: we use a probe here as the `BestObligation` visitor does not
     // check whether it uses candidates which get shadowed by where-bounds.
     //

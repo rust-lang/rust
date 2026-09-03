@@ -196,18 +196,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::ExprKind::Index(indexed_expr, idx, _) = rhs_expr.kind else {
             return false;
         };
-        if !self.resolve_vars_if_possible(self.node_ty(idx.hir_id)).is_ty_var() {
+        if !self.deeply_resolve_ignoring_regions(self.node_ty(idx.hir_id)).is_ty_var() {
             return false;
         }
-        let lhs_ty = self.resolve_vars_if_possible(self.node_ty(lhs_expr.hir_id));
-        let indexed_ty = self.resolve_vars_if_possible(self.node_ty(indexed_expr.hir_id));
+        let lhs_ty = self.deeply_resolve_ignoring_regions(self.node_ty(lhs_expr.hir_id));
+        let indexed_ty = self.deeply_resolve_ignoring_regions(self.node_ty(indexed_expr.hir_id));
         let rhs_ty = match *indexed_ty.kind() {
             ty::Array(element_ty, _) | ty::Slice(element_ty) => element_ty,
             ty::Ref(_, pointee_ty, _) => match *pointee_ty.kind() {
                 ty::Array(element_ty, _) | ty::Slice(element_ty) => element_ty,
-                _ => self.resolve_vars_if_possible(self.node_ty(rhs_expr.hir_id)),
+                _ => self.deeply_resolve_ignoring_regions(self.node_ty(rhs_expr.hir_id)),
             },
-            _ => self.resolve_vars_if_possible(self.node_ty(rhs_expr.hir_id)),
+            _ => self.deeply_resolve_ignoring_regions(self.node_ty(rhs_expr.hir_id)),
         };
         if !self.binop_accepts_types(binop.node, lhs_ty, rhs_ty) {
             return false;

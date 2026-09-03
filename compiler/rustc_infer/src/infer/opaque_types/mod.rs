@@ -166,7 +166,7 @@ impl<'tcx> InferCtxt<'tcx> {
         } else if let Some(res) = process(b, a) {
             res
         } else {
-            let (a, b) = self.resolve_vars_if_possible((a, b));
+            let (a, b) = self.deeply_resolve_ignoring_regions((a, b));
             Err(TypeError::Sorts(ExpectedFound::new(a, b)))
         }
     }

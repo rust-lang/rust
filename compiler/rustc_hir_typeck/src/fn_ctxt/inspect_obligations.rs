@@ -95,7 +95,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match *ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => match subtyping {
-                UseSubtyping::No => self.root_var(expected_vid) == self.root_var(found_vid),
+                UseSubtyping::No => self.root_ty_var(expected_vid) == found_vid,
                 UseSubtyping::Yes => {
                     self.sub_unification_table_root_var(expected_vid)
                         == self.sub_unification_table_root_var(found_vid)
@@ -139,7 +139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         obligations_for_self_ty.retain_mut(|obligation| {
-            obligation.predicate = self.resolve_vars_if_possible(obligation.predicate);
+            obligation.predicate = self.deeply_resolve_ignoring_regions(obligation.predicate);
             !obligation.predicate.has_placeholders()
         });
         obligations_for_self_ty

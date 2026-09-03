@@ -400,7 +400,7 @@ where
             // types from candidates.
             self.add_goal(GoalSource::TypeRelating, projection_goal)?;
             self.try_evaluate_added_goals()?;
-            Ok(self.resolve_vars_if_possible(normalized_term))
+            Ok(self.deeply_resolve_ignoring_regions(normalized_term))
         } else {
             Ok(term)
         }
