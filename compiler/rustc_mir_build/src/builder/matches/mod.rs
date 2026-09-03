@@ -167,8 +167,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 false_block.unit()
             }
             ExprKind::Scope { region_scope, hir_id, value } => {
-                let region_scope = (region_scope, this.source_info(expr_span));
-                this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
+                let source_info = this.source_info(expr_span);
+                this.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
+                    this.push_coverage_point_for_expr(block, source_info, hir_id);
                     this.lower_if_condition(block, value, args)
                 })
             }
