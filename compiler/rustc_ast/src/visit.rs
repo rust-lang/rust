@@ -1145,6 +1145,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_qself(QSelf);
             pub fn walk_test_binder_body(TestBinderBody);
             pub fn walk_test_binder_constraint(TestBinderConstraint);
+            pub fn walk_test_binder_constraints(TestBinderConstraints);
             pub fn walk_test_binder_exists(TestBinderExists);
             pub fn walk_test_binder_forall(TestBinderForall);
             pub fn walk_trait_ref(TraitRef);
