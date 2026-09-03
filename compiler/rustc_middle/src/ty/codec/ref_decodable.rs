@@ -112,6 +112,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<LocalDefId> {
 /// For types not defined in this crate, including slices/tuples/collections
 /// of local types, [`Decodable`] cannot use a blanket impl and must be
 /// implemented for specific decoders instead.
+///
+/// Search for `impl_decodable_via_ref_decodable_for_foreign_type!` to see examples.
 macro_rules! impl_decodable_via_ref_decodable_for_local_type {
     (
         $(
