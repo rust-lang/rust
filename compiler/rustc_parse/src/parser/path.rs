@@ -939,28 +939,7 @@ impl<'a> Parser<'a> {
             }
 
             match self.parse_ty() {
-                Ok(ty) => {
-                    // Since the type parser recovers from some malformed slice and array types and
-                    // successfully returns a type, we need to look for `TyKind::Err`s in the
-                    // type to determine if error recovery has occurred and if the input is not a
-                    // syntactically valid type after all.
-                    if let ast::TyKind::Slice(inner_ty) | ast::TyKind::Array(inner_ty, _) = &ty.kind
-                        && let ast::TyKind::Err(_) = inner_ty.kind
-                        && let Some(snapshot) = snapshot
-                        && let Some(expr) =
-                            self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
-                    {
-                        return Ok(Some(
-                            self.dummy_const_arg_needs_braces(
-                                self.dcx()
-                                    .struct_span_err(expr.span, "invalid const generic expression"),
-                                expr.span,
-                            ),
-                        ));
-                    }
-
-                    GenericArg::Type(ty)
-                }
+                Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {
                     let stopped_at_doc_comment = matches!(self.token.kind, token::DocComment(..));
 
