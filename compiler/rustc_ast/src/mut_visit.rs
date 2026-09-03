@@ -225,9 +225,7 @@ macro_rules! impl_visitable_direct {
 }
 
 macro_rules! fn_visit {
-    ($Visitor:ident
-        $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
-    ) => {
+    ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => {
         $(fn $visit(&mut self, node: &mut $ty $(, $extra: $extra_ty)?) {
             MutWalkable::walk_mut(node, self)
         })*
@@ -235,9 +233,7 @@ macro_rules! fn_visit {
 }
 
 macro_rules! impl_visitable_visit {
-    ($Visitor:ident
-        $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
-    ) => {
+    ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => {
         $(impl_visitable!(|&mut self: $ty, visitor: &mut V $(, $extra: $extra_ty)?| {
             visitor.$visit(self $(, $extra)?);
         });)*
@@ -245,10 +241,8 @@ macro_rules! impl_visitable_visit {
 }
 
 macro_rules! fn_walk {
-    ($Visitor:ident
-        $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
-    ) => {
-        $(pub fn $walk<V: $Visitor>(visitor: &mut V, node: &mut $ty) {
+    ($($visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident;)*) => {
+        $(pub fn $walk<V: MutVisitor>(visitor: &mut V, node: &mut $ty) {
             MutWalkable::walk_mut(node, visitor)
         })*
     };
