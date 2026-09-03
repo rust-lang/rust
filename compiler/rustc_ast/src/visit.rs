@@ -204,10 +204,18 @@ macro_rules! visit_visitable_with {
 }
 
 macro_rules! impl_visitable {
-    (|&$lt:lifetime $self:ident: $self_ty:ty,
-      $vis:ident: &mut $vis_ty:ident,
-      $extra:ident: $extra_ty:ty| $block:block) => {
-        #[allow(unused_parens)]
+    // The no-extra case.
+    (|&$lt:lifetime $self:ident: $self_ty:ty, $vis:ident: &mut $vis_ty:ident| $block:block) => {
+        impl<$lt, $vis_ty: Visitor<$lt>> Visitable<$lt, $vis_ty> for $self_ty {
+            type Extra = ();
+            fn visit(&$lt $self, $vis: &mut $vis_ty, _extra: Self::Extra) -> V::Result {
+                $block
+            }
+        }
+    };
+    // The with-extra case.
+    (|&$lt:lifetime $self:ident: $self_ty:ty, $vis:ident: &mut $vis_ty:ident,
+     $extra:ident: $extra_ty:ty| $block:block) => {
         impl<$lt, $vis_ty: Visitor<$lt>> Visitable<$lt, $vis_ty> for $self_ty {
             type Extra = $extra_ty;
             fn visit(&$lt $self, $vis: &mut $vis_ty, $extra: Self::Extra) -> V::Result {
@@ -231,7 +239,7 @@ macro_rules! impl_walkable {
 macro_rules! impl_visitable_noop {
     (<$lt:lifetime> $($ty:ty,)*) => {
         $(
-            impl_visitable!(|&$lt self: $ty, _vis: &mut V, _extra: ()| {
+            impl_visitable!(|&$lt self: $ty, _vis: &mut V| {
                 V::Result::output()
             });
         )*
@@ -260,7 +268,7 @@ macro_rules! impl_visitable_list {
 macro_rules! impl_visitable_direct {
     (<$lt:lifetime> $($ty:ty,)*) => {
         $(impl_visitable!(
-            |&$lt self: $ty, visitor: &mut V, _extra: ()| {
+            |&$lt self: $ty, visitor: &mut V| {
                 Walkable::walk_ref(self, visitor)
             }
         );)*
@@ -281,8 +289,7 @@ macro_rules! impl_visitable_visit {
     ($Visitor:ident<$lt:lifetime>
         $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
-        $(impl_visitable!(|&$lt self: $ty, visitor: &mut V, extra: ($($extra_ty)?)| {
-            let ($($extra)?) = extra;
+        $(impl_visitable!(|&$lt self: $ty, visitor: &mut V $(, $extra: $extra_ty)?| {
             visitor.$visit(self $(, $extra)?)
         });)*
     };
@@ -758,33 +765,33 @@ macro_rules! common_visitor_and_walkers {
 
         crate::for_each_ast_visit_hook!($Visitor$(<$lt>)? impl_visitable_visit!);
 
-        impl_visitable!(|&$($lt)? $($mut)? self: Ident, visitor: &mut V, _extra: ()| {
+        impl_visitable!(|&$($lt)? $($mut)? self: Ident, visitor: &mut V| {
             visitor.visit_ident(self)
         });
 
         $(
             impl_visitable!(
-                |&$lt self: NodeId, visitor: &mut V, _extra: ()| {
+                |&$lt self: NodeId, visitor: &mut V| {
                     visitor.visit_id(*self)
                 }
             );
         )?
         $(
             impl_visitable!(
-                |&$mut self: NodeId, visitor: &mut V, _extra: ()| {
+                |&$mut self: NodeId, visitor: &mut V| {
                     visitor.visit_id(self)
                 }
             );
 
-            impl_visitable!(|&mut self: Span, visitor: &mut V, _extra: ()| {
+            impl_visitable!(|&mut self: Span, visitor: &mut V| {
                 visitor.visit_span(self)
             });
         )?
 
-        impl_visitable!(|&$($lt)? $($mut)? self: Item, vis: &mut V, _extra: ()| {
+        impl_visitable!(|&$($lt)? $($mut)? self: Item, vis: &mut V| {
             vis.visit_item(self)
         });
-        impl_visitable!(|&$($lt)? $($mut)? self: ForeignItem, vis: &mut V, _extra: ()| {
+        impl_visitable!(|&$($lt)? $($mut)? self: ForeignItem, vis: &mut V| {
             vis.visit_foreign_item(self)
         });
         impl_visitable!(|&$($lt)? $($mut)? self: AssocItem, vis: &mut V, ctxt: AssocCtxt| {
@@ -804,7 +811,7 @@ macro_rules! common_visitor_and_walkers {
             ) -> V::Result;
         }
 
-        $(impl_visitable!(|&$lt self: ThinVec<(UseTree, NodeId)>, vis: &mut V, _extra: ()| {
+        $(impl_visitable!(|&$lt self: ThinVec<(UseTree, NodeId)>, vis: &mut V| {
             for (nested_tree, nested_id) in self {
                 try_visit!(vis.visit_nested_use_tree(nested_tree, *nested_id));
             }
@@ -1136,8 +1143,7 @@ common_visitor_and_walkers!(Visitor<'a>);
 
 macro_rules! generate_list_visit_fns {
     ($($visit_fn:ident, $ty:ty $(, $extra:ident: $extra_ty:ty)?;)+) => {
-        $(impl_visitable!(|&'a self: ThinVec<$ty>, visitor: &mut V, extra: ($($extra_ty)?)| {
-            let ($($extra)?) = extra;
+        $(impl_visitable!(|&'a self: ThinVec<$ty>, visitor: &mut V $(, $extra: $extra_ty)?| {
             walk_list!(visitor, $visit_fn, self $(, $extra)?);
             V::Result::output()
         });)+
