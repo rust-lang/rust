@@ -1629,6 +1629,10 @@ fn check_matcher_core<'tt>(
                             if kind == NonterminalKind::Pat(PatWithOr)
                                 && sess.psess.edition.at_least_rust_2021()
                                 && next_token.is_token(&token::Or)
+                                || matches!(
+                                    kind,
+                                    NonterminalKind::Pat(PatWithOr | PatParam { inferred: true })
+                                ) && next_token.is_token(&token::Colon)
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl {
                                     span,
@@ -1745,11 +1749,26 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::Pat(PatParam { .. }) => {
+            NonterminalKind::Pat(PatParam { inferred: true }) => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`if let`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | Or => IsInFollow::Yes,
+                        Ident(kw::If | kw::In, IdentKind::Normal | IdentKind::ForcedKeyword) => {
+                            IsInFollow::Yes
+                        }
+                        _ => IsInFollow::No(TOKENS),
+                    },
+                    TokenTree::MetaVarDecl { kind: NonterminalKind::Guard, .. } => IsInFollow::Yes,
+                    _ => IsInFollow::No(TOKENS),
+                }
+            }
+            NonterminalKind::Pat(PatParam { inferred: false }) => {
+                const TOKENS: &[&str] =
+                    &["`=>`", "`,`", "`=`", "`|`", "`:`", "`if`", "`if let`", "`in`"];
+                match tok {
+                    TokenTree::Token(token) => match token.kind {
+                        FatArrow | Comma | Eq | Or | Colon => IsInFollow::Yes,
                         Ident(kw::If | kw::In, IdentKind::Normal | IdentKind::ForcedKeyword) => {
                             IsInFollow::Yes
                         }
