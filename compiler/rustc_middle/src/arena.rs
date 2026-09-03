@@ -157,8 +157,10 @@ where
     D: TyDecoder<'tcx>,
     T: ArenaAllocatable<'tcx, C> + Decodable<D>,
 {
-    let values: Vec<T> = Decodable::decode(decoder);
-    decoder.interner().arena.alloc_from_iter(values)
+    // The decoder for slices must match the decoder for `Vec<T>`,
+    // which is a `usize` length followed by that many `T`.
+    let len = decoder.read_usize();
+    decoder.interner().arena.alloc_from_iter((0..len).map(|_| T::decode(decoder)))
 }
 
 macro_rules! impl_ref_decodable_into_arena {
