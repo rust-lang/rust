@@ -21,7 +21,7 @@ use tracing::span;
 
 use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
-use crate::core::build_steps::llvm::{LlvmFromCi, prebuilt_llvm_output};
+use crate::core::build_steps::llvm::{LlvmFromCi, LlvmKind, prebuilt_llvm_output};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder::{
@@ -2201,7 +2201,7 @@ impl CommandLineStep for Assemble {
 
                     if !src_path.exists() {
                         // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
-                        if builder.config.llvm_ci_mode.download_from_ci() {
+                        if llvm_output.kind() == LlvmKind::DownloadedFromCi {
                             eprintln!("{} does not exist; skipping copy", src_path.display());
                             continue;
                         }

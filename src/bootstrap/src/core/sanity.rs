@@ -110,7 +110,7 @@ pub(crate) fn check(sess: &mut Session) {
     if cfg!(not(test))
         && !sess.config.dry_run()
         && !sess.host_target.is_msvc()
-        && sess.config.llvm_ci_mode.download_from_ci()
+        && sess.config.llvm_ci_mode.requests_download_from_ci()
     {
         let builder = Builder::new(sess);
         let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: sess.host_target });
@@ -138,7 +138,7 @@ pub(crate) fn check(sess: &mut Session) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = !sess.config.llvm_ci_mode.download_from_ci()
+    let building_llvm = !sess.config.llvm_ci_mode.requests_download_from_ci()
         && !sess.config.local_rebuild
         && sess.hosts.iter().any(|host| {
             sess.config.llvm_enabled(*host)
