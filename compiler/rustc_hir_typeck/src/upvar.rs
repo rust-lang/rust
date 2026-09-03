@@ -1034,25 +1034,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => {}
                         }
 
-                        // Add a label pointing to where a captured variable affected by drop order
-                        // is dropped
-                        if lint_note.reason.drop_order {
-                            let drop_location_span = drop_location_span(this.tcx, closure_hir_id);
-
+                        // Add a label pointing to where a captured variable affected by drop
+                        // order is dropped.
+                        if lint_note.reason.drop_order
+                            && let Some(drop_location_span) =
+                                drop_location_span(this.tcx, closure_hir_id)
+                        {
+                            let var_name = this.tcx.hir_name(*var_hir_id);
                             match &lint_note.captures_info {
                                 UpvarMigrationInfo::CapturingPrecise {
                                     var_name: captured_name,
                                     ..
                                 } => {
-                                    lint.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
-                                        this.tcx.hir_name(*var_hir_id),
-                                        captured_name,
-                                    ));
+                                    lint.span_label(
+                                            drop_location_span,
+                                            format!(
+                                                "in Rust 2018, `{var_name}` is dropped here, but in Rust 2021, \
+                                                only `{captured_name}` will be dropped here as part of the closure"
+                                            ),
+                                        );
                                 }
                                 UpvarMigrationInfo::CapturingNothing { use_span: _ } => {
-                                    lint.span_label(drop_location_span, format!("in Rust 2018, `{v}` is dropped here along with the closure, but in Rust 2021 `{v}` is not part of the closure",
-                                        v = this.tcx.hir_name(*var_hir_id),
-                                    ));
+                                    lint.span_label(
+                                            drop_location_span,
+                                            format!(
+                                                "in Rust 2018, `{var_name}` is dropped here along with \
+                                                the closure, but in Rust 2021 `{var_name}` is not part \
+                                                of the closure"
+                                            ),
+                                        );
                                 }
                             }
                         }
@@ -1190,18 +1200,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         if !need_migrations.is_empty() {
-            self.tcx.emit_node_span_lint(
-                RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
-                self.tcx.local_def_id_to_hir_id(closure_def_id),
-                self.tcx.def_span(closure_def_id),
-                MigrationLint {
-                    this: self,
-                    migration_message: reasons.migration_message(),
-                    closure_def_id,
-                    body_id,
-                    need_migrations,
-                },
-            );
+            let closure_hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id);
+
+            if drop_location_hir_id(self.tcx, closure_hir_id).is_some() {
+                self.tcx.emit_node_span_lint(
+                    RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
+                    closure_hir_id,
+                    self.tcx.def_span(closure_def_id),
+                    MigrationLint {
+                        this: self,
+                        migration_message: reasons.migration_message(),
+                        closure_def_id,
+                        body_id,
+                        need_migrations,
+                    },
+                );
+            }
         }
     }
 
@@ -2055,26 +2069,24 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
     }
 }
 
-/// Returns the Span of where the value with the provided HirId would be dropped
-fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
-    let owner_id = tcx.hir_get_enclosing_scope(hir_id).unwrap();
+fn drop_location_hir_id(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<HirId> {
+    let owner_id = tcx.hir_get_enclosing_scope(hir_id)?;
 
-    let owner_node = tcx.hir_node(owner_id);
-    let owner_span = match owner_node {
-        hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Fn { body: owner_id, .. } => tcx.hir_span(owner_id.hir_id),
-            _ => {
-                bug!("Drop location span error: need to handle more ItemKind '{:?}'", item.kind);
-            }
-        },
-        hir::Node::Block(block) => tcx.hir_span(block.hir_id),
-        hir::Node::TraitItem(item) => tcx.hir_span(item.hir_id()),
-        hir::Node::ImplItem(item) => tcx.hir_span(item.hir_id()),
-        _ => {
-            bug!("Drop location span error: need to handle more Node '{:?}'", owner_node);
+    match tcx.hir_node(owner_id) {
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { body, .. }, .. }) => {
+            Some(body.hir_id)
         }
-    };
-    tcx.sess.source_map().end_point(owner_span)
+        hir::Node::Block(block) => Some(block.hir_id),
+        hir::Node::TraitItem(item) => Some(item.hir_id()),
+        hir::Node::ImplItem(item) => Some(item.hir_id()),
+        _ => None,
+    }
+}
+
+/// Returns the Span of where the value with the provided HirId would be dropped
+fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<Span> {
+    let hir_id = drop_location_hir_id(tcx, hir_id)?;
+    Some(tcx.sess.source_map().end_point(tcx.hir_span(hir_id)))
 }
 
 struct InferBorrowKind<'a, 'tcx> {
