@@ -1,3 +1,5 @@
+//@ rustfmt-edition: 2021
+
 fn main() {
-    builtin # type_ascribe(10, usize)
+    k#type_ascribe(10, usize)
 }
