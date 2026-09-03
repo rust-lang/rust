@@ -155,11 +155,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let local_scope = this.local_scope();
                 let (true_block, false_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
-                        // Help out coverage instrumentation by injecting a dummy statement with
-                        // the original condition's span (including `!`). This fixes #115468.
-                        if this.tcx.sess.instrument_coverage() {
-                            this.cfg.push_coverage_span_marker(block, this.source_info(expr_span));
-                        }
                         this.lower_if_condition(block, arg, args.let_not_permitted())
                     });
                 // Break if the condition was true; proceed if the condition was false.
