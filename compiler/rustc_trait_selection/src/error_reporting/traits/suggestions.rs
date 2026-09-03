@@ -6022,19 +6022,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             self.probe(|_| {
                 let ocx = ObligationCtxt::new(self);
-                self.enter_forall(pred, |pred| {
-                    let pred = ocx.normalize(
-                        &ObligationCause::dummy(),
-                        param_env,
-                        Unnormalized::new_wip(pred),
-                    );
-                    ocx.register_obligation(Obligation::new(
-                        self.tcx,
-                        ObligationCause::dummy(),
-                        param_env,
-                        pred,
-                    ));
-                });
+                ocx.register_obligation(Obligation::new(
+                    self.tcx,
+                    ObligationCause::dummy(),
+                    param_env,
+                    pred,
+                ));
                 if !ocx.try_evaluate_obligations().no_errors() {
                     // encountered errors.
                     return;
