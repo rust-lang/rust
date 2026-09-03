@@ -1915,7 +1915,7 @@ pub(crate) mod builtin {
     )]
     #[diagnostic::opaque]
     pub macro type_ascribe($expr:expr, $ty:ty) {
-        builtin # type_ascribe($expr, $ty)
+        k#type_ascribe($expr, $ty)
     }
 
     /// Unstable placeholder for deref patterns.
