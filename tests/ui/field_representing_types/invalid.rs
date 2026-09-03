@@ -23,10 +23,10 @@ fn main() {
     let _: field_of!(Struct); //~ ERROR: unexpected end of macro invocation
     let _: field_of!(Struct,); //~ ERROR: unexpected end of macro invocation
     let _: field_of!(Struct, field, extra); //~ ERROR: no rules expected `extra`
-    // FIXME(FRTs): adjust error message to mention `field_of!` & prevent double errors
+    // FIXME(FRTs): adjust error message to mention `field_of` & prevent double errors
     let _: field_of!(Enum, Variant..field); //~ ERROR: offset_of expects dot-separated field and variant names
-                                            //~^ ERROR: `field_of!` expects dot-separated field and variant names
+                                            //~^ ERROR: `field_of` expects dot-separated field and variant names
     let _: field_of!(Struct, [42]); //~ ERROR: offset_of expects dot-separated field and variant names
-                                    //~^ ERROR: `field_of!` expects dot-separated field and variant names
-    let _: field_of!(Struct, field1.field2.field3); //~ ERROR: `field_of!` only supports a single field or a variant with a field
+                                    //~^ ERROR: `field_of` expects dot-separated field and variant names
+    let _: field_of!(Struct, field1.field2.field3); //~ ERROR: `field_of` only supports a single field or a variant with a field
 }

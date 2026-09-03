@@ -1438,7 +1438,7 @@ impl<'a> State<'a> {
                 self.print_ty_pat(pat);
             }
             ast::TyKind::FieldOf(ty, variant, field) => {
-                self.word("builtin # field_of");
+                self.word("k#field_of");
                 self.popen();
                 let ib = self.ibox(0);
                 self.print_type(ty);
