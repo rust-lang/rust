@@ -2,9 +2,12 @@ use std::assert_matches;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageEarlyInfo, CoverageKind};
-use rustc_middle::mir::{self, BasicBlock, SourceInfo, UnOp};
-use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};
+use rustc_hir::HirId;
+use rustc_middle::mir::coverage::{
+    BlockMarkerId, BranchSpan, CoverageEarlyInfo, CoverageKind, PointKind,
+};
+use rustc_middle::mir::{self, BasicBlock, SourceInfo, Statement, UnOp};
+use rustc_middle::thir::{self, ExprId, ExprKind, Pat, Thir};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 
@@ -175,6 +178,73 @@ impl CoverageInfoBuilder {
 }
 
 impl<'tcx> Builder<'_, 'tcx> {
+    /// Does nothing if `-Cinstrument-coverage` is not enabled.
+    ///
+    /// Otherwise, pushes a marker statement to `block` indicating that this is where
+    /// the HIR expression `hir_id` is being evaluated.
+    pub(crate) fn push_coverage_point_for_expr(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        hir_id: HirId,
+    ) {
+        if !self.tcx.sess.instrument_coverage() {
+            return;
+        }
+        self.push_coverage_point_inner(block, source_info, PointKind::Expr, hir_id);
+    }
+
+    /// Does nothing if `-Cinstrument-coverage` is not enabled.
+    ///
+    /// Otherwise, pushes a marker statement to `block` indicating that this is where
+    /// the one-sided if-expression `if_expr` will generate its synthetic `else {}`
+    /// path, since it lacks an explicit `else` block.
+    pub(crate) fn push_coverage_point_for_implicit_else(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        if_expr: &thir::Expr<'tcx>,
+    ) {
+        if !self.tcx.sess.instrument_coverage() {
+            return;
+        }
+        // Recover the full HirId by combining a local ID with the function's owner ID.
+        let hir_id = HirId { owner: self.hir_id.owner, local_id: if_expr.temp_scope_id };
+        self.push_coverage_point_inner(block, source_info, PointKind::ImplicitElse, hir_id);
+    }
+
+    /// Does nothing if `-Cinstrument-coverage` is not enabled.
+    ///
+    /// Otherwise, pushes a marker statement to `block` indicating that this is where
+    /// the function `fn_hir_id` would implicitly return at the end of its body.
+    pub(crate) fn push_coverage_point_for_fn_end(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        fn_hir_id: HirId,
+    ) {
+        if !self.tcx.sess.instrument_coverage() {
+            return;
+        }
+        self.push_coverage_point_inner(block, source_info, PointKind::FunctionEnd, fn_hir_id);
+    }
+
+    fn push_coverage_point_inner(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        point_kind: PointKind,
+        hir_id: HirId,
+    ) {
+        assert!(self.tcx.sess.instrument_coverage());
+
+        let stmt = Statement::new(
+            source_info,
+            mir::StatementKind::Coverage(CoverageKind::Point { point_kind, hir_id }),
+        );
+        self.cfg.push(block, stmt);
+    }
+
     /// If condition coverage is enabled, inject extra blocks and marker statements
     /// that will let us track the value of the condition in `place`.
     pub(crate) fn visit_coverage_standalone_condition(

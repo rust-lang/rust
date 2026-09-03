@@ -44,7 +44,11 @@
 + 
       bb0: {
 +         Coverage::VirtualCounter(bcb0);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).48);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).2);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).3);
           StorageLive(_1);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).7);
           _1 = Enum::A(const 0_u32);
           PlaceMention(_1);
           _2 = discriminant(_1);
@@ -75,6 +79,9 @@
 +         Coverage::VirtualCounter(bcb5);
           StorageLive(_9);
           _9 = copy ((_1 as A).0: u32);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).43);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).44);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).46);
           StorageLive(_10);
           _10 = copy _9;
           _0 = consume(move _10) -> [return: bb12, unwind: bb14];
@@ -83,6 +90,9 @@
       bb6: {
           StorageLive(_7);
           _7 = copy ((_1 as B).0: u32);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).33);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).34);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).36);
           StorageLive(_8);
           _8 = copy _7;
           _0 = consume(move _8) -> [return: bb11, unwind: bb14];
@@ -91,6 +101,9 @@
       bb7: {
           StorageLive(_5);
           _5 = copy ((_1 as C).0: u32);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).23);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).24);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).26);
           StorageLive(_6);
           _6 = copy _5;
           _0 = consume(move _6) -> [return: bb10, unwind: bb14];
@@ -99,6 +112,9 @@
       bb8: {
           StorageLive(_3);
           _3 = copy ((_1 as D).0: u32);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).13);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).14);
+          Coverage::Point(Expr, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).16);
           StorageLive(_4);
           _4 = copy _3;
           _0 = consume(move _4) -> [return: bb9, unwind: bb14];
@@ -131,6 +147,7 @@
       bb13: {
 +         Coverage::VirtualCounter(bcb2);
           StorageDead(_1);
+          Coverage::Point(FunctionEnd, HirId(DefId(0:16 ~ branch_match_arms[d109]::main).0);
           return;
       }
   
