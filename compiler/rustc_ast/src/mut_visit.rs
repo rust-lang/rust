@@ -219,9 +219,9 @@ macro_rules! impl_visitable_direct {
 
 macro_rules! fn_visit {
     ($Visitor:ident
-        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
+        $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
-        $(fn $visit(&mut self, node: &mut $ty $(, $extra_name: $extra_ty)?) {
+        $(fn $visit(&mut self, node: &mut $ty $(, $extra: $extra_ty)?) {
             MutWalkable::walk_mut(node, self)
         })*
     }
@@ -229,18 +229,18 @@ macro_rules! fn_visit {
 
 macro_rules! impl_visitable_visit {
     ($Visitor:ident
-        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
+        $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
         $(impl_visitable!(|&mut self: $ty, visitor: &mut V, extra: ($($extra_ty)?)| {
-            let ($($extra_name)?) = extra;
-            visitor.$visit(self $(, $extra_name)?);
+            let ($($extra)?) = extra;
+            visitor.$visit(self $(, $extra)?);
         });)*
     }
 }
 
 macro_rules! fn_walk {
     ($Visitor:ident
-        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
+        $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
         $(pub fn $walk<V: $Visitor>(visitor: &mut V, node: &mut $ty) {
             MutWalkable::walk_mut(node, visitor)
@@ -251,15 +251,15 @@ macro_rules! fn_walk {
 super::common_visitor_and_walkers!((mut) MutVisitor);
 
 macro_rules! generate_flat_map_visitor_fns {
-    ($($flat_map_fn:ident, $Ty:ty $(, $param:ident: $ParamTy:ty)?;)+) => {
+    ($($flat_map_fn:ident, $ty:ty $(, $extra:ident: $extra_ty:ty)?;)+) => {
         $(
             #[allow(unused_parens)]
-            impl<V: MutVisitor> MutVisitable<V> for ThinVec<$Ty> {
-                type Extra = ($($ParamTy)?);
+            impl<V: MutVisitor> MutVisitable<V> for ThinVec<$ty> {
+                type Extra = ($($extra_ty)?);
 
                 #[inline]
-                fn visit_mut(&mut self, visitor: &mut V, ($($param)?): Self::Extra) -> V::Result {
-                    self.flat_map_in_place(|value| visitor.$flat_map_fn(value $(, $param)?));
+                fn visit_mut(&mut self, visitor: &mut V, ($($extra)?): Self::Extra) -> V::Result {
+                    self.flat_map_in_place(|value| visitor.$flat_map_fn(value $(, $extra)?));
                 }
             }
         )+
@@ -291,13 +291,13 @@ pub fn walk_flat_map_pat_field<T: MutVisitor>(
 }
 
 macro_rules! generate_walk_flat_map_fns {
-    ($($fn_name:ident($Ty:ty$(,$extra_name:ident: $ExtraTy:ty)*) => $visit_fn_name:ident;)+) => {$(
+    ($($fn_name:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $visit_fn_name:ident;)+) => {$(
         pub fn $fn_name<V: MutVisitor>(
             vis: &mut V,
-            mut value: $Ty
-            $(,$extra_name: $ExtraTy)*
-        ) -> SmallVec<[$Ty; 1]> {
-            vis.$visit_fn_name(&mut value$(,$extra_name)*);
+            mut value: $ty
+            $(, $extra: $extra_ty)?
+        ) -> SmallVec<[$ty; 1]> {
+            vis.$visit_fn_name(&mut value$(, $extra)*);
             smallvec![value]
         }
     )+};
