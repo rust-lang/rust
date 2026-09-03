@@ -29,16 +29,18 @@
             {% endfor %}
         </div>
         {% endif %}
+        {% let mut heading_items = 0u8 %}
         {% if !stability_since_raw.is_empty() %}
-        {{ stability_since_raw|safe +}}
+            {{ stability_since_raw|safe +}}
+            {% mut heading_items += 1 %}
         {% endif %}
-        {% match src_href %}
-            {% when Some with (href) %}
-                {% if !stability_since_raw.is_empty() +%} · {%+ endif %}
-                <a class="src" href="{{href|safe}}">Source</a> {#+ #}
-            {% else %}
-        {% endmatch %}
+        {% if let Some(href) = src_href %}
+            {% if heading_items != 0 +%} · {%+ endif %}
+            <a class="src" href="{{href|safe}}">Source</a>
+            {% mut heading_items += 1 %}
+        {% endif %}
         {% if let Some(original_path) = original_path %}
+            {% if heading_items != 0 +%} · {%+ endif %}
             <span class="reexport-origin">Reexported from {{+ original_path|safe}}</span>
         {% endif %}
     </span> {# #}

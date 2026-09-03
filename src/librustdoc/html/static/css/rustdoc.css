@@ -1677,11 +1677,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 .notable-trait-badge-container > .badge-4 { background: var(--notable-badge-blue); }
 .notable-trait-badge-container > .badge-5 { background: var(--notable-badge-violet); }
 
-.reexport-origin {
-	display: block;
-	margin-top: 0.5em;
-}
-
 .rightside {
 	padding-left: 12px;
 	float: right;

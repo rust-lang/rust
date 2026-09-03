@@ -165,8 +165,8 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                 None
             } else {
                 // To ensure that we go completely through the reexports. If we use
-                // `def_path_debug_str`, we `alloc::vec::Vec`, but if we use `def_path_str`, it's
-                // `std::vec::Vec`. So let's force the right path.
+                // `def_path_debug_str`, we get `alloc::vec::Vec`, but if we use `def_path_str`, we
+                // get `std::vec::Vec`. So let's force the right path.
                 let path = format!(
                     "{}{}",
                     tcx.crate_name(def_id.krate),
