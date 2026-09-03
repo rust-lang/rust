@@ -238,7 +238,7 @@ language_item_table! {
 
     Complex,                 sym::complex,             complex,                    Target::Struct,         GenericRequirement::Exact(1);
 
-    Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
+    Deref,                   kw::Deref,                deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
     DerefPure,               sym::deref_pure,          deref_pure_trait,           Target::Trait,          GenericRequirement::Exact(0);
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;
