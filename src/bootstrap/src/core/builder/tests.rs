@@ -2422,7 +2422,10 @@ mod snapshot {
                 .arg(TEST_TRIPLE_1)
                 .targets(&[TEST_TRIPLE_1])
                 .path("tests/mir-opt")
-                .render_steps(), @"
+                .get_steps()
+                .render_with(RenderConfig {
+                    normalize_host: false
+                }), @"
         [build] llvm <target1>
         [build] rustc 0 <target1> -> rustc 1 <target1>
         [build] rustc 1 <target1> -> std 1 <target1>
