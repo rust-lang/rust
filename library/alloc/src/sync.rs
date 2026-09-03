@@ -2967,8 +2967,6 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
     #[inline]
     fn drop(&mut self) {
         // Non-inlined part of `drop`.
-        // This function was moved locally since there is only one caller,
-        // and makes it easier to reason about the the outlined fence.
         #[inline(never)]
         unsafe fn drop_slow<T: ?Sized, A: Allocator>(this: &mut Arc<T, A>) {
             // This fence is needed to prevent reordering of use of the data and
