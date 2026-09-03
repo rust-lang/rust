@@ -1,5 +1,5 @@
 error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:7:16
+  --> $DIR/attribute-on-empty.rs:6:16
    |
 LL |     let _: Baz<#[cfg(false)]> = todo!();
    |          -     ^^^^^^^^^^^^^ attributes are not allowed here
@@ -7,46 +7,66 @@ LL |     let _: Baz<#[cfg(false)]> = todo!();
    |          while parsing the type for `_`
 
 error: attributes cannot be applied to a function parameter's type
-  --> $DIR/attribute-on-empty.rs:11:14
+  --> $DIR/attribute-on-empty.rs:10:14
    |
-LL | fn f(_param: #[attr]) {}
+LL | fn g(_param: #[attr]) {}
    |              ^^^^^^^ attributes are not allowed here
 
 error: expected type, found `)`
-  --> $DIR/attribute-on-empty.rs:11:21
+  --> $DIR/attribute-on-empty.rs:10:21
    |
-LL | fn f(_param: #[attr]) {}
+LL | fn g(_param: #[attr]) {}
    |                     ^ expected type
 
-error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:15:11
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-empty.rs:15:15
    |
-LL | fn g() -> #[attr] { 0 }
-   |           ^^^^^^^ attributes are not allowed here
+LL |     fn f() -> #[attr] { 0 }
+   |               ^^^^^^^ attributes are not allowed here
 
-error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:19:12
+error: expected type, found `{`
+  --> $DIR/attribute-on-empty.rs:15:23
+   |
+LL |     fn f() -> #[attr] { 0 }
+   |                       ^ expected type
+
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-empty.rs:21:12
    |
 LL |     field: #[attr],
    |            ^^^^^^^ attributes are not allowed here
 
-error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:21:14
+error: expected type, found `,`
+  --> $DIR/attribute-on-empty.rs:21:19
    |
-LL |     field1: (#[attr], i32),
-   |              ^^^^^^^ attributes are not allowed here
+LL | struct S {
+   |        - while parsing this struct
+LL |     field: #[attr],
+   |                   ^ expected type
 
-error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:25:15
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-empty.rs:27:19
    |
-LL | type Tuple = (#[attr], String);
-   |               ^^^^^^^ attributes are not allowed here
+LL |     type Tuple = (#[attr], String);
+   |                   ^^^^^^^ attributes are not allowed here
 
-error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:28:6
+error: expected type, found `,`
+  --> $DIR/attribute-on-empty.rs:27:26
+   |
+LL |     type Tuple = (#[attr], String);
+   |                          ^ expected type
+
+error: attributes cannot be applied to types
+  --> $DIR/attribute-on-empty.rs:32:6
    |
 LL | impl #[attr] {}
    |      ^^^^^^^ attributes are not allowed here
 
-error: aborting due to 8 previous errors
+error: expected type, found `{`
+  --> $DIR/attribute-on-empty.rs:32:14
+   |
+LL | impl #[attr] {}
+   |              ^ expected type
+
+error: aborting due to 11 previous errors
 

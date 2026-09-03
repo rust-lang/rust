@@ -1843,21 +1843,6 @@ pub(crate) struct AttributeOnParamType {
 }
 
 #[derive(Diagnostic)]
-#[diag("attributes cannot be applied to types")]
-pub(crate) struct AttributeOnType {
-    #[primary_span]
-    #[label("attributes are not allowed here")]
-    pub span: Span,
-    #[suggestion(
-        "remove attribute from here",
-        code = "",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    pub fix_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("attributes cannot be applied to generic arguments")]
 pub(crate) struct AttributeOnGenericArg {
     #[primary_span]
