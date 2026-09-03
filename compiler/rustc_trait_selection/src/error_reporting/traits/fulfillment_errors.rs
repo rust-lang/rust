@@ -890,9 +890,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         if let Ok(Some(ImplSource::UserDefined(impl_data))) =
-            self.enter_forall(trait_ref, |trait_ref_for_select| {
-                SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref_for_select))
-            })
+            SelectionContext::new(self).poly_select(&obligation.with(self.tcx, trait_ref))
         {
             let impl_did = impl_data.impl_def_id;
             let trait_did = trait_ref.def_id();
