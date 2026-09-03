@@ -905,7 +905,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
     providers.queries.proc_macro_decls_static = |tcx, _| tcx.hir_crate_items(()).proc_macro_decls();
-    rustc_ast_lowering::provide(&mut providers.queries);
+    rustc_ast_lowering::provide(providers);
     limits::provide(&mut providers.queries);
     rustc_expand::provide(&mut providers.queries);
     rustc_const_eval::provide(providers);
@@ -919,7 +919,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_query_impl::provide(providers);
     rustc_resolve::provide(&mut providers.queries);
     rustc_hir_analysis::provide(&mut providers.queries);
-    rustc_hir_typeck::provide(&mut providers.queries);
+    rustc_hir_typeck::provide(providers);
     ty::provide(&mut providers.queries);
     traits::provide(&mut providers.queries);
     solve::provide(&mut providers.queries);

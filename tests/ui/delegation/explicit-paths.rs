@@ -25,7 +25,8 @@ mod fn_to_other {
     reuse <S as Trait>::foo2;
     reuse to_reuse::foo3;
     reuse S::foo4;
-    //~^ ERROR cannot find function `foo4` in `S`
+    //~^ ERROR: method `foo4` is private
+    //~| ERROR: this function takes 1 argument but 0 arguments were supplied
 }
 
 mod inherent_impl_assoc_fn_to_other {
@@ -36,7 +37,6 @@ mod inherent_impl_assoc_fn_to_other {
         reuse <S as Trait>::foo2;
         reuse to_reuse::foo3;
         reuse F::foo4 { &self.0 }
-        //~^ ERROR cannot find function `foo4` in `F`
     }
 }
 
@@ -50,7 +50,6 @@ mod trait_impl_assoc_fn_to_other {
         //~^ ERROR method `foo3` is not a member of trait `Trait`
         reuse F::foo4 { &self.0 }
         //~^ ERROR method `foo4` is not a member of trait `Trait`
-        //~| ERROR cannot find function `foo4` in `F`
     }
 }
 
@@ -63,7 +62,6 @@ mod trait_assoc_fn_to_other {
         reuse <F as Trait>::foo2;
         reuse to_reuse::foo3;
         reuse F::foo4 { &F }
-        //~^ ERROR cannot find function `foo4` in `F`
     }
 }
 

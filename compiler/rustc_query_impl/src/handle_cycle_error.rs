@@ -9,11 +9,68 @@ use rustc_errors::{Applicability, Diag, MultiSpan, pluralize, struct_span_code_e
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::bug;
+use rustc_middle::hir::ProjectedMaybeOwner;
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::QueryCycle;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+
+pub(crate) fn hir_owner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    _: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> ProjectedMaybeOwner<'tcx> {
+    if !tcx.is_delegation(def_id) {
+        err.emit().raise_fatal();
+    }
+
+    err.cancel();
+    ProjectedMaybeOwner::new(tcx.delegation_error(def_id))
+}
+
+pub(crate) fn lower_to_hir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    _: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> rustc_hir::MaybeOwner<'tcx> {
+    if !tcx.is_delegation(def_id) {
+        err.emit().raise_fatal();
+    }
+
+    err.cancel();
+    tcx.delegation_error(def_id)
+}
+
+pub(crate) fn clauses_of<'tcx>(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    _: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> rustc_middle::ty::GenericClauses<'tcx> {
+    if def_id.as_local().is_none_or(|def_id| !tcx.is_delegation(def_id)) {
+        err.emit().raise_fatal();
+    }
+
+    err.cancel();
+    Default::default()
+}
+
+pub(crate) fn explicit_clauses_of<'tcx>(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    _: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> rustc_middle::ty::GenericClauses<'tcx> {
+    if def_id.as_local().is_none_or(|def_id| !tcx.is_delegation(def_id)) {
+        err.emit().raise_fatal();
+    }
+
+    err.cancel();
+    Default::default()
+}
 
 // Default cycle handler used for all queries that don't use the `handle_cycle_error` query
 // modifier.

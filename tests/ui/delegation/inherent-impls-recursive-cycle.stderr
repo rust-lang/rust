@@ -1,80 +1,24 @@
-error[E0425]: cannot find function `foo` in `S1`
-  --> $DIR/inherent-impls-recursive-cycle.rs:18:21
+error[E0391]: cycle detected when collecting associated items of `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>`
+  --> $DIR/inherent-impls-recursive-cycle.rs:37:1
    |
-LL |     reuse S1::<()>::foo { self.0 }
-   |                     ^^^ not found in `S1`
-
-error[E0425]: cannot find function `foo` in `S2`
-  --> $DIR/inherent-impls-recursive-cycle.rs:22:11
+LL | impl S4 {
+   | ^^^^^^^
    |
-LL | reuse S2::foo;
-   |           ^^^ not found in `S2`
-
-error[E0425]: cannot find function `foo` in `S2`
-  --> $DIR/inherent-impls-recursive-cycle.rs:31:15
+note: ...which requires computing associated item data for `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>::trait_foo`...
+  --> $DIR/inherent-impls-recursive-cycle.rs:39:11
    |
-LL |     reuse S2::foo { S2(S1(())) }
-   |               ^^^ not found in `S2`
-
-error[E0425]: cannot find function `trait_foo` in `S4`
-  --> $DIR/inherent-impls-recursive-cycle.rs:49:11
+LL |     reuse trait_foo;
+   |           ^^^^^^^^^
+   = note: ...which requires getting owner for `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>::trait_foo`...
+   = note: ...which requires lowering HIR for `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>::trait_foo`...
+   = note: ...which again requires collecting associated items of `<impl at $DIR/inherent-impls-recursive-cycle.rs:37:1: 37:8>`, completing the cycle
+note: cycle used when lowering HIR for `trait_foo_reused`
+  --> $DIR/inherent-impls-recursive-cycle.rs:42:11
    |
 LL | reuse S4::trait_foo as trait_foo_reused;
-   |           ^^^^^^^^^ not found in `S4`
+   |           ^^^^^^^^^
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
-error: delegation's target expression is specified for function with no params
-  --> $DIR/inherent-impls-recursive-cycle.rs:11:23
-   |
-LL |     reuse Trait1::foo { self.0 }
-   |                       ^^^^^^^^^^
+error: aborting due to 1 previous error
 
-error: delegation's target expression is specified for function with no params
-  --> $DIR/inherent-impls-recursive-cycle.rs:31:19
-   |
-LL |     reuse S2::foo { S2(S1(())) }
-   |                   ^^^^^^^^^^^^^^
-
-error: delegation's target expression is specified for function with no params
-  --> $DIR/inherent-impls-recursive-cycle.rs:37:31
-   |
-LL |     reuse <S3 as Trait1>::foo { S3 }
-   |                               ^^^^^^
-
-error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/inherent-impls-recursive-cycle.rs:11:19
-   |
-LL |     reuse Trait1::foo { self.0 }
-   |                   ^^^ ---------- unexpected argument
-   |
-note: associated function defined here
-  --> $DIR/inherent-impls-recursive-cycle.rs:4:31
-   |
-LL |     reuse trait_foo_reused as foo;
-   |                               ^^^
-help: remove the extra argument
-   |
-LL -     reuse Trait1::foo { self.0 }
-LL +     reuse Trait1::fo{ self.0 }
-   |
-
-error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/inherent-impls-recursive-cycle.rs:37:27
-   |
-LL |     reuse <S3 as Trait1>::foo { S3 }
-   |                           ^^^ ------ unexpected argument of type `S3`
-   |
-note: associated function defined here
-  --> $DIR/inherent-impls-recursive-cycle.rs:4:31
-   |
-LL |     reuse trait_foo_reused as foo;
-   |                               ^^^
-help: remove the extra argument
-   |
-LL -     reuse <S3 as Trait1>::foo { S3 }
-LL +     reuse <S3 as Trait1>::fo{ S3 }
-   |
-
-error: aborting due to 9 previous errors
-
-Some errors have detailed explanations: E0061, E0425.
-For more information about an error, try `rustc --explain E0061`.
+For more information about this error, try `rustc --explain E0391`.

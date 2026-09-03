@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, HirId, HirIdMap};
+use rustc_hir::{self as hir, HirId, HirIdMap, OwnerId};
 use rustc_infer::infer::{InferCtxt, InferOk, OpaqueTypeStorageEntries, TyCtxtInferExt};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TyVid, TypeVisitableExt, TypingMode};
@@ -80,13 +80,12 @@ impl<'tcx> Deref for TypeckRootCtxt<'tcx> {
 impl<'tcx> TypeckRootCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
+        Self::new_internal(tcx, hir_owner, TypingMode::typeck_for_body(tcx, def_id))
+    }
 
-        let infcx = tcx
-            .infer_ctxt()
-            .ignoring_regions()
-            .in_hir_typeck()
-            .build(TypingMode::typeck_for_body(tcx, def_id));
-        let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
+    fn new_internal(tcx: TyCtxt<'tcx>, owner: OwnerId, mode: TypingMode<'tcx>) -> Self {
+        let infcx = tcx.infer_ctxt().ignoring_regions().in_hir_typeck().build(mode);
+        let typeck_results = RefCell::new(ty::TypeckResults::new(owner));
         let fulfillment_cx = RefCell::new(FulfillmentEngine::new(&infcx));
 
         TypeckRootCtxt {
@@ -104,6 +103,10 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             deferred_repeat_expr_checks: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
         }
+    }
+
+    pub(crate) fn new_delegation(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+        Self::new_internal(tcx, OwnerId { def_id }, TypingMode::non_body_analysis())
     }
 
     #[instrument(level = "debug", skip(self))]

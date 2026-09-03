@@ -1,123 +1,278 @@
-error[E0425]: cannot find function `foo_static` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:14:10
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/inherent-impls-parent-generics.rs:14:7
    |
 LL | reuse E::foo_static as e;
-   |          ^^^^^^^^^^ not found in `E`
+   |       ^
 
-error[E0425]: cannot find function `foo_self` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:17:10
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:14:7
+   |
+LL | reuse E::foo_static as e;
+   |       ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:14:7
+   |
+LL | reuse E::foo_static as e;
+   |       ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/inherent-impls-parent-generics.rs:18:7
    |
 LL | reuse E::foo_self as e1;
-   |          ^^^^^^^^ not found in `E`
+   |       ^
 
-error[E0425]: cannot find function `foo_static` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:20:10
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:18:7
+   |
+LL | reuse E::foo_self as e1;
+   |       ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:18:7
+   |
+LL | reuse E::foo_self as e1;
+   |       ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/inherent-impls-parent-generics.rs:24:7
    |
 LL | reuse E::foo_static::<'static, (), true> as e2;
-   |          ^^^^^^^^^^ not found in `E`
+   |       ^
 
-error[E0425]: cannot find function `foo_self` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:23:10
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:24:7
+   |
+LL | reuse E::foo_static::<'static, (), true> as e2;
+   |       ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:24:7
+   |
+LL | reuse E::foo_static::<'static, (), true> as e2;
+   |       ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/inherent-impls-parent-generics.rs:28:7
    |
 LL | reuse E::foo_self::<'static, (), true> as e3;
-   |          ^^^^^^^^ not found in `E`
+   |       ^
 
-error[E0425]: cannot find function `foo_static` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:26:30
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:28:7
    |
-LL | reuse E::<'static, (), 123>::foo_static as e4;
-   |                              ^^^^^^^^^^ not found in `E`
+LL | reuse E::foo_self::<'static, (), true> as e3;
+   |       ^ not allowed in type signatures
 
-error[E0425]: cannot find function `foo_self` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:28:30
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:28:7
    |
-LL | reuse E::<'static, (), 123>::foo_self as e5;
-   |                              ^^^^^^^^ not found in `E`
-
-error[E0425]: cannot find function `foo_static` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:31:30
+LL | reuse E::foo_self::<'static, (), true> as e3;
+   |       ^ not allowed in type signatures
    |
-LL | reuse E::<'static, (), 123>::foo_static::<'static, (), true> as e6;
-   |                              ^^^^^^^^^^ not found in `E`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0425]: cannot find function `foo_self` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:33:30
-   |
-LL | reuse E::<'static, (), 123>::foo_self::<'static, (), true> as e7;
-   |                              ^^^^^^^^ not found in `E`
-
-error[E0425]: cannot find function `foo_static` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:36:23
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/inherent-impls-parent-generics.rs:40:11
    |
 LL | reuse E::<'_, (), _>::foo_static as e8;
-   |                       ^^^^^^^^^^ not found in `E`
+   |           ^^
 
-error[E0425]: cannot find function `foo_self` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:39:22
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:40:19
+   |
+LL | reuse E::<'_, (), _>::foo_static as e8;
+   |                   ^ not allowed in type signatures
+
+error: inferred lifetimes are not allowed in delegations as we need to inherit signature
+  --> $DIR/inherent-impls-parent-generics.rs:44:11
    |
 LL | reuse E::<'_, _, _>::foo_self as e9;
-   |                      ^^^^^^^^ not found in `E`
+   |           ^^
 
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:51:10
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:44:15
+   |
+LL | reuse E::<'_, _, _>::foo_self as e9;
+   |               ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:44:18
+   |
+LL | reuse E::<'_, _, _>::foo_self as e9;
+   |                  ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:59:7
    |
 LL | reuse S::foo_static as s;
-   |          ^^^^^^^^^^ not found in `S`
+   |       ^ not allowed in type signatures
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:54:10
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:59:7
+   |
+LL | reuse S::foo_static as s;
+   |       ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:63:7
    |
 LL | reuse S::foo_self as s1;
-   |          ^^^^^^^^ not found in `S`
+   |       ^ not allowed in type signatures
 
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:57:10
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:63:7
+   |
+LL | reuse S::foo_self as s1;
+   |       ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:68:7
    |
 LL | reuse S::foo_static::<'static, (), true> as s2;
-   |          ^^^^^^^^^^ not found in `S`
+   |       ^ not allowed in type signatures
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:60:10
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:68:7
+   |
+LL | reuse S::foo_static::<'static, (), true> as s2;
+   |       ^ not allowed in type signatures
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:72:7
    |
 LL | reuse S::foo_self::<'static, (), true> as s3;
-   |          ^^^^^^^^ not found in `S`
+   |       ^ not allowed in type signatures
 
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:63:21
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:72:7
    |
-LL | reuse S::<(), 123>::foo_static as s4;
-   |                     ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:65:21
+LL | reuse S::foo_self::<'static, (), true> as s3;
+   |       ^ not allowed in type signatures
    |
-LL | reuse S::<(), 123>::foo_self as s5;
-   |                     ^^^^^^^^ not found in `S`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:68:21
-   |
-LL | reuse S::<(), 123>::foo_static::<'static, (), true> as s6;
-   |                     ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:70:21
-   |
-LL | reuse S::<(), 123>::foo_self::<'static, (), true> as s7;
-   |                     ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:73:19
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:83:15
    |
 LL | reuse S::<(), _>::foo_static as s8;
-   |                   ^^^^^^^^^^ not found in `S`
+   |               ^ not allowed in type signatures
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:76:20
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/inherent-impls-parent-generics.rs:86:11
    |
 LL | reuse S::<_, 123>::foo_self as s9;
-   |                    ^^^^^^^^ not found in `S`
+   |           ^ not allowed in type signatures
 
-error: aborting due to 20 previous errors
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:18:10
+   |
+LL | reuse E::foo_self as e1;
+   |          ^^^^^^^^ argument #1 of type `E<'_, _, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:11:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse E::foo_self(/* value */) as e1;
+   |                  +++++++++++++
 
-For more information about this error, try `rustc --explain E0425`.
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:28:10
+   |
+LL | reuse E::foo_self::<'static, (), true> as e3;
+   |          ^^^^^^^^ argument #1 of type `E<'_, _, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:11:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse E::foo_self(/* value */)::<'static, (), true> as e3;
+   |                  +++++++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:44:22
+   |
+LL | reuse E::<'_, _, _>::foo_self as e9;
+   |                      ^^^^^^^^ argument #1 of type `E<'_, _, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:11:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse E::<'_, _, _>::foo_self(/* value */) as e9;
+   |                              +++++++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:63:10
+   |
+LL | reuse S::foo_self as s1;
+   |          ^^^^^^^^ argument #1 of type `S<_, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:56:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse S::foo_self(/* value */) as s1;
+   |                  +++++++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:72:10
+   |
+LL | reuse S::foo_self::<'static, (), true> as s3;
+   |          ^^^^^^^^ argument #1 of type `S<_, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:56:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse S::foo_self(/* value */)::<'static, (), true> as s3;
+   |                  +++++++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:86:20
+   |
+LL | reuse S::<_, 123>::foo_self as s9;
+   |                    ^^^^^^^^ argument #1 of type `S<_, 123>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:56:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse S::<_, 123>::foo_self(/* value */) as s9;
+   |                            +++++++++++++
+
+error: aborting due to 33 previous errors
+
+Some errors have detailed explanations: E0061, E0121.
+For more information about an error, try `rustc --explain E0061`.

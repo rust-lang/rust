@@ -105,3 +105,10 @@ pub(crate) struct NestedCycle {
     )]
     pub note_span: (),
 }
+
+#[derive(Diagnostic)]
+#[diag("query cycle while lowering delegation")]
+pub(crate) struct QueryCycleWhileLoweringDelegation {
+    #[primary_span]
+    pub span: Span,
+}

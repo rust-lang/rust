@@ -1,3 +1,5 @@
+//@compile-flags: -Z deduplicate-diagnostics=yes
+
 #![feature(fn_delegation)]
 
 mod test_1 {
@@ -14,16 +16,16 @@ mod test_1 {
     }
 
     reuse X::foo;
-    //~^ ERROR: cannot find function `foo` in `X`
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
+    //~| ERROR: multiple applicable items in scope [E0034]
 
     reuse X::foo_self;
-    //~^ ERROR: cannot find function `foo_self` in `X`
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
+    //~| ERROR: multiple applicable items in scope [E0034]
 
     reuse X::<()>::foo as foo1;
-    //~^ ERROR: cannot find function `foo` in `X`
 
     reuse X::<usize>::foo_self as foo_self1;
-    //~^ ERROR: cannot find function `foo_self` in `X`
 }
 
 mod test_2 {
@@ -47,16 +49,22 @@ mod test_2 {
     impl Marker2 for M2 {}
 
     reuse X::foo;
-    //~^ ERROR: cannot find function `foo` in `X`
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
+    //~| ERROR: multiple applicable items in scope [E0034]
 
     reuse X::foo_self;
-    //~^ ERROR: cannot find function `foo_self` in `X`
+    //~^ ERROR: the placeholder `_` is not allowed within types on item signatures for functions
+    //~| ERROR: multiple applicable items in scope [E0034]
 
     reuse X::<M1, usize>::foo as foo1;
-    //~^ ERROR: cannot find function `foo` in `X`
+    reuse X::<M1, usize>::foo_self as foo_self1;
+    reuse X::<M2, ()>::foo as foo2;
+    reuse X::<M2, ()>::foo_self as foo_self2;
 
-    reuse X::<M2, String>::foo_self as foo_self1;
-    //~^ ERROR: cannot find function `foo_self` in `X`
+    reuse X::<M2, String>::foo as foo3;
+    //~^ ERROR: no associated function or constant named `foo` found for struct `test_2::X<M2, String>` in the current scope
+    reuse X::<M2, String>::foo_self as foo_self3;
+    //~^ ERROR: no associated function or constant named `foo_self` found for struct `test_2::X<M2, String>` in the current scope
 }
 
 fn main() {}

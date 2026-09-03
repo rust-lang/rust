@@ -490,11 +490,11 @@ impl PathSource<'_, '_, '_> {
             | PathSource::Pat
             | PathSource::Struct(_)
             | PathSource::TupleStruct(..)
+            | PathSource::Delegation
             | PathSource::ReturnTypeNotation => true,
             PathSource::Trait(_)
             | PathSource::TraitItem(..)
             | PathSource::DefineOpaques
-            | PathSource::Delegation
             | PathSource::ExternItemImpl
             | PathSource::PreciseCapturingArg(..)
             | PathSource::Macro
@@ -3515,7 +3515,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(
             &generics.params,
-            RibKind::Item(HasGenericParams::Yes(generics.span), self.r.tcx.def_kind(self.r.current_owner.def_id)),
+            RibKind::Item(
+                HasGenericParams::Yes(generics.span),
+                self.r.tcx.def_kind(self.r.current_owner.def_id),
+            ),
             item_id,
             LifetimeBinderKind::ImplBlock,
             generics.span,
@@ -3525,7 +3528,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     this.with_lifetime_rib(
                         LifetimeRibKind::AnonymousCreateParameter {
                             binder: item_id,
-                            report_in_path: true
+                            report_in_path: true,
                         },
                         |this| {
                             // Resolve the trait reference, if necessary.
@@ -3561,6 +3564,27 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                         // Resolve the generic parameters.
                                         this.visit_generics(generics);
 
+                                        let self_type_def_id = of_trait
+                                            .is_none()
+                                            .then(|| {
+                                                this.r.partial_res_map.get(&self_type.id).and_then(
+                                                    |res| {
+                                                        res.full_res()
+                                                            .and_then(|r| r.opt_def_id())
+                                                            .and_then(|id| id.as_local())
+                                                    },
+                                                )
+                                            })
+                                            .flatten();
+
+                                        if let Some(id) = self_type_def_id {
+                                            this.r
+                                                .delegation_types_to_inh_impls
+                                                .entry(id)
+                                                .or_default()
+                                                .push(this.r.current_owner.def_id);
+                                        }
+
                                         // Resolve the items within the impl.
                                         this.with_current_self_type(self_type, |this| {
                                             this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
@@ -3568,7 +3592,12 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                                 let mut seen_trait_items = Default::default();
                                                 for item in impl_items {
                                                     with_owner(this, item.id, |this| {
-                                                        this.resolve_impl_item(&**item, &mut seen_trait_items, trait_id, of_trait.is_some());
+                                                        this.resolve_impl_item(
+                                                            &**item,
+                                                            &mut seen_trait_items,
+                                                            trait_id,
+                                                            of_trait.is_some(),
+                                                        );
                                                     })
                                                 }
                                             });
@@ -3942,20 +3971,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         });
 
         let resolution_node_id = if is_in_trait_impl { item_id } else { delegation.id };
-        let def_id = self
+        let resolution_id = self
             .r
             .partial_res_map
             .get(&resolution_node_id)
-            .and_then(|r| r.expect_full_res().opt_def_id());
-
-        let resolution_id = def_id.ok_or_else(|| {
-            self.r.tcx.dcx().span_delayed_bug(
-                delegation.path.span,
-                format!(
-                    "LateResolutionVisitor: couldn't resolve node {resolution_node_id:?} in delegation item",
-                ),
-            )
-        });
+            .and_then(|r| r.full_res().and_then(|res| res.opt_def_id()));
 
         let info = DelegationInfo { resolution_id };
         self.r.delegation_infos.insert(self.r.current_owner.def_id, info);

@@ -1025,6 +1025,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.coroutine_kind(def_id).is_some()
     }
 
+    pub fn is_delegation(self, def_id: LocalDefId) -> bool {
+        self.resolutions(()).delegation_infos.contains_key(&def_id)
+    }
+
     pub fn is_async_drop_in_place_coroutine(self, def_id: DefId) -> bool {
         self.is_lang_item(self.parent(def_id), LangItem::AsyncDropInPlace)
     }
@@ -1272,6 +1276,10 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(value) => value.to_str().ok_or_else(|| VarError::NotUnicode(value.to_os_string())),
             None => Err(VarError::NotPresent),
         }
+    }
+
+    pub fn is_method(self, id: DefId) -> bool {
+        self.opt_associated_item(id).is_some_and(|item| item.is_method())
     }
 }
 

@@ -289,6 +289,24 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
     rbv
 }
 
+pub fn resolve_delegation_bound_vars<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: &'tcx hir::Ty<'tcx, AmbigArg>,
+) -> ResolveBoundVars<'tcx> {
+    let mut rbv = ResolveBoundVars::default();
+    let mut visitor = BoundVarContext {
+        tcx,
+        rbv: &mut rbv,
+        scope: &Scope::Root { opt_parent_item: None },
+        disambiguators: &mut Default::default(),
+        opaque_capture_errors: RefCell::new(None),
+    };
+
+    visitor.visit_ty(ty);
+
+    rbv
+}
+
 fn late_arg_as_bound_arg<'tcx>(param: &GenericParam<'tcx>) -> ty::BoundVariableKind<'tcx> {
     let def_id = param.def_id.to_def_id();
     match param.kind {

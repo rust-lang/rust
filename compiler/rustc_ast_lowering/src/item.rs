@@ -31,6 +31,7 @@ use crate::diagnostics::{ConstComptimeFn, ResolvingRestrictionKind, RestrictionA
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'a ResolverAstLowering<'hir>,
+    pub(super) generate_error_delegation: bool,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -58,7 +59,8 @@ impl<'hir> ItemLowerer<'_, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) -> hir::MaybeOwner<'hir> {
-        let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner);
+        let mut lctx =
+            LoweringContext::new(self.tcx, self.resolver, owner, self.generate_error_delegation);
 
         let item = f(&mut lctx);
         debug_assert_eq!(lctx.current_hir_id_owner, item.def_id());

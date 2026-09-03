@@ -6,7 +6,7 @@
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
-use rustc_span::{ExpnHash, ExpnId};
+use rustc_span::{ExpnHash, ExpnId, Span};
 
 use crate::mir;
 use crate::query::on_disk_cache::CacheEncoder;
@@ -107,6 +107,8 @@ declare_hooks! {
 
     /// Serializes all eligible query return values into the on-disk cache.
     hook encode_query_values(encoder: &mut CacheEncoder<'_, 'tcx>) -> ();
+
+    hook resolve_delegation_sig(span: Span, parent_id: LocalDefId, ty: &'tcx rustc_hir::Ty<'tcx>, ident: rustc_span::Ident) -> Option<DefId>;
 }
 
 #[cold]

@@ -71,7 +71,7 @@ pub mod check;
 pub mod autoderef;
 mod check_unused;
 mod coherence;
-mod collect;
+pub mod collect;
 mod constrained_generic_params;
 pub mod delegation;
 pub mod diagnostics;

@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
-use std::debug_assert_matches;
 use std::ops::Deref;
+use std::{assert_matches, debug_assert_matches};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
@@ -273,6 +273,8 @@ pub(crate) enum Mode {
 
 #[derive(PartialEq, Eq, Debug)]
 pub(crate) enum ProbeScope<'tcx> {
+    InherentImplsOnly(DefId),
+
     // Single candidate coming from pre-resolved delegation method.
     Single(DefId, Option<Ty<'tcx>> /* self_ty override */),
 
@@ -595,8 +597,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ProbeScope::Single(def_id, self_ty_override) => {
                     let item = self.tcx.associated_item(def_id);
-                    // FIXME(fn_delegation): Delegation to inherent methods is not yet supported.
-                    assert_eq!(item.container, AssocContainer::Trait);
+                    assert_matches!(
+                        item.container,
+                        AssocContainer::Trait | AssocContainer::InherentImpl
+                    );
 
                     let trait_def_id = self.tcx.parent(def_id);
                     let trait_span = self.tcx.def_span(trait_def_id);
@@ -608,16 +612,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     probe_cx.push_candidate(
                         Candidate {
                             item,
-                            kind: CandidateKind::TraitCandidate(
-                                ty::Binder::dummy(trait_ref),
-                                false,
-                            ),
+                            kind: match item.container {
+                                AssocContainer::Trait => CandidateKind::TraitCandidate(
+                                    ty::Binder::dummy(trait_ref),
+                                    false,
+                                ),
+                                AssocContainer::InherentImpl => {
+                                    CandidateKind::InherentImplCandidate {
+                                        impl_def_id: self.tcx.parent(def_id),
+                                        receiver_steps: 0,
+                                    }
+                                }
+                                _ => unreachable!(),
+                            },
                             import_ids: &[],
                         },
                         false,
                     );
                 }
+                ProbeScope::InherentImplsOnly(def_id) => {
+                    if let Some(def_id) = def_id.as_local() {
+                        let impls = self
+                            .tcx
+                            .resolutions(())
+                            .delegation_types_to_inh_impls
+                            .get(&def_id)
+                            .map(|impls| impls.as_slice())
+                            .unwrap_or(&[]);
+
+                        for impl_def_id in impls {
+                            probe_cx.assemble_inherent_impl_probe(impl_def_id.to_def_id(), 0);
+                        }
+                    } else {
+                        probe_cx.assemble_inherent_candidates();
+                        probe_cx.assemble_extension_candidates_for_traits_in_scope();
+                    }
+                }
             };
+
             op(probe_cx)
         })
     }
@@ -1287,7 +1319,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }))
     }
 
-    fn pick_core(
+    pub(crate) fn pick_core(
         &self,
         unsatisfied_predicates: &mut UnsatisfiedPredicates<'tcx>,
     ) -> Option<PickResult<'tcx>> {

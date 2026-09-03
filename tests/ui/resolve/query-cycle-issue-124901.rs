@@ -1,5 +1,4 @@
-//~ ERROR: cycle when printing cycle detected
-//~^ ERROR: cycle detected
+//~ ERROR: cycle detected when getting the resolver for lowering
 trait Default {
     type Id;
 
