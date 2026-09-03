@@ -2008,7 +2008,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::Deref(inner) => {
-                self.word("deref!");
+                self.word("k#deref");
                 self.popen();
                 self.print_pat(inner);
                 self.pclose();
