@@ -25,6 +25,34 @@ macro_rules! intrinsic_dispatch_on_type {
         ) -> $ret_ty:ty;
         $($concrete:ty => $body:block)*
     ) => {
+        intrinsic_dispatch_on_type! {
+            @declare [] $(#[$attr])*
+            $vis fn $name<$generic: $bound>($($arg: $arg_ty),*) -> $ret_ty;
+            $($concrete => $body)*
+        }
+    };
+
+    (
+        $(#[$attr:meta])*
+        $vis:vis const fn $name:ident<$generic:ident: $bound:path>(
+            $($arg:ident: $arg_ty:ty),* $(,)?
+        ) -> $ret_ty:ty;
+        $($concrete:ty => $body:block)*
+    ) => {
+        intrinsic_dispatch_on_type! {
+            @declare [const] $(#[$attr])*
+            $vis fn $name<$generic: $bound>($($arg: $arg_ty),*) -> $ret_ty;
+            $($concrete => $body)*
+        }
+    };
+
+    (
+        @declare [$($constness:tt)?] $(#[$attr:meta])*
+        $vis:vis fn $name:ident<$generic:ident: $bound:path>(
+            $($arg:ident: $arg_ty:ty),*
+        ) -> $ret_ty:ty;
+        $($concrete:ty => $body:block)*
+    ) => {
         mod $name {
             use super::*;
 
@@ -39,7 +67,7 @@ macro_rules! intrinsic_dispatch_on_type {
         }
 
         $(#[$attr])*
-        $vis fn $name<$generic: $name::Dispatch>($($arg: $arg_ty),*) -> $ret_ty {
+        $vis $($constness)? fn $name<$generic: $name::Dispatch>($($arg: $arg_ty),*) -> $ret_ty {
             <$generic as $name::Dispatch>::dispatch($($arg),*)
         }
     };

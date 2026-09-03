@@ -1356,6 +1356,45 @@ intrinsic_dispatch_on_type! {
     f128 => { libm::maybe_available::log2f128(x) }
 }
 
+intrinsic_dispatch_on_type! {
+    /// Calculates `x * 2.0^exp` efficiently.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn scalbn<T: bounds::FloatPrimitive>(x: T, exp: i32) -> T;
+
+    f16 => { libm::scalbnf16(x, exp) }
+    f32 => { libm::scalbnf(x, exp) }
+    f64 => { libm::scalbn(x, exp) }
+    f128 => { libm::scalbnf128(x, exp) }
+}
+
+intrinsic_dispatch_on_type! {
+    /// Returns the order of magnitude of `x` (in base 2).
+    ///
+    /// When `x` is NaN or `0.0`, the return value is implementation-defined, and may be different
+    /// between const eval and runtime. When `x` is an infinity, the return value is [`i32::MAX`].
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn ilogb<T: bounds::FloatPrimitive>(x: T) -> i32;
+
+    f16 => { libm::ilogbf16(x) }
+    f32 => { libm::ilogbf(x) }
+    f64 => { libm::ilogb(x) }
+    f128 => { libm::ilogbf128(x) }
+}
+
 /// Returns `a * b + c` without rounding the intermediate result for `f16` values.
 ///
 /// The stabilized version of this intrinsic is

@@ -127,6 +127,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::frem_algebraic
         | sym::fsub_algebraic
         | sym::gpu_launch_sized_workgroup_mem
+        | sym::ilogb
         | sym::integer_max
         | sym::integer_min
         | sym::is_val_statically_known
@@ -185,6 +186,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::rustc_peek
         | sym::saturating_add
         | sym::saturating_sub
+        | sym::scalbn
         | sym::select_unpredictable
         | sym::sin
         | sym::size_of
@@ -468,6 +470,9 @@ pub(crate) fn check_intrinsic_type(
         | sym::fabs
         | sym::sin
         | sym::cos => (1, 0, vec![param(0)], param(0)),
+
+        sym::scalbn => (1, 0, vec![param(0), tcx.types.i32], param(0)),
+        sym::ilogb => (1, 0, vec![param(0)], tcx.types.i32),
 
         sym::minimum_number_nsz_f16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::minimum_number_nsz_f32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
