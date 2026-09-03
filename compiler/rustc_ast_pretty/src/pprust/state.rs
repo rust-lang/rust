@@ -2012,6 +2012,11 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::Deref(inner) => {
+                // FIXME(deref_patterns, builtin_syntax, forced_keywords, clippy):
+                // This should render `k#deref(...)` but unfortunately Clippy uses `pat_to_string`
+                // for the suggestions of its lint `unnested_or_patterns`. Smh fix Clippy to not
+                // rely on AST pretty printing `deref!(…)` for `Deref` patterns and please don't
+                // think about adding a flag to AST pretty to control the output.
                 self.word("deref!");
                 self.popen();
                 self.print_pat(inner);
