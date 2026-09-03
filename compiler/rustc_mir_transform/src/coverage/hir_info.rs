@@ -1,6 +1,7 @@
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -20,21 +21,24 @@ pub(crate) struct ExtractedHirInfo {
     pub(crate) hole_spans: Vec<Span>,
 }
 
-pub(crate) fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHirInfo {
-    // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
-    // to HIR for it.
+pub(crate) fn extract_hir_info<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
+) -> ExtractedHirInfo {
+    let def_id: LocalDefId = {
+        let mut def_id = mir_body.source.def_id().expect_local();
 
-    // Synthetic by-move coroutine bodies don't have useful HIR of their own.
-    // Use the original coroutine body instead. These synthetic bodies are
-    // created with a coroutine type, so we can inspect that type as-is.
-    if tcx.is_synthetic_mir(def_id) {
-        let effective_def_id =
+        // Synthetic by-move coroutine bodies don't have useful HIR of their own.
+        // Use the original coroutine body instead. These synthetic bodies are
+        // created with a coroutine type, so we can inspect that type as-is.
+        if tcx.is_synthetic_mir(def_id) {
             match *tcx.type_of(def_id).instantiate_identity().skip_normalization().kind() {
-                ty::Coroutine(coroutine_def_id, _) => coroutine_def_id.expect_local(),
-                _ => tcx.local_parent(def_id),
-            };
-        return extract_hir_info(tcx, effective_def_id);
-    }
+                ty::Coroutine(coroutine_def_id, _) => def_id = coroutine_def_id.expect_local(),
+                _ => def_id = tcx.local_parent(def_id),
+            }
+        }
+        def_id
+    };
 
     let hir_node = tcx.hir_node_by_def_id(def_id);
     let fn_body_id = hir_node.body_id().expect("HIR node is a function with body");
@@ -45,14 +49,15 @@ pub(crate) fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> E
 
     let mut body_span = hir_body.value.span;
 
-    use hir::{Closure, Expr, ExprKind, Node};
     // Unexpand a closure's body span back to the context of its declaration.
     // This helps with closure bodies that consist of just a single bang-macro,
     // and also with closure bodies produced by async desugaring.
-    if let Node::Expr(&Expr { kind: ExprKind::Closure(&Closure { fn_decl_span, .. }), .. }) =
-        hir_node
+    if let hir::Node::Expr(expr) = hir_node
+        && let hir::ExprKind::Closure(closure) = expr.kind
+        && let Some(effective_body_span) =
+            body_span.find_ancestor_in_same_ctxt(closure.fn_decl_span)
     {
-        body_span = body_span.find_ancestor_in_same_ctxt(fn_decl_span).unwrap_or(body_span);
+        body_span = effective_body_span;
     }
 
     // The actual signature span is only used if it has the same context and
