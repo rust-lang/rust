@@ -494,6 +494,26 @@ impl<'hir> DelegationResolver<'_, 'hir> {
         }
     }
 
+    fn opt_inherent_impl_adt(&self, sig_id: DefId) -> Option<(DefId, ty::GenericArgsRef<'hir>)> {
+        let tcx = self.tcx();
+        if !self.is_delegation_to_inherent_impl(sig_id) {
+            return None;
+        }
+
+        let ty::Adt(def, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+            unreachable!("parent of inherent function can be only struct or enum")
+        };
+
+        Some((def.did(), args))
+    }
+
+    fn is_delegation_to_inherent_impl(&self, sig_id: DefId) -> bool {
+        let tcx = self.tcx();
+
+        tcx.def_kind(sig_id) == DefKind::AssocFn
+            && matches!(tcx.def_kind(tcx.parent(sig_id)), DefKind::Impl { of_trait: false })
+    }
+
     /// Generates generic argument slots for user-specified `args` and
     /// generic `params` of the signature function. This function checks whether
     /// there are infers (`kw::UnderscoreLifetime` or `kw::Underscore`) in

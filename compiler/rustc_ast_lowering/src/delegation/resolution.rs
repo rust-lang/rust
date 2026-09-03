@@ -241,29 +241,6 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         Ok((res, self.resolve_and_generate_generics(delegation, sig_id, span)?))
     }
 
-    pub(super) fn opt_inherent_impl_adt(
-        &self,
-        sig_id: DefId,
-    ) -> Option<(DefId, ty::GenericArgsRef<'tcx>)> {
-        let tcx = self.tcx();
-        if !self.is_delegation_to_inherent_impl(sig_id) {
-            return None;
-        }
-
-        let ty::Adt(def, args) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
-            unreachable!("parent of inherent function can be only struct or enum")
-        };
-
-        Some((def.did(), args))
-    }
-
-    pub(super) fn is_delegation_to_inherent_impl(&self, sig_id: DefId) -> bool {
-        let tcx = self.tcx();
-
-        tcx.def_kind(sig_id) == DefKind::AssocFn
-            && matches!(tcx.def_kind(tcx.parent(sig_id)), DefKind::Impl { of_trait: false })
-    }
-
     fn get_call_path_res(
         &self,
         delegation: &Delegation,
