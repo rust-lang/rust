@@ -276,13 +276,22 @@ pub struct ResolverAstLowering<'tcx> {
 }
 
 #[derive(Debug, StableHash)]
+pub enum DelegationResolution {
+    /// Corresponds to paths that are fully resolved by resolver (i.e., `reuse Trait::foo`).
+    Full(DefId),
+    /// Corresponds to paths that are partially resolved by resolver (i.e., `reuse Struct::foo`).
+    Partial,
+    Error(ErrorGuaranteed),
+}
+
+#[derive(Debug, StableHash)]
 pub struct DelegationInfo {
     // `DefId` (either the resolution at delegation.id or item_id in case of a trait impl) for signature resolution,
     // for details see https://github.com/rust-lang/rust/issues/118212#issuecomment-2160686914
     /// Refers to the next element in a delegation resolution chain.
     /// Usually points to the final resolution, as most "chains" are just
     /// one step to a trait or an impl.
-    pub resolution_id: Option<DefId>,
+    pub resolution: DelegationResolution,
 }
 
 #[derive(Debug, StableHash)]

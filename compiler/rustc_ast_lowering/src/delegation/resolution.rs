@@ -9,7 +9,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_middle::ty::{
-    self, AssocKind, DelegationInhFuncKind, Ty, TyCtxt, TypeRelativeDelegationRes,
+    self as ty, AssocKind, DelegationInhFuncKind, Ty, TyCtxt, TypeRelativeDelegationRes,
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -41,84 +41,88 @@ pub(crate) fn resolve_type_relative_delegations(
         Default::default();
 
     for (&def_id, res) in infos {
-        if res.resolution_id.is_some() {
-            continue;
-        }
+        match res.resolution {
+            ty::DelegationResolution::Error(..) | ty::DelegationResolution::Full(..) => continue,
+            ty::DelegationResolution::Partial => {
+                let Some(r_and_owner) = ast_index.get(def_id).map(Steal::borrow) else {
+                    unreachable!("ast index must contain delegations");
+                };
 
-        let Some(r_and_owner) = ast_index.get(def_id).map(Steal::borrow) else {
-            unreachable!("ast index must contain delegations");
-        };
+                let (r, owner) = &*r_and_owner;
 
-        let (r, owner) = &*r_and_owner;
+                let delegation = match owner {
+                    AstOwner::Item(Item { kind: ItemKind::Delegation(d), .. })
+                    | AstOwner::TraitItem(Item { kind: AssocItemKind::Delegation(d), .. })
+                    | AstOwner::ImplItem(Item { kind: AssocItemKind::Delegation(d), .. }) => d,
+                    _ => unreachable!("we are processing only delegations"),
+                };
 
-        let delegation = match owner {
-            AstOwner::Item(Item { kind: ItemKind::Delegation(d), .. })
-            | AstOwner::TraitItem(Item { kind: AssocItemKind::Delegation(d), .. })
-            | AstOwner::ImplItem(Item { kind: AssocItemKind::Delegation(d), .. }) => d,
-            _ => unreachable!("we are processing only delegations"),
-        };
+                let res = r.partial_res_map.get(&delegation.id);
+                let res = res.and_then(|res| res.base_res().opt_def_id());
+                let ident = delegation.path.segments.last().map(|s| s.ident);
 
-        let res = r.partial_res_map.get(&delegation.id);
-        let res = res.and_then(|res| res.base_res().opt_def_id());
-        let ident = delegation.path.segments.last().map(|s| s.ident);
+                let span = delegation.last_segment_span();
 
-        let span = delegation.last_segment_span();
+                let ambig_error_res = || {
+                    TypeRelativeDelegationRes::Ambig(
+                        tcx.dcx().span_delayed_bug(span, "ambiguous delegation to inherent impl"),
+                    )
+                };
 
-        let ambig_error_res = || {
-            TypeRelativeDelegationRes::Ambig(
-                tcx.dcx().span_delayed_bug(span, "ambiguous delegation to inherent impl"),
-            )
-        };
+                let default_error_res =
+                    || {
+                        TypeRelativeDelegationRes::Error(tcx.dcx().span_delayed_bug(
+                            span,
+                            "failed to resolve delegation to inherent impl",
+                        ))
+                    };
 
-        let default_error_res = || {
-            TypeRelativeDelegationRes::Error(
-                tcx.dcx().span_delayed_bug(span, "failed to resolve delegation to inherent impl"),
-            )
-        };
+                let res = if let Some(res) = res
+                    && let Some(ident) = ident
+                {
+                    match res.as_local() {
+                        Some(local_def_id) => {
+                            let res = inh_fns.get(&local_def_id).and_then(|map| map.get(&ident));
 
-        let res = if let Some(res) = res
-            && let Some(ident) = ident
-        {
-            match res.as_local() {
-                Some(local_def_id) => {
-                    let res = inh_fns.get(&local_def_id).and_then(|map| map.get(&ident));
-
-                    match res {
-                        Some(res) => match res {
-                            DelegationInhFuncKind::Ambig => ambig_error_res(),
-                            DelegationInhFuncKind::Single(res) => {
-                                TypeRelativeDelegationRes::Ok(res.to_def_id())
-                            }
-                        },
-                        _ => default_error_res(),
-                    }
-                }
-                None => {
-                    let mut sig_res = None;
-                    'inh_loop: for inh_impl_id in tcx.inherent_impls(res) {
-                        let assoc_items = tcx.associated_items(*inh_impl_id);
-                        let mut candidates = assoc_items
-                            .filter_by_name_unhygienic(ident.name)
-                            .filter(|it| matches!(it.kind, AssocKind::Fn { .. }));
-
-                        while let Some(candidate) = candidates.next() {
-                            if sig_res.is_some() {
-                                sig_res = Some(ambig_error_res());
-                                break 'inh_loop;
-                            } else {
-                                sig_res = Some(TypeRelativeDelegationRes::Ok(candidate.def_id));
+                            match res {
+                                Some(res) => match res {
+                                    DelegationInhFuncKind::Ambig => ambig_error_res(),
+                                    DelegationInhFuncKind::Single(res) => {
+                                        TypeRelativeDelegationRes::Ok(res.to_def_id())
+                                    }
+                                },
+                                _ => default_error_res(),
                             }
                         }
+                        None => {
+                            let mut sig_res = None;
+                            'inh_loop: for inh_impl_id in tcx.inherent_impls(res) {
+                                let assoc_items = tcx.associated_items(*inh_impl_id);
+                                let mut candidates = assoc_items
+                                    .filter_by_name_unhygienic(ident.name)
+                                    .filter(|it| matches!(it.kind, AssocKind::Fn { .. }));
+
+                                while let Some(candidate) = candidates.next() {
+                                    if sig_res.is_some() {
+                                        sig_res = Some(ambig_error_res());
+                                        break 'inh_loop;
+                                    } else {
+                                        sig_res =
+                                            Some(TypeRelativeDelegationRes::Ok(candidate.def_id));
+                                    }
+                                }
+                            }
+
+                            sig_res.unwrap_or_else(default_error_res)
+                        }
                     }
+                } else {
+                    default_error_res()
+                };
 
-                    sig_res.unwrap_or_else(default_error_res)
-                }
+                type_relative_resolutions.insert(def_id, res);
             }
-        } else {
-            default_error_res()
-        };
-
-        type_relative_resolutions.insert(def_id, res);
+        }
     }
 
     type_relative_resolutions
@@ -273,13 +277,20 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         def_id: LocalDefId,
         span: Span,
     ) -> Result<DefId, ErrorGuaranteed> {
-        self.tcx()
-            .resolutions(())
-            .delegation_infos
-            .get(&def_id)
-            .and_then(|info| info.resolution_id)
-            .map(|id| Ok(id))
-            .unwrap_or_else(|| self.resolve_type_relative_delegation_sig(def_id, span))
+        match self.tcx().resolutions(()).delegation_infos.get(&def_id) {
+            Some(res) => match res.resolution {
+                ty::DelegationResolution::Error(err) => Err(err),
+                ty::DelegationResolution::Full(def_id) => Ok(def_id),
+                ty::DelegationResolution::Partial => {
+                    self.resolve_type_relative_delegation_sig(def_id, span)
+                }
+            },
+            None => Err(self.create_unresolved_error(def_id, span)),
+        }
+    }
+
+    fn create_unresolved_error(&self, def_id: LocalDefId, span: Span) -> ErrorGuaranteed {
+        self.tcx().dcx().span_delayed_bug(span, format!("unresolved delegation {def_id:?}"))
     }
 
     fn resolve_type_relative_delegation_sig(
@@ -289,11 +300,8 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
     ) -> Result<DefId, ErrorGuaranteed> {
         let tcx = self.tcx();
 
-        let unresolved_error =
-            || Err(tcx.dcx().span_delayed_bug(span, format!("unresolved delegation {def_id:?}")));
-
         if matches!(tcx.def_kind(tcx.local_parent(def_id)), DefKind::Impl { of_trait: true }) {
-            return unresolved_error();
+            return Err(self.create_unresolved_error(def_id, span));
         }
 
         match tcx.resolve_type_relative_delegations(()).get(&def_id) {
@@ -304,7 +312,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
                     Err(tcx.dcx().emit_err(AmbiguousDelegationToInherentImpl { span }))
                 }
             },
-            None => unresolved_error(),
+            None => Err(self.create_unresolved_error(def_id, span)),
         }
     }
 

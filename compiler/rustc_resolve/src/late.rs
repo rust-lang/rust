@@ -30,7 +30,9 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_lint_defs::builtin::{ELIDED_LIFETIMES_IN_PATHS, UNUSED_LABELS};
 use rustc_middle::middle::resolve_bound_vars::Set1;
-use rustc_middle::ty::{AssocTag, DelegationInfo, DelegationInhFuncKind, Visibility};
+use rustc_middle::ty::{
+    AssocTag, DelegationInfo, DelegationInhFuncKind, DelegationResolution, Visibility,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::ResolveDocLinks;
 use rustc_session::diagnostics::feature_err;
@@ -3930,13 +3932,24 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         });
 
         let resolution_node_id = if is_in_trait_impl { item_id } else { delegation.id };
-        let resolution_id = self
+        let resolution = self
             .r
             .partial_res_map
             .get(&resolution_node_id)
-            .and_then(|r| r.full_res().and_then(|res| res.opt_def_id()));
+            .map(|r| match r.full_res().and_then(|r| r.opt_def_id()) {
+                None => DelegationResolution::Partial,
+                Some(def_id) => DelegationResolution::Full(def_id),
+            })
+            .unwrap_or_else(|| {
+                DelegationResolution::Error(
+                    self.r.tcx.dcx().span_delayed_bug(
+                        delegation.path.span,
+                        format!("LateResolutionVisitor: couldn't resolve node {resolution_node_id:?} in delegation item")
+                    ),
+                )
+            });
 
-        let info = DelegationInfo { resolution_id };
+        let info = DelegationInfo { resolution };
         self.r.delegation_infos.insert(self.r.current_owner.def_id, info);
 
         let Some(body) = &delegation.body else { return };
