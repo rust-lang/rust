@@ -378,7 +378,7 @@ impl<'a> State<'a> {
     }
 
     fn print_opt_lifetime(&mut self, lifetime: &hir::Lifetime) {
-        if !lifetime.is_elided() {
+        if !lifetime.is_implicit() {
             self.print_lifetime(lifetime);
             self.nbsp();
         }
@@ -440,7 +440,7 @@ impl<'a> State<'a> {
                     }
                     self.print_poly_trait_ref(bound);
                 }
-                if !lifetime.is_elided() {
+                if !lifetime.is_implicit() {
                     self.nbsp();
                     self.word_space("+");
                     self.print_lifetime(lifetime.pointer());

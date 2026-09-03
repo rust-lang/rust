@@ -18,7 +18,7 @@ impl <'a> Foo<'a> {
 }
 
 impl  Foo<'_> {
-    fn a(x: &'_ u32) { }
+    fn a(x: &u32) { }
 
     fn b(x: &'_ u32) { }
 
@@ -55,7 +55,7 @@ impl <'a, 'b, 'c, T> MyTrait<'a, 'b> for Bar<'a, 'b, 'c, T> {
     fn f(&self, x: Foo<'a>, y: Foo<'b>) { }
 }
 
-fn g(x: &'_ dyn for<'a, 'b> MyTrait<'a, 'b>) { }
+fn g(x: &dyn for<'a, 'b> MyTrait<'a, 'b>) { }
 
 trait Blah { }
 
@@ -84,7 +84,7 @@ fn f() { { let _ = St { x: &0 }; }; { let _ = St { x: &0 }; }; }
 struct Name<'a>(&'a str);
 
 const A: Name<'_> = Name("a");
-const B: &'_ str = "";
+const B: &str = "";
 static C: &'_ str = "";
 static D: &'static str = "";
 
