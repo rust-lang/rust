@@ -11,17 +11,17 @@ use crate::{mir, traits};
 
 /// Trait for decoding to a reference.
 ///
-/// This is a separate trait from `Decodable` so that we can implement it for
+/// This is a separate trait from [`Decodable`] so that we can implement it for
 /// upstream types, such as `FxHashSet`.
 ///
-/// The `TyDecodable` derive macro will use this trait for fields that are
-/// references (and don't use a type alias to hide that).
+/// The [`TyDecodable`](rustc_macros::TyDecodable) derive macro will use this
+/// trait for fields that are references (and don't use a type alias to hide that).
 ///
-/// `Decodable` can still be implemented in cases where `Decodable` is required
-/// by a trait bound.
+/// [`Decodable`] can still be implemented in cases where `Decodable` is required
+/// by a trait bound; see [`impl_decodable_via_ref_decodable_for_local_type`] for details.
 ///
 /// Implementations of this trait will typically allocate into an arena or interner,
-/// e.g. see `impl_ref_decodable_into_arena!`.
+/// e.g. see `impl_ref_decodable_into_arena!` in [`rustc_middle::arena`].
 pub trait RefDecodable<'tcx, D: TyDecoder<'tcx>>: PointeeSized {
     fn decode(d: &mut D) -> &'tcx Self;
 }
@@ -102,30 +102,43 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<LocalDefId> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<LocalDefId> {
-    fn decode(d: &mut D) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-macro_rules! impl_decodable_via_ref {
-    ($($t:ty,)+) => {
-        $(impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for $t {
-            fn decode(decoder: &mut D) -> Self {
-                RefDecodable::decode(decoder)
+/// Implements [`Decodable`] for `&'tcx T`, where [`T: RefDecodable`](RefDecodable)
+/// and T is defined in this crate (`rustc_middle`).
+///
+/// For locally-defined types, we can use a blanket impl over any [`D: TyDecoder`](TyDecoder).
+///
+/// ## Note on implementing [`Decodable`] for non-local types
+///
+/// For types not defined in this crate, including slices/tuples/collections
+/// of local types, [`Decodable`] cannot use a blanket impl and must be
+/// implemented for specific decoders instead.
+macro_rules! impl_decodable_via_ref_decodable_for_local_type {
+    (
+        $(
+            &'tcx $T:ty,
+        )*
+    ) => {
+        $(
+            impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx $T {
+                fn decode(decoder: &mut D) -> Self {
+                    RefDecodable::decode(decoder)
+                }
             }
-        })*
+        )*
     }
 }
 
-impl_decodable_via_ref! {
-    &'tcx ty::TypeckResults<'tcx>,
-    &'tcx ty::List<Ty<'tcx>>,
-    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    &'tcx traits::ImplSource<'tcx, ()>,
+impl_decodable_via_ref_decodable_for_local_type! {
+    // tidy-alphabetical-start
     &'tcx mir::Body<'tcx>,
+    &'tcx traits::ImplSource<'tcx, ()>,
+    &'tcx ty::List<Const<'tcx>>,
+    &'tcx ty::List<LocalDefId>,
+    &'tcx ty::List<Ty<'tcx>>,
     &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
     &'tcx ty::List<ty::Pattern<'tcx>>,
+    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
-    &'tcx ty::List<Const<'tcx>>,
+    &'tcx ty::TypeckResults<'tcx>,
+    // tidy-alphabetical-end
 }
