@@ -159,7 +159,7 @@ macro_rules! impl_visitable {
     (|&mut $self:ident: $self_ty:ty,
       $vis:ident: &mut $vis_ty:ident,
       $extra:ident: $extra_ty:ty| $block:block) => {
-        #[allow(unused_parens, non_local_definitions)]
+        #[allow(unused_parens)]
         impl<$vis_ty: MutVisitor> MutVisitable<$vis_ty> for $self_ty {
             type Extra = $extra_ty;
             fn visit_mut(&mut $self, $vis: &mut $vis_ty, $extra: Self::Extra) -> V::Result {
@@ -217,21 +217,28 @@ macro_rules! impl_visitable_direct {
     }
 }
 
-macro_rules! impl_visitable_calling_walkable {
+macro_rules! fn_visit {
     ($Visitor:ident
         $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
         $(fn $visit(&mut self, node: &mut $ty $(, $extra_name: $extra_ty)?) {
-            impl_visitable!(|&mut self: $ty, visitor: &mut V, extra: ($($extra_ty)?)| {
-                let ($($extra_name)?) = extra;
-                visitor.$visit(self $(, $extra_name)?);
-            });
             MutWalkable::walk_mut(node, self)
         })*
     }
 }
 
-macro_rules! define_named_walk {
+macro_rules! impl_visitable_visit {
+    ($Visitor:ident
+        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
+    ) => {
+        $(impl_visitable!(|&mut self: $ty, visitor: &mut V, extra: ($($extra_ty)?)| {
+            let ($($extra_name)?) = extra;
+            visitor.$visit(self $(, $extra_name)?);
+        });)*
+    }
+}
+
+macro_rules! fn_walk {
     ($Visitor:ident
         $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
