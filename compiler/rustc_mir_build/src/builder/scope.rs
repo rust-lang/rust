@@ -168,7 +168,6 @@ enum DropKind {
     ForLint,
     /// We fake-read fake borrow temporaries when leaving their scopes, as if dropping them, to keep
     /// fake borrows alive through their entire scopes (#161578, #161852).
-    #[expect(unused)]
     FakeRead {
         cause: FakeReadCause,
     },
@@ -1541,7 +1540,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Schedule a fake read. Used to keep fake borrows alive until their scopes end.
-    #[expect(unused)]
     pub(crate) fn schedule_drop_fake_read(
         &mut self,
         span: Span,
