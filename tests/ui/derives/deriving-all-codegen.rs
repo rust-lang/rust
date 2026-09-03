@@ -154,29 +154,6 @@ enum Fieldless {
     C,
 }
 
-// A C-like, fieldless enum with variants of varying name lengths.
-#[derive(Debug)]
-enum Fieldless0 {
-    A,
-    BBB,
-    CC,
-}
-
-// A C-like, fieldless enum with 10 variants.
-#[derive(Debug)]
-enum Fieldless10 {
-    AAAAA,
-    BBBB,
-    CC,
-    DDDDDDDD,
-    E,
-    FFFFFFFFFFFFF,
-    GGGGGG,
-    Hatsune,
-    IIIIIII,
-    JJJJJJJJJ,
-}
-
 // An enum with multiple fieldless and fielded variants.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum Mixed {
