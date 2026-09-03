@@ -5,6 +5,7 @@ use std::{assert_matches, iter};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as HirProjectionKind};
+use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -419,7 +420,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         expr_id: ExprId,
         mutability: Mutability,
-        fake_borrow_temps: Option<&mut Vec<Local>>,
+        fake_borrow_scope: Option<region::Scope>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let expr = &self.thir[expr_id];
         debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
@@ -430,13 +431,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match expr.kind {
             ExprKind::Scope { region_scope, hir_id, value } => {
                 this.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
-                    this.expr_as_place(block, value, mutability, fake_borrow_temps)
+                    this.expr_as_place(block, value, mutability, fake_borrow_scope)
                 })
             }
             ExprKind::Field { lhs, variant_index, name } => {
                 let lhs_expr = &this.thir[lhs];
                 let mut place_builder =
-                    unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
+                    unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_scope,));
                 if let ty::Adt(adt_def, _) = lhs_expr.ty.kind() {
                     if adt_def.is_enum() {
                         place_builder = place_builder.downcast(*adt_def, variant_index);
@@ -446,7 +447,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Deref { arg } => {
                 let place_builder =
-                    unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_temps,));
+                    unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_scope,));
                 block.and(place_builder.deref())
             }
             ExprKind::Index { lhs, index } => this.lower_index_expression(
@@ -454,7 +455,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 lhs,
                 index,
                 mutability,
-                fake_borrow_temps,
+                fake_borrow_scope,
                 expr_span,
                 source_info,
             ),
@@ -475,7 +476,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::PlaceTypeAscription { source, ref user_ty, user_ty_span } => {
                 let place_builder = unpack!(
-                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
+                    block = this.expr_as_place(block, source, mutability, fake_borrow_scope,)
                 );
                 if let Some(user_ty) = user_ty {
                     let ty_source_info = this.source_info(user_ty_span);
@@ -534,7 +535,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::PlaceUnwrapUnsafeBinder { source } => {
                 let place_builder = unpack!(
-                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
+                    block = this.expr_as_place(block, source, mutability, fake_borrow_scope,)
                 );
                 block.and(place_builder.project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
             }
@@ -624,16 +625,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         base: ExprId,
         index: ExprId,
         mutability: Mutability,
-        fake_borrow_temps: Option<&mut Vec<Local>>,
+        fake_borrow_scope: Option<region::Scope>,
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        let base_fake_borrow_temps = &mut Vec::new();
-        let is_outermost_index = fake_borrow_temps.is_none();
-        let fake_borrow_temps = fake_borrow_temps.unwrap_or(base_fake_borrow_temps);
+        let is_outermost_index = fake_borrow_scope.is_none();
+        let fake_borrow_scope = fake_borrow_scope.unwrap_or_else(|| self.local_scope());
 
         let base_place =
-            unpack!(block = self.expr_as_place(block, base, mutability, Some(fake_borrow_temps),));
+            unpack!(block = self.expr_as_place(block, base, mutability, Some(fake_borrow_scope),));
 
         // Making this a *fresh* temporary means we do not have to worry about
         // the index changing later: Nothing will ever change this temporary.
@@ -646,13 +646,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         block = self.bounds_check(block, &base_place, idx, expr_span, source_info);
 
-        if is_outermost_index {
-            self.read_fake_borrows(block, fake_borrow_temps, source_info)
-        } else {
+        if !is_outermost_index {
             self.add_fake_borrows_of_base(
                 base_place.to_place(self),
                 block,
-                fake_borrow_temps,
+                fake_borrow_scope,
                 expr_span,
                 source_info,
             );
@@ -759,7 +757,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         base_place: Place<'tcx>,
         block: BasicBlock,
-        fake_borrow_temps: &mut Vec<Local>,
+        fake_borrow_scope: region::Scope,
         expr_span: Span,
         source_info: SourceInfo,
     ) {
@@ -790,7 +788,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 Place { local: base_place.local, projection },
                             ),
                         );
-                        fake_borrow_temps.push(fake_borrow_temp);
+                        // Schedule a fake read to keep the fake borrow alive until exiting
+                        // `fake_borrow_scope`.
+                        self.schedule_drop_fake_read(
+                            expr_span,
+                            fake_borrow_scope,
+                            fake_borrow_temp,
+                            FakeReadCause::ForIndex,
+                        );
                     }
                     ProjectionElem::Index(_) => {
                         let index_ty = base_place.ty(&self.local_decls, tcx);
@@ -811,20 +816,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     | ProjectionElem::UnwrapUnsafeBinder(_) => (),
                 }
             }
-        }
-    }
-
-    fn read_fake_borrows(
-        &mut self,
-        bb: BasicBlock,
-        fake_borrow_temps: &mut Vec<Local>,
-        source_info: SourceInfo,
-    ) {
-        // All indexes have been evaluated now, read all of the
-        // fake borrows so that they are live across those index
-        // expressions.
-        for temp in fake_borrow_temps {
-            self.cfg.push_fake_read(bb, source_info, FakeReadCause::ForIndex, Place::from(*temp));
         }
     }
 }
