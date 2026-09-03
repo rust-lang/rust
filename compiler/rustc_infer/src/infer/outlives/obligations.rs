@@ -234,22 +234,8 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
-        // `known_type_outlives` only contains the explicit `Ty: 'a` where clauses. The implied
-        // bounds, e.g. `T: 'a` from a `&'a T` argument, are only tracked in `region_bound_pairs`
-        // so we have to pull them in separately. Without them we'd fail to prove `T: 'a` for a
-        // `&'a T` argument whenever the only explicit bound on `T` mentions a different region.
-        let mut known_type_outlives = outlives_env.known_type_outlives().to_vec();
-        for &ty::OutlivesClause(kind, r) in outlives_env.region_bound_pairs() {
-            let ty = match kind {
-                GenericKind::Param(p) => Ty::new_param(self.tcx, p.index, p.name),
-                GenericKind::Placeholder(p) => Ty::new_placeholder(self.tcx, p),
-                GenericKind::Alias(alias) => alias.to_ty(self.tcx, ty::IsRigid::Yes),
-            };
-            known_type_outlives.push(ty::Binder::dummy(ty::OutlivesClause(ty, r)));
-        }
         let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
-            self.tcx,
-            known_type_outlives,
+            outlives_env.known_type_outlives().into_iter().cloned().collect(),
             outlives_env.free_region_map().relation.clone(),
         );
         self.destructure_solver_region_constraints(assumptions, self);
@@ -263,7 +249,6 @@ impl<'tcx> InferCtxt<'tcx> {
         region_outlives: TransitiveRelation<RegionVid>,
     ) {
         let assumptions = region_constraint::Assumptions::new(
-            self.tcx,
             known_type_outlives.into_iter().cloned().collect(),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
         );

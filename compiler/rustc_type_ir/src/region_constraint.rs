@@ -49,7 +49,6 @@ impl<T> Default for TransitiveRelationBuilder<T> {
 use crate::data_structures::IndexMap;
 use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
-use crate::outlives::{Component, push_outlives_components};
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, InferCtxtLike,
@@ -74,50 +73,9 @@ impl<I: Interner> Assumptions<I> {
     }
 
     pub fn new(
-        cx: I,
         type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
         region_outlives: TransitiveRelation<Region<I>>,
     ) -> Self {
-        // A `Ty: 'a` assumption also tells us that every region component of `Ty` outlives `'a`,
-        // e.g. `&'b u8: 'a` implies `'b: 'a`. Callers do not necessarily hand us an elaborated set
-        // of assumptions so we destructure them here, otherwise we'd fail to prove `'b: 'a` when
-        // leaving the binder these assumptions belong to.
-        //
-        // The type outlives assumptions are still kept around as they are required for proving
-        // placeholder and alias outlives.
-        //
-        // This mirrors `elaborate`, in particular in how it deals with binders: they're simply
-        // skipped, so `for<'c> Foo<'a, 'c>: 'b` still gives us `'a: 'b`.
-        let mut implied_region_outlives = vec![];
-        for clause in &type_outlives {
-            let OutlivesClause(ty, r) = clause.clone().skip_binder();
-            // Ignore `for<'a> Ty: 'a`. We could treat this as evidence for `Ty: 'static` but
-            // `elaborate` conservatively doesn't, so neither do we.
-            if r.is_bound() {
-                continue;
-            }
-            let mut components = Default::default();
-            push_outlives_components(cx, ty, &mut components);
-            implied_region_outlives.extend(components.into_iter().filter_map(|c| match c {
-                // Regions bound *inside* of `ty` don't relate to anything in scope here.
-                Component::Region(c_r) if !c_r.is_bound() => Some((c_r, r)),
-                _ => None,
-            }));
-        }
-
-        let region_outlives = if implied_region_outlives.is_empty() {
-            region_outlives
-        } else {
-            let mut builder = TransitiveRelationBuilder::default();
-            for (r1, r2) in region_outlives.base_edges() {
-                builder.add(r1, r2);
-            }
-            for (r1, r2) in implied_region_outlives {
-                builder.add(r1, r2);
-            }
-            builder.freeze()
-        };
-
         Self {
             inverse_region_outlives: {
                 let mut builder = TransitiveRelationBuilder::default();
@@ -687,12 +645,6 @@ fn pull_region_outlives_constraints_out_of_universe<
                     pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
                 RegionOutlives(region_1, region_2, ()) => {
-                    // Outlives is reflexive, so this holds no matter which universes are involved
-                    // and regardless of whether we know the assumptions for `u`.
-                    if region_1 == region_2 {
-                        continue;
-                    }
-
                     let region_1_u = max_universe(infcx, region_1);
                     let region_2_u = max_universe(infcx, region_2);
 
@@ -773,17 +725,16 @@ pub fn destructure_type_outlives_constraints_in_root<
         let mut destructured_constraints = Vec::new();
         for c in &and.0 {
             match c {
-                // Outlives is reflexive. Discharging this here and not just when leaving a universe
-                // matters as constraints are also destructured in the root, where reflexive candidates
-                // are the whole reason an OR is satisfiable. E.g. `!T: 'a` with a `!T: 'a` assumption
-                // ends up as `Or([.., RegionOutlives('a, 'a)])`.
+                // Root constraints never go through `pull_region_outlives_constraints_out_of_universe`.
+                // A reflexive leaf may be the candidate which makes a root OR true, so discharge it here
+                // instead of requiring the remaining candidates to hold.
                 RegionOutlives(r1, r2, _) if r1 == r2 => {}
                 Ambiguity(_) | RegionOutlives(..) => {
                     destructured_constraints.push(Or::new_leaf(c.clone()))
                 }
                 PlaceholderTyOutlives(ty, r, span) => {
-                    let candidates =
-                        regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).collect::<Vec<_>>();
+                    let candidates = regions_outlived_by_placeholder(*ty, assumptions, infcx.cx())
+                        .collect::<Vec<_>>();
                     if candidates.contains(r) {
                         destructured_constraints.push(Or::new_true());
                     } else {
@@ -1059,7 +1010,6 @@ pub fn regions_outlived_by<I: Interner>(
     r: Region<I>,
     assumptions: &Assumptions<I>,
 ) -> impl Iterator<Item = Region<I>> {
-    // FIXME(-Zassumptions-on-binders): do we need to be adding the reflexive edge here?
     assumptions.region_outlives.reachable_from(r).into_iter().chain([r])
 }
 
