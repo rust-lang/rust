@@ -1256,7 +1256,10 @@ fn llvm_fixup_input<'ll, 'tcx>(
         (LoongArch(LoongArchInlineAsmRegClass::freg), BackendRepr::Scalar(s))
             if s.primitive() == Primitive::Float(Float::F16) =>
         {
-            // Smaller floats are always "NaN-boxed" inside larger floats on LoongArch.
+            // The LoongArch psABI only requires the upper bits to be widened to
+            // GRLEN, leaving them undefined. We NaN-box instead (set all upper
+            // bits to 1), matching LLVM's own codegen, to avoid an `f16` value
+            // being mistaken for a valid `f32` value.
             let value = bx.bitcast(value, bx.type_i16());
             let value = bx.zext(value, bx.type_i32());
             let value = bx.or(value, bx.const_u32(0xFFFF_0000));
