@@ -1137,6 +1137,15 @@ pub(crate) struct RustcAllowedUnstablePairing {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "`rustc_allowed_through_unstable_modules` attribute must have `message` and `module` params"
+)]
+pub(crate) struct RustcAtumMissingParams {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("suggestions on deprecated items are unstable")]
 pub(crate) struct DeprecatedItemSuggestion {
     #[primary_span]

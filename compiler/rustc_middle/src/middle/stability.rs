@@ -102,7 +102,7 @@ fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
     style = "verbose",
     applicability = "machine-applicable"
 )]
-pub struct DeprecationSuggestion {
+pub(crate) struct DeprecationSuggestion {
     #[primary_span]
     pub span: Span,
 
@@ -110,7 +110,7 @@ pub struct DeprecationSuggestion {
     pub suggestion: Symbol,
 }
 
-pub struct Deprecated {
+pub(crate) struct Deprecated {
     pub sub: Option<DeprecationSuggestion>,
 
     pub kind: String,

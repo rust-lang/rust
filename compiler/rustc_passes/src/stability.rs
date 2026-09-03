@@ -16,16 +16,15 @@ use rustc_hir::{
     ItemKind, Path, Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason,
     UsePath, VERSION_PLACEHOLDER, Variant, find_attr,
 };
-use rustc_lint_defs as lint;
 use rustc_lint_defs::builtin::{
     DEPRECATED, DUPLICATE_FEATURES, INEFFECTIVE_UNSTABLE_TRAIT_IMPL, STABLE_FEATURES,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
-use rustc_middle::middle::stability::{AllowUnstable, Deprecated, DeprecationEntry, EvalResult};
+use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, EvalResult};
 use rustc_middle::query::{LocalCrate, Providers};
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{AssocContainer, TyCtxt};
 use rustc_span::{Span, Symbol, sym};
 use tracing::instrument;
@@ -790,7 +789,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
 
             if item_is_allowed {
                 // The item itself is allowed; check whether the path there is also allowed.
-                let is_allowed_through_unstable_modules: Option<Symbol> =
+                let is_allowed_through_unstable_modules: Option<(Symbol, Symbol)> =
                     self.tcx.lookup_stability(def_id).and_then(|stab| match stab.level {
                         StabilityLevel::Stable { allowed_through_unstable_modules, .. } => {
                             allowed_through_unstable_modules
@@ -829,7 +828,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                     },
                                 );
                             }
-                            Some(deprecation) => {
+                            Some((message, suggestion)) => {
                                 // Call the stability check directly so that we can control which
                                 // diagnostic is emitted.
                                 let eval_result = self.tcx.eval_stability_allow_unstable(
@@ -845,22 +844,19 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                 );
                                 let is_allowed = matches!(eval_result, EvalResult::Allow);
                                 if !is_allowed {
-                                    // Calculating message for lint involves calling `self.def_path_str`,
-                                    // which will by default invoke the expensive `visible_parent_map` query.
-                                    // Skip all that work if the lint is allowed anyway.
-                                    if self.tcx.lint_level_spec_at_node(DEPRECATED, id).is_allow() {
-                                        return;
-                                    }
                                     // Show a deprecation message.
-                                    let def_path =
-                                        with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
-                                    let def_kind = self.tcx.def_descr(def_id);
-                                    let diag = Deprecated {
-                                        sub: None,
-                                        kind: def_kind.to_owned(),
-                                        path: def_path,
-                                        note: Some(deprecation),
-                                        since_kind: lint::DeprecatedSinceKind::InEffect,
+                                    let [.., intrinsics_module, _intrinsic] = path.segments else {
+                                        span_bug!(
+                                            path.span,
+                                            "no module for `is_allowed_through_unstable_modules` intrinsic {path:?}"
+                                        )
+                                    };
+                                    let diag = diagnostics::RustcAtumSuggestion {
+                                        message,
+                                        import_span: path.span,
+                                        unstable_mod_span: { intrinsics_module.ident.span },
+                                        module: intrinsics_module.ident,
+                                        suggestion,
                                     };
                                     self.tcx.emit_node_span_lint(
                                         DEPRECATED,

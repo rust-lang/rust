@@ -1164,3 +1164,20 @@ pub(crate) struct ConstFnLinkage {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("use of deprecated import through accidentally stabilized module `{$module}`")]
+pub(crate) struct RustcAtumSuggestion {
+    #[primary_span]
+    pub import_span: Span,
+    pub message: Symbol,
+    pub suggestion: Symbol,
+    pub module: Ident,
+    #[suggestion(
+        "{$message}",
+        code = "{suggestion}",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    pub unstable_mod_span: Span,
+}
