@@ -58,9 +58,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
         Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
         AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, substr),
-        EnumDiscr(..) | StaticStruct(..) | StaticEnum(..) => {
-            cx.dcx().span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
-        }
+        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
     let name = cx.expr_str(span, ident.name);

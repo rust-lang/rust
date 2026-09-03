@@ -1605,9 +1605,6 @@ where
                 discr_check_expr
             }
         }
-        StaticEnum(..) | StaticStruct(..) => {
-            cx.dcx().span_bug(trait_span, "static function in `derive`")
-        }
-        AllFieldlessEnum(..) => cx.dcx().span_bug(trait_span, "fieldless enum in `derive`"),
+        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive`"),
     }
 }
