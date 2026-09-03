@@ -318,8 +318,6 @@ declare_features! (
     (internal, needs_panic_runtime, "1.10.0", Some(32837)),
     /// Allows using the `#![panic_runtime]` attribute.
     (internal, panic_runtime, "1.10.0", Some(32837)),
-    /// Allows using pattern types.
-    (internal, pattern_types, "1.79.0", Some(123646)),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (internal, repr_simd, "1.4.0", Some(27731)),
     /// Allows using compiler's own crates.

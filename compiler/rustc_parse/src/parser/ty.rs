@@ -4,7 +4,7 @@ use rustc_ast::{
     self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
     GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, Mutability, Path,
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
-    TyKind, UnsafeBinderTy,
+    TyKind, TyPatKind, UnsafeBinderTy,
 };
 use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
@@ -423,6 +423,8 @@ impl<'a> Parser<'a> {
             self.parse_unsafe_binder_ty()?
         } else if self.eat_forced_keyword_noexpect(kw::FieldOf) {
             self.parse_ty_field_of(lo)?
+        } else if self.eat_forced_keyword_noexpect(kw::PatternType) {
+            self.parse_pat_ty(lo)?
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
             let mut err = self.dcx().struct_span_err(lo, msg);
@@ -826,7 +828,7 @@ impl<'a> Parser<'a> {
         Ok(TyKind::Err(guar))
     }
 
-    pub(crate) fn parse_ty_field_of(&mut self, lo: Span) -> PResult<'a, TyKind> {
+    fn parse_ty_field_of(&mut self, lo: Span) -> PResult<'a, TyKind> {
         self.expect(exp!(OpenParen))?;
 
         let container = self.parse_ty()?;
@@ -869,6 +871,56 @@ impl<'a> Parser<'a> {
                 "`field_of` only supports a single field or a variant with a field",
             )),
         }
+    }
+
+    fn parse_pat_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
+        self.expect(exp!(OpenParen))?;
+
+        let ty = self.parse_ty()?;
+        self.expect_keyword(exp!(Is))?;
+
+        let pat = if self.eat(exp!(Bang)) {
+            let lo = self.prev_token.span;
+            self.expect_keyword(exp!(Null))?;
+            Self::mk_ty_pat(TyPatKind::NotNull, lo.to(self.token.span))
+        } else {
+            let pat = self.parse_pat_no_top_guard(
+                None,
+                super::RecoverComma::No,
+                super::RecoverColon::No,
+                super::CommaRecoveryMode::EitherTupleOrPipe,
+            )?;
+            self.pat_to_ty_pat(pat)
+        };
+
+        self.expect(exp!(CloseParen))?;
+
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+
+        Ok(TyKind::Pat(ty, Box::new(pat)))
+    }
+
+    fn pat_to_ty_pat(&self, pat: ast::Pat) -> ast::TyPat {
+        let kind = match pat.kind {
+            ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
+                start.map(|value| Box::new(ast::AnonConst { id: DUMMY_NODE_ID, value })),
+                end.map(|value| Box::new(ast::AnonConst { id: DUMMY_NODE_ID, value })),
+                include_end,
+            ),
+            ast::PatKind::Or(variants) => {
+                TyPatKind::Or(variants.into_iter().map(|pat| self.pat_to_ty_pat(pat)).collect())
+            }
+            ast::PatKind::Err(guar) => TyPatKind::Err(guar),
+            ast::PatKind::Paren(p) => self.pat_to_ty_pat(*p).kind,
+            _ => TyPatKind::Err(
+                self.dcx().span_err(pat.span, "pattern not supported in pattern types"),
+            ),
+        };
+        Self::mk_ty_pat(kind, pat.span)
+    }
+
+    fn mk_ty_pat(kind: TyPatKind, span: Span) -> ast::TyPat {
+        ast::TyPat { id: DUMMY_NODE_ID, kind, span }
     }
 
     /// Parses a function pointer type (`TyKind::FnPtr`).

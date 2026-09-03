@@ -1,6 +1,4 @@
 #![feature(pattern_types, rustc_attrs)]
-#![feature(pattern_type_macro)]
-#![allow(incomplete_features)]
 //@ check-pass
 
 //! check that pattern types can actually be part of code that compiles successfully.

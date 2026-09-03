@@ -21,7 +21,6 @@
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(pattern_types)]
-#![feature(pattern_type_macro)]
 #![feature(prelude_import)]
 #![feature(specialization)]
 #![feature(trace_macros)]
@@ -632,7 +631,7 @@ mod types {
         /*! FIXME: todo */
     }
     /// TyKind::Pat
-    fn ty_pat() { let _: u32 is const 1..; }
+    fn ty_pat() { let _: k#pattern_type(u32 is const 1..); }
 }
 mod visibilities {
     /// VisibilityKind::Public

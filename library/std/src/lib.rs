@@ -641,7 +641,7 @@ pub mod num;
 #[allow(unreachable_pub)]
 pub mod os;
 pub mod panic;
-#[unstable(feature = "pattern_type_macro", issue = "123646")]
+#[unstable(feature = "pattern_types", issue = "123646")]
 pub mod pat;
 pub mod path;
 pub mod process;
