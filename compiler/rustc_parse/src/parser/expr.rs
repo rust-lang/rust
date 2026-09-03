@@ -1862,7 +1862,7 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.token.span);
         self.expect(exp!(CloseParen))?;
 
-        self.psess.gated_spans.gate(sym::builtin_syntax, lo.to(self.token.span));
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
 
         Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
     }
@@ -1876,7 +1876,7 @@ impl<'a> Parser<'a> {
         //        it actually "improves" diagnostics slightly.
         let span = lo.to(self.token.span);
         self.expect(exp!(CloseParen))?;
-        self.psess.gated_spans.gate(sym::builtin_syntax, lo.to(self.token.span));
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
         Ok(self.mk_expr(span, ExprKind::Type(expr, ty)))
     }
 
@@ -1893,7 +1893,7 @@ impl<'a> Parser<'a> {
         //        it actually "improves" diagnostics slightly.
         let span = lo.to(self.token.span);
         self.expect(exp!(CloseParen))?;
-        self.psess.gated_spans.gate(sym::builtin_syntax, lo.to(self.token.span));
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
         Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
     }
 

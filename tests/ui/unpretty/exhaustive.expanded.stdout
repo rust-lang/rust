@@ -10,7 +10,7 @@
 // errors that only occur once we get past the AST.
 
 #![feature(auto_traits)]
-#![feature(builtin_syntax)]
+#![feature(internal_syntax)]
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
