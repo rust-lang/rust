@@ -1765,7 +1765,7 @@ pub enum ExprKind {
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(Box<Expr>, Box<Ty>),
-    /// A type ascription (e.g., `builtin # type_ascribe(42, usize)`).
+    /// A type ascription (e.g., `k#type_ascribe(42, usize)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `type_ascribe!(...)`.
