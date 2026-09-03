@@ -811,7 +811,7 @@ impl<'a> Parser<'a> {
                 CommaRecoveryMode::LikelyTuple,
             )?));
             self.expect(exp!(CloseParen))?;
-            self.psess.gated_spans.gate(sym::builtin_syntax, lo.to(self.token.span));
+            self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
             pat
         }
         // Don't eagerly error on semantically invalid tokens when matching

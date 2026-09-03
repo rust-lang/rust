@@ -1907,7 +1907,7 @@ pub(crate) mod builtin {
     }
 
     /// Unstable placeholder for type ascription.
-    #[allow_internal_unstable(builtin_syntax)]
+    #[allow_internal_unstable(internal_syntax)]
     #[unstable(
         feature = "type_ascription",
         issue = "23416",
@@ -1919,7 +1919,7 @@ pub(crate) mod builtin {
     }
 
     /// Unstable placeholder for deref patterns.
-    #[allow_internal_unstable(builtin_syntax)]
+    #[allow_internal_unstable(internal_syntax)]
     #[unstable(
         feature = "deref_patterns",
         issue = "87121",
