@@ -16,6 +16,7 @@
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(explicit_tail_calls)]
+#![feature(forced_keywords)]
 #![feature(gen_blocks)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
@@ -131,7 +132,7 @@ mod expressions {
     fn expr_cast() { let expr; expr as T; expr as T<u8>; }
 
     /// ExprKind::Type
-    fn expr_type() { let expr; builtin # type_ascribe(expr, T); }
+    fn expr_type() { let expr; k#type_ascribe(expr, T); }
 
     /// ExprKind::Let
     fn expr_let() {
