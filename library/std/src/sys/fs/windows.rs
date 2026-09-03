@@ -6,6 +6,7 @@ use crate::ffi::{OsStr, OsString, c_void};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit, offset_of};
+use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
@@ -17,6 +18,9 @@ use crate::sys::path::{WCStr, maybe_verbatim};
 use crate::sys::time::SystemTime;
 use crate::sys::{Align8, AsInner, FromInner, IntoInner, c, cvt};
 use crate::{fmt, ptr, slice};
+
+#[cfg(test)]
+mod tests;
 
 mod dir;
 pub use dir::Dir;
@@ -1591,12 +1595,75 @@ pub fn set_times_nofollow(p: &WCStr, times: FileTimes) -> io::Result<()> {
 }
 
 fn get_path(f: impl AsRawHandle) -> io::Result<PathBuf> {
+    let h = f.as_raw_handle();
+    // If getting the canonical path fails with ERROR_INVALID_FUNCTION
+    // then it's likely it failed to resolve the path's drive.
+    // In that case, use the fallback method to resolve it.
+    let invalid_function = Some(c::ERROR_INVALID_FUNCTION as i32);
+    match get_path_canonical(h) {
+        Err(e) if e.raw_os_error() == invalid_function => get_path_fallback(h).ok_or(e),
+        result => result,
+    }
+}
+
+fn get_path_canonical(handle: c::HANDLE) -> io::Result<PathBuf> {
     fill_utf16_buf(
-        |buf, sz| unsafe {
-            c::GetFinalPathNameByHandleW(f.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
-        },
+        |buf, sz| unsafe { c::GetFinalPathNameByHandleW(handle, buf, sz, c::VOLUME_NAME_DOS) },
         |buf| PathBuf::from(OsString::from_wide(buf)),
     )
+}
+
+/// Fallback in case `get_path_canonical` fails.
+///
+/// `get_path_canonical` can fail if the Win32 drive name cannot be resolved.
+/// This can happen with certain third party drivers that don't integrate
+/// with the mount manager.
+///
+/// Instead we manually do the same job by getting the NT path
+/// and then finding the first drive letter that points to a prefix of
+/// that path. From there we can construct a Win32 path.
+///
+/// It's implemented by first getting the NT path, which should always succeed.
+/// Then we use [`GetLogicalDrives`] to get a bit array of win32 drive letters
+/// from 'A' to 'Z'. If the corresponding bit is set then it means that drive exists.
+/// E.g. bit 2 being set means there's a `C:` drive.
+///
+/// Then for each drive we use [`QueryDosDeviceW`] to see the NT path that drive resolves to.
+/// If that path is a prefix to the path we got initially then we treat that as the canonical drive letter.
+/// So in the unlikely even two drives point to the same device, the lowest one is considered canonical.
+///
+/// [`GetLogicalDrives`]: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getlogicaldrives
+/// [`QueryDosDeviceW`]:
+fn get_path_fallback(handle: c::HANDLE) -> Option<PathBuf> {
+    fill_utf16_buf(
+        |buf, sz| unsafe { c::GetFinalPathNameByHandleW(handle, buf, sz, c::VOLUME_NAME_NT) },
+        |nt_path| {
+            let mut buf = [0_u16; c::MAX_PATH as usize];
+            for letter in api::get_logical_drives() {
+                let device_name = [letter as u16, b':' as u16, 0];
+                // SAFETY: `device_name` is a null terminated u16 string
+                if let Some(drive_path) = unsafe { api::query_dos_device(&device_name, &mut buf) } {
+                    if let Some(nt_path) = nt_path.strip_prefix(drive_path) {
+                        // Reserve approximately enough space for the drive + path.
+                        let mut path = Vec::with_capacity(r"\\?\C:".len() + nt_path.len());
+                        // Create a verbatim drive root (e.g. \\?\D:)
+                        let mut verbatim_root = *br#"\\?\C:"#;
+                        verbatim_root[4] = letter;
+                        path.extend_from_slice(&verbatim_root);
+                        path.extend(OsString::from_wide(nt_path).into_encoded_bytes());
+                        // SAFETY: All characters are either in the ASCII range (the prefix)
+                        // or else came from an OsString.
+                        unsafe {
+                            return Some(OsString::from_encoded_bytes_unchecked(path).into());
+                        }
+                    }
+                }
+            }
+            None
+        },
+    )
+    .ok()
+    .flatten()
 }
 
 pub fn canonicalize(p: &WCStr) -> io::Result<PathBuf> {
