@@ -6,10 +6,11 @@
 //@ build-fail
 
 // CRATE_HASH normalization doesn't seem to work on some of these symbol logs
-//@ normalize-stderr: "splat_mangling\[([0-9a-f]{16})\]::" -> "splat_mangling[CRATE_HASH]::"
-//@ normalize-stderr: "alloc\[([0-9a-f]{16})\]::" -> "alloc[CRATE_HASH]::"
-//@ normalize-stderr: "h([0-9a-f]{16})E\)" -> "hCRATE_HASHE)"
-//@ normalize-stderr: "::h([0-9a-f]{16})\)" -> "::hCRATE_HASH)"
+// FIXME: When rustc-demangle/94 is in rust's deps, change this to '{16}' (fixed-length hashes)
+//@ normalize-stderr: "splat_mangling\[([0-9a-f]{8,16})\]::" -> "splat_mangling[CRATE_HASH]::"
+//@ normalize-stderr: "alloc\[([0-9a-f]{8,16})\]::" -> "alloc[CRATE_HASH]::"
+//@ normalize-stderr: "h([0-9a-f]{8,16})E\)" -> "hCRATE_HASHE)"
+//@ normalize-stderr: "::h([0-9a-f]{8,16})\)" -> "::hCRATE_HASH)"
 
 #![allow(incomplete_features)]
 #![feature(splat, rustc_attrs)]
