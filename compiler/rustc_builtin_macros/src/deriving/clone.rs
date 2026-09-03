@@ -55,7 +55,7 @@ pub(crate) fn expand_deriving_clone(
             is_simple = true;
             substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
         }
-        _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
+        _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
     }
 
     // If the clone method is just copying the value, also mark the type as
@@ -186,12 +186,7 @@ fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> Bl
             all_fields = af;
             vdata = &variant.data;
         }
-        EnumDiscr(..) | AllFieldlessEnum(..) => {
-            cx.dcx().span_bug(trait_span, "enum discriminants in `derive(Clone)`")
-        }
-        StaticEnum(..) | StaticStruct(..) => {
-            cx.dcx().span_bug(trait_span, "associated function in `derive(Clone)`")
-        }
+        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive(Clone)`"),
     }
 
     let expr = match *vdata {

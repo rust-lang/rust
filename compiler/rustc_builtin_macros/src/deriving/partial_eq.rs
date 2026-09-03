@@ -156,18 +156,7 @@ fn get_substructure_equality_expr(
             // fields.
             cx.expr_binary(disc.span, BinOpKind::And, lhs, match_expr.clone())
         }
-        StaticEnum(..) => cx.dcx().span_bug(
-            span,
-            "unexpected static enum encountered during `derive(PartialEq)` expansion",
-        ),
-        StaticStruct(..) => cx.dcx().span_bug(
-            span,
-            "unexpected static struct encountered during `derive(PartialEq)` expansion",
-        ),
-        AllFieldlessEnum(..) => cx.dcx().span_bug(
-            span,
-            "unexpected all-fieldless enum encountered during `derive(PartialEq)` expansion",
-        ),
+        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(PartialEq)`"),
     })
 }
 

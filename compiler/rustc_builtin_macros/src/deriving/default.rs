@@ -44,7 +44,9 @@ pub(crate) fn expand_deriving_default(
                     StaticEnum(enum_def) => {
                         default_enum_substructure(cx, trait_span, enum_def, item.span)
                     }
-                    _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
+                    _ => cx
+                        .dcx()
+                        .span_bug(trait_span, "unexpected substructure in `derive(Default)`"),
                 }
             }),
         }],

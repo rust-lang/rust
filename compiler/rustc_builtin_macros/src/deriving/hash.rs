@@ -68,7 +68,7 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'
             let stmts = thin_vec![call_hash(discr_field.span, discr_field.self_expr.clone())];
             (stmts, match_expr.clone())
         }
-        _ => cx.dcx().span_bug(trait_span, "impossible substructure in `derive(Hash)`"),
+        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive(Hash)`"),
     };
 
     BlockOrExpr::new_mixed(stmts, match_expr)
