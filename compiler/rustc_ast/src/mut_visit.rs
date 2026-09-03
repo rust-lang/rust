@@ -218,13 +218,13 @@ macro_rules! impl_visitable_direct {
 }
 
 macro_rules! impl_visitable_calling_walkable {
-    (
-        $( fn $method:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?); )*
+    ($Visitor:ident
+        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
-        $(fn $method(&mut self, node: &mut $ty $(, $extra_name:$extra_ty)?) {
+        $(fn $visit(&mut self, node: &mut $ty $(, $extra_name: $extra_ty)?) {
             impl_visitable!(|&mut self: $ty, visitor: &mut V, extra: ($($extra_ty)?)| {
                 let ($($extra_name)?) = extra;
-                visitor.$method(self $(, $extra_name)?);
+                visitor.$visit(self $(, $extra_name)?);
             });
             MutWalkable::walk_mut(node, self)
         })*
@@ -233,9 +233,9 @@ macro_rules! impl_visitable_calling_walkable {
 
 macro_rules! define_named_walk {
     ($Visitor:ident
-        $( pub fn $method:ident($ty:ty); )*
+        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
-        $(pub fn $method<V: $Visitor>(visitor: &mut V, node: &mut $ty) {
+        $(pub fn $walk<V: $Visitor>(visitor: &mut V, node: &mut $ty) {
             MutWalkable::walk_mut(node, visitor)
         })*
     };
