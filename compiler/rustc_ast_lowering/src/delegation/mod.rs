@@ -419,6 +419,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 segment.res = Res::Def(self.tcx.def_kind(res.call_path_res), res.call_path_res);
 
                 let ty_hir_id = ty.hir_id;
+
+                // Propagating child generics if needed.
                 ty = if let hir::TyKind::Path(QPath::Resolved(ty, path)) = ty.kind {
                     let mut new_path = path.clone();
 
