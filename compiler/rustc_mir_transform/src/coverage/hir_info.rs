@@ -49,14 +49,15 @@ pub(crate) fn extract_hir_info<'tcx>(
 
     let mut body_span = hir_body.value.span;
 
-    use hir::{Closure, Expr, ExprKind, Node};
     // Unexpand a closure's body span back to the context of its declaration.
     // This helps with closure bodies that consist of just a single bang-macro,
     // and also with closure bodies produced by async desugaring.
-    if let Node::Expr(&Expr { kind: ExprKind::Closure(&Closure { fn_decl_span, .. }), .. }) =
-        hir_node
+    if let hir::Node::Expr(expr) = hir_node
+        && let hir::ExprKind::Closure(closure) = expr.kind
+        && let Some(effective_body_span) =
+            body_span.find_ancestor_in_same_ctxt(closure.fn_decl_span)
     {
-        body_span = body_span.find_ancestor_in_same_ctxt(fn_decl_span).unwrap_or(body_span);
+        body_span = effective_body_span;
     }
 
     // The actual signature span is only used if it has the same context and
