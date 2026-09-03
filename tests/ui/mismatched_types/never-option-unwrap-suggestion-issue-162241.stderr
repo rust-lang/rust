@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/never-option-unwrap-suggestion-issue-162241.rs:5:26
+   |
+LL |     let _: Option<u32> = never;
+   |            -----------   ^^^^^ expected `Option<u32>`, found `Option<!>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Option<u32>`
+              found enum `Option<!>`
+help: consider using `Option::expect` to unwrap the `Option<!>` value, panicking if the value is an `Option::None`
+   |
+LL |     let _: Option<u32> = never.expect("REASON");
+   |                               +++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
