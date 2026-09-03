@@ -795,7 +795,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             ast::ExprKind::OffsetOf(container, fields) => {
-                self.word("builtin # offset_of");
+                self.word("k#offset_of");
                 self.popen();
                 let ib = self.ibox(0);
                 self.print_type(container);
