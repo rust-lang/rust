@@ -270,9 +270,9 @@ macro_rules! impl_visitable_direct {
 
 macro_rules! fn_visit {
     ($Visitor:ident<$lt:lifetime>
-        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
+        $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
-        $(fn $visit(&mut self, node: &$lt $ty $(, $extra_name: $extra_ty)?) -> Self::Result {
+        $(fn $visit(&mut self, node: &$lt $ty $(, $extra: $extra_ty)?) -> Self::Result {
             Walkable::walk_ref(node, self)
         })*
     };
@@ -280,18 +280,18 @@ macro_rules! fn_visit {
 
 macro_rules! impl_visitable_visit {
     ($Visitor:ident<$lt:lifetime>
-        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
+        $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
         $(impl_visitable!(|&$lt self: $ty, visitor: &mut V, extra: ($($extra_ty)?)| {
-            let ($($extra_name)?) = extra;
-            visitor.$visit(self $(, $extra_name)?)
+            let ($($extra)?) = extra;
+            visitor.$visit(self $(, $extra)?)
         });)*
     };
 }
 
 macro_rules! fn_walk {
     ($Visitor:ident<$lt:lifetime>
-        $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
+        $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
     ) => {
         $(pub fn $walk<$lt, V: $Visitor<$lt>>(visitor: &mut V, node: &$lt $ty) -> V::Result {
             Walkable::walk_ref(node, visitor)
@@ -303,7 +303,7 @@ macro_rules! fn_walk {
 /// passed-in macro should have a left hand side like this:
 /// ```ignore (partial)
 /// ($Visitor:ident
-///     $( $visit:ident($ty:ty $(, $extra_name:ident: $extra_ty:ty)?) => $walk:ident; )*
+///     $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
 /// ) => ...
 /// ```
 #[macro_export]
@@ -1136,15 +1136,15 @@ macro_rules! common_visitor_and_walkers {
 common_visitor_and_walkers!(Visitor<'a>);
 
 macro_rules! generate_list_visit_fns {
-    ($($visit_fn:ident, $Ty:ty $(, $param:ident: $ParamTy:ty)?;)+) => {
+    ($($visit_fn:ident, $ty:ty $(, $extra:ident: $extra_ty:ty)?;)+) => {
         $(
             #[allow(unused_parens)]
-            impl<'a, V: Visitor<'a>> Visitable<'a, V> for ThinVec<$Ty> {
-                type Extra = ($($ParamTy)?);
+            impl<'a, V: Visitor<'a>> Visitable<'a, V> for ThinVec<$ty> {
+                type Extra = ($($extra_ty)?);
 
                 #[inline]
-                fn visit(&'a self, visitor: &mut V, ($($param)?): Self::Extra) -> V::Result {
-                    walk_list!(visitor, $visit_fn, self $(, $param)?);
+                fn visit(&'a self, visitor: &mut V, ($($extra)?): Self::Extra) -> V::Result {
+                    walk_list!(visitor, $visit_fn, self $(, $extra)?);
                     V::Result::output()
                 }
             }
