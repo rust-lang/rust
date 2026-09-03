@@ -3525,17 +3525,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                         // Resolve the generic parameters.
                                         this.visit_generics(generics);
 
-                                        let self_type_def_id = of_trait
-                                            .is_none()
-                                            .then(|| {
-                                                this.r.partial_res_map.get(&self_type.id).and_then(|res| {
-                                                    res.full_res()
-                                                        .and_then(|r| r.opt_def_id())
-                                                        .and_then(|id| id.as_local())
-                                                })
-                                            })
-                                            .flatten();
-
                                         // Resolve the items within the impl.
                                         this.with_current_self_type(self_type, |this| {
                                             this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
@@ -3548,7 +3537,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                                             &mut seen_trait_items,
                                                             trait_id,
                                                             of_trait.is_some(),
-                                                            self_type_def_id
+                                                            self_type.id,
                                                         );
                                                     })
                                                 }
@@ -3570,7 +3559,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         seen_trait_items: &mut FxHashMap<DefId, Span>,
         trait_id: Option<DefId>,
         is_in_trait_impl: bool,
-        self_type_def_id: Option<LocalDefId>,
+        self_type_id: NodeId,
     ) {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
@@ -3672,8 +3661,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     },
                 );
 
-                if let Some(self_type_def_id) = self_type_def_id {
-                    self.fill_delegation_inh_functions_map(self_type_def_id, ident);
+                if !is_in_trait_impl {
+                    self.fill_delegation_inh_functions_map(self_type_id, ident);
                 }
 
                 self.resolve_define_opaques(define_opaque);
@@ -3718,9 +3707,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     LifetimeBinderKind::Function,
                     delegation.path.segments.last().unwrap().ident.span,
                     |this| {
-                        if let Some(self_type_def_id) = self_type_def_id {
+                        if !is_in_trait_impl {
                             this.fill_delegation_inh_functions_map(
-                                self_type_def_id,
+                                self_type_id,
                                 // If rename is specified then ident equals rename.
                                 &delegation.ident,
                             );
@@ -3750,7 +3739,20 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         self.diag_metadata.current_impl_item = prev;
     }
 
-    fn fill_delegation_inh_functions_map(&mut self, self_type_def_id: LocalDefId, ident: &Ident) {
+    /// A heuristic to resolve delegations to inherent impls during AST -> HIR lowering.
+    /// Ideally we would do it through `ProbeContext`, however now it is impossible due to
+    /// query cycles even in the code without errors.
+    /// Not all paths will be properly resolved this way (i.e., type aliases).
+    /// FIXME(fn_delegation): remove it when resolution through `ProbeContext` will be ready
+    fn fill_delegation_inh_functions_map(&mut self, self_type_id: NodeId, ident: &Ident) {
+        let res = self.r.partial_res_map.get(&self_type_id);
+
+        let Some(self_type_def_id) = res.and_then(|res| {
+            res.full_res().and_then(|r| r.opt_def_id()).and_then(|id| id.as_local())
+        }) else {
+            return;
+        };
+
         let map = self.r.delegation_inh_functions_map.entry(self_type_def_id).or_default();
 
         match map.get(ident) {
