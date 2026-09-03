@@ -20,6 +20,5 @@ pub fn example() {
 
 // CHECK-LABEL: @example
 // CHECK:   tail call void @bar(){{( #[0-9]+)?}}, !dbg [[DBG_ID:![0-9]+]]
-// CHECK: [[DBG_ID]] = !DILocation(line: 7,
-// CHECK-SAME:                     inlinedAt: [[INLINE_ID:![0-9]+]])
-// CHECK: [[INLINE_ID]] = !DILocation(line: 18,
+// CHECK-DAG: [[DBG_ID]] = !DILocation(line: 7, {{.*}}inlinedAt: [[INLINE_ID:![0-9]+]])
+// CHECK-DAG: [[INLINE_ID]] = !DILocation(line: 18,

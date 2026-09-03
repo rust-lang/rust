@@ -8,10 +8,10 @@
 //@ compile-flags: -g -C no-prepopulate-passes
 
 // CHECK-LABEL: @main
-// CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_enumeration_type,{{.*}}name: "E",{{.*}}flags: DIFlagEnumClass,{{.*}}
-// CHECK: {{.*}}DIEnumerator{{.*}}name: "A",{{.*}}value: {{[0-9].*}}
-// CHECK: {{.*}}DIEnumerator{{.*}}name: "B",{{.*}}value: {{[0-9].*}}
-// CHECK: {{.*}}DIEnumerator{{.*}}name: "C",{{.*}}value: {{[0-9].*}}
+// CHECK-DAG: {{.*}}DICompositeType{{.*}}tag: DW_TAG_enumeration_type,{{.*}}name: "E",{{.*}}flags: DIFlagEnumClass,{{.*}}
+// CHECK-DAG: {{.*}}DIEnumerator{{.*}}name: "A",{{.*}}value: {{[0-9].*}}
+// CHECK-DAG: {{.*}}DIEnumerator{{.*}}name: "B",{{.*}}value: {{[0-9].*}}
+// CHECK-DAG: {{.*}}DIEnumerator{{.*}}name: "C",{{.*}}value: {{[0-9].*}}
 
 #![allow(dead_code)]
 #![allow(unused_variables)]

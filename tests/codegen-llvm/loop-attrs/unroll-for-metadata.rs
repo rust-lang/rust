@@ -51,14 +51,14 @@ pub fn unroll_count() {
     }
 }
 
-// CHECK: ![[HINT]] = distinct !{![[HINT]], ![[INNER_HINT:[0-9]+]]}
-// CHECK: ![[INNER_HINT]] = !{!"llvm.loop.unroll.enable"}
+// CHECK-DAG: ![[HINT]] = distinct !{![[HINT]], ![[INNER_HINT:[0-9]+]]}
+// CHECK-DAG: ![[INNER_HINT]] = !{!"llvm.loop.unroll.enable"}
 
-// CHECK: ![[FULL]] = distinct !{![[FULL]], ![[INNER_FULL:[0-9]+]]}
-// CHECK: ![[INNER_FULL]] = !{!"llvm.loop.unroll.full"}
+// CHECK-DAG: ![[FULL]] = distinct !{![[FULL]], ![[INNER_FULL:[0-9]+]]}
+// CHECK-DAG: ![[INNER_FULL]] = !{!"llvm.loop.unroll.full"}
 
-// CHECK: ![[DISABLE]] = distinct !{![[DISABLE]], ![[INNER_DISABLE:[0-9]+]]}
-// CHECK: ![[INNER_DISABLE]] = !{!"llvm.loop.unroll.disable"}
+// CHECK-DAG: ![[DISABLE]] = distinct !{![[DISABLE]], ![[INNER_DISABLE:[0-9]+]]}
+// CHECK-DAG: ![[INNER_DISABLE]] = !{!"llvm.loop.unroll.disable"}
 
-// CHECK: ![[COUNT]] = distinct !{![[COUNT]], ![[INNER_COUNT:[0-9]+]]}
-// CHECK: ![[INNER_COUNT]] = !{!"llvm.loop.unroll.count", i32 5}
+// CHECK-DAG: ![[COUNT]] = distinct !{![[COUNT]], ![[INNER_COUNT:[0-9]+]]}
+// CHECK-DAG: ![[INNER_COUNT]] = !{!"llvm.loop.unroll.count", i32 5}
