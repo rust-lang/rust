@@ -236,7 +236,11 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
             self.tcx,
-            outlives_env.known_type_outlives().into_iter().cloned().collect(),
+            assumed_type_outlives(
+                self.tcx,
+                outlives_env.known_type_outlives(),
+                outlives_env.region_bound_pairs(),
+            ),
             outlives_env.free_region_map().relation.clone(),
         );
         self.destructure_solver_region_constraints(assumptions, self);
@@ -247,11 +251,12 @@ impl<'tcx> InferCtxt<'tcx> {
         // this is always ConstraintConversion but lol
         conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
+        region_bound_pairs: &RegionBoundPairs<'tcx>,
         region_outlives: TransitiveRelation<RegionVid>,
     ) {
         let assumptions = region_constraint::Assumptions::new(
             self.tcx,
-            known_type_outlives.into_iter().cloned().collect(),
+            assumed_type_outlives(self.tcx, known_type_outlives, region_bound_pairs),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
         );
         self.destructure_solver_region_constraints(assumptions, conversion);
@@ -376,6 +381,24 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         }
     }
+}
+
+/// The type outlives assumptions available in the root context.
+///
+/// `known_type_outlives` only contains the explicit `Ty: 'a` where clauses. The implied bounds,
+/// e.g. `T: 'a` from a `&'a T` argument, are only tracked in `region_bound_pairs` so we have to
+/// pull them in separately. Without them we'd fail to prove `T: 'a` for a `&'a T` argument
+/// whenever the only explicit bound on `T` mentions a different region.
+fn assumed_type_outlives<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
+    region_bound_pairs: &RegionBoundPairs<'tcx>,
+) -> Vec<PolyTypeOutlivesClause<'tcx>> {
+    let mut type_outlives = known_type_outlives.to_vec();
+    type_outlives.extend(region_bound_pairs.iter().map(|&ty::OutlivesClause(kind, r)| {
+        ty::Binder::dummy(ty::OutlivesClause(kind.to_ty(tcx), r))
+    }));
+    type_outlives
 }
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
