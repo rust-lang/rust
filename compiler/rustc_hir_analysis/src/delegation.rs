@@ -656,6 +656,11 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     tcx.arena.alloc_from_iter(sig)
 }
 
+/// We need to replace `Self` type of the signature function parent with
+/// either type of parent of delegation (which is either `Self` param in case of trait)
+/// and other ADT in case of inherent impl. We do the same thing when delegating to trait,
+/// in this case replacement happens during signature instantiation (as we can replace `Self`
+/// generic param with other type from `args` when instantiating).
 fn adjust_sig_in_inherent_impl_cases<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig_id: DefId,
