@@ -1493,12 +1493,7 @@ https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
 cc = ["@rust-lang/lang-docs"]
 
 [mentions."src/doc/rustc-dev-guide"]
-message = """
-`rustc-dev-guide` is developed in its own repository. If possible, consider \
-making this change to \
-[rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide) \
-instead.
-"""
+message = "The rustc-dev-guide subtree was changed."
 cc = ["@BoxyUwU", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
