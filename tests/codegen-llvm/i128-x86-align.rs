@@ -1,5 +1,6 @@
 //@ only-x86_64
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes --crate-type=lib
+//@ min-llvm-version: 23
 
 // On LLVM 17 and earlier LLVM's own data layout specifies that i128 has 8 byte alignment,
 // while rustc wants it to have 16 byte alignment. This test checks that we handle this
