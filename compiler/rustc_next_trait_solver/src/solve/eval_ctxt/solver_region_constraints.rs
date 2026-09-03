@@ -102,9 +102,8 @@ where
 
         // FIXME(-Zassumptions-on-binders): we need to normalize here/somewhere
         // as we assume the type outlives assumptions only have rigid types :>
-        let cx = self.cx();
         let clauses = rustc_type_ir::elaborate::elaborate(
-            cx,
+            self.cx(),
             reqs.into_iter().filter_map(|goal| goal.predicate.as_clause()),
         );
 
@@ -121,7 +120,7 @@ where
             },
         );
 
-        Some(Assumptions::new(cx, type_outlives, region_outlives_builder.freeze()))
+        Some(Assumptions::new(type_outlives, region_outlives_builder.freeze()))
     }
 
     #[instrument(level = "debug", skip(self), ret)]
