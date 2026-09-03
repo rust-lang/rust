@@ -9,7 +9,7 @@
 // errors that only occur once we get past the AST.
 
 #![allow(incomplete_features)]
-#![attr = Feature([auto_traits#0, builtin_syntax#0, const_trait_impl#0,
+#![attr = Feature([auto_traits#0, internal_syntax#0, const_trait_impl#0,
 coroutines#0, decl_macro#0, deref_patterns#0, explicit_tail_calls#0,
 forced_keywords#0, gen_blocks#0, more_qualified_paths#0, never_patterns#0,
 pattern_types#0, pattern_type_macro#0, prelude_import#0, specialization#0,

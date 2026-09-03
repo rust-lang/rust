@@ -6,5 +6,5 @@ struct Foo {
     w: u8,
 }
 fn main() {
-    k#offset_of(Foo, v); //~ ERROR `builtin #` syntax is unstable
+    k#offset_of(Foo, v); //~ ERROR this syntax is internal
 }
