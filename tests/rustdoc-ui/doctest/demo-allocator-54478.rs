@@ -1,4 +1,9 @@
 // https://github.com/rust-lang/rust/issues/54478
+
+//@ compile-flags:--test
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ check-pass
+
 #![crate_name="foo"]
 
 // Issue #54478: regression test showing that we can demonstrate
@@ -14,8 +19,6 @@
 // Rather than try to revise the visbility semanics, we instead
 // decided to change `rustdoc` to behave more like the compiler's
 // default setting, by leaving off `-C prefer-dynamic`.
-
-//@ compile-flags:--test
 
 //! This is a doc comment
 //!
