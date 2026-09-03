@@ -66,7 +66,7 @@ pub(crate) fn resolve_type_relative_delegations(
 
         let ambig_error_res = || {
             TypeRelativeDelegationRes::Ambig(
-                tcx.dcx().span_delayed_bug(span, "ambigous delegation to inherent impl"),
+                tcx.dcx().span_delayed_bug(span, "ambiguous delegation to inherent impl"),
             )
         };
 
