@@ -12,9 +12,9 @@
 //@ only-pauthtest
 
 #![feature(no_core)]
-//[error_generated]~^ ERROR mixing `-Zpointer-authentication` will cause an ABI mismatch in crate
-//`incompatible_pauth`
 #![crate_type = "rlib"]
 #![no_core]
 
 extern crate pauth;
+
+//[error_generated]~? ERROR mixing `-Zpointer-authentication` will cause an ABI mismatch in crate `incompatible_pauth`
