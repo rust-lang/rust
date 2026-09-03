@@ -8,7 +8,7 @@ fn f() {
 }
 
 fn g(_param: #[attr]) {}
-//~^ ERROR attributes cannot be applied to a function parameter's type
+//~^ ERROR attributes cannot be applied to types
 //~| ERROR expected type, found `)`
 
 fn barrier0() {
