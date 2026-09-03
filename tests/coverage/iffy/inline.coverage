@@ -1,4 +1,5 @@
    LL|       |//@ compile-flags: -Zinline-mir
+   LL|       |//@ min-llvm-version: 23
    LL|       |
    LL|       |use std::fmt::Display;
    LL|       |
@@ -17,15 +18,14 @@
    LL|     16|    if k == n {
    LL|      6|        display(xs);
    LL|     10|    } else if k < n {
-   LL|     15|        for i in k..n {
-                               ^10
+   LL|     10|        for i in k..n {
    LL|     15|            swap(xs, i, k);
    LL|     15|            permutate(xs, k + 1);
    LL|     15|            swap(xs, i, k);
-   LL|     15|        }
-   LL|      0|    } else {
+   LL|       |        }
+   LL|       |    } else {
    LL|      0|        error();
-   LL|      0|    }
+   LL|       |    }
    LL|     16|}
    LL|       |
    LL|     16|fn length<T>(xs: &[T]) -> usize {
@@ -40,10 +40,9 @@
    LL|     30|}
    LL|       |
    LL|      6|fn display<T: Display>(xs: &[T]) {
-   LL|     18|    for x in xs {
-                           ^6
+   LL|      6|    for x in xs {
    LL|     18|        print!("{}", x);
-   LL|     18|    }
+   LL|       |    }
    LL|      6|    println!();
    LL|      6|}
    LL|       |
