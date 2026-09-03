@@ -3742,6 +3742,11 @@ impl DirBuilder {
             return Ok(());
         }
 
+        // For certain platforms, a path like "/tmp/foo/.", while the "/tmp" directory exists,
+        // the mkdir function may produce a `NotFound` error on that path instead of succeeding
+        // due to viewing the "foo" and "." as two separate missing components.
+        // See https://github.com/rust-lang/rust/issues/162243
+        let path = path.components().as_path();
         let ancestors = path.ancestors();
         let mut uncreated_dirs = 0;
 
