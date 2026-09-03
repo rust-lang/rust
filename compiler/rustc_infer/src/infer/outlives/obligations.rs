@@ -59,7 +59,7 @@
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 
-use rustc_data_structures::transitive_relation::TransitiveRelation;
+use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
@@ -234,6 +234,13 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
+        // `FreeRegionMap::relation` stores `'sub <= 'sup` edges while
+        // `Assumptions::region_outlives` expects `'longer: 'shorter` ones, so the
+        // edges have to be inverted here.
+        let mut region_outlives = TransitiveRelationBuilder::default();
+        for (r1, r2) in outlives_env.free_region_map().relation.base_edges() {
+            region_outlives.add(r2, r1);
+        }
         let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
             self.tcx,
             assumed_type_outlives(
@@ -241,7 +248,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 outlives_env.known_type_outlives(),
                 outlives_env.region_bound_pairs(),
             ),
-            outlives_env.free_region_map().relation.clone(),
+            region_outlives.freeze(),
         );
         self.destructure_solver_region_constraints(assumptions, self);
     }
