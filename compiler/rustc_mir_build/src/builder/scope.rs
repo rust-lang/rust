@@ -166,6 +166,12 @@ enum DropKind {
     Value,
     Storage,
     ForLint,
+    /// We fake-read fake borrow temporaries when leaving their scopes, as if dropping them, to keep
+    /// them alive through their entire scopes (#161578, #161852).
+    #[expect(unused)]
+    FakeRead {
+        cause: FakeReadCause,
+    },
 }
 
 #[derive(Debug)]
@@ -265,9 +271,12 @@ impl Scope {
     ///  * freeing up stack space has no effect during unwinding
     /// Note that for coroutines we do emit StorageDeads, for the
     /// use of optimizations in the MIR coroutine transform.
+    ///
+    /// We add fake reads of fake borrow temporaries on cleanup paths to keep them alive on paths
+    /// that unconditionally panic. These are removed after borrowck.
     fn needs_cleanup(&self) -> bool {
         self.drops.iter().any(|drop| match drop.kind {
-            DropKind::Value | DropKind::ForLint => true,
+            DropKind::Value | DropKind::ForLint | DropKind::FakeRead { .. } => true,
             DropKind::Storage => false,
         })
     }
@@ -435,6 +444,11 @@ impl DropTree {
                         place: Box::new(drop_node.data.local.into()),
                         reason: BackwardIncompatibleDropReason::Edition2024,
                     };
+                    self.link_statement(cfg, blocks, block, drop_node, kind);
+                }
+                DropKind::FakeRead { cause } => {
+                    let kind =
+                        StatementKind::FakeRead(Box::new((cause, drop_node.data.local.into())));
                     self.link_statement(cfg, blocks, block, drop_node, kind);
                 }
                 // Root nodes don't correspond to a drop.
@@ -1130,7 +1144,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let source_info = drop_data.source_info;
                 let local = drop_data.local;
 
-                if !self.local_decls[local].ty.needs_drop(self.tcx, typing_env) {
+                if !self.local_decls[local].ty.needs_drop(self.tcx, typing_env)
+                    && !matches!(drop_data.kind, DropKind::FakeRead { .. })
+                {
                     continue;
                 }
 
@@ -1183,6 +1199,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 },
                             ),
                         );
+                    }
+                    DropKind::FakeRead { cause } => {
+                        debug_assert_eq!(
+                            unwind_drops.drop_nodes[unwind_to].data.local,
+                            drop_data.local
+                        );
+                        debug_assert_eq!(
+                            unwind_drops.drop_nodes[unwind_to].data.kind,
+                            drop_data.kind
+                        );
+                        unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+                        self.cfg.push_fake_read(block, source_info, cause, local.into());
                     }
                     DropKind::Storage => {
                         // Only temps and vars need their storage dead.
@@ -1447,7 +1475,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // the unwind or coroutine drop paths. This means that for
         // non-coroutines we don't need to invalidate caches for `DropKind::Storage`.
         let invalidate_caches = match drop_kind {
-            DropKind::Value | DropKind::ForLint => true,
+            DropKind::Value | DropKind::ForLint | DropKind::FakeRead { .. } => true,
             DropKind::Storage => self.coroutine.is_some(),
         };
         for scope in self.scopes.scopes.iter_mut().rev() {
@@ -1518,6 +1546,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Note that we are *not* gating BIDs here on whether they have significant destructor.
         // We need to know all of them so that we can capture potential borrow-checking errors.
         self.schedule_drop(span, region_scope, local, DropKind::ForLint);
+    }
+
+    /// Schedule a fake read. Used to keep fake borrow temporaries alive until their scopes end.
+    #[expect(unused)]
+    pub(crate) fn schedule_drop_fake_read(
+        &mut self,
+        span: Span,
+        region_scope: region::Scope,
+        local: Local,
+        cause: FakeReadCause,
+    ) {
+        self.schedule_drop(span, region_scope, local, DropKind::FakeRead { cause });
     }
 
     /// Indicates that the "local operand" stored in `local` is
@@ -1612,7 +1652,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let is_coroutine = self.coroutine.is_some();
         for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
-                if is_coroutine || drop.kind == DropKind::Value {
+                if is_coroutine || matches!(drop.kind, DropKind::Value | DropKind::FakeRead { .. })
+                {
                     cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
                 }
             }
@@ -1958,6 +1999,21 @@ where
                 assert!(local.index() > arg_count);
                 cfg.push(block, Statement::new(source_info, StatementKind::StorageDead(local)));
             }
+            DropKind::FakeRead { cause } => {
+                // We always emit fake reads on unwind to keep fake borrow temporaries alive on
+                // paths that unconditionally panic.
+                debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.local, drop_data.local);
+                debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
+                unwind_to = unwind_drops.drop_nodes[unwind_to].next;
+
+                if let Some(idx) = dropline_to {
+                    debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.local, drop_data.local);
+                    debug_assert_eq!(coroutine_drops.drop_nodes[idx].data.kind, drop_data.kind);
+                    dropline_to = Some(coroutine_drops.drop_nodes[idx].next);
+                }
+
+                cfg.push_fake_read(block, source_info, cause, local.into());
+            }
         }
     }
     block.unit()
@@ -1995,6 +2051,13 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                             unwind_indices.push(unwind_indices[drop_node.next]);
                         }
                     }
+                    DropKind::FakeRead { .. } => {
+                        let unwind_drop = self
+                            .scopes
+                            .unwind_drops
+                            .add_drop(drop_node.data, unwind_indices[drop_node.next]);
+                        unwind_indices.push(unwind_drop);
+                    }
                     DropKind::Value => {
                         let unwind_drop = self
                             .scopes
@@ -2023,7 +2086,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                     .coroutine_drops
                     .add_drop(drop_data.data, dropline_indices[drop_data.next]);
                 match drop_data.data.kind {
-                    DropKind::Storage | DropKind::ForLint => {}
+                    DropKind::Storage | DropKind::ForLint | DropKind::FakeRead { .. } => {}
                     DropKind::Value => {
                         if self.is_async_drop(drop_data.data.local) {
                             self.scopes.coroutine_drops.add_entry_point(

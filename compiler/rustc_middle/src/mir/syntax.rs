@@ -502,7 +502,7 @@ impl WithRetag {
 }
 
 /// The `FakeReadCause` describes the type of pattern why a FakeRead statement exists.
-#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, StableHash, PartialEq)]
+#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, StableHash, PartialEq, Eq, Hash)]
 pub enum FakeReadCause {
     /// A fake read injected into a match guard to ensure that the discriminants
     /// that are being matched on aren't modified while the match guard is being
