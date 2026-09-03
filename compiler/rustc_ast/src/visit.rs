@@ -312,7 +312,6 @@ macro_rules! fn_walk {
 ///     $( $visit:ident($ty:ty $(, $extra:ident: $extra_ty:ty)?) => $walk:ident; )*
 /// ) => ...
 /// ```
-#[macro_export]
 macro_rules! for_each_ast_visit_hook {
     ($Visitor:ident$(<$lt:lifetime>)?
         $macro:ident!
@@ -382,8 +381,8 @@ macro_rules! for_each_ast_visit_hook {
         );
     };
 }
+pub(crate) use for_each_ast_visit_hook;
 
-#[macro_export]
 macro_rules! common_visitor_and_walkers {
     ($(($mut: ident))? $Visitor:ident$(<$lt:lifetime>)?) => {
         $(${ignore($lt)}
@@ -637,7 +636,7 @@ macro_rules! common_visitor_and_walkers {
                 Self::Result::output()
             }
 
-            crate::for_each_ast_visit_hook!($Visitor$(<$lt>)? fn_visit!);
+            crate::visit::for_each_ast_visit_hook!($Visitor$(<$lt>)? fn_visit!);
 
             // We want `Visitor` to take the `NodeId` by value.
             fn visit_id(&mut self, _id: $(&$mut)? NodeId) -> Self::Result {
@@ -763,7 +762,7 @@ macro_rules! common_visitor_and_walkers {
             )?
         }
 
-        crate::for_each_ast_visit_hook!($Visitor$(<$lt>)? impl_visitable_visit!);
+        crate::visit::for_each_ast_visit_hook!($Visitor$(<$lt>)? impl_visitable_visit!);
 
         impl_visitable!(|&$($lt)? $($mut)? self: Ident, visitor: &mut V| {
             visitor.visit_ident(self)
@@ -1135,9 +1134,10 @@ macro_rules! common_visitor_and_walkers {
             V::Result::output()
         });
 
-        crate::for_each_ast_visit_hook!($Visitor$(<$lt>)? fn_walk!);
+        crate::visit::for_each_ast_visit_hook!($Visitor$(<$lt>)? fn_walk!);
     };
 }
+pub(crate) use common_visitor_and_walkers;
 
 common_visitor_and_walkers!(Visitor<'a>);
 
