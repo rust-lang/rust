@@ -1853,7 +1853,7 @@ impl PrimitiveType {
             Char => sym::char,
             Array => sym::array,
             Pat => sym::pat,
-            FieldOf => sym::field_of,
+            FieldOf => kw::FieldOf,
             Slice => sym::slice,
             Tuple => sym::tuple,
             Unit => sym::unit,
