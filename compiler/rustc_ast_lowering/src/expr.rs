@@ -172,7 +172,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 // Merge attributes into the inner expression.
                 if !e.attrs.is_empty() {
-                    let old_attrs = self.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
+                    let old_attrs =
+                        self.curr_owner.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
                     let new_attrs = self
                         .lower_attrs_vec(&e.attrs, e.span, ex.hir_id, Target::from_expr(e))
                         .into_iter()
@@ -181,7 +182,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if new_attrs.is_empty() {
                         return ex;
                     }
-                    self.attrs.insert(ex.hir_id.local_id, new_attrs);
+                    self.curr_owner.attrs.insert(ex.hir_id.local_id, new_attrs);
                 }
                 return ex;
             }
@@ -884,7 +885,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// `inner_hir_id` in case the `async_fn_track_caller` feature is enabled.
     pub(super) fn maybe_forward_track_caller(&mut self, outer_hir_id: HirId, inner_hir_id: HirId) {
         if self.tcx.features().async_fn_track_caller()
-            && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
+            && let Some(attrs) = self.curr_owner.attrs.get(&outer_hir_id.local_id)
             && let Some(t) = attrs.iter().find(|a| {
                 matches!(
                     a,
@@ -892,7 +893,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             })
         {
-            self.attrs.insert(inner_hir_id.local_id, std::slice::from_ref(t));
+            self.curr_owner.attrs.insert(inner_hir_id.local_id, std::slice::from_ref(t));
         }
     }
 
@@ -1505,16 +1506,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         dest_hir_id: hir::HirId,
     ) -> Option<Label> {
         let label = opt_label?;
-        self.ident_and_label_to_local_id.insert(dest_id, dest_hir_id.local_id);
+        self.curr_owner.ident_and_label_to_local_id.insert(dest_id, dest_hir_id.local_id);
         Some(Label { ident: self.lower_ident(label.ident) })
     }
 
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         let target_id = match destination {
             Some((id, _)) => {
-                if let Some(loop_id) = self.owner.get_label_res(id) {
-                    let local_id = self.ident_and_label_to_local_id[&loop_id];
-                    let loop_hir_id = HirId { owner: self.current_hir_id_owner, local_id };
+                if let Some(loop_id) = self.curr_owner.owner.get_label_res(id) {
+                    let local_id = self.curr_owner.ident_and_label_to_local_id[&loop_id];
+                    let loop_hir_id = HirId { owner: self.curr_owner.owner_id, local_id };
                     Ok(loop_hir_id)
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
