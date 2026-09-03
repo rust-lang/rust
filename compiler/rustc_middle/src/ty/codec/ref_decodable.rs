@@ -22,6 +22,9 @@ use crate::{mir, traits};
 ///
 /// Implementations of this trait will typically allocate into an arena or interner,
 /// e.g. see `impl_ref_decodable_into_arena!` in [`rustc_middle::arena`].
+#[diagnostic::on_unimplemented(
+    note = "consider adding `{Self}` to the list in `rustc_middle::arena::impl_ref_decodable_into_arena!`"
+)]
 pub trait RefDecodable<'tcx, D: TyDecoder<'tcx>>: PointeeSized {
     fn decode(d: &mut D) -> &'tcx Self;
 }
