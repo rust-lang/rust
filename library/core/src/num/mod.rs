@@ -1612,6 +1612,7 @@ macro_rules! from_str_int_impl {
             /// also represent an error.
             ///
             /// # See also
+            ///
             /// For parsing numbers in other bases, such as binary or hexadecimal,
             /// see [`from_str_radix`][Self::from_str_radix].
             ///
@@ -1661,6 +1662,7 @@ macro_rules! from_str_int_impl {
             /// This function panics if `radix` is not in the range from 2 to 36.
             ///
             /// # See also
+            ///
             /// If the string to be parsed is in base 10 (decimal),
             /// [`from_str`] or [`str::parse`] can also be used.
             ///
@@ -1699,6 +1701,11 @@ macro_rules! from_str_int_impl {
             /// sign followed by only digits. Leading and trailing non-digit characters (including
             /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
             /// also represent an error.
+            ///
+            /// # See also
+            ///
+            /// For parsing numbers in other bases, such as binary or hexadecimal,
+            /// see [`from_ascii_bytes_radix`][Self::from_ascii_bytes_radix].
             ///
             /// # Examples
             ///
@@ -1747,6 +1754,14 @@ macro_rules! from_str_int_impl {
             /// # Panics
             ///
             /// This function panics if `radix` is not in the range from 2 to 36.
+            ///
+            /// # See also
+            ///
+            /// If the characters to be parsed is in base 10 (decimal),
+            /// [`from_ascii_bytes`] can also be used.
+            ///
+            // FIXME(#122566): This HTML link work around a rustdoc-json test failure.
+            /// [`from_ascii_bytes`]: #method.from_ascii_bytes
             ///
             /// # Examples
             ///
