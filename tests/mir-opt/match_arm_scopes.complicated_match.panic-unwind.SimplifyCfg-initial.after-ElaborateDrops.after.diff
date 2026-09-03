@@ -134,8 +134,8 @@
 +     bb10: {
           StorageDead(_10);
           StorageDead(_9);
--         FakeRead(ForMatchGuard, _3);
 -         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForMatchGuard, _3);
 -         FakeRead(ForGuardBinding, _6);
 -         FakeRead(ForGuardBinding, _8);
           StorageLive(_5);
@@ -150,6 +150,8 @@
 +     bb11: {
           StorageDead(_10);
           StorageDead(_9);
+-         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForMatchGuard, _3);
           StorageDead(_8);
           StorageDead(_6);
 -         falseEdge -> [real: bb3, imaginary: bb3];
@@ -176,8 +178,8 @@
 +     bb14: {
           StorageDead(_13);
           StorageDead(_12);
--         FakeRead(ForMatchGuard, _3);
 -         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForMatchGuard, _3);
 -         FakeRead(ForGuardBinding, _6);
 -         FakeRead(ForGuardBinding, _8);
           StorageLive(_5);
@@ -192,6 +194,8 @@
 +     bb15: {
           StorageDead(_13);
           StorageDead(_12);
+-         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForMatchGuard, _3);
           StorageDead(_8);
           StorageDead(_6);
 -         falseEdge -> [real: bb1, imaginary: bb1];
@@ -230,6 +234,8 @@
       }
   
 -     bb23: {
+-         FakeRead(ForMatchGuard, _4);
+-         FakeRead(ForMatchGuard, _3);
 +     bb20: {
           StorageDead(_8);
           StorageDead(_6);

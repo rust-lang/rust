@@ -1,7 +1,5 @@
-//! Test that it's fine for a match guard to mutate matched-on places within the scrutinee as long
-//! as it unconditionally diverges thereafter. See `divergent-guard-unconditional-tail-call.rs` for
-//! the case of diverging via an explicit tail call.
-//@ check-pass
+//! It's an error to mutate a matched-on place in a guard, even if the guard unconditionally
+//! diverges thereafter. See `divergent-guard-unconditional-tail-call.rs` for explicit tail calls.
 
 fn main() {
     let mut x: Option<&u64> = Some(&7);
@@ -10,15 +8,21 @@ fn main() {
     // from the guards, so nothing is preventing the mutation.
     match a[0] {
         b if { a = &[]; return } => {}
+        //~^ ERROR: cannot assign `a` in match guard
         _ => {}
     }
     loop {
         match x {
             Some(&y) if { x = None; return } => {}
+            //~^ ERROR: cannot assign `x` in match guard
             Some(&y) if true || { x = None; return } => {}
+            //~^ ERROR: cannot assign `x` in match guard
             Some(&y) if { x = None; panic!() } => {}
+            //~^ ERROR: cannot assign `x` in match guard
             Some(&y) if { x = None; break } => {}
+            //~^ ERROR: cannot assign `x` in match guard
             Some(&y) if { x = None; continue } => {}
+            //~^ ERROR: cannot assign `x` in match guard
 
             _ => {},
         }
@@ -34,10 +38,11 @@ fn discovered_use_case() -> Option<String> {
     let non_copy = None;
     match &non_copy {
         // This guard requires that the actual borrow of `non_copy` in the scrutinee outlives the
-        // fake borrow temporary for the scrutinee place. If the fake borrow temporary was live at
-        // the end of the divergent path in the guard, the real borrow would consequently be live
-        // there too, preventing `non_copy` from being moved.
+        // fake borrow temporary for the scrutinee place. Since the fake borrow temporary is live at
+        // the end of the divergent path in the guard, the real borrow consequently is live there
+        // too, preventing `non_copy` from being moved.
         Some(_) if return non_copy => None,
+        //~^ ERROR: cannot move out of `non_copy` because it is borrowed
 
         _ => None,
     }
