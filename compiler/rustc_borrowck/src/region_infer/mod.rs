@@ -362,8 +362,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sccs_info(infcx, &constraint_sccs);
         }
 
-        let mut scc_values =
-            RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
+        let mut scc_values = RegionValues::new(
+            location_map,
+            constraint_sccs.num_sccs(),
+            universal_regions.len(),
+            placeholder_indices,
+        );
 
         // Initializes the region variables with their initial live points.
         for (region, definition) in definitions.iter_enumerated() {
