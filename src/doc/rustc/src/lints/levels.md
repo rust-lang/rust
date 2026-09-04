@@ -104,7 +104,7 @@ level is capped via cap-lints.
 ## deny
 
 A 'deny' lint produces an error if you violate it. For example, this code
-runs into the `exceeding_bitshifts` lint.
+runs into the `arithmetic_overflow` lint.
 
 ```rust,no_run
 fn main() {
@@ -114,13 +114,13 @@ fn main() {
 
 ```bash
 $ rustc main.rs
-error: bitshift exceeds the type's number of bits
- --> main.rs:2:13
+error: this arithmetic operation will overflow
+ --> main.rs:2:5
   |
 2 |     100u8 << 10;
-  |     ^^^^^^^^^^^
+  |     ^^^^^^^^^^^ attempt to shift left by `10_i32`, which would overflow
   |
-  = note: `#[deny(exceeding_bitshifts)]` on by default
+  = note: `#[deny(arithmetic_overflow)]` on by default
 ```
 
 What's the difference between an error from a lint and a regular old error?
