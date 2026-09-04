@@ -636,6 +636,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::operators::MODULO_ARITHMETIC_INFO,
     crate::operators::MODULO_ONE_INFO,
     crate::operators::NEEDLESS_BITWISE_BOOL_INFO,
+    crate::operators::NEW_INSTEAD_OF_CLEAR_INFO,
     crate::operators::OP_REF_INFO,
     crate::operators::REDUNDANT_COMPARISONS_INFO,
     crate::operators::SELF_ASSIGNMENT_INFO,

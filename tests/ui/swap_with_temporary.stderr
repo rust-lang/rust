@@ -1,11 +1,11 @@
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:22:5
+  --> tests/ui/swap_with_temporary.rs:23:5
    |
 LL |     swap(&mut func(), &mut y);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `y = func()`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:22:15
+  --> tests/ui/swap_with_temporary.rs:23:15
    |
 LL |     swap(&mut func(), &mut y);
    |               ^^^^^^
@@ -13,121 +13,121 @@ LL |     swap(&mut func(), &mut y);
    = help: to override `-D warnings` add `#[allow(clippy::swap_with_temporary)]`
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:25:5
+  --> tests/ui/swap_with_temporary.rs:26:5
    |
 LL |     swap(&mut x, &mut func());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `x = func()`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:25:23
+  --> tests/ui/swap_with_temporary.rs:26:23
    |
 LL |     swap(&mut x, &mut func());
    |                       ^^^^^^
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:28:5
+  --> tests/ui/swap_with_temporary.rs:29:5
    |
 LL |     swap(z, &mut func());
    |     ^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `*z = func()`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:28:18
+  --> tests/ui/swap_with_temporary.rs:29:18
    |
 LL |     swap(z, &mut func());
    |                  ^^^^^^
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:36:5
+  --> tests/ui/swap_with_temporary.rs:37:5
    |
 LL |     swap(&mut func(), z);
    |     ^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `*z = func()`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:36:15
+  --> tests/ui/swap_with_temporary.rs:37:15
    |
 LL |     swap(&mut func(), z);
    |               ^^^^^^
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:53:5
+  --> tests/ui/swap_with_temporary.rs:54:5
    |
 LL |     swap(&mut mac!(funcall func), z);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `*z = mac!(funcall func)`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:53:15
+  --> tests/ui/swap_with_temporary.rs:54:15
    |
 LL |     swap(&mut mac!(funcall func), z);
    |               ^^^^^^^^^^^^^^^^^^
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:55:5
+  --> tests/ui/swap_with_temporary.rs:56:5
    |
 LL |     swap(&mut mac!(funcall func), mac!(ident z));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `*mac!(ident z) = mac!(funcall func)`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:55:15
+  --> tests/ui/swap_with_temporary.rs:56:15
    |
 LL |     swap(&mut mac!(funcall func), mac!(ident z));
    |               ^^^^^^^^^^^^^^^^^^
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:57:5
+  --> tests/ui/swap_with_temporary.rs:58:5
    |
 LL |     swap(mac!(ident z), &mut mac!(funcall func));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `*mac!(ident z) = mac!(funcall func)`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:57:30
+  --> tests/ui/swap_with_temporary.rs:58:30
    |
 LL |     swap(mac!(ident z), &mut mac!(funcall func));
    |                              ^^^^^^^^^^^^^^^^^^
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:59:5
+  --> tests/ui/swap_with_temporary.rs:60:5
    |
 LL |     swap(mac!(refmut y), &mut func());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `*mac!(refmut y) = func()`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:59:31
+  --> tests/ui/swap_with_temporary.rs:60:31
    |
 LL |     swap(mac!(refmut y), &mut func());
    |                               ^^^^^^
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:92:13
+  --> tests/ui/swap_with_temporary.rs:93:13
    |
 LL |             swap(&mut vec![42], &mut self.thing.lock().unwrap());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `*self.thing.lock().unwrap() = vec![42]`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:92:23
+  --> tests/ui/swap_with_temporary.rs:93:23
    |
 LL |             swap(&mut vec![42], &mut self.thing.lock().unwrap());
    |                       ^^^^^^^^
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:100:5
+  --> tests/ui/swap_with_temporary.rs:101:5
    |
 LL |     swap(&mut ***v1, &mut vec![]);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `***v1 = vec![]`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:100:27
+  --> tests/ui/swap_with_temporary.rs:101:27
    |
 LL |     swap(&mut ***v1, &mut vec![]);
    |                           ^^^^^^
 
 error: swapping with a temporary value is inefficient
-  --> tests/ui/swap_with_temporary.rs:118:5
+  --> tests/ui/swap_with_temporary.rs:119:5
    |
 LL |     swap(&mut vec![], &mut v1.lock().unwrap());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `***v1.lock().unwrap() = vec![]`
    |
 note: this expression returns a temporary value
-  --> tests/ui/swap_with_temporary.rs:118:15
+  --> tests/ui/swap_with_temporary.rs:119:15
    |
 LL |     swap(&mut vec![], &mut v1.lock().unwrap());
    |               ^^^^^^
