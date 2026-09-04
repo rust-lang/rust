@@ -327,12 +327,16 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         item: &hir::TestBinderBody<'tcx>,
     ) -> TestBinderBody<'tcx> {
-        let foralls =
-            item.foralls.iter().map(|forall| self.lower_test_binder_forall(forall)).collect();
-        let exists =
-            item.exists.iter().map(|exists| self.lower_test_binder_exists(exists)).collect();
-        let constraints = self.lower_test_binder_constraint(&item.constraints);
-        TestBinderBody { foralls, exists, constraints }
+        let hir::TestBinderBody { foralls, exists, constraints, predicates } = item;
+        let foralls = foralls.iter().map(|forall| self.lower_test_binder_forall(forall)).collect();
+        let exists = exists.iter().map(|exists| self.lower_test_binder_exists(exists)).collect();
+        let constraints = self.lower_test_binder_constraint(&constraints);
+        let mut clauses = Default::default();
+        for predicate in *predicates {
+            clauses_of::where_predicate_clauses(self, predicate, &mut clauses);
+        }
+        let predicates = clauses.into_iter().map(|(c, span)| (c.kind(), span)).collect();
+        TestBinderBody { foralls, exists, constraints, predicates }
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -451,7 +455,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                     lhs, rhs, span,
                 ))
             }
-            hir::TestBinderConstraint::Type { lhs, rhs } => {
+            hir::TestBinderConstraint::PlaceholderOutlives { lhs, rhs } => {
                 let span = lhs.span.to(rhs.ident.span);
                 let lhs = self.lower_ty(lhs);
                 let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
@@ -460,6 +464,21 @@ impl<'tcx> ItemCtxt<'tcx> {
                 // instead, we check it when we emit the region constraint.
                 SolverRegionConstraint::new_leaf(LeafRegionConstraint::PlaceholderTyOutlives(
                     lhs, rhs, span,
+                ))
+            }
+            hir::TestBinderConstraint::AliasOutlives {
+                bound_type_constraint:
+                    hir::TestBinderBoundTypeConstraint { span, hir_id, params: _, lhs, rhs },
+            } => {
+                let bound_vars = self.tcx.late_bound_vars(*hir_id);
+                let &ty::Alias(_, lhs) = self.lower_ty(lhs).kind() else {
+                    self.dcx().span_err(lhs.span, "bound type test binder constraint must be alias (it's a AliasTyOutlivesViaEnv)");
+                    return SolverRegionConstraint::new_true();
+                };
+                let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
+                SolverRegionConstraint::new_leaf(LeafRegionConstraint::AliasTyOutlivesViaEnv(
+                    ty::Binder::bind_with_vars((lhs, rhs), bound_vars),
+                    *span,
                 ))
             }
         }
