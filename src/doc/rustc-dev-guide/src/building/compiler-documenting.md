@@ -54,8 +54,8 @@ like the standard library (std) or the compiler (rustc).
 Documentation improvements are very welcome.
 The source of `doc.rust-lang.org`
 is located in [`src/doc`] in the tree, and standard API documentation is generated
-from the source code itself (e.g. [`library/std/src/lib.rs`][std-root]). Documentation pull requests
-function in the same way as other pull requests.
+from the source code itself (e.g. [`library/std/src/lib.rs`][std-root]).
+Documentation pull requests function in the same way as other pull requests.
 
 [`src/doc`]: https://github.com/rust-lang/rust/tree/HEAD/src/doc
 [std-root]: https://github.com/rust-lang/rust/blob/HEAD/library/std/src/lib.rs#L1
