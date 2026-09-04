@@ -481,7 +481,10 @@ impl<T> [T] {
     pub const fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
         let len = self.len();
         let (b, alloc) = Box::into_raw_with_allocator(self);
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `b` is currently allocated with `alloc` and was allocated with the
+        // matching layout for an array of `T * len`, the length is equal to the capacity,
+        // and the existence of a `Box<[T]>` is proof that the first `len` elements are
+        // valid `T`s.
         unsafe { Vec::from_raw_parts_in(b as *mut T, len, len, alloc) }
     }
 
@@ -530,15 +533,21 @@ impl<T> [T] {
             // If `m > 0`, there are remaining bits up to the leftmost '1'.
             while m > 0 {
                 // `buf.extend(buf)`:
-                // ignore-tidy-undocumented-unsafe
+                // SAFETY: We're copying `len` elements after offsetting by `len`,
+                // with the previous call to `extend` ensuring that the first `len`
+                // elements are valid `T`s and the call to `with_capacity` ensuring
+                // we have `len * n` space to write the new elements.
                 unsafe {
                     ptr::copy_nonoverlapping::<T>(
                         buf.as_ptr(),
                         (buf.as_mut_ptr()).add(buf.len()),
                         buf.len(),
                     );
-                    // `buf` has capacity of `self.len() * n`.
-                    let buf_len = buf.len();
+                }
+                // `buf` has capacity of `self.len() * n`.
+                let buf_len = buf.len();
+                // SAFETY: We initialised another `buf_len` elements above.
+                unsafe {
                     buf.set_len(buf_len * 2);
                 }
 
@@ -551,7 +560,13 @@ impl<T> [T] {
         let rem_len = capacity - buf.len(); // `self.len() * rem`
         if rem_len > 0 {
             // `buf.extend(buf[0 .. rem_len])`:
-            // ignore-tidy-undocumented-unsafe
+            // SAFETY: We're copying `rem_len` elements after offsetting by `len`,
+            // with the previous `copy_nonverlapping` calls ensuring that the first `len`
+            // elements are valid `T`s and the call to `with_capacity` ensuring we have
+            // `rem_len` space to write the new elements. That is, these remaining `rem_len`
+            // elements must be preceded by more than `rem_len` previously-copied elements.
+            // Setting the length is correct since we've initialised the whole `capacity`-length
+            // space with copies of the previous `len` elements.
             unsafe {
                 // This is non-overlapping since `2^expn > rem`.
                 ptr::copy_nonoverlapping::<T>(

@@ -923,7 +923,7 @@ impl<T> Box<[T]> {
     #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `len` is exactly the capacity of this `RawVec`.
         unsafe { RawVec::with_capacity(len).into_box(len) }
     }
 
@@ -947,7 +947,7 @@ impl<T> Box<[T]> {
     #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `len` is exactly the capacity of this `RawVec`.
         unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
     }
 
@@ -981,7 +981,10 @@ impl<T> Box<[T]> {
             };
             Global.allocate(layout)?.cast()
         };
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `ptr` was just allocated with `Global` with the layout for an array of length
+        // `len`, and the layout creation would have failed if `len` overflowed an isize.
+        // `into_box` is sound to call since `len` corresponds to the length of the just-created
+        // `RawVec`.
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
 
@@ -1016,7 +1019,10 @@ impl<T> Box<[T]> {
             };
             Global.allocate_zeroed(layout)?.cast()
         };
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `ptr` was just allocated with `Global` with the layout for an array of length
+        // `len`, and the layout creation would have failed if `len` overflowed an isize.
+        // `into_box` is sound to call since `len` corresponds to the length of the just-created
+        // `RawVec`.
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
 }
@@ -1044,7 +1050,7 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `len` is exactly the capacity of this `RawVec`.
         unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
     }
 
@@ -1072,7 +1078,7 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `len` is exactly the capacity of this `RawVec`.
         unsafe { RawVec::with_capacity_zeroed_in(len, alloc).into_box(len) }
     }
 
@@ -1111,7 +1117,10 @@ impl<T, A: Allocator> Box<[T], A> {
             };
             alloc.allocate(layout)?.cast()
         };
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `ptr` was just allocated with `alloc` with the layout for an array of length
+        // `len`, and the layout creation would have failed if `len` overflowed an isize.
+        // `into_box` is sound to call since `len` corresponds to the length of the just-created
+        // `RawVec`.
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, alloc).into_box(len)) }
     }
 
@@ -1151,7 +1160,10 @@ impl<T, A: Allocator> Box<[T], A> {
             };
             alloc.allocate_zeroed(layout)?.cast()
         };
-        // ignore-tidy-undocumented-unsafe
+        // SAFETY: `ptr` was just allocated with `alloc` with the layout for an array of length
+        // `len`, and the layout creation would have failed if `len` overflowed an isize.
+        // `into_box` is sound to call since `len` corresponds to the length of the just-created
+        // `RawVec`.
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, alloc).into_box(len)) }
     }
 
@@ -2013,10 +2025,15 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
 
         let ptr = self.0;
 
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            let layout = Layout::for_value_raw(ptr.as_ptr());
-            if layout.size() != 0 {
+        // SAFETY: The construction site of the unsized box had ensured for us that the
+        // allocation was made with a valid layout (the size does not overflow an isize,
+        // possibly because the size of the type is 0).
+        let layout = unsafe { Layout::for_value_raw(ptr.as_ptr()) };
+        if layout.size() != 0 {
+            // SAFETY: Any nonzero allocation would have been created with the allocator
+            // of this box and `layout` would fit that allocation. We also are the only ones
+            // responsible for doing this deallocation and know that the pointer must be valid.
+            unsafe {
                 self.1.deallocate(From::from(ptr.cast()), layout);
             }
         }
