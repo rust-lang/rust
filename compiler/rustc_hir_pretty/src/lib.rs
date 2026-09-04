@@ -218,6 +218,9 @@ impl<'a> State<'a> {
             Node::WherePredicate(pred) => self.print_where_predicate(pred),
             Node::TestBinderForall(_) => panic!("cannot print Node::TestBinderForall"),
             Node::TestBinderExists(_) => panic!("cannot print Node::TestBinderExists"),
+            Node::TestBinderBoundTypeConstraint(_) => {
+                panic!("cannot print Node::TestBinderBoundTypeConstraint")
+            }
             Node::Synthetic => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
         }

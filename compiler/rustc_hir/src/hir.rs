@@ -4467,7 +4467,10 @@ impl FnHeader {
 pub struct TestBinderBody<'hir> {
     pub foralls: &'hir [TestBinderForall<'hir>],
     pub exists: &'hir [TestBinderExists<'hir>],
+    /// Constraints to be inserted directly into constraint storage to be proven
     pub constraints: TestBinderConstraint<'hir>,
+    /// Constraints declared using `where` syntax, used via `register_obligation`
+    pub predicates: &'hir [WherePredicate<'hir>],
 }
 
 #[derive(Debug, Clone, Copy, StableHash)]
@@ -4492,7 +4495,17 @@ pub enum TestBinderConstraint<'hir> {
     And { items: &'hir [TestBinderConstraint<'hir>] },
     Or { items: &'hir [TestBinderConstraint<'hir>] },
     Lifetime { lhs: &'hir Lifetime, rhs: &'hir Lifetime },
-    Type { lhs: &'hir Ty<'hir>, rhs: &'hir Lifetime },
+    PlaceholderOutlives { lhs: &'hir Ty<'hir>, rhs: &'hir Lifetime },
+    AliasOutlives { bound_type_constraint: &'hir TestBinderBoundTypeConstraint<'hir> },
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
+pub struct TestBinderBoundTypeConstraint<'hir> {
+    pub span: Span,
+    pub hir_id: HirId,
+    pub params: &'hir [GenericParam<'hir>],
+    pub lhs: &'hir Ty<'hir>,
+    pub rhs: &'hir Lifetime,
 }
 
 #[derive(Debug, Clone, Copy, StableHash)]
@@ -4910,6 +4923,7 @@ pub enum Node<'hir> {
     PreciseCapturingNonLifetimeArg(&'hir PreciseCapturingNonLifetimeArg),
     TestBinderForall(&'hir TestBinderForall<'hir>),
     TestBinderExists(&'hir TestBinderExists<'hir>),
+    TestBinderBoundTypeConstraint(&'hir TestBinderBoundTypeConstraint<'hir>),
     // Created by query feeding
     Synthetic,
     Err(Span),
@@ -4967,6 +4981,7 @@ impl<'hir> Node<'hir> {
             | Node::WherePredicate(..)
             | Node::TestBinderForall(..)
             | Node::TestBinderExists(..)
+            | Node::TestBinderBoundTypeConstraint(..)
             | Node::Synthetic
             | Node::Err(..) => None,
         }

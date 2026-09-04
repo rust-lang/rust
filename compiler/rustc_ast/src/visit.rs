@@ -610,6 +610,7 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_qself(QSelf);
                 fn visit_test_binder_body(TestBinderBody);
                 fn visit_test_binder_constraint(TestBinderConstraint);
+                fn visit_test_binder_bound_type_constraint(TestBinderBoundTypeConstraint);
                 fn visit_test_binder_constraints(TestBinderConstraints);
                 fn visit_test_binder_exists(TestBinderExists);
                 fn visit_test_binder_forall(TestBinderForall);
@@ -1145,6 +1146,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_qself(QSelf);
             pub fn walk_test_binder_body(TestBinderBody);
             pub fn walk_test_binder_constraint(TestBinderConstraint);
+            pub fn walk_test_binder_bound_type_constraint(TestBinderBoundTypeConstraint);
             pub fn walk_test_binder_exists(TestBinderExists);
             pub fn walk_test_binder_forall(TestBinderForall);
             pub fn walk_trait_ref(TraitRef);

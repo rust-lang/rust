@@ -352,7 +352,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | Node::ConstArgExprField(_)
             | Node::OpaqueTy(_)
             | Node::TestBinderForall(_)
-            | Node::TestBinderExists(_) => {
+            | Node::TestBinderExists(_)
+            | Node::TestBinderBoundTypeConstraint(_) => {
                 unreachable!("no sub-expr expected for {parent_node:?}")
             }
         }

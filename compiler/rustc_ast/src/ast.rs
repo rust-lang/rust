@@ -4081,6 +4081,8 @@ pub struct TestBinderBody {
     pub foralls: ThinVec<TestBinderForall>,
     pub exists: ThinVec<TestBinderExists>,
     pub constraints: Vec<TestBinderConstraint>,
+    /// These are not where clauses, but rather predicates within the body to be proven
+    pub predicates: Vec<WhereClause>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4114,11 +4116,24 @@ pub enum TestBinderConstraint {
         #[visitable(extra = LifetimeCtxt::Bound)]
         rhs: Lifetime,
     },
-    Type {
+    PlaceholderOutlives {
         lhs: Box<Ty>,
         #[visitable(extra = LifetimeCtxt::Bound)]
         rhs: Lifetime,
     },
+    AliasOutlives {
+        bound_type_constraint: TestBinderBoundTypeConstraint,
+    },
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct TestBinderBoundTypeConstraint {
+    pub span: Span,
+    pub node_id: NodeId,
+    pub params: ThinVec<GenericParam>,
+    pub lhs: Box<Ty>,
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub rhs: Lifetime,
 }
 
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.
