@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><title>Polonius MIR dump</title></head>
+<body>
+
+<!-- Section 1: the NLL + Polonius MIR. -->
+<div>
+    Raw MIR dump
+    <pre><code>$SECTION_MIR</code></pre>
+</div>
+
+<!-- Section 2: mermaid visualization of the polonius constraint graph. -->
+<div>
+    Polonius constraint graph
+    <pre class='mermaid'>$SECTION_POLONIUS_CONSTRAINTS</pre>
+</div>
+
+<!-- Section 3: mermaid visualization of the CFG. -->
+<div>
+    Control-flow graph
+    <pre class='mermaid'>$SECTION_CFG</pre>
+</div>
+
+<!-- Section 4: mermaid visualization of the NLL region graph. -->
+<div>
+    NLL regions
+    <pre class='mermaid'>$SECTION_NLL_CONSTRAINTS</pre>
+</div>
+
+<!-- Section 5: mermaid visualization of the NLL SCC graph. -->
+<div>
+    NLL SCCs
+    <pre class='mermaid'>$SECTION_NLL_SCCS</pre>
+</div>
+
+<script src='https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js'></script>
+$SECTION_INITIALIZATION
+</body>
+</html>

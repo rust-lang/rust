@@ -15,6 +15,10 @@ use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
 
+/// The polonius MIR dump template: a regular HTML file for easy editing, with special dummy
+/// sections to be replaced by real contents.
+const TEMPLATE: &str = include_str!("./dump/polonius-mir-dump.template.html");
+
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
 pub(crate) fn dump_polonius_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
@@ -114,72 +118,66 @@ fn emit_polonius_dump<'tcx>(
     localized_outlives_constraints: &[LocalizedOutlivesConstraint],
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
-    // Prepare the HTML dump file prologue.
-    writeln!(out, "<!DOCTYPE html>")?;
-    writeln!(out, "<html>")?;
-    writeln!(out, "<head><title>Polonius MIR dump</title></head>")?;
-    writeln!(out, "<body>")?;
+    let mut edge_count = 0;
 
-    // Section 1: the NLL + Polonius MIR.
-    writeln!(out, "<div>")?;
-    writeln!(out, "Raw MIR dump")?;
-    writeln!(out, "<pre><code>")?;
-    emit_html_mir(dumper, body, out)?;
-    writeln!(out, "</code></pre>")?;
-    writeln!(out, "</div>")?;
+    // We replace the dummy $SECTION tokens from the HTML polonius dump template, and emit the
+    // result into the given writer.
+    for chunk in TEMPLATE.split("$SECTION") {
+        match chunk.strip_prefix("_") {
+            None => {
+                // We're at the beginning of the template: this is the prologue to emit as-is.
+                writeln!(out, "{}", chunk)?;
+            }
+            Some(section) => {
+                // This is the start of a prefixed section, we look for its identifier.
+                let dummy_section_end = section
+                    .find("<")
+                    .expect("the template section end boundary needs to be present");
+                let section_identifier = section[..dummy_section_end].trim();
 
-    // Section 2: mermaid visualization of the polonius constraint graph.
-    writeln!(out, "<div>")?;
-    writeln!(out, "Polonius constraint graph")?;
-    writeln!(out, "<pre class='mermaid'>")?;
-    let edge_count = emit_mermaid_constraint_graph(
-        borrow_set,
-        regioncx.liveness_constraints(),
-        &localized_outlives_constraints,
-        out,
-    )?;
-    writeln!(out, "</pre>")?;
-    writeln!(out, "</div>")?;
+                // Emit the real section instead of the dummy token.
+                match section_identifier {
+                    "MIR" => {
+                        emit_html_mir(dumper, body, out)?;
+                    }
+                    "POLONIUS_CONSTRAINTS" => {
+                        edge_count = emit_mermaid_constraint_graph(
+                            borrow_set,
+                            regioncx.liveness_constraints(),
+                            &localized_outlives_constraints,
+                            out,
+                        )?;
+                    }
+                    "CFG" => {
+                        emit_mermaid_cfg(body, out)?;
+                    }
+                    "NLL_CONSTRAINTS" => {
+                        emit_mermaid_nll_regions(dumper.tcx(), regioncx, out)?;
+                    }
+                    "NLL_SCCS" => {
+                        emit_mermaid_nll_sccs(dumper.tcx(), regioncx, out)?;
+                    }
+                    "INITIALIZATION" => {
+                        writeln!(out, "<script>")?;
+                        writeln!(
+                            out,
+                            "mermaid.initialize({{ startOnLoad: false, maxEdges: {} }});",
+                            edge_count.max(100),
+                        )?;
+                        writeln!(out, "mermaid.run({{ querySelector: '.mermaid' }})")?;
+                        writeln!(out, "</script>")?;
+                    }
 
-    // Section 3: mermaid visualization of the CFG.
-    writeln!(out, "<div>")?;
-    writeln!(out, "Control-flow graph")?;
-    writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_cfg(body, out)?;
-    writeln!(out, "</pre>")?;
-    writeln!(out, "</div>")?;
+                    _ => {
+                        unreachable!("unexpected dummy section identifier {:?}", section_identifier)
+                    }
+                }
 
-    // Section 4: mermaid visualization of the NLL region graph.
-    writeln!(out, "<div>")?;
-    writeln!(out, "NLL regions")?;
-    writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_regions(dumper.tcx(), regioncx, out)?;
-    writeln!(out, "</pre>")?;
-    writeln!(out, "</div>")?;
-
-    // Section 5: mermaid visualization of the NLL SCC graph.
-    writeln!(out, "<div>")?;
-    writeln!(out, "NLL SCCs")?;
-    writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_sccs(dumper.tcx(), regioncx, out)?;
-    writeln!(out, "</pre>")?;
-    writeln!(out, "</div>")?;
-
-    // Finalize the dump with the HTML epilogue.
-    writeln!(
-        out,
-        "<script src='https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js'></script>"
-    )?;
-    writeln!(out, "<script>")?;
-    writeln!(
-        out,
-        "mermaid.initialize({{ startOnLoad: false, maxEdges: {} }});",
-        edge_count.max(100),
-    )?;
-    writeln!(out, "mermaid.run({{ querySelector: '.mermaid' }})")?;
-    writeln!(out, "</script>")?;
-    writeln!(out, "</body>")?;
-    writeln!(out, "</html>")?;
+                // And finally, emit the contents that followed the dummy token.
+                writeln!(out, "{}", &section[dummy_section_end..])?;
+            }
+        }
+    }
 
     Ok(())
 }
