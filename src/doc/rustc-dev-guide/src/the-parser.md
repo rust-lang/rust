@@ -14,7 +14,7 @@ This happens in two stages: Lexing and Parsing.
 
   2. _Parsing_ takes streams of tokens and turns them into a structured form
   which is easier for the compiler to work with, usually called an [*Abstract
-  Syntax Tree* (AST)][ast] .
+  Syntax Tree* (AST)][ast].
 
 ## The AST
 
@@ -63,12 +63,12 @@ Expansion itself may require parsing the output of a macro, which may reveal mor
 Code for lexical analysis is split between two crates:
 
 - [`rustc_lexer`] crate is responsible for breaking a `&str` into chunks constituting tokens.
-  Although it is popular to implement lexers as generated
-  finite state machines, the lexer in [`rustc_lexer`] is hand-written.
+  Although it is popular to implement lexers as generated finite state machines,
+  the lexer in [`rustc_lexer`] is hand-written.
 
 - [`Lexer`] integrates [`rustc_lexer`] with data structures specific to `rustc`.
-  Specifically, it adds `Span` information to tokens returned by
-  [`rustc_lexer`] and interns identifiers.
+  Specifically,
+  it adds `Span` information to tokens returned by [`rustc_lexer`] and interns identifiers.
 
 [`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/struct.Crate.html
 [`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html
