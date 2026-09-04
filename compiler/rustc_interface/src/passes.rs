@@ -30,6 +30,7 @@ use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_sto
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
+use rustc_middle::middle::resolve::{ResolverAstLowering, ResolverGlobalCtxt};
 use rustc_middle::ty::{self, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::lexer::StripTokens;
@@ -792,11 +793,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (
-    &'tcx Steal<ty::ResolverAstLowering<'tcx>>,
-    &'tcx Steal<ast::Crate>,
-    &'tcx ty::ResolverGlobalCtxt,
-) {
+) -> (&'tcx Steal<ResolverAstLowering<'tcx>>, &'tcx Steal<ast::Crate>, &'tcx ResolverGlobalCtxt) {
     let arenas = WorkerLocal::new(|_| Resolver::arenas());
     let _ = tcx.registered_attr_tools(()); // Uses `crate_for_resolver`.
     let _ = tcx.registered_lint_tools(()); // Uses `crate_for_resolver`.

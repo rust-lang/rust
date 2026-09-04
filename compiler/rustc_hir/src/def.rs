@@ -4,12 +4,11 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::HirId;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::def_id::DefId;
 use rustc_span::hygiene::MacroKind;
 
 use crate as hir;
@@ -587,63 +586,6 @@ impl<Id> IntoDiagArg for Res<Id> {
     }
 }
 
-/// The result of resolving a path before lowering to HIR,
-/// with "module" segments resolved and associated item
-/// segments deferred to type checking.
-/// `base_res` is the resolution of the resolved part of the
-/// path, `unresolved_segments` is the number of unresolved
-/// segments.
-///
-/// ```text
-/// module::Type::AssocX::AssocY::MethodOrAssocType
-/// ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/// base_res      unresolved_segments = 3
-///
-/// <T as Trait>::AssocX::AssocY::MethodOrAssocType
-///       ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
-///       base_res        unresolved_segments = 2
-/// ```
-#[derive(Copy, Clone, Debug)]
-pub struct PartialRes {
-    base_res: Res<NodeId>,
-    unresolved_segments: usize,
-}
-
-impl PartialRes {
-    #[inline]
-    pub fn new(base_res: Res<NodeId>) -> Self {
-        PartialRes { base_res, unresolved_segments: 0 }
-    }
-
-    #[inline]
-    pub fn with_unresolved_segments(base_res: Res<NodeId>, mut unresolved_segments: usize) -> Self {
-        if base_res == Res::Err {
-            unresolved_segments = 0
-        }
-        PartialRes { base_res, unresolved_segments }
-    }
-
-    #[inline]
-    pub fn base_res(&self) -> Res<NodeId> {
-        self.base_res
-    }
-
-    #[inline]
-    pub fn unresolved_segments(&self) -> usize {
-        self.unresolved_segments
-    }
-
-    #[inline]
-    pub fn full_res(&self) -> Option<Res<NodeId>> {
-        (self.unresolved_segments == 0).then_some(self.base_res)
-    }
-
-    #[inline]
-    pub fn expect_full_res(&self) -> Res<NodeId> {
-        self.full_res().expect("unexpected unresolved segments")
-    }
-}
-
 /// Different kinds of symbols can coexist even if they share the same textual name.
 /// Therefore, they each have a separate universe (known as a "namespace").
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
@@ -933,43 +875,3 @@ impl<Id> Res<Id> {
         matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::SelfCtor(..))
     }
 }
-
-/// Resolution for a lifetime appearing in a type.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum LifetimeRes {
-    /// Successfully linked the lifetime to a generic parameter.
-    Param {
-        /// Id of the generic parameter that introduced it.
-        param: LocalDefId,
-        /// Id of the introducing place. That can be:
-        /// - an item's id, for the item's generic parameters;
-        /// - a TraitRef's ref_id, identifying the `for<...>` binder;
-        /// - a FnPtr type's id.
-        ///
-        /// This information is used for impl-trait lifetime captures, to know when to or not to
-        /// capture any given lifetime.
-        binder: NodeId,
-    },
-    /// Created a generic parameter for an anonymous lifetime.
-    Fresh {
-        /// Id of the generic parameter that introduced it.
-        ///
-        /// Creating the associated `LocalDefId` is the responsibility of lowering.
-        param: NodeId,
-        /// Kind of elided lifetime
-        kind: hir::MissingLifetimeKind,
-    },
-    /// This variant is used for anonymous lifetimes that we did not resolve during
-    /// late resolution. Those lifetimes will be inferred by typechecking.
-    Infer,
-    /// `'static` lifetime.
-    Static,
-    /// Resolution failure.
-    Error(rustc_span::ErrorGuaranteed),
-    /// HACK: This is used to recover the NodeId of an elided lifetime.
-    ElidedAnchor { start: NodeId, end: NodeId },
-}
-
-// FxIndexMap is necessary because its data ends up in .rmeta files,
-// so its iteration order must be consistent. See #159677 for context.
-pub type DocLinkResMap = FxIndexMap<(Symbol, Namespace), Option<Res<NodeId>>>;
