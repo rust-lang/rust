@@ -1,5 +1,5 @@
 error: `generic_const_args` requires -Znext-solver=globally to be enabled
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:10:5
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:9:5
    |
 LL |     generic_const_args,
    |     ^^^^^^^^^^^^^^^^^^

@@ -174,7 +174,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             }
             DefKind::Const { .. }
                 if !tcx.generics_of(item_def_id).own_requires_monomorphization()
-                    && !tcx.is_type_const(item_def_id) =>
+                    && tcx.const_of_item(item_def_id).is_none() =>
             {
                 // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
                 //                             seems to be fine for now. Revisit this!
