@@ -125,7 +125,7 @@ fn create_wrapper_function(
         ty,
     );
 
-    llfn_attrs_from_instance(cx, tcx, llfn, attrs, None);
+    llfn_attrs_from_instance(cx, tcx, llfn, attrs, None, None);
 
     let no_return = if no_return {
         // -> ! DIFlagNoReturn

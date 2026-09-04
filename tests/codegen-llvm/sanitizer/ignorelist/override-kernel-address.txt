@@ -1,0 +1,6 @@
+[address]
+fun:test_address_not_ignored
+
+[kernel-address]
+fun:test_kernel_ignored
+fun:test_kernel_override=sanitize
