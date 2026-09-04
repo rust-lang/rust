@@ -3,6 +3,7 @@
 use rustc_abi::{BackendRepr, CanonAbi, ExternAbi, RegKind, X86Call};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
+use rustc_middle::ty::layout::{FnAbiRequest, codegen_handle_fn_abi_err};
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -165,12 +166,19 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         // LLVM intrinsics
         return;
     }
-    let Ok(abi) = tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
-    else {
-        // An error will be reported during codegen if we cannot determine the ABI of this
-        // function.
-        tcx.dcx().delayed_bug("ABI computation failure should lead to compilation failure");
-        return;
+    let abi = match tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
+    {
+        Ok(abi) => abi,
+        Err(err) => {
+            codegen_handle_fn_abi_err(
+                tcx,
+                *err,
+                tcx.def_span(instance.def_id()),
+                FnAbiRequest::OfInstance { instance, extra_args: ty::List::empty() },
+            );
+            // ABI failed to compute; this will not get through codegen.
+            return;
+        }
     };
     // Unlike the call-site check, we do also check "Rust" ABI functions here. This can actually
     // trigger due to scalable vectors being require for the "Rust" ABI for some types.
@@ -206,7 +214,20 @@ fn check_call_site_abi<'tcx>(
     let typing_env = ty::TypingEnv::fully_monomorphized();
     let callee_abi = match *callee.kind() {
         ty::FnPtr(..) => {
-            tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((callee.fn_sig(tcx), ty::List::empty())))
+            let sig = callee.fn_sig(tcx);
+            match tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((sig, ty::List::empty()))) {
+                Ok(callee_abi) => callee_abi,
+                Err(err) => {
+                    codegen_handle_fn_abi_err(
+                        tcx,
+                        *err,
+                        loc().0,
+                        FnAbiRequest::OfFnPtr { sig, extra_args: ty::List::empty() },
+                    );
+                    // ABI failed to compute; this will not get through codegen.
+                    return;
+                }
+            }
         }
         ty::FnDef(def_id, args) => {
             // Intrinsics are handled separately by the compiler.
@@ -224,17 +245,25 @@ fn check_call_site_abi<'tcx>(
                 // LLVM intrinsics don't have an ABI, so there is nothing to check.
                 return;
             }
-            tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
+            match tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty()))) {
+                Ok(callee_abi) => callee_abi,
+                Err(err) => {
+                    codegen_handle_fn_abi_err(
+                        tcx,
+                        *err,
+                        loc().0,
+                        FnAbiRequest::OfInstance { instance, extra_args: ty::List::empty() },
+                    );
+                    // ABI failed to compute; this will not get through codegen.
+                    return;
+                }
+            }
         }
         _ => {
             panic!("Invalid function call");
         }
     };
 
-    let Ok(callee_abi) = callee_abi else {
-        // ABI failed to compute; this will not get through codegen.
-        return;
-    };
     do_check_unsized_params(tcx, callee_abi, /*is_call*/ true, loc);
     do_check_simd_vector_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, loc);
 }

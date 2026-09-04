@@ -73,13 +73,6 @@ impl EmissionGuarantee for FatalAbort {
     }
 }
 
-impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
-    fn emit_producing_guarantee(diag: Diag<'_, Self>) -> Self::EmitResult {
-        diag.emit_producing_nothing();
-        rustc_span::fatal_error::FatalError
-    }
-}
-
 /// Trait implemented by error types. This is rarely implemented manually. Instead, use
 /// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
 ///

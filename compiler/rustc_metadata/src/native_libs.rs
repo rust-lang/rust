@@ -274,7 +274,8 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(diagnostics::RawDylibUnsupportedAbi { span });
+                    self.tcx.dcx().emit_err(diagnostics::RawDylibUnsupportedAbi { span });
+                    return None;
                 }
             }
         } else {
@@ -283,7 +284,8 @@ impl<'tcx> Collector<'tcx> {
                     DllCallingConvention::C
                 }
                 _ => {
-                    self.tcx.dcx().emit_fatal(diagnostics::RawDylibUnsupportedAbi { span });
+                    self.tcx.dcx().emit_err(diagnostics::RawDylibUnsupportedAbi { span });
+                    return None;
                 }
             }
         };
