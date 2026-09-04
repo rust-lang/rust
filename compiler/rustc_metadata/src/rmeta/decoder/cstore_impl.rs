@@ -3,6 +3,7 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_crate_store::{CrateStore, ExternCrate};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -11,7 +12,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
 use rustc_middle::metadata::{AmbigModChild, ModChild};
-use rustc_middle::middle::exported_symbols::ExportedSymbol;
+use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::queries::ExternProviders;
 use rustc_middle::query::LocalCrate;
@@ -23,10 +24,12 @@ use rustc_session::StableCrateId;
 use rustc_span::def_id::ModId;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Span, Symbol, kw};
+use rustc_structures::CrateType;
 
 use super::{Decodable, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
 use crate::rmeta::AttrFlags;
+use crate::rmeta::decoder::TraitImplsMap;
 use crate::rmeta::table::IsDefault;
 use crate::{eii, foreign_modules, native_libs};
 
@@ -147,12 +150,23 @@ macro_rules! provide_one {
             let ($def_id, $other) = def_id_arg.into_args();
             assert!(!$def_id.is_local());
 
-            // External query providers call `crate_hash` in order to register a dependency
-            // on the crate metadata. The exception is `crate_hash` itself, which obviously
+            // External query providers call `public_api_hash` in order to register a dependency
+            // on the crate metadata. The exception is `public_api_hash` itself, which obviously
             // doesn't need to do this (and can't, as it would cause a query cycle).
+            //
+            // The `crate_hash` query must not depend on public_api_hash, since it might change when
+            // the `public_api_hash` does not change.
             use rustc_middle::dep_graph::DepKind;
-            if DepKind::$name != DepKind::crate_hash && $tcx.dep_graph.is_fully_enabled() {
-                $tcx.ensure_ok().crate_hash($def_id.krate);
+            match DepKind::$name {
+                DepKind::public_api_hash | DepKind::crate_hash => (),
+                DepKind::exported_generic_symbols | DepKind::exported_non_generic_symbols => {
+                    // FIXME should this be some kind of linking_hash? These should only be read
+                    // when we are doing linking
+                    $tcx.ensure_ok().crate_hash($def_id.krate);
+                }
+                _ => {
+                    $tcx.ensure_ok().public_api_hash($def_id.krate);
+                }
             }
 
             let cstore = CStore::from_tcx($tcx);
@@ -182,11 +196,13 @@ macro_rules! provide {
 // small trait to work around different signature queries all being defined via
 // the macro above.
 trait IntoArgs {
+    type This;
     type Other;
-    fn into_args(self) -> (DefId, Self::Other);
+    fn into_args(self) -> (Self::This, Self::Other);
 }
 
 impl IntoArgs for DefId {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self, ())
@@ -194,13 +210,23 @@ impl IntoArgs for DefId {
 }
 
 impl IntoArgs for ModId {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self.to_def_id(), ())
     }
 }
 
+impl IntoArgs for ExpnId {
+    type This = ExpnId;
+    type Other = ();
+    fn into_args(self) -> (ExpnId, ()) {
+        (self, ())
+    }
+}
+
 impl IntoArgs for CrateNum {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self.as_def_id(), ())
@@ -208,6 +234,7 @@ impl IntoArgs for CrateNum {
 }
 
 impl IntoArgs for (CrateNum, DefId) {
+    type This = DefId;
     type Other = DefId;
     fn into_args(self) -> (DefId, DefId) {
         (self.0.as_def_id(), self.1)
@@ -215,6 +242,7 @@ impl IntoArgs for (CrateNum, DefId) {
 }
 
 impl<'tcx> IntoArgs for ty::InstanceKind<'tcx> {
+    type This = DefId;
     type Other = ();
     fn into_args(self) -> (DefId, ()) {
         (self.def_id(), ())
@@ -222,6 +250,7 @@ impl<'tcx> IntoArgs for ty::InstanceKind<'tcx> {
 }
 
 impl IntoArgs for (CrateNum, SimplifiedType) {
+    type This = DefId;
     type Other = SimplifiedType;
     fn into_args(self) -> (DefId, SimplifiedType) {
         (self.0.as_def_id(), self.1)
@@ -361,6 +390,7 @@ provide! { tcx, def_id, other, cdata,
     symbol_mangling_version => { cdata.root.symbol_mangling_version }
     specialization_enabled_in => { cdata.root.specialization_enabled_in }
     reachable_non_generics => {
+        assert!(!cdata.root.public_api_hash_opt_enabled, "reachable_non_generics is not available from rmetas where public_api_hash is enabled!");
         let reachable_non_generics = tcx
             .exported_non_generic_symbols(cdata.cnum)
             .iter()
@@ -375,9 +405,38 @@ provide! { tcx, def_id, other, cdata,
 
         reachable_non_generics
     }
+    is_reachable_non_generic => {
+        if cdata.root.public_api_hash_opt_enabled {
+            cdata.root.tables.is_reachable_non_generic.get(cdata, def_id.index)
+        } else {
+            tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
+        }
+    }
+    is_reachable_non_generic_with_export_level_c => {
+        if cdata.root.public_api_hash_opt_enabled {
+            cdata.root.tables.is_reachable_non_generic_with_export_level_c.get(cdata, def_id.index)
+        } else {
+            match tcx.reachable_non_generics(def_id.krate).get(&def_id) {
+                Some(SymbolExportInfo { level: SymbolExportLevel::C, .. }) => true,
+                _ => false,
+            }
+        }
+    }
     native_libraries => { cdata.get_native_libraries(tcx).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx).map(|m| (m.def_id, m)).collect() }
-    crate_hash => { cdata.root.header.hash }
+    crate_hash => {
+        assert!(
+            !tcx.sess.opts.unstable_opts.public_api_hash
+            || !cdata.root.public_api_hash_opt_enabled
+            || will_have_link_step(tcx),
+            "Calling the crate_hash query for dependencies outside of proc-macro crates is unsound!"
+        );
+        cdata.root.header.hashes.private_hash
+    }
+    public_api_hash => { {
+        tracing::debug!("public api hash: {} {}", cdata.root.header.name, cdata.root.header.hashes.public_hash);
+        cdata.root.header.hashes.public_hash
+    } }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.header.name }
     num_extern_def_ids => { cdata.num_def_ids() }
@@ -385,7 +444,25 @@ provide! { tcx, def_id, other, cdata,
     extra_filename => { cdata.root.extra_filename.clone() }
 
     traits => { tcx.arena.alloc_from_iter(cdata.get_traits(tcx)) }
-    trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls(tcx)) }
+    trait_impls_in_crate => {
+        // Decodes all trait impls in the crate (for rustdoc).
+        match &cdata.trait_impls {
+            TraitImplsMap::DefIndex(m) => {
+                tcx.arena.alloc_from_iter(m.values().flat_map(move |impls| {
+                    impls
+                        .decode((cdata, tcx))
+                        .map(move |(impl_index, _)| cdata.local_def_id(impl_index))
+                }))
+            }
+            TraitImplsMap::DefPathHash(m) => {
+                tcx.arena.alloc_from_iter(m.values().flat_map(move |impls| {
+                    impls
+                        .decode((cdata, tcx))
+                        .map(move |(impl_index, _)| cdata.local_def_id(impl_index))
+                }))
+            }
+        }
+    }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
     crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 
@@ -411,7 +488,17 @@ provide! { tcx, def_id, other, cdata,
     used_crate_source => { Arc::clone(&cdata.source) }
     debugger_visualizers => { cdata.get_debugger_visualizers(tcx) }
 
-    exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items(tcx)) }
+    exportable_items => {
+        assert!(!cdata.root.public_api_hash_opt_enabled, "exportable_items is not available from rmetas where public_api_hash is enabled!");
+        tcx.arena.alloc_from_iter(cdata.get_exportable_items(tcx))
+    }
+    is_exportable => {
+        if cdata.root.public_api_hash_opt_enabled {
+            cdata.root.tables.is_exportable.get(cdata, def_id.index)
+        } else {
+            tcx.exportable_items(def_id.krate).contains(&def_id)
+        }
+    }
     stable_order_of_exportable_impls => {
         tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls(tcx).collect())
     }
@@ -429,6 +516,33 @@ provide! { tcx, def_id, other, cdata,
     anon_const_kind => { table }
     const_of_item => { table }
     args_known_to_outlive_alias_params => { table }
+    extern_def_public_hash => {
+        if let Some(rdr_hashes) = cdata.root.rdr_hashes.as_ref() {
+            rdr_hashes
+                .local
+                .get(cdata, def_id.index)
+                .unwrap_or_else(|| bug!("Trying to read public hash of definition {def_id:?}, categoriazed as private!"))
+        } else {
+            Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
+        }
+    }
+    extern_expn_public_hash => {
+        if let Some(rdr_hashes) = cdata.root.rdr_hashes.as_ref() {
+            rdr_hashes
+                .expn
+                .get(cdata, def_id.local_id)
+                .unwrap_or_else(|| bug!("Trying to read public hash of expnasion {def_id:?}, categoriazed as private!"))
+        } else {
+            Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
+        }
+    }
+    public_global_hash => {
+        if let Some(rdr_hashes) = cdata.root.rdr_hashes.as_ref() {
+            rdr_hashes.public_global_hash
+        } else {
+            Fingerprint::from_le_bytes(cdata.root.header.hashes.public_hash.as_u128().to_le_bytes())
+        }
+    }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -792,4 +906,16 @@ fn provide_cstore_hooks(providers: &mut Providers) {
             cdata.imported_source_file(tcx, file_index as u32);
         }
     };
+}
+
+fn will_have_link_step(tcx: TyCtxt<'_>) -> bool {
+    if !tcx.sess.opts.output_types.should_link() {
+        return false;
+    }
+    tcx.crate_types().iter().any(|ct| {
+        matches!(
+            ct,
+            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro
+        )
+    })
 }

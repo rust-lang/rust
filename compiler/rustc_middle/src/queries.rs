@@ -58,6 +58,7 @@ use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_crate_store::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
@@ -74,7 +75,7 @@ use rustc_macros::rustc_queries;
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_span::def_id::{LOCAL_CRATE, ModId};
-use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
+use rustc_span::{DUMMY_SP, ExpnId, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
 use crate::infer::canonical::{self, Canonical};
@@ -1946,6 +1947,11 @@ rustc_queries! {
             tcx.def_path_str(def_id),
         }
     }
+    query is_reachable_non_generic_with_export_level_c(def_id: DefId) -> bool {
+        desc { "checking whether `{}` is an exported symbol with export level ExportLevel::C", tcx.def_path_str(def_id) }
+        cache_on_disk
+        separate_provide_extern
+    }
 
     /// The entire set of monomorphizations the local crate can safely
     /// link to because they are exported from upstream crates. Do
@@ -2045,9 +2051,49 @@ rustc_queries! {
     // until `tcx.untracked().definitions.freeze()` has been called, otherwise if incremental
     // compilation is enabled calculating this hash can freeze this structure too early in
     // compilation and cause subsequent crashes when attempting to write to `definitions`.
+    //
+    // When the public-api-hash unstable options is enabled, this only contains the public hash of
+    // dependencies, unless this crate is a proc macro, then it contains the private hashes to make
+    // sure its hash changes with any code changes in dependencies.
     query crate_hash(_: CrateNum) -> Svh {
         eval_always
         desc { "looking up the hash of a crate" }
+        separate_provide_extern
+    }
+
+    /// Returns the public api hash from a dependency metadata. Does not work for the local crate.
+    query public_api_hash(_: CrateNum) -> Svh {
+        eval_always
+        desc { "looking up the hash a crate" }
+        separate_provide_extern
+    }
+
+    /// Returns the public api hash of an extern DefId, panics for the local crate
+    query extern_def_public_hash(def_id: DefId) -> Fingerprint {
+        eval_always
+        desc { "looking up public hash of {}", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
+    /// Returns the public api hash of an extern ExpnId, panics for the local crate
+    query extern_expn_public_hash(_: ExpnId) -> Fingerprint {
+        eval_always
+        desc { "looking up public hash of an expansion" }
+        separate_provide_extern
+    }
+
+    /// Returns the global part of the public api hash. This covers the items in the rmeta which
+    /// requires a recompile of all downstream crates.
+    ///
+    /// For example adding lang items requires all downstream crates to check that there are no
+    /// conflicting implementations for that lang item. But adding a regular public item only
+    /// requires the direct downstream crates to recompile, since those need to reexport it for
+    /// the change to be visible to their dependents.
+    ///
+    /// Panics for the local crate.
+    query public_global_hash(_: CrateNum) -> Fingerprint {
+        eval_always
+        desc { "looking up the hash a crate" }
         separate_provide_extern
     }
 
@@ -2431,6 +2477,11 @@ rustc_queries! {
 
     query exportable_items(_: CrateNum) -> &'tcx [DefId] {
         desc { "fetching all exportable items in a crate" }
+        separate_provide_extern
+    }
+
+    query is_exportable(def_id: DefId) -> bool {
+        desc { "checking whether `{}` is exportable", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 
