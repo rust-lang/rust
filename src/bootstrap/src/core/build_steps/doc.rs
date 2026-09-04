@@ -1181,10 +1181,11 @@ struct DocArtifacts {
 
 impl DocArtifacts {
     /// Ensure that all passed crates were documented.
-    fn sanity_check_crates<S>(&self, builder: &Builder<'_>, crates: impl Iterator<Item = S>)
-    where
-        S: AsRef<str>,
-    {
+    fn sanity_check_crates(
+        &self,
+        builder: &Builder<'_>,
+        crates: impl IntoIterator<Item = impl AsRef<str>>,
+    ) {
         if builder.config.dry_run() {
             return;
         }
@@ -1313,41 +1314,27 @@ macro_rules! tool_doc {
         $path: literal,
         mode = $mode:expr
         $(, is_library = $is_library:expr )?
-        $(, crates = $crates:expr )?
+        , crates = $crates:expr
         // Subset of nightly features that are allowed to be used when documenting
         $(, allow_features: $allow_features:expr )?
+        $(,)?
        ) => {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
             build_compiler: Compiler,
-            mode: Mode,
             target: TargetSelection,
         }
 
         impl $tool {
-            fn new(builder: &Builder<'_>, target: TargetSelection) -> $tool {
-                let build_compiler = match $mode {
-                    Mode::ToolRustcPrivate => {
-                        // Rustdoc needs the rustc sysroot available to build.
-                        let compilers = RustcPrivateCompilers::new(builder, builder.top_stage, target);
+            const PATH: &str = $path;
+            const MODE: Mode = $mode;
+            const IS_LIBRARY: bool = false $( || $is_library )?;
+            const CRATES: &[&str] = &$crates;
+            const ALLOW_FEATURES: Option<&str> = [$( $allow_features )?].first().copied();
 
-                        // Build rustc docs so that we generate relative links.
-                        builder.ensure(Rustc::from_build_compiler(builder, compilers.build_compiler(), target));
-                        compilers.build_compiler()
-                    }
-                    Mode::ToolTarget => {
-                        // when shipping multiple docs together in one folder,
-                        // they all need to use the same rustdoc version
-                        prepare_doc_compiler(builder, builder.host_target, builder.top_stage)
-                    }
-                    _ => {
-                        panic!("Unexpected tool mode for documenting: {:?}", $mode);
-                    }
-                };
-                $tool { build_compiler, mode: $mode, target }
-            }
-            fn crates() -> &'static [&'static str] {
-                &$($crates)?[..]
+            fn new(builder: &Builder<'_>, target: TargetSelection) -> $tool {
+                let build_compiler = compiler_for_tool_doc(builder, $tool::MODE, target);
+                $tool { build_compiler, target }
             }
         }
 
@@ -1356,7 +1343,7 @@ macro_rules! tool_doc {
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.path($path)
+                run.path($tool::PATH)
             }
 
             fn is_default_step(builder: &Builder<'_>) -> bool {
@@ -1371,71 +1358,17 @@ macro_rules! tool_doc {
             ///
             /// This is largely just a wrapper around `cargo doc`.
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let mut source_type = SourceType::InTree;
-
-                if let Some(submodule_path) = submodule_path_of(&builder, $path) {
-                    source_type = SourceType::Submodule;
-                    builder.require_submodule(&submodule_path, None);
-                }
-
-                let $tool { build_compiler, mode, target } = self;
-
-                // Build cargo command.
-                let mut cargo = prepare_tool_cargo(
+                let $tool { build_compiler, target } = self;
+                document_tool(
                     builder,
                     build_compiler,
-                    mode,
+                    $tool::MODE,
                     target,
-                    Kind::Doc,
-                    $path,
-                    source_type,
-                    &[],
-                );
-                let allow_features = {
-                    let mut _value = "";
-                    $( _value = $allow_features; )?
-                    _value
-                };
-
-                if !allow_features.is_empty() {
-                    cargo.allow_features(allow_features);
-                }
-
-                // Only include compiler crates, no dependencies of those, such as `libc`.
-                cargo.arg("--no-deps");
-
-                if false $(|| $is_library)? {
-                    cargo.arg("--lib");
-                }
-
-                for krate in $tool::crates() {
-                    cargo.arg("-p").arg(krate);
-                }
-
-                cargo.rustdocflag("--document-private-items");
-                // Since we always pass --document-private-items, there's no need to warn about linking to private items.
-                cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
-                cargo.rustdocflag("--enable-index-page");
-                cargo.rustdocflag("--show-type-layout");
-                cargo.rustdocflag("--generate-link-to-definition");
-
-                let cargo_target_dir = builder.stage_out(build_compiler, mode);
-                let target_doc_dir = cargo_target_dir.join(target).join("doc");
-                let host_doc_dir = cargo_target_dir.join("doc");
-                for krate in $tool::crates() {
-                    let dir_name = normalize_doc_crate_name(krate);
-                    t!(fs::create_dir_all(target_doc_dir.join(&*dir_name)));
-                }
-
-                let _guard = builder.msg(Kind::Doc, stringify!($tool).to_lowercase(), None, build_compiler, target);
-                let artifacts = create_docs_and_gather_artifacts(builder, cargo);
-                artifacts.sanity_check_crates(builder, $tool::crates().iter());
-
-                if !builder.config.dry_run() {
-                    merge_host_and_target_docs(builder, &artifacts, &host_doc_dir, &target_doc_dir);
-                    merge_rustdoc_cci(builder, build_compiler, &artifacts.json_files, &target_doc_dir);
-                }
-                BuiltDocs { out_dir: target_doc_dir, artifacts }
+                    $tool::PATH,
+                    $tool::IS_LIBRARY,
+                    $tool::CRATES,
+                    $tool::ALLOW_FEATURES,
+                )
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
@@ -1443,6 +1376,98 @@ macro_rules! tool_doc {
             }
         }
     }
+}
+
+fn compiler_for_tool_doc(builder: &Builder<'_>, mode: Mode, target: TargetSelection) -> Compiler {
+    match mode {
+        Mode::ToolRustcPrivate => {
+            // Rustdoc needs the rustc sysroot available to build.
+            let compilers = RustcPrivateCompilers::new(builder, builder.top_stage, target);
+
+            // Build rustc docs so that we generate relative links.
+            builder.ensure(Rustc::from_build_compiler(builder, compilers.build_compiler(), target));
+            compilers.build_compiler()
+        }
+        Mode::ToolTarget => {
+            // when shipping multiple docs together in one folder,
+            // they all need to use the same rustdoc version
+            prepare_doc_compiler(builder, builder.host_target, builder.top_stage)
+        }
+        _ => panic!("Unexpected tool mode for documenting: {mode:?}"),
+    }
+}
+
+/// Inner implementation of [`CommandLineStep::run`] for the [`tool_doc`] macro.
+#[expect(clippy::too_many_arguments)]
+fn document_tool(
+    builder: &Builder<'_>,
+    build_compiler: Compiler,
+    mode: Mode,
+    target: TargetSelection,
+    path: &str,
+    is_library: bool,
+    crates: &[&str],
+    allow_features: Option<&str>,
+) -> BuiltDocs {
+    let mut source_type = SourceType::InTree;
+
+    if let Some(submodule_path) = submodule_path_of(builder, path) {
+        source_type = SourceType::Submodule;
+        builder.require_submodule(&submodule_path, None);
+    }
+
+    // Build cargo command.
+    let mut cargo = prepare_tool_cargo(
+        builder,
+        build_compiler,
+        mode,
+        target,
+        Kind::Doc,
+        path,
+        source_type,
+        &[],
+    );
+
+    if let Some(allow_features) = allow_features {
+        cargo.allow_features(allow_features);
+    }
+
+    // Only include compiler crates, no dependencies of those, such as `libc`.
+    cargo.arg("--no-deps");
+
+    if is_library {
+        cargo.arg("--lib");
+    }
+
+    for krate in crates {
+        cargo.arg("-p").arg(krate);
+    }
+
+    cargo.rustdocflag("--document-private-items");
+    // Since we always pass --document-private-items, there's no need to warn about linking to private items.
+    cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
+    cargo.rustdocflag("--enable-index-page");
+    cargo.rustdocflag("--show-type-layout");
+    cargo.rustdocflag("--generate-link-to-definition");
+
+    let cargo_target_dir = builder.stage_out(build_compiler, mode);
+    let target_doc_dir = cargo_target_dir.join(target).join("doc");
+    let host_doc_dir = cargo_target_dir.join("doc");
+    for krate in crates {
+        let dir_name = normalize_doc_crate_name(krate);
+        t!(fs::create_dir_all(target_doc_dir.join(&*dir_name)));
+    }
+
+    let tool_name = Path::new(path).file_name().unwrap().display();
+    let _guard = builder.msg(Kind::Doc, tool_name, None, build_compiler, target);
+    let artifacts = create_docs_and_gather_artifacts(builder, cargo);
+    artifacts.sanity_check_crates(builder, crates);
+
+    if !builder.config.dry_run() {
+        merge_host_and_target_docs(builder, &artifacts, &host_doc_dir, &target_doc_dir);
+        merge_rustdoc_cci(builder, build_compiler, &artifacts.json_files, &target_doc_dir);
+    }
+    BuiltDocs { out_dir: target_doc_dir, artifacts }
 }
 
 // NOTE: make sure to register these in `Builder::get_step_description`.
