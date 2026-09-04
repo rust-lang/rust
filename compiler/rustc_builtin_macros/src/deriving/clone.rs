@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, Safety, VariantData};
+use rustc_ast::{self as ast, Generics, ItemKind, Safety, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
@@ -11,7 +11,6 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_clone(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -77,7 +76,7 @@ pub(crate) fn expand_deriving_clone(
             document: false,
         };
 
-        trivial_def.expand(cx, mitem, item, push);
+        trivial_def.expand(cx, item, push);
     }
 
     let trait_def = TraitDef {
@@ -103,7 +102,7 @@ pub(crate) fn expand_deriving_clone(
         document: true,
     };
 
-    trait_def.expand_ext(cx, mitem, item, push, is_simple)
+    trait_def.expand_ext(cx, item, push, is_simple)
 }
 
 fn cs_clone_simple(

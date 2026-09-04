@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, EnumDef, MetaItem, Safety};
+use rustc_ast::{self as ast, EnumDef, Safety};
 use rustc_expand::base::ExtCtxt;
 use rustc_session::config::FmtDebug;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -11,7 +11,6 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_debug(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -42,7 +41,7 @@ pub(crate) fn expand_deriving_debug(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {

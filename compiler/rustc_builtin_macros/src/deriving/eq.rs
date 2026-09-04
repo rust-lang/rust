@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, MetaItem, Safety};
+use rustc_ast::{self as ast, Safety};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
@@ -11,7 +11,6 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -46,7 +45,7 @@ pub(crate) fn expand_deriving_eq(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand_ext(cx, mitem, item, push, true)
+    trait_def.expand_ext(cx, item, push, true)
 }
 
 fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {

@@ -1,4 +1,4 @@
-use rustc_ast::{MetaItem, Mutability, Safety};
+use rustc_ast::{Mutability, Safety};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -10,7 +10,6 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_hash(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -55,7 +54,7 @@ pub(crate) fn expand_deriving_hash(
         document: true,
     };
 
-    hash_trait_def.expand(cx, mitem, item, push);
+    hash_trait_def.expand(cx, item, push);
 }
 
 fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {

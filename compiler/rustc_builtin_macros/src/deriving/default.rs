@@ -14,7 +14,6 @@ use crate::diagnostics;
 pub(crate) fn expand_deriving_default(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &ast::MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -55,7 +54,7 @@ pub(crate) fn expand_deriving_default(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {

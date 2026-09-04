@@ -458,17 +458,15 @@ impl<'a> TraitDef<'a> {
     pub(crate) fn expand(
         self,
         cx: &ExtCtxt<'_>,
-        mitem: &ast::MetaItem,
         item: &'a ast::Item,
         push: &mut dyn FnMut(Box<ast::Item>),
     ) {
-        self.expand_ext(cx, mitem, item, push, false);
+        self.expand_ext(cx, item, push, false);
     }
 
     pub(crate) fn expand_ext(
         self,
         cx: &ExtCtxt<'_>,
-        mitem: &ast::MetaItem,
         item: &'a ast::Item,
         push: &mut dyn FnMut(Box<ast::Item>),
         from_scratch: bool,
@@ -501,7 +499,7 @@ impl<'a> TraitDef<'a> {
                         is_packed,
                     )
                 } else {
-                    cx.dcx().emit_err(diagnostics::DeriveUnion { span: mitem.span });
+                    cx.dcx().emit_err(diagnostics::DeriveUnion { span: self.span });
                     return;
                 }
             }

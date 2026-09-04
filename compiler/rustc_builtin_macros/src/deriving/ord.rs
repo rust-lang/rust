@@ -1,4 +1,4 @@
-use rustc_ast::{MetaItem, Safety};
+use rustc_ast::Safety;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
@@ -10,7 +10,6 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -38,7 +37,7 @@ pub(crate) fn expand_deriving_ord(
         document: true,
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
