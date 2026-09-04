@@ -323,3 +323,17 @@ fn should_pass() {
     let original = "if you see `input isn't interesting! verify interesting-ness test`.";
     assert_eq!(original, comply(original));
 }
+
+#[test]
+#[ignore]
+fn split_on_comma() {
+    let original = "
+Because of canonicalization of regions and
+inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
+";
+    let expected = "
+Because of canonicalization of regions and inference variables,
+encountering a cycle doesn't mean that we would get an infinite proof tree.
+";
+    assert_eq!(expected, lengthen_lines(original, 100))
+}
