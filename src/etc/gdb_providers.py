@@ -330,7 +330,7 @@ def children_of_btree_map(map):
 
         for i in xrange(0, length + 1):
             if height > 0:
-                child_ptr = edges[i]["value"]["value"][ZERO_FIELD]
+                child_ptr = edges[i]["value"]["value"]
                 for child in children_of_node(child_ptr, height - 1):
                     yield child
             if i < length:
@@ -338,12 +338,12 @@ def children_of_btree_map(map):
                 key_type_size = keys.type.sizeof
                 val_type_size = vals.type.sizeof
                 key = (
-                    keys[i]["value"]["value"][ZERO_FIELD]
+                    keys[i]["value"]["value"]
                     if key_type_size > 0
                     else gdb.parse_and_eval("()")
                 )
                 val = (
-                    vals[i]["value"]["value"][ZERO_FIELD]
+                    vals[i]["value"]["value"]
                     if val_type_size > 0
                     else gdb.parse_and_eval("()")
                 )
