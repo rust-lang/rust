@@ -1,10 +1,8 @@
-error: attributes cannot be applied here
+error: attributes cannot be applied to generic arguments
   --> $DIR/attribute-on-empty.rs:6:16
    |
 LL |     let _: Baz<#[cfg(false)]> = todo!();
-   |          -     ^^^^^^^^^^^^^ attributes are not allowed here
-   |          |
-   |          while parsing the type for `_`
+   |                ^^^^^^^^^^^^^ attributes are not allowed here
 
 error: attributes cannot be applied to types
   --> $DIR/attribute-on-empty.rs:10:14
