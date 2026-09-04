@@ -402,6 +402,7 @@ define_tables! {
     explicit_implied_const_bounds: Table<DefIndex, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
+    is_anon_assoc_const: Table<DefIndex, bool>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
     // That's why the encoded list needs to contain `ModChild` structures describing all the names

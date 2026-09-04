@@ -1,0 +1,48 @@
+error: `const` items in this context need a name
+  --> $DIR/associated-const-underscore-fail.rs:17:11
+   |
+LL |     const _: ();
+   |           ^ `_` is not a valid name for this `const` item
+
+error: `const` items in this context need a name
+  --> $DIR/associated-const-underscore-fail.rs:26:11
+   |
+LL |     const _: () = ();
+   |           ^ `_` is not a valid name for this `const` item
+
+error[E0438]: const `_` is not a member of trait `Trait`
+  --> $DIR/associated-const-underscore-fail.rs:26:5
+   |
+LL |     const _: () = ();
+   |     ^^^^^^^^^^^^^^^^^ not a member of trait `Trait`
+
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/associated-const-underscore-fail.rs:33:1
+   |
+LL | impl std::thread::Thread {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+   = note: for more details about the orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
+
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/associated-const-underscore-fail.rs:38:1
+   |
+LL | impl &Local {
+   | ^^^^^^^^^^^
+   |
+   = help: consider using an extension trait instead
+   = note: you could also try moving the reference to uses of `Local` (such as `self`) within the implementation
+
+error[E0308]: mismatched types
+  --> $DIR/associated-const-underscore-fail.rs:12:20
+   |
+LL |     const _: u32 = "not a number";
+   |              ---   ^^^^^^^^^^^^^^ expected `u32`, found `&str`
+   |              |
+   |              expected because of the type of the associated constant
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0116, E0308, E0390, E0438.
+For more information about an error, try `rustc --explain E0116`.

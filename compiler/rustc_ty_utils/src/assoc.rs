@@ -88,9 +88,10 @@ fn associated_item_from_trait_item(
     let owner_id = trait_item.owner_id;
     let name = trait_item.ident.name;
     let kind = match trait_item.kind {
-        hir::TraitItemKind::Const(_, _) => {
-            ty::AssocKind::Const { name, is_type_const: tcx.is_type_const(owner_id.def_id) }
-        }
+        hir::TraitItemKind::Const(_, _) => ty::AssocKind::Const {
+            data: ty::AssocConstData::Named(name),
+            is_type_const: tcx.is_type_const(owner_id.def_id),
+        },
         hir::TraitItemKind::Fn { .. } => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
         }
@@ -107,7 +108,12 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
     let name = impl_item.ident.name;
     let kind = match impl_item.kind {
         hir::ImplItemKind::Const(_, rhs) => {
-            ty::AssocKind::Const { name, is_type_const: matches!(rhs, ConstItemRhs::TypeConst(_)) }
+            let data = if impl_item.is_anon_const() {
+                ty::AssocConstData::Anonymous
+            } else {
+                ty::AssocConstData::Named(name)
+            };
+            ty::AssocKind::Const { data, is_type_const: matches!(rhs, ConstItemRhs::TypeConst(_)) }
         }
         hir::ImplItemKind::Fn { .. } => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }

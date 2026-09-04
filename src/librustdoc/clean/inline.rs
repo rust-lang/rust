@@ -527,6 +527,7 @@ pub(crate) fn build_impl(
                 .items
                 .iter()
                 .map(|&item| tcx.hir_impl_item(item))
+                .filter(|item| !item.is_anon_const())
                 .filter(|item| {
                     // Filter out impl items whose corresponding trait item has `doc(hidden)`
                     // not to document such impl items.
