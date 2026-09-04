@@ -2,7 +2,7 @@ use ast::HasAttrs;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::{BoundKind, Visitor};
 use rustc_ast::{
-    self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind, MetaItem,
+    self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind,
     TraitBoundModifiers, VariantData, WherePredicate,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -21,7 +21,6 @@ macro_rules! path {
 pub(crate) fn expand_deriving_coerce_pointee(
     cx: &ExtCtxt<'_>,
     span: Span,
-    _mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,

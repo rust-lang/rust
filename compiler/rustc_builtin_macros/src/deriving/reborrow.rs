@@ -1,6 +1,4 @@
-use rustc_ast::{
-    self as ast, AttrArgs, GenericArg, GenericParamKind, Generics, ItemKind, MetaItem, token,
-};
+use rustc_ast::{self as ast, AttrArgs, GenericArg, GenericParamKind, Generics, ItemKind, token};
 use rustc_errors::E0802;
 use rustc_expand::base::ExtCtxt;
 use rustc_macros::Diagnostic;
@@ -14,7 +12,6 @@ macro_rules! path {
 pub(crate) fn expand_deriving_reborrow(
     cx: &ExtCtxt<'_>,
     span: Span,
-    _mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
@@ -29,7 +26,6 @@ pub(crate) fn expand_deriving_reborrow(
 pub(crate) fn expand_deriving_coerce_shared(
     cx: &ExtCtxt<'_>,
     span: Span,
-    _mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,

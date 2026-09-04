@@ -1,4 +1,4 @@
-use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability, Safety};
+use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
@@ -12,7 +12,6 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_partial_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -35,7 +34,7 @@ pub(crate) fn expand_deriving_partial_eq(
         safety: Safety::Default,
         document: true,
     };
-    structural_trait_def.expand(cx, mitem, item, push);
+    structural_trait_def.expand(cx, item, push);
 
     // No need to generate `ne`, the default suffices, and not generating it is
     // faster.
@@ -63,7 +62,7 @@ pub(crate) fn expand_deriving_partial_eq(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 /// Generates the equality expression for a struct or enum variant when deriving

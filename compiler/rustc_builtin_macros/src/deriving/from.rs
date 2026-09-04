@@ -15,7 +15,6 @@ use crate::diagnostics;
 pub(crate) fn expand_deriving_from(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &ast::MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -123,5 +122,5 @@ pub(crate) fn expand_deriving_from(
         document: true,
     };
 
-    from_trait_def.expand(cx, mitem, item, push);
+    from_trait_def.expand(cx, item, push);
 }

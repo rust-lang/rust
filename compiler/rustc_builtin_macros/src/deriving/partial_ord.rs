@@ -1,4 +1,4 @@
-use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety, ast};
+use rustc_ast::{ExprKind, ItemKind, PatKind, Safety, ast};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
@@ -10,7 +10,6 @@ use crate::deriving::{path_std, pathvec};
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
     item: &ast::Item,
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
@@ -94,7 +93,7 @@ pub(crate) fn expand_deriving_partial_ord(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand_ext(cx, mitem, item, push, is_simple)
+    trait_def.expand_ext(cx, item, push, is_simple)
 }
 
 // Special case for the type deriving both `PartialOrd` and `Ord`. Builds:

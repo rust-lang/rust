@@ -31,7 +31,7 @@ pub(crate) mod reborrow;
 pub(crate) mod generic;
 
 pub(crate) type BuiltinDeriveFn =
-    fn(&ExtCtxt<'_>, Span, &MetaItem, &ast::Item, &mut dyn FnMut(Box<ast::Item>), bool);
+    fn(&ExtCtxt<'_>, Span, &ast::Item, &mut dyn FnMut(Box<ast::Item>), bool);
 
 pub(crate) struct BuiltinDerive(pub(crate) BuiltinDeriveFn);
 
@@ -40,7 +40,7 @@ impl MultiItemModifier for BuiltinDerive {
         &self,
         ecx: &mut ExtCtxt<'_>,
         span: Span,
-        meta_item: &MetaItem,
+        _: &MetaItem,
         item: Annotatable,
         is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
@@ -54,7 +54,6 @@ impl MultiItemModifier for BuiltinDerive {
                     (self.0)(
                         ecx,
                         span,
-                        meta_item,
                         &item,
                         &mut |a| items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, a)))),
                         is_derive_const,
@@ -66,7 +65,6 @@ impl MultiItemModifier for BuiltinDerive {
             Annotatable::Item(item) => (self.0)(
                 ecx,
                 span,
-                meta_item,
                 &item,
                 &mut |a| items.push(Annotatable::Item(a)),
                 is_derive_const,
