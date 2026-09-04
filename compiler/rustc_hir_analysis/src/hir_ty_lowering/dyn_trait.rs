@@ -77,7 +77,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        self.add_default_traits(
+        self.add_implicit_bounds(
             &mut user_written_bounds,
             dummy_self,
             &hir_bounds
@@ -86,7 +86,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .collect::<Vec<_>>(),
             ImpliedBoundsContext::AssociatedTypeOrImplTrait,
             span,
+            false,
         );
+        // self.add_implicit_move_bound(
+        //     &mut user_written_bounds,
+        //     dummy_self,
+        //     &hir_bounds
+        //         .iter()
+        //         .map(|&trait_ref| hir::GenericBound::Trait(trait_ref))
+        //         .collect::<Vec<_>>(),
+        //     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+        //     span,
+        // );
+        // self.add_default_traits(
+        //     &mut user_written_bounds,
+        //     dummy_self,
+        //     &hir_bounds
+        //         .iter()
+        //         .map(|&trait_ref| hir::GenericBound::Trait(trait_ref))
+        //         .collect::<Vec<_>>(),
+        //     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+        //     span,
+        // );
 
         let (mut elaborated_trait_bounds, elaborated_projection_bounds) =
             traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());
@@ -109,7 +130,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .partition(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
         // We don't support empty trait objects.
-        if regular_traits.is_empty() && auto_traits.is_empty() {
+        if regular_traits
+            .iter()
+            .chain(auto_traits.iter())
+            .all(|t| tcx.is_implicit_trait(t.0.skip_binder().def_id(), ty::IncludingSized::No))
+        {
             let guar =
                 self.report_trait_object_with_no_traits(span, user_written_bounds.iter().copied());
             return Ty::new_error(tcx, guar);

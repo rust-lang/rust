@@ -1,4 +1,5 @@
 pub mod bug;
+pub(crate) mod separator;
 
 #[derive(Default, Copy, Clone)]
 pub struct Providers {

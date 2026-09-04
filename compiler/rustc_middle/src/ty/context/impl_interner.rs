@@ -22,6 +22,7 @@ use crate::traits::cache::WithDepNode;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
 };
+use crate::ty::context::IncludingSized;
 use crate::ty::{
     self, BoundRegion, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate,
     Region, RegionKind, RequiredDepth, Ty, TyCtxt,
@@ -544,6 +545,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_default_trait(def_id)
     }
 
+    fn is_implicit_trait(self, def_id: Self::TraitId, including_sized: IncludingSized) -> bool {
+        self.is_implicit_trait(def_id, including_sized)
+    }
+
     fn is_sizedness_trait(self, def_id: DefId) -> bool {
         self.is_sizedness_trait(def_id)
     }
@@ -850,6 +855,7 @@ bidirectional_lang_item_map! {
     Future,
     Iterator,
     MetaSized,
+    Move,
     PointeeSized,
     PointeeTrait,
     Sized,
