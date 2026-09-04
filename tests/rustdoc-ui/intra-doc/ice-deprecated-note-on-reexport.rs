@@ -4,6 +4,8 @@
 //
 // This is a regression test for <https://github.com/rust-lang/rust/issues/151028>.
 
+//@ check-pass
+
 #![crate_name = "foo"]
 
 #[deprecated(note = "use [`std::mem::forget`]")]
