@@ -1,0 +1,16 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:7:31
+   |
+LL |     let _ = haystack.contains(needle);
+   |                      -------- ^^^^^^ expected `&&[&str]`, found `&[&str]`
+   |                      |
+   |                      arguments to this method are incorrect
+   |
+   = note: expected reference `&&[&str]`
+              found reference `&[&str]`
+note: method defined here
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
