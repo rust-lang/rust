@@ -204,8 +204,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_fields
         | sym::type_id_function_ptr
         | sym::type_id_generics
-        | sym::type_id_points_mutably
         | sym::type_id_is_signed
+        | sym::type_id_points_mutably
         | sym::type_id_points_to
         | sym::type_id_variants
         | sym::type_id_vtable

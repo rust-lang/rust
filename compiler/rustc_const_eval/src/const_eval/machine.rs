@@ -705,7 +705,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let variant_index = if let ty::FnPtr(sig, fn_header) = ty.kind() {
                     let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
                     let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    let sig = sig.skip_binder();
+                    let sig = sig.skip_binder(); // FIXME: handle lifetime bounds
                     ecx.write_fn_ptr_type_info(field_place, &sig, fn_header)?;
                     variant
                 } else {

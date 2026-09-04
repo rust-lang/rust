@@ -150,16 +150,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             self.write_dyn_trait_type_info(dyn_place, *predicates, *region)?;
                             variant
                         }
-                        ty::FnPtr(sig, fn_header) => {
-                            let (variant, variant_place) =
+                        ty::FnPtr(_, _) => {
+                            let (variant, _) =
                                 self.project_downcast_named(&field_dest, sym::FnPtr)?;
-                            let fn_ptr_place =
-                                self.project_field(&variant_place, FieldIdx::ZERO)?;
-
-                            // FIXME: handle lifetime bounds
-                            let sig = sig.skip_binder();
-
-                            self.write_fn_ptr_type_info(fn_ptr_place, &sig, fn_header)?;
                             variant
                         }
                         ty::Foreign(_)
@@ -348,7 +341,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             let field_place = self.project_field(&place, field_idx)?;
 
             match field.name {
-                sym::unsafety => {
+                sym::is_unsafe => {
                     self.write_scalar(Scalar::from_bool(!fn_sig_kind.is_safe()), &field_place)?;
                 }
                 sym::abi => match fn_sig_kind.abi() {

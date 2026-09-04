@@ -104,7 +104,7 @@ pub enum TypeKind {
     /// Pointers.
     Pointer,
     /// Function pointers.
-    FnPtr(FnPtr),
+    FnPtr,
     /// FIXME(#146922): add all the common types
     /// non exhaustive list:
     /// - Never
@@ -214,29 +214,16 @@ pub struct Str {
 #[unstable(feature = "type_info", issue = "146922")]
 /// Function pointer, e.g. fn(u8),
 pub struct FnPtr {
-    /// Unsafety, true is unsafe
-    pub unsafety: bool,
-
-    /// Abi, e.g. extern "C"
-    pub abi: Abi,
-
-    /// Function inputs
-    pub inputs: &'static [TypeId],
-
-    /// Function return type, default is TypeId::of::<()>
-    pub output: TypeId,
-
-    /// Vardiadic function, e.g. extern "C" fn add(n: usize, mut args: ...);
-    pub variadic: bool,
-
+    is_unsafe: bool,
+    abi: Abi,
+    inputs: &'static [TypeId],
+    output: TypeId,
+    variadic: bool,
     // FIXME(splat): should these fields be private, or merged into an Option<u8/u16>?
     /// Is any function argument splatted?
-    pub is_splatted: bool,
+    is_splatted: bool,
 
-    /// The index of the splatted function argument in `inputs`, only valid if `is_splatted` is true.
-    /// e.g. in `fn overload(a: u8, #[rustc_splat] b: (f32, usize))` the index is 1, and it can be called
-    /// as `overload(a, 1.0, 2)`.
-    pub splatted_index: u8,
+    splatted_index: u8,
 }
 
 impl FnPtr {
@@ -248,12 +235,12 @@ impl FnPtr {
         if self.is_splatted { Some(self.splatted_index) } else { None }
     }
     /// Whether this function is variadic, e.g. extern "C" fn add(n: usize, mut args: ...);
-    pub const fn is_variadic(&self) -> Option<u8> {
-        if self.is_splatted { Some(self.splatted_index) } else { None }
+    pub const fn is_variadic(&self) -> bool {
+        self.variadic
     }
     /// whether this refers to an unsafe function.
     pub const fn is_unsafe(&self) -> bool {
-        self.unsafety
+        self.is_unsafe
     }
     /// Returns the application binary interface. For example extern "C".
     pub const fn abi(&self) -> Abi {
