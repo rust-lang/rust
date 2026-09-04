@@ -61,17 +61,15 @@ impl<'hir> ItemLowerer<'_, 'hir> {
         let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner);
 
         let item = f(&mut lctx);
-        debug_assert_eq!(lctx.current_hir_id_owner, item.def_id());
 
-        let info = lctx.make_owner_info(item);
-
+        let info = lctx.curr_owner.into_owner_info(self.tcx, item);
         hir::MaybeOwner::Owner(lctx.arena.alloc(info))
     }
 
     #[instrument(level = "debug", skip(self, c))]
     pub(super) fn lower_crate(&mut self, c: &Crate) -> hir::MaybeOwner<'hir> {
         self.with_lctx(CRATE_NODE_ID, |lctx| {
-            debug_assert_eq!(lctx.current_hir_id_owner, CRATE_OWNER_ID);
+            debug_assert_eq!(lctx.curr_owner.owner_id, CRATE_OWNER_ID);
             let module = lctx.lower_mod(&c.items, &c.spans);
             lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, c.spans.inner_span, Target::Crate);
             hir::OwnerNode::Crate(module)
@@ -206,7 +204,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_item(&mut self, i: &Item) -> &'hir hir::Item<'hir> {
-        let owner_id = self.current_hir_id_owner;
+        let owner_id = self.curr_owner.owner_id;
         let hir_id: HirId = owner_id.into();
         let vis_span = self.lower_span(i.vis.span);
 
@@ -399,7 +397,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ty,
                             ImplTraitContext::OpaqueTy {
                                 origin: hir::OpaqueTyOrigin::TyAlias {
-                                    parent: this.owner.def_id,
+                                    parent: this.curr_owner.owner.def_id,
                                     in_assoc_ty: false,
                                 },
                             },
@@ -547,7 +545,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::MacroDef(ident, MacroDef { body, macro_rules, eii_declaration: _ }) => {
                 let ident = self.lower_ident(*ident);
                 let body = Box::new(self.lower_delim_args(body));
-                let def_id = self.owner.def_id;
+                let def_id = self.curr_owner.owner.def_id;
                 let def_kind = self.tcx.def_kind(def_id);
                 let DefKind::Macro(macro_kinds) = def_kind else {
                     unreachable!(
@@ -695,7 +693,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         // `ItemLocalId` and the new owner. (See `lower_node_id`)
                         let kind = this.lower_use_tree(use_tree, &prefix, id, vis_span, attrs);
                         if !attrs.is_empty() {
-                            this.attrs.insert(hir::ItemLocalId::ZERO, attrs);
+                            this.curr_owner.attrs.insert(hir::ItemLocalId::ZERO, attrs);
                         }
 
                         let item = hir::Item {
@@ -731,7 +729,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
-        let owner_id = self.current_hir_id_owner;
+        let owner_id = self.curr_owner.owner_id;
         let hir_id: HirId = owner_id.into();
         let attrs =
             self.lower_attrs(hir_id, &i.attrs, i.span, Target::from_foreign_item_kind(&i.kind));
@@ -914,7 +912,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
-        let trait_item_def_id = self.current_hir_id_owner;
+        let trait_item_def_id = self.curr_owner.owner_id;
         let hir_id: HirId = trait_item_def_id.into();
         let attrs = self.lower_attrs(
             hir_id,
@@ -1169,7 +1167,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
-        let owner_id = self.current_hir_id_owner;
+        let owner_id = self.curr_owner.owner_id;
         let hir_id: HirId = owner_id.into();
         let parent_id = self.tcx.local_parent(owner_id.def_id);
         let is_in_trait_impl =
@@ -1258,7 +1256,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                     ty,
                                     ImplTraitContext::OpaqueTy {
                                         origin: hir::OpaqueTyOrigin::TyAlias {
-                                            parent: this.owner.def_id,
+                                            parent: this.curr_owner.owner.def_id,
                                             in_assoc_ty: true,
                                         },
                                     },
@@ -1336,8 +1334,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::BodyId {
         let body = hir::Body { params, value: self.arena.alloc(value) };
         let id = body.id();
-        assert_eq!(id.hir_id.owner, self.current_hir_id_owner);
-        self.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));
+        assert_eq!(id.hir_id.owner, self.curr_owner.owner_id);
+        self.curr_owner.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));
         id
     }
 
@@ -1545,7 +1543,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             //
             // If this is the simple case, this parameter will end up being the same as the
             // original parameter, but with a different pattern id.
-            let stmt_attrs = self.attrs.get(&parameter.hir_id.local_id).copied();
+            let stmt_attrs = self.curr_owner.attrs.get(&parameter.hir_id.local_id).copied();
             let (new_parameter_pat, new_parameter_id) = self.pat_ident(desugared_span, ident);
             let new_parameter = hir::Param {
                 hir_id: parameter.hir_id,
@@ -1883,8 +1881,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         itctx: ImplTraitContext,
         f: impl FnOnce(&mut Self) -> T,
     ) -> (&'hir hir::Generics<'hir>, T) {
-        assert!(self.impl_trait_defs.is_empty());
-        assert!(self.impl_trait_bounds.is_empty());
+        assert!(self.curr_owner.impl_trait_defs.is_empty());
+        assert!(self.curr_owner.impl_trait_bounds.is_empty());
 
         let mut predicates: SmallVec<[hir::WherePredicate<'hir>; 4]> = SmallVec::new();
         // We need to make sure that generic params don't have multiple relaxed bounds for the same trait
@@ -1914,7 +1912,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .collect();
 
         // Introduce extra lifetimes if late resolution tells us to.
-        let extra_lifetimes = self.owner.extra_lifetime_params(self.owner.id);
+        let extra_lifetimes = self.curr_owner.owner.extra_lifetime_params(self.curr_owner.owner.id);
         params.extend(extra_lifetimes.into_iter().map(|&(ident, node_id, kind)| {
             self.lifetime_res_to_generic_param(
                 ident,
@@ -1929,10 +1927,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let span = self.lower_span(generics.span);
         let res = f(self);
 
-        let impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
+        let impl_trait_defs = std::mem::take(&mut self.curr_owner.impl_trait_defs);
         params.extend(impl_trait_defs.into_iter());
 
-        let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
+        let impl_trait_bounds = std::mem::take(&mut self.curr_owner.impl_trait_bounds);
         predicates.extend(impl_trait_bounds.into_iter());
 
         let lowered_generics = self.arena.alloc(hir::Generics {
@@ -1951,7 +1949,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir_id: HirId,
         define_opaque: &Option<ThinVec<(NodeId, Path)>>,
     ) {
-        assert_eq!(self.define_opaque, None);
+        assert_eq!(self.curr_owner.define_opaque, None);
         assert!(hir_id.is_owner());
         let Some(define_opaque) = define_opaque.as_ref() else {
             return;
@@ -1972,7 +1970,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some((self.lower_span(path.span), did))
         });
         let define_opaque = self.arena.alloc_from_iter(define_opaque);
-        self.define_opaque = Some(define_opaque);
+        self.curr_owner.define_opaque = Some(define_opaque);
     }
 
     pub(super) fn lower_generic_bound_predicate(

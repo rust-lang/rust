@@ -1256,7 +1256,10 @@ fn llvm_fixup_input<'ll, 'tcx>(
         (LoongArch(LoongArchInlineAsmRegClass::freg), BackendRepr::Scalar(s))
             if s.primitive() == Primitive::Float(Float::F16) =>
         {
-            // Smaller floats are always "NaN-boxed" inside larger floats on LoongArch.
+            // The LoongArch psABI only requires the upper bits to be widened to
+            // GRLEN, leaving them undefined. We NaN-box instead (set all upper
+            // bits to 1), matching LLVM's own codegen, to avoid an `f16` value
+            // being mistaken for a valid `f32` value.
             let value = bx.bitcast(value, bx.type_i16());
             let value = bx.zext(value, bx.type_i32());
             let value = bx.or(value, bx.const_u32(0xFFFF_0000));
@@ -1296,16 +1299,27 @@ fn llvm_fixup_input<'ll, 'tcx>(
         (
             PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
             BackendRepr::Scalar(s),
-        ) if let Primitive::Float(float @ (Float::F32 | Float::F64)) = s.primitive() => {
+        ) if let Primitive::Float(float @ (Float::F16 | Float::F32 | Float::F64)) =
+            s.primitive() =>
+        {
             let num_lanes = 16 / float.size().bytes();
+            // `f16` is located in the rightmost halfword of doubleword 0 per section 7.3.2.5 of
+            // "Power Instruction Set Architecture", version 3.1C.
+            let offset = if float == Float::F16 { 3 } else { 0 };
             bx.insert_element(
                 bx.const_undef(bx.type_vector(bx.type_from_float(float), num_lanes)),
                 value,
                 bx.const_usize(match bx.target_spec().endian {
-                    Endian::Little => num_lanes - 1,
-                    Endian::Big => 0,
+                    Endian::Little => num_lanes - 1 - offset,
+                    Endian::Big => offset,
                 }),
             )
+        }
+        (
+            PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
+            BackendRepr::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F128) => {
+            bx.bitcast(value, bx.type_vector(bx.type_f64(), 2))
         }
         _ => value,
     }
@@ -1472,16 +1486,25 @@ fn llvm_fixup_output<'ll, 'tcx>(
         (
             PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
             BackendRepr::Scalar(s),
-        ) if let Primitive::Float(float @ (Float::F32 | Float::F64)) = s.primitive() => {
+        ) if let Primitive::Float(float @ (Float::F16 | Float::F32 | Float::F64)) =
+            s.primitive() =>
+        {
             let num_lanes = 16 / float.size().bytes();
+            // `f16` is located in the rightmost halfword of doubleword 0 per section 7.3.2.5 of
+            // "Power Instruction Set Architecture", version 3.1C.
+            let offset = if float == Float::F16 { 3 } else { 0 };
             bx.extract_element(
                 value,
                 bx.const_usize(match bx.target_spec().endian {
-                    Endian::Little => num_lanes - 1,
-                    Endian::Big => 0,
+                    Endian::Little => num_lanes - 1 - offset,
+                    Endian::Big => offset,
                 }),
             )
         }
+        (
+            PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
+            BackendRepr::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F128) => bx.bitcast(value, bx.type_f128()),
         _ => value,
     }
 }
@@ -1626,9 +1649,15 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
         (
             PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
             BackendRepr::Scalar(s),
-        ) if let Primitive::Float(float @ (Float::F32 | Float::F64)) = s.primitive() => {
+        ) if let Primitive::Float(float @ (Float::F16 | Float::F32 | Float::F64)) =
+            s.primitive() =>
+        {
             cx.type_vector(cx.type_from_float(float), 16 / float.size().bytes())
         }
+        (
+            PowerPC(PowerPCInlineAsmRegClass::vreg | PowerPCInlineAsmRegClass::vsreg),
+            BackendRepr::Scalar(s),
+        ) if s.primitive() == Primitive::Float(Float::F128) => cx.type_vector(cx.type_f64(), 2),
         _ => layout.llvm_type(cx),
     }
 }

@@ -19,6 +19,7 @@ use rustc_middle::ty::{
     IntTy, List, Region, RegionKind, TermKind, Ty, TyCtxt, TypeFoldable, UintTy,
 };
 use rustc_span::def_id::DefId;
+use rustc_target::spec::Arch;
 use tracing::instrument;
 
 use crate::cfi::typeid::TypeIdOptions;
@@ -469,7 +470,10 @@ pub(crate) fn encode_ty<'tcx>(
                 FloatTy::F16 => "Dh",
                 FloatTy::F32 => "f",
                 FloatTy::F64 => "d",
-                FloatTy::F128 => "g",
+                FloatTy::F128 => match tcx.sess.target.arch {
+                    Arch::PowerPC | Arch::PowerPC64 => "u9__ieee128", // "g" is used for __ibm128
+                    _ => "g",
+                },
             });
         }
 
@@ -552,9 +556,10 @@ pub(crate) fn encode_ty<'tcx>(
                 // Don't compress user-defined builtin types (see
                 // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-builtin and
                 // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
+                #[rustfmt::skip]
                 let builtin_types = [
                     "v", "w", "b", "c", "a", "h", "s", "t", "i", "j", "l", "m", "x", "y", "n", "o",
-                    "f", "d", "e", "g", "z", "Dh",
+                    "f", "d", "e", "g", "z", "Dh", "u9__ieee128",
                 ];
                 if !builtin_types.contains(&encoding) {
                     compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
