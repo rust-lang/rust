@@ -112,7 +112,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        // Scalable vector are never 1-ZST. FIXME: is that correct?
+        // FIXME(rustc_scalable_vector/stdarch_aarch64_sve): Scalable vectors aren't actually sized,
+        // but we pretend they are. Here we have to hack around that.
         if layout.peel_transparent_wrappers_from_non_1zst(bx).deref().is_scalable_vector() {
             Self::alloca_scalable(bx, layout)
         } else {
