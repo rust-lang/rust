@@ -529,6 +529,8 @@ pub trait BuilderMethods<'a, 'tcx>:
             let fnc_tree = FncTree { args: vec![tt.clone(), tt], ret: TypeTree::new() };
             let bytes = self.const_usize(layout.size.bytes());
             let bytes =
+                // FIXME(rustc_scalable_vector/stdarch_aarch64_sve): Scalable vectors aren't
+                // actually sized, but we pretend they are. Here we have to hack around that.
                 if layout.peel_transparent_wrappers_from_non_1zst(self).ty.is_scalable_vector() {
                     let vscale = self.vscale(self.type_i64());
                     self.mul(vscale, bytes)
