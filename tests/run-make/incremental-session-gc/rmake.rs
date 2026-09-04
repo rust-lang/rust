@@ -22,6 +22,23 @@ fn main() {
         assert_eq!(rfs::read_to_string(current.join("sentinel")), "previous session");
         previous = current;
     }
+
+    let crate_dir = previous.parent().unwrap();
+    let (prefix, hash) = previous.file_name().unwrap().to_str().unwrap().rsplit_once('-').unwrap();
+    let newer = crate_dir.join(format!("s-zzzzzzzzzz-0000000-{hash}"));
+    rfs::rename(&previous, &newer);
+    rfs::rename(
+        crate_dir.join(format!("{prefix}.lock")),
+        crate_dir.join("s-zzzzzzzzzz-0000000.lock"),
+    );
+
+    compile();
+    let sessions = shallow_find_directories(crate_dir, |_| true);
+    assert_eq!(sessions.len(), 2, "{sessions:?}");
+    assert!(sessions.contains(&newer));
+    let current = sessions.into_iter().find(|session| *session != newer).unwrap();
+    assert!(!current.file_name().unwrap().to_str().unwrap().ends_with("-working"));
+    assert_eq!(rfs::read_to_string(current.join("sentinel")), "previous session");
 }
 
 fn session_dir() -> PathBuf {

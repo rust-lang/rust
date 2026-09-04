@@ -724,7 +724,7 @@ pub(crate) fn garbage_collect_session_directories(
                 // It's not clear that `flock::Lock` can be fixed for this in general, and our own
                 // incremental session directory is the only one which this process may own, so skip
                 // it here and avoid the problem. We know it's not garbage anyway: we're using it.
-                // Once finalized, its lock is released. Include it in collection so we keep only
+                // Once finalized, its lock is released. Include it in collection so we keep
                 // the newest completed session.
                 return None;
             }
@@ -822,6 +822,10 @@ pub(crate) fn garbage_collect_session_directories(
 
     // Delete all but the most recent of the candidates
     all_except_most_recent(deletion_candidates).into_items().all(|(path, lock)| {
+        if path.file_name() == Some(current_session_directory_name) {
+            return true;
+        }
+
         debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
         if let Err(err) = std_fs::remove_dir_all(&path) {
