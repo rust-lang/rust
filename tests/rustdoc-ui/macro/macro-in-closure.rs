@@ -1,5 +1,7 @@
 // Regression issue for rustdoc ICE encountered in PR #65252.
 
+//@ check-pass
+
 #![feature(decl_macro)]
 
 fn main() {
