@@ -25,6 +25,14 @@ pub struct TypeErrCtxt<'a, 'tcx> {
     pub diverging_fallback_has_occurred: bool,
 
     pub autoderef_steps: Box<dyn Fn(Ty<'tcx>) -> Vec<(Ty<'tcx>, PredicateObligations<'tcx>)> + 'a>,
+    pub infer_closure_kind: Box<
+        dyn Fn(
+                rustc_hir::def_id::LocalDefId,
+            ) -> Option<(
+                ty::ClosureKind,
+                Option<(rustc_span::Span, rustc_middle::hir::place::Place<'tcx>)>,
+            )> + 'a,
+    >,
 }
 
 #[extension(pub trait InferCtxtErrorExt<'tcx>)]
@@ -41,6 +49,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 debug_assert!(false, "shouldn't be using autoderef_steps outside of typeck");
                 vec![(ty, PredicateObligations::new())]
             }),
+            infer_closure_kind: Box::new(|_| None),
         }
     }
 }
