@@ -145,6 +145,7 @@ impl AttributeKind {
             RustcDumpVariancesOfOpaques => No,
             RustcDumpVtable(..) => No,
             RustcDynIncompatibleTrait(..) => No,
+            RustcEditionRedirect(..) => No,
             RustcEffectiveVisibility => Yes,
             RustcEiiForeignItem => No,
             RustcEvaluateWhereClauses => Yes,

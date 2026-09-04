@@ -247,6 +247,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_eii_foreign_item,
     sym::rustc_allowed_through_unstable_modules,
     sym::rustc_deprecated_safe_2024,
+    sym::rustc_edition_redirect,
     sym::rustc_pub_transparent,
 
     // ==========================================================================

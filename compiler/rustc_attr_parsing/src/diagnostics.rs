@@ -38,6 +38,13 @@ pub(crate) struct ItemFollowingInnerAttr {
 }
 
 #[derive(Diagnostic)]
+#[diag("invalid edition in edition redirect")]
+pub(crate) struct InvalidEditionRedirect {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("unreachable configuration predicate")]
 pub(crate) struct UnreachableCfgSelectPredicate {
     #[label("this configuration predicate is never reached")]

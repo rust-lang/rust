@@ -2,6 +2,7 @@ use rustc_hir::def::Res;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::Ident;
 use rustc_span::def_id::{DefId, ModId};
+use rustc_span::edition::Edition;
 use smallvec::SmallVec;
 
 use crate::ty;
@@ -26,6 +27,13 @@ impl Reexport {
     }
 }
 
+/// A different item that a module child resolves to on or before a given edition.
+#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, StableHash)]
+pub struct EditionRedirect {
+    pub edition: Edition,
+    pub target: Res<!>,
+}
+
 /// This structure is supposed to keep enough data to re-create `Decl`s for other crates
 /// during name resolution. Right now the bindings are not recreated entirely precisely so we may
 /// need to add more data in the future to correctly support macros 2.0, for example.
@@ -43,6 +51,8 @@ pub struct ModChild {
     /// Reexport chain linking this module child to its original reexported item.
     /// Empty if the module child is a proper item.
     pub reexport_chain: SmallVec<[Reexport; 2]>,
+    /// Edition-dependent alternatives, sorted from the earliest boundary to the latest.
+    pub edition_redirects: SmallVec<[EditionRedirect; 1]>,
 }
 
 /// Same as `ModChild`, however, it includes ambiguity error.
