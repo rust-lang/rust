@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_index::Idx;
-use rustc_index::bit_set::BitMatrix;
+use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
 use rustc_middle::bug;
 use rustc_middle::mir::{BasicBlock, Location};
@@ -272,11 +272,45 @@ pub(crate) struct RegionValues<'tcx, N: Idx> {
     location_map: Rc<DenseLocationMap>,
     placeholder_indices: PlaceholderIndices<'tcx>,
     points: SparseIntervalMatrix<N, PointIndex>,
-    free_regions: BitMatrix<N, RegionVid>,
+    free_regions: ReversedSparseBitMatrix<N, RegionVid>,
 
     /// Placeholders represent bound regions -- so something like `'a`
     /// in `for<'a> fn(&'a u32)`.
-    placeholders: BitMatrix<N, PlaceholderIndex>,
+    placeholders: ReversedSparseBitMatrix<N, PlaceholderIndex>,
+}
+
+struct ReversedSparseBitMatrix<R: Idx, C: Idx> {
+    num_rows: usize,
+    rows: SparseBitMatrix<R, C>,
+}
+
+impl<R: Idx, C: Idx> ReversedSparseBitMatrix<R, C> {
+    #[inline]
+    fn new(rows: usize, cols: usize) -> ReversedSparseBitMatrix<R, C> {
+        Self { num_rows: rows, rows: SparseBitMatrix::new(cols) }
+    }
+    #[inline]
+    fn insert(&mut self, row: R, col: C) {
+        self.rows.insert(self.inner_row_index(row), col);
+    }
+
+    #[inline]
+    fn inner_row_index(&self, row: R) -> R {
+        R::new(self.num_rows - 1 - row.index())
+    }
+
+    #[inline]
+    fn contains(&self, row: R, col: C) -> bool {
+        self.rows.contains(self.inner_row_index(row), col)
+    }
+    #[inline]
+    fn iter(&self, row: R) -> impl Iterator<Item = C> {
+        self.rows.iter(self.inner_row_index(row))
+    }
+    #[inline]
+    fn union_rows(&mut self, read: R, write: R) -> bool {
+        self.rows.union_rows(self.inner_row_index(read), self.inner_row_index(write))
+    }
 }
 
 impl<'tcx, N: Idx> RegionValues<'tcx, N> {
@@ -295,8 +329,8 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
             location_map,
             points: SparseIntervalMatrix::new(num_points),
             placeholder_indices,
-            free_regions: BitMatrix::new(num_constraint_sccs, num_universal_regions),
-            placeholders: BitMatrix::new(num_constraint_sccs, num_placeholders),
+            free_regions: ReversedSparseBitMatrix::new(num_constraint_sccs, num_universal_regions),
+            placeholders: ReversedSparseBitMatrix::new(num_constraint_sccs, num_placeholders),
         }
     }
 
