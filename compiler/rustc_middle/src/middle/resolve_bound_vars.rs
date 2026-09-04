@@ -1,4 +1,5 @@
-//! Name resolution for lifetimes and late-bound type and const variables: type declarations.
+//! Name resolution for lifetimes and late-bound type and const variables (done by
+//! `rustc_hir_analysis`): type declarations.
 
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::ErrorGuaranteed;

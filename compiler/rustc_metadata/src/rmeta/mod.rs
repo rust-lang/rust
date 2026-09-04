@@ -15,7 +15,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap, MacroKinds};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::{PreciseCapturingArgKind, attrs};
@@ -24,12 +24,12 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
     BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, TyDecodable, TyEncodable,
 };
-use rustc_middle::metadata::{AmbigModChild, ModChild};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
+use rustc_middle::middle::resolve::{AmbigModChild, DocLinkResMap, ModChild};
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir;
 use rustc_middle::mir::ConstValue;

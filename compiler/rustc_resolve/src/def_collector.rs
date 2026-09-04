@@ -10,8 +10,9 @@ use rustc_hir::Target;
 use rustc_hir::def::DefKind;
 use rustc_hir::def::Namespace::{TypeNS, ValueNS};
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::middle::resolve::PerOwnerResolverData;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{PerOwnerResolverData, TyCtxtFeed};
+use rustc_middle::ty::TyCtxtFeed;
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, instrument};
 
