@@ -416,21 +416,21 @@ impl<'hir> PathSegment<'hir> {
 #[derive(Clone, Copy, Debug, StableHash)]
 pub enum ConstItemRhs<'hir> {
     Body(BodyId),
-    TypeConst(&'hir ConstArg<'hir>),
+    Direct(&'hir ConstArg<'hir>),
 }
 
 impl<'hir> ConstItemRhs<'hir> {
     pub fn hir_id(&self) -> HirId {
         match self {
             ConstItemRhs::Body(body_id) => body_id.hir_id,
-            ConstItemRhs::TypeConst(ct_arg) => ct_arg.hir_id,
+            ConstItemRhs::Direct(ct_arg) => ct_arg.hir_id,
         }
     }
 
     pub fn span<'tcx>(&self, tcx: impl crate::intravisit::HirTyCtxt<'tcx>) -> Span {
         match self {
             ConstItemRhs::Body(body_id) => tcx.hir_body(*body_id).value.span,
-            ConstItemRhs::TypeConst(ct_arg) => ct_arg.span,
+            ConstItemRhs::Direct(ct_arg) => ct_arg.span,
         }
     }
 }

@@ -444,7 +444,7 @@ fn const_evaluatable_clauses_of<'tcx>(
                 }
 
                 // Skip type consts as mGCA doesn't support evaluatable clauses.
-                if alias_const.kind.is_type_const(self.tcx) {
+                if alias_const.kind.is_direct_const(self.tcx) {
                     return;
                 }
 

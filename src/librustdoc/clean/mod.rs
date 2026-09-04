@@ -354,7 +354,7 @@ pub(crate) fn clean_const_item_rhs<'tcx>(
 ) -> ConstantKind {
     match ct_rhs {
         hir::ConstItemRhs::Body(body) => ConstantKind::Local { def_id: parent, body },
-        hir::ConstItemRhs::TypeConst(ct) => clean_const(ct),
+        hir::ConstItemRhs::Direct(ct) => clean_const(ct),
     }
 }
 
