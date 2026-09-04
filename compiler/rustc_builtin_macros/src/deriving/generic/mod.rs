@@ -889,7 +889,7 @@ impl<'a> TraitDef<'a> {
             .flat_map(|variant| variant.data.fields())
             .map(|field| &*field.ty);
 
-        let methods = self.methods.iter().map(|method_def| {
+        let methods = self.methods.iter().filter_map(|method_def| {
             let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
                 method_def.extract_arg_details(cx, self, type_ident, generics);
 
@@ -912,7 +912,13 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            method_def.create_method(
+            // `assert_fields_are_eq` has an empty default implementation
+            if body.0.is_empty() && body.1.is_none() && method_def.name == sym::assert_fields_are_eq
+            {
+                return None;
+            }
+
+            Some(method_def.create_method(
                 cx,
                 self,
                 type_ident,
@@ -920,7 +926,7 @@ impl<'a> TraitDef<'a> {
                 explicit_self,
                 nonself_arg_tys,
                 body,
-            )
+            ))
         });
 
         let is_packed = false; // enums are never packed
