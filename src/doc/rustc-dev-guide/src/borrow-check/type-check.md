@@ -2,15 +2,21 @@
 
 <!-- TODO: Move this to the analysis folder. -->
 
-"Canonical" type checking (ignoring lifetimes) for Rust happens in the HIR. Despite this, we also do a [type checking pass in MIR][type_check].
+"Canonical" type checking (ignoring lifetimes) for Rust happens in the HIR.
+Despite this, we also do a [type checking pass in MIR][type_check].
 
-The MIR is our fully-typed intermediate representation, the types of all items and the contents of their bodies are known by this point and by constructing the MIR we know its types are correct. The reason to do a type checking pass on this already-typed, already-checked IR is to accumulate information about lifetimes[^lifetimes] for borrow checking. See: [`borrowck_collect_region_constraints`][borrowck_collect_region_constraints].
+The MIR is our fully-typed intermediate representation, the types of all items and the contents of their bodies are known by this point and by constructing the MIR we know its types are correct.
+The reason to do a type checking pass on this already-typed, already-checked IR is to accumulate information about lifetimes[^lifetimes] for borrow checking.
+See: [`borrowck_collect_region_constraints`][borrowck_collect_region_constraints].
 
 [^lifetimes]: AKA regions AKA loans.
 
-Doing this additional type checking pass on it also allows us to check our working: If something fails in MIR type checking that passed in HIR type checking, something has gone wrong.  
+Doing this additional type checking pass on it also allows us to check our working:
+If something fails in MIR type checking that passed in HIR type checking, something has gone wrong.
 
-Maintaining "MIR type checking should succeed if HIR type checking succeeds" is nontrivial. One major reason for this is that type checking MIR involves erasing the existing lifetimes and replacing them with new unconstrained lifetime variables, while in HIR lifetimes get inferred but not checked. In this way, HIR type checking and MIR type checking each work with subtly different information.
+Maintaining "MIR type checking should succeed if HIR type checking succeeds" is nontrivial.
+One major reason for this is that type checking MIR involves erasing the existing lifetimes and replacing them with new unconstrained lifetime variables, while in HIR lifetimes get inferred but not checked.
+In this way, HIR type checking and MIR type checking each work with subtly different information.
 
 The erase-and-re-infer strategy in MIR is called [Region Uniquification](#region-uniquification).
 
@@ -49,7 +55,8 @@ We replace all inference variables with existential bound variables instead.
 Something like `let x: Vec<_>` would therefore result in `exists<T> UserType::Ty(Vec<T>)`.
 
 A pattern like `let Foo(x): Foo<&'a u32>` has a user type `Foo<&'a u32>` but
-the actual type of `x` should only be `&'a u32`. For this, we use a [`UserTypeProjection`][proj].
+the actual type of `x` should only be `&'a u32`.
+For this, we use a [`UserTypeProjection`][proj].
 
 In the MIR, we deal with user types in two slightly different ways.
 
@@ -62,12 +69,12 @@ Here `T_x` only has to be a subtype of the user type, so we instead use
 [`StatementKind::AscribeUserType`][stmt] for that.
 
 Note that we do not directly use the user type as the MIR typechecker
-doesn't really deal with type and const inference variables. We instead store the final
-[`inferred_type`][inf] from the HIR type-checker. During MIR typeck, we then replace its regions
-with new nll inference vars and relate it with the actual `UserType` to get the correct region
-constraints again.
+doesn't really deal with type and const inference variables.
+We instead store the final [`inferred_type`][inf] from the HIR type-checker.
+During MIR typeck, we then replace its regions with new nll inference vars
+and relate it with the actual `UserType` to get the correct region constraints again.
 
-After the MIR type-check, all user type annotations get discarded, as they aren't needed anymore.
+After the MIR type-check, all user type annotations get discarded as they aren't needed anymore.
 
 [annot]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.CanonicalUserTypeAnnotation.html
 [proj]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.UserTypeProjection.html
