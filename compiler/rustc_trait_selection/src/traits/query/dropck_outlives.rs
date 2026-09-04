@@ -1,7 +1,9 @@
+use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_infer::traits::TraitErrors;
 use rustc_infer::traits::query::type_op::DropckOutlives;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
+use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt, Unnormalized};
 use rustc_span::Span;
 use thin_vec::ThinVec;
@@ -345,7 +347,14 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // FIXME(@lcnr): Why do we erase regions in the env here? Seems odd
             let typing_env = tcx.erase_and_anonymize_regions(typing_env);
             let needs_drop = tcx.mir_coroutine_witnesses(def_id).is_some_and(|witness| {
-                witness.field_tys.iter().any(|field| field.ty.needs_drop(tcx, typing_env))
+                let upvar_locals: IndexSet<_> =
+                    witness.variant_fields[VariantIdx::ZERO].iter().copied().collect();
+                // As a reminder, upvars also appear in the UNRESUMED state-variant
+                witness
+                    .field_tys
+                    .iter_enumerated()
+                    .filter_map(|(corsl, ty)| (!upvar_locals.contains(&corsl)).then_some(ty))
+                    .any(|field| field.ty.needs_drop(tcx, typing_env))
             });
             if needs_drop {
                 // Pushing types directly to `constraints.outlives` is equivalent

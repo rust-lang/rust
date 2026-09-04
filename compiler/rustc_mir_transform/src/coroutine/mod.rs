@@ -53,6 +53,7 @@
 mod by_move_body;
 mod drop;
 mod layout;
+pub(crate) mod relocate_upvars;
 
 pub(super) use by_move_body::coroutine_by_move_body_def_id;
 use drop::{
@@ -62,7 +63,8 @@ use drop::{
 };
 pub(super) use layout::mir_coroutine_witnesses;
 use layout::{CoroutineSavedLocals, compute_layout, locals_live_across_suspend_points};
-use rustc_abi::{FieldIdx, VariantIdx};
+pub(super) use relocate_upvars::RelocateUpvars;
+use rustc_abi::{FieldIdx, PackCoroutineLayout, VariantIdx};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet};
@@ -82,6 +84,8 @@ use crate::patch::MirPatch;
 use crate::{PassPolicy, abort_unwinding_calls, pass_manager as pm, simplify};
 
 pub(super) struct StateTransform;
+
+const VARIANT_UNRESUMED: VariantIdx = VariantIdx::from_usize(CoroutineArgs::UNRESUMED);
 
 struct RenameLocalVisitor<'tcx> {
     from: Local,
@@ -410,6 +414,15 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         // Replace an Local in the remap with a coroutine struct access
         if let Some(&Some((ty, variant_index, idx))) = self.remap.get(place.local) {
             replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
+        } else if let Place { local: ty::CAPTURE_STRUCT_LOCAL, projection } = *place
+            && matches!(&**projection, [ProjectionElem::Field(..), ..])
+        {
+            replace_base(
+                place,
+                Place::from(ty::CAPTURE_STRUCT_LOCAL)
+                    .project_deeper(&[ProjectionElem::Downcast(None, VARIANT_UNRESUMED)], self.tcx),
+                self.tcx,
+            );
         }
         if let Some(new_projection) = self.process_projection(&place.projection, location) {
             place.projection = self.tcx.mk_place_elems(&new_projection);
@@ -549,12 +562,12 @@ fn make_aggregate_adt<'tcx>(
 
 #[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let coroutine_ty = body.local_decls[SELF_ARG].ty;
+    let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     // Replace the by value coroutine argument
-    body.local_decls[SELF_ARG].ty = ref_coroutine_ty;
+    body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
     SelfArgVisitor::new(tcx, tcx.mk_place_deref(SELF_ARG.into())).visit_body(body);
@@ -572,7 +585,7 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_ref_coroutine_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref coroutine argument
-    body.local_decls[SELF_ARG].ty = pin_ref_coroutine_ty;
+    body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = pin_ref_coroutine_ty;
 
     let unpinned_local = body.local_decls.push(LocalDecl::new(ref_coroutine_ty, body.span));
 
@@ -1075,20 +1088,29 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         let old_ret_ty = body.return_ty();
 
         assert!(body.coroutine_drop().is_none() && body.coroutine_drop_async().is_none());
+        // The first argument is the coroutine type passed by value
+        let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
+        let coroutine_kind = body.coroutine_kind().unwrap();
+
+        // Get the discriminant type and args which typeck computed
+        let &ty::Coroutine(def_id, args) = coroutine_ty.kind() else {
+            tcx.dcx().span_bug(body.span, format!("unexpected coroutine type {coroutine_ty}"));
+        };
+        let coroutine_args = args.as_coroutine();
+        let discr_ty = coroutine_args.discr_ty(tcx);
+        let upvar_tys = coroutine_args.upvar_tys();
+        let _local_upvar_map = if !matches!(
+            tcx.sess.opts.unstable_opts.pack_coroutine_layout,
+            PackCoroutineLayout::Classic
+        ) {
+            RelocateUpvars.run(tcx, def_id, upvar_tys, body)
+        } else {
+            indexvec![]
+        };
 
         if let Some(dumper) = MirDumper::new(tcx, "coroutine_before", body) {
             dumper.dump_mir(body);
         }
-
-        // The first argument is the coroutine type passed by value
-        let coroutine_ty = body.local_decls.raw[1].ty;
-        let coroutine_kind = body.coroutine_kind().unwrap();
-
-        // Get the discriminant type and args which typeck computed
-        let ty::Coroutine(_, args) = coroutine_ty.kind() else {
-            tcx.dcx().span_bug(body.span, format!("unexpected coroutine type {coroutine_ty}"));
-        };
-        let discr_ty = args.as_coroutine().discr_ty(tcx);
 
         let new_ret_ty = match coroutine_kind {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
@@ -1146,7 +1168,13 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto coroutine struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
-        let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
+        let (remap, layout, storage_liveness) = compute_layout(
+            liveness_info,
+            body,
+            upvar_tys,
+            tcx.sess.opts.unstable_opts.pack_coroutine_layout,
+            &_local_upvar_map,
+        );
 
         let can_return = can_return(tcx, body, body.typing_env(tcx));
 

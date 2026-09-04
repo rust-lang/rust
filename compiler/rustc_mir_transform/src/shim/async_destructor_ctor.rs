@@ -293,11 +293,22 @@ fn build_adrop_for_coroutine_shim<'tcx>(
         }
 
         fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, _: Location) {
-            if place.local == SELF_ARG
-                && let Some((first, rest)) = place.projection.split_first()
-            {
-                assert!(matches!(first, ProjectionElem::Field(FieldIdx::ZERO, _)));
-                *place = Place::from(self.replace_to).project_deeper(rest, self.tcx);
+            if place.local == SELF_ARG {
+                match &**place.projection {
+                    // New pattern: (_1 as variant#0).field -> replace_to.rest
+                    [
+                        ProjectionElem::Downcast(_, _),
+                        ProjectionElem::Field(FieldIdx::ZERO, _),
+                        rest @ ..,
+                    ] => {
+                        *place = Place::from(self.replace_to).project_deeper(rest, self.tcx);
+                    }
+                    // Old pattern: _1.field -> replace_to.rest
+                    [ProjectionElem::Field(FieldIdx::ZERO, _), rest @ ..] => {
+                        *place = Place::from(self.replace_to).project_deeper(rest, self.tcx);
+                    }
+                    _ => {}
+                }
             }
         }
     }

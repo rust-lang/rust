@@ -722,10 +722,6 @@ pub(crate) struct ThinLtoNotSupportedByBackend;
 pub(crate) struct UnsupportedPackedStack;
 
 #[derive(Diagnostic)]
-#[diag("`-Z pack-coroutine-layout=captures-only` is not yet implemented and will be ignored")]
-pub(crate) struct PackCoroutineLayoutNotImplemented;
-
-#[derive(Diagnostic)]
 #[diag("`-Ctarget-cpu=native` is not allowed for target `{$target_triple}`")]
 #[note("this target requires consistent `-Ctarget-cpu` values across all crates")]
 #[help(

@@ -13,8 +13,10 @@
 +         field _s0: bool;
 +         field _s1: u32;
 +         field _s2: {async block@$DIR/async_fn.rs:61:18: 61:23};
++         field _s3: bool;
++         field _s4: u32;
 +         variant_fields = {
-+             Unresumed(0): [],
++             Unresumed(0): [_s3, _s4],
 +             Returned (1): [],
 +             Panicked (2): [],
 +             Suspend0 (3): [_s0, _s1, _s2],
@@ -22,8 +24,8 @@
 +         storage_conflicts = BitMatrix(3x3) {(_s0, _s0), (_s0, _s1), (_s0, _s2), (_s1, _s0), (_s1, _s1), (_s1, _s2), (_s2, _s0), (_s2, _s1), (_s2, _s2)}
 +     }
 +     debug _task_context => _51;
-+     debug crash => ((*_50).0: bool);
-+     debug x => ((*_50).1: u32);
++     debug crash => (((*_50) as variant#0).0: bool);
++     debug x => (((*_50) as variant#0).1: u32);
 +     coroutine debug crash => _s0;
 +     let mut _0: std::task::Poll<u32>;
       let _3: bool;
@@ -399,9 +401,9 @@
 -         drop(_1) -> [return: bb29, unwind terminate(cleanup)];
 +     bb29: {
 +         nop;
-+         (((*_50) as variant#3).0: bool) = copy ((*_50).0: bool);
++         (((*_50) as variant#3).0: bool) = copy (((*_50) as variant#0).0: bool);
 +         nop;
-+         (((*_50) as variant#3).1: u32) = copy ((*_50).1: u32);
++         (((*_50) as variant#3).1: u32) = copy (((*_50) as variant#0).1: u32);
 +         StorageLive(_5);
 +         StorageLive(_6);
 +         StorageLive(_7);

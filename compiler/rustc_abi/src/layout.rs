@@ -245,9 +245,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     pub fn layout_of_coroutine<'a, F, VariantIdx, FieldIdx, LocalIdx>(
         &self,
         local_layouts: &IndexSlice<LocalIdx, F>,
-        prefix_layouts: IndexVec<FieldIdx, F>,
+        relocated_upvars: &IndexSlice<LocalIdx, Option<LocalIdx>>,
+        upvar_layouts: IndexVec<FieldIdx, F>,
         variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
         storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
+        pack: PackCoroutineLayout,
         tag_to_layout: impl Fn(Scalar) -> F,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
     where
@@ -259,9 +261,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         coroutine::layout(
             self,
             local_layouts,
-            prefix_layouts,
+            relocated_upvars,
+            upvar_layouts,
             variant_fields,
             storage_conflicts,
+            pack,
             tag_to_layout,
         )
     }

@@ -7,8 +7,9 @@
 -     let mut _0: ();
 + fn async_drop_in_place::{closure#0}(_1: Pin<&mut {async fn body of async_drop_in_place<SyncInt>()}>, _2: &mut Context<'_>) -> Poll<()> {
 +     coroutine layout {
++         field _s0: &mut SyncInt;
 +         variant_fields = {
-+             Unresumed(0): [],
++             Unresumed(0): [_s0],
 +             Returned (1): [],
 +             Panicked (2): [],
 +         }
@@ -16,32 +17,40 @@
 +     }
 +     let mut _0: std::task::Poll<()>;
       let mut _3: &mut SyncInt;
-+     let mut _4: ();
-+     let mut _5: u32;
-+     let mut _6: &mut {async fn body of std::future::async_drop_in_place<SyncInt>()};
-+     let _7: std::future::ResumeTy;
-+     let mut _8: std::ptr::NonNull<std::task::Context<'_>>;
+      let mut _4: &mut SyncInt;
+      let mut _5: &mut SyncInt;
++     let mut _6: ();
++     let mut _7: u32;
++     let mut _8: &mut {async fn body of std::future::async_drop_in_place<SyncInt>()};
++     let _9: std::future::ResumeTy;
++     let mut _10: std::ptr::NonNull<std::task::Context<'_>>;
   
       bb0: {
--         _3 = no_retag copy (_1.0: &mut SyncInt);
+-         StorageLive(_4);
+-         StorageLive(_5);
+-         _5 = no_retag move (_1.0: &mut SyncInt);
+-         _4 = no_retag move _5;
+-         StorageDead(_5);
+-         _3 = no_retag copy _4;
 -         drop((*_3)) -> [return: bb1, unwind continue];
-+         _8 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
-+         _7 = std::future::ResumeTy(move _8);
-+         _6 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<SyncInt>()});
-+         _5 = discriminant((*_6));
-+         switchInt(move _5) -> [0: bb6, 1: bb4, 2: bb3, otherwise: bb5];
++         _10 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
++         _9 = std::future::ResumeTy(move _10);
++         _8 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<SyncInt>()});
++         _7 = discriminant((*_8));
++         switchInt(move _7) -> [0: bb6, 1: bb4, 2: bb3, otherwise: bb5];
       }
   
       bb1: {
 -         _0 = const ();
-+         _4 = const ();
-+         _0 = Poll::<()>::Ready(move _4);
-+         discriminant((*_6)) = 1;
++         _6 = const ();
+          StorageDead(_4);
++         _0 = Poll::<()>::Ready(move _6);
++         discriminant((*_8)) = 1;
           return;
 +     }
 + 
 +     bb2 (cleanup): {
-+         discriminant((*_6)) = 2;
++         discriminant((*_8)) = 2;
 +         resume;
 +     }
 + 
@@ -59,7 +68,12 @@
 +     }
 + 
 +     bb6: {
-+         _3 = no_retag copy ((*_6).0: &mut SyncInt);
++         StorageLive(_4);
++         StorageLive(_5);
++         _5 = no_retag move (((*_8) as variant#0).0: &mut SyncInt);
++         _4 = no_retag move _5;
++         StorageDead(_5);
++         _3 = no_retag copy _4;
 +         drop((*_3)) -> [return: bb1, unwind: bb2];
       }
   }

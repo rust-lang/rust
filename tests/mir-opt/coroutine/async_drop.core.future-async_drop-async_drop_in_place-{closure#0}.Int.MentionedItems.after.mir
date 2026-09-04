@@ -4,13 +4,21 @@ fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<In
 yields ()
  {
     let mut _0: ();
+    let mut _3: &mut Int;
+    let mut _4: &mut Int;
 
     bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = no_retag move (_1.0: &mut Int);
+        _3 = no_retag move _4;
+        StorageDead(_4);
         goto -> bb1;
     }
 
     bb1: {
         _0 = const ();
+        StorageDead(_3);
         return;
     }
 }

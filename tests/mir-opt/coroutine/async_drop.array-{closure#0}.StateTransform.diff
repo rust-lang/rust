@@ -50,7 +50,7 @@
 +     let mut _27: std::ptr::NonNull<std::task::Context<'_>>;
       scope 1 {
 -         debug array => _3;
-+         debug array => (((*_25) as variant#4).1: [AsyncInt; 2]);
++         debug array => (((*_25) as variant#3).0: [AsyncInt; 2]);
       }
   
       bb0: {
@@ -184,20 +184,20 @@
       bb17: {
 -         _9 = discriminant(_8);
 -         switchInt(move _9) -> [0: bb10, 1: bb15, otherwise: bb16];
-+         _20 = &mut (((*_25) as variant#4).2: impl std::future::Future<Output = ()>);
++         _20 = &mut (((*_25) as variant#3).1: impl std::future::Future<Output = ()>);
 +         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb16, unwind: bb8];
       }
   
       bb18: {
 -         _8 = <impl Future<Output = ()> as Future>::poll(move _10, move _11) -> [return: bb17, unwind: bb11];
 +         nop;
-+         (((*_25) as variant#4).2: impl std::future::Future<Output = ()>) = async_drop_in_place::<[AsyncInt; 2]>(copy (_21.0: &mut [AsyncInt; 2])) -> [return: bb17, unwind: bb8];
++         (((*_25) as variant#3).1: impl std::future::Future<Output = ()>) = async_drop_in_place::<[AsyncInt; 2]>(copy (_21.0: &mut [AsyncInt; 2])) -> [return: bb17, unwind: bb8];
       }
   
       bb19: {
 -         _12 = move _2;
 -         _11 = std::future::get_context::<'_, '_>(move _12) -> [return: bb18, unwind: bb11];
-+         _22 = &mut (((*_25) as variant#4).1: [AsyncInt; 2]);
++         _22 = &mut (((*_25) as variant#3).0: [AsyncInt; 2]);
 +         _21 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _22) -> [return: bb18, unwind: bb5];
       }
   
@@ -266,7 +266,7 @@
 +         _4 = AsyncInt(const 1_i32);
 +         StorageLive(_5);
 +         _5 = AsyncInt(const 2_i32);
-+         (((*_25) as variant#4).1: [AsyncInt; 2]) = [move _4, move _5];
++         (((*_25) as variant#3).0: [AsyncInt; 2]) = [move _4, move _5];
 +         goto -> bb1;
       }
   }

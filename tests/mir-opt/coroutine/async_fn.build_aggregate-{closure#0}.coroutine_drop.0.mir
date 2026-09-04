@@ -2,10 +2,10 @@
 
 fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -> () {
     debug _task_context => _2;
-    debug a => ((*_1).0: u32);
-    debug b => ((*_1).1: u32);
-    debug c => ((*_1).2: u32);
-    debug d => ((*_1).3: u32);
+    debug a => (((*_1) as variant#0).0: u32);
+    debug b => (((*_1) as variant#0).1: u32);
+    debug c => (((*_1) as variant#0).2: u32);
+    debug d => (((*_1) as variant#0).3: u32);
     let mut _0: ();
     let mut _2: std::future::ResumeTy;
     let _3: u32;

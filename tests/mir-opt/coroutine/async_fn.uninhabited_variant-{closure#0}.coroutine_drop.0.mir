@@ -113,7 +113,7 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb8: {
-        (((*_1) as variant#4).2: bool) = const false;
+        (((*_1) as variant#3).1: bool) = const false;
         nop;
         goto -> bb9;
     }
@@ -155,7 +155,7 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb16 (cleanup): {
-        (((*_1) as variant#4).2: bool) = const false;
+        (((*_1) as variant#3).1: bool) = const false;
         nop;
         goto -> bb10;
     }
@@ -165,7 +165,7 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb18: {
-        switchInt(copy (((*_1) as variant#4).2: bool)) -> [0: bb8, otherwise: bb17];
+        switchInt(copy (((*_1) as variant#3).1: bool)) -> [0: bb8, otherwise: bb17];
     }
 
     bb19 (cleanup): {
@@ -173,7 +173,7 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb20 (cleanup): {
-        switchInt(copy (((*_1) as variant#4).2: bool)) -> [0: bb16, otherwise: bb19];
+        switchInt(copy (((*_1) as variant#3).1: bool)) -> [0: bb16, otherwise: bb19];
     }
 
     bb21: {
