@@ -3,6 +3,8 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Frontend/Offloading/OffloadWrapper.h"
+#include "llvm/Frontend/Offloading/Utility.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Object/OffloadBinary.h"
 #include "llvm/Support/CBindingWrapping.h"
@@ -114,4 +116,58 @@ extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn,
 
   IRBuilder<> B(&entry);
   B.CreateBr(&clonedEntry);
+}
+
+static Error extractImages(StringRef DeviceBinPath,
+                           SmallVectorImpl<OffloadFile> &Binaries) {
+  ErrorOr<std::unique_ptr<MemoryBuffer>> BufOrErr =
+      MemoryBuffer::getFile(DeviceBinPath);
+  if (std::error_code EC = BufOrErr.getError())
+    return createFileError(DeviceBinPath, EC);
+  std::unique_ptr<MemoryBuffer> Buf = std::move(*BufOrErr);
+
+  if (!isAddrAligned(Align(OffloadBinary::getAlignment()),
+                     Buf->getBufferStart()))
+    Buf = MemoryBuffer::getMemBufferCopy(Buf->getBuffer(),
+                                         Buf->getBufferIdentifier());
+
+  return extractOffloadBinaries(*Buf, Binaries);
+}
+
+static bool hasOffloadEntries(Module &M) {
+  for (GlobalVariable &GV : M.globals())
+    if (GV.hasSection() && GV.getSection() == "llvm_offload_entries")
+      return true;
+  return false;
+}
+
+static bool reportAndFailWrappingImages(Error E, const char *What) {
+  handleAllErrors(std::move(E), [&](const ErrorInfoBase &EI) {
+    errs() << "LLVMRustOffloadWrapImages: " << What << ": " << EI.message()
+           << "\n";
+  });
+  return false;
+}
+
+extern "C" bool LLVMRustOffloadWrapImages(LLVMModuleRef HostMRef,
+                                          const char *DeviceBinPath) {
+  Module &M = *unwrap(HostMRef);
+  if (!hasOffloadEntries(M))
+    return true;
+
+  SmallVector<OffloadFile> Binaries;
+  if (Error E = extractImages(DeviceBinPath, Binaries))
+    return reportAndFailWrappingImages(std::move(E), "extract");
+
+  SmallVector<ArrayRef<char>> Images;
+  for (OffloadFile &F : Binaries) {
+    StringRef Img = F.getBinary()->getImage();
+    Images.emplace_back(Img.data(), Img.size());
+  }
+
+  if (Error E = offloading::wrapOpenMPBinaries(
+          M, Images, offloading::getOffloadEntryArray(M), /*Suffix=*/"",
+          /*Relocatable=*/false))
+    return reportAndFailWrappingImages(std::move(E), "wrap");
+  return true;
 }

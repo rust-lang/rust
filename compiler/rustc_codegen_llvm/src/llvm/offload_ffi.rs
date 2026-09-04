@@ -6,6 +6,7 @@ use super::ffi::{Module, TargetMachine, Value};
 type LLVMRustBundleImagesFn = unsafe extern "C" fn(&Module, &TargetMachine, *const c_char) -> bool;
 type LLVMRustOffloadEmbedBufferInModuleFn = unsafe extern "C" fn(&Module, *const c_char) -> bool;
 type LLVMRustOffloadMapperFn = unsafe extern "C" fn(&Value, &Value, *const &Value);
+type LLVMRustOffloadWrapImagesFn = unsafe extern "C" fn(&Module, *const c_char) -> bool;
 
 use rustc_session::config::host_tuple;
 use rustc_session::filesearch;
@@ -16,6 +17,7 @@ pub(crate) struct RustOffloadWrapper {
     LLVMRustBundleImages: LLVMRustBundleImagesFn,
     LLVMRustOffloadEmbedBufferInModule: LLVMRustOffloadEmbedBufferInModuleFn,
     LLVMRustOffloadMapper: LLVMRustOffloadMapperFn,
+    LLVMRustOffloadWrapImages: LLVMRustOffloadWrapImagesFn,
     // Keep the dynamic library loaded while the function pointers are used.
     _lib: libloading::Library,
 }
@@ -71,6 +73,14 @@ impl RustOffloadWrapper {
         unsafe { (self.LLVMRustOffloadMapper)(v1, v2, vs.as_ptr()) }
     }
 
+    pub(crate) unsafe fn llvm_rust_offload_wrap_images(
+        &self,
+        host_m: &Module,
+        device_bin_path: &CStr,
+    ) -> bool {
+        unsafe { (self.LLVMRustOffloadWrapImages)(host_m, device_bin_path.as_ptr()) }
+    }
+
     fn call_dynamic(
         sysroot: &rustc_session::config::Sysroot,
     ) -> Result<Self, RustOffloadLibraryError> {
@@ -86,11 +96,14 @@ impl RustOffloadWrapper {
         };
         let llvm_rust_offload_wrapper =
             *unsafe { lib.get::<LLVMRustOffloadMapperFn>(b"LLVMRustOffloadMapper\0")? };
+        let llvm_rust_offload_wrap_images =
+            *unsafe { lib.get::<LLVMRustOffloadWrapImagesFn>(b"LLVMRustOffloadWrapImages\0")? };
 
         Ok(Self {
             LLVMRustBundleImages: llvm_rust_bundle_images,
             LLVMRustOffloadEmbedBufferInModule: llvm_rust_offload_embed_buffer_in_module,
             LLVMRustOffloadMapper: llvm_rust_offload_wrapper,
+            LLVMRustOffloadWrapImages: llvm_rust_offload_wrap_images,
             _lib: lib,
         })
     }
