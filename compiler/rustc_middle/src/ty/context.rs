@@ -326,6 +326,7 @@ pub struct CommonTypes<'tcx> {
     pub f32: Ty<'tcx>,
     pub f64: Ty<'tcx>,
     pub f128: Ty<'tcx>,
+    pub ppcf128: Ty<'tcx>,
     pub str_: Ty<'tcx>,
     pub never: Ty<'tcx>,
     pub self_param: Ty<'tcx>,
@@ -466,6 +467,7 @@ impl<'tcx> CommonTypes<'tcx> {
             f32: mk(Float(ty::FloatTy::F32)),
             f64: mk(Float(ty::FloatTy::F64)),
             f128: mk(Float(ty::FloatTy::F128)),
+            ppcf128: mk(Float(ty::FloatTy::PpcF128)),
             str_: mk(Str),
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 

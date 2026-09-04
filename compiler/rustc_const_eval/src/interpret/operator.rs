@@ -1,5 +1,6 @@
 use either::Either;
 use rustc_abi::Size;
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -91,6 +92,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Div => ImmTy::from_scalar(adjust_nan((l / r).value).into(), layout),
             Rem => ImmTy::from_scalar(adjust_nan((l % r).value).into(), layout),
             _ => span_bug!(self.cur_span(), "invalid float op: `{:?}`", bin_op),
+        }
+    }
+
+    /// A separate function because DoubleDouble does not currently implement FloatConvert.
+    fn binary_ppcf128_op(
+        &self,
+        bin_op: mir::BinOp,
+        _layout: TyAndLayout<'tcx>,
+        l: DoubleDouble,
+        r: DoubleDouble,
+    ) -> ImmTy<'tcx, M::Provenance> {
+        use rustc_middle::mir::BinOp::*;
+
+        match bin_op {
+            Eq => ImmTy::from_bool(l == r, *self.tcx),
+            Ne => ImmTy::from_bool(l != r, *self.tcx),
+            Lt => ImmTy::from_bool(l < r, *self.tcx),
+            Le => ImmTy::from_bool(l <= r, *self.tcx),
+            Gt => ImmTy::from_bool(l > r, *self.tcx),
+            Ge => ImmTy::from_bool(l >= r, *self.tcx),
+            _ => span_bug!(self.cur_span(), "invalid ppcf128 op: `{:?}`", bin_op),
         }
     }
 
@@ -406,6 +428,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     FloatTy::F128 => {
                         self.binary_float_op(bin_op, layout, left.to_f128()?, right.to_f128()?)
                     }
+                    FloatTy::PpcF128 => {
+                        let target_endian = self.tcx.sess.target.options.endian;
+                        self.binary_ppcf128_op(
+                            bin_op,
+                            layout,
+                            left.to_ppcf128(target_endian)?,
+                            right.to_ppcf128(target_endian)?,
+                        )
+                    }
                 })
             }
             _ if left.layout.ty.is_integral() => {
@@ -463,6 +494,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 interp_ok(ImmTy::from_bool(res, *self.tcx))
             }
             ty::Float(fty) => {
+                let target_endian = self.tcx.sess.target.options.endian;
+
                 let val = val.to_scalar();
                 if un_op != Neg {
                     span_bug!(self.cur_span(), "Invalid float op {:?}", un_op);
@@ -474,6 +507,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     FloatTy::F32 => Scalar::from_f32(-val.to_f32()?),
                     FloatTy::F64 => Scalar::from_f64(-val.to_f64()?),
                     FloatTy::F128 => Scalar::from_f128(-val.to_f128()?),
+                    FloatTy::PpcF128 => {
+                        Scalar::from_ppcf128(-val.to_ppcf128(target_endian)?, target_endian)
+                    }
                 };
                 interp_ok(ImmTy::from_scalar(res, layout))
             }

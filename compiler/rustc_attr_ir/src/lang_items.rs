@@ -237,6 +237,7 @@ language_item_table! {
     VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
 
     Complex,                 sym::complex,             complex,                    Target::Struct,         GenericRequirement::Exact(1);
+    PpcF128,                 sym::ppcf128,             ppcf128_type,               Target::Struct,         GenericRequirement::None;
 
     Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);

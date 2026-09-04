@@ -37,6 +37,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         FloatTy::F32 => math::sqrt_op::<IeeeFloat<SingleS>>(this, &op, &dest)?,
                         FloatTy::F64 => math::sqrt_op::<IeeeFloat<DoubleS>>(this, &op, &dest)?,
                         FloatTy::F128 => math::sqrt_op::<IeeeFloat<QuadS>>(this, &op, &dest)?,
+                        FloatTy::PpcF128 => {
+                            span_bug!(this.cur_span(), "ppcf128 is not a valid vector element type")
+                        }
                     };
                 }
             }
@@ -73,6 +76,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         FloatTy::F32 => host_unary_float_op::<SingleS>(this, &op, host_op, &dest)?,
                         FloatTy::F64 => host_unary_float_op::<DoubleS>(this, &op, host_op, &dest)?,
                         FloatTy::F128 => unimplemented!("f128"), // FIXME(f128)
+                        FloatTy::PpcF128 => {
+                            span_bug!(this.cur_span(), "ppcf128 is not a valid vector element type")
+                        }
                     }
                 }
             }

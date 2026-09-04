@@ -2,13 +2,15 @@ use std::assert_matches;
 
 use rustc_abi::{FieldIdx, Integer};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::CastKind;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_middle::{bug, span_bug};
+use rustc_target::spec::HasTargetSpec;
 use tracing::trace;
 
 use super::util::ensure_monomorphic_enough;
@@ -249,6 +251,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             FloatTy::F32 => self.cast_from_float(src.to_scalar().to_f32()?, cast_to.ty),
             FloatTy::F64 => self.cast_from_float(src.to_scalar().to_f64()?, cast_to.ty),
             FloatTy::F128 => self.cast_from_float(src.to_scalar().to_f128()?, cast_to.ty),
+            FloatTy::PpcF128 => {
+                // FIXME(ppcf128): this needs a better algorithm in rustc_apfloat.
+                span_bug!(self.cur_span(), "casting ppcf128 is not currently supported")
+            }
         };
         interp_ok(ImmTy::from_scalar(val, cast_to))
     }
@@ -330,6 +336,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         src_layout: TyAndLayout<'tcx>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+        let target_endian = self.tcx().target_spec().endian;
+
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.backend_repr.is_signed(); // Also asserts that abi is `Scalar`.
 
@@ -362,6 +370,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     FloatTy::F32 => Scalar::from_f32(Single::from_i128(v).value),
                     FloatTy::F64 => Scalar::from_f64(Double::from_i128(v).value),
                     FloatTy::F128 => Scalar::from_f128(Quad::from_i128(v).value),
+                    FloatTy::PpcF128 => {
+                        Scalar::from_ppcf128(DoubleDouble::from_i128(v).value, target_endian)
+                    }
                 }
             }
             // unsigned int -> float
@@ -370,6 +381,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 FloatTy::F32 => Scalar::from_f32(Single::from_u128(v).value),
                 FloatTy::F64 => Scalar::from_f64(Double::from_u128(v).value),
                 FloatTy::F128 => Scalar::from_f128(Quad::from_u128(v).value),
+                FloatTy::PpcF128 => {
+                    Scalar::from_ppcf128(DoubleDouble::from_u128(v).value, target_endian)
+                }
             },
 
             // u8 -> char
@@ -421,6 +435,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 FloatTy::F128 => {
                     Scalar::from_f128(self.adjust_nan(f.convert(&mut false).value, &[f]))
+                }
+                FloatTy::PpcF128 => {
+                    // FIXME(ppcf128): this needs a better algorithm in rustc_apfloat.
+                    span_bug!(self.cur_span(), "casting ppcf128 is not currently supported")
                 }
             },
             // That's it.

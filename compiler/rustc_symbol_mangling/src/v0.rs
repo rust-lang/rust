@@ -507,6 +507,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             ty::Float(FloatTy::F32) => "f",
             ty::Float(FloatTy::F64) => "d",
             ty::Float(FloatTy::F128) => "C4f128",
+            ty::Float(FloatTy::PpcF128) => "C7ppcf128",
             ty::Never => "z",
 
             ty::Tuple(_) if ty.is_unit() => "u",

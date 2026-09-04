@@ -17,6 +17,7 @@ use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
 use rustc_structures::Limit;
+use rustc_target::spec::HasTargetSpec;
 use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
 use smallvec::SmallVec;
 
@@ -1799,6 +1800,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::FloatTy::F128 => {
                     let val = Quad::try_from(int).unwrap();
                     write!(self, "{}{}f128", val, if val.is_finite() { "" } else { "_" })?;
+                }
+                ty::FloatTy::PpcF128 => {
+                    let target_endian = self.tcx().target_spec().endian;
+                    let val = int.to_ppcf128(target_endian);
+                    write!(self, "{}{}ppcf128", val, if val.is_finite() { "" } else { "_" })?;
                 }
             },
             // Int

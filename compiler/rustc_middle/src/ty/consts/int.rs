@@ -1,9 +1,10 @@
 use std::fmt;
 use std::num::NonZero;
 
-use rustc_abi::Size;
+use rustc_abi::{Endian, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
@@ -444,6 +445,48 @@ impl ScalarInt {
     #[inline]
     pub fn to_f128(self) -> Quad {
         self.to_float()
+    }
+
+    #[inline]
+    pub fn to_ppcf128(self, target_endian: Endian) -> DoubleDouble {
+        // DoubleDouble always stores the large component in the low 64 bits, and the small
+        // component in the high 64 bits of the underlying u128. Hence, this representation
+        // is endian-agnostic.
+        //
+        // ScalarInt has the in-memory bitpattern and is subject to endianness. On BE, the
+        // large component is in the high 64 bits, the small component in the low 64 bits.
+        //
+        // The representations agree on LE but differ on BE, and this must be corrected.
+        match target_endian {
+            Endian::Little => DoubleDouble::from_bits(self.to_u128()),
+            Endian::Big => {
+                let bits = self.to_u128();
+                let swapped = (bits >> 64) | (bits << 64);
+                DoubleDouble::from_bits(swapped)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn from_ppcf128(f: DoubleDouble, target_endian: Endian) -> Self {
+        // DoubleDouble always stores the large component in the low 64 bits, and the small
+        // component in the high 64 bits of the underlying u128. Hence, this representation
+        // is endian-agnostic.
+        //
+        // ScalarInt has the in-memory bitpattern and is subject to endianness. On BE, the
+        // large component is in the high 64 bits, the small component in the low 64 bits.
+        //
+        // The representations agree on LE but differ on BE, and this must be corrected.
+        let bits = f.to_bits();
+        let size = Size::from_bits(DoubleDouble::BITS);
+
+        match target_endian {
+            Endian::Little => ScalarInt::try_from_uint(bits, size).unwrap(),
+            Endian::Big => {
+                let swapped = (bits >> 64) | (bits << 64);
+                ScalarInt::try_from_uint(swapped, size).unwrap()
+            }
+        }
     }
 }
 

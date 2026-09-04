@@ -272,8 +272,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             },
             DerefPattern(pointee_ty) => reveal_and_alloc(cx, once(pointee_ty.inner())),
             Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
-            | F128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive | Hidden | Missing
-            | PrivateUninhabited | Wildcard => &[],
+            | F128Range(..) | PpcF128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive
+            | Hidden | Missing | PrivateUninhabited | Wildcard => &[],
             Or => {
                 bug!("called `Fields::wildcards` on an `Or` ctor")
             }
@@ -295,8 +295,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             Ref | DerefPattern(_) => 1,
             Slice(slice) => slice.arity(),
             Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
-            | F128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive | Hidden | Missing
-            | PrivateUninhabited | Wildcard => 0,
+            | F128Range(..) | PpcF128Range(..) | Str(..) | Opaque(..) | Never | NonExhaustive
+            | Hidden | Missing | PrivateUninhabited | Wildcard => 0,
             Or => bug!("The `Or` constructor doesn't have a fixed arity"),
         }
     }
@@ -647,6 +647,16 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                                 let hi = hi.map(Quad::from_bits).unwrap_or(Quad::INFINITY);
                                 F128Range(lo, hi, end)
                             }
+                            ty::FloatTy::PpcF128 => {
+                                use rustc_apfloat::ppc::DoubleDouble;
+                                let lo = lo
+                                    .map(DoubleDouble::from_bits)
+                                    .unwrap_or(-DoubleDouble::INFINITY);
+                                let hi = hi
+                                    .map(DoubleDouble::from_bits)
+                                    .unwrap_or(DoubleDouble::INFINITY);
+                                PpcF128Range(lo, hi, end)
+                            }
                         }
                     }
                     _ => span_bug!(pat.span, "invalid type for range pattern: {}", ty.inner()),
@@ -864,7 +874,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
             ),
-            F16Range(..) | F32Range(..) | F64Range(..) | F128Range(..) | Opaque(..) | Or => {
+            F16Range(..) | F32Range(..) | F64Range(..) | F128Range(..) | PpcF128Range(..)
+            | Opaque(..) | Or => {
                 bug!("can't convert to pattern: {:?}", pat)
             }
         }

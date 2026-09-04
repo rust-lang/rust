@@ -2,9 +2,10 @@ use std::fmt;
 use std::num::NonZero;
 
 use either::{Either, Left, Right};
-use rustc_abi::{HasDataLayout, Size};
+use rustc_abi::{Endian, HasDataLayout, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::ppc::DoubleDouble;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 
 use super::{
@@ -229,6 +230,11 @@ impl<Prov> Scalar<Prov> {
         Scalar::Int(f.into())
     }
 
+    #[inline]
+    pub fn from_ppcf128(f: DoubleDouble, target_endian: Endian) -> Self {
+        Scalar::Int(ScalarInt::from_ppcf128(f, target_endian))
+    }
+
     /// This is almost certainly not the method you want!  You should dispatch on the type
     /// and use `to_{u8,u16,...}`/`to_pointer` to perform ptr-to-int / int-to-ptr casts as needed.
     ///
@@ -450,5 +456,10 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_f128(self) -> InterpResult<'tcx, Quad> {
         self.to_float()
+    }
+
+    #[inline]
+    pub fn to_ppcf128(self, target_endian: Endian) -> InterpResult<'tcx, DoubleDouble> {
+        self.to_scalar_int().map(|scalar_int| scalar_int.to_ppcf128(target_endian))
     }
 }

@@ -46,6 +46,7 @@ fn classify<'a, Ty, C>(
                             double_words[index] = DoubleWord::F128Start;
                             double_words[index + 1] = DoubleWord::F128End;
                         }
+                        Float::PpcF128 => unreachable!(),
                         Float::F64 => {
                             double_words[index] = DoubleWord::F64;
                         }

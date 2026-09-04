@@ -90,6 +90,7 @@ impl GccType for Reg {
                 64 => cx.type_f64(),
                 _ => bug!("unsupported float: {:?}", self),
             },
+            RegKind::DoubleDouble => cx.type_ppcf128(),
             RegKind::Vector { hint_vector_elem: _ } => {
                 cx.type_vector(cx.type_i8(), self.size.bytes())
             }

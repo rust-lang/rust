@@ -410,6 +410,7 @@ impl<'tcx> Stable<'tcx> for ty::FloatTy {
             ty::FloatTy::F32 => FloatTy::F32,
             ty::FloatTy::F64 => FloatTy::F64,
             ty::FloatTy::F128 => FloatTy::F128,
+            ty::FloatTy::PpcF128 => FloatTy::PpcF128,
         }
     }
 }

@@ -440,6 +440,7 @@ pub(crate) fn lint_literal<'tcx>(
                 ty::FloatTy::F32 => float_is_infinite::<SingleS>(v),
                 ty::FloatTy::F64 => float_is_infinite::<DoubleS>(v),
                 ty::FloatTy::F128 => float_is_infinite::<QuadS>(v),
+                ty::FloatTy::PpcF128 => bug!("there are no ppcf128 literals"),
             };
 
             if is_infinite == Some(true) {

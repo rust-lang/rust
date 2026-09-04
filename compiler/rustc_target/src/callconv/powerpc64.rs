@@ -25,17 +25,27 @@ where
     C: HasDataLayout,
 {
     arg.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()).and_then(|unit| {
-        // ELFv1 and AIX only passes one-member aggregates transparently.
-        // ELFv2 passes up to eight uniquely addressable members.
-        if ((abi == ELFv1 || abi == AIX) && arg.layout.size > unit.size)
-            || arg.layout.size > unit.size.checked_mul(8, cx).unwrap()
-        {
-            return None;
+        match abi {
+            ELFv1 | AIX => {
+                // Pass only one-member aggregates transparently.
+                if arg.layout.size > unit.size {
+                    return None;
+                }
+            }
+            ELFv2 => {
+                // A `ppcf128` occupies two floating-point registers, so only four of them fit.
+                let max_members = if unit.kind == RegKind::DoubleDouble { 4 } else { 8 };
+
+                // Pass up to max_members uniquely addressable members.
+                if arg.layout.size > unit.size.checked_mul(max_members, cx).unwrap() {
+                    return None;
+                }
+            }
         }
 
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
-            RegKind::Float => true,
+            RegKind::Float | RegKind::DoubleDouble => true,
             RegKind::Vector { .. } => arg.layout.size.bits() == 128,
         };
 

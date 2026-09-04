@@ -133,6 +133,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                 FloatTy::F32 => Scalar::from_f32(op.to_f32()?.abs()),
                                 FloatTy::F64 => Scalar::from_f64(op.to_f64()?.abs()),
                                 FloatTy::F128 => Scalar::from_f128(op.to_f128()?.abs()),
+                                FloatTy::PpcF128 => {
+                                    span_bug!(self.cur_span(), "ppcf128 is not a valid vector type")
+                                }
                             }
                         }
                         Op::Round(rounding) => {
@@ -149,6 +152,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                 FloatTy::F32 => self.float_round::<Single>(op, rounding)?,
                                 FloatTy::F64 => self.float_round::<Double>(op, rounding)?,
                                 FloatTy::F128 => self.float_round::<Quad>(op, rounding)?,
+                                FloatTy::PpcF128 => {
+                                    span_bug!(self.cur_span(), "ppcf128 is not a valid vector type")
+                                }
                             }
                         }
                         Op::Numeric(name) => {
@@ -745,6 +751,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         FloatTy::F32 => self.float_muladd::<Single>(a, b, c, typ)?,
                         FloatTy::F64 => self.float_muladd::<Double>(a, b, c, typ)?,
                         FloatTy::F128 => self.float_muladd::<Quad>(a, b, c, typ)?,
+                        FloatTy::PpcF128 => {
+                            span_bug!(self.cur_span(), "ppcf128 is not a valid vector type")
+                        }
                     };
                     self.write_scalar(val, &dest)?;
                 }
@@ -828,6 +837,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             FloatTy::F32 => self.float_minmax::<Single>(left, right, op)?,
             FloatTy::F64 => self.float_minmax::<Double>(left, right, op)?,
             FloatTy::F128 => self.float_minmax::<Quad>(left, right, op)?,
+            FloatTy::PpcF128 => {
+                span_bug!(self.cur_span(), "ppcf128 is not a valid vector type")
+            }
         })
     }
 

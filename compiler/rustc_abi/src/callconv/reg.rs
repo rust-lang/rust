@@ -8,6 +8,11 @@ use crate::{Align, HasDataLayout, Integer, Primitive, Size};
 pub enum RegKind {
     Integer,
     Float,
+    /// The IBM extended-precision format: a pair of `f64`s, each passed in its own register.
+    /// This variant is needed to distinguish IEEE f128 and IBM f128 in the backends.
+    ///
+    /// Only used on PowerPC targets.
+    DoubleDouble,
     Vector {
         /// The `hint_vector_elem` is strictly for optimization purposes. E.g. it can be used by
         /// a codegen backend to prevent extra bitcasts that obscure a pattern. Alternatively,
@@ -69,6 +74,7 @@ impl Reg {
                 128 => dl.f128_align,
                 _ => panic!("unsupported float: {self:?}"),
             },
+            RegKind::DoubleDouble => dl.f128_align,
             RegKind::Vector { .. } => dl.rust_vector_align(self.size),
         }
     }

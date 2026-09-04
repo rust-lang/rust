@@ -21,6 +21,7 @@ pub trait BaseTypeCodegenMethods: BackendTypes {
     fn type_f32(&self) -> Self::Type;
     fn type_f64(&self) -> Self::Type;
     fn type_f128(&self) -> Self::Type;
+    fn type_ppcf128(&self) -> Self::Type;
 
     fn type_array(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::FunctionSignature;
@@ -70,6 +71,7 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
             F32 => self.type_f32(),
             F64 => self.type_f64(),
             F128 => self.type_f128(),
+            PpcF128 => self.type_ppcf128(),
         }
     }
 

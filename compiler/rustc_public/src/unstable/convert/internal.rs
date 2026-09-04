@@ -255,6 +255,7 @@ impl RustcInternal for FloatTy {
             FloatTy::F32 => rustc_ty::FloatTy::F32,
             FloatTy::F64 => rustc_ty::FloatTy::F64,
             FloatTy::F128 => rustc_ty::FloatTy::F128,
+            FloatTy::PpcF128 => rustc_ty::FloatTy::PpcF128,
         }
     }
 }
