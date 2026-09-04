@@ -33,7 +33,7 @@ use tracing::{debug, debug_span, instrument};
 use crate::diagnostics;
 use crate::hir::definitions::PerParentDisambiguatorState;
 
-#[extension(trait RegionExt)]
+#[extension(trait ResolvedArgExt)]
 impl ResolvedArg {
     fn early(param: &GenericParam<'_>) -> ResolvedArg {
         ResolvedArg::EarlyBound(param.def_id)
