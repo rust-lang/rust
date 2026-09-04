@@ -28,7 +28,7 @@ pub(crate) fn expand_deriving_debug(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: sym::fmt,
-            generics: Bounds::empty(),
+            generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![(fmtr, sym::character('f'))],
             ret_ty: Path(path_std!(fmt::Result)),

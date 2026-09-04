@@ -191,7 +191,7 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
-use ty::{Bounds, Path, Ref, Self_, Ty};
+use ty::{Path, Ref, Self_, Ty};
 
 use crate::{deriving, diagnostics};
 
@@ -234,7 +234,7 @@ pub(crate) struct MethodDef<'a> {
     /// name of the method
     pub name: Symbol,
     /// List of generics, e.g., `R: rand::Rng`
-    pub generics: Bounds,
+    pub generics: Generics,
 
     /// Is there is a `&self` argument? If not, it is a static function.
     pub explicit_self: bool,
@@ -1007,7 +1007,7 @@ impl<'a> MethodDef<'a> {
     ) -> Box<ast::AssocItem> {
         let span = trait_.span;
         // Create the generics that aren't for `Self`.
-        let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
+        let fn_generics = self.generics.clone();
 
         let args = {
             let self_arg = explicit_self.map(|explicit_self| {

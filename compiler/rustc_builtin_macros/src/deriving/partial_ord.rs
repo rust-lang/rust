@@ -72,7 +72,7 @@ pub(crate) fn expand_deriving_partial_ord(
 
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
-        generics: Bounds::empty(),
+        generics: cx.empty_generics(span),
         explicit_self: true,
         nonself_args: smallvec![(self_ref(), sym::other)],
         ret_ty,

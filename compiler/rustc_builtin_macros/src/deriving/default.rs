@@ -30,7 +30,7 @@ pub(crate) fn expand_deriving_default(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: kw::Default,
-            generics: Bounds::empty(),
+            generics: cx.empty_generics(span),
             explicit_self: false,
             nonself_args: SmallVec::new(),
             ret_ty: Self_,
