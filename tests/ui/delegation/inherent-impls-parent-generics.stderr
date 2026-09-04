@@ -1,123 +1,440 @@
-error[E0425]: cannot find function `foo_static` in enum `E`
+error: delegation to inherent impl must contain parent generics
   --> $DIR/inherent-impls-parent-generics.rs:14:10
    |
 LL | reuse E::foo_static as e;
-   |          ^^^^^^^^^^ not found in `E`
+   |          ^^^^^^^^^^
 
-error[E0425]: cannot find function `foo_self` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:17:10
+error: delegation to inherent impl must contain parent generics
+  --> $DIR/inherent-impls-parent-generics.rs:19:10
    |
 LL | reuse E::foo_self as e1;
-   |          ^^^^^^^^ not found in `E`
+   |          ^^^^^^^^
 
-error[E0425]: cannot find function `foo_static` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:20:10
-   |
-LL | reuse E::foo_static::<'static, (), true> as e2;
-   |          ^^^^^^^^^^ not found in `E`
-
-error[E0425]: cannot find function `foo_self` in enum `E`
+error: delegation to inherent impl must contain parent generics
   --> $DIR/inherent-impls-parent-generics.rs:23:10
    |
+LL | reuse E::foo_static::<'static, (), true> as e2;
+   |          ^^^^^^^^^^
+
+error: delegation to inherent impl must contain parent generics
+  --> $DIR/inherent-impls-parent-generics.rs:27:10
+   |
 LL | reuse E::foo_self::<'static, (), true> as e3;
-   |          ^^^^^^^^ not found in `E`
+   |          ^^^^^^^^
 
-error[E0425]: cannot find function `foo_static` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:26:30
-   |
-LL | reuse E::<'static, (), 123>::foo_static as e4;
-   |                              ^^^^^^^^^^ not found in `E`
-
-error[E0425]: cannot find function `foo_self` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:28:30
-   |
-LL | reuse E::<'static, (), 123>::foo_self as e5;
-   |                              ^^^^^^^^ not found in `E`
-
-error[E0425]: cannot find function `foo_static` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:31:30
-   |
-LL | reuse E::<'static, (), 123>::foo_static::<'static, (), true> as e6;
-   |                              ^^^^^^^^^^ not found in `E`
-
-error[E0425]: cannot find function `foo_self` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:33:30
-   |
-LL | reuse E::<'static, (), 123>::foo_self::<'static, (), true> as e7;
-   |                              ^^^^^^^^ not found in `E`
-
-error[E0425]: cannot find function `foo_static` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:36:23
+error: parent segment of delegation to inherent impl can not contain infers
+  --> $DIR/inherent-impls-parent-generics.rs:37:23
    |
 LL | reuse E::<'_, (), _>::foo_static as e8;
-   |                       ^^^^^^^^^^ not found in `E`
+   |                       ^^^^^^^^^^
 
-error[E0425]: cannot find function `foo_self` in enum `E`
-  --> $DIR/inherent-impls-parent-generics.rs:39:22
+error: parent segment of delegation to inherent impl can not contain infers
+  --> $DIR/inherent-impls-parent-generics.rs:42:22
    |
 LL | reuse E::<'_, _, _>::foo_self as e9;
-   |                      ^^^^^^^^ not found in `E`
+   |                      ^^^^^^^^
 
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:51:10
+error: delegation to inherent impl must contain parent generics
+  --> $DIR/inherent-impls-parent-generics.rs:55:10
    |
 LL | reuse S::foo_static as s;
-   |          ^^^^^^^^^^ not found in `S`
+   |          ^^^^^^^^^^
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:54:10
-   |
-LL | reuse S::foo_self as s1;
-   |          ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:57:10
-   |
-LL | reuse S::foo_static::<'static, (), true> as s2;
-   |          ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
+error: delegation to inherent impl must contain parent generics
   --> $DIR/inherent-impls-parent-generics.rs:60:10
    |
+LL | reuse S::foo_self as s1;
+   |          ^^^^^^^^
+
+error: delegation to inherent impl must contain parent generics
+  --> $DIR/inherent-impls-parent-generics.rs:64:10
+   |
+LL | reuse S::foo_static::<'static, (), true> as s2;
+   |          ^^^^^^^^^^
+
+error: delegation to inherent impl must contain parent generics
+  --> $DIR/inherent-impls-parent-generics.rs:68:10
+   |
 LL | reuse S::foo_self::<'static, (), true> as s3;
-   |          ^^^^^^^^ not found in `S`
+   |          ^^^^^^^^
 
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:63:21
-   |
-LL | reuse S::<(), 123>::foo_static as s4;
-   |                     ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:65:21
-   |
-LL | reuse S::<(), 123>::foo_self as s5;
-   |                     ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:68:21
-   |
-LL | reuse S::<(), 123>::foo_static::<'static, (), true> as s6;
-   |                     ^^^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:70:21
-   |
-LL | reuse S::<(), 123>::foo_self::<'static, (), true> as s7;
-   |                     ^^^^^^^^ not found in `S`
-
-error[E0425]: cannot find function `foo_static` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:73:19
+error: parent segment of delegation to inherent impl can not contain infers
+  --> $DIR/inherent-impls-parent-generics.rs:78:19
    |
 LL | reuse S::<(), _>::foo_static as s8;
-   |                   ^^^^^^^^^^ not found in `S`
+   |                   ^^^^^^^^^^
 
-error[E0425]: cannot find function `foo_self` in `S`
-  --> $DIR/inherent-impls-parent-generics.rs:76:20
+error: parent segment of delegation to inherent impl can not contain infers
+  --> $DIR/inherent-impls-parent-generics.rs:83:20
    |
 LL | reuse S::<_, 123>::foo_self as s9;
-   |                    ^^^^^^^^ not found in `S`
+   |                    ^^^^^^^^
 
-error: aborting due to 20 previous errors
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:14:10
+   |
+LL | reuse E::foo_static as e;
+   |       -  ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the enum `E`
+   |       |
+   |       type must be known at this point
+   |
+note: required by a const generic parameter in `E`
+  --> $DIR/inherent-impls-parent-generics.rs:4:23
+   |
+LL | enum E<'a: 'a, A: 'a, const C: usize> {
+   |                       ^^^^^^^^^^^^^^ required by this const generic parameter in `E`
+help: consider specifying the generic arguments
+   |
+LL - reuse E::foo_static as e;
+LL + reuse E::<A, C> as e;
+   |
 
-For more information about this error, try `rustc --explain E0425`.
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:14:10
+   |
+LL | reuse E::foo_static as e;
+   |          ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the enum `E`
+   |
+note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:9:25
+   |
+LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
+   |                         ^^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |        ---------- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL - reuse E::foo_static as e;
+LL + reuse E::<A, C> as e;
+   |
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:14:10
+   |
+LL | reuse E::foo_static as e;
+   |          ^^^^^^^^^^ cannot infer the value of the const parameter `B` declared on the associated function `foo_static`
+   |
+note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:10:34
+   |
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
+help: consider specifying the generic arguments
+   |
+LL | reuse E::foo_static::<T, B> as e;
+   |                    ++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:19:10
+   |
+LL | reuse E::foo_self as e1;
+   |          ^^^^^^^^ argument #1 of type `E<'_, _, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:11:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse E::foo_self(/* value */) as e1;
+   |                  +++++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:23:10
+   |
+LL | reuse E::foo_static::<'static, (), true> as e2;
+   |       -  ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the enum `E`
+   |       |
+   |       type must be known at this point
+   |
+note: required by a const generic parameter in `E`
+  --> $DIR/inherent-impls-parent-generics.rs:4:23
+   |
+LL | enum E<'a: 'a, A: 'a, const C: usize> {
+   |                       ^^^^^^^^^^^^^^ required by this const generic parameter in `E`
+help: consider specifying the generic arguments
+   |
+LL - reuse E::foo_static::<'static, (), true> as e2;
+LL + reuse E::<A, C> as e2;
+   |
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:23:10
+   |
+LL | reuse E::foo_static::<'static, (), true> as e2;
+   |          ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the enum `E`
+   |
+note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:9:25
+   |
+LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
+   |                         ^^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |        ---------- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL - reuse E::foo_static::<'static, (), true> as e2;
+LL + reuse E::<A, C> as e2;
+   |
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:27:10
+   |
+LL | reuse E::foo_self::<'static, (), true> as e3;
+   |          ^^^^^^^^ argument #1 of type `E<'_, _, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:11:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse E::foo_self(/* value */)::<'static, (), true> as e3;
+   |                  +++++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:37:23
+   |
+LL | reuse E::<'_, (), _>::foo_static as e8;
+   |       --------------  ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the enum `E`
+   |       |
+   |       type must be known at this point
+   |
+note: required by a const generic parameter in `E`
+  --> $DIR/inherent-impls-parent-generics.rs:4:23
+   |
+LL | enum E<'a: 'a, A: 'a, const C: usize> {
+   |                       ^^^^^^^^^^^^^^ required by this const generic parameter in `E`
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:37:23
+   |
+LL | reuse E::<'_, (), _>::foo_static as e8;
+   |                       ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the enum `E`
+   |
+note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:9:25
+   |
+LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
+   |                         ^^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |        ---------- required by a bound in this associated function
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:37:23
+   |
+LL | reuse E::<'_, (), _>::foo_static as e8;
+   |                       ^^^^^^^^^^ cannot infer the value of the const parameter `B` declared on the associated function `foo_static`
+   |
+note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:10:34
+   |
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
+help: consider specifying the generic arguments
+   |
+LL | reuse E::<'_, (), _>::foo_static::<T, B> as e8;
+   |                                 ++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:42:22
+   |
+LL | reuse E::<'_, _, _>::foo_self as e9;
+   |                      ^^^^^^^^ argument #1 of type `E<'_, _, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:11:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse E::<'_, _, _>::foo_self(/* value */) as e9;
+   |                              +++++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:55:10
+   |
+LL | reuse S::foo_static as s;
+   |       -  ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
+   |       |
+   |       type must be known at this point
+   |
+note: required by a const generic parameter in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:46:13
+   |
+LL | struct S<A, const C: usize> {
+   |             ^^^^^^^^^^^^^^ required by this const generic parameter in `S`
+help: consider specifying the generic arguments
+   |
+LL | reuse S::<A, C>::foo_static as s;
+   |        ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:55:10
+   |
+LL | reuse S::foo_static as s;
+   |          ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
+   |
+note: required by a const generic parameter in `S::<A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:50:21
+   |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+   |                     ^^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |        ---------- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL | reuse S::<A, C>::foo_static as s;
+   |        ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:55:10
+   |
+LL | reuse S::foo_static as s;
+   |          ^^^^^^^^^^ cannot infer the value of the const parameter `B` declared on the associated function `foo_static`
+   |
+note: required by a const generic parameter in `S::<A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:51:34
+   |
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
+help: consider specifying the generic arguments
+   |
+LL | reuse S::foo_static::<T, B> as s;
+   |                    ++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:60:10
+   |
+LL | reuse S::foo_self as s1;
+   |          ^^^^^^^^ argument #1 of type `S<_, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:52:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse S::foo_self(/* value */) as s1;
+   |                  +++++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:64:10
+   |
+LL | reuse S::foo_static::<'static, (), true> as s2;
+   |       -  ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
+   |       |
+   |       type must be known at this point
+   |
+note: required by a const generic parameter in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:46:13
+   |
+LL | struct S<A, const C: usize> {
+   |             ^^^^^^^^^^^^^^ required by this const generic parameter in `S`
+help: consider specifying the generic arguments
+   |
+LL | reuse S::<A, C>::foo_static::<'static, (), true> as s2;
+   |        ++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:64:10
+   |
+LL | reuse S::foo_static::<'static, (), true> as s2;
+   |          ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
+   |
+note: required by a const generic parameter in `S::<A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:50:21
+   |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+   |                     ^^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |        ---------- required by a bound in this associated function
+help: consider specifying the generic arguments
+   |
+LL | reuse S::<A, C>::foo_static::<'static, (), true> as s2;
+   |        ++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:68:10
+   |
+LL | reuse S::foo_self::<'static, (), true> as s3;
+   |          ^^^^^^^^ argument #1 of type `S<_, _>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:52:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse S::foo_self(/* value */)::<'static, (), true> as s3;
+   |                  +++++++++++++
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:78:19
+   |
+LL | reuse S::<(), _>::foo_static as s8;
+   |       ----------  ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
+   |       |
+   |       type must be known at this point
+   |
+note: required by a const generic parameter in `S`
+  --> $DIR/inherent-impls-parent-generics.rs:46:13
+   |
+LL | struct S<A, const C: usize> {
+   |             ^^^^^^^^^^^^^^ required by this const generic parameter in `S`
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:78:19
+   |
+LL | reuse S::<(), _>::foo_static as s8;
+   |                   ^^^^^^^^^^ cannot infer the value of the const parameter `C` declared on the struct `S`
+   |
+note: required by a const generic parameter in `S::<A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:50:21
+   |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+   |                     ^^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |        ---------- required by a bound in this associated function
+
+error[E0284]: type annotations needed
+  --> $DIR/inherent-impls-parent-generics.rs:78:19
+   |
+LL | reuse S::<(), _>::foo_static as s8;
+   |                   ^^^^^^^^^^ cannot infer the value of the const parameter `B` declared on the associated function `foo_static`
+   |
+note: required by a const generic parameter in `S::<A, C>::foo_static`
+  --> $DIR/inherent-impls-parent-generics.rs:51:34
+   |
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
+   |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
+help: consider specifying the generic arguments
+   |
+LL | reuse S::<(), _>::foo_static::<T, B> as s8;
+   |                             ++++++++
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/inherent-impls-parent-generics.rs:83:20
+   |
+LL | reuse S::<_, 123>::foo_self as s9;
+   |                    ^^^^^^^^ argument #1 of type `S<_, 123>` is missing
+   |
+note: method defined here
+  --> $DIR/inherent-impls-parent-generics.rs:52:8
+   |
+LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
+   |        ^^^^^^^^                               ----
+help: provide the argument
+   |
+LL | reuse S::<_, 123>::foo_self(/* value */) as s9;
+   |                            +++++++++++++
+
+error: aborting due to 34 previous errors
+
+Some errors have detailed explanations: E0061, E0284.
+For more information about an error, try `rustc --explain E0061`.

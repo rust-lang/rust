@@ -99,6 +99,8 @@ pub mod stability;
 pub fn provide(providers: &mut Providers) {
     providers.index_ast = index_ast;
     providers.lower_to_hir = lower_to_hir;
+    providers.resolve_type_relative_delegations =
+        delegation::resolution::resolve_type_relative_delegations;
 }
 
 #[cfg(debug_assertions)]
@@ -735,6 +737,8 @@ fn index_ast<'tcx>(
 
 #[instrument(level = "trace", skip(tcx))]
 fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
+    tcx.ensure_done().resolve_type_relative_delegations(());
+
     let ast_index = tcx.index_ast(());
     let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 

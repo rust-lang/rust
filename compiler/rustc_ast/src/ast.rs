@@ -295,6 +295,14 @@ impl GenericArg {
             GenericArg::Const(ct) => ct.value.span,
         }
     }
+
+    pub fn is_maybe_parenthesised_infer(&self) -> bool {
+        match self {
+            GenericArg::Lifetime(lt) => lt.ident.name == kw::UnderscoreLifetime,
+            GenericArg::Type(ty) => ty.is_maybe_parenthesised_infer(),
+            GenericArg::Const(_) => false,
+        }
+    }
 }
 
 /// A path like `Foo<'a, T>`.

@@ -47,7 +47,7 @@ use rustc_ast as ast;
 use rustc_ast::*;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, FnDeclFlags};
+use rustc_hir::{self as hir, FnDeclFlags, QPath};
 use rustc_middle::ty::Asyncness;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::kw;
@@ -62,7 +62,7 @@ use crate::{
 
 mod attributes;
 mod generics;
-mod resolution;
+pub(crate) mod resolution;
 
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
@@ -416,7 +416,37 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 hir::QPath::Resolved(ty, self.arena.alloc(new_path))
             }
-            hir::QPath::TypeRelative(..) => unreachable!("until inherent methods are supported"),
+            hir::QPath::TypeRelative(mut ty, segment) => {
+                let mut segment = self.process_segment(span, segment, &mut generics.child);
+                segment.res = Res::Def(self.tcx.def_kind(res.call_path_res), res.call_path_res);
+
+                let ty_hir_id = ty.hir_id;
+
+                // Propagating child generics if needed.
+                ty = if let hir::TyKind::Path(QPath::Resolved(ty, path)) = ty.kind {
+                    let mut new_path = path.clone();
+
+                    new_path.segments = self.arena.alloc_from_iter(
+                        new_path.segments.iter().enumerate().map(|(idx, segment)| {
+                            if idx + 1 == new_path.segments.len() {
+                                self.process_segment(span, segment, &mut generics.parent)
+                            } else {
+                                segment.clone()
+                            }
+                        }),
+                    );
+
+                    self.arena.alloc(hir::Ty {
+                        hir_id: ty_hir_id,
+                        span,
+                        kind: hir::TyKind::Path(QPath::Resolved(ty, self.arena.alloc(new_path))),
+                    })
+                } else {
+                    ty
+                };
+
+                hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
+            }
         };
 
         if let Some(hir::DelegationSelfTyPropagationKind::SelfTy(id)) =
@@ -491,6 +521,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result.generics.into_hir_generics(self, span);
 
         let mut segment = segment.clone();
+
         let mut args_iter = result.generics.create_args_iterator();
 
         let new_args = segment

@@ -1,15 +1,41 @@
-error[E0425]: cannot find function `foo` in `X`
+error[E0308]: arguments to this function are incorrect
   --> $DIR/inherent-impls-self-mapping.rs:13:14
    |
+LL | trait Trait {
+   | -----------
+   | |
+   | found this type parameter
+   | found this type parameter
 LL |     reuse X::foo;
-   |              ^^^ not found in `X`
-
-error[E0425]: cannot find function `foo` in `X`
-  --> $DIR/inherent-impls-self-mapping.rs:17:10
+   |              ^^^
+   |              |
+   |              expected `Rc<Box<X>>`, found `Rc<Box<Self>>`
+   |              expected `Box<Rc<X>>`, found `Box<Rc<Self>>`
    |
-LL | reuse X::foo;
-   |          ^^^ not found in `X`
+   = note: expected struct `Rc<Box<X>>`
+              found struct `Rc<Box<Self>>`
+   = note: expected struct `Box<Rc<X>>`
+              found struct `Box<Rc<Self>>`
+note: method defined here
+  --> $DIR/inherent-impls-self-mapping.rs:7:8
+   |
+LL |     fn foo(self: Rc<Box<Self>>, other: Box<Rc<Self>>) -> Option<Box<Self>> {
+   |        ^^^ ----                 --------------------
+
+error[E0308]: mismatched types
+  --> $DIR/inherent-impls-self-mapping.rs:13:14
+   |
+LL | trait Trait {
+   | ----------- expected this type parameter
+LL |     reuse X::foo;
+   |              ^^^
+   |              |
+   |              expected `Option<Box<Self>>`, found `Option<Box<X>>`
+   |              expected `Option<Box<Self>>` because of return type
+   |
+   = note: expected enum `Option<Box<Self>>`
+              found enum `Option<Box<X>>`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0308`.
