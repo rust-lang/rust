@@ -396,31 +396,6 @@ compat_fn_with_fallback! {
     }
 }
 
-#[cfg(not(target_vendor = "win7"))]
-// Use raw-dylib to import synchronization functions to workaround issues with the older mingw import library.
-#[cfg_attr(
-    target_arch = "x86",
-    link(
-        name = "api-ms-win-core-synch-l1-2-0",
-        kind = "raw-dylib",
-        import_name_type = "undecorated"
-    )
-)]
-#[cfg_attr(
-    not(target_arch = "x86"),
-    link(name = "api-ms-win-core-synch-l1-2-0", kind = "raw-dylib")
-)]
-unsafe extern "system" {
-    pub fn WaitOnAddress(
-        address: *const c_void,
-        compareaddress: *const c_void,
-        addresssize: usize,
-        dwmilliseconds: u32,
-    ) -> BOOL;
-    pub fn WakeByAddressSingle(address: *const c_void);
-    pub fn WakeByAddressAll(address: *const c_void);
-}
-
 // These are loaded by `load_synch_functions`.
 #[cfg(target_vendor = "win7")]
 compat_fn_optional! {
@@ -476,10 +451,6 @@ cfg_select! {
     }
     _ => {}
 }
-
-// Only available starting with Windows 8.
-#[cfg(not(target_vendor = "win7"))]
-windows_link::link!("ws2_32.dll" "system" fn GetHostNameW(name : PWSTR, namelen : i32) -> i32);
 
 unsafe extern "C" {
     pub fn atexit(cb: unsafe extern "C" fn()) -> c_int;
