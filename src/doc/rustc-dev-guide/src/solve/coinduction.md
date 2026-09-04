@@ -13,7 +13,8 @@ Consider the example of `Vec<Vec<Vec<u32>>>: Debug` which results in the followi
         - `Vec<u32>: Debug`
             - `u32: Debug`
 
-This tree is finite. But not all goals we would want to hold have finite proof trees,
+This tree is finite.
+But not all goals we would want to hold have finite proof trees,
 consider the following example:
 
 ```rust
@@ -36,7 +37,7 @@ This would result in the following proof tree:
                     - `Box<List<T>>: Send`
                         - ...
 
-This tree would be infinitely large which is exactly what coinduction is about. 
+This tree would be infinitely large which is exactly what coinduction is about.
 
 > To **inductively** prove a goal you need to provide a finite proof tree for it.
 > To **coinductively** prove a goal the provided proof tree may be infinite.
@@ -44,7 +45,8 @@ This tree would be infinitely large which is exactly what coinduction is about.
 ## Why is coinduction correct
 
 When checking whether some trait goals holds, we're asking "does there exist an `impl`
-which satisfies this bound". Even if there are infinite chains of nested goals, we still have a
+which satisfies this bound".
+Even if there are infinite chains of nested goals, we still have a
 unique `impl` which should be used.
 
 ## How to implement coinduction
@@ -54,10 +56,12 @@ tree as that would take infinite resources, it still makes sense to think of coi
 from this perspective.
 
 As we cannot check for infinite trees, we instead search for patterns for which we know that
-they would result in an infinite proof tree. Currently, the pattern we detect are (canonical)
-cycles. If `T: Send` relies on `T: Send` then it's pretty clear that this will just go on forever.
+they would result in an infinite proof tree.
+Currently, the pattern we detect are (canonical) cycles.
+If `T: Send` relies on `T: Send` then it's pretty clear that this will just go on forever.
 
-With cycles we have to be careful with caching. Because of canonicalization of regions and
+With cycles we have to be careful with caching.
+Because of canonicalization of regions and
 inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
 Looking at the following example:
 ```rust
@@ -70,15 +74,16 @@ where
 {} 
 ```
 Proving `Wrapper<?0>: Foo` uses the impl `impl<T> Foo for Wrapper<Wrapper<T>>` which constrains
-`?0` to `Wrapper<?1>` and then requires `Wrapper<?1>: Foo`. Due to canonicalization this would be
-detected as a cycle.
+`?0` to `Wrapper<?1>` and then requires `Wrapper<?1>: Foo`.
+Due to canonicalization this would be detected as a cycle.
 
 The idea to solve is to return a *provisional result* whenever we detect a cycle and repeatedly
-retry goals until the *provisional result* is equal to the final result of that goal. We
-start out by using `Yes` with no constraints as the result and then update it to the result of
+retry goals until the *provisional result* is equal to the final result of that goal.
+We start out by using `Yes` with no constraints as the result and then update it to the result of
 the previous iteration whenever we have to rerun.
 
-TODO: elaborate here. We use the same approach as chalk for coinductive cycles.
+TODO: elaborate here.
+We use the same approach as chalk for coinductive cycles.
 Note that the treatment for inductive cycles currently differs by simply returning `Overflow`.
 See [the relevant chapters][chalk] in the chalk book.
 
@@ -111,7 +116,8 @@ impl<T: Clone> Clone for List<T> {
 }
 ```
 
-We are using `tail.clone()` in this impl. For this we have to prove `Box<List<T>>: Clone`
+We are using `tail.clone()` in this impl.
+For this we have to prove `Box<List<T>>: Clone`
 which requires `List<T>: Clone` but that relies on the impl which we are currently checking.
 By adding that requirement to the `where`-clauses of the impl, which is what we would
 do with [perfect derive], we move that cycle into the trait solver and [get an error][ex1].
@@ -167,8 +173,9 @@ Our trait system currently treats super traits, e.g. `trait Trait: SuperTrait`,
 by 1) requiring that `SuperTrait` has to hold for all types which implement `Trait`,
 and 2) assuming `SuperTrait` holds if `Trait` holds.
 
-Relying on 2) while proving 1) is unsound. This can only be observed in case of
-coinductive cycles. Without cycles, whenever we rely on 2) we must have also
+Relying on 2) while proving 1) is unsound.
+This can only be observed in case of coinductive cycles.
+Without cycles, whenever we rely on 2) we must have also
 proven 1) without relying on 2) for the used impl of `Trait`.
 
 ```rust
@@ -197,10 +204,11 @@ at least the ideas of myself - @lcnr - are all far to complex to be reasonable.
 
 #### `normalizes_to` goals and progress
 
-A `normalizes_to` goal represents the requirement that `<T as Trait>::Assoc` normalizes
-to some `U`. This is achieved by defacto first normalizing `<T as Trait>::Assoc` and then
-equating the resulting type with `U`. It should be a mapping as each projection should normalize
-to exactly one type. By simply allowing infinite proof trees, we would get the following behavior:
+A `normalizes_to` goal represents the requirement that `<T as Trait>::Assoc` normalizes to some `U`.
+This is achieved by defacto first normalizing `<T as Trait>::Assoc` and then
+equating the resulting type with `U`.
+It should be a mapping as each projection should normalize to exactly one type.
+By simply allowing infinite proof trees, we would get the following behavior:
 
 ```rust
 trait Trait {
@@ -213,7 +221,8 @@ impl Trait for () {
 ```
 
 If we now compute `normalizes_to(<() as Trait>::Assoc, Vec<u32>)`, we would resolve the impl
-and get the associated type `<() as Trait>::Assoc`. We then equate that with the expected type,
+and get the associated type `<() as Trait>::Assoc`.
+We then equate that with the expected type,
 causing us to check `normalizes_to(<() as Trait>::Assoc, Vec<u32>)` again.
 This just goes on forever, resulting in an infinite proof tree.
 
@@ -223,13 +232,15 @@ This means that `<() as Trait>::Assoc` would be equal to any other type which is
 
 **WARNING: THIS IS SUBTLE AND MIGHT BE WRONG**
 
-Unlike trait goals, `normalizes_to` has to be *productive*[^1]. A `normalizes_to` goal
-is productive once the projection normalizes to a rigid type constructor,
+Unlike trait goals, `normalizes_to` has to be *productive*[^1].
+A `normalizes_to` goal is productive once the projection normalizes to a rigid type constructor,
 so `<() as Trait>::Assoc` normalizing to `Vec<<() as Trait>::Assoc>` would be productive.
 
-A `normalizes_to` goal has two kinds of nested goals. Nested requirements needed to actually
-normalize the projection, and the equality between the normalized projection and the
-expected type. Only the equality has to be productive. A branch in the proof tree is productive
+A `normalizes_to` goal has two kinds of nested goals.
+Nested requirements needed to actually
+normalize the projection, and the equality between the normalized projection and the expected type.
+Only the equality has to be productive.
+A branch in the proof tree is productive
 if it is either finite, or contains at least one `normalizes_to` where the alias is resolved
 to a rigid type constructor.
 
