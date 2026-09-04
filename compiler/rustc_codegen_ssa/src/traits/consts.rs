@@ -47,7 +47,7 @@ pub trait ConstCodegenMethods: BackendTypes {
         cv: Scalar,
         layout: abi::Scalar,
         llty: Self::Type,
-        schema: Option<&PointerAuthSchema>,
+        ptrauth_schema: Option<PointerAuthSchema>,
     ) -> Self::Value;
 
     fn const_ptr_byte_offset(&self, val: Self::Value, offset: abi::Size) -> Self::Value;
