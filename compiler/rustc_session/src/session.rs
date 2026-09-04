@@ -932,7 +932,7 @@ impl Session {
             let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
                 || self.opts.output_types.contains_key(&OutputType::Bitcode)
                 // AddressSanitizer and MemorySanitizer use alloca name when reporting an issue.
-                || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
+                || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
             !more_names
         }
     }
@@ -1181,7 +1181,10 @@ impl Session {
     }
 
     pub fn sanitizers(&self) -> SanitizerSet {
-        return self.opts.unstable_opts.sanitizer | self.target.options.default_sanitizers;
+        self.opts
+            .unstable_opts
+            .sanitizer
+            .combine_with_defaults(self.target.options.default_sanitizers)
     }
 
     pub fn pointer_authentication(&self) -> bool {
@@ -1514,7 +1517,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Sanitizers can only be used on platforms that we know have working sanitizer codegen.
     let supported_sanitizers = sess.target.options.supported_sanitizers;
-    let mut unsupported_sanitizers = sess.opts.unstable_opts.sanitizer - supported_sanitizers;
+    let mut unsupported_sanitizers = sess.sanitizers() - supported_sanitizers;
     // Niche: if `fixed-x18`, or effectively switching on `reserved-x18` flag, is enabled
     // we should allow Shadow Call Stack sanitizer.
     if sess.opts.unstable_opts.fixed_x18 && sess.target.arch == Arch::AArch64 {
@@ -1535,7 +1538,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot mix and match mutually-exclusive sanitizers.
-    if let Some((first, second)) = sess.opts.unstable_opts.sanitizer.mutually_exclusive() {
+    if let Some((first, second)) = sess.sanitizers().mutually_exclusive() {
         sess.dcx().emit_err(diagnostics::CannotMixAndMatchSanitizers {
             first: first.to_string(),
             second: second.to_string(),
@@ -1543,10 +1546,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot enable crt-static with sanitizers on Linux
-    if sess.crt_static(None)
-        && !sess.opts.unstable_opts.sanitizer.is_empty()
-        && !sess.target.is_like_msvc
-    {
+    if sess.crt_static(None) && !sess.sanitizers().is_empty() && !sess.target.is_like_msvc {
         sess.dcx().emit_err(diagnostics::CannotEnableCrtStaticLinux);
     }
 
