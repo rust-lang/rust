@@ -14,8 +14,7 @@ use rustc_type_ir::search_graph::{
 use rustc_type_ir::solve::{
     AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
-    RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, StalledOnCoroutines,
-    TyOrConstInferVar,
+    RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -817,28 +816,12 @@ where
                 // that is not resolved. Only when *these* have changed is it meaningful
                 // to recompute this goal.
                 HasChanged::Yes => None,
-                HasChanged::No => {
-                    let stalled_on = self.build_stalled_on(
-                        canonical_goal,
-                        maybe_info,
-                        orig_values,
-                        succeeded_in_erased,
-                    );
-
-                    // Don't cache a stalled result if filtering removed every tracked dependency.
-                    // Coroutine stalls are tracked separately in `MaybeInfo`.
-                    if stalled_on.stalled_vars.is_empty()
-                        && stalled_on.sub_roots.is_empty()
-                        && matches!(
-                            stalled_on.stalled_maybe_info.stalled_on_coroutines,
-                            StalledOnCoroutines::No
-                        )
-                    {
-                        None
-                    } else {
-                        Some(stalled_on)
-                    }
-                }
+                HasChanged::No => Some(self.build_stalled_on(
+                    canonical_goal,
+                    maybe_info,
+                    orig_values,
+                    succeeded_in_erased,
+                )),
             },
         };
 
@@ -860,7 +843,7 @@ where
         let stalled_vars = stalled_vars
             .into_iter()
             .filter_map(|arg| match arg.kind() {
-                // Lifetimes are not tracked as wake-up dependencies here.
+                // Lifetimes can never stall goals.
                 ty::GenericArgKind::Lifetime(_) => None,
                 ty::GenericArgKind::Type(ty) => match ty.kind() {
                     ty::Infer(ty::TyVar(vid)) => {

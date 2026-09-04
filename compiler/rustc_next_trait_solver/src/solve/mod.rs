@@ -307,12 +307,29 @@ where
             return None;
         }
 
-        let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
-            candidate.result.value.certainty == Certainty::Yes
-                && has_no_inference_or_external_constraints(candidate.result)
+        // Error types in impl headers can make an otherwise unrelated impl
+        // look applicable, since they may unify with arbitrary goal types.
+        //
+        // Keep such candidates so diagnostics and coherence still see the
+        // malformed impl, but don't let them make the whole candidate set look
+        // unambiguous. In particular, they must not enable the always-applicable
+        // merge path after region erasure has removed the constraints from the
+        // real candidate.
+        let has_error_impl_candidate = candidates.iter().any(|candidate| match candidate.source {
+            CandidateSource::Impl(impl_def_id) => {
+                self.cx().impl_trait_ref(impl_def_id).skip_binder().references_error()
+            }
+            _ => false,
         });
-        if let Some((i, c)) = always_applicable {
-            return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
+
+        if !has_error_impl_candidate {
+            let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
+                candidate.result.value.certainty == Certainty::Yes
+                    && has_no_inference_or_external_constraints(candidate.result)
+            });
+            if let Some((i, c)) = always_applicable {
+                return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
+            }
         }
 
         let one: CanonicalResponse<I> = candidates[0].result;
