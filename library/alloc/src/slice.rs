@@ -537,6 +537,9 @@ impl<T> [T] {
                 // with the previous call to `extend` ensuring that the first `len`
                 // elements are valid `T`s and the call to `with_capacity` ensuring
                 // we have `len * n` space to write the new elements.
+                // Each iteration of this loop doubles the number of initialised elements,
+                // which is tracked via `m` - when `m == 0`, we've written `most_significant_bit(n)`
+                // elements to the buffer.
                 unsafe {
                     ptr::copy_nonoverlapping::<T>(
                         buf.as_ptr(),
@@ -547,9 +550,7 @@ impl<T> [T] {
                 // `buf` has capacity of `self.len() * n`.
                 let buf_len = buf.len();
                 // SAFETY: We initialised another `buf_len` elements above.
-                unsafe {
-                    buf.set_len(buf_len * 2);
-                }
+                unsafe { buf.set_len(buf_len * 2) };
 
                 m >>= 1;
             }
@@ -560,11 +561,12 @@ impl<T> [T] {
         let rem_len = capacity - buf.len(); // `self.len() * rem`
         if rem_len > 0 {
             // `buf.extend(buf[0 .. rem_len])`:
-            // SAFETY: We're copying `rem_len` elements after offsetting by `len`,
-            // with the previous `copy_nonverlapping` calls ensuring that the first `len`
-            // elements are valid `T`s and the call to `with_capacity` ensuring we have
-            // `rem_len` space to write the new elements. That is, these remaining `rem_len`
-            // elements must be preceded by more than `rem_len` previously-copied elements.
+            // SAFETY: We're copying `rem_len` elements after offsetting by `len`. The previous
+            // looping `copy_nonoverlapping` always doubled the number of instantiated elements,
+            // and so if `rem_len` was greater than `len` it would have allowed for another such
+            // doubling, until such time that `rem_len < len`. Thus, the space for these remainining
+            // `rem_len` elements must be preceded by more than `rem_len` previously-copied
+            // elements.
             // Setting the length is correct since we've initialised the whole `capacity`-length
             // space with copies of the previous `len` elements.
             unsafe {

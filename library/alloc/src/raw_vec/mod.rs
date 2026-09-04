@@ -248,9 +248,13 @@ impl<T, A: Allocator> RawVec<T, A> {
         let slice = me.ptr().cast::<MaybeUninit<T>>().cast_slice(len);
         // SAFETY: `slice` is a valid pointer for `len` `T`s, and the
         // above `ManuallyDrop` ensures that the destructor of `me` which
-        // would free the allocation is never run. Moving the allocator
-        // out of `me.inner` is also sound since it is never accessed after
-        // this point.
+        // would free the allocation is never run. The caller upholds that
+        // `len` meets or exceeds the last requested capacity, ensuring that
+        // the layout generated when dropping the resulting `Box` fits the
+        // allocation the `RawVec` created.
+        //
+        // Moving the allocator out of `me.inner` is also sound since it is
+        // never accessed after this point.
         unsafe { Box::from_raw_in(slice, ptr::read(&me.inner.alloc)) }
     }
 

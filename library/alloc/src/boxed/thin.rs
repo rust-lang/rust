@@ -372,8 +372,8 @@ impl<H> WithHeader<H> {
 
     /// # Safety
     ///
-    /// Either `value` is valid for reads and writes, or it is `NonNull::dangling()`
-    /// if both `T` and `H` are ZSTs.
+    /// `value` must point to an undropped owned `T`, and `self` must not be
+    /// accessed again after this is called.
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
         struct DropGuard<H> {
             ptr: NonNull<u8>,
