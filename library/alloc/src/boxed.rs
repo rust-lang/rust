@@ -731,12 +731,16 @@ impl<T, A: Allocator> Box<T, A> {
         let (value, allocation) = Box::take(this);
         let (raw, alloc) = Box::into_non_null_with_allocator(allocation);
         if size_of::<T>() == size_of::<U>() && align_of::<T>() == align_of::<U>() {
-            // ignore-tidy-undocumented-unsafe
+            // SAFETY: We checked that the memory requirements are the same for both types
+            // and `raw` is already a valid pointer for the requisite memory.
             let allocation = unsafe { Box::from_non_null_in(raw.cast::<MaybeUninit<U>>(), alloc) };
             Box::write(allocation, f(value))
         } else {
-            // ignore-tidy-undocumented-unsafe
-            unsafe { alloc.deallocate(raw.cast(), Layout::for_value(&value)) }
+            if size_of::<T>() != 0 {
+                // SAFETY: `raw` isn't dangling since it points to a non-zero-sized
+                // allocation and is never used again after this point.
+                unsafe { alloc.deallocate(raw.cast(), Layout::for_value(&value)) }
+            }
             Box::new_in(f(value), alloc)
         }
     }
@@ -773,12 +777,16 @@ impl<T, A: Allocator> Box<T, A> {
         let (raw, alloc) = Box::into_non_null_with_allocator(allocation);
         if size_of::<T>() == size_of::<R::Output>() && align_of::<T>() == align_of::<R::Output>() {
             let allocation =
-                // ignore-tidy-undocumented-unsafe
+                // SAFETY: We checked that the memory requirements are the same for both types
+                // and `raw` is already a valid pointer for the requisite memory.
                 unsafe { Box::from_non_null_in(raw.cast::<MaybeUninit<R::Output>>(), alloc) };
             try { Box::write(allocation, f(value)?) }
         } else {
-            // ignore-tidy-undocumented-unsafe
-            unsafe { alloc.deallocate(raw.cast(), Layout::for_value(&value)) }
+            if size_of::<T>() != 0 {
+                // SAFETY: `raw` isn't dangling since it points to a non-zero-sized
+                // allocation and is never used again after this point.
+                unsafe { alloc.deallocate(raw.cast(), Layout::for_value(&value)) }
+            }
             try { Box::new_in(f(value)?, alloc) }
         }
     }
