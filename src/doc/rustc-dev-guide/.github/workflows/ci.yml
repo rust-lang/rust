@@ -22,7 +22,7 @@ jobs:
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # linkcheck needs the base commit.
           fetch-depth: 0
@@ -54,12 +54,18 @@ jobs:
       - name: Install Dependencies
         if: steps.mdbook-cache.outputs.cache-hit != 'true'
         run: |
-          cargo install mdbook --version ${{ env.MDBOOK_VERSION }}
-          cargo install mdbook-linkcheck2 --version ${{ env.MDBOOK_LINKCHECK2_VERSION }}
-          cargo install mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
+          cargo install --locked mdbook --version ${{ env.MDBOOK_VERSION }}
+          cargo install --locked mdbook-linkcheck2 --version ${{ env.MDBOOK_LINKCHECK2_VERSION }}
+          cargo install --locked mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
 
       - name: Check build
         run: ENABLE_LINKCHECK=1 mdbook build
+
+      - name: Check build with link checking disabled
+        run: |
+          output=$(mktemp)
+          mdbook build 2>&1 | tee "$output"
+          ! grep -F "Broken pipe" "$output"
 
       - name: Save cached Linkcheck
         id: cache-linkcheck-save
