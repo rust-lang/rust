@@ -160,6 +160,7 @@
 #![feature(ptr_cast_slice)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
+#![feature(random)]
 #![feature(raw_os_error_ty)]
 #![feature(rev_into_inner)]
 #![feature(seek_stream_len)]
