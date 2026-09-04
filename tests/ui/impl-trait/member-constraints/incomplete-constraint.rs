@@ -1,14 +1,17 @@
 //@ check-pass
-// FIXME(-Znext-solver): enable this test
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
-// These functions currently do not normalize the opaque type but will do
-// so in the future. At this point we've got a new use of the opaque with fully
-// universal arguments but for which lifetimes in the hidden type are unconstrained.
+// The next solver can create extra uses of these opaques with fresh non-captured
+// parent regions. They are still the same opaque instantiation, but their hidden
+// regions may be unconstrained.
 //
-// Applying the member constraints would then incompletely infer `'unconstrained` to `'static`.
+// If member constraints run before those candidates are related, an unconstrained
+// region can be assigned a valid but wrong member such as `'static`.
 fn new_defining_use<F: FnOnce(T) -> R, T, R>(_: F) {}
 
-fn rpit1<'a,  'b: 'b>(x: &'b ()) -> impl Sized + use<'a, 'b> {
+fn rpit1<'a, 'b: 'b>(x: &'b ()) -> impl Sized + use<'a, 'b> {
     new_defining_use(rpit1::<'a, 'b>);
     x
 }
