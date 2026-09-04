@@ -389,6 +389,7 @@ target | std | host | notes
 [`powerpc-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
+[`powerpc64-sony-ps3`](platform-support/powerpc64-sony-ps3.md) | * |  | PowerPC64 (BE) Sony PlayStation 3 (PS3)
 [`powerpc64-unknown-freebsd`](platform-support/freebsd.md) | ✓ | ✓ | PPC64 FreeBSD (ELFv2)
 [`powerpc64-unknown-linux-gnuelfv2`](platform-support/powerpc64-unknown-linux-gnuelfv2.md) | ✓ | ✓ | PPC64 Linux (ELFv2 ABI, kernel 3.2, glibc 2.17)
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
