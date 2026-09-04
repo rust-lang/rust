@@ -163,7 +163,7 @@ impl Handle {
             let mut amt = 0;
             let res = cvt(c::ReadFile(
                 self.as_raw_handle(),
-                buf.as_mut_ptr().cast::<u8>(),
+                buf.as_mut_ptr().cast::<c_void>(),
                 len,
                 &mut amt,
                 overlapped,
