@@ -953,10 +953,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     tcx.require_lang_item(LangItem::Sized, ty_span),
                 );
                 check_where_clauses(wfcx, def_id);
-
-                if tcx.is_type_const(def_id) {
-                    wfcheck::check_type_const(wfcx, def_id, ty, true)?;
-                }
+                wfcheck::check_const_item(wfcx, def_id, ty);
                 Ok(())
             }));
 
