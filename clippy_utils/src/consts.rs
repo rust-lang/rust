@@ -1187,7 +1187,7 @@ pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: Syntax
 pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match ct_rhs {
         ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
-        ConstItemRhs::TypeConst(const_arg) => match const_arg.kind {
+        ConstItemRhs::Direct(const_arg) => match const_arg.kind {
             ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
             ConstArgKind::Struct(..)
             | ConstArgKind::Tup(..)
