@@ -1,8 +1,8 @@
 use rustc_middle::middle::region::Scope;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::{span_bug, ty};
-use rustc_span::Span;
+use rustc_middle::ty;
+use rustc_span::{Span, span_bug};
 use tracing::debug;
 
 use crate::builder::ForGuard::OutsideGuard;

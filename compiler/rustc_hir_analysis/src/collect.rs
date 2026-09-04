@@ -37,8 +37,7 @@ use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, RegionExt, Ty, TyCtxt, TypeVisitableExt, TypingMode,
     Unnormalized, fold_regions,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{

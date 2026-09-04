@@ -26,8 +26,7 @@ use rustc_middle::ty::{
     self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
     TypeFoldable, TypeVisitableExt, Unnormalized, UserArgs,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug, span_bug};
 use rustc_trait_selection::traits;
 use tracing::debug;
 

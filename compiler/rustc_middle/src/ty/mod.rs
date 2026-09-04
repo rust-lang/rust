@@ -54,7 +54,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
+use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, bug};
 use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;

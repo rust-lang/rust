@@ -26,8 +26,7 @@ use rustc_middle::ty::adjustment::DerefAdjustKind;
 use rustc_middle::ty::{
     self, BorrowKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span, bug, span_bug};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument, trace};
 

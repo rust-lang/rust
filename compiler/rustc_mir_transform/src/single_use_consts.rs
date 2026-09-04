@@ -1,9 +1,9 @@
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::bug;
 
 use crate::PassPolicy;
 use crate::strip_debuginfo::drop_invalid_debuginfos;

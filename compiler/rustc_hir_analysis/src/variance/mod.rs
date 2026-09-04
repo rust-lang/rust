@@ -8,11 +8,11 @@ use rustc_arena::DroplessArena;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     Unnormalized,
 };
+use rustc_span::span_bug;
 use tracing::{debug, instrument};
 
 /// Defines the `TermsContext` basically houses an arena where we can

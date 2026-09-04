@@ -5,12 +5,12 @@ use rustc_errors::{Applicability, Diag, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
-use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
 use rustc_middle::ty::{
     self, GenericArgsRef, IsSuggestable, RePlaceholder, Region, RegionExt, TyCtxt,
 };
+use rustc_span::bug;
 use rustc_structures::Limit;
 use tracing::{debug, instrument};
 

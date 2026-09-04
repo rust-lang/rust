@@ -2,7 +2,6 @@
 
 use rustc_abi::FieldIdx;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::bug;
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
@@ -11,7 +10,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
-use rustc_span::{DUMMY_SP, Span, Spanned};
+use rustc_span::{DUMMY_SP, Span, Spanned, bug};
 use tracing::debug;
 
 use crate::builder::expr::as_place::PlaceBase;

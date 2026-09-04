@@ -61,14 +61,13 @@
 
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionExt, RegionVid, Ty,
     TyCtxt, TypeVisitableExt, eager_resolve_vars,
 };
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use rustc_type_ir::region_constraint::{self, LeafRegionConstraint};
 use smallvec::smallvec;
 use tracing::{debug, instrument};

@@ -2,8 +2,8 @@ use std::ops::Deref;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::bug;
 use rustc_middle::ty::{OpaqueTypeKey, ProvisionalHiddenType, Ty};
+use rustc_span::bug;
 use tracing::instrument;
 
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};

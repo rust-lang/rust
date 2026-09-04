@@ -4,8 +4,7 @@ use rustc_ast::*;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir, Target};
-use rustc_middle::span_bug;
-use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan};
+use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan, span_bug};
 
 use crate::diagnostics::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,

@@ -21,8 +21,7 @@ use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, SplattedDef, Ty,
     TyCtxt, UpvarArgs,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, bug, span_bug};
 use tracing::{debug, info, instrument, trace};
 
 use crate::diagnostics::*;

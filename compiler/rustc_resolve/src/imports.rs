@@ -16,12 +16,11 @@ use rustc_lint_defs::builtin::{
     PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
-use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, span_bug, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};

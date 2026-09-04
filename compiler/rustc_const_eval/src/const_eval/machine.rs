@@ -9,13 +9,13 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, find_attr};
 use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
+use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
 use tracing::debug;
 

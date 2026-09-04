@@ -28,10 +28,9 @@ use rustc_middle::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItem
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, PatternKind, Ty, TyCtxt, UintTy, Unnormalized};
-use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{self, EntryFnType};
-use rustc_span::{DUMMY_SP, Symbol};
+use rustc_span::{DUMMY_SP, Symbol, bug, span_bug};
 use rustc_structures::CrateType;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os};

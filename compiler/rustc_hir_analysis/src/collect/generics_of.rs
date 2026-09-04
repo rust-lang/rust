@@ -7,9 +7,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, HirId, Node};
 use rustc_lint_defs::builtin::INVALID_TYPE_PARAM_DEFAULT;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{Span, kw, sym};
+use rustc_span::{Span, kw, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::middle::resolve_bound_vars as rbv;

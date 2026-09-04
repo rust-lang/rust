@@ -10,8 +10,6 @@
 #![warn(unused_lifetimes)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate rustc_middle;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
@@ -21,6 +19,7 @@ extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_log;
+extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_symbol_mangling;
@@ -97,7 +96,7 @@ mod prelude {
     pub(crate) use rustc_middle::ty::{
         self, FloatTy, Instance, InstanceKind, IntTy, Ty, TyCtxt, UintTy,
     };
-    pub(crate) use rustc_span::Span;
+    pub(crate) use rustc_span::{Span, bug, span_bug};
 
     pub(crate) use crate::abi::*;
     pub(crate) use crate::base::{codegen_operand, codegen_place};

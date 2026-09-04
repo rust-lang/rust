@@ -5,9 +5,8 @@ use rustc_middle::ty::{
     self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
     Upcast, shift_vars,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::{Span, bug, span_bug};
 use tracing::{debug, instrument};
 
 use super::ItemCtxt;

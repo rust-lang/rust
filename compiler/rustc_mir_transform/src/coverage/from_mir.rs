@@ -1,11 +1,10 @@
 use std::iter;
 
-use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{
     self, FakeReadCause, Statement, StatementKind, Terminator, TerminatorKind,
 };
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 
