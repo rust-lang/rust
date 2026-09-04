@@ -182,8 +182,8 @@ pub(crate) use rustc_ast as ast;
 use rustc_ast::token::{IdentIsRaw, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
-    AttrArgs, BindingMode, ByRef, DelimArgs, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
-    Mutability, PatKind, Safety, SelfKind, VariantData,
+    AttrArgs, DelimArgs, EnumDef, Expr, GenericArg, GenericParamKind, Generics, Safety, SelfKind,
+    VariantData,
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
@@ -1289,14 +1289,8 @@ impl<'a> MethodDef<'a> {
 
                 let sp = variant.span.with_ctxt(trait_.span.ctxt());
                 let variant_path = cx.path(sp, vec![type_ident, variant.ident]);
-                let by_ref = ByRef::No; // because enums can't be repr(packed)
-                let mut subpats = trait_.create_struct_patterns(
-                    cx,
-                    variant_path,
-                    &variant.data,
-                    &prefixes,
-                    by_ref,
-                );
+                let mut subpats =
+                    trait_.create_struct_patterns(cx, variant_path, &variant.data, &prefixes);
 
                 // `(VariantK, VariantK, ...)` or just `VariantK`.
                 let single_pat = if subpats.len() == 1 {
@@ -1405,7 +1399,6 @@ impl<'a> TraitDef<'a> {
         struct_path: ast::Path,
         struct_def: &'a VariantData,
         prefixes: &[String],
-        by_ref: ByRef,
     ) -> ThinVec<ast::Pat> {
         prefixes
             .iter()
@@ -1415,13 +1408,7 @@ impl<'a> TraitDef<'a> {
                         let sp = struct_field.span.with_ctxt(self.span.ctxt());
                         let ident = self.mk_pattern_ident(prefix, i);
                         let path = ident.with_span_pos(sp);
-                        (
-                            struct_field.ident,
-                            cx.pat(
-                                path.span,
-                                PatKind::Ident(BindingMode(by_ref, Mutability::Not), path, None),
-                            ),
-                        )
+                        (struct_field.ident, cx.pat_ident(path.span, path))
                     });
 
                 let struct_path = struct_path.clone();
