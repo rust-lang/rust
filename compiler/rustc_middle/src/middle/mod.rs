@@ -34,5 +34,6 @@ pub mod lib_features {
 }
 pub mod privacy;
 pub mod region;
+pub mod resolve;
 pub mod resolve_bound_vars;
 pub mod stability;
