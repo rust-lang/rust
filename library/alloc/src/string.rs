@@ -2119,6 +2119,8 @@ impl String {
     where
         R: RangeBounds<usize>,
     {
+        use core::mem::DropGuard;
+
         // We avoid #81138 (nondeterministic RangeBounds impls) because we only use `range` once, here.
         let checked_range = slice::range(range, ..self.len());
 
@@ -2131,8 +2133,12 @@ impl String {
             "end of range should be a character boundary"
         );
 
-        // ignore-tidy-undocumented-unsafe
+        let guard = DropGuard::new((), |_| core::process::abort_immediate());
+        // SAFETY: We ensure that we're not replacing across a char boundary and
+        // that the new contents are valid UTF-8. We also protect against unwinds
+        // which may leave the string in an invalid state.
         unsafe { self.as_mut_vec() }.splice(checked_range, replace_with.bytes());
+        DropGuard::dismiss(guard);
     }
 
     /// Replaces the leftmost occurrence of a pattern with another string, in-place.
