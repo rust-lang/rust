@@ -396,7 +396,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
                                 // at the type param with a label to suggest constraining it.
                                 && !self.tcx.is_diagnostic_item(sym::FromResidual, leaf_trait_predicate.def_id())
-                            // Don't say "the trait `FromResidual<Option<Infallible>>` is
+                            // Don't say "the trait `FromResidual<Option<!>>` is
                             // not implemented for `Result<T, E>`".
                             {
                                 // We do this just so that the JSON output's `help` position is the

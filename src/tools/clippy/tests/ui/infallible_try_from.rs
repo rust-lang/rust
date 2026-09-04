@@ -1,7 +1,5 @@
 #![warn(clippy::infallible_try_from)]
 
-use std::convert::Infallible;
-
 struct MyStruct(i32);
 
 impl TryFrom<i8> for MyStruct {
@@ -14,8 +12,8 @@ impl TryFrom<i8> for MyStruct {
 
 impl TryFrom<i16> for MyStruct {
     //~^ infallible_try_from
-    type Error = Infallible;
-    fn try_from(other: i16) -> Result<Self, Infallible> {
+    type Error = !;
+    fn try_from(other: i16) -> Result<Self, !> {
         Ok(Self(other.into()))
     }
 }

@@ -18,6 +18,7 @@ Term                                           | Meaning
 <span id="codegen-unit">codegen unit</span>    |  When we produce LLVM IR, we group the Rust code into a number of codegen units (sometimes abbreviated as CGUs). Each of these units is processed by LLVM independently from one another, enabling parallelism. They are also the unit of incremental re-use. ([see more](../backend/codegen.md))
 <span id="completeness">completeness</span>    |  A technical term in type theory, it means that every type-safe program also type-checks. Having both soundness and completeness is very hard, and usually soundness is more important. (see "soundness").
 <span id="cfg">control-flow graph, CFG</span>  |  A representation of the control-flow of a program; see [the background chapter for more](./background.md#cfg)
+<span id="cta">CTA</span>                      |  A _checked type alias_, a type alias that gets "properly" represented as an alias in the [middle ty IR](#middle-ty-ir); contrary to (unchecked) type aliases whose reference sites get expanded to the underlying aliased type (the RHS of the type alias after instantiation) during HIR ty lowering, its reference sites get [lowered](#lowering) to an [`AliasTy`].
 <span id="ctfe">CTFE</span>                    |  Short for _compile-time function evaluation_, this is the ability of the compiler to evaluate `const fn`s at compile time. This is part of the compiler's constant evaluation system. ([see more](../const-eval.md))
 <span id="cx">`cx`</span>                      |  We tend to use _cx_ as an abbreviation for _context_. See also `tcx`, `infcx`, etc.
 <span id="ctxt">`ctxt`</span>                  |  We also use _ctxt_ as an abbreviation for _context_, e.g. [`TyCtxt`](#TyCtxt). See also [cx](#cx) or [tcx](#tcx).
@@ -57,7 +58,7 @@ Term                                           | Meaning
 <span id="lbl">late-bound lifetime</span>      |  A lifetime / region that is substituted at its call site. Bound in a HRTB and substituted by specific functions in the compiler, such as `liberate_late_bound_regions`. Contrast with **early-bound lifetime**. ([see more](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/region_kind/enum.RegionKind.html#bound-regions))
 <span id="local-crate">local crate</span>      |  The crate currently being compiled. This is in contrast to "upstream crates" which refer to dependencies of the local crate.
 <span id="lowering">lowering</span>            |  The act of converting a higher-level [IR](#ir) to a lower-level one. E.g., AST lowering (from [AST](#ast) to [HIR](#hir)) or HIR ty lowering (from HIR to [middle ty IR](#middle-ty-ir)).
-<span id="lta">LTA</span>                      |  A _lazy type alias_, a type alias that gets "properly" represented as an alias in the [middle ty IR](#middle-ty-ir); contrary to (eager) type aliases whose reference sites get expanded to the underlying aliased type (the RHS of the type alias after instantiation) during HIR ty lowering, its reference sites get [lowered](#lowering) to an [`AliasTy`].
+<span id="lta">LTA 👎</span>                   |  Short for _lazy type alias_. **Renamed to [CTA](#cta)**.
 <span id="lto">LTO</span>                      |  Short for *link-time optimizations*, this is a set of optimizations offered by LLVM that occur just before the final binary is linked. These include optimizations like removing functions that are never used in the final program, for example. _ThinLTO_ is a variant of LTO that aims to be a bit more scalable and efficient, but possibly sacrifices some optimizations. You may also read issues in the Rust repo about "FatLTO", which is the loving nickname given to non-Thin LTO. LLVM documentation: [here][lto] and [here][thinlto].
 <span id="llvm">[LLVM]</span>                  |  (actually not an acronym :P) an open-source compiler backend. It accepts LLVM IR and outputs native binaries. Various languages (e.g. Rust) can then implement a compiler front-end that outputs LLVM IR and use LLVM to compile to all the platforms LLVM supports.
 <span id="memoization">memoization</span>      |  The process of storing the results of (pure) computations (such as pure function calls) to avoid having to repeat them in the future. This is typically a trade-off between execution speed and memory usage.
@@ -120,7 +121,7 @@ See also <https://doc.rust-lang.org/reference/glossary.html#glossary>.
 [RFC 2515]: https://rust-lang.github.io/rfcs/2515-type_alias_impl_trait.html
 [RFC 3425]: https://rust-lang.github.io/rfcs/3425-return-position-impl-trait-in-traits.html
 [TLS]: https://llvm.org/docs/LangRef.html#thread-local-storage-models
-[`AliasTy`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.AliasTy.html
+[`AliasTy`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/sty/type.AliasTy.html
 [`Span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 [`generic_const_items`]: https://github.com/rust-lang/rust/issues/113521
 [`min_generic_const_items`]: https://github.com/rust-lang/rust/issues/132980
