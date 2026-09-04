@@ -13,6 +13,7 @@ use rustc_middle::ty::{
     self, BoundVar, Flags, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypingModeEqWrapper,
 };
+use rustc_type_ir::PredicateProxy;
 use smallvec::SmallVec;
 use tracing::debug;
 
@@ -483,7 +484,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if p.flags().intersects(self.needs_canonical_flags) { p.super_fold_with(self) } else { p }
     }
 
