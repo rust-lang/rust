@@ -2328,17 +2328,33 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
-        let constraints = match validate(self.tcx(), &body.constraints) {
-            Ok(()) => body.constraints,
+        let TestBinderBody { foralls, exists, constraints, predicates } = body;
+        if !predicates.is_empty() {
+            for (predicate, span) in predicates {
+                let cause = traits::ObligationCause::misc(span, self.body_def_id);
+                let obligation = Obligation::new(self.tcx(), cause, self.param_env, predicate);
+                self.register_obligation(obligation);
+            }
+            match self.ocx.evaluate_obligations_error_on_ambiguity() {
+                TraitErrors::NoErrors => (),
+                TraitErrors::HasErrors(errors) => {
+                    self.infcx.err_ctxt().report_fulfillment_errors(errors);
+                    return;
+                }
+            }
+        }
+
+        let constraints = match validate(self.tcx(), &constraints) {
+            Ok(()) => constraints,
             Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
         };
 
         self.infcx.register_solver_region_constraint(constraints);
 
-        for forall in body.foralls {
+        for forall in foralls {
             self.check_test_binder_forall(forall);
         }
-        for exists in body.exists {
+        for exists in exists {
             self.check_test_binder_exists(exists);
         }
 
@@ -2426,8 +2442,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             if let Some(actual_span) = actual_span {
                 err.span_note(actual_span, "constraint from here");
             }
-            err.note(format!("expected: {expected:?}"));
-            err.note(format!("actual: {actual:?}"));
+            err.note(format!("expected: {expected:#?}"));
+            err.note(format!("actual: {actual:#?}"));
             err.emit();
         }
 
@@ -2441,7 +2457,25 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
         let check_leaf_constraint =
             |expected: LeafRegionConstraint<_, _>, actual: LeafRegionConstraint<_, _>| {
-                if expected.clone().without_span() != actual.clone().without_span() {
+                if let LeafRegionConstraint::AliasTyOutlivesViaEnv(expected, expected_span) =
+                    expected
+                    && let LeafRegionConstraint::AliasTyOutlivesViaEnv(actual, actual_span) = actual
+                {
+                    let expected_anon = self.tcx().anonymize_bound_vars(expected);
+                    let actual_anon = self.tcx().anonymize_bound_vars(actual);
+                    if expected_anon != actual_anon {
+                        let mut err = self
+                            .tcx()
+                            .dcx()
+                            .struct_span_err(expected_span, "forall expect clause failed");
+                        err.span_note(actual_span, "constraint from here");
+                        err.note(format!("expected: {expected:#?}"));
+                        err.note(format!("actual: {actual:#?}"));
+                        err.note(format!("expected_anon: {expected_anon:#?}"));
+                        err.note(format!("actual_anon: {actual_anon:#?}"));
+                        err.emit();
+                    }
+                } else if expected.clone().without_span() != actual.clone().without_span() {
                     err(self.tcx(), expected.span(), expected, Some(actual.span()), actual);
                 }
             };
@@ -2658,7 +2692,10 @@ struct RedundantLifetimeArgsLint<'tcx> {
 pub(crate) struct TestBinderBody<'tcx> {
     pub foralls: Vec<TestBinderForall<'tcx>>,
     pub exists: Vec<TestBinderExists<'tcx>>,
+    /// Constraints to be inserted directly into constraint storage to be proven
     pub constraints: SolverRegionConstraint<'tcx>,
+    /// Constraints declared using `where` syntax, used via `register_obligation`
+    pub predicates: Vec<(ty::Binder<'tcx, ty::ClauseKind<'tcx>>, Span)>,
 }
 
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]

@@ -67,4 +67,11 @@ core::test_binder_constraints! {
     }
 }
 
+core::test_binder_constraints! {
+    impl<'a, T> {
+        for<> T: 'a
+        //~^ ERROR bound type test binder constraint must be alias (it's a AliasTyOutlivesViaEnv)
+    }
+}
+
 fn main() {}

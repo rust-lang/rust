@@ -1522,6 +1522,20 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             |this| visit::walk_test_binder_exists(this, exists),
         );
     }
+
+    fn visit_test_binder_bound_type_constraint(
+        &mut self,
+        bound_type: &'ast TestBinderBoundTypeConstraint,
+    ) {
+        self.with_generic_param_rib(
+            &bound_type.params,
+            RibKind::Normal,
+            bound_type.node_id,
+            LifetimeBinderKind::WhereBound,
+            bound_type.lhs.span.to(bound_type.rhs.ident.span),
+            |this| visit::walk_test_binder_bound_type_constraint(this, bound_type),
+        );
+    }
 }
 
 impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
