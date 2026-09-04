@@ -4,7 +4,7 @@ struct Baz<const N: usize>(i32);
 
 fn f() {
     let _: Baz<#[cfg(false)]> = todo!();
-    //~^ ERROR attributes cannot be applied here
+    //~^ ERROR attributes cannot be applied to generic arguments
 }
 
 fn g(_param: #[attr]) {}
