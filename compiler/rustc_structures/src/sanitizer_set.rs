@@ -95,6 +95,20 @@ impl SanitizerSet {
             .find(|&(a, b)| self.contains(*a) && self.contains(*b))
             .copied()
     }
+
+    /// Disable default sanitizers that are incompatible with explicitly requested ones,
+    /// matching Clang's `SanitizerArgs` driver logic.
+    pub fn combine_with_defaults(self, mut defaults: SanitizerSet) -> SanitizerSet {
+        for &(a, b) in Self::MUTUALLY_EXCLUSIVE {
+            if defaults.contains(a) && self.contains(b) {
+                defaults -= a;
+            }
+            if defaults.contains(b) && self.contains(a) {
+                defaults -= b;
+            }
+        }
+        self | defaults
+    }
 }
 
 /// Formats a sanitizer set as a comma separated list of sanitizers' names.
