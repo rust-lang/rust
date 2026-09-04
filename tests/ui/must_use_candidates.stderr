@@ -61,16 +61,28 @@ LL | pub fn arcd(_x: Arc<u32>) -> bool {
    |
 
 error: this function could have a `#[must_use]` attribute
-  --> tests/ui/must_use_candidates.rs:101:8
+  --> tests/ui/must_use_candidates.rs:103:8
    |
-LL | pub fn result_uninhabited_1() -> Result<i32, std::convert::Infallible> {
+LL | pub fn result_uninhabited_1() -> Result<i32, Uninhabited> {
    |        ^^^^^^^^^^^^^^^^^^^^
    |
 help: add the attribute
    |
 LL + #[must_use]
-LL | pub fn result_uninhabited_1() -> Result<i32, std::convert::Infallible> {
+LL | pub fn result_uninhabited_1() -> Result<i32, Uninhabited> {
    |
 
-error: aborting due to 6 previous errors
+error: this function could have a `#[must_use]` attribute
+  --> tests/ui/must_use_candidates.rs:108:8
+   |
+LL | pub fn result_never_1() -> Result<i32, !> {
+   |        ^^^^^^^^^^^^^^
+   |
+help: add the attribute
+   |
+LL + #[must_use]
+LL | pub fn result_never_1() -> Result<i32, !> {
+   |
+
+error: aborting due to 7 previous errors
 

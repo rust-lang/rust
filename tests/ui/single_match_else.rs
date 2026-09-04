@@ -112,8 +112,19 @@ fn main() {
     //~| NOTE: you might want to preserve the comments from inside the `match`
 
     // lint here
-    use std::convert::Infallible;
-    match Result::<i32, &Infallible>::Ok(1) {
+    match Result::<i32, &!>::Ok(1) {
+        Ok(a) => println!("${:?}", a),
+        Err(_) => {
+            println!("else block");
+            return;
+        }
+    }
+    //~^^^^^^^ single_match_else
+
+    enum Uninhabited {}
+
+    // lint here
+    match Result::<i32, &Uninhabited>::Ok(1) {
         Ok(a) => println!("${:?}", a),
         Err(_) => {
             println!("else block");
