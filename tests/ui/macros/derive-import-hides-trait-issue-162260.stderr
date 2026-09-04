@@ -1,32 +1,20 @@
 error: cannot find derive macro `Serialize` in this scope
-  --> $DIR/derive-import-hides-trait-issue-162260.rs:13:10
+  --> $DIR/derive-import-hides-trait-issue-162260.rs:16:10
    |
 LL | #[derive(Serialize)]
    |          ^^^^^^^^^
    |
-note: `Serialize` is a trait, not a derive macro
-  --> $DIR/derive-import-hides-trait-issue-162260.rs:10:5
-   |
-LL |     pub trait Serialize {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   = help: consider implementing `Serialize` for your type manually
 help: consider importing this derive macro
    |
 LL + use derive_serialize::Serialize;
    |
 
 error: cannot find derive macro `Serialize` in this scope
-  --> $DIR/derive-import-hides-trait-issue-162260.rs:13:10
+  --> $DIR/derive-import-hides-trait-issue-162260.rs:16:10
    |
 LL | #[derive(Serialize)]
    |          ^^^^^^^^^
    |
-note: `Serialize` is a trait, not a derive macro
-  --> $DIR/derive-import-hides-trait-issue-162260.rs:10:5
-   |
-LL |     pub trait Serialize {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   = help: consider implementing `Serialize` for your type manually
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider importing this derive macro
    |
