@@ -2112,7 +2112,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body.exists.iter().map(|exists| self.lower_test_binder_exists(exists)),
         );
         let constraints = self.lower_test_binder_constraints_as_and(&body.constraints);
-        hir::TestBinderBody { foralls, exists, constraints }
+        let mut dedup_map = Default::default();
+        let predicates = self.arena.alloc_from_iter(
+            body.predicates
+                .iter()
+                .flat_map(|w| &w.predicates)
+                .map(|predicate| self.lower_where_predicate(predicate, &[], &mut dedup_map)),
+        );
+        hir::TestBinderBody { foralls, exists, constraints, predicates }
     }
 
     fn lower_test_binder_forall(
@@ -2194,12 +2201,45 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let rhs = self.lower_lifetime(rhs, LifetimeSource::OutlivesBound, rhs.ident.into());
                 hir::TestBinderConstraint::Lifetime { lhs, rhs }
             }
-            TestBinderConstraint::Type { lhs, rhs } => {
+            TestBinderConstraint::PlaceholderOutlives { lhs, rhs } => {
                 let lhs = self
                     .lower_ty_alloc(lhs, ImplTraitContext::Disallowed(ImplTraitPosition::Bound));
                 let rhs = self.lower_lifetime(rhs, LifetimeSource::OutlivesBound, rhs.ident.into());
-                hir::TestBinderConstraint::Type { lhs, rhs }
+                hir::TestBinderConstraint::PlaceholderOutlives { lhs, rhs }
             }
+            TestBinderConstraint::AliasOutlives { bound_type_constraint } => {
+                hir::TestBinderConstraint::AliasOutlives {
+                    bound_type_constraint: self
+                        .arena
+                        .alloc(self.lower_test_binder_bound_type_constraint(bound_type_constraint)),
+                }
+            }
+        }
+    }
+
+    fn lower_test_binder_bound_type_constraint(
+        &mut self,
+        bound_type: &TestBinderBoundTypeConstraint,
+    ) -> hir::TestBinderBoundTypeConstraint<'hir> {
+        let TestBinderBoundTypeConstraint { span, node_id, params, lhs, rhs } = bound_type;
+
+        let (generics, (lhs, rhs)) = self.lower_generics(
+            &Generics { params: params.clone(), where_clause: Default::default(), span: *span },
+            ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+            |this| {
+                let lhs = this
+                    .lower_ty_alloc(lhs, ImplTraitContext::Disallowed(ImplTraitPosition::Bound));
+                let rhs = this.lower_lifetime(rhs, LifetimeSource::OutlivesBound, rhs.ident.into());
+                (lhs, rhs)
+            },
+        );
+
+        hir::TestBinderBoundTypeConstraint {
+            span: *span,
+            hir_id: self.lower_node_id(*node_id),
+            params: generics.params,
+            lhs,
+            rhs,
         }
     }
 }

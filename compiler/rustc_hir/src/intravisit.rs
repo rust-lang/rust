@@ -512,6 +512,12 @@ pub trait Visitor<'v>: Sized {
     ) -> Self::Result {
         walk_test_binder_constraint(self, constraint)
     }
+    fn visit_test_binder_bound_type_constraint(
+        &mut self,
+        bound_type: &'v TestBinderBoundTypeConstraint<'v>,
+    ) -> Self::Result {
+        walk_test_binder_bound_type_constraint(self, bound_type)
+    }
 }
 
 pub trait VisitorExt<'v>: Visitor<'v> {
@@ -1581,9 +1587,11 @@ pub fn walk_test_binder_body<'v, V: Visitor<'v>>(
     visitor: &mut V,
     body: &'v TestBinderBody<'v>,
 ) -> V::Result {
-    walk_list!(visitor, visit_test_binder_forall, body.foralls);
-    walk_list!(visitor, visit_test_binder_exists, body.exists);
-    try_visit!(visitor.visit_test_binder_constraint(&body.constraints));
+    let TestBinderBody { foralls, exists, constraints, predicates } = body;
+    walk_list!(visitor, visit_test_binder_forall, *foralls);
+    walk_list!(visitor, visit_test_binder_exists, *exists);
+    try_visit!(visitor.visit_test_binder_constraint(&constraints));
+    walk_list!(visitor, visit_where_predicate, *predicates);
     V::Result::output()
 }
 
@@ -1591,10 +1599,11 @@ pub fn walk_test_binder_forall<'v, V: Visitor<'v>>(
     visitor: &mut V,
     forall: &'v TestBinderForall<'v>,
 ) -> V::Result {
-    try_visit!(visitor.visit_id(forall.hir_id));
-    try_visit!(visitor.visit_generics(forall.generics));
-    try_visit!(visitor.visit_test_binder_body(forall.body));
-    if let Some(assert_on_exit) = &forall.assert_on_exit {
+    let TestBinderForall { span: _, hir_id, generics, body, assert_on_exit } = forall;
+    try_visit!(visitor.visit_id(*hir_id));
+    try_visit!(visitor.visit_generics(generics));
+    try_visit!(visitor.visit_test_binder_body(body));
+    if let Some(assert_on_exit) = &assert_on_exit {
         try_visit!(visitor.visit_test_binder_constraint(assert_on_exit));
     }
     V::Result::output()
@@ -1604,9 +1613,10 @@ pub fn walk_test_binder_exists<'v, V: Visitor<'v>>(
     visitor: &mut V,
     exists: &'v TestBinderExists<'v>,
 ) -> V::Result {
-    try_visit!(visitor.visit_id(exists.hir_id));
-    walk_list!(visitor, visit_generic_param, exists.params);
-    try_visit!(visitor.visit_test_binder_body(exists.body));
+    let TestBinderExists { span: _, hir_id, params, body } = exists;
+    try_visit!(visitor.visit_id(*hir_id));
+    walk_list!(visitor, visit_generic_param, *params);
+    try_visit!(visitor.visit_test_binder_body(body));
     V::Result::output()
 }
 
@@ -1625,10 +1635,25 @@ pub fn walk_test_binder_constraint<'v, V: Visitor<'v>>(
             try_visit!(visitor.visit_lifetime(lhs));
             try_visit!(visitor.visit_lifetime(rhs));
         }
-        TestBinderConstraint::Type { lhs, rhs } => {
+        TestBinderConstraint::PlaceholderOutlives { lhs, rhs } => {
             try_visit!(visitor.visit_ty_unambig(lhs));
             try_visit!(visitor.visit_lifetime(rhs));
         }
+        TestBinderConstraint::AliasOutlives { bound_type_constraint } => {
+            try_visit!(visitor.visit_test_binder_bound_type_constraint(bound_type_constraint));
+        }
     }
+    V::Result::output()
+}
+
+pub fn walk_test_binder_bound_type_constraint<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    constraint: &'v TestBinderBoundTypeConstraint<'v>,
+) -> V::Result {
+    let TestBinderBoundTypeConstraint { span: _, hir_id, params, lhs, rhs } = constraint;
+    try_visit!(visitor.visit_id(*hir_id));
+    walk_list!(visitor, visit_generic_param, *params);
+    try_visit!(visitor.visit_ty_unambig(lhs));
+    try_visit!(visitor.visit_lifetime(rhs));
     V::Result::output()
 }

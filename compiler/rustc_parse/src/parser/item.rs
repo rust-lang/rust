@@ -2702,7 +2702,12 @@ impl<'a> Parser<'a> {
         let mut foralls = ThinVec::new();
         let mut exists = ThinVec::new();
         let mut constraints = Vec::new();
+        let mut predicates = Vec::new();
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
+            if this.check_keyword(exp!(Where)) {
+                predicates.push(this.parse_where_clause()?);
+                return Ok(());
+            }
             match this.token.ident() {
                 Some((Ident { name: sym::forall, .. }, IdentIsRaw::No)) => {
                     foralls.push(this.parse_test_binder_forall()?)
@@ -2710,11 +2715,12 @@ impl<'a> Parser<'a> {
                 Some((Ident { name: sym::exists, .. }, IdentIsRaw::No)) => {
                     exists.push(this.parse_test_binder_exists()?)
                 }
+
                 _ => constraints.push(this.parse_test_binder_constraint()?),
             }
             Ok(())
         })?;
-        Ok(TestBinderBody { foralls, exists, constraints })
+        Ok(TestBinderBody { foralls, exists, constraints, predicates })
     }
 
     pub fn parse_test_binder_forall(&mut self) -> PResult<'a, TestBinderForall> {
@@ -2771,6 +2777,10 @@ impl<'a> Parser<'a> {
                     .0;
                 Ok(TestBinderConstraint::Or { items })
             }
+            _ if self.check_keyword(exp!(For)) => {
+                let bound_type_constraint = self.parse_test_binder_bound_type_constraint()?;
+                Ok(TestBinderConstraint::AliasOutlives { bound_type_constraint })
+            }
             _ if self.token.lifetime().is_some() => {
                 let lhs = self.expect_lifetime();
                 self.expect(exp!(Colon))?;
@@ -2787,9 +2797,51 @@ impl<'a> Parser<'a> {
                     self.unexpected()?;
                 }
                 let rhs = self.expect_lifetime();
-                Ok(TestBinderConstraint::Type { lhs, rhs })
+                Ok(TestBinderConstraint::PlaceholderOutlives { lhs, rhs })
             }
             _ => Err(self.dcx().struct_span_err(self.token.span, "unexpected token")),
+        }
+    }
+
+    fn parse_test_binder_bound_type_constraint(
+        &mut self,
+    ) -> PResult<'a, TestBinderBoundTypeConstraint> {
+        let lo = self.token.span;
+        let ast::WhereBoundPredicate { bound_generic_params, bounded_ty, bounds } =
+            self.parse_ty_where_predicate_kind()?;
+        let mut rhs = None;
+        for bound in bounds {
+            match bound {
+                GenericBound::Trait(poly_trait_ref) => {
+                    self.dcx().span_err(poly_trait_ref.span, "trait bounds aren't supported here");
+                }
+                GenericBound::Use(_, span) => {
+                    self.dcx().span_err(span, "use bounds aren't supported here");
+                }
+                GenericBound::Outlives(lifetime) => {
+                    if rhs.is_some() {
+                        self.dcx().span_err(
+                            lifetime.ident.span,
+                            "only one lifetime on the rhs supported",
+                        );
+                    } else {
+                        rhs = Some(lifetime);
+                    }
+                }
+            }
+        }
+        match rhs {
+            Some(rhs) => Ok(TestBinderBoundTypeConstraint {
+                span: lo.to(self.prev_token.span),
+                node_id: DUMMY_NODE_ID,
+                params: bound_generic_params,
+                lhs: bounded_ty,
+                rhs,
+            }),
+            None => Err(self.dcx().struct_span_err(
+                bounded_ty.span,
+                "expected a single lifetime on the rhs of this constraint",
+            )),
         }
     }
 
