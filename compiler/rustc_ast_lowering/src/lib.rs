@@ -55,7 +55,7 @@ use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
+use rustc_hir::def::{DefKind, Namespace, PerNS, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
@@ -65,9 +65,12 @@ use rustc_hir::{
 };
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::extension;
+use rustc_middle::middle::resolve::{
+    AstOwner, LifetimeRes, PartialRes, PerOwnerResolverData, ResolverAstLowering,
+};
 use rustc_middle::queries::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::diagnostics::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
