@@ -953,7 +953,7 @@ impl Iterator for ReadDir {
     }
 }
 
-/// Aborts the process if a file desceriptor is not open, if debug asserts are enabled
+/// Aborts the process if a file descriptor is not open, if debug asserts are enabled
 ///
 /// Many IO syscalls can't be fully trusted about EBADF error codes because those
 /// might get bubbled up from a remote FUSE server rather than the file descriptor
