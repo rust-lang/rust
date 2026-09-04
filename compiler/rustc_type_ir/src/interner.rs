@@ -266,8 +266,11 @@ pub trait Interner:
         self,
         def_id: Self::LocalOpaqueTyId,
     ) -> ty::EarlyBinder<Self, Self::Ty>;
-    fn is_type_const(self, def_id: Self::DefId) -> bool;
-    fn const_of_item(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Const>;
+    fn is_direct_const(self, alias: ty::AliasConstKind<Self>) -> bool;
+    fn const_of_item(
+        self,
+        alias: ty::AliasConstKind<Self>,
+    ) -> Option<ty::EarlyBinder<Self, Self::Const>>;
     fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
     fn def_span(self, def_id: Self::DefId) -> Self::Span;

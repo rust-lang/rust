@@ -160,14 +160,8 @@ impl<I: Interner> AliasConstKind<I> {
         interner.alias_const_kind_from_def_id(def_id, inherent_args)
     }
 
-    pub fn is_type_const(self, interner: I) -> bool {
-        match self {
-            AliasConstKind::Projection { def_id } => interner.is_type_const(def_id.into()),
-            AliasConstKind::InherentSelf { def_id } => interner.is_type_const(def_id.into()),
-            AliasConstKind::InherentImpl { def_id } => interner.is_type_const(def_id.into()),
-            AliasConstKind::Free { def_id } => interner.is_type_const(def_id.into()),
-            AliasConstKind::Anon { def_id } => interner.is_type_const(def_id.into()),
-        }
+    pub fn is_direct_const(self, interner: I) -> bool {
+        interner.is_direct_const(self)
     }
 
     pub fn def_span(self, interner: I) -> I::Span {
