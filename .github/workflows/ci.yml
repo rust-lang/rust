@@ -35,7 +35,8 @@ jobs:
           "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
-          "--projects",
+          "--projects --nb-parts 2 --current-part 0",
+          "--projects --nb-parts 2 --current-part 1",
           "--gcc-asm-tests --test-release-libcore",
         ]
 
@@ -52,6 +53,10 @@ jobs:
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
+
+    - name: Install the libraries needed to build librsvg
+      if: ${{ contains(matrix.commands, '--projects') }}
+      run: sudo apt-get install libcairo2-dev libpango1.0-dev libfontconfig1-dev libfreetype-dev libharfbuzz-dev libxml2-dev libglib2.0-dev
 
     - name: Download artifact
       run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}

@@ -724,40 +724,88 @@ where
 // echo "[BUILD] sysroot in release mode"
 // ./build_sysroot/build_sysroot.sh --release
 
+struct Project {
+    url: &'static str,
+    /// Arguments added to both the `cargo build` and the `cargo test` invocations.
+    cargo_arguments: &'static [&'static str],
+    /// Arguments forwarded to the test harness by `cargo test`.
+    test_harness_arguments: &'static [&'static str],
+}
+
+impl Project {
+    const fn new(url: &'static str) -> Self {
+        Self { url, cargo_arguments: &[], test_harness_arguments: &[] }
+    }
+
+    const fn cargo_arguments(mut self, arguments: &'static [&'static str]) -> Self {
+        self.cargo_arguments = arguments;
+        self
+    }
+
+    const fn test_harness_arguments(mut self, arguments: &'static [&'static str]) -> Self {
+        self.test_harness_arguments = arguments;
+        self
+    }
+}
+
 fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
     let projects = [
-        //"https://gitlab.gnome.org/GNOME/librsvg", // FIXME: doesn't compile in the CI since the
-        // version of cairo and other libraries is too old.
-        "https://github.com/rust-random/getrandom",
-        "https://github.com/BurntSushi/memchr",
-        "https://github.com/dtolnay/itoa",
-        "https://github.com/rust-lang/cfg-if",
-        //"https://github.com/rust-lang-nursery/lazy-static.rs", // FIXME: re-enable when the
-        //failing test is fixed upstream.
-        //"https://github.com/marshallpierce/rust-base64", // FIXME: one test is OOM-killed.
-        // FIXME: ignore the base64 test that is OOM-killed.
-        //"https://github.com/time-rs/time", // FIXME: one test fails (https://github.com/time-rs/time/issues/719).
-        "https://github.com/rust-lang/log",
-        "https://github.com/bitflags/bitflags",
-        //"https://github.com/serde-rs/serde", // FIXME: one test fails.
-        //"https://github.com/rayon-rs/rayon", // FIXME: very slow, only run on master?
-        //"https://github.com/rust-lang/cargo", // FIXME: very slow, only run on master?
+        Project::new("https://gitlab.gnome.org/GNOME/librsvg"),
+        Project::new("https://github.com/rust-random/getrandom"),
+        Project::new("https://github.com/BurntSushi/memchr"),
+        Project::new("https://github.com/dtolnay/itoa"),
+        Project::new("https://github.com/rust-lang/cfg-if"),
+        // The `ui` test compares against the diagnostics of the compiler it was blessed with, so it
+        // fails on the nightly we use no matter which backend produces the code.
+        Project::new("https://github.com/rust-lang-nursery/lazy-static.rs")
+            .test_harness_arguments(&["--skip", "ui", "--exact"]),
+        Project::new("https://github.com/marshallpierce/rust-base64"),
+        // The test suite refuses to build unless every feature is enabled; it otherwise spawns a
+        // nested `cargo test --all-features` which would not use this backend.
+        Project::new("https://github.com/time-rs/time").cargo_arguments(&["--all-features"]),
+        Project::new("https://github.com/rust-lang/log"),
+        Project::new("https://github.com/bitflags/bitflags"),
+        Project::new("https://github.com/serde-rs/serde"),
+        Project::new("https://github.com/rayon-rs/rayon"),
+        // FIXME: too slow to run in the CI: the release build alone takes 46 minutes and the
+        // `cargo` crate itself needs 5.4 GB of memory in a single rustc process.
+        //Project::new("https://github.com/rust-lang/cargo"),
     ];
 
     let mut env = env.clone();
     let rustflags =
         format!("{} --cap-lints allow", env.get("RUSTFLAGS").cloned().unwrap_or_default());
     env.insert("RUSTFLAGS".to_string(), rustflags);
-    let run_tests = |projects_path, iter: &mut dyn Iterator<Item = &&str>| -> Result<(), String> {
-        for project in iter {
-            let clone_result = git_clone_root_dir(project, projects_path, true)?;
-            let repo_path = Path::new(&clone_result.repo_dir);
-            run_cargo_command(&[&"build", &"--release"], Some(repo_path), &env, args)?;
-            run_cargo_command(&[&"test"], Some(repo_path), &env, args)?;
-        }
+    let run_tests =
+        |projects_path, iter: &mut dyn Iterator<Item = &Project>| -> Result<(), String> {
+            for project in iter {
+                let clone_result = git_clone_root_dir(project.url, projects_path, true)?;
+                let repo_path = Path::new(&clone_result.repo_dir);
 
-        Ok(())
-    };
+                let mut build_command: Vec<&dyn AsRef<OsStr>> = vec![&"build", &"--release"];
+                build_command.extend(
+                    project.cargo_arguments.iter().map(|argument| argument as &dyn AsRef<OsStr>),
+                );
+                run_cargo_command(&build_command, Some(repo_path), &env, args)?;
+
+                let mut test_command: Vec<&dyn AsRef<OsStr>> = vec![&"test"];
+                test_command.extend(
+                    project.cargo_arguments.iter().map(|argument| argument as &dyn AsRef<OsStr>),
+                );
+                if !project.test_harness_arguments.is_empty() {
+                    test_command.push(&"--");
+                    test_command.extend(
+                        project
+                            .test_harness_arguments
+                            .iter()
+                            .map(|argument| argument as &dyn AsRef<OsStr>),
+                    );
+                }
+                run_cargo_command(&test_command, Some(repo_path), &env, args)?;
+            }
+
+            Ok(())
+        };
 
     let projects_path = Path::new("projects");
     create_dir(projects_path)?;
