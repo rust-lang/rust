@@ -21,8 +21,8 @@ We match on the `PredicateKind`, delegating to a separate function for each one.
 For trait goals, such a `Vec<T>: Clone`, `EvalCtxt::compute_trait_goal` has
 to collect all the possible ways this goal can be proven via
 `EvalCtxt::assemble_and_evaluate_candidates`.
-Each candidate is handled in
-a separate "probe", to not leak inference constraints to the other candidates.
+Each candidate is handled in a separate "probe",
+to not leak inference constraints to the other candidates.
 We then try to merge the assembled candidates via `EvalCtxt::merge_candidates`.
 
 
@@ -47,15 +47,15 @@ and constants are potentially unnormalized.
 This means that matching on `TyKind` can easily be incorrect.
 
 We handle normalization in two different ways.
-When proving `Trait` goals when normalizing
-associated types, we separately assemble candidates depending on whether they structurally
+When proving `Trait` goals when normalizing associated types,
+we separately assemble candidates depending on whether they structurally
 match the self type.
 Candidates which match on the self type are handled in
 `EvalCtxt::assemble_candidates_via_self_ty` which recurses via
-`EvalCtxt::assemble_candidates_after_normalizing_self_ty`, which normalizes the self type
-by one level.
-In all other cases we have to match on a `TyKind` we first use
-`EvalCtxt::try_normalize_ty` to normalize the type as much as possible.
+`EvalCtxt::assemble_candidates_after_normalizing_self_ty`,
+which normalizes the self type by one level.
+In all other cases where we have to match on a `TyKind`,
+we first use `EvalCtxt::try_normalize_ty` to normalize the type as much as possible.
 
 ### Higher ranked goals
 
@@ -66,12 +66,13 @@ eagerly instantiates `'a` with a placeholder and then recursively proves
 ### Dealing with choice
 
 Some goals can be proven in multiple ways.
-In these cases we try each option in
-a separate "probe" and then attempt to merge the resulting responses by using
-`EvalCtxt::try_merge_responses`.
+In these cases,
+we try each option in a separate "probe",
+and then attempt to merge the resulting responses by using `EvalCtxt::try_merge_responses`.
 If merging the responses fails, we use `EvalCtxt::flounder` instead, returning ambiguity.
-For some goals, we try to
-incompletely prefer some choices over others in case `EvalCtxt::try_merge_responses` fails.
+For some goals,
+we try to incompletely prefer some choices over others
+in case `EvalCtxt::try_merge_responses` fails.
 
 ## Learning more
 
