@@ -1,0 +1,8 @@
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `{`
+  --> $DIR/issue-147877.rs:6:33
+   |
+LL |     let _ = if foo == Foo { x } { x } else { 0 };
+   |                                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
+
+error: aborting due to 1 previous error
+
