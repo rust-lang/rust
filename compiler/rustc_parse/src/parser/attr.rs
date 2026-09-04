@@ -509,7 +509,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover from outer attributes in places where none were expected.
-    pub(super) fn recover_from_outer_attributes(&mut self, target: &str) -> PResult<'a, ()> {
+    pub fn recover_from_outer_attributes(&mut self, target: &str) -> PResult<'a, ()> {
         // We check the token ourselves first to prevent `#`
         // from getting added to the set of expected tokens.
         if !self.may_recover() || !matches!(self.token.kind, token::Pound | token::DocComment(..)) {
