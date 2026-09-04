@@ -567,8 +567,8 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         type_ident: Ident,
         generics: &Generics,
-        field_tys: Vec<&ast::Ty>,
-        methods: Vec<Box<ast::AssocItem>>,
+        field_tys: impl Iterator<Item = &'a ast::Ty>,
+        methods: impl Iterator<Item = Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
@@ -821,7 +821,7 @@ impl<'a> TraitDef<'a> {
                 })),
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
                 self_ty: self_type,
-                items: methods.into_iter().chain(associated_types).collect(),
+                items: methods.chain(associated_types).collect(),
             }),
         )
     }
@@ -835,46 +835,42 @@ impl<'a> TraitDef<'a> {
         from_scratch: bool,
         is_packed: bool,
     ) -> Box<ast::Item> {
-        let field_tys = Vec::from_iter(struct_def.fields().iter().map(|field| &*field.ty));
+        let field_tys = struct_def.fields().iter().map(|field| &*field.ty);
 
-        let methods = self
-            .methods
-            .iter()
-            .map(|method_def| {
-                let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
-                    method_def.extract_arg_details(cx, self, type_ident, generics);
+        let methods = self.methods.iter().map(|method_def| {
+            let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
+                method_def.extract_arg_details(cx, self, type_ident, generics);
 
-                let body = if from_scratch || method_def.is_static() {
-                    method_def.call_substructure_method(
-                        cx,
-                        self,
-                        type_ident,
-                        &nonselflike_args,
-                        StaticStruct(struct_def),
-                    )
-                } else {
-                    method_def.expand_struct_method_body(
-                        cx,
-                        self,
-                        struct_def,
-                        type_ident,
-                        &selflike_args,
-                        &nonselflike_args,
-                        is_packed,
-                    )
-                };
-
-                method_def.create_method(
+            let body = if from_scratch || method_def.is_static() {
+                method_def.call_substructure_method(
                     cx,
                     self,
                     type_ident,
-                    generics,
-                    explicit_self,
-                    nonself_arg_tys,
-                    body,
+                    &nonselflike_args,
+                    StaticStruct(struct_def),
                 )
-            })
-            .collect();
+            } else {
+                method_def.expand_struct_method_body(
+                    cx,
+                    self,
+                    struct_def,
+                    type_ident,
+                    &selflike_args,
+                    &nonselflike_args,
+                    is_packed,
+                )
+            };
+
+            method_def.create_method(
+                cx,
+                self,
+                type_ident,
+                generics,
+                explicit_self,
+                nonself_arg_tys,
+                body,
+            )
+        });
 
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
     }
@@ -887,51 +883,45 @@ impl<'a> TraitDef<'a> {
         generics: &Generics,
         from_scratch: bool,
     ) -> Box<ast::Item> {
-        let field_tys = Vec::from_iter(
-            enum_def
-                .variants
-                .iter()
-                .flat_map(|variant| variant.data.fields())
-                .map(|field| &*field.ty),
-        );
-
-        let methods = self
-            .methods
+        let field_tys = enum_def
+            .variants
             .iter()
-            .map(|method_def| {
-                let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
-                    method_def.extract_arg_details(cx, self, type_ident, generics);
+            .flat_map(|variant| variant.data.fields())
+            .map(|field| &*field.ty);
 
-                let body = if from_scratch || method_def.is_static() {
-                    method_def.call_substructure_method(
-                        cx,
-                        self,
-                        type_ident,
-                        &nonselflike_args,
-                        StaticEnum(enum_def),
-                    )
-                } else {
-                    method_def.expand_enum_method_body(
-                        cx,
-                        self,
-                        enum_def,
-                        type_ident,
-                        selflike_args,
-                        &nonselflike_args,
-                    )
-                };
+        let methods = self.methods.iter().map(|method_def| {
+            let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
+                method_def.extract_arg_details(cx, self, type_ident, generics);
 
-                method_def.create_method(
+            let body = if from_scratch || method_def.is_static() {
+                method_def.call_substructure_method(
                     cx,
                     self,
                     type_ident,
-                    generics,
-                    explicit_self,
-                    nonself_arg_tys,
-                    body,
+                    &nonselflike_args,
+                    StaticEnum(enum_def),
                 )
-            })
-            .collect();
+            } else {
+                method_def.expand_enum_method_body(
+                    cx,
+                    self,
+                    enum_def,
+                    type_ident,
+                    selflike_args,
+                    &nonselflike_args,
+                )
+            };
+
+            method_def.create_method(
+                cx,
+                self,
+                type_ident,
+                generics,
+                explicit_self,
+                nonself_arg_tys,
+                body,
+            )
+        });
 
         let is_packed = false; // enums are never packed
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
