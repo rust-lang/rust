@@ -10,6 +10,7 @@ use rustc_feature::{ACCEPTED_LANG_FEATURES, AttributeStability};
 
 use super::prelude::*;
 use super::util::parse_version;
+use crate::context::ExpectNameValue;
 use crate::diagnostics;
 
 const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
@@ -49,7 +50,7 @@ const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
 
 #[derive(Default)]
 pub(crate) struct StabilityParser {
-    allowed_through_unstable_modules: Option<Symbol>,
+    allowed_through_unstable_modules: Option<(Symbol, Symbol)>,
     stability: Option<(Stability, Span)>,
 }
 
@@ -93,16 +94,51 @@ impl AttributeParser for StabilityParser {
         ),
         (
             &[sym::rustc_allowed_through_unstable_modules],
-            template!(NameValueStr: "deprecation message"),
+            template!(List: &[r#"message = "...", module = "..."#]),
             unstable!(staged_api),
             |this, cx, args| {
-                let Some(nv) = cx.expect_name_value(args, cx.attr_span, None) else {
-                    return;
-                };
-                let Some(value_str) = cx.expect_string_literal(nv) else {
-                    return;
-                };
-                this.allowed_through_unstable_modules = Some(value_str);
+                let Some(list) = cx.expect_list(args, cx.attr_span) else { return };
+                let mut message = None;
+                let mut module = None;
+
+                for item in list.mixed() {
+                    let Some((name, value)) = item.expect_name_value(cx, item.span(), None) else {
+                        return;
+                    };
+                    let Some(value) = cx.expect_string_literal(value) else {
+                        return;
+                    };
+
+                    match name.name {
+                        sym::message => {
+                            if message.is_some() {
+                                cx.adcx().duplicate_key(name.span, name.name);
+                            } else {
+                                message = Some(value)
+                            }
+                        }
+                        sym::module => {
+                            if module.is_some() {
+                                cx.adcx().duplicate_key(name.span, name.name);
+                            } else {
+                                module = Some(value)
+                            }
+                        }
+                        _ => {
+                            cx.adcx().expected_specific_argument(
+                                name.span,
+                                &[sym::message, sym::module],
+                            );
+                        }
+                    }
+                }
+
+                let allowed_through_unstable_modules = try { (message?, module?) };
+                if allowed_through_unstable_modules.is_none() {
+                    cx.emit_err(diagnostics::RustcAtumMissingParams { span: cx.attr_span });
+                }
+
+                this.allowed_through_unstable_modules = allowed_through_unstable_modules;
             },
         ),
     ];
