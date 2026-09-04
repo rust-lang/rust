@@ -1,0 +1,21 @@
+error[E0282]: type annotations needed
+  --> $DIR/direct-const-arg-placeholder.rs:5:43
+   |
+LL |   fn foo() -> S<core::direct_const_arg!(_)> {
+   |  ___________________________________________^
+LL | |
+LL | |
+LL | |     todo!()
+LL | | }
+   | |_^ cannot infer type for struct `S<_>`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/direct-const-arg-placeholder.rs:5:39
+   |
+LL | fn foo() -> S<core::direct_const_arg!(_)> {
+   |                                       ^ not allowed in type signatures
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0121, E0282.
+For more information about an error, try `rustc --explain E0121`.
