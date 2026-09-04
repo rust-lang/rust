@@ -2785,8 +2785,44 @@ impl<'a> Parser<'a> {
             self.error_on_if_block_attrs(lo, false, block.span, attrs);
             block
         };
+        self.error_on_ambiguous_struct_literal(&cond, &thn)?;
         let els = if self.eat_keyword(exp!(Else)) { Some(self.parse_expr_else()?) } else { None };
         Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::If(cond, thn, els)))
+    }
+
+    fn error_on_ambiguous_struct_literal(&self, head: &Expr, body: &ast::Block) -> PResult<'a, ()> {
+        // In `if value == Foo { field } { ... }`, the parser initially treats `{ field }` as the
+        // `if` body. A following `{` suggests that `Foo { field }` was the intended condition and
+        // that the second block was meant to be the body.
+        if !self.may_recover()
+            || self.restrictions.contains(Restrictions::STMT_EXPR)
+            || self.token != token::OpenBrace
+        {
+            return Ok(());
+        }
+
+        let tail = match &head.kind {
+            ExprKind::Binary(_, _, rhs) => rhs.peel_parens_and_refs(),
+            _ => head.peel_parens_and_refs(),
+        };
+
+        if matches!(tail.kind, ExprKind::Path(..))
+            && let [stmt] = body.stmts.as_slice()
+            && let StmtKind::Expr(field) = &stmt.kind
+            && let ExprKind::Path(None, field) = &field.kind
+            && field.is_single_argless_ident()
+        {
+            let span = tail.span.to(body.span);
+            return Err(self.dcx().create_err(diagnostics::StructLiteralNotAllowedHere {
+                span,
+                sub: diagnostics::StructLiteralNotAllowedHereSugg {
+                    left: tail.span.shrink_to_lo(),
+                    right: span.shrink_to_hi(),
+                },
+            }));
+        }
+
+        Ok(())
     }
 
     /// Parses the condition of a `if` or `while` expression.
@@ -3153,6 +3189,7 @@ impl<'a> Parser<'a> {
                 err
             })?;
 
+        self.error_on_ambiguous_struct_literal(&cond, &body)?;
         self.recover_loop_else("while", lo)?;
 
         Ok(self.mk_expr_with_attrs(
