@@ -1,10 +1,10 @@
 use rustc_ast::util::parser::AssocOp;
-use rustc_ast::{BinOpKind, Expr, ExprKind, token};
+use rustc_ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{Span, Spanned, respan, sym};
 
-use crate::parser::Parser;
+use crate::parser::{Parser, Restrictions};
 use crate::{diagnostics, exp};
 
 impl<'a> Parser<'a> {
@@ -293,6 +293,47 @@ impl<'a> Parser<'a> {
                 None
             }
         }
+    }
+
+    /// Recover from `if cond Path { field } { ... }` and the `while` equivalent, where `{ field }`
+    /// is a valid block and only the following `{` reveals that a struct literal was intended.
+    pub(super) fn recover_from_shorthand_struct_literal(
+        &self,
+        head: &Expr,
+        body: &Block,
+    ) -> PResult<'a, ()> {
+        // In `if value == Foo { field } { ... }`, the parser initially treats `{ field }` as the
+        // `if` body. A following `{` suggests that `Foo { field }` was the intended condition and
+        // that the second block was meant to be the body.
+        if !self.may_recover()
+            || self.restrictions.contains(Restrictions::STMT_EXPR)
+            || self.token != token::OpenBrace
+        {
+            return Ok(());
+        }
+
+        let tail = match &head.kind {
+            ExprKind::Binary(_, _, rhs) => rhs.peel_parens_and_refs(),
+            _ => head.peel_parens_and_refs(),
+        };
+
+        if let ExprKind::Path(..) = tail.kind
+            && let [stmt] = body.stmts.as_slice()
+            && let StmtKind::Expr(field) = &stmt.kind
+            && let ExprKind::Path(None, field) = &field.kind
+            && field.is_single_argless_ident()
+        {
+            let span = tail.span.to(body.span);
+            return Err(self.dcx().create_err(diagnostics::StructLiteralNotAllowedHere {
+                span,
+                sub: diagnostics::StructLiteralNotAllowedHereSugg {
+                    left: tail.span.shrink_to_lo(),
+                    right: span.shrink_to_hi(),
+                },
+            }));
+        }
+
+        Ok(())
     }
 }
 

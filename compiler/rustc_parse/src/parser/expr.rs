@@ -2571,6 +2571,7 @@ impl<'a> Parser<'a> {
             self.error_on_if_block_attrs(lo, false, block.span, attrs);
             block
         };
+        self.recover_from_shorthand_struct_literal(&cond, &thn)?;
         let els = if self.eat_keyword(exp!(Else)) { Some(self.parse_expr_else()?) } else { None };
         Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::If(cond, thn, els)))
     }
@@ -2939,6 +2940,7 @@ impl<'a> Parser<'a> {
                 err
             })?;
 
+        self.recover_from_shorthand_struct_literal(&cond, &body)?;
         self.recover_loop_else("while", lo)?;
 
         Ok(self.mk_expr_with_attrs(
