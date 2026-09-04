@@ -279,14 +279,22 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Returns the const of the RHS of a (free or assoc) const item, if it is a `type const`.
+    /// Returns the const of the RHS of a (free or assoc) const item, if it is a `type const`, or if
+    /// it is a directly represented `const` (i.e. a const with a `direct_const_arg!` RHS, or a
+    /// const that `feature(macroless_generic_const_args)` has decided is direct).
     ///
     /// When a const item is used in a type-level expression, like in equality for an assoc const
     /// projection, this allows us to retrieve the typesystem-appropriate representation of the
     /// const value.
     ///
-    /// This query will ICE if given a const that is not marked with `type const`.
-    query const_of_item(def_id: DefId) -> ty::EarlyBinder<'tcx, ty::Const<'tcx>> {
+    /// Returns `None` if the constant does not have a directly represented RHS. This does not
+    /// necessarily mean the constant is invalid to use in the type system, as is the case for a
+    /// `type const` in a trait definition without a RHS.
+    ///
+    /// # Panics
+    ///
+    /// This query will panic if the given definition isn't a const item (free or associated const).
+    query const_of_item(def_id: DefId) -> Option<ty::EarlyBinder<'tcx, ty::Const<'tcx>>> {
         desc { "computing the type-level value for `{}`", tcx.def_path_str(def_id)  }
         cache_on_disk
         separate_provide_extern

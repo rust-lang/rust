@@ -1088,7 +1088,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::ConstKind::Alias(_, alias_const) => {
                 if !c.has_escaping_bound_vars() {
                     // Skip type consts as mGCA doesn't support evaluatable clauses
-                    if !alias_const.kind.is_type_const(tcx) && !tcx.features().generic_const_args()
+                    if !alias_const.kind.is_direct_const(tcx)
+                        && !tcx.features().generic_const_args()
                     {
                         let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
                             ty::ClauseKind::ConstEvaluatable(c),

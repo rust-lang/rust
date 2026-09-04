@@ -1166,7 +1166,7 @@ impl<'a> State<'a> {
     fn print_const_item_rhs(&mut self, ct_rhs: hir::ConstItemRhs<'_>) {
         match ct_rhs {
             hir::ConstItemRhs::Body(body_id) => self.ann.nested(self, Nested::Body(body_id)),
-            hir::ConstItemRhs::TypeConst(const_arg) => self.print_const_arg(const_arg),
+            hir::ConstItemRhs::Direct(const_arg) => self.print_const_arg(const_arg),
         }
     }
 

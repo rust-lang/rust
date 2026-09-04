@@ -1804,25 +1804,24 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
 fn const_of_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
+) -> Option<ty::EarlyBinder<'tcx, Const<'tcx>>> {
     let ct_rhs = match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(.., ct), .. }) => *ct,
-        hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(_, ct), .. }) => {
-            ct.expect("no default value for trait assoc const")
-        }
-        hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(.., ct), .. }) => *ct,
-        _ => {
-            span_bug!(tcx.def_span(def_id), "`const_of_item` expected a const or assoc const item")
+        hir::Node::Item(&hir::Item { kind: hir::ItemKind::Const(.., ct), .. }) => ct,
+        hir::Node::TraitItem(&hir::TraitItem {
+            kind: hir::TraitItemKind::Const(_, ct), ..
+        }) => ct?,
+        hir::Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(.., ct), .. }) => ct,
+        node => {
+            span_bug!(
+                tcx.def_span(def_id),
+                "`const_of_item` expected a const or assoc const item, got {node:?}"
+            )
         }
     };
     let ct_arg = match ct_rhs {
-        hir::ConstItemRhs::TypeConst(ct_arg) => ct_arg,
+        hir::ConstItemRhs::Direct(ct_arg) => ct_arg,
         hir::ConstItemRhs::Body(_) => {
-            let e = tcx.dcx().span_delayed_bug(
-                tcx.def_span(def_id),
-                "cannot call const_of_item on a non-type_const",
-            );
-            return ty::EarlyBinder::bind(tcx, Const::new_error(tcx, e));
+            return None;
         }
     };
     let icx = ItemCtxt::new(tcx, def_id);
@@ -1834,8 +1833,8 @@ fn const_of_item<'tcx>(
     if let Err(e) = icx.check_tainted_by_errors()
         && !ct.references_error()
     {
-        ty::EarlyBinder::bind(tcx, Const::new_error(tcx, e))
+        Some(ty::EarlyBinder::bind(tcx, Const::new_error(tcx, e)))
     } else {
-        ty::EarlyBinder::bind(tcx, ct)
+        Some(ty::EarlyBinder::bind(tcx, ct))
     }
 }

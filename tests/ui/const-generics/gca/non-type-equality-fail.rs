@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 
-#![feature(min_generic_const_args, macroless_generic_const_args, generic_const_args)]
+#![feature(min_generic_const_args, generic_const_args)]
 #![expect(incomplete_features)]
 
 trait Trait {
@@ -27,13 +27,14 @@ const FREE_B: usize = 1;
 struct Struct<const N: usize>;
 
 fn f<const N: usize>() {
-    let _: Struct<{ <GenericStructImpl<N> as Trait>::PROJECTED_A }> =
-        Struct::<{ <GenericStructImpl<N> as Trait>::PROJECTED_B }>;
+    let _: Struct<{ core::direct_const_arg!(<GenericStructImpl<N> as Trait>::PROJECTED_A) }> =
+        Struct::<{ core::direct_const_arg!(<GenericStructImpl<N> as Trait>::PROJECTED_B) }>;
     //~^ ERROR mismatched types
 }
 
 fn g<T: Trait>() {
-    let _: Struct<{ T::PROJECTED_A }> = Struct::<{ T::PROJECTED_B }>;
+    let _: Struct<{ core::direct_const_arg!(T::PROJECTED_A) }> =
+        Struct::<{ core::direct_const_arg!(T::PROJECTED_B) }>;
     //~^ ERROR mismatched types
 }
 

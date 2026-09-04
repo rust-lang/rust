@@ -2157,12 +2157,10 @@ fn compare_type_const<'tcx>(
     impl_const_item: ty::AssocItem,
     trait_const_item: ty::AssocItem,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_is_type_const = tcx.is_type_const(impl_const_item.def_id);
-    let trait_type_const_span = tcx.type_const_span(trait_const_item.def_id);
+    let impl_is_type_const = tcx.is_type_const_syntax(impl_const_item.def_id);
+    let trait_is_type_const = tcx.is_type_const_syntax(trait_const_item.def_id);
 
-    if let Some(trait_type_const_span) = trait_type_const_span
-        && !impl_is_type_const
-    {
+    if trait_is_type_const && !impl_is_type_const {
         return Err(tcx
             .dcx()
             .struct_span_err(
@@ -2170,10 +2168,7 @@ fn compare_type_const<'tcx>(
                 "implementation of a `type const` must also be marked as `type const`",
             )
             .with_span_note(
-                MultiSpan::from_spans(vec![
-                    tcx.def_span(trait_const_item.def_id),
-                    trait_type_const_span,
-                ]),
+                tcx.def_span(trait_const_item.def_id),
                 "trait declaration of const is marked as `type const`",
             )
             .emit());

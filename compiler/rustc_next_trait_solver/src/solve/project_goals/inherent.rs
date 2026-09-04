@@ -48,8 +48,11 @@ where
                 let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
                 inherent.into()
             }
-            ty::AliasTermKind::InherentConstImpl { def_id } if cx.is_type_const(def_id.into()) => {
-                let inherent = cx.const_of_item(def_id.into()).instantiate(cx, inherent_args);
+            ty::AliasTermKind::InherentConstImpl { def_id }
+                if let Some(inherent) =
+                    cx.const_of_item(ty::AliasConstKind::InherentImpl { def_id }) =>
+            {
+                let inherent = inherent.instantiate(cx, inherent_args);
                 let normalized_ct = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
                 let normalized = normalized_ct.into();
                 let term = ty::AliasTerm::new_from_args(cx, inherent_kind, inherent_args);

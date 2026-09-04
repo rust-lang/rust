@@ -108,7 +108,10 @@ fn normalize_canonicalized_free_alias<'tcx>(
             let normalized_term: ty::Term<'tcx> = if goal.kind.is_type() {
                 tcx.type_of(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
             } else {
-                tcx.const_of_item(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
+                traits::project::const_of_item_or_delayed_bug(tcx, def_id)
+                    .instantiate(tcx, goal.args)
+                    .skip_norm_wip()
+                    .into()
             };
             ocx.register_obligations(const_arg_has_type_obligation(
                 tcx,
