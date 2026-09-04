@@ -1484,7 +1484,9 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
     debug!("collecting roots");
     let mut roots = MonoItems::new();
 
-    // Read the manifest and add the recorded kernel instantiations as roots so they are codegened.
+    // By design, the `HostMetadata` contains all the kernels launched by the host. For generic
+    // kernels, it also includes the used instantiations. These are the *only* roots for offload
+    // Device compilation, which makes it very cheap.
     if let Some(manifest_path) = tcx.sess.opts.unstable_opts.offload.iter().find_map(|o| {
         if let rustc_session::config::Offload::Device(p) = o
             && !p.is_empty()
@@ -1510,9 +1512,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
                 });
             }
         }
-    }
-
-    {
+    } else {
         let entry_fn = tcx.entry_fn(());
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
@@ -1534,50 +1534,6 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
         }
 
         collector.push_extra_entry_roots();
-    }
-
-    let is_host_metadata = tcx
-        .sess
-        .opts
-        .unstable_opts
-        .offload
-        .iter()
-        .any(|o| matches!(o, rustc_session::config::Offload::HostMetadata(_)));
-    if is_host_metadata {
-        let crate_items = tcx.hir_crate_items(());
-        for id in crate_items.free_items() {
-            if !matches!(tcx.def_kind(id.owner_id), DefKind::Fn | DefKind::AssocFn) {
-                continue;
-            }
-            let def_id = id.owner_id.to_def_id();
-            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
-                && tcx.codegen_fn_attrs(def_id).flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL)
-            {
-                roots.push(dummy_spanned(MonoItem::Fn(Instance::mono(tcx, def_id))));
-            }
-        }
-        for id in crate_items.impl_items() {
-            if !matches!(tcx.def_kind(id.owner_id), DefKind::Fn | DefKind::AssocFn) {
-                continue;
-            }
-            let def_id = id.owner_id.to_def_id();
-            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
-                && tcx.codegen_fn_attrs(def_id).flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL)
-            {
-                roots.push(dummy_spanned(MonoItem::Fn(Instance::mono(tcx, def_id))));
-            }
-        }
-        for id in crate_items.trait_items() {
-            if !matches!(tcx.def_kind(id.owner_id), DefKind::Fn | DefKind::AssocFn) {
-                continue;
-            }
-            let def_id = id.owner_id.to_def_id();
-            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
-                && tcx.codegen_fn_attrs(def_id).flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL)
-            {
-                roots.push(dummy_spanned(MonoItem::Fn(Instance::mono(tcx, def_id))));
-            }
-        }
     }
 
     // We can only codegen items that are instantiable - items all of

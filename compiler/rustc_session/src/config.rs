@@ -2854,6 +2854,13 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         )
     }
 
+    // Under Offload the device pass codegens only what launched kernels reach, and the device image
+    // is linked from that crate's bitcode alone. With this threshold a GPU kernel can still
+    // reach into `core` and its dependencies without them having to codegen anything themselves.
+    if unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_))) {
+        unstable_opts.cross_crate_inline_threshold = InliningThreshold::Always;
+    }
+
     let target_triple = parse_target_triple(early_dcx, matches);
 
     // Ensure `-Z unstable-options` is required when using the unstable `-C link-self-contained` and
