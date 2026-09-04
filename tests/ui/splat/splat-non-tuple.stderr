@@ -30,6 +30,12 @@ LL | fn enum_arg(#[rustc_splat] y: NotATuple) {}
 LL |     enum_arg(NotATuple::A(1u32));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
+  --> $DIR/splat-non-tuple.rs:89:5
+   |
+LL |     primitive_arg_(1u32);
+   |     ^^^^^^^^^^^^^^^^^^^^
+
 error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a Foo (Foo)
   --> $DIR/splat-non-tuple.rs:25:33
    |
@@ -48,7 +54,7 @@ LL | fn tuple_struct_arg(#[rustc_splat] z: TupleStruct) {}
 LL |     tuple_struct_arg(tuple_struct);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0053, E0277.
 For more information about an error, try `rustc --explain E0053`.
