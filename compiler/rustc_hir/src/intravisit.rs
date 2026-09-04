@@ -1082,7 +1082,7 @@ pub fn walk_const_item_rhs<'v, V: Visitor<'v>>(
 ) -> V::Result {
     match ct_rhs {
         ConstItemRhs::Body(body_id) => visitor.visit_nested_body(body_id),
-        ConstItemRhs::TypeConst(const_arg) => visitor.visit_const_arg_unambig(const_arg),
+        ConstItemRhs::Direct(const_arg) => visitor.visit_const_arg_unambig(const_arg),
     }
 }
 

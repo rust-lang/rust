@@ -186,11 +186,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn type_of_opaque_hir_typeck(self, def_id: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         self.type_of_opaque_hir_typeck(def_id)
     }
-    fn is_type_const(self, def_id: DefId) -> bool {
-        self.is_type_const(def_id)
+    fn is_direct_const(self, alias: ty::AliasConstKind<'tcx>) -> bool {
+        match alias {
+            ty::AliasConstKind::Projection { def_id }
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
+            | ty::AliasConstKind::Free { def_id } => self.is_direct_const(def_id),
+            ty::AliasConstKind::Anon { .. } => false,
+        }
     }
-    fn const_of_item(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
-        self.const_of_item(def_id)
+    fn const_of_item(
+        self,
+        alias: ty::AliasConstKind<'tcx>,
+    ) -> Option<ty::EarlyBinder<'tcx, Const<'tcx>>> {
+        match alias {
+            ty::AliasConstKind::Projection { def_id }
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
+            | ty::AliasConstKind::Free { def_id } => self.const_of_item(def_id),
+            ty::AliasConstKind::Anon { .. } => None,
+        }
     }
     fn anon_const_kind(self, def_id: DefId) -> ty::AnonConstKind {
         self.anon_const_kind(def_id)
