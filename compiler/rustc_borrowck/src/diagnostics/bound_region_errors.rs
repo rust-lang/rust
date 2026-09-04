@@ -1,24 +1,28 @@
 use std::fmt;
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 use rustc_errors::Diag;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::region_constraints::{Constraint, ConstraintKind, RegionConstraintData};
 use rustc_infer::infer::{
-    InferCtxt, RegionResolutionError, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt as _,
+    DefineOpaqueTypes, InferCtxt, RegionResolutionError, RegionVariableOrigin, SubregionOrigin,
+    TyCtxtInferExt as _, TypeTrace,
 };
-use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::query::{
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal,
 };
+use rustc_infer::traits::solve::{CandidateSource, Goal};
+use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self, RePlaceholder, Region, RegionExt, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex,
 };
-use rustc_span::Span;
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::NiceRegionError;
+use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::query::type_op::ascribe_user_type::type_op_ascribe_user_type_with_span;
 use rustc_trait_selection::traits::query::type_op::prove_predicate::type_op_prove_predicate_with_cause;
@@ -187,6 +191,71 @@ pub(crate) trait TypeOpInfo<'tcx> {
     }
 }
 
+struct NextSolverHrtbImplCandidate<'tcx> {
+    span: Span,
+    target_trait_def_id: DefId,
+    result: Option<(DefId, ty::TraitRef<'tcx>)>,
+}
+
+impl<'tcx> ProofTreeVisitor<'tcx> for NextSolverHrtbImplCandidate<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+        let Some(pred) = goal.goal().predicate.as_trait_clause() else {
+            return ControlFlow::Continue(());
+        };
+        let goal_trait_ref = pred.no_bound_vars().map(|pred| pred.trait_ref);
+
+        let candidates = goal.candidates();
+
+        if let Some(goal_trait_ref) = goal_trait_ref
+            .filter(|goal_trait_ref| goal_trait_ref.def_id == self.target_trait_def_id)
+        {
+            let mut applicable_impl_candidate = None;
+            for candidate in &candidates {
+                if let inspect::ProbeKind::TraitCandidate {
+                    source: CandidateSource::Impl(impl_def_id),
+                    ..
+                } = candidate.kind()
+                    && candidate.result().is_ok()
+                {
+                    if applicable_impl_candidate.replace((impl_def_id, goal_trait_ref)).is_some() {
+                        return ControlFlow::Continue(());
+                    }
+                }
+            }
+
+            if let Some(result) = applicable_impl_candidate {
+                self.result = Some(result);
+                return ControlFlow::Break(());
+            }
+        }
+
+        for candidate in &candidates {
+            if let ControlFlow::Break(()) = candidate.visit_nested_in_probe(self) {
+                return ControlFlow::Break(());
+            }
+        }
+
+        ControlFlow::Continue(())
+    }
+}
+
+fn find_next_solver_hrtb_impl_candidate<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    span: Span,
+    target_trait_def_id: DefId,
+) -> Option<(DefId, ty::TraitRef<'tcx>)> {
+    let mut visitor = NextSolverHrtbImplCandidate { span, target_trait_def_id, result: None };
+    let _ = infcx.visit_proof_tree(goal, &mut visitor);
+    visitor.result
+}
+
 struct PredicateQuery<'tcx> {
     canonical_query: CanonicalTypeOpProvePredicateGoal<'tcx>,
     base_universe: ty::UniverseIndex,
@@ -216,15 +285,76 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
-        type_op_prove_predicate_with_cause(&ocx, key, cause);
-        let diag = try_extract_error_from_fulfill_cx(
+        let param_env = key.param_env;
+        let predicate = key.value.predicate;
+        let goal = Goal::new(infcx.tcx, param_env, predicate);
+
+        type_op_prove_predicate_with_cause(&ocx, key, cause.clone());
+        if let Some(diag) = try_extract_error_from_fulfill_cx(
             &ocx,
             mbcx.mir_def_id(),
             placeholder_region,
             error_region,
-        )?
-        .with_dcx(mbcx.dcx());
-        Some(diag)
+        ) {
+            return Some(diag.with_dcx(mbcx.dcx()));
+        }
+
+        let target_trait_def_id = predicate.as_trait_clause()?.no_bound_vars()?.trait_ref.def_id;
+        if !infcx.tcx.is_diagnostic_item(sym::Send, target_trait_def_id) {
+            return None;
+        }
+
+        // The next solver proof tree still contains the impl candidate we selected for
+        // the failed trait goal. Replaying the impl match lets us recover the same
+        // `MatchImpl`/trait-ref context that the old solver records while matching
+        // impl candidates, which is what the NLL region error reporting expects.
+        let (impl_def_id, goal_trait_ref) =
+            find_next_solver_hrtb_impl_candidate(&infcx, goal, cause.span, target_trait_def_id)?;
+
+        let match_impl_cause = ObligationCause::new(
+            cause.span,
+            cause.body_def_id,
+            ObligationCauseCode::MatchImpl(cause.clone(), impl_def_id),
+        );
+
+        let impl_args = infcx.fresh_args_for_item(cause.span, impl_def_id);
+        let impl_trait_ref =
+            infcx.tcx.impl_trait_ref(impl_def_id).instantiate(infcx.tcx, impl_args).skip_norm_wip();
+
+        let num_existing_constraints = infcx.with_region_constraints(|r| r.constraints.len());
+
+        let _ = infcx
+            .at(&match_impl_cause, param_env)
+            .eq(DefineOpaqueTypes::No, goal_trait_ref, impl_trait_ref)
+            .ok()?;
+
+        let mut region_constraints = infcx.with_region_constraints(|r| {
+            let mut region_constraints = r.clone();
+            region_constraints.constraints.drain(..num_existing_constraints);
+            region_constraints
+        });
+        if region_constraints.constraints.is_empty() {
+            return None;
+        }
+
+        for (_, cause) in &mut region_constraints.constraints {
+            *cause = SubregionOrigin::Subtype(Box::new(TypeTrace::trait_refs(
+                &match_impl_cause,
+                goal_trait_ref,
+                impl_trait_ref,
+            )));
+        }
+
+        try_extract_error_from_region_constraints(
+            &infcx,
+            mbcx.mir_def_id(),
+            placeholder_region,
+            error_region,
+            &region_constraints,
+            |vid| infcx.region_var_origin(vid),
+            |vid| infcx.universe_of_region(ty::Region::new_var(infcx.tcx, vid)),
+        )
+        .map(|diag| diag.with_dcx(mbcx.dcx()))
     }
 }
 
