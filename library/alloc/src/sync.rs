@@ -3028,9 +3028,6 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
             Likely decrement_strong_count or from_raw were called too many times.",
         );
 
-        // Note: don't mark `drop_slow` as `#[cold]`, that has other side effects
-        core::hint::cold_path();
-
         // ignore-tidy-undocumented-unsafe
         unsafe {
             drop_slow(self);
