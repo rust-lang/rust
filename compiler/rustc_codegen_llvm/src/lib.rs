@@ -157,6 +157,8 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let dcx = dcx.handle();
         back::lto::run_pass_manager(cgcx, &sess.prof, dcx, &mut module, false);
 
+        back::offload::finalize_host_module(cgcx, &sess.prof, dcx, &module);
+
         back::write::codegen(cgcx, &sess.prof, shared_emitter, module, &cgcx.module_config)
     }
     fn run_thin_lto(
