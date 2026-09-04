@@ -1009,12 +1009,7 @@ impl ::core::cmp::PartialEq for Enum0 {
     fn eq(&self, other: &Enum0) -> bool { match *self {} }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Enum0 {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {}
-}
+impl ::core::cmp::Eq for Enum0 { }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Enum0 {
     #[inline]
@@ -1142,12 +1137,7 @@ impl ::core::cmp::PartialEq for Fieldless1 {
     fn eq(&self, other: &Fieldless1) -> bool { true }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Fieldless1 {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {}
-}
+impl ::core::cmp::Eq for Fieldless1 { }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless1 {
     #[inline]
@@ -1219,12 +1209,7 @@ impl ::core::cmp::PartialEq for Fieldless {
     }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Fieldless {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {}
-}
+impl ::core::cmp::Eq for Fieldless { }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless {
     #[inline]
