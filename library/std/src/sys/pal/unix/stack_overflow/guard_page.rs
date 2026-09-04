@@ -1,5 +1,7 @@
+use crate::ops::Range;
+
 #[cfg(any(target_os = "solaris", target_os = "illumos"))]
-fn get_stack_start() -> Option<*mut libc::c_void> {
+fn get_stack_start(_page_size: usize) -> Option<*mut libc::c_void> {
     // SAFETY: C types are always zero-initializable.
     let mut current_stack: libc::stack_t = unsafe { crate::mem::zeroed() };
     // SAFETY:
@@ -9,7 +11,7 @@ fn get_stack_start() -> Option<*mut libc::c_void> {
 }
 
 #[cfg(target_os = "macos")]
-fn get_stack_start() -> Option<*mut libc::c_void> {
+fn get_stack_start(_page_size: usize) -> Option<*mut libc::c_void> {
     // SAFETY: always safe to call.
     let th = unsafe { libc::pthread_self() };
     // SAFETY: `th` is a valid `pthread_t`.
@@ -21,7 +23,7 @@ fn get_stack_start() -> Option<*mut libc::c_void> {
 }
 
 #[cfg(target_os = "openbsd")]
-fn get_stack_start() -> Option<*mut libc::c_void> {
+fn get_stack_start(page_size: usize) -> Option<*mut libc::c_void> {
     // SAFETY: C types are always zero-initializable.
     let mut current_stack: libc::stack_t = unsafe { crate::mem::zeroed() };
     // SAFETY:
@@ -34,7 +36,7 @@ fn get_stack_start() -> Option<*mut libc::c_void> {
     // SAFETY: this is always safe to call.
     let stackaddr = if unsafe { libc::pthread_main_np() } == 1 {
         // main thread
-        stack_ptr.addr() - current_stack.ss_size + PAGE_SIZE.load(Ordering::Relaxed)
+        stack_ptr.addr() - current_stack.ss_size + page_size
     } else {
         // new thread
         stack_ptr.addr() - current_stack.ss_size
@@ -43,14 +45,14 @@ fn get_stack_start() -> Option<*mut libc::c_void> {
 }
 
 #[cfg(any(
-    target_os = "android",
+    //target_os = "android", (currently unused)
     target_os = "freebsd",
     target_os = "netbsd",
     target_os = "hurd",
-    target_os = "linux",
-    target_os = "l4re"
+    all(target_os = "linux", not(target_env = "musl")),
+    //target_os = "l4re" (currently unused)
 ))]
-fn get_stack_start() -> Option<*mut libc::c_void> {
+fn get_stack_start(_page_size: usize) -> Option<*mut libc::c_void> {
     use crate::pin::pin;
     use crate::sys::helpers::COpaque;
 
@@ -99,8 +101,18 @@ fn get_stack_start() -> Option<*mut libc::c_void> {
     ret
 }
 
+#[cfg(any(
+    target_os = "hurd",
+    target_os = "macos",
+    target_os = "solaris",
+    target_os = "illumos",
+    all(target_os = "linux", not(target_env = "musl")),
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
 fn stack_start_aligned(page_size: usize) -> Option<*mut libc::c_void> {
-    let stackptr = get_stack_start()?;
+    let stackptr = get_stack_start(page_size)?;
     let stackaddr = stackptr.addr();
 
     // Ensure stackaddr is page aligned! A parent process might
@@ -120,34 +132,60 @@ fn stack_start_aligned(page_size: usize) -> Option<*mut libc::c_void> {
 /// # Safety
 /// This function must only be called from the main thread, and there must
 /// be sufficient stack space remaining to place a stack guard.
-unsafe fn install_main_guard() -> Option<Range<usize>> {
-    let page_size = PAGE_SIZE.load(Ordering::Relaxed);
+pub unsafe fn install_main_guard() -> Option<Range<usize>> {
+    cfg_select! {
+        any(target_os = "hurd", target_os = "macos", target_os = "solaris", target_os = "illumos",) => {
+            use crate::io::Error;
 
-    // this way someone on any unix-y OS can check that all these compile
-    if cfg!(all(target_os = "linux", not(target_env = "musl"))) {
-        install_main_guard_linux(page_size)
-    } else if cfg!(all(target_os = "linux", target_env = "musl")) {
-        install_main_guard_linux_musl(page_size)
-    } else if cfg!(target_os = "freebsd") {
-        #[cfg(not(target_os = "freebsd"))]
-        return None;
-        // The FreeBSD code cannot be checked on non-BSDs.
-        #[cfg(target_os = "freebsd")]
-        install_main_guard_freebsd(page_size)
-    } else if cfg!(any(target_os = "netbsd", target_os = "openbsd")) {
-        install_main_guard_bsds(page_size)
-    } else {
-        // SAFETY: guaranteed by caller.
-        unsafe { install_main_guard_default(page_size) }
+            let page_size = crate::sys::pal::conf::page_size();
+
+            // Reallocate the last page of the stack.
+            // This ensures SIGBUS will be raised on
+            // stack overflow.
+            // Systems which enforce strict PAX MPROTECT do not allow
+            // to mprotect() a mapping with less restrictive permissions
+            // than the initial mmap() used, so we mmap() here with
+            // read/write permissions and only then mprotect() it to
+            // no permissions at all. See issue #50313.
+            let stackptr = stack_start_aligned(page_size)?;
+            // SAFETY:
+            // The memory region from `stackptr..stackptr + page_size` belongs to
+            // the current thread's stack, and the caller has asserted that there
+            // is sufficient stack space, which means that this will not overwrite
+            // any existing allocations.
+            let result = unsafe {
+                libc::mmap(
+                    stackptr,
+                    page_size,
+                    libc::PROT_READ | libc::PROT_WRITE,
+                    libc::MAP_PRIVATE | libc::MAP_ANON | libc::MAP_FIXED,
+                    -1,
+                    0,
+                )
+            };
+            if result != stackptr || result == libc::MAP_FAILED {
+                panic!("failed to allocate a guard page: {}", Error::last_os_error());
+            }
+
+            // SAFETY:
+            // Since this function is only called on the main thread, the stack will
+            // not be reused until program exit, so the runtime will never observe
+            // that part of the stack has been made unusable in this way.
+            let result = unsafe { libc::mprotect(stackptr, page_size, libc::PROT_NONE) };
+            if result != 0 {
+                panic!("failed to protect the guard page: {}", Error::last_os_error());
+            }
+
+            let guardaddr = stackptr.addr();
+
+            Some(guardaddr..guardaddr + page_size)
+        }
+        _ => None,
     }
 }
 
-fn install_main_guard_linux(page_size: usize) -> Option<Range<usize>> {
-    // See the corresponding conditional in init().
-    // Avoid stack_start_aligned, which makes slow syscalls to read /proc/self/maps
-    if cfg!(panic = "immediate-abort") {
-        return None;
-    }
+#[cfg(all(target_os = "linux", not(target_env = "musl")))]
+pub fn find_main_guard(page_size: usize) -> Option<Range<usize>> {
     // Linux doesn't allocate the whole stack right away, and
     // the kernel has its own stack-guard mechanism to fault
     // when growing too close to an existing mapping. If we map
@@ -163,7 +201,8 @@ fn install_main_guard_linux(page_size: usize) -> Option<Range<usize>> {
     Some(stackaddr - page_size..stackaddr)
 }
 
-fn install_main_guard_linux_musl(_page_size: usize) -> Option<Range<usize>> {
+#[cfg(all(target_os = "linux", target_env = "musl"))]
+pub fn find_main_guard(_page_size: usize) -> Option<Range<usize>> {
     // For the main thread, the musl's pthread_attr_getstack
     // returns the current stack size, rather than maximum size
     // it can eventually grow to. It cannot be used to determine
@@ -172,11 +211,7 @@ fn install_main_guard_linux_musl(_page_size: usize) -> Option<Range<usize>> {
 }
 
 #[cfg(target_os = "freebsd")]
-fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
-    // See the corresponding conditional in install_main_guard_linux().
-    if cfg!(panic = "immediate-abort") {
-        return None;
-    }
+pub fn find_main_guard(page_size: usize) -> Option<Range<usize>> {
     // FreeBSD's stack autogrows, and optionally includes a guard page
     // at the bottom. If we try to remap the bottom of the stack
     // ourselves, FreeBSD's guard page moves upwards. So we'll just use
@@ -200,7 +235,7 @@ fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
                 oid.as_ptr(),
                 (&raw mut guard).cast(),
                 &raw mut size,
-                ptr::null_mut(),
+                crate::ptr::null_mut(),
                 0,
             )
         };
@@ -209,11 +244,8 @@ fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
     Some(guardaddr..guardaddr + pages * page_size)
 }
 
-fn install_main_guard_bsds(page_size: usize) -> Option<Range<usize>> {
-    // See the corresponding conditional in install_main_guard_linux().
-    if cfg!(panic = "immediate-abort") {
-        return None;
-    }
+#[cfg(any(target_os = "netbsd", target_os = "openbsd"))]
+pub fn find_main_guard(page_size: usize) -> Option<Range<usize>> {
     // OpenBSD stack already includes a guard page, and stack is
     // immutable.
     // NetBSD stack includes the guard page.
@@ -226,50 +258,12 @@ fn install_main_guard_bsds(page_size: usize) -> Option<Range<usize>> {
     Some(stackaddr - page_size..stackaddr)
 }
 
-/// # Safety
-/// This function must only be called from the main thread, and there must
-/// be sufficient stack space remaining to place a stack guard.
-unsafe fn install_main_guard_default(page_size: usize) -> Option<Range<usize>> {
-    // Reallocate the last page of the stack.
-    // This ensures SIGBUS will be raised on
-    // stack overflow.
-    // Systems which enforce strict PAX MPROTECT do not allow
-    // to mprotect() a mapping with less restrictive permissions
-    // than the initial mmap() used, so we mmap() here with
-    // read/write permissions and only then mprotect() it to
-    // no permissions at all. See issue #50313.
-    let stackptr = stack_start_aligned(page_size)?;
-    // SAFETY:
-    // The memory region from `stackptr..stackptr + page_size` belongs to
-    // the current thread's stack, and the caller has asserted that there
-    // is sufficient stack space, which means that this will not overwrite
-    // any existing allocations.
-    let result = unsafe {
-        mmap64(
-            stackptr,
-            page_size,
-            PROT_READ | PROT_WRITE,
-            MAP_PRIVATE | MAP_ANON | MAP_FIXED,
-            -1,
-            0,
-        )
-    };
-    if result != stackptr || result == MAP_FAILED {
-        panic!("failed to allocate a guard page: {}", io::Error::last_os_error());
-    }
-
-    // SAFETY:
-    // Since this function is only called on the main thread, the stack will
-    // not be reused until program exit, so the runtime will never observe
-    // that part of the stack has been made unusable in this way.
-    let result = unsafe { mprotect(stackptr, page_size, PROT_NONE) };
-    if result != 0 {
-        panic!("failed to protect the guard page: {}", io::Error::last_os_error());
-    }
-
-    let guardaddr = stackptr.addr();
-
-    Some(guardaddr..guardaddr + page_size)
+#[cfg(any(target_os = "hurd", target_os = "macos", target_os = "solaris", target_os = "illumos",))]
+pub fn find_main_guard(_page_size: usize) -> Option<Range<usize>> {
+    // We installed the main thread's guard page ourselves in `install_main_guard`,
+    // so this function will only be called if that fails, in which case there
+    // won't be any guard page.
+    None
 }
 
 #[cfg(any(
@@ -278,21 +272,21 @@ unsafe fn install_main_guard_default(page_size: usize) -> Option<Range<usize>> {
     target_os = "solaris",
     target_os = "illumos",
 ))]
-fn current_guard() -> Option<Range<usize>> {
-    let stackptr = get_stack_start()?;
+pub fn current_guard(page_size: usize) -> Option<Range<usize>> {
+    let stackptr = get_stack_start(page_size)?;
     let stackaddr = stackptr.addr();
-    Some(stackaddr - PAGE_SIZE.load(Ordering::Relaxed)..stackaddr)
+    Some(stackaddr - page_size..stackaddr)
 }
 
 #[cfg(any(
-    target_os = "android",
+    //target_os = "android", (currently unused)
     target_os = "freebsd",
     target_os = "hurd",
     target_os = "linux",
     target_os = "netbsd",
-    target_os = "l4re"
+    //target_os = "l4re" (currently unused)
 ))]
-fn current_guard() -> Option<Range<usize>> {
+pub fn current_guard(page_size: usize) -> Option<Range<usize>> {
     use crate::pin::pin;
     use crate::sys::helpers::COpaque;
 
@@ -332,7 +326,7 @@ fn current_guard() -> Option<Range<usize>> {
                 // musl versions before 1.1.19 always reported guard
                 // size obtained from pthread_attr_get_np as zero.
                 // Use page size as a fallback.
-                guardsize = PAGE_SIZE.load(Ordering::Relaxed);
+                guardsize = page_size;
             } else {
                 panic!("there is no guard page");
             }

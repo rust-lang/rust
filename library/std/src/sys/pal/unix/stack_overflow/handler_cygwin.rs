@@ -1,3 +1,5 @@
+use crate::ops::Range;
+
 mod c {
     pub type PVECTORED_EXCEPTION_HANDLER =
         Option<unsafe extern "system" fn(exceptioninfo: *mut EXCEPTION_POINTERS) -> i32>;
@@ -59,7 +61,7 @@ unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POIN
     }
 }
 
-pub unsafe fn init() {
+pub fn init(_guard_page_range: Option<Range<usize>>) {
     // SAFETY: `vectored_handler` has the correct ABI and is safe to call during exception handling.
     unsafe {
         let result = c::AddVectoredExceptionHandler(0, Some(vectored_handler));

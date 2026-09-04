@@ -1,6 +1,6 @@
 use libc::{
-    MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SA_ONSTACK,
-    SA_SIGINFO, SIG_DFL, SIGBUS, SIGSEGV, SS_DISABLE, sigaction, sigaltstack, sighandler_t,
+    MAP_ANON, MAP_FAILED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SA_ONSTACK, SA_SIGINFO,
+    SIG_DFL, SIGBUS, SIGSEGV, SS_DISABLE, sigaction, sigaltstack, sighandler_t,
 };
 #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
 use libc::{mmap as mmap64, mprotect, munmap};
@@ -95,23 +95,12 @@ static PAGE_SIZE: Atomic<usize> = AtomicUsize::new(0);
 static MAIN_ALTSTACK: Atomic<*mut libc::c_void> = AtomicPtr::new(ptr::null_mut());
 static NEED_ALTSTACK: Atomic<bool> = AtomicBool::new(false);
 
-/// # Safety
-/// Must be called only once, on the main thread, during program startup.
-pub unsafe fn init() {
-    PAGE_SIZE.store(conf::page_size(), Ordering::Relaxed);
+pub fn init(guard_page_range: Option<Range<usize>>) {
+    let page_size = conf::page_size();
+    PAGE_SIZE.store(page_size, Ordering::Relaxed);
 
-    // SAFETY:
-    // This is only called on the main thread, and since it is still early
-    // in the programs lifetime there is (almost) certainly enough stack
-    // space left to install the guard page.
-    let mut guard_page_range = unsafe { install_main_guard() };
-
-    // Even for panic=immediate-abort, installing the guard pages is important for soundness.
-    // That said, we do not care about giving nice stackoverflow messages via our custom
-    // signal handler, just exit early and let the user enjoy the segfault.
-    if cfg!(panic = "immediate-abort") {
-        return;
-    }
+    let mut guard_page_range =
+        guard_page_range.or_else(|| super::guard_page::find_main_guard(page_size));
 
     // SAFETY: C structures are always zero-initializable.
     let mut action: sigaction = unsafe { mem::zeroed() };
@@ -147,7 +136,7 @@ pub unsafe fn init() {
     }
 }
 
-fn get_stack() -> libc::stack_t {
+fn get_stack(page_size: usize) -> libc::stack_t {
     // OpenBSD requires this flag for stack mapping
     // otherwise the said mapping will fail as a no-op on most systems
     // and has a different meaning on FreeBSD
@@ -167,7 +156,6 @@ fn get_stack() -> libc::stack_t {
     let flags = MAP_PRIVATE | MAP_ANON;
 
     let sigstack_size = sigstack_size();
-    let page_size = PAGE_SIZE.load(Ordering::Relaxed);
 
     // SAFETY: this does not unmap any existing pages.
     let stackp = unsafe {
@@ -177,7 +165,7 @@ fn get_stack() -> libc::stack_t {
         panic!("failed to allocate an alternative stack: {}", io::Error::last_os_error());
     }
     // SAFETY: this only affects the memory we just allocated.
-    let guard_result = unsafe { libc::mprotect(stackp, page_size, PROT_NONE) };
+    let guard_result = unsafe { mprotect(stackp, page_size, PROT_NONE) };
     if guard_result != 0 {
         panic!("failed to set up alternative stack guard page: {}", io::Error::last_os_error());
     }
@@ -194,8 +182,10 @@ pub fn make_handler(main_thread: bool) -> Handler {
         return Handler::null();
     }
 
+    let page_size = PAGE_SIZE.load(Ordering::Relaxed);
+
     if !main_thread {
-        if let Some(guard_page_range) = current_guard() {
+        if let Some(guard_page_range) = super::guard_page::current_guard(page_size) {
             set_current_info(guard_page_range);
         }
     }
@@ -210,7 +200,7 @@ pub fn make_handler(main_thread: bool) -> Handler {
 
     // Configure alternate signal stack, if one is not already set.
     if stack.ss_flags & SS_DISABLE != 0 {
-        let stack = get_stack();
+        let stack = get_stack(page_size);
         // SAFETY:
         // `stack_t` is a freshly allocated stack that's not used anywhere
         // else. It contains a guard page, so stack overflows in signal
