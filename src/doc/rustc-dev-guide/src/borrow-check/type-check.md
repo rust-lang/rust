@@ -11,8 +11,8 @@ See: [`borrowck_collect_region_constraints`][borrowck_collect_region_constraints
 
 [^lifetimes]: AKA regions AKA loans.
 
-Doing this additional type checking pass on it also allows us to check our working: If something fails in MIR type checking that passed in HIR type checking, something has gone wrong.
-
+Doing this additional type checking pass on it also allows us to check our working:
+If something fails in MIR type checking that passed in HIR type checking, something has gone wrong.
 
 Maintaining "MIR type checking should succeed if HIR type checking succeeds" is nontrivial.
 One major reason for this is that type checking MIR involves erasing the existing lifetimes and replacing them with new unconstrained lifetime variables, while in HIR lifetimes get inferred but not checked.
@@ -71,11 +71,10 @@ Here `T_x` only has to be a subtype of the user type, so we instead use
 Note that we do not directly use the user type as the MIR typechecker
 doesn't really deal with type and const inference variables.
 We instead store the final [`inferred_type`][inf] from the HIR type-checker.
-During MIR typeck, we then replace its regions
-with new nll inference vars and relate it with the actual `UserType` to get the correct region
-constraints again.
+During MIR typeck, we then replace its regions with new nll inference vars
+and relate it with the actual `UserType` to get the correct region constraints again.
 
-After the MIR type-check, all user type annotations get discarded, as they aren't needed anymore.
+After the MIR type-check, all user type annotations get discarded as they aren't needed anymore.
 
 [annot]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.CanonicalUserTypeAnnotation.html
 [proj]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.UserTypeProjection.html
