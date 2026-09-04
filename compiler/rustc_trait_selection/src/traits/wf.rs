@@ -504,7 +504,16 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         // (*) The predicates of an inherent associated type include the
         //     predicates of the impl that it's contained in.
 
-        if !data.self_ty().has_escaping_bound_vars() {
+        // In an ideal world, there are no escaping bound vars here. However, WF is jank, and
+        // sometimes there are. We can only `compute_inherent_assoc_term_args` if the Self ty in the
+        // args has no escaping bound vars. If we already have impl format args, though,
+        // `compute_inherent_assoc_term_args` is a no-op (and we have no Self type), so no need to
+        // check for escaping bound vars.
+        let can_compute_impl_args =
+            matches!(data.kind, ty::AliasTermKind::InherentConstImpl { .. })
+                || !data.self_ty().has_escaping_bound_vars();
+
+        if can_compute_impl_args {
             // FIXME(inherent_associated_types): Should this happen inside of a snapshot?
             // FIXME(inherent_associated_types): This is incompatible with the new solver and lazy norm!
             let args = traits::project::compute_inherent_assoc_term_args(
@@ -1099,10 +1108,12 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                             self.add_wf_preds_for_inherent_projection(alias_const.into());
                             return; // Subtree is handled by above function
                         }
-                        // please ping khyperia and/or BoxyUwU if this `bug!` fires
-                        ty::AliasConstKind::InherentImpl { .. } => bug!(
-                            "This ought to be unreachable, the entrypoints of WF should still have InherentSelf-form alias consts."
-                        ),
+                        // FIXME: This should be unreachable but isn't because we normalize in item
+                        // wfck before computing wf requirements
+                        ty::AliasConstKind::InherentImpl { .. } => {
+                            self.add_wf_preds_for_inherent_projection(alias_const.into());
+                            return;
+                        }
                         ty::AliasConstKind::Projection { def_id }
                         | ty::AliasConstKind::Free { def_id }
                         | ty::AliasConstKind::Anon { def_id } => {
