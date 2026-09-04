@@ -416,9 +416,17 @@ fn fiber_does_not_trigger_dtor() {
     unsafe extern "system" {
         fn ConvertFiberToThread() -> i32;
         fn ConvertThreadToFiber(lpParameter: *const c_void) -> *mut c_void;
+        fn CreateFiber(
+            dwStackSize: usize,
+            lpStartAddress: unsafe extern "system" fn(*mut c_void),
+            lpParameter: *mut c_void,
+        ) -> *mut c_void;
+        fn DeleteFiber(lpFiber: *mut c_void);
+        fn SwitchToFiber(lpFiber: *mut c_void);
     }
 
     thread_local!(static FOO: UnsafeCell<Option<NotifyOnDrop>> = UnsafeCell::new(None));
+
     let signal = Signal::default();
 
     let signal2 = signal.clone();
@@ -438,13 +446,49 @@ fn fiber_does_not_trigger_dtor() {
     // As long as we stop using fibers before thread teardown, everything works as expected.
     let signal2 = signal.clone();
     let t = thread::spawn(move || unsafe {
-        let mut signal = Some(signal2);
-        let _ = ConvertThreadToFiber(ptr::null());
-        FOO.with(|f| {
-            *f.get() = Some(NotifyOnDrop(signal.take().unwrap()));
-        });
-        let _ = ConvertFiberToThread();
+        struct FiberData {
+            main: *mut c_void,
+            signal: Signal,
+        }
+
+        unsafe extern "system" fn fiber_start(data: *mut c_void) {
+            let data = unsafe { &mut *data.cast::<FiberData>() };
+
+            // Set the value while this fiber is current.
+            // This must NOT arm the FLS cleanup guard for the fiber.
+            FOO.with(|f| unsafe {
+                *f.get() = Some(NotifyOnDrop(data.signal.clone()));
+            });
+
+            unsafe {
+                SwitchToFiber(data.main);
+            }
+        }
+
+        let main = ConvertThreadToFiber(ptr::null());
+        assert!(!main.is_null());
+
+        let mut data = FiberData { main, signal: signal2.clone() };
+        let foo = CreateFiber(0, fiber_start, ptr::from_mut(&mut data).cast());
+        assert!(!foo.is_null());
+
+        // Run `foo`, which sets FOO while `foo` is the current fiber,
+        // then switches back to main.
+        SwitchToFiber(foo);
+
+        // Convert main back to a thread before deleting `foo`.
+        assert_ne!(ConvertFiberToThread(), 0);
+
+        // Deleting `foo` must not trigger dtors like a thread teardown.
+        DeleteFiber(foo);
+        assert!(!signal2.is_set());
+
+        // Arm the guard now from the normal thread.
+        // `FOO`'s destructor is already registered, so it will run when the thread exits.
+        thread_local!(static BAR: UnsafeCell<Option<NotifyOnDrop>> = UnsafeCell::new(None));
+        BAR.with(|_| {});
     });
+
     signal.wait();
     assert!(signal.is_set());
     t.join().unwrap();

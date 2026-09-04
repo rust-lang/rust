@@ -98,17 +98,16 @@ use crate::fmt;
 ///    run on the thread that causes the process to exit. This is because the
 ///    other threads may be forcibly terminated.
 ///
-///    If a thread is [converted into a fiber], destructors will not be run unless
-///    the fiber is [converted back into a thread] before the underlying thread exits.
+///    TLS destructors may be leaked if a thread exits while [converted into a fiber],
+///    or if Rust TLS destructor support is first needed while running in a fiber.
 ///
 ///    If a process loads a Rust `cdylib`, it must not cause the Rust TLS destructor support
-//     to be initialized for the first time during process shutdown.
+///    to be initialized for the first time during process shutdown.
 ///
 ///    When dynamically unloading a Rust `cdylib`, pending TLS destructors may run
-//     during the unload or may be leaked.
+///    during the unload or may be leaked.
 ///
 /// [converted into a fiber]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertthreadtofiber
-/// [converted back into a thread]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertfibertothread
 /// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
 /// [`with`]: LocalKey::with
 #[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]

@@ -390,7 +390,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
-            AttributeKind::RustcTestEntrypointMarker => (),
             AttributeKind::RustcTestMarker(..) => (),
             AttributeKind::RustcThenThisWouldNeed(..) => (),
             AttributeKind::RustcTrivialFieldReads => (),
