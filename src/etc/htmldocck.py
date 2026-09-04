@@ -628,7 +628,7 @@ def check(target, commands):
     for c in commands:
         check_command(c, cache)
         run_commands += 1
-    if run_commands == 0:
+    if run_commands == 0 and os.environ.get("IS_RMAKE") is None:
         stderr(
             "\nNo check, move this file in `rustdoc-ui` testsuite if you want to check "
             + "it doesn't crash"
