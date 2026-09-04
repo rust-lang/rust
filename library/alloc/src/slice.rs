@@ -564,7 +564,7 @@ impl<T> [T] {
             // SAFETY: We're copying `rem_len` elements after offsetting by `len`. The previous
             // looping `copy_nonoverlapping` always doubled the number of instantiated elements,
             // and so if `rem_len` was greater than `len` it would have allowed for another such
-            // doubling, until such time that `rem_len < len`. Thus, the space for these remainining
+            // doubling, until such time that `rem_len < len`. Thus, the space for these remaining
             // `rem_len` elements must be preceded by more than `rem_len` previously-copied
             // elements.
             // Setting the length is correct since we've initialised the whole `capacity`-length
