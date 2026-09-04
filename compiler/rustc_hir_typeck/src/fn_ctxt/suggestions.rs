@@ -2972,8 +2972,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
         let expr = expr.peel_drop_temps();
-
         match (&expr.kind, expected.kind(), checked_ty.kind()) {
+            // Handle `&T` to `&&T` call arguments directly.
+            // Keep ordinary `T` to `&T` cases on later path so its more
+            // specific suggestions, such as `Option::as_ref()`, are preserved.
+            (_, &ty::Ref(_, exp, hir::Mutability::Not), _)
+                if exp.is_ref()
+                    && matches!(
+                        self.tcx.parent_hir_node(expr.hir_id),
+                        hir::Node::Expr(hir::Expr {
+                            kind:
+                                hir::ExprKind::Call(_, args)
+                                | hir::ExprKind::MethodCall(_, _, args, _),
+                            ..
+                        }) if args.iter().any(|arg| arg.hir_id == expr.hir_id)
+                    )
+                    && self.can_eq(self.param_env, exp, checked_ty) =>
+            {
+                let sugg = if expr_needs_parens(expr) {
+                    vec![
+                        (sp.shrink_to_lo(), "&(".to_string()),
+                        (sp.shrink_to_hi(), ")".to_string()),
+                    ]
+                } else {
+                    vec![(sp.shrink_to_lo(), "&".to_string())]
+                };
+                return Some((
+                    sugg,
+                    "consider borrowing here".to_string(),
+                    Applicability::MachineApplicable,
+                    false,
+                ));
+            }
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind

@@ -16,23 +16,23 @@ fn takes_foo_ref(_: &Foo) {}
 fn main() {
     let haystack = [&["A1", "A2"][..], &["B1", "B2"], &["C1", "C2"]];
     let needle: &[&str] = &["D1", "D2"];
-    let _ = haystack.contains(needle);
+    let _ = haystack.contains(&needle);
     //~^ ERROR mismatched types
 
     let text = "text";
-    takes_nested_ref(text);
+    takes_nested_ref(&text);
     //~^ ERROR mismatched types
 
     let number = &1;
-    takes_generic_nested_ref(number);
+    takes_generic_nested_ref(&number);
     //~^ ERROR mismatched types
 
-    takes_ref(if true { 1 } else { 2 });
+    takes_ref(if true { &1 } else { &2 });
     //~^ ERROR mismatched types
     //~| ERROR mismatched types
 
     // Ordinary `T` to `&T` cases should retain more specific suggestions from the existing path.
     let ref opt = Some(Foo);
-    opt.map(|arg| takes_foo_ref(arg));
+    opt.as_ref().map(|arg| takes_foo_ref(arg));
     //~^ ERROR mismatched types
 }
