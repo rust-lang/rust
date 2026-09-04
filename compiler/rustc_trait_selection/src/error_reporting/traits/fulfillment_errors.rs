@@ -1669,8 +1669,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         bound_predicate.rebind(data),
                     );
                     let unnormalized_term = data.projection_term.to_term(self.tcx, ty::IsRigid::No);
-                    // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
-                    // to deeply normalize this type.
                     let normalized_term = ocx.normalize(
                         &obligation.cause,
                         obligation.param_env,

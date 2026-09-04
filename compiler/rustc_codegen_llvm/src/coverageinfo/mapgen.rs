@@ -1,11 +1,9 @@
 use std::assert_matches;
-use std::sync::Arc;
 
 use itertools::Itertools;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{FileName, RemapPathScopeComponents, SourceFile, StableSourceFileId};
 use tracing::debug;
@@ -74,7 +72,7 @@ pub(crate) fn finalize(cx: &mut CodegenCx<'_, '_>) {
         unused::prepare_covfun_records_for_unused_functions(cx, &mut covfun_records);
     }
 
-    // If there are no covfun records for this CGU, don't generate a covmap record.
+    // If there are no covfun records for this CGU, don't emit a covmap record.
     // Emitting a covmap record without any covfun records causes `llvm-cov` to
     // fail when generating coverage reports, and if there are no covfun records
     // then the covmap record isn't useful anyway.
@@ -89,13 +87,13 @@ pub(crate) fn finalize(cx: &mut CodegenCx<'_, '_>) {
         GlobalFileTable::build(tcx, covfun_records.iter().flat_map(|c| c.all_source_files()));
 
     for covfun in &covfun_records {
-        covfun::generate_covfun_record(cx, &global_file_table, covfun)
+        covfun::emit_covfun_record(cx, &global_file_table, covfun);
     }
 
-    // Generate the coverage map header, which contains the filenames used by
+    // Emit the coverage map header, which contains the filenames used by
     // this CGU's coverage mappings, and store it in a well-known global.
     // (This is skipped if we returned early due to having no covfun records.)
-    generate_covmap_record(cx, covmap_version, &global_file_table.filenames_buffer);
+    emit_covmap_record(cx, covmap_version, &global_file_table.filenames_buffer);
 }
 
 /// Maps "global" (per-CGU) file ID numbers to their underlying source file paths.
@@ -190,38 +188,10 @@ rustc_index::newtype_index! {
     struct LocalFileId {}
 }
 
-/// Holds a mapping from "local" (per-function) file IDs to their corresponding
-/// source files.
-#[derive(Debug, Default)]
-struct VirtualFileMapping {
-    local_file_table: IndexVec<LocalFileId, Arc<SourceFile>>,
-}
-
-impl VirtualFileMapping {
-    fn push_file(&mut self, source_file: &Arc<SourceFile>) -> LocalFileId {
-        self.local_file_table.push(Arc::clone(source_file))
-    }
-
-    /// Resolves all of the filenames in this local file mapping to a list of
-    /// global file IDs in its CGU, for inclusion in this function's
-    /// `__llvm_covfun` record.
-    ///
-    /// The global file IDs are returned as `u32` to make FFI easier.
-    fn resolve_all(&self, global_file_table: &GlobalFileTable) -> Option<Vec<u32>> {
-        self.local_file_table
-            .iter()
-            .map(|file| try {
-                let id = global_file_table.get_existing_id(file)?;
-                GlobalFileId::as_u32(id)
-            })
-            .collect::<Option<Vec<_>>>()
-    }
-}
-
-/// Generates the contents of the covmap record for this CGU, which mostly
-/// consists of a header and a list of filenames. The record is then stored
+/// Generates and emits the covmap record for this CGU, which mostly
+/// consists of a header and a list of filenames. The record is emitted
 /// as a global variable in the `__llvm_covmap` section.
-fn generate_covmap_record<'ll>(
+fn emit_covmap_record<'ll>(
     cx: &mut CodegenCx<'ll, '_>,
     version: CovmapVersion,
     filenames_buffer: &[u8],

@@ -15,6 +15,7 @@ use tracing::instrument;
 
 pub(crate) use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
 use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend};
+use crate::core::build_steps::llvm::{LlvmKind, get_llvm_build_status};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
@@ -960,6 +961,7 @@ impl<'a> Builder<'a> {
                 doc::CargoBook,
                 doc::Clippy,
                 doc::ClippyBook,
+                doc::CompilerWithTools,
                 doc::Miri,
                 doc::EmbeddedBook,
                 doc::EditionGuide,
@@ -1399,7 +1401,10 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
 
         // Ensure that the downloaded LLVM libraries can be found.
-        if self.config.llvm_ci_mode.download_from_ci() {
+        // FIXME: the libraries should be added elsewhere, not in this function...
+        if get_llvm_build_status(self, compiler.host).llvm_output().kind()
+            == LlvmKind::DownloadedFromCi
+        {
             let ci_llvm_lib = self.out.join(compiler.host).join("ci-llvm").join("lib");
             dylib_dirs.push(ci_llvm_lib);
         }
