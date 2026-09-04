@@ -1,7 +1,7 @@
 use rustc_ast::{MetaItem, Mutability, Safety};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Span, sym};
-use thin_vec::thin_vec;
+use rustc_span::{Ident, Span, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
@@ -20,6 +20,18 @@ pub(crate) fn expand_deriving_hash(
     let typaram = sym::__H;
 
     let arg = Path::new_local(typaram);
+
+    let param = {
+        let path = cx.path_all(span, false, cx.std_path(&[sym::hash, sym::Hasher]), Vec::new());
+        cx.typaram(span, Ident::new(typaram, span), thin_vec![cx.trait_bound(path, false)], None)
+    };
+
+    let generics = ast::Generics {
+        params: thin_vec![param],
+        where_clause: ast::WhereClause { has_where_token: false, predicates: ThinVec::new(), span },
+        span,
+    };
+
     let hash_trait_def = TraitDef {
         span,
         path,
@@ -29,7 +41,7 @@ pub(crate) fn expand_deriving_hash(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: sym::hash,
-            generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
+            generics,
             explicit_self: true,
             nonself_args: smallvec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
             ret_ty: Unit,

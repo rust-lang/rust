@@ -41,7 +41,7 @@ pub(crate) fn expand_deriving_partial_eq(
     // faster.
     let methods = smallvec![MethodDef {
         name: sym::eq,
-        generics: Bounds::empty(),
+        generics: cx.empty_generics(span),
         explicit_self: true,
         nonself_args: smallvec![(self_ref(), sym::other)],
         ret_ty: Path(generic::ty::Path::new_local(sym::bool)),
