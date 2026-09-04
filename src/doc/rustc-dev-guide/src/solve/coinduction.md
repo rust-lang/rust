@@ -71,7 +71,7 @@ struct Wrapper<T>(T);
 impl<T> Foo for Wrapper<Wrapper<T>>
 where
     Wrapper<T>: Foo
-{} 
+{}
 ```
 Proving `Wrapper<?0>: Foo` uses the impl `impl<T> Foo for Wrapper<Wrapper<T>>` which constrains
 `?0` to `Wrapper<?1>` and then requires `Wrapper<?1>: Foo`.
@@ -117,10 +117,12 @@ impl<T: Clone> Clone for List<T> {
 ```
 
 We are using `tail.clone()` in this impl.
-For this we have to prove `Box<List<T>>: Clone`
-which requires `List<T>: Clone` but that relies on the impl which we are currently checking.
-By adding that requirement to the `where`-clauses of the impl, which is what we would
-do with [perfect derive], we move that cycle into the trait solver and [get an error][ex1].
+For this, we have to prove `Box<List<T>>: Clone`,
+which requires `List<T>: Clone`.
+But that relies on the impl which we are currently checking.
+By adding that requirement to the `where`-clauses of the impl,
+something we would do with [perfect derive],
+we move that cycle into the trait solver and [get an error][ex1].
 
 ### Recursive data types
 
@@ -237,11 +239,11 @@ A `normalizes_to` goal is productive once the projection normalizes to a rigid t
 so `<() as Trait>::Assoc` normalizing to `Vec<<() as Trait>::Assoc>` would be productive.
 
 A `normalizes_to` goal has two kinds of nested goals.
-Nested requirements needed to actually
-normalize the projection, and the equality between the normalized projection and the expected type.
+Nested requirements needed to actually normalize the projection,
+and the equality between the normalized projection and the expected type.
 Only the equality has to be productive.
-A branch in the proof tree is productive
-if it is either finite, or contains at least one `normalizes_to` where the alias is resolved
+A branch in the proof tree is productive if it is either finite,
+or contains at least one `normalizes_to` where the alias is resolved
 to a rigid type constructor.
 
 Alternatively, we could simply always treat the equate branch of `normalizes_to` as inductive.
