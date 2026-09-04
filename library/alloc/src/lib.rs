@@ -90,7 +90,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![feature(abort_immediate)]
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
 #![feature(ascii_char)]
