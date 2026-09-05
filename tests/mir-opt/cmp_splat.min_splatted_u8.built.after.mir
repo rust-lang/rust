@@ -1,0 +1,31 @@
+// MIR for `min_splatted_u8` after built
+
+fn min_splatted_u8(_1: u8, _2: u8) -> u8 {
+    debug x => _1;
+    debug y => _2;
+    let mut _0: u8;
+    let mut _3: u8;
+    let mut _4: u8;
+    let mut _5: ();
+
+    bb0: {
+        StorageLive(_3);
+        _3 = copy _1;
+        StorageLive(_4);
+        _4 = copy _2;
+        StorageLive(_5);
+        _5 = ();
+        _0 = min_splatted::<u8, ()>(move _3, move _4, move _5) -> [return: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}
