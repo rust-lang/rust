@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(exitcode_exit_method))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
