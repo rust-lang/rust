@@ -171,3 +171,79 @@ fn fold_to_last(b: &mut Bencher) {
     let slice: &[i32] = &[0; 1024];
     b.iter(|| black_box(slice).iter().fold(None, |_, r| Some(NonNull::from(r))));
 }
+
+mod memchr_benches {
+    use core::slice::memchr::{memchr, memrchr};
+
+    use test::{Bencher, black_box};
+
+    // Match-position buckets per length: none (pure throughput), first
+    // (latency floor), and last (full scan + exact index recovery).
+    macro_rules! memchr_benches {
+        ($($name:ident, $len:expr;)+) => {
+            $(
+                mod $name {
+                    use super::*;
+
+                    const LEN: usize = $len;
+                    const NEEDLE: u8 = b'z';
+
+                    fn buf(matches: &[usize]) -> Vec<u8> {
+                        let mut v = vec![0x55u8; LEN];
+                        for &m in matches {
+                            v[m] = NEEDLE;
+                        }
+                        v
+                    }
+
+                    #[bench]
+                    fn fwd_match_none(b: &mut Bencher) {
+                        let v = buf(&[]);
+                        b.iter(|| black_box(memchr(black_box(NEEDLE), black_box(&v))));
+                    }
+
+                    #[bench]
+                    fn fwd_match_first(b: &mut Bencher) {
+                        let v = buf(&[0]);
+                        b.iter(|| black_box(memchr(black_box(NEEDLE), black_box(&v))));
+                    }
+
+                    #[bench]
+                    fn fwd_match_last(b: &mut Bencher) {
+                        let v = buf(&[LEN - 1]);
+                        b.iter(|| black_box(memchr(black_box(NEEDLE), black_box(&v))));
+                    }
+
+                    #[bench]
+                    fn rev_match_none(b: &mut Bencher) {
+                        let v = buf(&[]);
+                        b.iter(|| black_box(memrchr(black_box(NEEDLE), black_box(&v))));
+                    }
+
+                    #[bench]
+                    fn rev_match_first(b: &mut Bencher) {
+                        // Worst case for memrchr: scans the whole buffer backwards.
+                        let v = buf(&[0]);
+                        b.iter(|| black_box(memrchr(black_box(NEEDLE), black_box(&v))));
+                    }
+
+                    #[bench]
+                    fn rev_match_last(b: &mut Bencher) {
+                        let v = buf(&[LEN - 1]);
+                        b.iter(|| black_box(memrchr(black_box(NEEDLE), black_box(&v))));
+                    }
+                }
+            )+
+        };
+    }
+
+    memchr_benches! {
+        len_0016, 16;
+        len_0032, 32;
+        len_0064, 64;
+        len_0256, 256;
+        len_1k, 1024;
+        len_4k, 4096;
+        len_64k, 65536;
+    }
+}
