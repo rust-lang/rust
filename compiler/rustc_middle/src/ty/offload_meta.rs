@@ -94,10 +94,16 @@ impl OffloadMetadata {
     }
 }
 
+pub fn is_region_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    matches!(
+        ty.kind(),
+        ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::offload_region)
+    )
+}
+
 fn region_element_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    if let ty::Adt(def, args) = ty.kind()
-        && Some(def.did()) == tcx.get_diagnostic_item(sym::offload_region)
-    {
+    if is_region_ty(tcx, ty) {
+        let ty::Adt(_, args) = ty.kind() else { unreachable!() };
         Some(args.type_at(1))
     } else {
         None

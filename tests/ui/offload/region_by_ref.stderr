@@ -1,0 +1,14 @@
+error: offload kernel argument 0 is a reference to a `Region`. Pass the `Region` by value so it can be mapped like a slice
+  --> $DIR/region_by_ref.rs:21:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: offload kernel argument 0 is a reference to a `Region`. Pass the `Region` by value so it can be mapped like a slice
+  --> $DIR/region_by_ref.rs:33:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

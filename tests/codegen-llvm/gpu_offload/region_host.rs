@@ -1,6 +1,8 @@
 //@ compile-flags: -Zoffload=Test -Zunstable-options -C opt-level=1 -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-offload
+//@ edition: 2024
+//@ aux-crate: offload_strategies=offload_strategies.rs
 
 // This test verifies that a `Region` kernel argument is mapped like a slice.
 #![feature(abi_gpu_kernel)]
@@ -12,26 +14,9 @@
 
 extern crate core;
 
-use core::offload::{PartitioningStrategy, Region};
+use core::offload::Region;
 
-struct Dummy;
-
-unsafe impl PartitioningStrategy for Dummy {
-    type View<'a, T: 'a> = &'a T;
-    type ViewMut<'a, T: 'a> = &'a mut T;
-
-    fn index() -> usize {
-        0
-    }
-
-    unsafe fn get<'a, T>(_ptr: *const T, _len: usize) -> Option<Self::View<'a, T>> {
-        None
-    }
-
-    unsafe fn get_mut<'a, T>(_ptr: *mut T, _len: usize) -> Option<Self::ViewMut<'a, T>> {
-        None
-    }
-}
+use offload_strategies::Dummy;
 
 // CHECK: @anon.[[ID:.*]].0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
 
@@ -51,13 +36,10 @@ unsafe impl PartitioningStrategy for Dummy {
 #[unsafe(no_mangle)]
 fn main() {
     let mut x = [0.0f32; 4];
-    core::intrinsics::offload::<_, _, ()>(
-        foo,
-        [1, 1, 1],
-        [1, 1, 1],
-        0,
-        (Region::<f32, Dummy>::new(&mut x as &mut [f32]),),
-    );
+    core::offload::offload! {
+        kernel = foo,
+        args = (Region::<f32, Dummy>::new(&mut x as &mut [f32]),),
+    };
 }
 
 fn foo(region: Region<'_, f32, Dummy>) {
