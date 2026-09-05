@@ -4129,7 +4129,7 @@ fn add_lld_args(
     // `lld` as the linker.
     //
     // Note that wasm targets skip this step since the only option there anyway
-    // is to use LLD but the `wasm32-wasip2` target relies on a wrapper around
+    // is to use LLD but component-producing targets rely on a wrapper around
     // this, `wasm-component-ld`, which is overridden if this option is passed.
     if !sess.target.is_like_wasm {
         cmd.cc_arg("-fuse-ld=lld");
