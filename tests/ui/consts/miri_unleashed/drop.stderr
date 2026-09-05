@@ -4,8 +4,8 @@ error[E0080]: calling non-const function `<NotConstDestruct as Drop>::drop`
 LL | };
    | ^ evaluation of `TEST_BAD` failed inside this call
    |
-note: inside `std::ptr::drop_glue::<NotConstDestruct> - shim(Some(NotConstDestruct))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `<NotConstDestruct as Destruct>::drop_in_place - shim(Some(NotConstDestruct))`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
 
 warning: skipping const checks
    |
