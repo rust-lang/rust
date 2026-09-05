@@ -943,38 +943,63 @@ fn maybe_record_as_seed<'tcx>(
         });
     }
 
+    let self_comes_from_allow = |impl_did| {
+        if let ty::Adt(adt, _) =
+            tcx.type_of(impl_did).instantiate_identity().skip_normalization().kind()
+            && let Some(adt_def_id) = adt.did().as_local()
+        {
+            has_allow_dead_code_or_lang_attr(tcx, adt_def_id)
+        } else {
+            None
+        }
+    };
+
     match tcx.def_kind(owner_id) {
-        DefKind::Enum => {
-            if let Some(comes_from_allow) = allow_dead_code {
-                let adt = tcx.adt_def(owner_id);
-                for variant in adt.variants().iter() {
-                    push_into_worklist(WorkItem {
-                        id: variant.def_id.expect_local(),
-                        propagated: comes_from_allow,
-                        own: comes_from_allow,
-                    });
-                }
+        DefKind::Enum if let Some(comes_from_allow) = allow_dead_code => {
+            let adt = tcx.adt_def(owner_id);
+            for variant in adt.variants().iter() {
+                push_into_worklist(WorkItem {
+                    id: variant.def_id.expect_local(),
+                    propagated: comes_from_allow,
+                    own: comes_from_allow,
+                });
             }
         }
-        DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::AssocTy => {
-            if allow_dead_code.is_none() {
-                let parent = tcx.local_parent(owner_id.def_id);
-                match tcx.def_kind(parent) {
-                    DefKind::Impl { of_trait: false } | DefKind::Trait => {}
-                    DefKind::Impl { of_trait: true } => {
+        DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::AssocTy
+            if allow_dead_code.is_none() =>
+        {
+            let parent = tcx.local_parent(owner_id.def_id);
+            match tcx.def_kind(parent) {
+                DefKind::Trait => {}
+                DefKind::Impl { of_trait } => {
+                    if of_trait {
                         // We only care about associated items of traits,
                         // because they cannot be visited directly,
                         // so we later mark them as live if their corresponding traits
                         // or trait items and self types are both live,
                         // but inherent associated items can be visited and marked directly.
                         unsolved_items.push(owner_id.def_id);
+                    } else if let Some(comes_from_allow) = self_comes_from_allow(parent) {
+                        push_into_worklist(WorkItem {
+                            id: owner_id.def_id,
+                            propagated: comes_from_allow,
+                            own: ComesFromAllowExpect::No,
+                        });
                     }
-                    _ => bug!(),
                 }
+                _ => bug!(),
             }
         }
-        DefKind::Impl { of_trait: true } if allow_dead_code.is_none() => {
-            unsolved_items.push(owner_id.def_id);
+        DefKind::Impl { of_trait } if allow_dead_code.is_none() => {
+            if of_trait {
+                unsolved_items.push(owner_id.def_id);
+            } else if let Some(comes_from_allow) = self_comes_from_allow(owner_id.def_id) {
+                push_into_worklist(WorkItem {
+                    id: owner_id.def_id,
+                    propagated: comes_from_allow,
+                    own: ComesFromAllowExpect::No,
+                });
+            }
         }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
@@ -984,17 +1009,15 @@ fn maybe_record_as_seed<'tcx>(
                 own: ComesFromAllowExpect::No,
             });
         }
-        DefKind::Const { .. } => {
-            if tcx.item_name(owner_id.def_id) == kw::Underscore {
-                // `const _` is always live, as that syntax only exists for the side effects
-                // of type checking and evaluating the constant expression, and marking them
-                // as dead code would defeat that purpose.
-                push_into_worklist(WorkItem {
-                    id: owner_id.def_id,
-                    propagated: ComesFromAllowExpect::No,
-                    own: ComesFromAllowExpect::No,
-                });
-            }
+        DefKind::Const { .. } if tcx.item_name(owner_id.def_id) == kw::Underscore => {
+            // `const _` is always live, as that syntax only exists for the side effects
+            // of type checking and evaluating the constant expression, and marking them
+            // as dead code would defeat that purpose.
+            push_into_worklist(WorkItem {
+                id: owner_id.def_id,
+                propagated: ComesFromAllowExpect::No,
+                own: ComesFromAllowExpect::No,
+            });
         }
         _ => {}
     }
