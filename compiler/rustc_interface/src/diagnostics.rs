@@ -129,7 +129,7 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
     )]
     #[note(
-        "for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>"
+        "for more information, see issue #162235 <https://github.com/rust-lang/rust/issues/162235>"
     )]
     pub fcw: bool,
 }

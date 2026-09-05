@@ -86,7 +86,7 @@ accurate, and has useful diagrams.
     * [pdb-rs](https://github.com/microsoft/pdb-rs/) - A Rust-based PDB reader and writer based on
     other publicly-available information.
     Does not guarantee stability or spec compliance.
-    Also contains `pdbtool`, which can dump PDB files (`cargo install pdbtool`)
+    Also contains `pdbtool`, which can dump PDB files (`cargo install --locked pdbtool`)
     * [Debug Interface Access SDK](https://learn.microsoft.com/en-us/visualstudio/debugger/debug-interface-access/getting-started-debug-interface-access-sdk).
     While it does not document the PDB format directly, details can be gleaned from the interface
     itself.

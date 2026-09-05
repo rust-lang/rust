@@ -7,20 +7,8 @@ Its most interesting features for contributors to `rustc` are issue claiming and
 
 ## Issue claiming
 
-`@rustbot` exposes a command that allows anyone to assign an issue to themselves.
-If you see an issue you want to work on, you can send the following message as a
-comment on the issue at hand:
-
-    @rustbot claim
-
-This will tell `@rustbot` to assign the issue to you if it has no assignee yet.
-Note that because of some GitHub restrictions, you may be assigned indirectly,
-i.e. `@rustbot` will assign itself as a placeholder and edit the top comment to
-reflect the fact that the issue is now assigned to you.
-
-If you want to unassign from an issue, `@rustbot` has a different command:
-
-    @rustbot release-assignment
+Claim an unassigned issue when you intend to work on it.
+See [Issue assignment](https://forge.rust-lang.org/triagebot/issue-assignment.html).
 
 ## Issue relabeling
 
