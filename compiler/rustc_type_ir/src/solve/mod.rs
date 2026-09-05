@@ -1,3 +1,5 @@
+mod fulfill;
+pub use fulfill::Obligation;
 pub mod inspect;
 
 use std::convert::Infallible;

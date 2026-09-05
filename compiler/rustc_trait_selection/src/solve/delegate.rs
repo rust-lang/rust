@@ -133,6 +133,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.tcx
     }
 
+    fn num_open_snapshots(&self) -> usize {
+        self.0.num_open_snapshots()
+    }
+
     fn build_with_canonical<V>(
         interner: TyCtxt<'tcx>,
         canonical: &CanonicalQueryInput<'tcx, V>,
