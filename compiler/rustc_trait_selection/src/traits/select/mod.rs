@@ -1476,18 +1476,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // it's not worth going to more trouble to increase the
             // hit-rate, I don't think.
             TypingMode::Coherence => false,
-            // Avoid using the global cache when we're defining opaque types
-            // as their hidden type may impact the result of candidate selection.
-            //
-            // HACK: This is still theoretically unsound. Goals can indirectly rely
-            // on opaques in the defining scope, and it's easier to do so with TAIT.
-            // However, if we disqualify *all* goals from being cached, perf suffers.
-            // This is likely fixed by better caching in general in the new solver.
-            // See: <https://github.com/rust-lang/rust/issues/132064>.
+            // Avoid using the global cache when defining opaque types, as goals can
+            // indirectly depend on them without mentioning them directly. See #159932.
             TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
                 defining_opaque_types.is_empty()
-                    || (!pred.has_opaque_types() && !pred.has_coroutines())
             }
             // Impls that are not fully generic are completely ignored as "nonexistent"
             // in this mode, so the results wildly differ from normal trait solving.
