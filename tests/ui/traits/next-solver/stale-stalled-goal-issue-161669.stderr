@@ -1,0 +1,21 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/stale-stalled-goal-issue-161669.rs:14:34
+   |
+LL | impl DeserTrait<'_> for &'static MyTrait {}
+   |                                  ^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl DeserTrait<'_> for &'static dyn MyTrait {}
+   |                                  +++
+
+error[E0284]: type annotations needed: cannot satisfy `test::{opaque#0} == impl MyTrait + 'static`
+  --> $DIR/stale-stalled-goal-issue-161669.rs:17:14
+   |
+LL | fn test() -> impl Send {
+   |              ^^^^^^^^^ cannot satisfy `test::{opaque#0} == impl MyTrait + 'static`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0284, E0782.
+For more information about an error, try `rustc --explain E0284`.
