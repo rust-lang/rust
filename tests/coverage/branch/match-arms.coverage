@@ -51,19 +51,23 @@
    LL|     45|    no_merge!();
    LL|       |
    LL|      3|    match value {
-   LL|      8|        Enum::D(d) if cond => consume(d),
+   LL|     16|        Enum::D(d) if cond => consume(d),
+                              ^8            ^8      ^8
   ------------------
   |  Branch (LL:23): [True: 8, False: 16]
   ------------------
-   LL|      4|        Enum::C(c) if cond => consume(c),
+   LL|      8|        Enum::C(c) if cond => consume(c),
+                              ^4            ^4      ^4
   ------------------
   |  Branch (LL:23): [True: 4, False: 8]
   ------------------
-   LL|      2|        Enum::B(b) if cond => consume(b),
+   LL|      4|        Enum::B(b) if cond => consume(b),
+                              ^2            ^2      ^2
   ------------------
   |  Branch (LL:23): [True: 2, False: 4]
   ------------------
-   LL|      1|        Enum::A(a) if cond => consume(a),
+   LL|      2|        Enum::A(a) if cond => consume(a),
+                              ^1            ^1      ^1
   ------------------
   |  Branch (LL:23): [True: 1, False: 2]
   ------------------
