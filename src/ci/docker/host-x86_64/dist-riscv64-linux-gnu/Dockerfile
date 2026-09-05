@@ -27,7 +27,7 @@ ENV CC_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-gcc \
     AR_riscv64a23_unknown_linux_gnu=riscv64-unknown-linux-gnu-ar \
     CXX_riscv64a23_unknown_linux_gnu=riscv64-unknown-linux-gnu-g++
 
-ENV HOSTS=riscv64gc-unknown-linux-gnu
+ENV HOSTS=riscv64gc-unknown-linux-gnu,riscv64a23-unknown-linux-gnu
 ENV TARGETS=riscv64gc-unknown-linux-gnu,riscv64a23-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler --disable-docs"
