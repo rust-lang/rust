@@ -301,6 +301,27 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mut err =
                     make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx);
 
+                if self.cast_ty.is_numeric() {
+                    let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+                    let ty_str = expr_ty.to_string();
+                    let is_string = ty_str.contains("String");
+                    let is_string_slice = expr_ty.is_str() || ty_str.contains("str");
+
+                    if is_string || is_string_slice {
+                        let target_ty_str = self.cast_ty.to_string();
+                        err.multipart_suggestion(
+                            "consider parsing the string into a numeric type instead",
+                            vec![
+                                (
+                                    self.expr_span.shrink_to_hi().to(self.cast_span),
+                                    format!(".parse::<{target_ty_str}>().unwrap_or_default()"),
+                                ),
+                            ],
+                            rustc_errors::Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+
                 if self.cast_ty.is_integral() {
                     if !matches!(self.expr.kind, ExprKind::AddrOf(..))
                         && let ty::Ref(_, inner_ty, _) = *self.expr_ty.kind()
@@ -588,6 +609,29 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                     if let Some(note) = note {
                         err.note(note);
+                    }
+                    
+                    if self.cast_ty.is_numeric() {
+                        let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
+
+                        let ty_str = expr_ty.to_string();
+                        let is_string = ty_str.contains("String");
+                        let is_string_slice = expr_ty.is_str() || ty_str.contains("str");
+
+                        if is_string || is_string_slice {
+                            let target_ty_str = self.cast_ty.to_string();
+
+                            err.multipart_suggestion(
+                                "consider parsing the string into a numeric type instead",
+                                vec![
+                                    (
+                                        self.expr_span.shrink_to_hi().to(self.cast_span),
+                                        format!(".parse::<{target_ty_str}>().unwrap_or_default()")
+                                    ),
+                                ],
+                                rustc_errors::Applicability::MaybeIncorrect,
+                            );
+                        }
                     }
                 } else {
                     err.span_label(self.span, "invalid cast");
