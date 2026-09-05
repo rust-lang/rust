@@ -16,8 +16,8 @@ use rustc_span::Symbol;
 use tracing::{debug, warn};
 
 use super::data::*;
+use super::file_format;
 use super::fs::*;
-use super::{file_format, work_product};
 use crate::diagnostics;
 use crate::persist::file_format::{OpenFile, OpenFileError};
 
@@ -32,15 +32,6 @@ enum LoadResult {
     IoError { path: PathBuf, err: io::Error },
 }
 
-fn delete_dirty_work_product(
-    sess: &Session,
-    incr_comp_session: &IncrCompSession,
-    swp: SerializedWorkProduct,
-) {
-    debug!("delete_dirty_work_product({:?})", swp);
-    work_product::delete_workproduct_files(sess, incr_comp_session, &swp.work_product);
-}
-
 fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadResult {
     assert!(sess.opts.incremental.is_some());
 
@@ -48,12 +39,16 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
 
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
-    let path = dep_graph_path(incr_comp_session);
+    let Some(path) = old_dep_graph_path(incr_comp_session) else {
+        return LoadResult::DataOutOfDate;
+    };
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
     let mut prev_work_products = UnordMap::default();
 
-    let work_products_path = work_products_path(incr_comp_session);
+    let Some(work_products_path) = old_work_products_path(incr_comp_session) else {
+        return LoadResult::DataOutOfDate;
+    };
 
     if let Ok(OpenFile { mmap, start_pos }) =
         file_format::open_incremental_file(sess, &work_products_path)
@@ -68,7 +63,7 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
 
         for swp in work_products {
             let all_files_exist = swp.work_product.saved_files.items().all(|(_, path)| {
-                let exists = in_incr_comp_dir_sess(incr_comp_session, path).exists();
+                let exists = in_old_incr_comp_dir_sess(incr_comp_session, path).unwrap().exists();
                 if !exists && sess.opts.unstable_opts.incremental_info {
                     eprintln!("incremental: could not find file for work product: {path}",);
                 }
@@ -80,7 +75,7 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
                 prev_work_products.insert(swp.id, swp.work_product);
             } else {
                 debug!("reconcile_work_products: some file for {:?} does not exist", swp);
-                delete_dirty_work_product(sess, incr_comp_session, swp);
+                return LoadResult::DataOutOfDate;
             }
         }
     }
@@ -134,7 +129,9 @@ pub fn load_query_result_cache(
 
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
-    let path = query_cache_path(incr_comp_session);
+    let Some(path) = old_query_cache_path(incr_comp_session) else {
+        return Some(OnDiskCache::new_empty());
+    };
     match file_format::open_incremental_file(sess, &path) {
         Ok(OpenFile { mmap, start_pos }) => {
             let cache = OnDiskCache::new(sess, mmap, start_pos).unwrap_or_else(|()| {
@@ -190,13 +187,13 @@ pub fn setup_dep_graph(
     }
 
     // `load_dep_graph` can only be called after `prepare_session_directory`.
-    let incr_comp_session = prepare_session_directory(sess, crate_name, stable_crate_id);
+    let mut incr_comp_session = prepare_session_directory(sess, crate_name, stable_crate_id);
     // Try to load the previous session's dep graph and work products.
     let load_result = load_dep_graph(sess, &incr_comp_session);
 
     sess.time("incr_comp_garbage_collect_session_directories", || {
         if let Err(e) =
-            garbage_collect_session_directories(sess, &incr_comp_session.session_directory)
+            garbage_collect_session_directories(sess, &incr_comp_session.new_session_directory)
         {
             warn!(
                 "Error while trying to garbage collect incremental compilation \
@@ -211,15 +208,11 @@ pub fn setup_dep_graph(
     let (prev_graph, prev_work_products) = match load_result {
         LoadResult::IoError { path, err } => {
             sess.dcx().emit_warn(diagnostics::LoadDepGraph { path, err });
+            invalidate_old_session_dir(sess, &mut incr_comp_session);
             Default::default()
         }
         LoadResult::DataOutOfDate => {
-            if let Err(err) = delete_all_session_dir_contents(&incr_comp_session) {
-                sess.dcx().emit_err(diagnostics::DeleteIncompatible {
-                    path: dep_graph_path(&incr_comp_session),
-                    err,
-                });
-            }
+            invalidate_old_session_dir(sess, &mut incr_comp_session);
             Default::default()
         }
         LoadResult::Ok { prev_graph, prev_work_products } => (prev_graph, prev_work_products),
