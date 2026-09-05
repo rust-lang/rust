@@ -259,15 +259,25 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        let base = self.peel_transparent_wrappers(cx);
+        // FIXME: Peeling the wrappers above would not work correctly if we are a 1-ZST. So we make
+        // `#[rustc_pass_indirectly_in_non_rustic_abis]` a NOP on 1-ZST. In the future,
+        // `non_1zst_field` should become `non_trivial_abi_field` and
+        // `#[rustc_pass_indirectly_in_non_rustic_abis]` should make a type have non-trivial ABI.
+        if self.is_1zst() {
+            return false;
+        }
+
+        let base = self.peel_transparent_wrappers_from_non_1zst(cx);
         Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(base)
     }
 
     /// Recursively peel away transparent wrappers, returning the inner value.
+    /// Will not peel anything if `self` is a 1-ZST! Callers need to either check
+    /// that the result is not a 1-ZST, or have separate logic for that.
     ///
     /// The return value is not `repr(transparent)` and/or does
     /// not have a non-1zst field.
-    pub fn peel_transparent_wrappers<C>(mut self, cx: &C) -> Self
+    pub fn peel_transparent_wrappers_from_non_1zst<C>(mut self, cx: &C) -> Self
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -308,12 +318,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        let complex = self.peel_transparent_wrappers(cx);
+        // We're checking for scalar repr below which excludes 1-ZST.
+        let complex = self.peel_transparent_wrappers_from_non_1zst(cx);
         if !Ty::is_complex_number_lang_item(complex, cx) {
             return None;
         }
 
-        let part = complex.field(cx, 0).peel_transparent_wrappers(cx);
+        let part = complex.field(cx, 0).peel_transparent_wrappers_from_non_1zst(cx);
 
         if let BackendRepr::Scalar(scalar) = part.backend_repr {
             // Only Complex<{ float }> and Complex<{ integer }> have special layout.
