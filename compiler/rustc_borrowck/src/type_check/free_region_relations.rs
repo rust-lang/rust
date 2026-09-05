@@ -572,19 +572,32 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             debug!("add_outlives_bounds(bound={:?})", outlives_bound);
 
             match outlives_bound {
-                OutlivesBound::RegionSubRegion(r1, r2) => {
+                OutlivesBound::RegionSubRegion(ra, rb) => {
                     // The bound says that `r1 <= r2`; we store `r2: r1`.
-                    let r1 = self.universal_regions.to_region_vid(r1);
-                    let r2 = self.universal_regions.to_region_vid(r2);
+                    let r1 = self.universal_regions.to_region_vid(ra);
+                    let r2 = self.universal_regions.to_region_vid(rb);
+                    if !(self.universal_regions.is_universal_region(r1)
+                        || self.universal_regions.is_universal_region(r2))
+                    {
+                        assert!(false, "case one: {} <= {}", ra, rb);
+                    }
                     self.relate_universal_regions(r2, r1);
                 }
 
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
+                    let r1 = self.universal_regions.to_region_vid(r_a);
+                    if !self.universal_regions.is_universal_region(r1) {
+                        assert!(false, "case two: {} <= {}", r_a, param_b);
+                    }
                     self.region_bound_pairs
                         .insert(ty::OutlivesClause(GenericKind::Param(param_b), r_a));
                 }
 
                 OutlivesBound::RegionSubAlias(r_a, alias_b) => {
+                    let r1 = self.universal_regions.to_region_vid(r_a);
+                    if !self.universal_regions.is_universal_region(r1) {
+                        assert!(false, "case three: {} <= {}", r_a, alias_b);
+                    }
                     self.region_bound_pairs
                         .insert(ty::OutlivesClause(GenericKind::Alias(alias_b), r_a));
                 }
