@@ -41,6 +41,7 @@
 use std::mem;
 use std::sync::Arc;
 
+use rustc_abi::ExternAbi;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
@@ -1174,7 +1175,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target: Target,
     ) -> &'hir [hir::Attribute] {
-        self.lower_attrs_with_extra(id, attrs, target_span, target, &[])
+        self.lower_attrs_with_extra(id, attrs, target_span, target, None, &[])
     }
 
     fn lower_attrs_with_extra(
@@ -1183,13 +1184,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
+        foreign_mod_abi: Option<ExternAbi>,
         extra_hir_attributes: &[hir::Attribute],
     ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() && extra_hir_attributes.is_empty() {
             &[]
         } else {
-            let mut lowered_attrs =
-                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target);
+            let mut lowered_attrs = self.lower_attrs_vec(
+                attrs,
+                self.lower_span(target_span),
+                id,
+                target,
+                foreign_mod_abi,
+            );
             lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
             assert_eq!(id.owner, self.curr_owner.owner_id);
@@ -1216,12 +1223,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target_hir_id: HirId,
         target: Target,
+        foreign_mod_abi: Option<ExternAbi>,
     ) -> Vec<hir::Attribute> {
         let l = self.span_lowerer();
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
             target,
+            foreign_mod_abi,
             |s| l.lower(s),
             |lint_id, span, kind| {
                 self.curr_owner.delayed_lints.push(DelayedLint {

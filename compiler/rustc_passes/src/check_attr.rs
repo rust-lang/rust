@@ -8,7 +8,6 @@
 use std::cell::Cell;
 use std::slice;
 
-use rustc_abi::ExternAbi;
 use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -212,7 +211,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.check_non_exhaustive(*attr_span, span, target, item)
             }
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
-            AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
                 self.check_macro_export(hir_id, *span, target)
             }
@@ -274,6 +272,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::InstructionSet(..) => (),
             AttributeKind::InstrumentFn(..) => (),
             AttributeKind::Lang(..) => (),
+            AttributeKind::Link(..) => (),
             AttributeKind::LinkName { .. } => (),
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
@@ -1124,22 +1123,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
 
         self.dcx().emit_err(diagnostics::InvalidMayDangle { attr_span });
-    }
-
-    /// Checks if `#[link]` is applied to an item other than a foreign module.
-    fn check_link(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        if target != Target::ForeignMod {
-            return; // Checked by attribute parser
-        }
-
-        if let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
-            && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
-            && !matches!(abi, ExternAbi::Rust)
-        {
-            return;
-        }
-
-        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr_span, diagnostics::Link);
     }
 
     /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.

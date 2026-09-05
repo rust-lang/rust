@@ -3,6 +3,7 @@ use std::convert::identity;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use rustc_abi::ExternAbi;
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
@@ -161,6 +162,7 @@ impl<'sess> AttributeParser<'sess> {
             attrs,
             target_span,
             target,
+            None,
             std::convert::identity,
             |lint_id, span, kind| {
                 sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
@@ -315,6 +317,7 @@ impl<'sess> AttributeParser<'sess> {
         attrs: &[ast::Attribute],
         target_span: Span,
         target: Target,
+        foreign_mod_abi: Option<ExternAbi>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
@@ -510,7 +513,7 @@ impl<'sess> AttributeParser<'sess> {
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
         for (check, attr_span) in deferred_checks {
             check(
-                &FinalizeCheckContext {
+                &mut FinalizeCheckContext {
                     shared: SharedContext {
                         cx: self,
                         target_span,
@@ -519,6 +522,7 @@ impl<'sess> AttributeParser<'sess> {
                         #[cfg(debug_assertions)]
                         has_lint_been_emitted: AtomicBool::new(false),
                     },
+                    foreign_mod_abi,
                     all_attrs: &attr_paths,
                     parsed_attrs: &attributes,
                 },

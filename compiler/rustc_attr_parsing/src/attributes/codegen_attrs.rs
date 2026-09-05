@@ -349,7 +349,7 @@ impl NoArgsAttributeParser for TrackCallerParser {
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         match cx.target {
             Target::Fn => {
                 // `#[track_caller]` is not valid on weak lang items because they are called via
@@ -571,7 +571,7 @@ impl CombineAttributeParser for TargetFeatureParser {
         parse_tf_attribute(cx, args)
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[target_feature]` is incompatible with lang item functions,
         // except on WASM where calling target-feature functions is safe (see #84988).
         if !cx.sess().target.is_like_wasm && !cx.sess().opts.actually_rustdoc {

@@ -94,7 +94,7 @@ impl SingleAttributeParser for RustcForceInlineParser {
         ))
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         let Some(inline_span) = find_attr!(cx.parsed_attrs, Inline(attr, span) if !matches!(attr, InlineAttr::Force { .. }) => span)
         else {
             return;

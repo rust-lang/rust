@@ -8,6 +8,7 @@ use std::sync::LazyLock;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use rustc_abi::ExternAbi;
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
@@ -102,7 +103,7 @@ pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> FinalizeOutput;
 /// finalized, so it can inspect the fully parsed attributes via
 /// [`FinalizeCheckContext::parsed_attrs`]. The [`Span`] is the span of the attribute the
 /// check is associated with, used for diagnostics.
-pub(crate) type FinalizeCheckFn = fn(&FinalizeCheckContext<'_, '_>, Span);
+pub(crate) type FinalizeCheckFn = fn(&mut FinalizeCheckContext<'_, '_>, Span);
 
 /// The result of finalizing a single attribute parser.
 pub(crate) struct FinalizeOutput {
@@ -820,6 +821,8 @@ impl<'p, 'sess: 'p> DerefMut for FinalizeContext<'p, 'sess> {
 /// [`parsed_attrs`](Self::parsed_attrs).
 pub(crate) struct FinalizeCheckContext<'p, 'sess> {
     pub(crate) shared: SharedContext<'p, 'sess>,
+
+    pub(crate) foreign_mod_abi: Option<ExternAbi>,
 
     /// A list of all attribute on this syntax node.
     ///

@@ -209,12 +209,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id: HirId = owner_id.into();
         let vis_span = self.lower_span(i.vis.span);
 
+        let foreign_mod_abi = if let ItemKind::ForeignMod(fm) = &i.kind {
+            Some(fm.abi.map_or(ExternAbi::FALLBACK, |abi| {
+                abi.symbol_unescaped.as_str().parse().unwrap_or(ExternAbi::Rust)
+            }))
+        } else {
+            None
+        };
+
         let extra_hir_attributes = self.generate_extra_attrs_for_item_kind(i.id, &i.kind);
         let attrs = self.lower_attrs_with_extra(
             hir_id,
             &i.attrs,
             i.span,
             Target::from_ast_item(i),
+            foreign_mod_abi,
             &extra_hir_attributes,
         );
 

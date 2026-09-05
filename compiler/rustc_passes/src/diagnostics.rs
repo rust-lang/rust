@@ -156,13 +156,6 @@ pub(crate) struct BothOptimizeNoneAndInline {
 }
 
 #[derive(Diagnostic)]
-#[diag("attribute should be applied to an `extern` block with non-Rust ABI")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-pub(crate) struct Link;
-
-#[derive(Diagnostic)]
 #[diag("#[rustc_legacy_const_generics] functions must only have const generics")]
 pub(crate) struct RustcLegacyConstGenericsOnly {
     #[primary_span]
