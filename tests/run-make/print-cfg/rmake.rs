@@ -14,7 +14,7 @@ use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{llvm_components_contain, rfs, rustc};
 
 struct PrintCfg {
     target: &'static str,
@@ -73,6 +73,19 @@ fn main() {
         includes: &["target_has_threads"],
         disallow: &[],
     });
+    // AVR is experimental, so don't assume it's supported.
+    if llvm_components_contain("avr") {
+        check(PrintCfg {
+            target: "avr-none",
+            args: &[],
+            includes: &[
+                "target_feature=\"addsubiw\"",
+                "target_feature=\"ijmpcall\"",
+                "target_feature=\"lpm\"",
+            ],
+            disallow: &[],
+        });
+    }
 }
 
 fn check(PrintCfg { target, args, includes, disallow }: PrintCfg) {
