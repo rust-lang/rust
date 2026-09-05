@@ -1,17 +1,20 @@
-use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
+use rustc_ast::ExprKind;
+use rustc_ast::ast::{self, AttrArgs, AttrKind, AttrStyle, LitKind, MetaItemLit};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
     DocInline, HideOrShow,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_feature::AttributeStability;
+use rustc_lint_defs::LintId;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_span::{Span, Symbol, edition, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
+use crate::EmitAttribute;
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
@@ -21,7 +24,7 @@ use crate::diagnostics::{
     DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
     DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
     DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
-    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    IllFormedAttributeInput, InvalidExprInDocAttr, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -826,4 +829,42 @@ impl AttributeParser for DocParser {
             None
         }
     }
+}
+
+/// Is this a `#[doc = mac!()]`?
+///
+/// Or perhaps something as spicy as this?
+/// ```ignore,_
+/// #[doc = {
+///     let a = 1;
+///     let b = 1;
+///     let sum = a + b;
+///     assert_eq!(sum, 2);
+/// }]
+/// println!();
+/// ```
+pub(crate) fn lint_non_lit_doc_attr(
+    mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
+    attr: &ast::Attribute,
+) -> bool {
+    if !attr.has_name(sym::doc) {
+        return false;
+    }
+    let AttrKind::Normal(n) = &attr.kind else { return false };
+    let AttrArgs::Eq { expr, .. } = &n.item.args else { return false };
+    if matches!(expr.kind, ExprKind::Lit(_)) {
+        return false;
+    };
+
+    let attr_span = attr.span;
+    let expr_span = expr.span;
+
+    emit_lint(
+        LintId::of(rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT),
+        attr_span.into(),
+        EmitAttribute(Box::new(move |dcx, level, _| {
+            InvalidExprInDocAttr { attr_span, expr_span }.into_diag(dcx, level)
+        })),
+    );
+    true
 }

@@ -23,5 +23,7 @@ fn main() {
         assert_eq!(sum, 2);
     }]
     //~^^^^^^ ERROR: unused doc comment
+    //~| ERROR invalid expression in `doc` attribute on macro invocation
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     foo!();
 }

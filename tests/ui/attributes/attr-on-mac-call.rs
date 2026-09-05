@@ -113,6 +113,8 @@ fn main() {
     #[deprecated = concat!("woah", "dude")]
     //~^ ERROR attribute value must be a literal
     #[doc = concat!("woah", "dude")]
+    //~^ ERROR invalid expression in `doc` attribute on macro invocation
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     unreachable!();
     #[doc = {
         let a = 1;
@@ -120,5 +122,13 @@ fn main() {
         let sum = a + b;
         assert_eq!(sum, 2);
     }]
+    //~^^^^^^ ERROR invalid expression in `doc` attribute on macro invocation
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    unreachable!();
+    #[doc = {
+        let expressions @ r#in @ doc @ attributes @ at = home;
+    }]
+    //~^^^ ERROR invalid expression in `doc` attribute on macro invocation
+    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     unreachable!();
 }
