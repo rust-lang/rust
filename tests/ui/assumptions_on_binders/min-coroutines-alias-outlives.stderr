@@ -1,0 +1,61 @@
+error: forall expect clause failed
+  --> $DIR/min-coroutines-alias-outlives.rs:24:9
+   |
+LL |         forall<'a> where T: 'a {
+   |         ^^^^^^
+   |
+note: constraint from here
+  --> $DIR/min-coroutines-alias-outlives.rs:24:9
+   |
+LL |         forall<'a> where T: 'a {
+   |         ^^^^^^
+   = note: expected: And(
+               [],
+           )
+   = note: actual: And(
+               [
+                   TypeOutlives(
+                       (T/#0,),
+                       '!1_0.Named(DefId(0:8 ~ min_coroutines_alias_outlives[HASH]::{test_binder_constraints#0}::'a)),
+                       $DIR/min-coroutines-alias-outlives.rs:24:9: 24:15 (#0),
+                   ),
+               ],
+           )
+
+error: forall expect clause failed
+  --> $DIR/min-coroutines-alias-outlives.rs:40:9
+   |
+LL |         forall<'a> where T::Assoc: 'a {
+   |         ^^^^^^
+   |
+note: constraint from here
+  --> $DIR/min-coroutines-alias-outlives.rs:40:9
+   |
+LL |         forall<'a> where T::Assoc: 'a {
+   |         ^^^^^^
+   = note: expected: And(
+               [],
+           )
+   = note: actual: And(
+               [
+                   TypeOutlives(
+                       Alias(
+                           Yes,
+                           Alias {
+                               kind: Projection {
+                                   def_id: DefId(0:4 ~ min_coroutines_alias_outlives[HASH]::Trait::Assoc),
+                               },
+                               args: [
+                                   T/#0,
+                               ],
+                               ..
+                           },
+                       ),
+                       '!1_0.Named(DefId(0:11 ~ min_coroutines_alias_outlives[HASH]::{test_binder_constraints#1}::'a)),
+                       $DIR/min-coroutines-alias-outlives.rs:40:9: 40:15 (#0),
+                   ),
+               ],
+           )
+
+error: aborting due to 2 previous errors
+
