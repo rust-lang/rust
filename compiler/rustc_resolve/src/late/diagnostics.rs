@@ -952,17 +952,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
             })
             .collect::<Vec<_>>();
-        // Try to filter out intrinsics candidates, as long as we have
-        // some other candidates to suggest.
-        let intrinsic_candidates: Vec<_> = candidates
-            .extract_if(.., |sugg| {
-                let path = path_names_to_string(&sugg.path);
-                path.starts_with("core::intrinsics::") || path.starts_with("std::intrinsics::")
-            })
-            .collect();
-        if candidates.is_empty() {
-            // Put them back if we have no more candidates to suggest...
-            candidates = intrinsic_candidates;
+        // Only suggest intrinsics when the `core_intrinsics` feature is already enabled
+        if !self.r.features.enabled(sym::core_intrinsics) {
+            candidates.retain(|sugg| {
+                let p = path_names_to_string(&sugg.path);
+                !(p.starts_with("core::intrinsics::") || p.starts_with("std::intrinsics::"))
+            });
         }
         let crate_def_id = CRATE_DEF_ID.to_def_id();
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {

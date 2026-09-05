@@ -15,6 +15,7 @@ error[E0574]: expected struct, variant or union type, found enum `Request`
 LL |         static instance: Request = Request { bar: 17 };
    |                                    ^^^^^^^ not a struct, variant or union type
    |
+   = note: 'std::error::Request' is unstable in nightly Rust and is only available with the `#![feature(error_generic_member_access)]` attribute
 help: consider importing this struct instead
    |
 LL + use std::error::Request;
