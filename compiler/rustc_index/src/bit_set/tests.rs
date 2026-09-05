@@ -15,6 +15,17 @@ fn test_new_filled() {
     }
 }
 
+/// [`DenseBitSet::contains_loose`] should not panic when given an out-of-domain value.
+#[test]
+fn contains_loose() {
+    let mut bitset = DenseBitSet::new_empty(100);
+    bitset.insert(77u32);
+
+    for i in 0..256 {
+        assert_eq!(bitset.contains_loose(i), i == 77);
+    }
+}
+
 #[test]
 fn bitset_iter_works() {
     let mut bitset: DenseBitSet<usize> = DenseBitSet::new_empty(100);
