@@ -15,6 +15,8 @@ pub(super) mod netc {
     pub use crate::sys::abi::sockets::*;
 }
 
+pub const MSG_NOSIGNAL: c_int = 0;
+
 #[expect(non_camel_case_types)]
 pub type wrlen_t = size_t;
 
