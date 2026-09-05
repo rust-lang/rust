@@ -305,6 +305,20 @@ where
     }
 }
 
+#[stable(feature = "from_option_nonzero", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+const impl<T> From<Option<NonZero<T>>> for T
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn from(value: Option<NonZero<T>>) -> Self {
+        // SAFETY: Memory layout optimization guarantees that `Option<NonZero<T>>` has
+        //         the same layout and size as `T`, with `0` representing `None`.
+        unsafe { intrinsics::transmute_unchecked(value) }
+    }
+}
+
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
 const impl<T> BitOr for NonZero<T>
