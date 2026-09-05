@@ -1307,9 +1307,9 @@ where
     ) -> U {
         self.delegate.enter_forall_without_assumptions(value, |value| {
             let u = self.delegate.universe();
-            let assumptions = if self.cx().assumptions_on_binders()
-                && (!self.cx().assumptions_on_binders_min_coroutines()
-                    || binder_kind == ForallBinderKind::CoroutineWitness)
+            let assumptions = if self.cx().assumptions_on_binders_full()
+                || (self.cx().assumptions_on_binders_min_coroutines()
+                    && binder_kind == ForallBinderKind::CoroutineWitness)
             {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
             } else {
@@ -1554,7 +1554,7 @@ where
             previous call to `try_evaluate_added_goals!`"
         );
 
-        let goals_certainty = match self.delegate.cx().assumptions_on_binders() {
+        let goals_certainty = match self.delegate.cx().assumptions_on_binders_any() {
             true => {
                 let certainty = self.eagerly_handle_placeholders()?;
                 certainty.and(goals_certainty)
@@ -1686,7 +1686,7 @@ where
         // region constraints from an ambiguous nested goal. This is tested in both
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-5-ambig.rs` and
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
-        let region_constraints = if self.cx().assumptions_on_binders() {
+        let region_constraints = if self.cx().assumptions_on_binders_any() {
             ExternalRegionConstraints::NextGen(if let Certainty::Yes = certainty {
                 let constraint = self.delegate.get_solver_region_constraint();
                 debug_assert_eq!(
