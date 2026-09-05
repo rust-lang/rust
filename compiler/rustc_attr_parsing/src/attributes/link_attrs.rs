@@ -1,8 +1,10 @@
+use rustc_abi::ExternAbi;
+use rustc_ast::ItemKind;
 use rustc_attr_ir::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
 use rustc_attr_ir::*;
 use rustc_errors::msg;
 use rustc_feature::{AttributeStability, Features};
-use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_lint_defs::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNUSED_ATTRIBUTES};
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition::Edition2024;
@@ -17,7 +19,7 @@ use crate::attributes::cfg::parse_cfg_entry;
 use crate::diagnostics::{
     AsNeededCompatibility, BothFfiConstAndPure, BundleNeedsStatic, EmptyLinkName,
     ExportSymbolsNeedsStatic, ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink,
-    InvalidLinkModifier, InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple,
+    InvalidLinkModifier, InvalidMachoSection, InvalidMachoSectionReason, Link, LinkFrameworkApple,
     LinkOrdinalOutOfRange, LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection,
     RawDylibOnlyWindows, WholeArchiveNeedsStatic,
 };
@@ -257,6 +259,17 @@ impl CombineAttributeParser for LinkParser {
             verbatim,
             import_name_type,
         })
+    }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        let Some(item) = cx.target_item else { return };
+        let ItemKind::ForeignMod(fm) = &item.kind else { return };
+        let abi = fm.abi.map_or(ExternAbi::FALLBACK, |abi| {
+            abi.symbol_unescaped.as_str().parse().unwrap_or(ExternAbi::Rust)
+        });
+        if matches!(abi, ExternAbi::Rust) {
+            cx.emit_lint(UNUSED_ATTRIBUTES, Link, attr_span);
+        }
     }
 }
 
@@ -584,7 +597,7 @@ impl NoArgsAttributeParser for FfiPureParser {
     const STABILITY: AttributeStability = unstable!(ffi_pure);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[ffi_const]` functions cannot be `#[ffi_pure]`.
         if cx.all_attrs.iter().any(|a| a.word_is(sym::ffi_const)) {
             cx.emit_err(BothFfiConstAndPure { attr_span });
