@@ -2,6 +2,13 @@
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
 
+// FIXME(f128): Merge `apple` revision once Apple releases Xcode with LLVM 22.
+//@ revisions: not-apple apple
+//@[not-apple] ignore-apple
+//@[apple] only-apple
+// `f128` support was added to `lldb` in version 22.
+//@ min-llvm-lldb-version: 22
+
 // === GDB TESTS ===================================================================================
 
 //@ gdb-command:run
@@ -50,6 +57,8 @@
 //@ gdb-command:print *f64_ref
 //@ gdb-check:$15 = 3.5
 
+// FIXME(f128): gdb doesn't support Rust `f128` yet.
+
 
 // === LLDB TESTS ==================================================================================
 
@@ -97,8 +106,11 @@
 //@ lldb-command:v *f64_ref
 //@ lldb-check:[...] 3.5
 
+//@ lldb-command:v *f128_ref
+//@[not-apple] lldb-check:[...] 4.5
+
 #![allow(unused_variables)]
-#![feature(f16)]
+#![feature(f16, f128)]
 
 fn main() {
     let bool_val: bool = true;
@@ -145,6 +157,9 @@ fn main() {
 
     let f64_val: f64 = 3.5;
     let f64_ref: &f64 = &f64_val;
+
+    let f128_val: f128 = 4.5;
+    let f128_ref: &f128 = &f128_val;
 
     zzz(); // #break
 }
