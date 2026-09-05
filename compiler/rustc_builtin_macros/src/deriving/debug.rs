@@ -1,5 +1,5 @@
-use rustc_ast::{self as ast, EnumDef, MetaItem, Safety};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_ast::{self as ast, EnumDef, Safety};
+use rustc_expand::base::ExtCtxt;
 use rustc_session::config::FmtDebug;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -11,9 +11,8 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_debug(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     // &mut ::std::fmt::Formatter
@@ -28,7 +27,7 @@ pub(crate) fn expand_deriving_debug(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: sym::fmt,
-            generics: Bounds::empty(),
+            generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![(fmtr, sym::character('f'))],
             ret_ty: Path(path_std!(fmt::Result)),
@@ -42,10 +41,10 @@ pub(crate) fn expand_deriving_debug(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
-fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     // We want to make sure we have the ctxt set so that we can use unstable methods
     let span = cx.with_def_site_ctxt(span);
 
@@ -55,12 +54,10 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
     }
 
     let (ident, vdata, fields) = match substr.fields {
-        Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
+        Struct(vdata, fields) => (substr.type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
         AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, substr),
-        EnumDiscr(..) | StaticStruct(..) | StaticEnum(..) => {
-            cx.dcx().span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
-        }
+        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
     let name = cx.expr_str(span, ident.name);
@@ -88,20 +85,15 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
     // The number of fields that can be handled without an array.
     const CUTOFF: usize = 5;
 
-    fn expr_for_field(
-        cx: &ExtCtxt<'_>,
-        field: &FieldInfo,
-        index: usize,
-        len: usize,
-    ) -> Box<ast::Expr> {
-        if index < len - 1 {
+    let expr_for_field = |field: &FieldInfo, index: usize| -> Box<ast::Expr> {
+        if index < fields.len() - 1 {
             field.self_expr.clone()
         } else {
             // Unsized types need an extra indirection, but only the last field
             // may be unsized.
             cx.expr_addr_of(field.span, field.self_expr.clone())
         }
-    }
+    };
 
     if fields.is_empty() {
         // Special case for no fields.
@@ -126,7 +118,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
                 args.push(name);
             }
 
-            let field = expr_for_field(cx, field, i, fields.len());
+            let field = expr_for_field(field, i);
             args.push(field);
         }
         let expr = cx.expr_call_global(span, fn_path_debug, args);
@@ -142,7 +134,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
                 name_exprs.push(cx.expr_str(field.span, field.name.unwrap().name));
             }
 
-            let field = expr_for_field(cx, field, i, fields.len());
+            let field = expr_for_field(field, i);
             value_exprs.push(field);
         }
 
@@ -224,7 +216,7 @@ fn show_fieldless_enum(
     cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,
-    substr: &Substructure<'_>,
+    substr: Substructure<'_>,
 ) -> BlockOrExpr {
     let fmt = substr.nonselflike_args[0].clone();
     let arms = def

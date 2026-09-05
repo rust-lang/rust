@@ -1,5 +1,5 @@
-use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety, ast};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_ast::{ExprKind, ItemKind, PatKind, Safety, ast};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
 
@@ -10,9 +10,8 @@ use crate::deriving::{path_std, pathvec};
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let ordering_ty = Path(path_std!(cmp::Ordering));
@@ -20,9 +19,7 @@ pub(crate) fn expand_deriving_partial_ord(
         Path(Path::new_(pathvec!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
     // Order in which to perform matching
-    let discr_then_data = if let Annotatable::Item(item) = item
-        && let ItemKind::Enum(_, _, def) = &item.kind
-    {
+    let discr_then_data = if let ItemKind::Enum(_, _, def) = &item.kind {
         let dataful: Vec<bool> = def.variants.iter().map(|v| !v.data.fields().is_empty()).collect();
         match dataful.iter().filter(|&&b| b).count() {
             // No data, placing the discriminant check first makes codegen simpler
@@ -49,35 +46,32 @@ pub(crate) fn expand_deriving_partial_ord(
     let simple_substructure = combine_substructure(|cx, span, _| {
         cs_partial_cmp_simple(cx, span, cx.expr_ident(span, Ident::new(sym::other, span)))
     });
-    let is_simple = match item {
-        Annotatable::Item(annitem) => match &annitem.kind {
-            // For unit structs/zero-variant enums, the default generated code is better.
-            ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
-            // Also for single fieldless variant enum
-            ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => false,
-            ItemKind::Enum(.., enum_def)
-                if enum_def.variants.len() == 1
-                    && matches!(enum_def.variants[0].data, ast::VariantData::Unit(..)) =>
-            {
-                false
-            }
-            ItemKind::Struct(_, ast::Generics { params, .. }, _)
-            | ItemKind::Enum(_, ast::Generics { params, .. }, _)
-                if has_derive_ord
-                    && !params
-                        .iter()
-                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })) =>
-            {
-                true
-            }
-            _ => false,
-        },
+    let is_simple = match &item.kind {
+        // For unit structs/zero-variant enums, the default generated code is better.
+        ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
+        // Also for single fieldless variant enum
+        ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => false,
+        ItemKind::Enum(.., enum_def)
+            if enum_def.variants.len() == 1
+                && matches!(enum_def.variants[0].data, ast::VariantData::Unit(..)) =>
+        {
+            false
+        }
+        ItemKind::Struct(_, ast::Generics { params, .. }, _)
+        | ItemKind::Enum(_, ast::Generics { params, .. }, _)
+            if has_derive_ord
+                && !params
+                    .iter()
+                    .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })) =>
+        {
+            true
+        }
         _ => false,
     };
 
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
-        generics: Bounds::empty(),
+        generics: cx.empty_generics(span),
         explicit_self: true,
         nonself_args: smallvec![(self_ref(), sym::other)],
         ret_ty,
@@ -99,7 +93,7 @@ pub(crate) fn expand_deriving_partial_ord(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand_ext(cx, mitem, item, push, is_simple)
+    trait_def.expand_ext(cx, item, push, is_simple)
 }
 
 // Special case for the type deriving both `PartialOrd` and `Ord`. Builds:
@@ -116,7 +110,7 @@ fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr
 fn cs_partial_cmp(
     cx: &ExtCtxt<'_>,
     span: Span,
-    substr: &Substructure<'_>,
+    substr: Substructure<'_>,
     discr_then_data: bool,
 ) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);

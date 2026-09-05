@@ -767,4 +767,16 @@ impl<'a> ExtCtxt<'a> {
         let g = &self.sess.psess.attr_id_generator;
         attr::mk_attr_from_item(g, inner, None, ast::AttrStyle::Outer, span)
     }
+
+    pub fn empty_generics(&self, span: Span) -> ast::Generics {
+        ast::Generics {
+            params: ThinVec::new(),
+            where_clause: ast::WhereClause {
+                has_where_token: false,
+                predicates: ThinVec::new(),
+                span,
+            },
+            span,
+        }
+    }
 }

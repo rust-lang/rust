@@ -1,5 +1,5 @@
-use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability, Safety};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
 
@@ -12,9 +12,8 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_partial_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let structural_trait_def = TraitDef {
@@ -35,21 +34,19 @@ pub(crate) fn expand_deriving_partial_eq(
         safety: Safety::Default,
         document: true,
     };
-    structural_trait_def.expand(cx, mitem, item, push);
+    structural_trait_def.expand(cx, item, push);
 
     // No need to generate `ne`, the default suffices, and not generating it is
     // faster.
     let methods = smallvec![MethodDef {
         name: sym::eq,
-        generics: Bounds::empty(),
+        generics: cx.empty_generics(span),
         explicit_self: true,
         nonself_args: smallvec![(self_ref(), sym::other)],
         ret_ty: Path(generic::ty::Path::new_local(sym::bool)),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: combine_substructure(|a, b, c| {
-            BlockOrExpr::new_expr(get_substructure_equality_expr(a, b, c))
-        }),
+        combine_substructure: combine_substructure(get_substructure_equality_expr),
     }];
 
     let trait_def = TraitDef {
@@ -65,7 +62,7 @@ pub(crate) fn expand_deriving_partial_eq(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 /// Generates the equality expression for a struct or enum variant when deriving
@@ -122,11 +119,11 @@ pub(crate) fn expand_deriving_partial_eq(
 fn get_substructure_equality_expr(
     cx: &ExtCtxt<'_>,
     span: Span,
-    substructure: &Substructure<'_>,
-) -> Box<Expr> {
+    substructure: Substructure<'_>,
+) -> BlockOrExpr {
     use SubstructureFields::*;
 
-    match substructure.fields {
+    BlockOrExpr::new_expr(match substructure.fields {
         EnumMatching(.., fields) | Struct(.., fields) => {
             let combine = move |acc, field| {
                 let rhs = get_field_equality_expr(cx, field);
@@ -143,33 +140,23 @@ fn get_substructure_equality_expr(
             // with logical AND.
             fields
                 .iter()
-                .filter(|field| !field.maybe_scalar)
-                .fold(fields.iter().filter(|field| field.maybe_scalar).fold(None, combine), combine)
+                .filter(|field| field.maybe_scalar)
+                .chain(fields.iter().filter(|field| !field.maybe_scalar))
+                .fold(None, combine)
                 // If there are no fields, treat as always equal.
                 .unwrap_or_else(|| cx.expr_bool(span, true))
         }
         EnumDiscr(disc, match_expr) => {
-            let lhs = get_field_equality_expr(cx, disc);
+            let lhs = get_field_equality_expr(cx, &disc);
             let Some(match_expr) = match_expr else {
-                return lhs;
+                return BlockOrExpr::new_expr(lhs);
             };
             // Compare the discriminant first (cheaper), then the rest of the
             // fields.
             cx.expr_binary(disc.span, BinOpKind::And, lhs, match_expr.clone())
         }
-        StaticEnum(..) => cx.dcx().span_bug(
-            span,
-            "unexpected static enum encountered during `derive(PartialEq)` expansion",
-        ),
-        StaticStruct(..) => cx.dcx().span_bug(
-            span,
-            "unexpected static struct encountered during `derive(PartialEq)` expansion",
-        ),
-        AllFieldlessEnum(..) => cx.dcx().span_bug(
-            span,
-            "unexpected all-fieldless enum encountered during `derive(PartialEq)` expansion",
-        ),
-    }
+        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(PartialEq)`"),
+    })
 }
 
 /// Generates an equality comparison expression for a single struct or enum

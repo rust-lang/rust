@@ -1,6 +1,6 @@
-use rustc_ast::{self as ast, MetaItem, Safety};
+use rustc_ast::{self as ast, Safety};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -11,9 +11,8 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let span = cx.with_def_site_ctxt(span);
@@ -27,7 +26,7 @@ pub(crate) fn expand_deriving_eq(
         supports_unions: true,
         methods: smallvec![MethodDef {
             name: sym::assert_fields_are_eq,
-            generics: Bounds::empty(),
+            generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![],
             ret_ty: Unit,
@@ -46,14 +45,10 @@ pub(crate) fn expand_deriving_eq(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand_ext(cx, mitem, item, push, true)
+    trait_def.expand_ext(cx, item, push, true)
 }
 
-fn cs_total_eq_assert(
-    cx: &ExtCtxt<'_>,
-    trait_span: Span,
-    substr: &Substructure<'_>,
-) -> BlockOrExpr {
+fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
     let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &ast::VariantData| {
@@ -78,7 +73,7 @@ fn cs_total_eq_assert(
         }
     };
 
-    match *substr.fields {
+    match substr.fields {
         StaticStruct(vdata, ..) => {
             process_variant(vdata);
         }
