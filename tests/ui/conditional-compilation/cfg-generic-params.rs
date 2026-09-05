@@ -7,8 +7,8 @@ type FnGood = for<#[cfg(yes)] 'a, #[cfg(false)] T> fn(); // OK
 type FnBad = for<#[cfg(false)] 'a, #[cfg(yes)] T> fn();
 //~^ ERROR only lifetime parameters can be used in this context
 
-type PolyGood = dyn for<#[cfg(yes)] 'a, #[cfg(false)] T> Copy; // OK
-type PolyBad = dyn for<#[cfg(false)] 'a, #[cfg(yes)] T> Copy;
+type PolyGood = dyn for<#[cfg(yes)] 'a, #[cfg(false)] T> std::any::Any; // OK
+type PolyBad = dyn for<#[cfg(false)] 'a, #[cfg(yes)] T> std::any::Any;
 //~^ ERROR only lifetime parameters can be used in this context
 
 struct WhereGood where for<#[cfg(yes)] 'a, #[cfg(false)] T> u8: Copy; // OK
@@ -26,8 +26,8 @@ type FnNo = for<#[cfg_attr(FALSE, unknown)] 'a> fn(); // OK
 type FnYes = for<#[cfg_attr(yes, unknown)] 'a> fn();
 //~^ ERROR cannot find attribute `unknown` in this scope
 
-type PolyNo = dyn for<#[cfg_attr(FALSE, unknown)] 'a> Copy; // OK
-type PolyYes = dyn for<#[cfg_attr(yes, unknown)] 'a> Copy;
+type PolyNo = dyn for<#[cfg_attr(FALSE, unknown)] 'a> std::any::Any; // OK
+type PolyYes = dyn for<#[cfg_attr(yes, unknown)] 'a> std::any::Any;
 //~^ ERROR cannot find attribute `unknown` in this scope
 
 struct WhereNo where for<#[cfg_attr(FALSE, unknown)] 'a> u8: Copy; // OK
