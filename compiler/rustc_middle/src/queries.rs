@@ -44,7 +44,7 @@
 //! For more details, see the [rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/query.html).
 
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
 use rustc_abi as abi;
@@ -68,7 +68,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
-use rustc_index::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_lint_defs::{LintId, StableLintExpectationId};
 use rustc_macros::rustc_queries;
 use rustc_session::Limits;
@@ -204,14 +204,13 @@ rustc_queries! {
         desc { "getting the resolver for lowering" }
     }
 
-    query index_ast(_: ()) -> &'tcx IndexVec<LocalDefId, Steal<(
+    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Steal<(
         // There is only a single `ResolverAstLowering` for all owners.
         // We want to drop it once the whole HIR has been lowered.
         // We rely on reference counting to know when all definitions have been stolen.
         Arc<ResolverAstLowering<'tcx>>,
         AstOwner,
     )>> {
-        arena_cache
         eval_always
         no_hash
         desc { "getting the AST for lowering" }
@@ -1313,7 +1312,6 @@ rustc_queries! {
     /// Return the set of (transitive) callees that may result in a recursive call to `key`,
     /// if we were able to walk all callees.
     query mir_callgraph_cyclic(key: LocalDefId) -> Option<&'tcx UnordSet<LocalDefId>> {
-        arena_cache
         desc {
             "computing (transitive) callees of `{}` that may recurse",
             tcx.def_path_str(key),
@@ -1442,7 +1440,6 @@ rustc_queries! {
 
     /// Generates a MIR body for the shim.
     query mir_shims(key: ty::ShimKind<'tcx>) -> &'tcx mir::Body<'tcx> {
-        arena_cache
         desc {
             "generating MIR shim for `{}`, kind={:?}",
             tcx.def_path_str(key.def_id()),
@@ -2070,16 +2067,14 @@ rustc_queries! {
 
     /// Gets the extra data to put in each output filename for a crate.
     /// For example, compiling the `foo` crate with `extra-filename=-a` creates a `libfoo-b.rlib` file.
-    query extra_filename(_: CrateNum) -> &'tcx String {
-        arena_cache
+    query extra_filename(_: CrateNum) -> &'tcx str {
         eval_always
         desc { "looking up the extra filename for a crate" }
         separate_provide_extern
     }
 
     /// Gets the paths where the crate came from in the file system.
-    query crate_extern_paths(_: CrateNum) -> &'tcx Vec<PathBuf> {
-        arena_cache
+    query crate_extern_paths(_: CrateNum) -> &'tcx [&'tcx Path] {
         eval_always
         desc { "looking up the paths for extern crates" }
         separate_provide_extern

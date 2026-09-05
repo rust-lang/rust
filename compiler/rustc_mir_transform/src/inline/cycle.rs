@@ -150,7 +150,7 @@ fn process<'tcx>(
 pub(crate) fn mir_callgraph_cyclic<'tcx>(
     tcx: TyCtxt<'tcx>,
     root: LocalDefId,
-) -> Option<UnordSet<LocalDefId>> {
+) -> Option<&'tcx UnordSet<LocalDefId>> {
     assert!(
         !tcx.is_constructor(root.to_def_id()),
         "you should not call `mir_callgraph_reachable` on enum/struct constructor functions"
@@ -170,7 +170,7 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
         ty::Instance::new_raw(root.to_def_id(), ty::GenericArgs::identity_for_item(tcx, root));
     if !should_recurse(tcx, root_instance) {
         trace!("cannot walk, skipping");
-        return Some(involved.into());
+        return Some(tcx.arena.alloc(involved.into()));
     }
     match process(
         tcx,
@@ -182,7 +182,7 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
         &mut FxHashMap::default(),
         recursion_limit,
     ) {
-        Some(_) => Some(involved.into()),
+        Some(_) => Some(tcx.arena.alloc(involved.into())),
         _ => None,
     }
 }

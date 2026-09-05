@@ -707,12 +707,41 @@ pub macro declare_arena(
             self.dropless.alloc_str(string)
         }
 
+        #[inline]
+        pub fn alloc_os_str(&self, os_str: &::std::ffi::OsStr) -> &::std::ffi::OsStr {
+            use ::std::ffi::OsStr;
+            if os_str.is_empty() {
+                return OsStr::new("");
+            }
+            let bytes = self.dropless.alloc_slice(os_str.as_encoded_bytes());
+            // SAFETY: These bytes are an exact copy of `os_str.as_encoded_bytes()`.
+            unsafe { OsStr::from_encoded_bytes_unchecked(bytes) }
+        }
+
+        #[inline]
+        pub fn alloc_path(&self, path: &::std::path::Path) -> &::std::path::Path {
+            use ::std::path::Path;
+            Path::new(self.alloc_os_str(path.as_os_str()))
+        }
+
         #[allow(clippy::mut_from_ref)]
         pub fn alloc_from_iter<T: ArenaAllocatable<'tcx, C>, C>(
             &'tcx self,
             iter: impl ::std::iter::IntoIterator<Item = T>,
         ) -> &mut [T] {
             T::allocate_from_iter(self, iter)
+        }
+
+        #[allow(clippy::mut_from_ref)]
+        pub fn alloc_index_slice_from_iter<I, T, C>(
+            &'tcx self,
+            iter: impl ::std::iter::IntoIterator<Item = T>,
+        ) -> &mut ::rustc_index::IndexSlice<I, T>
+        where
+            I: ::rustc_index::Idx,
+            T: ArenaAllocatable<'tcx, C>,
+        {
+            ::rustc_index::IndexSlice::from_raw_mut(self.alloc_from_iter(iter))
         }
     }
 }
