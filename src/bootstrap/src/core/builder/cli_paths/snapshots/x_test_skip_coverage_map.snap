@@ -186,6 +186,9 @@ expression: test --skip=coverage-map
 [Test] test::StdarchVerify
     targets: [x86_64-unknown-linux-gnu]
     - Set({library/stdarch/crates/stdarch-verify})
+[Test] test::CoreArchTest
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({core-arch})
 [Test] test::RustdocJSStd
     targets: [x86_64-unknown-linux-gnu]
     - Suite(tests/rustdoc-js-std)
