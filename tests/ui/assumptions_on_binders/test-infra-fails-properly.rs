@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders -Znext-solver
 #![feature(test_binder_constraints)]
 #![expect(incomplete_features)]
 

@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Overlap` for type `Box<_>`
-  --> $DIR/ambiguity-causes-visitor-hang.rs:53:1
+  --> $DIR/ambiguity-causes-visitor-hang.rs:51:1
    |
 LL | impl<T: RecursiveSuper> Overlap for T {}
    | ------------------------------------- first implementation here

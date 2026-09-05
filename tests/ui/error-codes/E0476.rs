@@ -1,5 +1,3 @@
-//@ revisions: old next
-//@[next] compile-flags: -Znext-solver=coherence
 #![feature(coerce_unsized)]
 #![feature(unsize)]
 
