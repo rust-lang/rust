@@ -74,6 +74,7 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "//@ lldb",
     "//@ cdb",
     "//@ normalize-stderr",
+    "//@ revisions",
 ];
 
 fn generate_problems<'a>(

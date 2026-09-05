@@ -73,6 +73,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     pub supports_128bit_integers: bool,
     pub supports_f16_type: bool,
+    pub supports_f16b_type: bool,
     pub supports_f32_type: bool,
     pub supports_f64_type: bool,
     pub supports_f128_type: bool,
@@ -141,6 +142,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         tcx: TyCtxt<'tcx>,
         supports_128bit_integers: bool,
         supports_f16_type: bool,
+        supports_f16b_type: bool,
         supports_f32_type: bool,
         supports_f64_type: bool,
         supports_f128_type: bool,
@@ -277,6 +279,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
             supports_128bit_integers,
             supports_f16_type,
+            supports_f16b_type,
             supports_f32_type,
             supports_f64_type,
             supports_f128_type,
