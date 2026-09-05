@@ -135,11 +135,10 @@
 //!   entirely, but the Linux targets [use the kernel] to assist (which comes
 //!   with a performance penalty). It's not until ARMv6K onwards that ARM CPUs
 //!   have support for load/store and Compare and Swap (CAS) atomics in hardware.
-//! * ARMv6-M and ARMv8-M baseline targets (`thumbv6m-*` and
-//!   `thumbv8m.base-*`) only provide `load` and `store` operations, and do
+//! * ARMv6-M targets (`thumbv6m-*`) only provide `load` and `store` operations, and do
 //!   not support Compare and Swap (CAS) operations, such as `swap`,
 //!   `fetch_add`, etc. Full CAS support is available on ARMv7-M and ARMv8-M
-//!   Mainline (`thumbv7m-*`, `thumbv7em*` and `thumbv8m.main-*`).
+//!   (`thumbv7m-*`, `thumbv7em*`, `thumbv8m.base-*` and `thumbv8m.main-*`).
 //!
 //! [use the kernel]: https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 //!
