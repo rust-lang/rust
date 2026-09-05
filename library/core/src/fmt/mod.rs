@@ -716,6 +716,7 @@ impl<'a> Formatter<'a> {
 pub struct Arguments<'a> {
     template: NonNull<u8>,
     args: NonNull<rt::Argument<'a>>,
+    estimated_capacity: usize,
 }
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
@@ -729,9 +730,16 @@ impl<'a> Arguments<'a> {
     pub unsafe fn new<const N: usize, const M: usize>(
         template: &'a [u8; N],
         args: &'a [rt::Argument<'a>; M],
+        estimated_capacity: usize,
     ) -> Arguments<'a> {
         // SAFETY: Responsibility of the caller.
-        unsafe { Arguments { template: mem::transmute(template), args: mem::transmute(args) } }
+        unsafe {
+            Arguments {
+                template: mem::transmute(template),
+                args: mem::transmute(args),
+                estimated_capacity,
+            }
+        }
     }
 
     // Same as `from_str`, but not const.
@@ -752,57 +760,7 @@ impl<'a> Arguments<'a> {
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[inline]
     pub fn estimated_capacity(&self) -> usize {
-        if let Some(s) = self.as_str() {
-            return s.len();
-        }
-        // Iterate over the template, counting the length of literal pieces.
-        let mut length = 0usize;
-        let mut starts_with_placeholder = false;
-        let mut template = self.template;
-        loop {
-            // SAFETY: We can assume the template is valid.
-            unsafe {
-                let n = template.read();
-                template = template.add(1);
-                if n == 0 {
-                    // End of template.
-                    break;
-                } else if n < 128 {
-                    // Short literal string piece.
-                    length += n as usize;
-                    template = template.add(n as usize);
-                } else if n == 128 {
-                    // Long literal string piece.
-                    let len = usize::from(u16::from_le_bytes(template.cast_array().read()));
-                    length += len;
-                    template = template.add(2 + len);
-                } else {
-                    assert_unchecked(n >= 0xC0);
-                    // Placeholder piece.
-                    if length == 0 {
-                        starts_with_placeholder = true;
-                    }
-                    // Skip remainder of placeholder:
-                    let skip = (n & 1 != 0) as usize * 4 // flags (32 bit)
-                        + (n & 2 != 0) as usize * 2  // width     (16 bit)
-                        + (n & 4 != 0) as usize * 2  // precision (16 bit)
-                        + (n & 8 != 0) as usize * 2; // arg_index (16 bit)
-                    template = template.add(skip as usize);
-                }
-            }
-        }
-
-        if starts_with_placeholder && length < 16 {
-            // If the format string starts with a placeholder,
-            // don't preallocate anything, unless length
-            // of literal pieces is significant.
-            0
-        } else {
-            // There are some placeholders, so any additional push
-            // will reallocate the string. To avoid that,
-            // we're "pre-doubling" the capacity here.
-            length.wrapping_mul(2)
-        }
+        self.estimated_capacity
     }
 }
 
@@ -818,6 +776,7 @@ impl<'a> Arguments<'a> {
             Arguments {
                 template: mem::transmute(s.as_ptr()),
                 args: mem::transmute(s.len() << 1 | 1),
+                estimated_capacity: s.len(),
             }
         }
     }
@@ -1628,113 +1587,125 @@ pub trait UpperExp: PointeeSized {
 ///
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
+#[inline]
 pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
-    if let Some(s) = fmt.as_str() {
-        return output.write_str(s);
-    }
+    return inner(output, fmt.template, fmt.args);
 
-    let mut template = fmt.template;
-    let args = fmt.args;
+    fn inner(
+        output: &mut dyn Write,
+        template: NonNull<u8>,
+        args: NonNull<rt::Argument<'_>>,
+    ) -> Result {
+        let fmt = Arguments { template, args, estimated_capacity: 0 };
 
-    let mut arg_index = 0;
+        if let Some(s) = fmt.as_str() {
+            return output.write_str(s);
+        }
 
-    // See comment on `fmt::Arguments` for the details of how the template is encoded.
+        let mut template = fmt.template;
+        let args = fmt.args;
 
-    // This must match the encoding from `expand_format_args` in
-    // compiler/rustc_ast_lowering/src/format.rs.
-    loop {
-        // SAFETY: We can assume the template is valid.
-        let n = unsafe {
-            let n = template.read();
-            template = template.add(1);
-            n
-        };
+        let mut arg_index = 0;
 
-        if n == 0 {
-            // End of template.
-            return Ok(());
-        } else if n < 0x80 {
-            // Literal string piece of length `n`.
+        // See comment on `fmt::Arguments` for the details of how the template is encoded.
 
-            // SAFETY: We can assume the strings in the template are valid.
-            let s = unsafe {
-                let s = crate::str::from_raw_parts(template.as_ptr(), n as usize);
-                template = template.add(n as usize);
-                s
-            };
-            output.write_str(s)?;
-        } else if n == 0x80 {
-            // Literal string piece with a 16-bit length.
-
-            // SAFETY: We can assume the strings in the template are valid.
-            let s = unsafe {
-                let len = usize::from(u16::from_le_bytes(template.cast_array().read()));
-                template = template.add(2);
-                let s = crate::str::from_raw_parts(template.as_ptr(), len);
-                template = template.add(len);
-                s
-            };
-            output.write_str(s)?;
-        } else if n == 0xC0 {
-            // Placeholder for next argument with default options.
-            //
-            // Having this as a separate case improves performance for the common case.
-
-            // SAFETY: We can assume the template only refers to arguments that exist.
-            unsafe {
-                args.add(arg_index)
-                    .as_ref()
-                    .fmt(&mut Formatter::new(output, FormattingOptions::new()))?;
-            }
-            arg_index += 1;
-        } else {
+        // This must match the encoding from `expand_format_args` in
+        // compiler/rustc_ast_lowering/src/format.rs.
+        loop {
             // SAFETY: We can assume the template is valid.
-            unsafe { assert_unchecked(n > 0xC0) };
+            let n = unsafe {
+                let n = template.read();
+                template = template.add(1);
+                n
+            };
 
-            // Placeholder with custom options.
+            if n == 0 {
+                // End of template.
+                return Ok(());
+            } else if n < 0x80 {
+                // Literal string piece of length `n`.
 
-            let mut opt = FormattingOptions::new();
+                // SAFETY: We can assume the strings in the template are valid.
+                let s = unsafe {
+                    let s = crate::str::from_raw_parts(template.as_ptr(), n as usize);
+                    template = template.add(n as usize);
+                    s
+                };
+                output.write_str(s)?;
+            } else if n == 0x80 {
+                // Literal string piece with a 16-bit length.
 
-            // SAFETY: We can assume the template is valid.
-            unsafe {
-                if n & 1 != 0 {
-                    opt.flags = u32::from_le_bytes(template.cast_array().read());
-                    template = template.add(4);
-                }
-                if n & 2 != 0 {
-                    opt.width = u16::from_le_bytes(template.cast_array().read());
+                // SAFETY: We can assume the strings in the template are valid.
+                let s = unsafe {
+                    let len = usize::from(u16::from_le_bytes(template.cast_array().read()));
                     template = template.add(2);
-                }
-                if n & 4 != 0 {
-                    opt.precision = u16::from_le_bytes(template.cast_array().read());
-                    template = template.add(2);
-                }
-                if n & 8 != 0 {
-                    arg_index = usize::from(u16::from_le_bytes(template.cast_array().read()));
-                    template = template.add(2);
-                }
-            }
-            if n & 16 != 0 {
-                // Dynamic width from a usize argument.
+                    let s = crate::str::from_raw_parts(template.as_ptr(), len);
+                    template = template.add(len);
+                    s
+                };
+                output.write_str(s)?;
+            } else if n == 0xC0 {
+                // Placeholder for next argument with default options.
+                //
+                // Having this as a separate case improves performance for the common case.
+
                 // SAFETY: We can assume the template only refers to arguments that exist.
                 unsafe {
-                    opt.width = args.add(opt.width as usize).as_ref().as_u16().unwrap_unchecked();
+                    args.add(arg_index)
+                        .as_ref()
+                        .fmt(&mut Formatter::new(output, FormattingOptions::new()))?;
                 }
-            }
-            if n & 32 != 0 {
-                // Dynamic precision from a usize argument.
+                arg_index += 1;
+            } else {
+                // SAFETY: We can assume the template is valid.
+                unsafe { assert_unchecked(n > 0xC0) };
+
+                // Placeholder with custom options.
+
+                let mut opt = FormattingOptions::new();
+
+                // SAFETY: We can assume the template is valid.
+                unsafe {
+                    if n & 1 != 0 {
+                        opt.flags = u32::from_le_bytes(template.cast_array().read());
+                        template = template.add(4);
+                    }
+                    if n & 2 != 0 {
+                        opt.width = u16::from_le_bytes(template.cast_array().read());
+                        template = template.add(2);
+                    }
+                    if n & 4 != 0 {
+                        opt.precision = u16::from_le_bytes(template.cast_array().read());
+                        template = template.add(2);
+                    }
+                    if n & 8 != 0 {
+                        arg_index = usize::from(u16::from_le_bytes(template.cast_array().read()));
+                        template = template.add(2);
+                    }
+                }
+                if n & 16 != 0 {
+                    // Dynamic width from a usize argument.
+                    // SAFETY: We can assume the template only refers to arguments that exist.
+                    unsafe {
+                        opt.width =
+                            args.add(opt.width as usize).as_ref().as_u16().unwrap_unchecked();
+                    }
+                }
+                if n & 32 != 0 {
+                    // Dynamic precision from a usize argument.
+                    // SAFETY: We can assume the template only refers to arguments that exist.
+                    unsafe {
+                        opt.precision =
+                            args.add(opt.precision as usize).as_ref().as_u16().unwrap_unchecked();
+                    }
+                }
+
                 // SAFETY: We can assume the template only refers to arguments that exist.
                 unsafe {
-                    opt.precision =
-                        args.add(opt.precision as usize).as_ref().as_u16().unwrap_unchecked();
+                    args.add(arg_index).as_ref().fmt(&mut Formatter::new(output, opt))?;
                 }
+                arg_index += 1;
             }
-
-            // SAFETY: We can assume the template only refers to arguments that exist.
-            unsafe {
-                args.add(arg_index).as_ref().fmt(&mut Formatter::new(output, opt))?;
-            }
-            arg_index += 1;
         }
     }
 }
