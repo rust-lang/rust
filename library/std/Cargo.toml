@@ -59,7 +59,7 @@ object = { version = "0.39", default-features = false, optional = true, features
 path = "../windows_link"
 
 [dev-dependencies]
-rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
+rand = { version = "0.10.0", default-features = false, features = ["alloc"] }
 rand_xorshift = "0.4.0"
 
 [target.'cfg(any(all(target_family = "wasm", not(any(unix, target_os = "wasi"))), target_os = "xous", target_os = "vexos", all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
