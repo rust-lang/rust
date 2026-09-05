@@ -181,7 +181,7 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         return;
     };
     // Unlike the call-site check, we do also check "Rust" ABI functions here. This can actually
-    // trigger due to scalable vectors being require for the "Rust" ABI for some types.
+    // trigger due to scalable vectors being required for the "Rust" ABI for some types.
     let loc = || {
         let def_id = instance.def_id();
         (
@@ -207,8 +207,11 @@ fn check_call_site_abi<'tcx>(
     if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::LlvmIntrinsic {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.
+        // FIXME(#161753, rustc_scalable_vector/stdarch_aarch64_sve): this is unsound! Above we
+        // argue we need the callee-site check for the Rust ABI; we need the call-site check here as
+        // well then.
         // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
-        // LLVM intrinsics
+        // LLVM intrinsics. The caller is responsible for ensuring the ABI makes sense.
         return;
     }
     let typing_env = ty::TypingEnv::fully_monomorphized();
