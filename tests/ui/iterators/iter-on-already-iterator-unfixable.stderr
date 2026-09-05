@@ -1,0 +1,16 @@
+error[E0599]: no method named `iter` found for struct `std::vec::IntoIter<T, A>` in the current scope
+  --> $DIR/iter-on-already-iterator-unfixable.rs:15:32
+   |
+LL |     let _ = receiver . /* . */ iter();
+   |                                ^^^^
+   |
+   = note: `std::vec::IntoIter<{integer}>` already implements `Iterator`
+help: consider removing the `.iter()` call
+   |
+LL -     let _ = receiver . /* . */ iter();
+LL +     let _ = receiver ;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.
