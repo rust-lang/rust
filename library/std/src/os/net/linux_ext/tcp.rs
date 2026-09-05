@@ -37,7 +37,7 @@ pub impl(self) trait TcpStreamExt {
     /// #[cfg(target_os = "android")]
     /// use std::os::android::net::TcpStreamExt;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///         .expect("Couldn't connect to the server...");
     /// stream.set_quickack(true).expect("set_quickack call failed");
     /// ```
@@ -64,7 +64,7 @@ pub impl(self) trait TcpStreamExt {
     /// #[cfg(target_os = "android")]
     /// use std::os::android::net::TcpStreamExt;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///         .expect("Couldn't connect to the server...");
     /// stream.set_quickack(true).expect("set_quickack call failed");
     /// assert_eq!(stream.quickack().unwrap_or(false), true);
@@ -92,7 +92,7 @@ pub impl(self) trait TcpStreamExt {
     /// use std::os::linux::net::TcpStreamExt;
     /// use std::time::Duration;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///         .expect("Couldn't connect to the server...");
     /// stream.set_deferaccept(Duration::from_secs(1u64)).expect("set_deferaccept call failed");
     /// ```
@@ -119,7 +119,7 @@ pub impl(self) trait TcpStreamExt {
     /// use std::os::linux::net::TcpStreamExt;
     /// use std::time::Duration;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    /// let stream = TcpStream::connect("[::1]:8080")
     ///         .expect("Couldn't connect to the server...");
     /// stream.set_deferaccept(Duration::from_secs(1u64)).expect("set_deferaccept call failed");
     /// assert_eq!(stream.deferaccept().unwrap(), Duration::from_secs(1u64));
