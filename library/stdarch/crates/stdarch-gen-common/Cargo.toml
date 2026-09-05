@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 tempfile = "3"
+similar = "2"
