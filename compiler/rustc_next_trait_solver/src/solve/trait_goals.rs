@@ -1305,8 +1305,20 @@ where
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         });
 
+        let opaque_types_may_leak = match self.typing_mode() {
+            TypingMode::PostTypeckUntilBorrowck { .. } => false,
+            TypingMode::Coherence
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::Reflection
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::ErasedNotCoherence(MayBeErased) => true,
+        };
+
         match candidate {
             Ok(candidate) if has_only_region_constraints(candidate.result) => Ok(candidate),
+            Ok(candidate) if !opaque_types_may_leak => Ok(candidate),
             Ok(_) => self.forced_ambiguity(MaybeInfo::AMBIGUOUS),
             Err(err) => Err(err),
         }
