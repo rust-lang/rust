@@ -2237,7 +2237,8 @@ impl Step for FileCheck {
                 let llvm_bindir =
                     command(llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
                 let filecheck = Path::new(llvm_bindir.trim()).join(exe("FileCheck", self.target));
-                let filecheck = if filecheck.exists() {
+
+                if filecheck.exists() {
                     filecheck
                 } else {
                     // On Fedora the system LLVM installs FileCheck in the
@@ -2255,8 +2256,7 @@ impl Step for FileCheck {
                         // refers to that.
                         filecheck
                     }
-                };
-                filecheck
+                }
             } else {
                 // In other cases, just guess that Filecheck is available in the same directory
                 // as the llvm-config
