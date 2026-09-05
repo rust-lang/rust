@@ -1153,7 +1153,7 @@ impl CommandLineStep for Rustc {
                 target_doc_dir.join("rustc_middle").join("index.html")
             } else if let Some(krate) = self.crates.first() {
                 // Let's open the first crate documentation page:
-                target_doc_dir.join(krate).join("index.html")
+                target_doc_dir.join(normalize_doc_crate_name(krate)).join("index.html")
             } else {
                 target_doc_dir.clone()
             };
