@@ -17,6 +17,7 @@ enum ArgumentType<'a> {
         // was derived from a `&'a T`.
         value: NonNull<()>,
         formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result,
+        hint: unsafe fn(NonNull<()>) -> Option<usize>,
         _lifetime: PhantomData<&'a ()>,
     },
     Count(u16),
@@ -40,7 +41,7 @@ pub struct Argument<'a> {
 }
 
 macro_rules! argument_new {
-    ($t:ty, $x:expr, $f:expr) => {
+    ($t:ty, $x:expr, $f:expr, $hint:expr) => {
         Argument {
             // INVARIANT: this creates an `ArgumentType<'a>` from a `&'a T` and
             // a `fn(&T, ...)`, so the invariant is maintained.
@@ -78,6 +79,19 @@ macro_rules! argument_new {
                     let r = unsafe { ptr.cast::<$t>().as_ref() };
                     (func)(r, fmt)
                 },
+                #[cfg(not(any(sanitize = "cfi", sanitize = "kcfi")))]
+                hint: {
+                    let f: fn(&$t) -> Option<usize> = $hint;
+                    // SAFETY: This is only called with `value`, which has the right type.
+                    unsafe { core::mem::transmute(f) }
+                },
+                #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
+                hint: |ptr: NonNull<()>| {
+                    let func = $hint;
+                    // SAFETY: This is the same type as the `value` field.
+                    let r = unsafe { ptr.cast::<$t>().as_ref() };
+                    (func)(r)
+                },
                 _lifetime: PhantomData,
             },
         }
@@ -87,43 +101,43 @@ macro_rules! argument_new {
 impl Argument<'_> {
     #[inline]
     pub const fn new_display<T: Display>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Display>::fmt)
+        argument_new!(T, x, <T as Display>::fmt, <T as Display>::size_hint)
     }
     #[inline]
     pub const fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Debug>::fmt)
+        argument_new!(T, x, <T as Debug>::fmt, |_: &T| None)
     }
     #[inline]
     pub const fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, |_: &T, _| Ok(()))
+        argument_new!(T, x, |_: &T, _| Ok(()), |_: &T| None)
     }
     #[inline]
     pub const fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Octal>::fmt)
+        argument_new!(T, x, <T as Octal>::fmt, |_: &T| None)
     }
     #[inline]
     pub const fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as LowerHex>::fmt)
+        argument_new!(T, x, <T as LowerHex>::fmt, |_: &T| None)
     }
     #[inline]
     pub const fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as UpperHex>::fmt)
+        argument_new!(T, x, <T as UpperHex>::fmt, |_: &T| None)
     }
     #[inline]
     pub const fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Pointer>::fmt)
+        argument_new!(T, x, <T as Pointer>::fmt, |_: &T| None)
     }
     #[inline]
     pub const fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as Binary>::fmt)
+        argument_new!(T, x, <T as Binary>::fmt, |_: &T| None)
     }
     #[inline]
     pub const fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as LowerExp>::fmt)
+        argument_new!(T, x, <T as LowerExp>::fmt, |_: &T| None)
     }
     #[inline]
     pub const fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
-        argument_new!(T, x, <T as UpperExp>::fmt)
+        argument_new!(T, x, <T as UpperExp>::fmt, |_: &T| None)
     }
     #[inline]
     #[track_caller]
@@ -152,6 +166,22 @@ impl Argument<'_> {
             ArgumentType::Placeholder { formatter, value, .. } => unsafe { formatter(value, f) },
             // SAFETY: the caller promised this.
             ArgumentType::Count(_) => unsafe { unreachable_unchecked() },
+        }
+    }
+
+    #[inline]
+    pub(super) unsafe fn hint(&self) -> Option<usize> {
+        match self.ty {
+            // SAFETY:
+            // Because of the invariant that if `formatter` had the type
+            // `fn(&T, _) -> _` then `value` has type `&'b T` where `'b` is
+            // the lifetime of the `ArgumentType`, and because references
+            // and `NonNull` are ABI-compatible, this is completely equivalent
+            // to calling the original function passed to `new` with the
+            // original reference, which is sound.
+            ArgumentType::Placeholder { value, hint, .. } => unsafe { hint(value) },
+            // SAFETY: the caller promised this.
+            ArgumentType::Count(_) => None,
         }
     }
 
