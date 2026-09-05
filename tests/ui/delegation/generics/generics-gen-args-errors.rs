@@ -28,13 +28,11 @@ mod test_1 {
         //~^ ERROR: cannot find type `asd` in this scope
         //~| ERROR: cannot find type `asd` in this scope
         //~| ERROR: cannot find type `asd` in this scope
-        //~| ERROR: unresolved item provided when a constant was expected
 
         reuse foo::<A, B, C> as xd;
         //~^ ERROR can't use generic parameters from outer item
         //~| ERROR can't use generic parameters from outer item
         //~| ERROR can't use generic parameters from outer item
-        //~| ERROR: unresolved item provided when a constant was expected
         //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
         //~| ERROR: inferred lifetimes are not allowed in delegations as we need to inherit signature
     }

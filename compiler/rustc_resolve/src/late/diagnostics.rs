@@ -669,11 +669,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
-        source: PathSource<'_, 'ast, 'ra>,
+        mut source: PathSource<'_, 'ast, 'ra>,
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
-        debug!(?res, ?source);
         let cross_namespace_res = res.filter(|res| !res.matches_ns(source.namespace()));
         let could_be_expr = res.is_some_and(|res| self.could_be_expr(res, span));
         let base_error = self.make_base_error(
@@ -687,6 +686,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let code = source.error_code(res.is_some());
         let mut err = self.r.dcx().struct_span_err(base_error.span, base_error.msg.clone());
         err.code(code);
+
+        if self.diag_metadata.currently_processing_generic_args
+            && let PathSource::Type = source
+            && let [segment] = path
+            && !segment.has_generic_args
+        {
+            source = PathSource::TypeParam;
+        }
 
         if let Some(res) = cross_namespace_res {
             err.note(format!(
@@ -1043,9 +1050,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 })
                                 .unwrap_or(false);
                             if field_is_format_named_arg {
-                                err.help(
-                                    format!("you might have meant to use the available field in a format string: `\"{{}}\", self.{}`", segment.ident.name),
-                                );
+                                err.help(format!(
+                                    "you might have meant to use the available field in a format \
+                                     string: `\"{{}}\", self.{}`",
+                                    segment.ident.name,
+                                ));
                             } else {
                                 err.span_suggestion_verbose(
                                     span.shrink_to_lo(),
