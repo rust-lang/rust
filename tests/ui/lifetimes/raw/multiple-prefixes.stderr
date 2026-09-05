@@ -1,8 +1,8 @@
-error: expected type, found `#`
-  --> $DIR/multiple-prefixes.rs:3:17
+error: expected one of `!` or `[`, found `r`
+  --> $DIR/multiple-prefixes.rs:3:18
    |
 LL | fn test(x: &'r#r#r ()) {}
-   |                 ^ expected type
+   |                  ^ expected one of `!` or `[`
 
 error: aborting due to 1 previous error
 

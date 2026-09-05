@@ -55,23 +55,23 @@ error: expected one of `(`, `::`, `=>`, or `=`, found `!`
 LL |     cfg!() => {}
    |        ^ expected one of `(`, `::`, `=>`, or `=`
 
-error: doc comments are not allowed on `cfg_select` branches
+error: doc comments cannot be applied to `cfg_select` branches
   --> $DIR/cfg_select.rs:208:5
    |
 LL |     /// doc comment
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ doc comments are not allowed here
 
-error: doc comments are not allowed on `cfg_select` branches
+error: doc comments cannot be applied to `cfg_select` branches
   --> $DIR/cfg_select.rs:211:5
    |
 LL |     /// doc comment
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ doc comments are not allowed here
 
-error: attributes are not allowed on `cfg_select` branches
+error: attributes cannot be applied to `cfg_select` branches
   --> $DIR/cfg_select.rs:217:5
    |
 LL |     #[cfg(false)]
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^ attributes are not allowed here
 
 error: an inner attribute is not permitted in this context
   --> $DIR/cfg_select.rs:224:5
@@ -95,17 +95,22 @@ LL -     //! inner doc comment
 LL +     // inner doc comment
    |
 
-error: doc comments are not allowed on `cfg_select` branches
-  --> $DIR/cfg_select.rs:239:5
+error: doc comments cannot be applied to `cfg_select` branches
+  --> $DIR/cfg_select.rs:231:5
    |
-LL |     /// line1
-   |     ^^^^^^^^^
-...
-LL |     /// line3
-   |     ^^^^^^^^^
+LL |     //! inner doc comment
+   |     ^^^^^^^^^^^^^^^^^^^^^ doc comments are not allowed here
+
+error: doc comments cannot be applied to `cfg_select` branches
+  --> $DIR/cfg_select.rs:240:5
+   |
+LL | /     /// line1
+...  |
+LL | |     /// line3
+   | |_____________^ doc comments are not allowed here
 
 error[E0753]: expected outer doc comment
-  --> $DIR/cfg_select.rs:249:5
+  --> $DIR/cfg_select.rs:250:5
    |
 LL |     //! inner doc comment
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -117,11 +122,13 @@ LL -     //! inner doc comment
 LL +     // inner doc comment
    |
 
-error: doc comments are not allowed on `cfg_select` branches
-  --> $DIR/cfg_select.rs:247:5
+error: doc comments cannot be applied to `cfg_select` branches
+  --> $DIR/cfg_select.rs:248:5
    |
-LL |     /// outer doc comment
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL | /     /// outer doc comment
+LL | |
+LL | |     //! inner doc comment
+   | |_________________________^ doc comments are not allowed here
 
 warning: unreachable configuration predicate
   --> $DIR/cfg_select.rs:136:5
@@ -183,7 +190,7 @@ LL |     cfg!() => {}
    = help: to expect this configuration use `--check-cfg=cfg(cfg)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
-error: aborting due to 17 previous errors; 7 warnings emitted
+error: aborting due to 18 previous errors; 7 warnings emitted
 
 Some errors have detailed explanations: E0539, E0565, E0753.
 For more information about an error, try `rustc --explain E0539`.

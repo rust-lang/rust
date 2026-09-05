@@ -206,16 +206,16 @@ cfg_select! {
 // Regression test for https://github.com/rust-lang/rust/issues/155701.
 cfg_select! {
     /// doc comment
-    //~^ ERROR doc comments are not allowed on `cfg_select` branches
+    //~^ ERROR doc comments cannot be applied to `cfg_select` branches
     debug_assertions => {}
     /// doc comment
-    //~^ ERROR doc comments are not allowed on `cfg_select` branches
+    //~^ ERROR doc comments cannot be applied to `cfg_select` branches
     _ => {}
 }
 
 cfg_select! {
     #[cfg(false)]
-    //~^ ERROR attributes are not allowed on `cfg_select` branches
+    //~^ ERROR attributes cannot be applied to `cfg_select` branches
     debug_assertions => {}
     _ => {}
 }
@@ -230,6 +230,7 @@ cfg_select! {
 cfg_select! {
     //! inner doc comment
     //~^ ERROR expected outer doc comment
+    //~| ERROR doc comments cannot be applied to `cfg_select` branches
     debug_assertions => {}
     _ => {}
 }
@@ -237,7 +238,7 @@ cfg_select! {
 cfg_select! {
     debug_assertions => {}
     /// line1
-    //~^ ERROR doc comments are not allowed on `cfg_select` branches
+    //~^ ERROR doc comments cannot be applied to `cfg_select` branches
     // line2
     /// line3
     _ => {}
@@ -245,7 +246,7 @@ cfg_select! {
 
 cfg_select! {
     /// outer doc comment
-    //~^ ERROR doc comments are not allowed on `cfg_select` branches
+    //~^ ERROR doc comments cannot be applied to `cfg_select` branches
     //! inner doc comment
     //~^ ERROR expected outer doc comment
     debug_assertions => {}
