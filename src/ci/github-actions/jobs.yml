@@ -68,7 +68,11 @@ runners:
     codebuild: true
     os: codebuild-ubuntu-22-36c-$github.run_id-$github.run_attempt
     <<: *base-job
-    
+
+  - &job-linux-8c
+    os: ubuntu-24.04-8core-32gb
+    <<: *base-job
+
 envs:
   production:
     &production
@@ -327,7 +331,7 @@ auto:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist-alt.sh
-    <<: *job-linux-36c-codebuild
+    <<: *job-linux-8c
 
   - name: dist-x86_64-musl
     env:
