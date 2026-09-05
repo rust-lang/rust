@@ -9,8 +9,8 @@ use crate::PassPolicy;
 pub(super) struct RemoveZsts;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(sess.mir_opt_level() > 0)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

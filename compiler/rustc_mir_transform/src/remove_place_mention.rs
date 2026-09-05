@@ -9,8 +9,8 @@ use crate::PassPolicy;
 pub(super) struct RemovePlaceMention;
 
 impl<'tcx> crate::MirPass<'tcx> for RemovePlaceMention {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(!sess.opts.unstable_opts.mir_preserve_ub)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(!ctx.opts.unstable_opts.mir_preserve_ub)
     }
 
     fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
