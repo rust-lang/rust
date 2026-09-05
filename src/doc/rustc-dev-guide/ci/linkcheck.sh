@@ -11,6 +11,9 @@ set_github_token() {
 
 if [ -z "$ENABLE_LINKCHECK" ] ; then
   echo "Skipping link check."
+  # mdBook writes the render context to extensions over stdin.
+  # Discard it so mdBook doesn't warn about a broken pipe.
+  cat > /dev/null
   exit 0
 fi
 

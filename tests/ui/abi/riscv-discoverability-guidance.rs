@@ -12,6 +12,8 @@
 
 //~? WARN unstable feature specified for `-Ctarget-feature`
 //~? NOTE this feature is not stably supported; its behavior can change in the future
+//~? NOTE previously accepted
+//~? NOTE for more information, see issue
 
 extern crate minicore;
 use minicore::*;

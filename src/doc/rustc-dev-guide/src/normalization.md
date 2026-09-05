@@ -214,7 +214,7 @@ and each entry point should only be used in specific parts of the compiler.
 An additional complication is that the compiler is currently undergoing a transition from the old trait solver to the new trait solver.
 As part of this transition, our approach to normalization in the compiler has changed somewhat significantly,
 resulting in some normalization entry points being "old solver only" slated for removal in the long-term once the new solver has stabilized.
-The transition can be tracked via the [WG-trait-system-refactor label] on Github.
+The transition can be tracked via the [WG-trait-system-refactor label] on GitHub.
 
 Here is a rough overview of the different entry points to normalization in the compiler:
 - `infcx.at.structurally_normalize`

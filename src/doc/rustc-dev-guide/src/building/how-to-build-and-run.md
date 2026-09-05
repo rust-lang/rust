@@ -152,10 +152,10 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 #### Running bootstrap slightly more conveniently
 
 There is a binary that wraps bootstrap called `x`.
-All it does is run `./x`, but it can be installed system-wide and run from any subdirectory of a checkout.
+It runs `./x`, and can be installed system-wide and run from any subdirectory of a checkout.
 It also looks up the appropriate version of Python to use and avoids depending on which shell you're currently using.
 
-You can install it with `cargo install --path src/tools/x`.
+You can install it with `cargo install --locked --path src/tools/x`.
 
 ## Create a `bootstrap.toml`
 
