@@ -26,3 +26,10 @@ type A4 = dyn + dyn;
 //[fail]~| ERROR cannot find trait `dyn` in this scope
 //[fail]~| WARN trait objects without an explicit `dyn` are deprecated
 //[fail]~| WARN this is accepted in the current edition
+
+// The `for<…> dyn …` -> `dyn for<…> …` recovery code used to incorrectly treat `dyn` as a keyword
+// in Rust 2015 even it's not followed by a token in the "trigger set".
+type A5 = for<> dyn;
+//[fail]~^ ERROR cannot find trait `dyn` in this scope
+//[fail]~| WARN trait objects without an explicit `dyn` are deprecated
+//[fail]~| WARN this is accepted in the current edition
