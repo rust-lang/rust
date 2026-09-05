@@ -39,7 +39,7 @@ impl<'tcx> crate::MirPass<'tcx> for EraseDerefTemps {
         EraseDerefTempsVisitor { tcx }.visit_body_preserves_cfg(body);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Later MIR stages assume that CopyForDeref is gone.
         PassPolicy::Required
     }
