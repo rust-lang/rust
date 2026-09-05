@@ -12,7 +12,6 @@
 //! The global cache has to be completely unobservable, while the per-cycle cache may impact
 //! behavior as long as the resulting behavior is still correct.
 use std::cmp::Ordering;
-use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, btree_map};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -25,6 +24,8 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 use rustc_type_ir::data_structures::HashMap;
 use tracing::{debug, instrument, trace};
+
+use crate::data_structures::hash_map::Entry;
 
 mod stack;
 use stack::{Stack, StackDepth, StackEntry};

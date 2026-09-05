@@ -260,7 +260,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
         for (fn_def_id, unused) in self
             .fn_def_ids_to_maybe_unused_mut
             .iter()
-            .filter(|(def_id, _)| !self.used_fn_def_ids.contains(def_id))
+            .filter(|(def_id, _)| !self.used_fn_def_ids.contains(*def_id))
         {
             let mut is_cfged = None;
             for input in unused {

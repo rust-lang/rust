@@ -1,4 +1,4 @@
-use std::collections::hash_map::Entry;
+use rustc_data_structures::hash_map::Entry;
 use std::sync::RwLock;
 
 use genmc_sys::{GENMC_GLOBAL_ADDRESSES_MASK, get_global_alloc_static_mask};

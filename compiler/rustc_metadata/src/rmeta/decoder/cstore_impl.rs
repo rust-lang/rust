@@ -461,8 +461,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         // sufficiently visible parent (considering modules that re-export the
         // external item to be parents).
         visible_parent_map: |tcx, ()| {
-            use std::collections::hash_map::Entry;
             use std::collections::vec_deque::VecDeque;
+
+            use rustc_data_structures::hash_map::Entry;
 
             let mut visible_parent_map: DefIdMap<DefId> = Default::default();
             // This is a secondary visible_parent_map, storing the DefId of

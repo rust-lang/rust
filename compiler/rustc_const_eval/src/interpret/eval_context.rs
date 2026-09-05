@@ -1,9 +1,9 @@
 use std::cell::RefCell;
-use std::collections::hash_map::Entry;
 
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::hash_map::Entry;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;

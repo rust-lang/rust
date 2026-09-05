@@ -1,7 +1,7 @@
 use std::assert_matches;
-use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::hash_map::Entry;
 use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageEarlyInfo, CoverageKind};
 use rustc_middle::mir::{self, BasicBlock, SourceInfo, UnOp};
 use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};

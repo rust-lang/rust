@@ -181,7 +181,7 @@ fn macro_braces(conf: &[MacroMatcher]) -> (FxHashMap<String, (char, char)>, usiz
         braces.insert(it.name.clone(), it.braces);
     }
 
-    #[expect(
+    #[allow(
         rustc::potential_query_instability,
         reason = "iteration order does not matter for `.max()`"
     )]

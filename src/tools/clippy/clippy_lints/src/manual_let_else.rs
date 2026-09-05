@@ -250,7 +250,7 @@ fn replace_in_pattern(
                     (None, Some(subpt)) => {
                         let subpt = replace_in_pattern(cx, span, ident_map, subpt, app, false);
                         // scanning for a value that matches is not sensitive to order
-                        #[expect(rustc::potential_query_instability)]
+                        #[allow(rustc::potential_query_instability)]
                         if ident_map.values().any(|(other_pat, _)| {
                             if let PatKind::Binding(_, _, other_name, _) = other_pat.kind {
                                 other_name == binding_name

@@ -93,13 +93,13 @@
 //! inlining, even when they are not marked `#[inline]`.
 
 use std::cmp;
-use std::collections::hash_map::Entry;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::hash_map::Entry;
 use rustc_data_structures::sync::par_join;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::attrs::lang_items::LangItem;

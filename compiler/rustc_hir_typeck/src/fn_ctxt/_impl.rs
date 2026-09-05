@@ -1,8 +1,8 @@
-use std::collections::hash_map::Entry;
 use std::slice;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::hash_map::Entry;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan,

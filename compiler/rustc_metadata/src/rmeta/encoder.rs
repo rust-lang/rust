@@ -1,11 +1,11 @@
 use std::borrow::Borrow;
-use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::hash_map::Entry;
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;

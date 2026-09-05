@@ -20,7 +20,6 @@
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
 #![feature(diagnostic_on_unknown)]
-#![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(rustc_attrs)]

@@ -1,9 +1,9 @@
-use std::collections::hash_map::Entry;
 use std::marker::PhantomData;
 use std::ops::Range;
 
 use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, Size, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::hash_map::Entry;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;

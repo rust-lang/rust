@@ -1,6 +1,11 @@
 pub use ena::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxBuildHasher;
-pub use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+
+// `hashbrown`'s hash map and set rather than the standard library's, matching
+// `rustc_data_structures::fx`. [LLM-generated]
+pub type HashMap<K, V> = hashbrown::HashMap<K, V, FxBuildHasher>;
+pub type HashSet<T> = hashbrown::HashSet<T, FxBuildHasher>;
+pub use hashbrown::hash_map;
 
 pub type IndexMap<K, V> = indexmap::IndexMap<K, V, FxBuildHasher>;
 pub type IndexSet<V> = indexmap::IndexSet<V, FxBuildHasher>;

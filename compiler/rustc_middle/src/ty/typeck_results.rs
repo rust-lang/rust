@@ -1,4 +1,3 @@
-use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::iter;
 
@@ -9,8 +8,8 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{
-    self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
-    OwnerId,
+    self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalMapEntry,
+    ItemLocalSet, Mutability, OwnerId,
 };
 use rustc_index::IndexVec;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -738,7 +737,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         self.data.get(&id.local_id)
     }
 
-    pub fn entry(&mut self, id: HirId) -> Entry<'_, hir::ItemLocalId, V> {
+    pub fn entry(&mut self, id: HirId) -> ItemLocalMapEntry<'_, V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.entry(id.local_id)
     }

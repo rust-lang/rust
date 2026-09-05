@@ -381,7 +381,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             if unused_arms.is_empty() {
                 continue;
             }
-            let ext = self.local_macro_map[&def_id];
+            let ext = self.local_macro_map[def_id];
             let SyntaxExtensionKind::MacroRules(ref m) = ext.kind else {
                 continue;
             };

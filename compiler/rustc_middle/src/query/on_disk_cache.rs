@@ -1,8 +1,8 @@
-use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::{fmt, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::hash_map::Entry;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, RwLock};
 use rustc_data_structures::unhash::UnhashMap;

@@ -13,7 +13,7 @@ use rustc_middle::ty::{GenericArgKind, Ty, Unnormalized};
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span};
 use std::borrow::Cow;
-use std::collections::hash_map::Entry;
+use rustc_data_structures::hash_map::Entry;
 
 declare_clippy_lint! {
     /// ### What it does

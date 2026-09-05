@@ -1,12 +1,12 @@
 // ignore-tidy-file-filelength
 use core::ops::ControlFlow;
 use std::borrow::Cow;
-use std::collections::hash_set;
 use std::path::PathBuf;
 
 use rustc_ast::ast::LitKind;
 use rustc_ast::{LitIntType, TraitObjectSyntax};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::hash_set;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{

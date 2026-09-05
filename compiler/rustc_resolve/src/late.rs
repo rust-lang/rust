@@ -7,7 +7,6 @@
 //! `build_reduced_graph.rs`, `macros.rs` and `imports.rs`.
 
 use std::borrow::Cow;
-use std::collections::hash_map::Entry;
 use std::debug_assert_matches;
 use std::mem::{replace, swap, take};
 use std::ops::{ControlFlow, Range};
@@ -18,6 +17,7 @@ use rustc_ast::visit::{
 use rustc_ast::*;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::hash_map::Entry;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{

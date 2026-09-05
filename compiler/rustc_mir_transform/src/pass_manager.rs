@@ -1,8 +1,8 @@
 use std::cell::RefCell;
-use std::collections::hash_map::Entry;
 use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::hash_map::Entry;
 use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;

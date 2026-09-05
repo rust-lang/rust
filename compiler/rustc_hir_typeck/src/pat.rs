@@ -1,9 +1,9 @@
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::{assert_matches, cmp};
 
 use rustc_abi::FieldIdx;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::hash_map::Entry::{Occupied, Vacant};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan, pluralize,

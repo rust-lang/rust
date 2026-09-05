@@ -31,9 +31,8 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
-use std::collections::hash_map::Entry;
-
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::hash_map::Entry;
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,

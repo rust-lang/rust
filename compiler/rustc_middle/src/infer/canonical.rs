@@ -21,9 +21,8 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use std::collections::hash_map::Entry;
-
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::hash_map::Entry;
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 pub use rustc_type_ir as ir;

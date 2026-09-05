@@ -185,7 +185,7 @@ pub(crate) struct ImplStripper<'a, 'tcx> {
 impl ImplStripper<'_, '_> {
     #[inline]
     fn should_keep_impl(&self, item: &Item, for_def_id: DefId) -> bool {
-        if !for_def_id.is_local() || self.retained.contains(&for_def_id.into()) {
+        if !for_def_id.is_local() || self.retained.contains::<ItemId>(&for_def_id.into()) {
             true
         } else if self.is_json_output {
             // If the "for" item is exported and the impl block isn't `#[doc(hidden)]`, then we

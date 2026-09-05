@@ -1,9 +1,9 @@
-use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::mem;
 use std::ops::{ControlFlow, Deref};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::hash_map::Entry;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::Namespace;

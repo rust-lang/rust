@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::collections::hash_map::Entry;
+use rustc_data_structures::hash_map::Entry;
 use std::default::Default;
 use std::ops::Not;
 use std::rc::Rc;

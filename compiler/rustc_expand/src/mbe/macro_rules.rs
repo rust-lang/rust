@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::{mem, slice};
 
@@ -13,6 +12,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr_ir::diagnostic::Directive;
 use rustc_attr_ir::{self as attrs, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::hash_map::Entry;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
