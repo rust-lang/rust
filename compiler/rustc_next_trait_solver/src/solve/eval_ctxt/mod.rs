@@ -635,10 +635,94 @@ where
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
     ) -> Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased> {
-        let (normalization_nested_goals, goal_evaluation) =
-            self.evaluate_goal_raw(source, goal, LowerAvailableDepth::Yes)?;
+        let (normalization_nested_goals, goal_evaluation) = self.evaluate_goal_raw(source, goal)?;
         assert!(normalization_nested_goals.is_empty());
         Ok(goal_evaluation)
+    }
+
+    fn evaluate_in_search_graph(
+        &mut self,
+        canonical_goal: I::CanonicalInput,
+        step_kind: PathKind,
+    ) -> (Result<CanonicalResponse<I>, NoSolution>, AccessedOpaques<I>) {
+        let increase_depth_for_nested =
+            match canonical_goal.canonical.value.goal.predicate.kind().skip_binder() {
+                // We don't lower the available depth for the `NormalizesTo` goal, as evaluating
+                // it is an extra step only exists in the new solver that behaves like a function
+                // call rather than an independent nested goal evaluation. So, decreasing the
+                // available depth may end up regressions which hit the recursion limits for crates
+                // compiled well with the old solver.
+                ty::PredicateKind::NormalizesTo(_) => LowerAvailableDepth::No,
+                // We also don't lower depth for witness and rigid opaque when proving auto traits.
+                // This is to mitigate the overflow FCW warnings in deeply nested async calls.
+                // See #159228.
+                //
+                // We're eventually going to remove the witness type so it's okay to ignore the
+                // depth.
+                // For rigid opaques, revealing hidden types can be viewed as normalization so it's
+                // consistent with the `NormalizesTo` reasoning above.
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                    if self.cx().trait_is_auto(pred.trait_ref.def_id) {
+                        match pred.self_ty().kind() {
+                            ty::CoroutineWitness(..) => LowerAvailableDepth::No,
+                            ty::Alias(
+                                ty::IsRigid::Yes,
+                                ty::AliasTy { kind: ty::Opaque { .. }, .. },
+                            ) => LowerAvailableDepth::No,
+                            ty::Bool
+                            | ty::Char
+                            | ty::Int(..)
+                            | ty::Uint(..)
+                            | ty::Float(..)
+                            | ty::Str
+                            | ty::Pat(..)
+                            | ty::FnPtr(..)
+                            | ty::Array(..)
+                            | ty::Slice(..)
+                            | ty::RawPtr(..)
+                            | ty::Never
+                            | ty::Tuple(..)
+                            | ty::UnsafeBinder(_)
+                            | ty::Param(..)
+                            | ty::Placeholder(..)
+                            | ty::Bound(..)
+                            | ty::Infer(..)
+                            | ty::Alias(_, _)
+                            | ty::Ref(_, _, _)
+                            | ty::Adt(_, _)
+                            | ty::Foreign(_)
+                            | ty::Dynamic(..)
+                            | ty::Error(_)
+                            | ty::FnDef(..)
+                            | ty::Closure(..)
+                            | ty::CoroutineClosure(..)
+                            | ty::Coroutine(..) => LowerAvailableDepth::Yes,
+                        }
+                    } else {
+                        LowerAvailableDepth::Yes
+                    }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(_, _))
+                | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
+                | ty::PredicateKind::Subtype(_)
+                | ty::PredicateKind::Coerce(_)
+                | ty::PredicateKind::DynCompatible(_)
+                | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(_))
+                | ty::PredicateKind::ConstEquate(_, _)
+                | ty::PredicateKind::Ambiguous => LowerAvailableDepth::Yes,
+            };
+        self.search_graph.evaluate_goal(
+            self.cx(),
+            canonical_goal,
+            step_kind,
+            increase_depth_for_nested,
+            &mut inspect::ProofTreeBuilder::new_noop(),
+        )
     }
 
     /// Recursively evaluates `goal`, returning the nested goals in case
@@ -652,7 +736,6 @@ where
         &mut self,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
-        increase_depth_for_nested: LowerAvailableDepth,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolutionOrRerunNonErased> {
         // We only care about one entry per `OpaqueTypeKey` here,
         // so we only canonicalize the lookup table and ignore
@@ -718,13 +801,8 @@ where
                     TypingMode::ErasedNotCoherence(MayBeErased),
                 );
 
-                let (canonical_result, accessed_opaques) = self.search_graph.evaluate_goal(
-                    self.cx(),
-                    canonical_goal,
-                    step_kind,
-                    increase_depth_for_nested,
-                    &mut inspect::ProofTreeBuilder::new_noop(),
-                );
+                let (canonical_result, accessed_opaques) =
+                    self.evaluate_in_search_graph(canonical_goal, step_kind);
 
                 let should_rerun = should_rerun_after_erased_canonicalization(
                     accessed_opaques,
@@ -758,13 +836,8 @@ where
             let (orig_values, canonical_goal) =
                 canonicalize_goal(self.delegate, goal, &opaque_types, typing_mode);
 
-            let (canonical_result, accessed_opaques) = self.search_graph.evaluate_goal(
-                self.cx(),
-                canonical_goal,
-                step_kind,
-                increase_depth_for_nested,
-                &mut inspect::ProofTreeBuilder::new_noop(),
-            );
+            let (canonical_result, accessed_opaques) =
+                self.evaluate_in_search_graph(canonical_goal, step_kind);
             assert!(
                 !accessed_opaques.might_rerun(),
                 "we run without TypingMode::ErasedNotCoherence, so opaques are available, and we don't retry if the outer typing mode is ErasedNotCoherence: {accessed_opaques:?} after {goal:?}"
