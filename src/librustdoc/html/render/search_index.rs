@@ -315,6 +315,29 @@ impl SerializedSearchIndex {
         let other_entryid_offset = self.names.len();
         let mut map_other_pathid_to_self_pathid = Vec::new();
         let mut skips = FxHashSet::default();
+
+        fn remap_entry_data(
+            other_entry_data: &EntryData,
+            map_other_pathid_to_self_pathid: &[usize],
+        ) -> EntryData {
+            EntryData {
+                parent: other_entry_data
+                    .parent
+                    .map(|parent| map_other_pathid_to_self_pathid[parent])
+                    .clone(),
+                module_path: other_entry_data
+                    .module_path
+                    .map(|path| map_other_pathid_to_self_pathid[path])
+                    .clone(),
+                exact_module_path: other_entry_data
+                    .exact_module_path
+                    .map(|exact_path| map_other_pathid_to_self_pathid[exact_path])
+                    .clone(),
+                krate: map_other_pathid_to_self_pathid[other_entry_data.krate],
+                ..other_entry_data.clone()
+            }
+        }
+
         for (other_pathid, other_path_data) in other.path_data.iter().enumerate() {
             if let Some(other_path_data) = other_path_data {
                 let name = Symbol::intern(&other.names[other_pathid]);
@@ -442,25 +465,29 @@ impl SerializedSearchIndex {
             if skips.contains(&other_entryid) {
                 // we push tombstone entries to keep the IDs lined up
                 self.push(String::new(), None, None, String::new(), None, None, None);
+                if let Some(&self_entryid) = map_other_pathid_to_self_pathid.get(other_entryid) {
+                    // if `self` uses a type that `other` defines,
+                    // copy their definition data into ours
+                    if self.entry_data[self_entryid].is_none() {
+                        self.entry_data[self_entryid] =
+                            other.entry_data[other_entryid].as_ref().map(|other_entry_data| {
+                                remap_entry_data(other_entry_data, &map_other_pathid_to_self_pathid)
+                            });
+                    }
+                    if self.descs[self_entryid].is_empty() {
+                        self.descs[self_entryid] = other.descs[other_entryid].clone();
+                    }
+                    assert!(
+                        self.function_data[other_entryid].is_none(),
+                        "this would require a single Entry to be a fn and a path at once",
+                    );
+                }
             } else {
                 self.push(
                     other.names[other_entryid].clone(),
                     other.path_data[other_entryid].clone(),
-                    other.entry_data[other_entryid].as_ref().map(|other_entry_data| EntryData {
-                        parent: other_entry_data
-                            .parent
-                            .map(|parent| map_other_pathid_to_self_pathid[parent])
-                            .clone(),
-                        module_path: other_entry_data
-                            .module_path
-                            .map(|path| map_other_pathid_to_self_pathid[path])
-                            .clone(),
-                        exact_module_path: other_entry_data
-                            .exact_module_path
-                            .map(|exact_path| map_other_pathid_to_self_pathid[exact_path])
-                            .clone(),
-                        krate: map_other_pathid_to_self_pathid[other_entry_data.krate],
-                        ..other_entry_data.clone()
+                    other.entry_data[other_entryid].as_ref().map(|other_entry_data| {
+                        remap_entry_data(other_entry_data, &map_other_pathid_to_self_pathid)
                     }),
                     other.descs[other_entryid].clone(),
                     other.function_data[other_entryid].clone().map(|mut func| {
