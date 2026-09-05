@@ -1058,6 +1058,15 @@ impl Session {
     /// Returns the number of codegen units that should be used for this
     /// compilation
     pub fn codegen_units(&self) -> CodegenUnits {
+        // The Device pass needs to bundle all Kernels into a `device.bin` artifact. We could
+        // compute it at the end of the fat-lto pass when all Modules are combined, but some
+        // build configs like rlib currently don't use fat-lto. We can either restrict the
+        // configs in which the Device pass can run, or we reduce CGU to 1 for the Device pass.
+        // This is the easier solution for now, especially given that kernels tend to be smaller.
+        if self.opts.unstable_opts.offload.iter().any(|o| matches!(o, config::Offload::Device(_))) {
+            return CodegenUnits::Default(1);
+        }
+
         if let Some(n) = self.opts.cli_forced_codegen_units {
             return CodegenUnits::User(n);
         }
