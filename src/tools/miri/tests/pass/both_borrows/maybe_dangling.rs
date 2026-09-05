@@ -14,6 +14,7 @@ fn main() {
     reference();
     write_through_shared_ref();
     large();
+    closure();
 }
 
 fn boxy() {
@@ -63,4 +64,17 @@ fn write_through_shared_ref() {
 fn large() {
     // Used to be rejected due to faulty logic for the "does this fit the address space" check.
     let _x: MaybeDangling<&i8> = unsafe { mem::transmute(usize::MAX - 127) };
+}
+
+// A closure acts like MaybeDangling.
+fn closure() {
+    fn invoke(f: impl FnOnce()) {
+        // The closure has captured a reference that will be freed while `invoke` runs.
+        f()
+    }
+
+    let p = Box::leak(Box::new(0i32));
+    invoke(move || {
+        drop(unsafe { Box::from_raw(p) });
+    });
 }
