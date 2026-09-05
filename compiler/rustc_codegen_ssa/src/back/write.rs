@@ -15,7 +15,6 @@ use rustc_errors::{
     Level, MultiSpan, Style, Suggestions, catch_fatal_errors,
 };
 use rustc_fs_util::link_or_copy;
-use rustc_hir::find_attr;
 use rustc_incremental::{copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir_sess};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
@@ -114,7 +113,7 @@ pub struct ModuleConfig {
 }
 
 impl ModuleConfig {
-    fn new(kind: ModuleKind, tcx: TyCtxt<'_>, no_builtins: bool) -> ModuleConfig {
+    pub(crate) fn new(kind: ModuleKind, tcx: TyCtxt<'_>, no_builtins: bool) -> ModuleConfig {
         // If it's a regular module, use `$regular`, otherwise use `$other`.
         // `$regular` and `$other` are evaluated lazily.
         macro_rules! if_regular {
@@ -426,14 +425,11 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
 pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
+    regular_config: Arc<ModuleConfig>,
+    allocator_config: Arc<ModuleConfig>,
     allocator_module: Option<ModuleCodegen<B::Module>>,
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
-
-    let no_builtins = find_attr!(tcx, crate, NoBuiltins);
-
-    let regular_config = ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins);
-    let allocator_config = ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins);
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (codegen_worker_send, codegen_worker_receive) = channel();
@@ -444,8 +440,8 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
         shared_emitter,
         codegen_worker_send,
         coordinator_receive,
-        Arc::new(regular_config),
-        Arc::new(allocator_config),
+        regular_config,
+        allocator_config,
         allocator_module,
         coordinator_send.clone(),
     );
