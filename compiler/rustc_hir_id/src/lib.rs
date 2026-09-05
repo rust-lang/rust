@@ -16,7 +16,7 @@ use rustc_data_structures::stable_hash::{
     StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId};
+use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId, LocalModId};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct OwnerId {
@@ -39,6 +39,12 @@ impl From<OwnerId> for HirId {
 impl From<OwnerId> for DefId {
     fn from(value: OwnerId) -> Self {
         value.to_def_id()
+    }
+}
+
+impl From<LocalModId> for OwnerId {
+    fn from(value: LocalModId) -> Self {
+        OwnerId { def_id: value.to_local_def_id() }
     }
 }
 
@@ -138,6 +144,12 @@ impl HirId {
 impl fmt::Display for HirId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{self:?}")
+    }
+}
+
+impl From<LocalModId> for HirId {
+    fn from(id: LocalModId) -> Self {
+        HirId::make_owner(id.to_local_def_id())
     }
 }
 
