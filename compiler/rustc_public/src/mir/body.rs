@@ -1087,6 +1087,7 @@ pub enum CastKind {
     PtrToPtr,
     FnPtrToPtr,
     Transmute,
+    TransmuteCopy,
     BoxDerefTransmute,
     Subtype,
 }

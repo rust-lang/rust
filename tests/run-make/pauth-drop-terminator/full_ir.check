@@ -1,0 +1,3 @@
+// CHECK-LABEL: define void @{{.*}}Drop4drop
+// CHECK-NOT: call void ptrauth (ptr @c_cleanup
+// CHECK: tail call void @c_cleanup

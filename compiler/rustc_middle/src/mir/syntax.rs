@@ -1516,6 +1516,13 @@ pub enum CastKind {
     /// MIR is well-formed if the input and output types have different sizes,
     /// but running a transmute between differently-sized types is UB.
     Transmute,
+    /// Reads a value of the destination type from the place referenced by the input,
+    /// without moving or invalidating the referent. This is the MIR counterpart of
+    /// `mem::transmute_copy`.
+    ///
+    /// Well-formedness: the input must be a reference `&Src` (which may be unsized),
+    /// and the output must be `Sized`. It is UB if the output is larger than `Src`.
+    TransmuteCopy,
     /// A special transmute used by elaborated `box` deref's to turn the inner pointer into a raw
     /// pointer. This is almost equivalent to a regular transmute except that if the input would not
     /// be valid as `Box<T>`, the cast is UB. Backends that do not care about UB detection can treat

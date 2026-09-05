@@ -1,0 +1,27 @@
+error[E0080]: evaluation panicked: unsafe precondition(s) violated: cannot transmute_copy if Dst is larger than Src
+              
+              This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+  --> $DIR/transmute_copy_dst_larger.rs:4:33
+   |
+LL | const BAD_SIZED: u64 = unsafe { transmute_copy::<u8, u64>(&1u8) };
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_SIZED` failed here
+
+error[E0080]: evaluation panicked: unsafe precondition(s) violated: cannot transmute_copy if Dst is larger than Src
+              
+              This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+  --> $DIR/transmute_copy_dst_larger.rs:9:35
+   |
+LL | const BAD_UNSIZED: u64 = unsafe { transmute_copy::<[u8], u64>(THREE) };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_UNSIZED` failed here
+
+error[E0080]: evaluation panicked: unsafe precondition(s) violated: cannot transmute_copy if Dst is larger than Src
+              
+              This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+  --> $DIR/transmute_copy_dst_larger.rs:18:31
+   |
+LL | const BAD_DYN: u64 = unsafe { transmute_copy::<dyn Foo, u64>(SMALL_OBJ) };
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `BAD_DYN` failed here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
