@@ -1309,14 +1309,16 @@ fn normalize_doc_crate_name(name: &str) -> String {
 
 macro_rules! tool_doc {
     (
-        $tool: ident,
-        $path: literal,
-        mode = $mode:expr
-        $(, is_library = $is_library:expr )?
-        $(, crates = $crates:expr )?
-        // Subset of nightly features that are allowed to be used when documenting
-        $(, allow_features: $allow_features:expr )?
-       ) => {
+        $tool:ident {
+            path: $path:literal
+            , mode: $mode:expr
+            $(, is_library: $is_library:expr )?
+            $(, crates: $crates:expr )?
+            // Subset of nightly features that are allowed to be used when documenting
+            $(, allow_features: $allow_features:expr )?
+            $(,)?
+        }
+    ) => {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
             build_compiler: Compiler,
@@ -1446,41 +1448,36 @@ macro_rules! tool_doc {
 }
 
 // NOTE: make sure to register these in `Builder::get_step_description`.
-tool_doc!(
-    BuildHelper,
-    "src/build_helper",
+tool_doc!(BuildHelper {
+    path: "src/build_helper",
     // ideally, this would use ToolBootstrap,
     // but we distribute these docs together in the same folder
     // as a bunch of stage1 tools, and you can't mix rustdoc versions
     // because that breaks cross-crate data (particularly search)
-    mode = Mode::ToolTarget,
-    is_library = true,
-    crates = ["build_helper"]
-);
-tool_doc!(
-    Rustdoc,
-    "src/tools/rustdoc",
-    mode = Mode::ToolRustcPrivate,
-    crates = ["rustdoc", "rustdoc-json-types"]
-);
-tool_doc!(
-    Rustfmt,
-    "src/tools/rustfmt",
-    mode = Mode::ToolRustcPrivate,
-    crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]
-);
-tool_doc!(
-    Clippy,
-    "src/tools/clippy",
-    mode = Mode::ToolRustcPrivate,
-    crates = ["clippy_config", "clippy_utils"]
-);
-tool_doc!(Miri, "src/tools/miri", mode = Mode::ToolRustcPrivate, crates = ["miri"]);
-tool_doc!(
-    Cargo,
-    "src/tools/cargo",
-    mode = Mode::ToolTarget,
-    crates = [
+    mode: Mode::ToolTarget,
+    is_library: true,
+    crates: ["build_helper"],
+});
+tool_doc!(Rustdoc {
+    path: "src/tools/rustdoc",
+    mode: Mode::ToolRustcPrivate,
+    crates: ["rustdoc", "rustdoc-json-types"],
+});
+tool_doc!(Rustfmt {
+    path: "src/tools/rustfmt",
+    mode: Mode::ToolRustcPrivate,
+    crates: ["rustfmt-nightly", "rustfmt-config_proc_macro"],
+});
+tool_doc!(Clippy {
+    path: "src/tools/clippy",
+    mode: Mode::ToolRustcPrivate,
+    crates: ["clippy_config", "clippy_utils"],
+});
+tool_doc!(Miri { path: "src/tools/miri", mode: Mode::ToolRustcPrivate, crates: ["miri"] });
+tool_doc!(Cargo {
+    path: "src/tools/cargo",
+    mode: Mode::ToolTarget,
+    crates: [
         "cargo",
         "cargo-credential",
         "cargo-platform",
@@ -1494,30 +1491,27 @@ tool_doc!(
     ],
     // Required because of the im-rc dependency of Cargo, which automatically opts into the
     // "specialization" feature in its build script when it detects a nightly toolchain.
-    allow_features: "specialization"
-);
-tool_doc!(Tidy, "src/tools/tidy", mode = Mode::ToolTarget, crates = ["tidy"]);
-tool_doc!(
-    Bootstrap,
-    "src/bootstrap",
-    mode = Mode::ToolTarget,
-    is_library = true,
-    crates = ["bootstrap"]
-);
-tool_doc!(
-    RunMakeSupport,
-    "src/tools/run-make-support",
-    mode = Mode::ToolTarget,
-    is_library = true,
-    crates = ["run_make_support"]
-);
-tool_doc!(
-    Compiletest,
-    "src/tools/compiletest",
-    mode = Mode::ToolTarget,
-    is_library = true,
-    crates = ["compiletest"]
-);
+    allow_features: "specialization",
+});
+tool_doc!(Tidy { path: "src/tools/tidy", mode: Mode::ToolTarget, crates: ["tidy"] });
+tool_doc!(Bootstrap {
+    path: "src/bootstrap",
+    mode: Mode::ToolTarget,
+    is_library: true,
+    crates: ["bootstrap"],
+});
+tool_doc!(RunMakeSupport {
+    path: "src/tools/run-make-support",
+    mode: Mode::ToolTarget,
+    is_library: true,
+    crates: ["run_make_support"],
+});
+tool_doc!(Compiletest {
+    path: "src/tools/compiletest",
+    mode: Mode::ToolTarget,
+    is_library: true,
+    crates: ["compiletest"],
+});
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
