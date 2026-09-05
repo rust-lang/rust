@@ -2,7 +2,7 @@ use crate::sys::c;
 
 #[cfg(not(target_vendor = "win7"))]
 #[inline]
-pub fn fill_bytes(bytes: &mut [u8]) {
+pub(crate) fn fill_bytes(bytes: &mut [u8]) {
     let ret = unsafe { c::ProcessPrng(bytes.as_mut_ptr(), bytes.len()) };
     // ProcessPrng is documented as always returning `TRUE`.
     // https://learn.microsoft.com/en-us/windows/win32/seccng/processprng#return-value

@@ -6,7 +6,7 @@ use crate::cell::Cell;
 use crate::ptr;
 use crate::sys::thread_local::destructors;
 
-pub fn enable() {
+pub(crate) fn enable() {
     #[thread_local]
     static REGISTERED: Cell<bool> = Cell::new(false);
 

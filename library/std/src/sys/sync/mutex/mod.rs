@@ -12,7 +12,7 @@ cfg_select! {
         all(target_os = "wasi", target_env = "p3"),
     ) => {
         mod futex;
-        pub use futex::Mutex;
+        pub(crate) use futex::Mutex;
     }
     target_os = "fuchsia" => {
         mod fuchsia;
@@ -20,7 +20,7 @@ cfg_select! {
     }
     any(target_family = "unix", target_os = "teeos") => {
         mod pthread;
-        pub use pthread::Mutex;
+        pub(crate) use pthread::Mutex;
     }
     all(target_os = "windows", target_vendor = "win7") => {
         mod windows7;

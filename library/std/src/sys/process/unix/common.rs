@@ -3,7 +3,7 @@ mod tests;
 
 use libc::{EXIT_FAILURE, EXIT_SUCCESS, c_int, gid_t, pid_t, uid_t};
 
-pub use self::cstring_array::CStringArray;
+pub(crate) use self::cstring_array::CStringArray;
 use self::cstring_array::CStringIter;
 use crate::collections::BTreeMap;
 use crate::ffi::{CStr, CString, OsStr, OsString};
@@ -79,7 +79,7 @@ cfg_select! {
     }
     _ => {
         #[allow(unused_imports)]
-        pub use libc::{sigaddset, sigemptyset};
+        pub(crate) use libc::{sigaddset, sigemptyset};
     }
 }
 
@@ -87,7 +87,7 @@ cfg_select! {
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct Command {
+pub(crate) struct Command {
     program: CString,
     args: CStringArray,
     env: CommandEnv,
@@ -112,13 +112,13 @@ pub struct Command {
 // passed to do_exec() with configuration of what the child stdio should look
 // like
 #[cfg_attr(target_os = "vita", allow(dead_code))]
-pub struct ChildPipes {
+pub(crate) struct ChildPipes {
     pub stdin: ChildStdio,
     pub stdout: ChildStdio,
     pub stderr: ChildStdio,
 }
 
-pub enum ChildStdio {
+pub(crate) enum ChildStdio {
     Inherit,
     Explicit(c_int),
     Owned(FileDesc),
@@ -130,7 +130,7 @@ pub enum ChildStdio {
 }
 
 #[derive(Debug)]
-pub enum Stdio {
+pub(crate) enum Stdio {
     Inherit,
     Null,
     MakePipe,
@@ -139,7 +139,7 @@ pub enum Stdio {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum ProgramKind {
+pub(crate) enum ProgramKind {
     /// A program that would be looked up on the PATH (e.g. `ls`)
     PathLookup,
     /// A relative path (e.g. `my-dir/foo`, `../foo`, `./foo`)
@@ -162,7 +162,7 @@ impl ProgramKind {
 }
 
 impl Command {
-    pub fn new(program: &OsStr) -> Command {
+    pub(crate) fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
         let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
@@ -190,72 +190,72 @@ impl Command {
         }
     }
 
-    pub fn set_arg_0(&mut self, arg: &OsStr) {
+    pub(crate) fn set_arg_0(&mut self, arg: &OsStr) {
         // Set a new arg0
         let arg = os2c(arg, &mut self.saw_nul);
         self.args.write(0, arg);
     }
 
-    pub fn arg(&mut self, arg: &OsStr) {
+    pub(crate) fn arg(&mut self, arg: &OsStr) {
         let arg = os2c(arg, &mut self.saw_nul);
         self.args.push(arg);
     }
 
-    pub fn cwd(&mut self, dir: &OsStr) {
+    pub(crate) fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(os2c(dir, &mut self.saw_nul));
     }
-    pub fn uid(&mut self, id: uid_t) {
+    pub(crate) fn uid(&mut self, id: uid_t) {
         self.uid = Some(id);
     }
-    pub fn gid(&mut self, id: gid_t) {
+    pub(crate) fn gid(&mut self, id: gid_t) {
         self.gid = Some(id);
     }
-    pub fn groups(&mut self, groups: &[gid_t]) {
+    pub(crate) fn groups(&mut self, groups: &[gid_t]) {
         self.groups = Some(Box::from(groups));
     }
-    pub fn pgroup(&mut self, pgroup: pid_t) {
+    pub(crate) fn pgroup(&mut self, pgroup: pid_t) {
         self.pgroup = Some(pgroup);
     }
-    pub fn chroot(&mut self, dir: &Path) {
+    pub(crate) fn chroot(&mut self, dir: &Path) {
         self.chroot = Some(os2c(dir.as_os_str(), &mut self.saw_nul));
         if self.cwd.is_none() {
             self.cwd(OsStr::new("/"));
         }
     }
-    pub fn setsid(&mut self, setsid: bool) {
+    pub(crate) fn setsid(&mut self, setsid: bool) {
         self.setsid = setsid;
     }
 
     #[cfg(target_os = "linux")]
-    pub fn create_pidfd(&mut self, val: bool) {
+    pub(crate) fn create_pidfd(&mut self, val: bool) {
         self.create_pidfd = val;
     }
 
     #[cfg(not(target_os = "linux"))]
     #[allow(dead_code)]
-    pub fn get_create_pidfd(&self) -> bool {
+    pub(crate) fn get_create_pidfd(&self) -> bool {
         false
     }
 
     #[cfg(target_os = "linux")]
-    pub fn get_create_pidfd(&self) -> bool {
+    pub(crate) fn get_create_pidfd(&self) -> bool {
         self.create_pidfd
     }
 
-    pub fn saw_nul(&self) -> bool {
+    pub(crate) fn saw_nul(&self) -> bool {
         self.saw_nul
     }
 
-    pub fn get_program(&self) -> &OsStr {
+    pub(crate) fn get_program(&self) -> &OsStr {
         OsStr::from_bytes(self.program.as_bytes())
     }
 
     #[allow(dead_code)]
-    pub fn get_program_kind(&self) -> ProgramKind {
+    pub(crate) fn get_program_kind(&self) -> ProgramKind {
         self.program_kind
     }
 
-    pub fn get_args(&self) -> CommandArgs<'_> {
+    pub(crate) fn get_args(&self) -> CommandArgs<'_> {
         let mut iter = self.args.iter();
         // argv[0] contains the program name, but we are only interested in the
         // arguments so skip it.
@@ -263,99 +263,101 @@ impl Command {
         CommandArgs { iter }
     }
 
-    pub fn get_envs(&self) -> CommandEnvs<'_> {
+    pub(crate) fn get_envs(&self) -> CommandEnvs<'_> {
         self.env.iter()
     }
 
-    pub fn get_env_clear(&self) -> bool {
+    pub(crate) fn get_env_clear(&self) -> bool {
         self.env.does_clear()
     }
 
-    pub fn get_resolved_envs(&self) -> CommandResolvedEnvs {
+    pub(crate) fn get_resolved_envs(&self) -> CommandResolvedEnvs {
         CommandResolvedEnvs::new(self.env.capture())
     }
 
-    pub fn get_current_dir(&self) -> Option<&Path> {
+    pub(crate) fn get_current_dir(&self) -> Option<&Path> {
         self.cwd.as_ref().map(|cs| Path::new(OsStr::from_bytes(cs.as_bytes())))
     }
 
-    pub fn get_argv(&self) -> &CStringArray {
+    pub(crate) fn get_argv(&self) -> &CStringArray {
         &self.args
     }
 
-    pub fn get_program_cstr(&self) -> &CStr {
+    pub(crate) fn get_program_cstr(&self) -> &CStr {
         &self.program
     }
 
     #[allow(dead_code)]
-    pub fn get_cwd(&self) -> Option<&CStr> {
+    pub(crate) fn get_cwd(&self) -> Option<&CStr> {
         self.cwd.as_deref()
     }
     #[allow(dead_code)]
-    pub fn get_uid(&self) -> Option<uid_t> {
+    pub(crate) fn get_uid(&self) -> Option<uid_t> {
         self.uid
     }
     #[allow(dead_code)]
-    pub fn get_gid(&self) -> Option<gid_t> {
+    pub(crate) fn get_gid(&self) -> Option<gid_t> {
         self.gid
     }
     #[allow(dead_code)]
-    pub fn get_groups(&self) -> Option<&[gid_t]> {
+    pub(crate) fn get_groups(&self) -> Option<&[gid_t]> {
         self.groups.as_deref()
     }
     #[allow(dead_code)]
-    pub fn get_pgroup(&self) -> Option<pid_t> {
+    pub(crate) fn get_pgroup(&self) -> Option<pid_t> {
         self.pgroup
     }
     #[allow(dead_code)]
-    pub fn get_chroot(&self) -> Option<&CStr> {
+    pub(crate) fn get_chroot(&self) -> Option<&CStr> {
         self.chroot.as_deref()
     }
     #[allow(dead_code)]
-    pub fn get_setsid(&self) -> bool {
+    pub(crate) fn get_setsid(&self) -> bool {
         self.setsid
     }
 
-    pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
+    pub(crate) fn get_closures(
+        &mut self,
+    ) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
         &mut self.closures
     }
 
-    pub unsafe fn pre_exec(&mut self, f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
+    pub(crate) unsafe fn pre_exec(&mut self, f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
         self.closures.push(f);
     }
 
-    pub fn stdin(&mut self, stdin: Stdio) {
+    pub(crate) fn stdin(&mut self, stdin: Stdio) {
         self.stdin = Some(stdin);
     }
 
-    pub fn stdout(&mut self, stdout: Stdio) {
+    pub(crate) fn stdout(&mut self, stdout: Stdio) {
         self.stdout = Some(stdout);
     }
 
-    pub fn stderr(&mut self, stderr: Stdio) {
+    pub(crate) fn stderr(&mut self, stderr: Stdio) {
         self.stderr = Some(stderr);
     }
 
-    pub fn env_mut(&mut self) -> &mut CommandEnv {
+    pub(crate) fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }
 
-    pub fn capture_env(&mut self) -> Option<CStringArray> {
+    pub(crate) fn capture_env(&mut self) -> Option<CStringArray> {
         let maybe_env = self.env.capture_if_changed();
         maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
     }
 
     #[allow(dead_code)]
-    pub fn env_saw_path(&self) -> bool {
+    pub(crate) fn env_saw_path(&self) -> bool {
         self.env.have_changed_path()
     }
 
     #[allow(dead_code)]
-    pub fn program_is_path(&self) -> bool {
+    pub(crate) fn program_is_path(&self) -> bool {
         self.program.to_bytes().contains(&b'/')
     }
 
-    pub fn setup_io(
+    pub(crate) fn setup_io(
         &self,
         default: Stdio,
         needs_stdin: bool,
@@ -401,7 +403,10 @@ fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStr
 }
 
 impl Stdio {
-    pub fn to_child_stdio(&self, readable: bool) -> io::Result<(ChildStdio, Option<ChildPipe>)> {
+    pub(crate) fn to_child_stdio(
+        &self,
+        readable: bool,
+    ) -> io::Result<(ChildStdio, Option<ChildPipe>)> {
         match *self {
             Stdio::Inherit => Ok((ChildStdio::Inherit, None)),
 
@@ -481,7 +486,7 @@ impl From<io::Stderr> for Stdio {
 }
 
 impl ChildStdio {
-    pub fn fd(&self) -> Option<c_int> {
+    pub(crate) fn fd(&self) -> Option<c_int> {
         match *self {
             ChildStdio::Inherit => None,
             ChildStdio::Explicit(fd) => Some(fd),
@@ -579,7 +584,7 @@ impl fmt::Debug for Command {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub struct ExitCode(u8);
+pub(crate) struct ExitCode(u8);
 
 impl fmt::Debug for ExitCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -588,11 +593,11 @@ impl fmt::Debug for ExitCode {
 }
 
 impl ExitCode {
-    pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
-    pub const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
+    pub(crate) const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
+    pub(crate) const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
 
     #[inline]
-    pub fn as_i32(&self) -> i32 {
+    pub(crate) fn as_i32(&self) -> i32 {
         self.0 as i32
     }
 }
@@ -603,7 +608,7 @@ impl From<u8> for ExitCode {
     }
 }
 
-pub struct CommandArgs<'a> {
+pub(crate) struct CommandArgs<'a> {
     iter: CStringIter<'a>,
 }
 
@@ -635,9 +640,9 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
     }
 }
 
-pub type ChildPipe = crate::sys::pipe::Pipe;
+pub(crate) type ChildPipe = crate::sys::pipe::Pipe;
 
-pub fn read_output(
+pub(crate) fn read_output(
     out: ChildPipe,
     stdout: &mut Vec<u8>,
     err: ChildPipe,
@@ -688,10 +693,10 @@ pub fn read_output(
     }
 }
 
-pub fn getpid() -> u32 {
+pub(crate) fn getpid() -> u32 {
     unsafe { libc::getpid() as u32 }
 }
 
-pub fn getppid() -> u32 {
+pub(crate) fn getppid() -> u32 {
     unsafe { libc::getppid() as u32 }
 }

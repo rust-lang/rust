@@ -1,7 +1,7 @@
 /// This module contains the implementations of `TcpStream`, `TcpListener` and
 /// `UdpSocket` as well as related functionality like DNS resolving.
 mod connection;
-pub use connection::*;
+pub(crate) use connection::*;
 
 mod hostname;
-pub use hostname::hostname;
+pub(crate) use hostname::hostname;

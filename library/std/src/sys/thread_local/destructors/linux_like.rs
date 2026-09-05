@@ -12,7 +12,7 @@
 
 use crate::mem::transmute;
 
-pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
+pub(crate) unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     /// This is necessary because the __cxa_thread_atexit_impl implementation
     /// std links to by default may be a C or C++ implementation that was not
     /// compiled using the Clang integer normalization option.
@@ -22,7 +22,7 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     #[cfi_encoding = "i"]
     #[repr(transparent)]
     #[allow(non_camel_case_types)]
-    pub struct c_int(#[allow(dead_code)] pub core::ffi::c_int);
+    pub(crate) struct c_int(#[allow(dead_code)] pub core::ffi::c_int);
 
     unsafe extern "C" {
         #[linkage = "extern_weak"]

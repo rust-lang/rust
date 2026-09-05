@@ -8,22 +8,22 @@ use crate::sys::{AsInner, FromInner, IntoInner, cvt, cvt_r};
 mod tests;
 
 #[derive(Debug)]
-pub struct PidFd(FileDesc);
+pub(crate) struct PidFd(FileDesc);
 
 impl PidFd {
-    pub fn kill(&self) -> io::Result<()> {
+    pub(crate) fn kill(&self) -> io::Result<()> {
         self.send_signal(libc::SIGKILL)
     }
 
     #[cfg(any(test, target_env = "gnu", target_env = "musl"))]
-    pub fn current_process() -> io::Result<PidFd> {
+    pub(crate) fn current_process() -> io::Result<PidFd> {
         let pid = crate::process::id();
         let pidfd = cvt(unsafe { libc::syscall(libc::SYS_pidfd_open, pid, 0) })?;
         Ok(unsafe { PidFd::from_raw_fd(pidfd as RawFd) })
     }
 
     #[cfg(any(test, target_env = "gnu", target_env = "musl"))]
-    pub fn pid(&self) -> io::Result<u32> {
+    pub(crate) fn pid(&self) -> io::Result<u32> {
         use crate::sys::weak::weak;
 
         // since kernel 6.13
@@ -82,7 +82,7 @@ impl PidFd {
         }
     }
 
-    pub fn send_signal(&self, signal: i32) -> io::Result<()> {
+    pub(crate) fn send_signal(&self, signal: i32) -> io::Result<()> {
         cvt(unsafe {
             libc::syscall(
                 libc::SYS_pidfd_send_signal,
@@ -95,7 +95,7 @@ impl PidFd {
         .map(drop)
     }
 
-    pub fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
+    pub(crate) fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
         // since kernel 6.9
         // https://lore.kernel.org/all/20240210-chihuahua-hinzog-3945b6abd44a@brauner/
         cvt(unsafe {
@@ -110,7 +110,7 @@ impl PidFd {
         .map(drop)
     }
 
-    pub fn wait(&self) -> io::Result<ExitStatus> {
+    pub(crate) fn wait(&self) -> io::Result<ExitStatus> {
         let r = self.waitid(libc::WEXITED)?;
         match r {
             Some(exit_status) => Ok(exit_status),
@@ -118,7 +118,7 @@ impl PidFd {
         }
     }
 
-    pub fn try_wait(&self) -> io::Result<Option<ExitStatus>> {
+    pub(crate) fn try_wait(&self) -> io::Result<Option<ExitStatus>> {
         self.waitid(libc::WEXITED | libc::WNOHANG)
     }
 }

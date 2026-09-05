@@ -17,7 +17,7 @@ pub(crate) struct OnceBox<T> {
 
 impl<T> OnceBox<T> {
     #[inline]
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self { ptr: AtomicPtr::new(null_mut()) }
     }
 
@@ -39,12 +39,12 @@ impl<T> OnceBox<T> {
     /// # Safety
     /// This causes undefined behavior if the assumption above is violated.
     #[inline]
-    pub unsafe fn get_unchecked(&self) -> Pin<&T> {
+    pub(crate) unsafe fn get_unchecked(&self) -> Pin<&T> {
         unsafe { Pin::new_unchecked(&*self.ptr.load(Relaxed)) }
     }
 
     #[inline]
-    pub fn get_or_init(&self, f: impl FnOnce() -> Pin<Box<T>>) -> Pin<&T> {
+    pub(crate) fn get_or_init(&self, f: impl FnOnce() -> Pin<Box<T>>) -> Pin<&T> {
         let ptr = self.ptr.load(Acquire);
         match unsafe { ptr.as_ref() } {
             Some(val) => unsafe { Pin::new_unchecked(val) },
@@ -53,7 +53,7 @@ impl<T> OnceBox<T> {
     }
 
     #[inline]
-    pub fn take(&mut self) -> Option<Pin<Box<T>>> {
+    pub(crate) fn take(&mut self) -> Option<Pin<Box<T>>> {
         let ptr = replace(self.ptr.get_mut(), null_mut());
         if !ptr.is_null() { Some(unsafe { Pin::new_unchecked(Box::from_raw(ptr)) }) } else { None }
     }

@@ -26,11 +26,11 @@ cfg_select! {
         target_os = "hermit",
     ) => {
         mod unix;
-        pub use unix::*;
+        pub(crate) use unix::*;
     }
     target_family = "windows" => {
         mod windows;
-        pub use windows::*;
+        pub(crate) use windows::*;
     }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;

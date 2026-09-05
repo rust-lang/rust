@@ -36,10 +36,10 @@ const TRAVERSE_DIRECTORY: i32 =
         _ => libc::O_RDONLY,
     };
 
-pub struct Dir(OwnedFd);
+pub(crate) struct Dir(OwnedFd);
 
 impl Dir {
-    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<Self> {
+    pub(crate) fn open(path: &Path, opts: &OpenOptions) -> io::Result<Self> {
         run_path_with_cstr(path, &|path| Self::open_with_c(path, opts))
     }
 
@@ -47,13 +47,13 @@ impl Dir {
         run_path_with_cstr(path, &|path| Self::open_traversal_c(path))
     }
 
-    pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
+    pub(crate) fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path.as_ref(), &|path| self.open_file_c(path, opts, 0))
             .map(FileDesc::from_inner)
             .map(File)
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub(crate) fn metadata(&self) -> io::Result<FileAttr> {
         // Reuse the implementation for files, which should work for all FDs.
         let fd = self.0.as_raw_fd();
         let f = core::mem::ManuallyDrop::new(File(
@@ -63,11 +63,11 @@ impl Dir {
         f.file_attr()
     }
 
-    pub fn remove_file(&self, path: &Path) -> io::Result<()> {
+    pub(crate) fn remove_file(&self, path: &Path) -> io::Result<()> {
         run_path_with_cstr(path, &|path| self.remove_c(path, false))
     }
 
-    pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
+    pub(crate) fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
         run_path_with_cstr(from, &|from| {
             run_path_with_cstr(to, &|to| self.rename_c(from, to_dir, to))
         })

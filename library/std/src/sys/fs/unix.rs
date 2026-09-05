@@ -57,7 +57,7 @@ use crate::os::wasi::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
-pub use crate::sys::fs::common::exists;
+pub(crate) use crate::sys::fs::common::exists;
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
@@ -279,7 +279,7 @@ cfg_select! {
     }
     _ => {
         mod dir;
-        pub use dir::Dir;
+        pub(crate) use dir::Dir;
     }
 }
 

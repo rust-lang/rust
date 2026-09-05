@@ -14,16 +14,16 @@ mod tests;
 
 // Don't cache handles but get them fresh for every read/write. This allows us to track changes to
 // the value over time (such as if a process calls `SetStdHandle` while it's running). See #40490.
-pub struct Stdin {
+pub(crate) struct Stdin {
     surrogate: u16,
     incomplete_utf8: IncompleteUtf8,
 }
 
-pub struct Stdout {
+pub(crate) struct Stdout {
     incomplete_utf8: IncompleteUtf8,
 }
 
-pub struct Stderr {
+pub(crate) struct Stderr {
     incomplete_utf8: IncompleteUtf8,
 }
 
@@ -63,9 +63,9 @@ const MAX_BUFFER_SIZE: usize = 8192;
 // The standard buffer size of BufReader for Stdin should be able to hold 3x more bytes than there
 // are `u16`'s in MAX_BUFFER_SIZE. This ensures the read data can always be completely decoded from
 // UTF-16 to UTF-8.
-pub const STDIN_BUF_SIZE: usize = MAX_BUFFER_SIZE / 2 * 3;
+pub(crate) const STDIN_BUF_SIZE: usize = MAX_BUFFER_SIZE / 2 * 3;
 
-pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
+pub(crate) fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
     let handle = unsafe { c::GetStdHandle(handle_id) };
     if handle == c::INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
@@ -253,7 +253,7 @@ fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
 }
 
 impl Stdin {
-    pub const fn new() -> Stdin {
+    pub(crate) const fn new() -> Stdin {
         Stdin { surrogate: 0, incomplete_utf8: IncompleteUtf8::new() }
     }
 }
@@ -425,13 +425,13 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
 }
 
 impl IncompleteUtf8 {
-    pub const fn new() -> IncompleteUtf8 {
+    pub(crate) const fn new() -> IncompleteUtf8 {
         IncompleteUtf8 { bytes: [0; char::MAX_LEN_UTF8], len: 0 }
     }
 }
 
 impl Stdout {
-    pub const fn new() -> Stdout {
+    pub(crate) const fn new() -> Stdout {
         Stdout { incomplete_utf8: IncompleteUtf8::new() }
     }
 }
@@ -447,7 +447,7 @@ impl io::Write for Stdout {
 }
 
 impl Stderr {
-    pub const fn new() -> Stderr {
+    pub(crate) const fn new() -> Stderr {
         Stderr { incomplete_utf8: IncompleteUtf8::new() }
     }
 }
@@ -462,10 +462,10 @@ impl io::Write for Stderr {
     }
 }
 
-pub fn is_ebadf(err: &io::Error) -> bool {
+pub(crate) fn is_ebadf(err: &io::Error) -> bool {
     err.raw_os_error() == Some(c::ERROR_INVALID_HANDLE as i32)
 }
 
-pub fn panic_output() -> Option<impl io::Write> {
+pub(crate) fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
 }

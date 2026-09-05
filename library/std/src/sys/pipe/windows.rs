@@ -3,9 +3,9 @@ use crate::sys::c;
 use crate::sys::handle::Handle;
 use crate::{io, ptr};
 
-pub type Pipe = Handle;
+pub(crate) type Pipe = Handle;
 
-pub fn pipe() -> io::Result<(Pipe, Pipe)> {
+pub(crate) fn pipe() -> io::Result<(Pipe, Pipe)> {
     let mut read_pipe = c::INVALID_HANDLE_VALUE;
     let mut write_pipe = c::INVALID_HANDLE_VALUE;
 

@@ -5,13 +5,13 @@ use crate::pin::Pin;
 use crate::sys::pal::sync as pal;
 use crate::sys::sync::OnceBox;
 
-pub struct Mutex {
+pub(crate) struct Mutex {
     pub(in crate::sys::sync) pal: OnceBox<pal::Mutex>,
 }
 
 impl Mutex {
     #[inline]
-    pub const fn new() -> Mutex {
+    pub(crate) const fn new() -> Mutex {
         Mutex { pal: OnceBox::new() }
     }
 
@@ -30,7 +30,7 @@ impl Mutex {
     #[inline]
     // Make this a diagnostic item for Miri's concurrency model checker.
     #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_lock")]
-    pub fn lock(&self) {
+    pub(crate) fn lock(&self) {
         // SAFETY: we call `init` above, therefore reentrant locking is safe.
         // In `drop` we ensure that the mutex is not destroyed while locked.
         unsafe { self.get().lock() }
@@ -39,7 +39,7 @@ impl Mutex {
     #[inline]
     // Make this a diagnostic item for Miri's concurrency model checker.
     #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_unlock")]
-    pub unsafe fn unlock(&self) {
+    pub(crate) unsafe fn unlock(&self) {
         // SAFETY: the mutex can only be locked if it is already initialized
         // and we observed this initialization since we observed the locking.
         unsafe { self.pal.get_unchecked().unlock() }
@@ -48,7 +48,7 @@ impl Mutex {
     #[inline]
     // Make this a diagnostic item for Miri's concurrency model checker.
     #[cfg_attr(not(test), rustc_diagnostic_item = "sys_mutex_try_lock")]
-    pub fn try_lock(&self) -> bool {
+    pub(crate) fn try_lock(&self) -> bool {
         // SAFETY: we call `init` above, therefore reentrant locking is safe.
         // In `drop` we ensure that the mutex is not destroyed while locked.
         unsafe { self.get().try_lock() }

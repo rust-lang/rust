@@ -159,11 +159,11 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
         .expect("failed to generate random data");
 }
 
-pub fn fill_bytes(bytes: &mut [u8]) {
+pub(crate) fn fill_bytes(bytes: &mut [u8]) {
     getrandom(bytes, false);
 }
 
-pub fn hashmap_random_keys() -> (u64, u64) {
+pub(crate) fn hashmap_random_keys() -> (u64, u64) {
     let mut bytes = [0; 16];
     getrandom(&mut bytes, true);
     let k1 = u64::from_ne_bytes(bytes[..8].try_into().unwrap());

@@ -25,11 +25,11 @@ cfg_select! {
     }
     any(target_family = "unix", target_os = "wasi") => {
         mod unix;
-        pub use unix::*;
+        pub(crate) use unix::*;
     }
     target_os = "windows" => {
         mod windows;
-        pub use windows::*;
+        pub(crate) use windows::*;
     }
     _ => {}
 }
@@ -228,7 +228,7 @@ unsafe fn socket_addr_from_c(
 ///
 /// # Safety
 /// `T` must be the type associated with the given socket option.
-pub unsafe fn setsockopt<T>(
+pub(crate) unsafe fn setsockopt<T>(
     sock: &Socket,
     level: c_int,
     option_name: c_int,
@@ -257,7 +257,7 @@ pub unsafe fn setsockopt<T>(
 ///
 /// # Safety
 /// `T` must be the type associated with the given socket option.
-pub unsafe fn getsockopt<T: Copy>(
+pub(crate) unsafe fn getsockopt<T: Copy>(
     sock: &Socket,
     level: c_int,
     option_name: c_int,
@@ -319,7 +319,7 @@ fn to_ipv6mr_interface(value: u32) -> crate::ffi::c_uint {
 // lookup_host
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct LookupHost {
+pub(crate) struct LookupHost {
     original: *mut c::addrinfo,
     cur: *mut c::addrinfo,
     port: u16,
@@ -353,7 +353,7 @@ impl Drop for LookupHost {
     }
 }
 
-pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
+pub(crate) fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
     init();
     run_with_cstr(host.as_bytes(), &|c_host| {
         let mut hints: c::addrinfo = unsafe { mem::zeroed() };
@@ -370,12 +370,12 @@ pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
 // TCP streams
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct TcpStream {
+pub(crate) struct TcpStream {
     inner: Socket,
 }
 
 impl TcpStream {
-    pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
+    pub(crate) fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
         init();
         return each_addr(addr, inner);
 
@@ -386,7 +386,7 @@ impl TcpStream {
         }
     }
 
-    pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+    pub(crate) fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         init();
 
         let sock = Socket::new(addr_family(addr), c::SOCK_STREAM)?;
@@ -395,52 +395,52 @@ impl TcpStream {
     }
 
     #[inline]
-    pub fn socket(&self) -> &Socket {
+    pub(crate) fn socket(&self) -> &Socket {
         &self.inner
     }
 
-    pub fn into_socket(self) -> Socket {
+    pub(crate) fn into_socket(self) -> Socket {
         self.inner
     }
 
-    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+    pub(crate) fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.inner.set_timeout(dur, c::SO_RCVTIMEO)
     }
 
-    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+    pub(crate) fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.inner.set_timeout(dur, c::SO_SNDTIMEO)
     }
 
-    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+    pub(crate) fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.inner.timeout(c::SO_RCVTIMEO)
     }
 
-    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+    pub(crate) fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.inner.timeout(c::SO_SNDTIMEO)
     }
 
-    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.peek(buf)
     }
 
-    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
+    pub(crate) fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(buf)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    pub(crate) fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
     }
 
     #[inline]
-    pub fn is_read_vectored(&self) -> bool {
+    pub(crate) fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
     }
 
-    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+    pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
             c::send(self.inner.as_raw(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
@@ -448,69 +448,69 @@ impl TcpStream {
         Ok(ret as usize)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+    pub(crate) fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
     }
 
     #[inline]
-    pub fn is_write_vectored(&self) -> bool {
+    pub(crate) fn is_write_vectored(&self) -> bool {
         self.inner.is_write_vectored()
     }
 
-    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+    pub(crate) fn peer_addr(&self) -> io::Result<SocketAddr> {
         unsafe { sockname(|buf, len| c::getpeername(self.inner.as_raw(), buf, len)) }
     }
 
-    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+    pub(crate) fn socket_addr(&self) -> io::Result<SocketAddr> {
         unsafe { sockname(|buf, len| c::getsockname(self.inner.as_raw(), buf, len)) }
     }
 
-    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+    pub(crate) fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.inner.shutdown(how)
     }
 
-    pub fn duplicate(&self) -> io::Result<TcpStream> {
+    pub(crate) fn duplicate(&self) -> io::Result<TcpStream> {
         self.inner.duplicate().map(|s| TcpStream { inner: s })
     }
 
-    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+    pub(crate) fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
         self.inner.set_linger(linger)
     }
 
-    pub fn linger(&self) -> io::Result<Option<Duration>> {
+    pub(crate) fn linger(&self) -> io::Result<Option<Duration>> {
         self.inner.linger()
     }
 
-    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+    pub(crate) fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
         self.inner.set_keepalive(keepalive)
     }
 
-    pub fn keepalive(&self) -> io::Result<bool> {
+    pub(crate) fn keepalive(&self) -> io::Result<bool> {
         self.inner.keepalive()
     }
 
-    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+    pub(crate) fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         self.inner.set_nodelay(nodelay)
     }
 
-    pub fn nodelay(&self) -> io::Result<bool> {
+    pub(crate) fn nodelay(&self) -> io::Result<bool> {
         self.inner.nodelay()
     }
 
-    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+    pub(crate) fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int) }
     }
 
-    pub fn ttl(&self) -> io::Result<u32> {
+    pub(crate) fn ttl(&self) -> io::Result<u32> {
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
     }
 
-    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+    pub(crate) fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.inner.take_error()
     }
 
-    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+    pub(crate) fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.inner.set_nonblocking(nonblocking)
     }
 }
@@ -549,12 +549,12 @@ impl fmt::Debug for TcpStream {
 // TCP listeners
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct TcpListener {
+pub(crate) struct TcpListener {
     inner: Socket,
 }
 
 impl TcpListener {
-    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
+    pub(crate) fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
         init();
         return each_addr(addr, inner);
 
@@ -598,19 +598,19 @@ impl TcpListener {
     }
 
     #[inline]
-    pub fn socket(&self) -> &Socket {
+    pub(crate) fn socket(&self) -> &Socket {
         &self.inner
     }
 
-    pub fn into_socket(self) -> Socket {
+    pub(crate) fn into_socket(self) -> Socket {
         self.inner
     }
 
-    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+    pub(crate) fn socket_addr(&self) -> io::Result<SocketAddr> {
         unsafe { sockname(|buf, len| c::getsockname(self.inner.as_raw(), buf, len)) }
     }
 
-    pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
+    pub(crate) fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         // The `accept` function will fill in the storage with the address,
         // so we don't need to zero it here.
         // reference: https://linux.die.net/man/2/accept4
@@ -621,33 +621,33 @@ impl TcpListener {
         Ok((TcpStream { inner: sock }, addr))
     }
 
-    pub fn duplicate(&self) -> io::Result<TcpListener> {
+    pub(crate) fn duplicate(&self) -> io::Result<TcpListener> {
         self.inner.duplicate().map(|s| TcpListener { inner: s })
     }
 
-    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+    pub(crate) fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int) }
     }
 
-    pub fn ttl(&self) -> io::Result<u32> {
+    pub(crate) fn ttl(&self) -> io::Result<u32> {
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
     }
 
-    pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
+    pub(crate) fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
         unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int) }
     }
 
-    pub fn only_v6(&self) -> io::Result<bool> {
+    pub(crate) fn only_v6(&self) -> io::Result<bool> {
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY)? };
         Ok(raw != 0)
     }
 
-    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+    pub(crate) fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.inner.take_error()
     }
 
-    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+    pub(crate) fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.inner.set_nonblocking(nonblocking)
     }
 }
@@ -675,12 +675,12 @@ impl fmt::Debug for TcpListener {
 // UDP
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct UdpSocket {
+pub(crate) struct UdpSocket {
     inner: Socket,
 }
 
 impl UdpSocket {
-    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
+    pub(crate) fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
         init();
         return each_addr(addr, inner);
 
@@ -693,33 +693,33 @@ impl UdpSocket {
     }
 
     #[inline]
-    pub fn socket(&self) -> &Socket {
+    pub(crate) fn socket(&self) -> &Socket {
         &self.inner
     }
 
-    pub fn into_socket(self) -> Socket {
+    pub(crate) fn into_socket(self) -> Socket {
         self.inner
     }
 
-    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+    pub(crate) fn peer_addr(&self) -> io::Result<SocketAddr> {
         unsafe { sockname(|buf, len| c::getpeername(self.inner.as_raw(), buf, len)) }
     }
 
-    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+    pub(crate) fn socket_addr(&self) -> io::Result<SocketAddr> {
         unsafe { sockname(|buf, len| c::getsockname(self.inner.as_raw(), buf, len)) }
     }
 
-    pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+    pub(crate) fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.inner.recv_from(buf)
     }
 
-    pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+    pub(crate) fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.inner.peek_from(buf)
     }
 
     // `MAX_SEND_LEN` is `usize::MAX` off Apple/Windows, where the guard is a no-op.
     #[allow(clippy::absurd_extreme_comparisons)]
-    pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
+    pub(crate) fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
         if buf.len() > MAX_SEND_LEN {
             return Err(io::Error::from_raw_os_error(c::EMSGSIZE));
         }
@@ -737,36 +737,36 @@ impl UdpSocket {
         Ok(ret as usize)
     }
 
-    pub fn duplicate(&self) -> io::Result<UdpSocket> {
+    pub(crate) fn duplicate(&self) -> io::Result<UdpSocket> {
         self.inner.duplicate().map(|s| UdpSocket { inner: s })
     }
 
-    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+    pub(crate) fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.inner.set_timeout(dur, c::SO_RCVTIMEO)
     }
 
-    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+    pub(crate) fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.inner.set_timeout(dur, c::SO_SNDTIMEO)
     }
 
-    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+    pub(crate) fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.inner.timeout(c::SO_RCVTIMEO)
     }
 
-    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+    pub(crate) fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.inner.timeout(c::SO_SNDTIMEO)
     }
 
-    pub fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
+    pub(crate) fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
         unsafe { setsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST, broadcast as c_int) }
     }
 
-    pub fn broadcast(&self) -> io::Result<bool> {
+    pub(crate) fn broadcast(&self) -> io::Result<bool> {
         let raw: c_int = unsafe { getsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST)? };
         Ok(raw != 0)
     }
 
-    pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
+    pub(crate) fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
         unsafe {
             setsockopt(
                 &self.inner,
@@ -777,13 +777,13 @@ impl UdpSocket {
         }
     }
 
-    pub fn multicast_loop_v4(&self) -> io::Result<bool> {
+    pub(crate) fn multicast_loop_v4(&self) -> io::Result<bool> {
         let raw: IpV4MultiCastType =
             unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)? };
         Ok(raw != 0)
     }
 
-    pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
+    pub(crate) fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
         unsafe {
             setsockopt(
                 &self.inner,
@@ -794,13 +794,13 @@ impl UdpSocket {
         }
     }
 
-    pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
+    pub(crate) fn multicast_ttl_v4(&self) -> io::Result<u32> {
         let raw: IpV4MultiCastType =
             unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)? };
         Ok(raw as u32)
     }
 
-    pub fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
+    pub(crate) fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
         unsafe {
             setsockopt(
                 &self.inner,
@@ -811,13 +811,17 @@ impl UdpSocket {
         }
     }
 
-    pub fn multicast_loop_v6(&self) -> io::Result<bool> {
+    pub(crate) fn multicast_loop_v6(&self) -> io::Result<bool> {
         let raw: c_int =
             unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP)? };
         Ok(raw != 0)
     }
 
-    pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
+    pub(crate) fn join_multicast_v4(
+        &self,
+        multiaddr: &Ipv4Addr,
+        interface: &Ipv4Addr,
+    ) -> io::Result<()> {
         let mreq = c::ip_mreq {
             imr_multiaddr: ip_v4_addr_to_c(multiaddr),
             imr_interface: ip_v4_addr_to_c(interface),
@@ -825,7 +829,7 @@ impl UdpSocket {
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_ADD_MEMBERSHIP, mreq) }
     }
 
-    pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
+    pub(crate) fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let mreq = c::ipv6_mreq {
             ipv6mr_multiaddr: ip_v6_addr_to_c(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
@@ -833,7 +837,11 @@ impl UdpSocket {
         unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq) }
     }
 
-    pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
+    pub(crate) fn leave_multicast_v4(
+        &self,
+        multiaddr: &Ipv4Addr,
+        interface: &Ipv4Addr,
+    ) -> io::Result<()> {
         let mreq = c::ip_mreq {
             imr_multiaddr: ip_v4_addr_to_c(multiaddr),
             imr_interface: ip_v4_addr_to_c(interface),
@@ -841,7 +849,11 @@ impl UdpSocket {
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_DROP_MEMBERSHIP, mreq) }
     }
 
-    pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
+    pub(crate) fn leave_multicast_v6(
+        &self,
+        multiaddr: &Ipv6Addr,
+        interface: u32,
+    ) -> io::Result<()> {
         let mreq = c::ipv6_mreq {
             ipv6mr_multiaddr: ip_v6_addr_to_c(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
@@ -849,34 +861,34 @@ impl UdpSocket {
         unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq) }
     }
 
-    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+    pub(crate) fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         unsafe { setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int) }
     }
 
-    pub fn ttl(&self) -> io::Result<u32> {
+    pub(crate) fn ttl(&self) -> io::Result<u32> {
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
     }
 
-    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+    pub(crate) fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.inner.take_error()
     }
 
-    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+    pub(crate) fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.inner.set_nonblocking(nonblocking)
     }
 
-    pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
 
-    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.peek(buf)
     }
 
     // `MAX_SEND_LEN` is `usize::MAX` off Apple/Windows, where the guard is a no-op.
     #[allow(clippy::absurd_extreme_comparisons)]
-    pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
+    pub(crate) fn send(&self, buf: &[u8]) -> io::Result<usize> {
         if buf.len() > MAX_SEND_LEN {
             return Err(io::Error::from_raw_os_error(c::EMSGSIZE));
         }
@@ -891,7 +903,7 @@ impl UdpSocket {
         Ok(ret as usize)
     }
 
-    pub fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
+    pub(crate) fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
         return each_addr(addr, |addr| inner(self, addr));
 
         fn inner(this: &UdpSocket, addr: &SocketAddr) -> io::Result<()> {

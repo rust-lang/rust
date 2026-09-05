@@ -4,9 +4,9 @@ use crate::sys::pal::c;
 use crate::time::Duration;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
-pub const INTERVALS_PER_SEC: u64 = NANOS_PER_SEC / 100;
+pub(crate) const INTERVALS_PER_SEC: u64 = NANOS_PER_SEC / 100;
 
-pub fn checked_dur2intervals(dur: &Duration) -> Option<i64> {
+pub(crate) fn checked_dur2intervals(dur: &Duration) -> Option<i64> {
     dur.as_secs()
         .checked_mul(INTERVALS_PER_SEC)?
         .checked_add(dur.subsec_nanos() as u64 / 100)?
@@ -14,23 +14,23 @@ pub fn checked_dur2intervals(dur: &Duration) -> Option<i64> {
         .ok()
 }
 
-pub fn intervals2dur(intervals: u64) -> Duration {
+pub(crate) fn intervals2dur(intervals: u64) -> Duration {
     Duration::new(intervals / INTERVALS_PER_SEC, ((intervals % INTERVALS_PER_SEC) * 100) as u32)
 }
 
-pub mod perf_counter {
+pub(crate) mod perf_counter {
     use super::NANOS_PER_SEC;
     use crate::sync::atomic::{AtomicI64, Ordering};
     use crate::sys::{c, cvt};
     use crate::time::Duration;
 
-    pub fn now() -> i64 {
+    pub(crate) fn now() -> i64 {
         let mut qpc_value: i64 = 0;
         cvt(unsafe { c::QueryPerformanceCounter(&mut qpc_value) }).unwrap();
         qpc_value
     }
 
-    pub fn frequency() -> i64 {
+    pub(crate) fn frequency() -> i64 {
         // Either the cached result of `QueryPerformanceFrequency` or `0` for
         // uninitialized. Storing this as a single `AtomicI64` allows us to use
         // `Relaxed` operations, as we are only interested in the effects on a
@@ -65,7 +65,7 @@ pub mod perf_counter {
     // using QueryPerformanceCounter is 1 "tick" -- defined as 1/frequency().
     // Reference: https://docs.microsoft.com/en-us/windows/desktop/SysInfo
     //                   /acquiring-high-resolution-time-stamps
-    pub fn epsilon() -> Duration {
+    pub(crate) fn epsilon() -> Duration {
         let epsilon = NANOS_PER_SEC / (frequency() as u64);
         Duration::from_nanos(epsilon)
     }
@@ -78,7 +78,7 @@ pub(crate) struct WaitableTimer {
 
 impl WaitableTimer {
     /// Creates a high-resolution timer. Will fail before Windows 10, version 1803.
-    pub fn high_resolution() -> Result<Self, ()> {
+    pub(crate) fn high_resolution() -> Result<Self, ()> {
         let handle = unsafe {
             c::CreateWaitableTimerExW(
                 null(),
@@ -90,7 +90,7 @@ impl WaitableTimer {
         if !handle.is_null() { Ok(Self { handle }) } else { Err(()) }
     }
 
-    pub fn set(&self, duration: Duration) -> Result<(), ()> {
+    pub(crate) fn set(&self, duration: Duration) -> Result<(), ()> {
         // Convert the Duration to a format similar to FILETIME.
         // Negative values are relative times whereas positive values are absolute.
         // Therefore we negate the relative duration.
@@ -99,7 +99,7 @@ impl WaitableTimer {
         if result != 0 { Ok(()) } else { Err(()) }
     }
 
-    pub fn wait(&self) -> Result<(), ()> {
+    pub(crate) fn wait(&self) -> Result<(), ()> {
         let result = unsafe { c::WaitForSingleObject(self.handle, c::INFINITE) };
         if result != c::WAIT_FAILED { Ok(()) } else { Err(()) }
     }
