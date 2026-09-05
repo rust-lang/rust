@@ -1,6 +1,9 @@
 // This test ensures that `doc_cfg` feature is working as expected on trait impls.
 // Regression test for <https://github.com/rust-lang/rust/issues/153655>.
 
+//@ only-linux
+//@ only-x86_64
+
 #![feature(doc_cfg)]
 #![doc(auto_cfg(hide(
     target_pointer_width, values("64"),
