@@ -431,6 +431,26 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                                 ),
                             );
                         }
+
+                        // Call arguments are moved by reference, so they must be plain locals
+                        // or the contents of a box; other moved places violate MIR invariants.
+                        if self.tcx.sess.opts.unstable_opts.validate_mir
+                            && self.body.phase < MirPhase::Runtime(RuntimePhase::Initial)
+                        {
+                            let is_plain_local = place.projection.is_empty();
+                            let is_box_deref =
+                                matches!(place.projection.as_ref(), [ProjectionElem::Deref])
+                                    && self.body.local_decls[place.local].ty.is_box();
+                            if !is_plain_local && !is_box_deref {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "encountered `Move` of a non-local, non-box place in `Call` terminator: {:?}",
+                                        terminator.kind,
+                                    ),
+                                );
+                            }
+                        }
                     }
                 }
 
