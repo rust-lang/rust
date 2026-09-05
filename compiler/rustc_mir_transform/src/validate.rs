@@ -598,7 +598,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         crate::util::relate_types(self.tcx, self.typing_env, variance, src, dest)
     }
 
-    /// Check that the given predicate definitely holds in the param-env of this MIR body.
+    /// Check that the given predicate is not provably false in the param-env of this MIR body.
+    ///
+    /// We deliberately accept ambiguous and cycle results, such as post-monomorphization cycles,
+    /// mirroring the behavior of `impossible_clauses` which also only rejects definite failures.
+    /// See <https://github.com/rust-lang/rust/issues/155538>.
     fn predicate_must_hold_modulo_regions(
         &self,
         pred: impl Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
@@ -622,7 +626,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.evaluate_obligations_error_on_ambiguity().no_errors()
+        let errors = ocx.try_evaluate_obligations();
+        errors.as_slice().iter().all(|error| !error.is_true_error())
     }
 }
 
