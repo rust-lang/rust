@@ -1,0 +1,67 @@
+- // MIR for `array_aggregate` before MoveElimination
++ // MIR for `array_aggregate` after MoveElimination
+  
+  fn array_aggregate() -> [[u8; 8]; 3] {
+      let mut _0: [[u8; 8]; 3];
+      let _1: [u8; 8];
+      let mut _4: [u8; 8];
+      let mut _5: [u8; 8];
+      let mut _6: [u8; 8];
+      scope 1 {
+-         debug a => _1;
++         debug a => _0[0 of 1];
+          let _2: [u8; 8];
+          scope 2 {
+-             debug b => _2;
++             debug b => _0[1 of 2];
+              let _3: [u8; 8];
+              scope 3 {
+-                 debug c => _3;
++                 debug c => _0[2 of 3];
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = [const 1_u8; 8];
+-         StorageLive(_2);
+-         _2 = [const 2_u8; 8];
+-         StorageLive(_3);
+-         _3 = [const 3_u8; 8];
+-         StorageLive(_4);
+-         _4 = move _1;
+-         StorageLive(_5);
+-         _5 = move _2;
+-         StorageLive(_6);
+-         _6 = move _3;
+-         _0 = [move _4, move _5, move _6];
+-         StorageDead(_6);
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         StorageDead(_2);
+-         StorageDead(_1);
++         nop;
++         _0[0 of 1] = [const 1_u8; 8];
++         nop;
++         _0[1 of 2] = [const 2_u8; 8];
++         nop;
++         _0[2 of 3] = [const 3_u8; 8];
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

@@ -1,0 +1,17 @@
+- // MIR for `storage_dead_before_return` before MoveElimination
++ // MIR for `storage_dead_before_return` after MoveElimination
+  
+  fn storage_dead_before_return() -> *const u32 {
+      debug x => _1;
+      let mut _0: *const u32;
+      let mut _1: u32;
+  
+      bb0: {
++         StorageLive(_1);
+          _1 = const 1_u32;
+          _0 = &raw const _1;
++         StorageDead(_1);
+          return;
+      }
+  }
+  

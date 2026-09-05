@@ -1290,11 +1290,12 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
+        caller_moved_locals: &mut Vec<mir::Local>,
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
-        ecx.call_intrinsic(instance, args, dest, ret, unwind)
+        ecx.call_intrinsic(instance, args, caller_moved_locals, dest, ret, unwind)
     }
 
     #[inline(always)]
@@ -1333,7 +1334,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             ExternAbi::Rust,
             &[],
             None,
-            ReturnContinuation::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+            ReturnContinuation::Goto {
+                ret: None,
+                unwind: mir::UnwindAction::Unreachable,
+                caller_moved_locals: vec![],
+            },
         )?;
         interp_ok(())
     }

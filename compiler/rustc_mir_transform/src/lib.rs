@@ -165,6 +165,7 @@ declare_passes! {
     mod lower_slice_len : LowerSliceLenCalls;
     mod match_branches : MatchBranchSimplification;
     mod mentioned_items : MentionedItems;
+    mod move_elimination : MoveElimination;
     mod multiple_return_terminators : MultipleReturnTerminators;
     mod post_drop_elaboration : CheckLiveDrops;
     mod prettify : ReorderBasicBlocks, ReorderLocals;
@@ -206,6 +207,7 @@ declare_passes! {
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
     mod ssa_range_prop: SsaRangePropagation;
+    mod tail_copy_to_move : TailCopyToMove;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
     mod validate : Validator;
@@ -761,6 +763,8 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &copy_prop::CopyProp,
             &dead_store_elimination::DeadStoreElimination::Final,
             &dest_prop::DestinationPropagation,
+            &tail_copy_to_move::TailCopyToMove,
+            &move_elimination::MoveElimination,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &large_enums::EnumSizeOpt { discrepancy: 128 },

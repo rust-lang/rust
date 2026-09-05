@@ -34,6 +34,13 @@ pub trait ResultsVisitor<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
+    /// Called after all effects in a block have been applied in the direction
+    /// of the analysis.
+    ///
+    /// In a forwards analysis, `state` is from the block's end. In a backwards
+    /// analysis, `state` is from the block's start.
+    fn visit_block_exit(&mut self, _state: &A::Domain, _block: BasicBlock) {}
+
     /// Called after the "early" effect of the given statement is applied to `state`.
     fn visit_after_early_statement_effect(
         &mut self,

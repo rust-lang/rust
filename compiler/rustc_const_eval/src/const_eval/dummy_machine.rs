@@ -98,6 +98,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         _ecx: &mut InterpCx<'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _args: &[interpret::OpTy<'tcx, Self::Provenance>],
+        _caller_moved_locals: &mut Vec<Local>,
         _destination: &interpret::PlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
