@@ -1,0 +1,9 @@
+// Check that the emoji indicators for unstable and deprecated search results are present.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "replaced_function"})
+assert-text: ('.search-results [href="../test_docs/fn.replaced_function.html"]
+  > span.result-name > span.emoji[title="this item is deprecated', '👎')
+call-function: ("perform-search", {"query": "NewFoo"})
+assert-text: ('.search-results [href="../staged_api/struct.NewFoo.html"]
+  > span.result-name > span.emoji[title="this item is unstable', '🔬')
