@@ -36,6 +36,11 @@ note: ...and refers to the struct `One` which is defined here
    |
 LL |     pub struct One;
    |     ^^^^^^^^^^^^^^^ you could import this directly
+help: import `One` directly
+   |
+LL ~     use crate::a::One;
+LL ~     use crate::b::Two;
+   |
 
 error[E0603]: struct import `Two` is private
   --> $DIR/private-import-suggestion-path-156244.rs:35:25
@@ -53,6 +58,11 @@ note: ...and refers to the struct `Two` which is defined here
    |
 LL |     pub struct Two;
    |     ^^^^^^^^^^^^^^^ you could import this directly
+help: import `Two` directly
+   |
+LL ~     use crate::a::Two;
+LL ~     use crate::b::One;
+   |
 
 error[E0603]: module import `inner` is private
   --> $DIR/private-import-suggestion-path-156244.rs:38:24
