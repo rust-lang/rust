@@ -5,6 +5,15 @@ use crate::cmp::Ordering::{self, *};
 use crate::marker::{ConstParamTy_, StructuralPartialEq};
 use crate::ops::ControlFlow::{self, Break, Continue};
 
+macro_rules! token {
+    (T $t:tt) => {
+        T
+    };
+    (U $t:tt) => {
+        U
+    };
+}
+
 // Recursive macro for implementing n-ary tuple functions and operations
 //
 // Also provides implementations for tuples with lesser arity. For example, tuple_impls!(A B C)
@@ -33,6 +42,24 @@ macro_rules! tuple_impls {
                 #[inline]
                 fn ne(&self, other: &($($T,)+)) -> bool {
                     $( ${ignore($T)} self.${index()} != other.${index()} )||+
+                }
+            }
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[unstable(feature = "tuple_map", issue = "none")]
+            impl<T> ($(token!(T $T),)+) {
+                /// Maps a homogenous tuple as if it were an array.
+                #[rustc_const_unstable(feature = "tuple_map", issue = "none")]
+                #[allow(nonstandard_style)]
+                pub const fn map<F, U>(self, mut f: F) -> ($(token!(U $T),)+)
+                where
+                    F: [const] FnMut(T) -> U + [const] crate::marker::Destruct
+                {
+                    let ($($T,)+) = self;
+
+                    ($(f($T),)+)
                 }
             }
         }
