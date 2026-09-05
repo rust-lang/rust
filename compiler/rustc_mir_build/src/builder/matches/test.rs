@@ -15,7 +15,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, kw, sym};
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
@@ -344,7 +344,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
     ) {
         let (trait_item, method) = match mutability {
-            Mutability::Not => (LangItem::Deref, sym::deref),
+            Mutability::Not => (LangItem::Deref, kw::Deref),
             Mutability::Mut => (LangItem::DerefMut, sym::deref_mut),
         };
         let borrow_kind = super::util::ref_pat_borrow_kind(mutability);

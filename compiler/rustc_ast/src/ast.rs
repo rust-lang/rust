@@ -1765,7 +1765,7 @@ pub enum ExprKind {
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(Box<Expr>, Box<Ty>),
-    /// A type ascription (e.g., `builtin # type_ascribe(42, usize)`).
+    /// A type ascription (e.g., `k#type_ascribe(42, usize)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `type_ascribe!(...)`.
@@ -1857,7 +1857,7 @@ pub enum ExprKind {
     /// Output of the `asm!()` macro.
     InlineAsm(Box<InlineAsm>),
 
-    /// An `offset_of` expression (e.g., `builtin # offset_of(Struct, field)`).
+    /// An `offset_of` expression (e.g., `k#offset_of(Struct, field)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
@@ -2565,7 +2565,7 @@ pub enum TyKind {
     /// Pattern types like `pattern_type!(u32 is 1..=)`, which is the same as `NonZero<u32>`,
     /// just as part of the type system.
     Pat(Box<Ty>, Box<TyPat>),
-    /// A `field_of` expression (e.g., `builtin # field_of(Struct, field)`).
+    /// A `field_of` expression (e.g., `k#field_of(Struct, field)`).
     ///
     /// Usually not written directly in user code but indirectly via the macro
     /// `core::field::field_of!(...)`.

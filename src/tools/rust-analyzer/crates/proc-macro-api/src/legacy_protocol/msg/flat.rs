@@ -699,14 +699,17 @@ impl<'a, T: SpanTransformer>
                 proc_macro_srv::TokenTree::Ident(ident) => {
                     let idx = self.ident.len() as u32;
                     let id = self.token_id_of(ident.span);
+                    // NOTE(forced_keywords): Let's not bother to preserve forced keywords in this
+                    //                        legacy protocol.
+                    let is_raw = matches!(ident.kind, proc_macro_srv::IdentKind::Raw);
                     let text = if self.version >= EXTENDED_LEAF_DATA {
                         self.intern(ident.sym.as_str())
-                    } else if ident.is_raw {
+                    } else if is_raw {
                         self.intern_owned(format!("r#{}", ident.sym.as_str(),))
                     } else {
                         self.intern(ident.sym.as_str())
                     };
-                    self.ident.push(IdentRepr { id, text, is_raw: ident.is_raw });
+                    self.ident.push(IdentRepr { id, text, is_raw });
                     (idx << 2) | 0b11
                 }
             };
@@ -944,7 +947,10 @@ impl<T: SpanTransformer> Reader<'_, T> {
                             proc_macro_srv::TokenTree::Ident(proc_macro_srv::Ident {
                                 sym: Symbol::intern(text),
                                 span: read_span(repr.id),
-                                is_raw: is_raw.yes(),
+                                kind: match is_raw {
+                                    tt::IdentIsRaw::Yes => proc_macro_srv::IdentKind::Raw,
+                                    tt::IdentIsRaw::No => proc_macro_srv::IdentKind::Normal,
+                                },
                             })
                         }
                         other => panic!("bad tag: {other}"),

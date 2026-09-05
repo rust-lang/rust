@@ -1,17 +1,17 @@
 error: suffixes on a tuple index are invalid
-  --> $DIR/offset-of-tuple-field.rs:15:35
+  --> $DIR/offset-of-tuple-field.rs:16:27
    |
-LL |     builtin # offset_of((u8, u8), 1_u8);
-   |                                   ^^^^ invalid suffix `u8`
+LL |     k#offset_of((u8, u8), 1_u8);
+   |                           ^^^^ invalid suffix `u8`
 
 error: suffixes on a tuple index are invalid
-  --> $DIR/offset-of-tuple-field.rs:9:26
+  --> $DIR/offset-of-tuple-field.rs:10:26
    |
 LL |     offset_of!((u8, u8), 1_u8);
    |                          ^^^^ invalid suffix `u8`
 
 error[E0609]: no field `_0` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple-field.rs:6:26
+  --> $DIR/offset-of-tuple-field.rs:7:26
    |
 LL |     offset_of!((u8, u8), _0);
    |                          ^^
@@ -23,7 +23,7 @@ LL +     offset_of!((u8, u8), 0);
    |
 
 error[E0609]: no field `01` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple-field.rs:7:26
+  --> $DIR/offset-of-tuple-field.rs:8:26
    |
 LL |     offset_of!((u8, u8), 01);
    |                          ^^
@@ -31,7 +31,7 @@ LL |     offset_of!((u8, u8), 01);
    = note: available fields are: `0`, `1`
 
 error[E0609]: no field `1e2` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple-field.rs:8:26
+  --> $DIR/offset-of-tuple-field.rs:9:26
    |
 LL |     offset_of!((u8, u8), 1e2);
    |                          ^^^
@@ -39,7 +39,7 @@ LL |     offset_of!((u8, u8), 1e2);
    = note: available fields are: `0`, `1`
 
 error[E0609]: no field `1_` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple-field.rs:9:26
+  --> $DIR/offset-of-tuple-field.rs:10:26
    |
 LL |     offset_of!((u8, u8), 1_u8);
    |                          ^^^^
@@ -51,47 +51,47 @@ LL +     offset_of!((u8, u8), 1);
    |
 
 error[E0609]: no field `1e2` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple-field.rs:12:35
+  --> $DIR/offset-of-tuple-field.rs:13:27
    |
-LL |     builtin # offset_of((u8, u8), 1e2);
-   |                                   ^^^
+LL |     k#offset_of((u8, u8), 1e2);
+   |                           ^^^
    |
    = note: available fields are: `0`, `1`
 
 error[E0609]: no field `_0` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple-field.rs:13:35
+  --> $DIR/offset-of-tuple-field.rs:14:27
    |
-LL |     builtin # offset_of((u8, u8), _0);
-   |                                   ^^
+LL |     k#offset_of((u8, u8), _0);
+   |                           ^^
    |
 help: a field with a similar name exists
    |
-LL -     builtin # offset_of((u8, u8), _0);
-LL +     builtin # offset_of((u8, u8), 0);
+LL -     k#offset_of((u8, u8), _0);
+LL +     k#offset_of((u8, u8), 0);
    |
 
 error[E0609]: no field `01` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple-field.rs:14:35
+  --> $DIR/offset-of-tuple-field.rs:15:27
    |
-LL |     builtin # offset_of((u8, u8), 01);
-   |                                   ^^
+LL |     k#offset_of((u8, u8), 01);
+   |                           ^^
    |
    = note: available fields are: `0`, `1`
 
 error[E0609]: no field `1_` on type `(u8, u8)`
-  --> $DIR/offset-of-tuple-field.rs:15:35
+  --> $DIR/offset-of-tuple-field.rs:16:27
    |
-LL |     builtin # offset_of((u8, u8), 1_u8);
-   |                                   ^^^^
+LL |     k#offset_of((u8, u8), 1_u8);
+   |                           ^^^^
    |
 help: a field with a similar name exists
    |
-LL -     builtin # offset_of((u8, u8), 1_u8);
-LL +     builtin # offset_of((u8, u8), 1);
+LL -     k#offset_of((u8, u8), 1_u8);
+LL +     k#offset_of((u8, u8), 1);
    |
 
 error[E0609]: no field `2` on type `(u8, u16)`
-  --> $DIR/offset-of-tuple-field.rs:18:47
+  --> $DIR/offset-of-tuple-field.rs:19:47
    |
 LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.2);
    |                                               ^
@@ -99,7 +99,7 @@ LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.2);
    = note: available fields are: `0`, `1`
 
 error[E0609]: no field `1e2` on type `(u8, u16)`
-  --> $DIR/offset-of-tuple-field.rs:19:47
+  --> $DIR/offset-of-tuple-field.rs:20:47
    |
 LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.1e2);
    |                                               ^^^
@@ -107,7 +107,7 @@ LL |     offset_of!(((u8, u16), (u32, u16, u8)), 0.1e2);
    = note: available fields are: `0`, `1`
 
 error[E0609]: no field `0` on type `u8`
-  --> $DIR/offset-of-tuple-field.rs:21:49
+  --> $DIR/offset-of-tuple-field.rs:22:49
    |
 LL |     offset_of!(((u8, u16), (u32, u16, u8)), 1.2.0);
    |                                                 ^
