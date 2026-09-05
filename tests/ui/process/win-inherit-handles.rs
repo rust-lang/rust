@@ -6,8 +6,6 @@
 //@ needs-subprocess
 //@ edition: 2024
 
-#![feature(windows_process_extensions_inherit_handles)]
-
 use std::os::windows::io::AsRawHandle;
 use std::os::windows::process::CommandExt;
 use std::process::{Command, Stdio};
