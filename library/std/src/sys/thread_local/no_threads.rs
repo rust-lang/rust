@@ -5,7 +5,13 @@ use crate::cell::{Cell, UnsafeCell};
 use crate::mem::MaybeUninit;
 use crate::ptr;
 
-#[cfg(target_has_threads)]
+#[cfg(all(
+    target_has_threads,
+    // VEXos is "target_has_threads" because it allows user interrupt handlers which preempt the
+    // main thread, but they are forbidden from accessing TLS. Since there is only one context
+    // that's allowed to access thread locals, it's sound to use the no_threads implementation.
+    not(target_os = "vexos"),
+))]
 compile_error!("Using no_threads implementation on a target with threads");
 
 #[doc(hidden)]
