@@ -1140,6 +1140,12 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allow_lifetime_dependent_specialization]`.
     RustcAllowLifetimeDependentSpecialization,
 
+    /// Represents `#[rustc_anti_fundamental]`. This marks a trait so that it
+    /// cannot be implemented for non-local `#[fundamental]` types. This in particular
+    /// prevents the implementation of `Deref`, `DerefMut`, and `DispatchFromDyn` on
+    /// fundamental wrappers like `Pin` and `Box`.
+    RustcAntiFundamental,
+
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     RustcAsPtr,
 
