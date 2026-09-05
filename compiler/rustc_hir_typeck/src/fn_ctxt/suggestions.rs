@@ -1761,7 +1761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             provided_ty
         };
 
-        if !self.may_coerce(expected_ty, dummy_ty) {
+        if !self.may_coerce_for_suggestion(expected_ty, dummy_ty) {
             return;
         }
         let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
@@ -2003,7 +2003,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if item_ty.has_param() {
             return false;
         }
-        if self.may_coerce(item_ty, expected_ty) {
+        if self.may_coerce_for_suggestion(item_ty, expected_ty) {
             err.span_suggestion_verbose(
                 segment.ident.span,
                 format!("try referring to the associated const `{capitalized_name}` instead",),
@@ -2368,12 +2368,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
         let inner_ty = args.type_at(0);
-        // Do not use `!`'s coercion to justify an extraction suggestion,
-        // It is only useful when the expected type itself is `!`.
-        if is_ctor
-            || !self.may_coerce(inner_ty, expected)
-            || (inner_ty.is_never() && !expected.is_never())
-        {
+        if is_ctor || !self.may_coerce_for_suggestion(inner_ty, expected) {
             return false;
         }
 
