@@ -7,6 +7,7 @@ LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
 LL |     S.late::<'static>(&0, &0);
    |              ^^^^^^^
    |
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
 note: the lint level is defined here
@@ -24,6 +25,7 @@ LL |     fn late_implicit(self, _: &u8, _: &u8) {}
 LL |     S.late_implicit::<'static>(&0, &0);
    |                       ^^^^^^^
    |
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
 
