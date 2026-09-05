@@ -131,6 +131,7 @@ declare_passes! {
     mod check_const_item_mutation : CheckConstItemMutation;
     mod check_null : CheckNull;
     mod check_packed_ref : CheckPackedRef;
+    mod check_c_void : CheckCVoid;
     mod check_mut_restriction : CheckMutRestriction;
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
@@ -416,6 +417,7 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             &Lint(check_inline::CheckForceInline),
             &Lint(check_call_recursion::CheckCallRecursion),
             &Lint(check_packed_ref::CheckPackedRef),
+            &Lint(check_c_void::CheckCVoid),
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(check_mut_restriction::CheckMutRestriction),
             &Lint(function_item_references::FunctionItemReferences),
