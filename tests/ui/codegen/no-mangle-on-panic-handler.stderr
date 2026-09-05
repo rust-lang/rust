@@ -1,4 +1,4 @@
-error: `#[no_mangle]` cannot be used on internal language items
+error: `#[no_mangle]` and `#[export_name]` cannot be used on internal language items
   --> $DIR/no-mangle-on-panic-handler.rs:10:1
    |
 LL | #[unsafe(no_mangle)]
