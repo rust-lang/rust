@@ -6,7 +6,7 @@
 //@ normalize-stdout: "libthe_backend.dylib" -> "libthe_backend.so"
 //@ normalize-stdout: "the_backend.dll" -> "libthe_backend.so"
 
-// Pick a target that requires no target features, so that no warning is shown
+// Pick a target that requires no target features in the ABI check, so that no warning is shown
 // about missing target features.
 //@ compile-flags: --target arm-unknown-linux-gnueabi
 //@ needs-llvm-components: arm
