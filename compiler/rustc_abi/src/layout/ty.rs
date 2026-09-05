@@ -7,7 +7,7 @@ use rustc_macros::StableHash;
 
 use crate::layout::{FieldIdx, VariantIdx};
 use crate::{
-    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
+    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche, Numeric,
     PointeeInfo, Primitive, Size, Variants,
 };
 
@@ -229,12 +229,12 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     }
 
     /// Returns `true` if this type needs to match the ABI of the C `_Complex` type. See
-    /// [`TyAndLayout::complex_number_primitive`] for details.
+    /// [`TyAndLayout::complex_number`] for details.
     pub fn is_complex_number<C>(self, cx: &C) -> bool
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        self.complex_number_primitive(cx).is_some()
+        self.complex_number(cx).is_some()
     }
 
     pub fn is_scalable_vector<C>(self) -> bool
@@ -302,9 +302,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     }
 
     /// If this type should match the ABI of the C `_Complex` type, returns the primitive that is
-    /// used for its parts. This only returns `Some(T)` for `core::num::Complex<T>` where `T` is
+    /// used for its components.
+    ///
+    /// This function only returns `Some(T)` for `core::num::Complex<T>` where `T` is
     /// either a float or an integer. `repr(transparent)` wrapper types are automatically handled.
-    pub fn complex_number_primitive<C>(&self, cx: &C) -> Option<Primitive>
+    pub fn complex_number<C>(&self, cx: &C) -> Option<Numeric>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -313,35 +315,35 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             return None;
         }
 
-        let part = complex.field(cx, 0).peel_transparent_wrappers(cx);
+        let component = complex.field(cx, 0).peel_transparent_wrappers(cx);
 
-        if let BackendRepr::Scalar(scalar) = part.backend_repr {
-            // Only Complex<{ float }> and Complex<{ integer }> have special layout.
-            let primitive = scalar.primitive();
-            match primitive {
-                // Explicitly spell out all the float types so that any new ones have to be added to
-                // one of the match branches.
-                Primitive::Int(..)
-                | Primitive::Float(Float::F16 | Float::F32 | Float::F64 | Float::F128) => {
-                    Some(primitive)
-                }
-                Primitive::Pointer(..) => None,
+        let BackendRepr::Scalar(scalar) = component.backend_repr else {
+            return None;
+        };
+
+        // Only Complex<{ float }> and Complex<{ integer }> have special layout.
+        //
+        // Explicitly spell out all the float types so that any new ones have to be added to
+        // one of the match branches.
+        let primitive = scalar.primitive();
+        match primitive {
+            Primitive::Int(integer, is_signed) => Some(Numeric::Int(integer, is_signed)),
+            Primitive::Float(float @ (Float::F16 | Float::F32 | Float::F64 | Float::F128)) => {
+                Some(Numeric::Float(float))
             }
-        } else {
-            None
+            Primitive::Pointer(..) => None,
         }
     }
 
-    /// Returns `Some` if this type has the ABI of the C `_Complex` type with float parts. See
-    /// [`TyAndLayout::complex_number_primitive`] for details.
+    /// Returns `Some` if this type has the ABI of the C `_Complex` type with float components.
+    /// See [`TyAndLayout::complex_number`] for details.
     pub fn complex_float<C>(&self, cx: &C) -> Option<Float>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        if let Some(Primitive::Float(float)) = self.complex_number_primitive(cx) {
-            Some(float)
-        } else {
-            None
+        match self.complex_number(cx) {
+            Some(Numeric::Float(float)) => Some(float),
+            _ => None,
         }
     }
 

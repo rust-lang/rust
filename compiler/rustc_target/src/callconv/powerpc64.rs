@@ -2,9 +2,9 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use rustc_abi::{HasDataLayout, TyAbiInterface};
+use rustc_abi::{HasDataLayout, Integer, Numeric, TyAbiInterface};
 
-use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
+use crate::callconv::{Align, ArgAbi, CastTarget, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::{HasTargetSpec, LlvmAbi, Os};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -58,6 +58,17 @@ where
     }
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
+        return;
+    }
+    if let Some(component) = arg.layout.complex_number(cx) {
+        if let Numeric::Int(Integer::I16, _) = component {
+            // FIXME: use `PassMode::Cast` here. In LLVM 23 doing so would hit
+            // https://github.com/llvm/llvm-project/issues/218676.
+            return;
+        }
+
+        let reg = Reg { kind: component.reg_kind(), size: component.size() };
+        arg.cast_to(CastTarget::pair(reg, reg));
         return;
     }
 
