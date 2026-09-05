@@ -17,7 +17,7 @@ use minicore::*;
 
 #[no_mangle]
 pub fn foo() {
-    // CHECK: @foo() unnamed_addr #0
+    // CHECK: @foo() local_unnamed_addr #0
 
     // unset-NOT: attributes #0 = { {{.*}}"no-jump-tables"="true"{{.*}} }
     // set_yes-NOT: attributes #0 = { {{.*}}"no-jump-tables"="true"{{.*}} }

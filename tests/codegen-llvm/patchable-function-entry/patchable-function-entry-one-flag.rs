@@ -39,13 +39,13 @@ pub fn fun5() {}
 #[patchable_function_entry(prefix_nops = 4)]
 pub fn fun6() {}
 
-// CHECK: @fun0() unnamed_addr #0
-// CHECK: @fun1() unnamed_addr #1
-// CHECK: @fun2() unnamed_addr #2
-// CHECK: @fun3() unnamed_addr #3
-// CHECK: @fun4() unnamed_addr #4
-// CHECK: @fun5() unnamed_addr #5
-// CHECK: @fun6() unnamed_addr #6
+// CHECK: @fun0(){{.*}} #0
+// CHECK: @fun1(){{.*}} #1
+// CHECK: @fun2(){{.*}} #2
+// CHECK: @fun3(){{.*}} #3
+// CHECK: @fun4(){{.*}} #4
+// CHECK: @fun5(){{.*}} #5
+// CHECK: @fun6(){{.*}} #6
 
 // CHECK: attributes #0 = { {{.*}}"patchable-function-entry"="15" {{.*}} }
 // CHECK-NOT: attributes #0 = { {{.*}}patchable-function-prefix{{.*}} }

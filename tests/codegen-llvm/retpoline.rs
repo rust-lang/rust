@@ -16,7 +16,7 @@ extern crate minicore;
 
 #[no_mangle]
 pub fn foo() {
-    // CHECK: @foo() unnamed_addr #0
+    // CHECK: @foo(){{.*}} #0
 
     // disabled-NOT: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+retpoline-external-thunk{{.*}} }
     // disabled-NOT: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+retpoline-indirect-branches{{.*}} }

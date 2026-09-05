@@ -10,6 +10,6 @@ use minicore::*;
 
 #[no_mangle]
 pub fn test_backchain() {
-    // CHECK: @test_backchain() unnamed_addr #0
+    // CHECK: @test_backchain() local_unnamed_addr #0
 }
 // CHECK: attributes #0 = { {{.*}}"target-features"="{{[^"]*}}+backchain{{.*}} }

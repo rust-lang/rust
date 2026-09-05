@@ -19,19 +19,19 @@ extern crate minicore;
 use minicore::*;
 
 #[no_mangle]
-// CHECK: define {{.*}}void @instrument_default() {{.*}} [[DFLT_ATTR:#[0-9]+]]
+// CHECK: define {{.*}}void @instrument_default() [[DFLT_ATTR:#[0-9]+]]
 fn instrument_default() {}
 
 #[no_mangle]
 #[instrument_fn = "off"]
-// CHECK: define {{.*}}void @instrument_off() {{.*}} [[OFF_ATTR:#[0-9]+]]
+// CHECK: define {{.*}}void @instrument_off() [[OFF_ATTR:#[0-9]+]]
 fn instrument_off() {}
 
 #[no_mangle]
 #[instrument_fn = "on"]
-// MCOUNT: define {{.*}}void @instrument_on() {{.*}} [[DFLT_ATTR]]
-// FENTRY: define void @instrument_on() {{.*}} [[DFLT_ATTR]]
-// XRAY: define void @instrument_on() {{.*}} [[ON_ATTR:#[0-9]+]]
+// MCOUNT: define {{.*}}void @instrument_on() [[DFLT_ATTR]]
+// FENTRY: define void @instrument_on() [[DFLT_ATTR]]
+// XRAY: define void @instrument_on() [[ON_ATTR:#[0-9]+]]
 fn instrument_on() {}
 
 // MCOUNT: attributes [[DFLT_ATTR]] {{.*}} "instrument-function-entry-inlined"=

@@ -1302,12 +1302,11 @@ fn intrinsic_fn<'ll, 'tcx>(
         return llfn;
     }
 
-    // Function addresses in Rust are never significant, allowing functions to be merged.
     let llfn = declare_raw_fn(
         bx,
         name,
         llvm::CCallConv,
-        llvm::UnnamedAddr::Global,
+        llvm::UnnamedAddr::No,
         llvm::Visibility::Default,
         rust_fn_ty,
     );

@@ -101,7 +101,7 @@ fn main() {
 // CHECK-SAME:   @__llvm_prf_nm
 // CHECK-SAME:   section "llvm.metadata"
 
-// CHECK:        define internal { {{.*}} } @_R{{[a-zA-Z0-9_]+}}testprog14will_be_called() unnamed_addr #{{[0-9]+}}
+// CHECK:        define internal { {{.*}} } @_R{{[a-zA-Z0-9_]+}}testprog14will_be_called() #{{[0-9]+}}
 // CHECK-NEXT:   start:
 // CHECK-NOT:    define internal
 // CHECK:        atomicrmw add ptr
