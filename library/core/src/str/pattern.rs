@@ -1,36 +1,47 @@
-//! The string Pattern API.
+//! [The Pattern API] implementation for searching in `&str`.
 //!
-//! The Pattern API provides a generic mechanism for using different pattern
-//! types when searching through a string.
+//! The implementation provides generic mechanism for using different pattern
+//! types when searching through a string.  Although this API is unstable, it is
+//! exposed via stable APIs on the [`str`] type.
 //!
-//! For more details, see the traits [`Pattern`], [`Searcher`],
-//! [`ReverseSearcher`], and [`DoubleEndedSearcher`].
+//! Depending on the type of the pattern, the behaviour of methods like
+//! [`str::find`] and [`str::contains`] can change. The table below describes
+//! some of those behaviours.
 //!
-//! Although this API is unstable, it is exposed via stable APIs on the
-//! [`str`] type.
+//! | Pattern type             | Match condition                           |
+//! |--------------------------|-------------------------------------------|
+//! | `&str`                   | is substring                              |
+//! | `char`                   | is contained in string                    |
+//! | `&[char]`                | any char in slice is contained in string  |
+//! | `F: FnMut(char) -> bool` | `F` returns `true` for a char in string   |
+//! | `&&str`                  | is substring                              |
+//! | `&String`                | is substring                              |
 //!
 //! # Examples
-//!
-//! [`Pattern`] is [implemented][pattern-impls] in the stable API for
-//! [`&str`][`str`], [`char`], slices of [`char`], and functions and closures
-//! implementing `FnMut(char) -> bool`.
 //!
 //! ```
 //! let s = "Can you find a needle in a haystack?";
 //!
 //! // &str pattern
 //! assert_eq!(s.find("you"), Some(4));
+//! assert_eq!(s.find("thou"), None);
+//!
 //! // char pattern
 //! assert_eq!(s.find('n'), Some(2));
-//! // array of chars pattern
+//! assert_eq!(s.find('N'), None);
+//!
+//! // Array of chars pattern and slices thereof
 //! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u']), Some(1));
-//! // slice of chars pattern
 //! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u'][..]), Some(1));
-//! // closure pattern
+//! assert_eq!(s.find(&['q', 'v', 'x']), None);
+//!
+//! // Predicate closure
 //! assert_eq!(s.find(|c: char| c.is_ascii_punctuation()), Some(35));
+//! assert_eq!(s.find(|c: char| c.is_lowercase()), Some(1));
+//! assert_eq!(s.find(|c: char| !c.is_ascii()), None);
 //! ```
 //!
-//! [pattern-impls]: Pattern#implementors
+//! [The Pattern API]: crate::pattern
 
 #![unstable(
     feature = "pattern",
@@ -40,332 +51,45 @@
 
 use crate::cmp::Ordering;
 use crate::convert::TryInto as _;
+use crate::ops::Range;
+pub use crate::pattern::{
+    DoubleEndedSearcher, Haystack, MatchOnly, Pattern, ReverseSearcher, SearchResult, SearchStep,
+    Searcher, Utf8Pattern,
+};
 use crate::slice::memchr;
 use crate::{cmp, fmt};
 
-// Pattern
+/////////////////////////////////////////////////////////////////////////////
+// Impl for Haystack
+/////////////////////////////////////////////////////////////////////////////
 
-/// A string pattern.
-///
-/// A `Pattern` expresses that the implementing type
-/// can be used as a string pattern for searching in a [`&str`][str].
-///
-/// For example, both `'a'` and `"aa"` are patterns that
-/// would match at index `1` in the string `"baaaab"`.
-///
-/// The trait itself acts as a builder for an associated
-/// [`Searcher`] type, which does the actual work of finding
-/// occurrences of the pattern in a string.
-///
-/// Depending on the type of the pattern, the behavior of methods like
-/// [`str::find`] and [`str::contains`] can change. The table below describes
-/// some of those behaviors.
-///
-/// | Pattern type             | Match condition                           |
-/// |--------------------------|-------------------------------------------|
-/// | `&str`                   | is substring                              |
-/// | `char`                   | is contained in string                    |
-/// | `&[char]`                | any char in slice is contained in string  |
-/// | `F: FnMut(char) -> bool` | `F` returns `true` for a char in string   |
-/// | `&&str`                  | is substring                              |
-/// | `&String`                | is substring                              |
-///
-/// # Examples
-///
-/// ```
-/// // &str
-/// assert_eq!("abaaa".find("ba"), Some(1));
-/// assert_eq!("abaaa".find("bac"), None);
-///
-/// // char
-/// assert_eq!("abaaa".find('a'), Some(0));
-/// assert_eq!("abaaa".find('b'), Some(1));
-/// assert_eq!("abaaa".find('c'), None);
-///
-/// // &[char; N]
-/// assert_eq!("ab".find(&['b', 'a']), Some(0));
-/// assert_eq!("abaaa".find(&['a', 'z']), Some(0));
-/// assert_eq!("abaaa".find(&['c', 'd']), None);
-///
-/// // &[char]
-/// assert_eq!("ab".find(&['b', 'a'][..]), Some(0));
-/// assert_eq!("abaaa".find(&['a', 'z'][..]), Some(0));
-/// assert_eq!("abaaa".find(&['c', 'd'][..]), None);
-///
-/// // FnMut(char) -> bool
-/// assert_eq!("abcdef_z".find(|ch| ch > 'd' && ch < 'y'), Some(4));
-/// assert_eq!("abcddd_z".find(|ch| ch > 'd' && ch < 'y'), None);
-/// ```
-pub trait Pattern: Sized {
-    /// Associated searcher for this pattern
-    type Searcher<'a>: Searcher<'a>;
-
-    /// Constructs the associated searcher from
-    /// `self` and the `haystack` to search in.
-    fn into_searcher(self, haystack: &str) -> Self::Searcher<'_>;
-
-    /// Checks whether the pattern matches anywhere in the haystack
-    #[inline]
-    fn is_contained_in(self, haystack: &str) -> bool {
-        self.into_searcher(haystack).next_match().is_some()
+impl Haystack for str {
+    #[inline(always)]
+    fn cursor_at_front(&self) -> usize {
+        0
+    }
+    #[inline(always)]
+    fn cursor_at_back(&self) -> usize {
+        self.len()
     }
 
-    /// Checks whether the pattern matches at the front of the haystack
-    #[inline]
-    fn is_prefix_of(self, haystack: &str) -> bool {
-        matches!(self.into_searcher(haystack).next(), SearchStep::Match(0, _))
+    #[inline(always)]
+    fn is_empty(&self) -> bool {
+        str::is_empty(self)
     }
 
-    /// Checks whether the pattern matches at the back of the haystack
-    #[inline]
-    fn is_suffix_of<'a>(self, haystack: &'a str) -> bool
-    where
-        Self::Searcher<'a>: ReverseSearcher<'a>,
-    {
-        matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(_, j) if haystack.len() == j)
-    }
-
-    /// Removes the pattern from the front of haystack, if it matches.
-    #[inline]
-    fn strip_prefix_of(self, haystack: &str) -> Option<&str> {
-        if let SearchStep::Match(start, len) = self.into_searcher(haystack).next() {
-            debug_assert_eq!(
-                start, 0,
-                "The first search step from Searcher \
-                 must include the first character"
-            );
-            // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(haystack.get_unchecked(len..)) }
-        } else {
-            None
-        }
-    }
-
-    /// Removes the pattern from the back of haystack, if it matches.
-    #[inline]
-    fn strip_suffix_of<'a>(self, haystack: &'a str) -> Option<&'a str>
-    where
-        Self::Searcher<'a>: ReverseSearcher<'a>,
-    {
-        if let SearchStep::Match(start, end) = self.into_searcher(haystack).next_back() {
-            debug_assert_eq!(
-                end,
-                haystack.len(),
-                "The first search step from ReverseSearcher \
-                 must include the last character"
-            );
-            // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(haystack.get_unchecked(..start)) }
-        } else {
-            None
-        }
-    }
-
-    /// Returns the pattern as UTF-8 if possible.
-    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
-        None
+    #[inline(always)]
+    unsafe fn get_unchecked(&self, range: Range<usize>) -> &Self {
+        // SAFETY: Caller promises position is a character boundary.
+        unsafe { str::get_unchecked(self, range) }
     }
 }
-/// Result of calling [`Pattern::as_utf8_pattern()`].
-/// Can be used for inspecting the contents of a [`Pattern`] in cases
-/// where the underlying representation can be represented as UTF-8.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum Utf8Pattern<'a> {
-    /// Type returned by String and str types.
-    /// This stores `str` rather than bytes so callers cannot describe
-    /// non-UTF-8 string patterns through this API.
-    StringPattern(&'a str),
-    /// Type returned by char types.
-    CharPattern(char),
-}
-
-// Searcher
-
-/// Result of calling [`Searcher::next()`] or [`ReverseSearcher::next_back()`].
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum SearchStep {
-    /// Expresses that a match of the pattern has been found at
-    /// `haystack[a..b]`.
-    Match(usize, usize),
-    /// Expresses that `haystack[a..b]` has been rejected as a possible match
-    /// of the pattern.
-    ///
-    /// Note that there might be more than one `Reject` between two `Match`es,
-    /// there is no requirement for them to be combined into one.
-    Reject(usize, usize),
-    /// Expresses that every byte of the haystack has been visited, ending
-    /// the iteration.
-    Done,
-}
-
-/// A searcher for a string pattern.
-///
-/// This trait provides methods for searching for non-overlapping
-/// matches of a pattern starting from the front (left) of a string.
-///
-/// It will be implemented by associated `Searcher`
-/// types of the [`Pattern`] trait.
-///
-/// The trait is marked unsafe because the indices returned by the
-/// [`next()`][Searcher::next] methods are required to lie on valid utf8
-/// boundaries in the haystack. This enables consumers of this trait to
-/// slice the haystack without additional runtime checks.
-pub unsafe trait Searcher<'a> {
-    /// Getter for the underlying string to be searched in
-    ///
-    /// Will always return the same [`&str`][str].
-    fn haystack(&self) -> &'a str;
-
-    /// Performs the next search step starting from the front.
-    ///
-    /// - Returns [`Match(a, b)`][SearchStep::Match] if `haystack[a..b]` matches
-    ///   the pattern.
-    /// - Returns [`Reject(a, b)`][SearchStep::Reject] if `haystack[a..b]` can
-    ///   not match the pattern, even partially.
-    /// - Returns [`Done`][SearchStep::Done] if every byte of the haystack has
-    ///   been visited.
-    ///
-    /// The stream of [`Match`][SearchStep::Match] and
-    /// [`Reject`][SearchStep::Reject] values up to a [`Done`][SearchStep::Done]
-    /// will contain index ranges that are adjacent, non-overlapping,
-    /// covering the whole haystack, and laying on utf8 boundaries.
-    ///
-    /// A [`Match`][SearchStep::Match] result needs to contain the whole matched
-    /// pattern, however [`Reject`][SearchStep::Reject] results may be split up
-    /// into arbitrary many adjacent fragments. Both ranges may have zero length.
-    ///
-    /// As an example, the pattern `"aaa"` and the haystack `"cbaaaaab"`
-    /// might produce the stream
-    /// `[Reject(0, 1), Reject(1, 2), Match(2, 5), Reject(5, 8)]`
-    fn next(&mut self) -> SearchStep;
-
-    /// Finds the next [`Match`][SearchStep::Match] result. See [`next()`][Searcher::next].
-    ///
-    /// Unlike [`next()`][Searcher::next], there is no guarantee that the returned ranges
-    /// of this and [`next_reject`][Searcher::next_reject] will overlap. This will return
-    /// `(start_match, end_match)`, where start_match is the index of where
-    /// the match begins, and end_match is the index after the end of the match.
-    #[inline]
-    fn next_match(&mut self) -> Option<(usize, usize)> {
-        loop {
-            match self.next() {
-                SearchStep::Match(a, b) => return Some((a, b)),
-                SearchStep::Done => return None,
-                _ => continue,
-            }
-        }
-    }
-
-    /// Finds the next [`Reject`][SearchStep::Reject] result. See [`next()`][Searcher::next]
-    /// and [`next_match()`][Searcher::next_match].
-    ///
-    /// Unlike [`next()`][Searcher::next], there is no guarantee that the returned ranges
-    /// of this and [`next_match`][Searcher::next_match] will overlap.
-    #[inline]
-    fn next_reject(&mut self) -> Option<(usize, usize)> {
-        loop {
-            match self.next() {
-                SearchStep::Reject(a, b) => return Some((a, b)),
-                SearchStep::Done => return None,
-                _ => continue,
-            }
-        }
-    }
-}
-
-/// A reverse searcher for a string pattern.
-///
-/// This trait provides methods for searching for non-overlapping
-/// matches of a pattern starting from the back (right) of a string.
-///
-/// It will be implemented by associated [`Searcher`]
-/// types of the [`Pattern`] trait if the pattern supports searching
-/// for it from the back.
-///
-/// The index ranges returned by this trait are not required
-/// to exactly match those of the forward search in reverse.
-///
-/// For the reason why this trait is marked unsafe, see the
-/// parent trait [`Searcher`].
-pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
-    /// Performs the next search step starting from the back.
-    ///
-    /// - Returns [`Match(a, b)`][SearchStep::Match] if `haystack[a..b]`
-    ///   matches the pattern.
-    /// - Returns [`Reject(a, b)`][SearchStep::Reject] if `haystack[a..b]`
-    ///   can not match the pattern, even partially.
-    /// - Returns [`Done`][SearchStep::Done] if every byte of the haystack
-    ///   has been visited
-    ///
-    /// The stream of [`Match`][SearchStep::Match] and
-    /// [`Reject`][SearchStep::Reject] values up to a [`Done`][SearchStep::Done]
-    /// will contain index ranges that are adjacent, non-overlapping,
-    /// covering the whole haystack, and laying on utf8 boundaries.
-    ///
-    /// A [`Match`][SearchStep::Match] result needs to contain the whole matched
-    /// pattern, however [`Reject`][SearchStep::Reject] results may be split up
-    /// into arbitrary many adjacent fragments. Both ranges may have zero length.
-    ///
-    /// As an example, the pattern `"aaa"` and the haystack `"cbaaaaab"`
-    /// might produce the stream
-    /// `[Reject(7, 8), Match(4, 7), Reject(1, 4), Reject(0, 1)]`.
-    fn next_back(&mut self) -> SearchStep;
-
-    /// Finds the next [`Match`][SearchStep::Match] result.
-    /// See [`next_back()`][ReverseSearcher::next_back].
-    #[inline]
-    fn next_match_back(&mut self) -> Option<(usize, usize)> {
-        loop {
-            match self.next_back() {
-                SearchStep::Match(a, b) => return Some((a, b)),
-                SearchStep::Done => return None,
-                _ => continue,
-            }
-        }
-    }
-
-    /// Finds the next [`Reject`][SearchStep::Reject] result.
-    /// See [`next_back()`][ReverseSearcher::next_back].
-    #[inline]
-    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
-        loop {
-            match self.next_back() {
-                SearchStep::Reject(a, b) => return Some((a, b)),
-                SearchStep::Done => return None,
-                _ => continue,
-            }
-        }
-    }
-}
-
-/// A marker trait to express that a [`ReverseSearcher`]
-/// can be used for a [`DoubleEndedIterator`] implementation.
-///
-/// For this, the impl of [`Searcher`] and [`ReverseSearcher`] need
-/// to follow these conditions:
-///
-/// - All results of `next()` need to be identical
-///   to the results of `next_back()` in reverse order.
-/// - `next()` and `next_back()` need to behave as
-///   the two ends of a range of values, that is they
-///   can not "walk past each other".
-///
-/// # Examples
-///
-/// `char::Searcher` is a `DoubleEndedSearcher` because searching for a
-/// [`char`] only requires looking at one at a time, which behaves the same
-/// from both ends.
-///
-/// `(&str)::Searcher` is not a `DoubleEndedSearcher` because
-/// the pattern `"aa"` in the haystack `"aaa"` matches as either
-/// `"[aa]a"` or `"a[aa]"`, depending on which side it is searched.
-pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // Impl for char
 /////////////////////////////////////////////////////////////////////////////
 
-/// Associated type for `<char as Pattern>::Searcher<'a>`.
+/// Associated type for `<char as Pattern<str>>::Searcher`.
 #[derive(Clone, Debug)]
 pub struct CharSearcher<'a> {
     haystack: &'a str,
@@ -398,7 +122,7 @@ impl CharSearcher<'_> {
     }
 }
 
-unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
+unsafe impl<'a> Searcher<'a, str> for CharSearcher<'a> {
     #[inline]
     fn haystack(&self) -> &'a str {
         self.haystack
@@ -476,7 +200,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     // let next_reject use the default implementation from the Searcher trait
 }
 
-unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
+unsafe impl<'a> ReverseSearcher<'a, str> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let old_finger = self.finger_back;
@@ -550,7 +274,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     // let next_reject_back use the default implementation from the Searcher trait
 }
 
-impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
+impl<'a> DoubleEndedSearcher<'a, str> for CharSearcher<'a> {}
 
 /// Searches for chars that are equal to a given [`char`].
 ///
@@ -559,11 +283,11 @@ impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 /// ```
 /// assert_eq!("Hello world".find('o'), Some(4));
 /// ```
-impl Pattern for char {
-    type Searcher<'a> = CharSearcher<'a>;
+impl Pattern<str> for char {
+    type Searcher<'h> = CharSearcher<'h>;
 
     #[inline]
-    fn into_searcher<'a>(self, haystack: &'a str) -> Self::Searcher<'a> {
+    fn into_searcher<'h>(self, haystack: &'h str) -> CharSearcher<'h> {
         let mut utf8_encoded = [0; char::MAX_LEN_UTF8];
         let utf8_size = self
             .encode_utf8(&mut utf8_encoded)
@@ -597,22 +321,22 @@ impl Pattern for char {
     }
 
     #[inline]
-    fn strip_prefix_of(self, haystack: &str) -> Option<&str> {
+    fn strip_prefix_of<'h>(self, haystack: &'h str) -> Option<&'h str> {
         self.encode_utf8(&mut [0u8; 4]).strip_prefix_of(haystack)
     }
 
     #[inline]
-    fn is_suffix_of<'a>(self, haystack: &'a str) -> bool
+    fn is_suffix_of<'h>(self, haystack: &'h str) -> bool
     where
-        Self::Searcher<'a>: ReverseSearcher<'a>,
+        Self::Searcher<'h>: ReverseSearcher<'h, str>,
     {
         self.encode_utf8(&mut [0u8; 4]).is_suffix_of(haystack)
     }
 
     #[inline]
-    fn strip_suffix_of<'a>(self, haystack: &'a str) -> Option<&'a str>
+    fn strip_suffix_of<'h>(self, haystack: &'h str) -> Option<&'h str>
     where
-        Self::Searcher<'a>: ReverseSearcher<'a>,
+        Self::Searcher<'h>: ReverseSearcher<'h, str>,
     {
         self.encode_utf8(&mut [0u8; 4]).strip_suffix_of(haystack)
     }
@@ -672,16 +396,16 @@ struct MultiCharEqSearcher<'a, C: MultiCharEq> {
     char_indices: super::CharIndices<'a>,
 }
 
-impl<C: MultiCharEq> Pattern for MultiCharEqPattern<C> {
-    type Searcher<'a> = MultiCharEqSearcher<'a, C>;
+impl<C: MultiCharEq> Pattern<str> for MultiCharEqPattern<C> {
+    type Searcher<'h> = MultiCharEqSearcher<'h, C>;
 
     #[inline]
-    fn into_searcher(self, haystack: &str) -> MultiCharEqSearcher<'_, C> {
+    fn into_searcher<'h>(self, haystack: &'h str) -> MultiCharEqSearcher<'h, C> {
         MultiCharEqSearcher { haystack, char_eq: self.0, char_indices: haystack.char_indices() }
     }
 }
 
-unsafe impl<'a, C: MultiCharEq> Searcher<'a> for MultiCharEqSearcher<'a, C> {
+unsafe impl<'a, C: MultiCharEq> Searcher<'a, str> for MultiCharEqSearcher<'a, C> {
     #[inline]
     fn haystack(&self) -> &'a str {
         self.haystack
@@ -706,7 +430,7 @@ unsafe impl<'a, C: MultiCharEq> Searcher<'a> for MultiCharEqSearcher<'a, C> {
     }
 }
 
-unsafe impl<'a, C: MultiCharEq> ReverseSearcher<'a> for MultiCharEqSearcher<'a, C> {
+unsafe impl<'a, C: MultiCharEq> ReverseSearcher<'a, str> for MultiCharEqSearcher<'a, C> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let s = &mut self.char_indices;
@@ -726,7 +450,7 @@ unsafe impl<'a, C: MultiCharEq> ReverseSearcher<'a> for MultiCharEqSearcher<'a, 
     }
 }
 
-impl<'a, C: MultiCharEq> DoubleEndedSearcher<'a> for MultiCharEqSearcher<'a, C> {}
+impl<'a, C: MultiCharEq> DoubleEndedSearcher<'a, str> for MultiCharEqSearcher<'a, C> {}
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -735,17 +459,17 @@ macro_rules! pattern_methods {
         type Searcher<$a> = $t;
 
         #[inline]
-        fn into_searcher<$a>(self, haystack: &$a str) -> $t {
+        fn into_searcher<$a>(self, haystack: &$a str) -> Self::Searcher<$a> {
             ($smap)(($pmap)(self).into_searcher(haystack))
         }
 
         #[inline]
-        fn is_contained_in<$a>(self, haystack: &$a str) -> bool {
+        fn is_contained_in(self, haystack: &str) -> bool {
             ($pmap)(self).is_contained_in(haystack)
         }
 
         #[inline]
-        fn is_prefix_of<$a>(self, haystack: &$a str) -> bool {
+        fn is_prefix_of(self, haystack: &str) -> bool {
             ($pmap)(self).is_prefix_of(haystack)
         }
 
@@ -757,7 +481,7 @@ macro_rules! pattern_methods {
         #[inline]
         fn is_suffix_of<$a>(self, haystack: &$a str) -> bool
         where
-            $t: ReverseSearcher<$a>,
+            $t: ReverseSearcher<$a, str>,
         {
             ($pmap)(self).is_suffix_of(haystack)
         }
@@ -765,7 +489,7 @@ macro_rules! pattern_methods {
         #[inline]
         fn strip_suffix_of<$a>(self, haystack: &$a str) -> Option<&$a str>
         where
-            $t: ReverseSearcher<$a>,
+            $t: ReverseSearcher<$a, str>,
         {
             ($pmap)(self).strip_suffix_of(haystack)
         }
@@ -807,16 +531,16 @@ macro_rules! searcher_methods {
     };
 }
 
-/// Associated type for `<[char; N] as Pattern>::Searcher<'a>`.
+/// Associated type for `<[char; N] as Pattern<str>>::Searcher`.
 #[derive(Clone, Debug)]
 pub struct CharArraySearcher<'a, const N: usize>(
-    <MultiCharEqPattern<[char; N]> as Pattern>::Searcher<'a>,
+    <MultiCharEqPattern<[char; N]> as Pattern<str>>::Searcher<'a>,
 );
 
-/// Associated type for `<&[char; N] as Pattern>::Searcher<'a>`.
+/// Associated type for `<&[char; N] as Pattern<str>>::Searcher`.
 #[derive(Clone, Debug)]
 pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
-    <MultiCharEqPattern<&'b [char; N]> as Pattern>::Searcher<'a>,
+    <MultiCharEqPattern<&'b [char; N]> as Pattern<str>>::Searcher<'a>,
 );
 
 /// Searches for chars that are equal to any of the [`char`]s in the array.
@@ -827,19 +551,19 @@ pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
 /// assert_eq!("Hello world".find(['o', 'l']), Some(2));
 /// assert_eq!("Hello world".find(['h', 'w']), Some(6));
 /// ```
-impl<const N: usize> Pattern for [char; N] {
+impl<const N: usize> Pattern<str> for [char; N] {
     pattern_methods!('a, CharArraySearcher<'a, N>, MultiCharEqPattern, CharArraySearcher);
 }
 
-unsafe impl<'a, const N: usize> Searcher<'a> for CharArraySearcher<'a, N> {
+unsafe impl<'a, const N: usize> Searcher<'a, str> for CharArraySearcher<'a, N> {
     searcher_methods!(forward);
 }
 
-unsafe impl<'a, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, N> {
+unsafe impl<'a, const N: usize> ReverseSearcher<'a, str> for CharArraySearcher<'a, N> {
     searcher_methods!(reverse);
 }
 
-impl<'a, const N: usize> DoubleEndedSearcher<'a> for CharArraySearcher<'a, N> {}
+impl<'a, const N: usize> DoubleEndedSearcher<'a, str> for CharArraySearcher<'a, N> {}
 
 /// Searches for chars that are equal to any of the [`char`]s in the array.
 ///
@@ -849,19 +573,19 @@ impl<'a, const N: usize> DoubleEndedSearcher<'a> for CharArraySearcher<'a, N> {}
 /// assert_eq!("Hello world".find(&['o', 'l']), Some(2));
 /// assert_eq!("Hello world".find(&['h', 'w']), Some(6));
 /// ```
-impl<'b, const N: usize> Pattern for &'b [char; N] {
+impl<'b, const N: usize> Pattern<str> for &'b [char; N] {
     pattern_methods!('a, CharArrayRefSearcher<'a, 'b, N>, MultiCharEqPattern, CharArrayRefSearcher);
 }
 
-unsafe impl<'a, 'b, const N: usize> Searcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
+unsafe impl<'a, 'b, const N: usize> Searcher<'a, str> for CharArrayRefSearcher<'a, 'b, N> {
     searcher_methods!(forward);
 }
 
-unsafe impl<'a, 'b, const N: usize> ReverseSearcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
+unsafe impl<'a, 'b, const N: usize> ReverseSearcher<'a, str> for CharArrayRefSearcher<'a, 'b, N> {
     searcher_methods!(reverse);
 }
 
-impl<'a, 'b, const N: usize> DoubleEndedSearcher<'a> for CharArrayRefSearcher<'a, 'b, N> {}
+impl<'a, 'b, const N: usize> DoubleEndedSearcher<'a, str> for CharArrayRefSearcher<'a, 'b, N> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // Impl for &[char]
@@ -869,19 +593,21 @@ impl<'a, 'b, const N: usize> DoubleEndedSearcher<'a> for CharArrayRefSearcher<'a
 
 // Todo: Change / Remove due to ambiguity in meaning.
 
-/// Associated type for `<&[char] as Pattern>::Searcher<'a>`.
+/// Associated type for `<&[char] as Pattern<str>>::Searcher`.
 #[derive(Clone, Debug)]
-pub struct CharSliceSearcher<'a, 'b>(<MultiCharEqPattern<&'b [char]> as Pattern>::Searcher<'a>);
+pub struct CharSliceSearcher<'a, 'b>(
+    <MultiCharEqPattern<&'b [char]> as Pattern<str>>::Searcher<'a>,
+);
 
-unsafe impl<'a, 'b> Searcher<'a> for CharSliceSearcher<'a, 'b> {
+unsafe impl<'a, 'b> Searcher<'a, str> for CharSliceSearcher<'a, 'b> {
     searcher_methods!(forward);
 }
 
-unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
+unsafe impl<'a, 'b> ReverseSearcher<'a, str> for CharSliceSearcher<'a, 'b> {
     searcher_methods!(reverse);
 }
 
-impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
+impl<'a, 'b> DoubleEndedSearcher<'a, str> for CharSliceSearcher<'a, 'b> {}
 
 /// Searches for chars that are equal to any of the [`char`]s in the slice.
 ///
@@ -891,7 +617,7 @@ impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 /// assert_eq!("Hello world".find(&['o', 'l'][..]), Some(2));
 /// assert_eq!("Hello world".find(&['h', 'w'][..]), Some(6));
 /// ```
-impl<'b> Pattern for &'b [char] {
+impl<'b> Pattern<str> for &'b [char] {
     pattern_methods!('a, CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);
 }
 
@@ -899,9 +625,9 @@ impl<'b> Pattern for &'b [char] {
 // Impl for F: FnMut(char) -> bool
 /////////////////////////////////////////////////////////////////////////////
 
-/// Associated type for `<F as Pattern>::Searcher<'a>`.
+/// Associated type for `<F as Pattern<str>>::Searcher`.
 #[derive(Clone)]
-pub struct CharPredicateSearcher<'a, F>(<MultiCharEqPattern<F> as Pattern>::Searcher<'a>)
+pub struct CharPredicateSearcher<'a, F>(<MultiCharEqPattern<F> as Pattern<str>>::Searcher<'a>)
 where
     F: FnMut(char) -> bool;
 
@@ -916,21 +642,21 @@ where
             .finish()
     }
 }
-unsafe impl<'a, F> Searcher<'a> for CharPredicateSearcher<'a, F>
+unsafe impl<'a, F> Searcher<'a, str> for CharPredicateSearcher<'a, F>
 where
     F: FnMut(char) -> bool,
 {
     searcher_methods!(forward);
 }
 
-unsafe impl<'a, F> ReverseSearcher<'a> for CharPredicateSearcher<'a, F>
+unsafe impl<'a, F> ReverseSearcher<'a, str> for CharPredicateSearcher<'a, F>
 where
     F: FnMut(char) -> bool,
 {
     searcher_methods!(reverse);
 }
 
-impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F> where F: FnMut(char) -> bool {}
+impl<'a, F: FnMut(char) -> bool> DoubleEndedSearcher<'a, str> for CharPredicateSearcher<'a, F> {}
 
 /// Searches for [`char`]s that match the given predicate.
 ///
@@ -940,7 +666,7 @@ impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F> where F: Fn
 /// assert_eq!("Hello world".find(char::is_uppercase), Some(0));
 /// assert_eq!("Hello world".find(|c| "aeiou".contains(c)), Some(1));
 /// ```
-impl<F> Pattern for F
+impl<F> Pattern<str> for F
 where
     F: FnMut(char) -> bool,
 {
@@ -952,7 +678,7 @@ where
 /////////////////////////////////////////////////////////////////////////////
 
 /// Delegates to the `&str` impl.
-impl<'b, 'c> Pattern for &'c &'b str {
+impl<'b, 'c> Pattern<str> for &'c &'b str {
     pattern_methods!('a, StrSearcher<'a, 'b>, |&s| s, |s| s);
 }
 
@@ -970,11 +696,11 @@ impl<'b, 'c> Pattern for &'c &'b str {
 /// ```
 /// assert_eq!("Hello world".find("world"), Some(6));
 /// ```
-impl<'b> Pattern for &'b str {
-    type Searcher<'a> = StrSearcher<'a, 'b>;
+impl<'b> Pattern<str> for &'b str {
+    type Searcher<'h> = StrSearcher<'h, 'b>;
 
     #[inline]
-    fn into_searcher(self, haystack: &str) -> StrSearcher<'_, 'b> {
+    fn into_searcher<'h>(self, haystack: &'h str) -> StrSearcher<'h, 'b> {
         StrSearcher::new(haystack, self)
     }
 
@@ -1016,7 +742,7 @@ impl<'b> Pattern for &'b str {
 
     /// Removes the pattern from the front of haystack, if it matches.
     #[inline]
-    fn strip_prefix_of(self, haystack: &str) -> Option<&str> {
+    fn strip_prefix_of<'h>(self, haystack: &'h str) -> Option<&'h str> {
         if self.is_prefix_of(haystack) {
             // SAFETY: prefix was just verified to exist.
             unsafe { Some(haystack.get_unchecked(self.len()..)) }
@@ -1027,18 +753,18 @@ impl<'b> Pattern for &'b str {
 
     /// Checks whether the pattern matches at the back of the haystack.
     #[inline]
-    fn is_suffix_of<'a>(self, haystack: &'a str) -> bool
+    fn is_suffix_of<'h>(self, haystack: &'h str) -> bool
     where
-        Self::Searcher<'a>: ReverseSearcher<'a>,
+        Self::Searcher<'h>: ReverseSearcher<'h, str>,
     {
         haystack.as_bytes().ends_with(self.as_bytes())
     }
 
     /// Removes the pattern from the back of haystack, if it matches.
     #[inline]
-    fn strip_suffix_of<'a>(self, haystack: &'a str) -> Option<&'a str>
+    fn strip_suffix_of<'h>(self, haystack: &'h str) -> Option<&'h str>
     where
-        Self::Searcher<'a>: ReverseSearcher<'a>,
+        Self::Searcher<'h>: ReverseSearcher<'h, str>,
     {
         if self.is_suffix_of(haystack) {
             let i = haystack.len() - self.len();
@@ -1060,7 +786,7 @@ impl<'b> Pattern for &'b str {
 /////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug)]
-/// Associated type for `<&str as Pattern>::Searcher<'a>`.
+/// Associated type for `<&str as Pattern<str>>::Searcher`.
 pub struct StrSearcher<'a, 'b> {
     haystack: &'a str,
     needle: &'b str,
@@ -1070,65 +796,41 @@ pub struct StrSearcher<'a, 'b> {
 
 #[derive(Clone, Debug)]
 enum StrSearcherImpl {
-    Empty(EmptyNeedle),
-    Byte(ByteNeedle),
+    Empty(core::pattern::EmptyNeedleSearcher),
     TwoWay(TwoWaySearcher),
-}
-
-#[derive(Clone, Debug)]
-struct EmptyNeedle {
-    position: usize,
-    end: usize,
-    is_match_fw: bool,
-    is_match_bw: bool,
-    // Needed in case of an empty haystack, see #85462
-    is_finished: bool,
-}
-
-/// Fast searcher for a single-byte needle using `memchr`/`memrchr`.
-#[derive(Clone, Debug)]
-struct ByteNeedle {
-    b: u8,
-    /// Forward cursor: `haystack[..position]` has already been reported.
-    position: usize,
-    /// Backward cursor: `haystack[end..]` has already been reported.
-    end: usize,
 }
 
 impl<'a, 'b> StrSearcher<'a, 'b> {
     fn new(haystack: &'a str, needle: &'b str) -> StrSearcher<'a, 'b> {
-        if needle.is_empty() {
-            StrSearcher {
-                haystack,
-                needle,
-                searcher: StrSearcherImpl::Empty(EmptyNeedle {
-                    position: 0,
-                    end: haystack.len(),
-                    is_match_fw: true,
-                    is_match_bw: true,
-                    is_finished: false,
-                }),
-            }
-        } else if let &[b] = needle.as_bytes() {
-            StrSearcher {
-                haystack,
-                needle,
-                searcher: StrSearcherImpl::Byte(ByteNeedle { b, position: 0, end: haystack.len() }),
-            }
+        let searcher = if needle.is_empty() {
+            StrSearcherImpl::Empty(core::pattern::EmptyNeedleSearcher::new(haystack))
         } else {
-            StrSearcher {
-                haystack,
-                needle,
-                searcher: StrSearcherImpl::TwoWay(TwoWaySearcher::new(
-                    needle.as_bytes(),
-                    haystack.len(),
-                )),
-            }
+            StrSearcherImpl::TwoWay(TwoWaySearcher::new(needle.as_bytes(), haystack.len()))
+        };
+        StrSearcher { haystack, needle, searcher }
+    }
+
+    fn fwd_char(haystack: &str, pos: usize) -> usize {
+        pos + super::utf8_char_width(haystack.as_bytes()[pos])
+    }
+
+    fn bwd_char(haystack: &str, pos: usize) -> usize {
+        // Note: we are guaranteed to operate on valid UTF-8 thus we will never
+        // need to go further than four bytes back.
+        let bytes = haystack.as_bytes();
+        if bytes[pos - 1].is_utf8_char_boundary() {
+            pos - 1
+        } else if bytes[pos - 2].is_utf8_char_boundary() {
+            pos - 2
+        } else if bytes[pos - 3].is_utf8_char_boundary() {
+            pos - 3
+        } else {
+            pos - 4
         }
     }
 }
 
-unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
+unsafe impl<'a, 'b> Searcher<'a, str> for StrSearcher<'a, 'b> {
     #[inline]
     fn haystack(&self) -> &'a str {
         self.haystack
@@ -1138,41 +840,7 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
     fn next(&mut self) -> SearchStep {
         match self.searcher {
             StrSearcherImpl::Empty(ref mut searcher) => {
-                if searcher.is_finished {
-                    return SearchStep::Done;
-                }
-                // empty needle rejects every char and matches every empty string between them
-                let is_match = searcher.is_match_fw;
-                searcher.is_match_fw = !searcher.is_match_fw;
-                let pos = searcher.position;
-                match self.haystack[pos..].chars().next() {
-                    _ if is_match => SearchStep::Match(pos, pos),
-                    None => {
-                        searcher.is_finished = true;
-                        SearchStep::Done
-                    }
-                    Some(ch) => {
-                        searcher.position += ch.len_utf8();
-                        SearchStep::Reject(pos, searcher.position)
-                    }
-                }
-            }
-            StrSearcherImpl::Byte(ref mut searcher) => {
-                let bytes = self.haystack.as_bytes();
-                let pos = searcher.position;
-                if pos >= bytes.len() {
-                    return SearchStep::Done;
-                }
-                if bytes[pos] == searcher.b {
-                    searcher.position = pos + 1;
-                    SearchStep::Match(pos, pos + 1)
-                } else {
-                    // `pos` is always on a char boundary, so this rejects
-                    // exactly the char starting at `pos`.
-                    let end = self.haystack.ceil_char_boundary(pos + 1);
-                    searcher.position = end;
-                    SearchStep::Reject(pos, end)
-                }
+                searcher.next_fwd(|range| Self::fwd_char(self.haystack, range.start))
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 // TwoWaySearcher produces valid *Match* indices that split at char boundaries
@@ -1184,14 +852,12 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
                     return SearchStep::Done;
                 }
                 let is_long = searcher.memory == usize::MAX;
-                match searcher.next::<RejectAndMatch>(
-                    self.haystack.as_bytes(),
-                    self.needle.as_bytes(),
-                    is_long,
-                ) {
-                    SearchStep::Reject(a, b) => {
+                match searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), is_long) {
+                    SearchStep::Reject(a, mut b) => {
                         // skip to next char boundary
-                        let b = self.haystack.ceil_char_boundary(b);
+                        while !self.haystack.is_char_boundary(b) {
+                            b += 1;
+                        }
                         searcher.position = cmp::max(b, searcher.position);
                         SearchStep::Reject(a, b)
                     }
@@ -1204,103 +870,48 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_match(&mut self) -> Option<(usize, usize)> {
         match self.searcher {
-            StrSearcherImpl::Empty(..) => loop {
-                match self.next() {
-                    SearchStep::Match(a, b) => return Some((a, b)),
-                    SearchStep::Done => return None,
-                    SearchStep::Reject(..) => {}
-                }
-            },
-            StrSearcherImpl::Byte(ref mut searcher) => {
-                let bytes = self.haystack.as_bytes();
-                if searcher.position >= bytes.len() {
-                    return None;
-                }
-                match memchr::memchr(searcher.b, &bytes[searcher.position..]) {
-                    Some(i) => {
-                        let pos = searcher.position + i;
-                        searcher.position = pos + 1;
-                        Some((pos, pos + 1))
-                    }
-                    None => {
-                        searcher.position = bytes.len();
-                        None
-                    }
-                }
+            StrSearcherImpl::Empty(ref mut searcher) => {
+                searcher
+                    .next_fwd::<MatchOnly, _>(|range| Self::fwd_char(self.haystack, range.start))
+                    .0
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
                 // write out `true` and `false` cases to encourage the compiler
                 // to specialize the two cases separately.
                 if is_long {
-                    searcher.next::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        true,
-                    )
+                    searcher
+                        .next::<MatchOnly>(self.haystack.as_bytes(), self.needle.as_bytes(), true)
+                        .0
                 } else {
-                    searcher.next::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        false,
-                    )
+                    searcher
+                        .next::<MatchOnly>(self.haystack.as_bytes(), self.needle.as_bytes(), false)
+                        .0
                 }
             }
         }
     }
 }
 
-unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
+unsafe impl<'a, 'b> ReverseSearcher<'a, str> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         match self.searcher {
             StrSearcherImpl::Empty(ref mut searcher) => {
-                if searcher.is_finished {
-                    return SearchStep::Done;
-                }
-                let is_match = searcher.is_match_bw;
-                searcher.is_match_bw = !searcher.is_match_bw;
-                let end = searcher.end;
-                match self.haystack[..end].chars().next_back() {
-                    _ if is_match => SearchStep::Match(end, end),
-                    None => {
-                        searcher.is_finished = true;
-                        SearchStep::Done
-                    }
-                    Some(ch) => {
-                        searcher.end -= ch.len_utf8();
-                        SearchStep::Reject(searcher.end, end)
-                    }
-                }
-            }
-            StrSearcherImpl::Byte(ref mut searcher) => {
-                let end = searcher.end;
-                if end == 0 {
-                    return SearchStep::Done;
-                }
-                let bytes = self.haystack.as_bytes();
-                if bytes[end - 1] == searcher.b {
-                    searcher.end = end - 1;
-                    SearchStep::Match(end - 1, end)
-                } else {
-                    let start = self.haystack.floor_char_boundary(end - 1);
-                    searcher.end = start;
-                    SearchStep::Reject(start, end)
-                }
+                searcher.next_bwd(|range| Self::bwd_char(self.haystack, range.end))
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 if searcher.end == 0 {
                     return SearchStep::Done;
                 }
                 let is_long = searcher.memory == usize::MAX;
-                match searcher.next_back::<RejectAndMatch>(
-                    self.haystack.as_bytes(),
-                    self.needle.as_bytes(),
-                    is_long,
-                ) {
-                    SearchStep::Reject(a, b) => {
-                        // skip to previous char boundary
-                        let a = self.haystack.floor_char_boundary(a);
+                match searcher.next_back(self.haystack.as_bytes(), self.needle.as_bytes(), is_long)
+                {
+                    SearchStep::Reject(mut a, b) => {
+                        // skip to next char boundary
+                        while !self.haystack.is_char_boundary(a) {
+                            a -= 1;
+                        }
                         searcher.end = cmp::min(a, searcher.end);
                         SearchStep::Reject(a, b)
                     }
@@ -1313,44 +924,30 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
         match self.searcher {
-            StrSearcherImpl::Empty(..) => loop {
-                match self.next_back() {
-                    SearchStep::Match(a, b) => return Some((a, b)),
-                    SearchStep::Done => return None,
-                    SearchStep::Reject(..) => {}
-                }
-            },
-            StrSearcherImpl::Byte(ref mut searcher) => {
-                if searcher.end == 0 {
-                    return None;
-                }
-                let bytes = self.haystack.as_bytes();
-                match memchr::memrchr(searcher.b, &bytes[..searcher.end]) {
-                    Some(i) => {
-                        searcher.end = i;
-                        Some((i, i + 1))
-                    }
-                    None => {
-                        searcher.end = 0;
-                        None
-                    }
-                }
+            StrSearcherImpl::Empty(ref mut searcher) => {
+                searcher
+                    .next_bwd::<MatchOnly, _>(|range| Self::bwd_char(self.haystack, range.end))
+                    .0
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
                 // write out `true` and `false`, like `next_match`
                 if is_long {
-                    searcher.next_back::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        true,
-                    )
+                    searcher
+                        .next_back::<MatchOnly>(
+                            self.haystack.as_bytes(),
+                            self.needle.as_bytes(),
+                            true,
+                        )
+                        .0
                 } else {
-                    searcher.next_back::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        false,
-                    )
+                    searcher
+                        .next_back::<MatchOnly>(
+                            self.haystack.as_bytes(),
+                            self.needle.as_bytes(),
+                            false,
+                        )
+                        .0
                 }
             }
         }
@@ -1538,10 +1135,7 @@ impl TwoWaySearcher {
     // How far we can jump when we encounter a mismatch is all based on the fact
     // that (u, v) is a critical factorization for the needle.
     #[inline]
-    fn next<S>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool) -> S::Output
-    where
-        S: TwoWayStrategy,
-    {
+    fn next<R: SearchResult>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool) -> R {
         // `next()` uses `self.position` as its cursor
         let old_pos = self.position;
         let needle_last = needle.len() - 1;
@@ -1553,12 +1147,14 @@ impl TwoWaySearcher {
                 Some(&b) => b,
                 None => {
                     self.position = haystack.len();
-                    return S::rejecting(old_pos, self.position);
+                    return R::rejecting(old_pos, self.position).unwrap_or(R::DONE);
                 }
             };
 
-            if S::use_early_reject() && old_pos != self.position {
-                return S::rejecting(old_pos, self.position);
+            if old_pos != self.position {
+                if let Some(ret) = R::rejecting(old_pos, self.position) {
+                    return ret;
+                }
             }
 
             // Quickly skip by large portions unrelated to our substring
@@ -1616,7 +1212,7 @@ impl TwoWaySearcher {
                 self.memory = 0; // set to needle.len() - self.period for overlapping matches
             }
 
-            return S::matching(match_pos, match_pos + needle.len());
+            return R::matching(match_pos, match_pos + needle.len()).unwrap();
         }
     }
 
@@ -1633,10 +1229,12 @@ impl TwoWaySearcher {
     // To search in reverse through the haystack, we search forward through
     // a reversed haystack with a reversed needle, matching first u' and then v'.
     #[inline]
-    fn next_back<S>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool) -> S::Output
-    where
-        S: TwoWayStrategy,
-    {
+    fn next_back<R: SearchResult>(
+        &mut self,
+        haystack: &[u8],
+        needle: &[u8],
+        long_period: bool,
+    ) -> R {
         // `next_back()` uses `self.end` as its cursor -- so that `next()` and `next_back()`
         // are independent.
         let old_end = self.end;
@@ -1649,12 +1247,14 @@ impl TwoWaySearcher {
                 Some(&b) => b,
                 None => {
                     self.end = 0;
-                    return S::rejecting(0, old_end);
+                    return R::rejecting(0, old_end).unwrap_or(R::DONE);
                 }
             };
 
-            if S::use_early_reject() && old_end != self.end {
-                return S::rejecting(self.end, old_end);
+            if old_end != self.end {
+                if let Some(ret) = R::rejecting(self.end, old_end) {
+                    return ret;
+                }
             }
 
             // Quickly skip by large portions unrelated to our substring
@@ -1714,7 +1314,7 @@ impl TwoWaySearcher {
                 self.memory_back = needle.len();
             }
 
-            return S::matching(match_pos, match_pos + needle.len());
+            return R::matching(match_pos, match_pos + needle.len()).unwrap();
         }
     }
 
@@ -1814,55 +1414,6 @@ impl TwoWaySearcher {
         }
         debug_assert!(period <= known_period);
         left
-    }
-}
-
-// TwoWayStrategy allows the algorithm to either skip non-matches as quickly
-// as possible, or to work in a mode where it emits Rejects relatively quickly.
-trait TwoWayStrategy {
-    type Output;
-    fn use_early_reject() -> bool;
-    fn rejecting(a: usize, b: usize) -> Self::Output;
-    fn matching(a: usize, b: usize) -> Self::Output;
-}
-
-/// Skip to match intervals as quickly as possible
-enum MatchOnly {}
-
-impl TwoWayStrategy for MatchOnly {
-    type Output = Option<(usize, usize)>;
-
-    #[inline]
-    fn use_early_reject() -> bool {
-        false
-    }
-    #[inline]
-    fn rejecting(_a: usize, _b: usize) -> Self::Output {
-        None
-    }
-    #[inline]
-    fn matching(a: usize, b: usize) -> Self::Output {
-        Some((a, b))
-    }
-}
-
-/// Emit Rejects regularly
-enum RejectAndMatch {}
-
-impl TwoWayStrategy for RejectAndMatch {
-    type Output = SearchStep;
-
-    #[inline]
-    fn use_early_reject() -> bool {
-        true
-    }
-    #[inline]
-    fn rejecting(a: usize, b: usize) -> Self::Output {
-        SearchStep::Reject(a, b)
-    }
-    #[inline]
-    fn matching(a: usize, b: usize) -> Self::Output {
-        SearchStep::Match(a, b)
     }
 }
 
