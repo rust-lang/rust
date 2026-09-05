@@ -24,7 +24,7 @@
 use std::cell::RefMut;
 use std::collections::BTreeSet;
 use std::ops::ControlFlow;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::{fmt, mem};
 
 use diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
@@ -46,7 +46,7 @@ use rustc_ast::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, default};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard, WorkerLocal};
+use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard, RwLock, WorkerLocal};
 use rustc_data_structures::unord::{UnordItems, UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
@@ -1284,7 +1284,7 @@ struct ExternPreludeEntry<'ra> {
     item_decl: Option<(Decl<'ra>, Span, /* introduced by item */ bool)>,
     /// Name declaration from an `--extern` flag, lazily populated on first use.
     flag_decl: Option<
-        CacheCell<(
+        Mutex<(
             PendingDecl<'ra>,
             /* finalized */ bool,
             /* open flag (namespaced crate) */ bool,
@@ -1300,14 +1300,14 @@ impl ExternPreludeEntry<'_> {
     fn flag() -> Self {
         ExternPreludeEntry {
             item_decl: None,
-            flag_decl: Some(CacheCell::new((PendingDecl::Pending, false, false))),
+            flag_decl: Some(Mutex::new((PendingDecl::Pending, false, false))),
         }
     }
 
     fn open_flag() -> Self {
         ExternPreludeEntry {
             item_decl: None,
-            flag_decl: Some(CacheCell::new((PendingDecl::Pending, false, true))),
+            flag_decl: Some(Mutex::new((PendingDecl::Pending, false, true))),
         }
     }
 
@@ -1407,7 +1407,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Eagerly populated map of all local non-block modules.
     local_module_map: FxIndexMap<LocalDefId, LocalModule<'ra>>,
     /// Lazily populated cache of modules loaded from external crates.
-    extern_module_map: CacheRefCell<FxIndexMap<DefId, ExternModule<'ra>>>,
+    extern_module_map: RwLock<FxIndexMap<DefId, ExternModule<'ra>>>,
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
@@ -1439,7 +1439,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Eagerly populated map of all local macro definitions.
     local_macro_map: FxHashMap<LocalDefId, &'ra Arc<SyntaxExtension>> = default::fx_hash_map(),
     /// Lazily populated cache of macro definitions loaded from external crates.
-    extern_macro_map: CacheRefCell<FxHashMap<DefId, &'ra Arc<SyntaxExtension>>>,
+    extern_macro_map: RwLock<FxHashMap<DefId, &'ra Arc<SyntaxExtension>>>,
     dummy_ext_bang: &'ra Arc<SyntaxExtension>,
     dummy_ext_derive: &'ra Arc<SyntaxExtension>,
     non_macro_attr: &'ra Arc<SyntaxExtension>,
@@ -1612,7 +1612,7 @@ impl<'ra> ResolverArenas<'ra> {
         Interned::new_unchecked(self.name_resolutions.alloc(CmRefCell::new(resolution)))
     }
     fn alloc_macro_rules_scope(&'ra self, scope: MacroRulesScope<'ra>) -> MacroRulesScopeRef<'ra> {
-        self.dropless.alloc(CacheCell::new(scope))
+        self.dropless.alloc(RwLock::new(scope))
     }
     fn alloc_macro_rules_decl(&'ra self, decl: MacroRulesDecl<'ra>) -> &'ra MacroRulesDecl<'ra> {
         self.dropless.alloc(decl)
@@ -2466,7 +2466,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<Decl<'ra>> {
         let entry = self.extern_prelude.get(&ident);
         entry.and_then(|entry| entry.flag_decl.as_ref()).and_then(|flag_decl| {
-            let (pending_decl, finalized, is_open) = flag_decl.get();
+            let mut flag_decl = flag_decl.lock().unwrap(); // Lock for this entire process
+            let (pending_decl, finalized, is_open) = *flag_decl;
             let decl = match pending_decl {
                 PendingDecl::Ready(decl) => {
                     if finalize && !finalized && !is_open {
@@ -2501,7 +2502,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
             };
-            flag_decl.set((PendingDecl::Ready(decl), finalize || finalized, is_open));
+            *flag_decl = (PendingDecl::Ready(decl), finalize || finalized, is_open);
             decl.or_else(|| finalize.then_some(self.dummy_decl))
         })
     }
@@ -2841,15 +2842,30 @@ pub fn provide(providers: &mut Providers) {
 /// Prefer constructing it through `Resolver::cm(_mut)` to ensure correctness.
 type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
 
-// FIXME: These are cells for caches that can be populated even during speculative resolution,
-// and should be replaced with mutexes, atomics, or other synchronized data when migrating to
-// parallel name resolution.
-use std::cell::{Cell as CacheCell, RefCell as CacheRefCell};
-
+/// The [`Resolver`] has different resolution phases, which share most of the resolution logic.
+/// Some of these phases mutate the resolver (`&mut Resolver`) during resolution. However, we are
+/// transforming import resolution (one of these phases), often referred to as
+/// "speculative resolution", to a parallel algorithm, which requires 2 things to change:
+///     - A `&Resolver`, because cannot mutate any fields in it.
+///     - Some fields with interior mutability may not be changed during import resolution, as
+///       this can conflict with other in progress resolutions (so locks are not the solution).
+///       But these fields do require interior mutability during the other phases.
+///
+/// Because refactoring the entire name resolution code to be split into "immutable" and "mutable"
+/// logic, we opted for a more "developer friendly" and "unsafe" approach using data structures
+/// that are immutable during import resolution. This module is the collection of 3 data structures
+/// that offer use the above 2 points:
+///     - a `RefOrMut<'a, T>` smart pointer that gates a `&'a mut T` through a flag
+///       (i.e. are we in import res?).
+///     - `CmCell` and `CmRefCell`, which are conditionally mutable through a flag.
+///
+/// We hope one day to not have to do this :D
 mod ref_mut {
     use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
     use std::fmt;
     use std::ops::Deref;
+
+    use rustc_data_structures::sync::DynSync;
 
     use crate::Resolver;
 
@@ -2902,6 +2918,12 @@ mod ref_mut {
     /// A wrapper around a [`Cell`] that only allows mutation based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmCell<T>(Cell<T>);
+
+    // SAFETY: `CmCell<T>` is `Sync` only because every path that can call `Cell::set`
+    // (i.e. `CmCell::set`, and `update`, which is built on top of it) first checks
+    // `r.assert_speculative` and panics if it's set, refusing to mutate. Soundness
+    // therefore depends on proper usage of the `assert_speculative` field in the `Resolver`.
+    unsafe impl<T: DynSync> DynSync for CmCell<T> {}
 
     impl<T: Copy + fmt::Debug> fmt::Debug for CmCell<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2991,9 +3013,19 @@ mod ref_mut {
         }
     }
 
-    /// A wrapper around a [`RefCell`] that only allows writes (mutable borrows) based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmRefCell<T>(RefCell<T>);
+
+    // SAFETY: This is safe because we can only mutate the inner state (borrow counter and `T`)
+    // if we are not in speculative resolution, which is run in parallel. This is checked
+    // dynamically with the `resolver.speculative_flag` field:
+    //
+    // - Any form of `borrow_mut` causes an immediate panic if that flag is set to ture.
+    // - We can only ever update the read counter in `borrow` if we have a `&mut Resolver`,
+    //   thus proving no speculative resolution exists. If we do need a shared borrow, the
+    //   `borrow_checked` function can be used, which gives out a `CmRef`. (see the safety comment
+    //   in `borrow_checked` for why this works)
+    unsafe impl<T: DynSync> DynSync for CmRefCell<T> {}
 
     impl<T> CmRefCell<T> {
         pub(crate) fn new(value: T) -> CmRefCell<T> {
