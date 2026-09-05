@@ -1471,6 +1471,9 @@ where
         dst: I::Ty,
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
+        if src.has_non_region_infer() || dst.has_non_region_infer() {
+            return Ok(Certainty::AMBIGUOUS);
+        }
         self.delegate.is_transmutable(dst, src, assume)
     }
 
