@@ -837,6 +837,18 @@ fn test_trim_matches() {
 }
 
 #[test]
+fn test_trim_matches_with_str_pattern() {
+    assert_eq!("abc".trim_start_matches("ab"), "c");
+    assert_eq!("xyzabcxyz".trim_start_matches("xyz"), "abcxyz");
+    assert_eq!("abcabc".trim_start_matches("abc"), "");
+    assert_eq!("ababab".trim_start_matches("ab"), "");
+
+    assert_eq!("abcab".trim_end_matches("ab"), "abc");
+    assert_eq!("xyzabcxyz".trim_end_matches("xyz"), "xyzabc");
+    assert_eq!("abcabc".trim_end_matches("abc"), "");
+}
+
+#[test]
 fn test_trim_start() {
     assert_eq!("".trim_start(), "");
     assert_eq!("a".trim_start(), "a");
@@ -2009,14 +2021,14 @@ fn test_repeat() {
 }
 
 mod pattern {
-    use std::str::pattern::SearchStep::{self, Done, Match, Reject};
-    use std::str::pattern::{Pattern, ReverseSearcher, Searcher};
+    use std::pattern::SearchStep::{self, Done, Match, Reject};
+    use std::pattern::{Pattern, ReverseSearcher, Searcher};
 
     macro_rules! make_test {
         ($name:ident, $p:expr, $h:expr, [$($e:expr,)*]) => {
             #[allow(unused_imports)]
             mod $name {
-                use std::str::pattern::SearchStep::{Match, Reject};
+                use std::pattern::SearchStep::{Match, Reject};
                 use super::{cmp_search_to_vec};
                 #[test]
                 fn fwd() {
@@ -2032,7 +2044,8 @@ mod pattern {
 
     fn cmp_search_to_vec<P>(rev: bool, pat: P, haystack: &str, right: Vec<SearchStep>)
     where
-        P: for<'a> Pattern<Searcher<'a>: ReverseSearcher<'a>>,
+        P: Pattern<str>,
+        for<'x> P::Searcher<'x>: ReverseSearcher<'x, str>,
     {
         let mut searcher = pat.into_searcher(haystack);
         let mut v = vec![];
@@ -2107,12 +2120,7 @@ mod pattern {
             Match(7, 7),
         ]
     );
-    make_test!(
-        str_searcher_multibyte_haystack,
-        " ",
-        "├──",
-        [Reject(0, 3), Reject(3, 6), Reject(6, 9),]
-    );
+    make_test!(str_searcher_multibyte_haystack, " ", "├──", [Reject(0, 9),]);
     make_test!(
         str_searcher_empty_needle_multibyte_haystack,
         "",
@@ -2143,18 +2151,8 @@ mod pattern {
             Reject(6, 7),
         ]
     );
-    make_test!(
-        char_searcher_multibyte_haystack,
-        ' ',
-        "├──",
-        [Reject(0, 3), Reject(3, 6), Reject(6, 9),]
-    );
-    make_test!(
-        char_searcher_short_haystack,
-        '\u{1F4A9}',
-        "* \t",
-        [Reject(0, 1), Reject(1, 2), Reject(2, 3),]
-    );
+    make_test!(char_searcher_multibyte_haystack, ' ', "├──", [Reject(0, 9),]);
+    make_test!(char_searcher_short_haystack, '\u{1F4A9}', "* \t", [Reject(0, 3),]);
 
     // See #85462
     #[test]
@@ -2195,6 +2193,21 @@ mod pattern {
             assert_eq!(searcher.next_back(), SearchStep::Done);
             assert_eq!(searcher.next_back(), SearchStep::Done);
         }
+    }
+
+    #[test]
+    fn str_searcher_empty_needle_interleaved() {
+        let mut searcher = "".into_searcher("abc");
+
+        assert_eq!(searcher.next(), SearchStep::Match(0, 0));
+        assert_eq!(searcher.next_back(), SearchStep::Match(3, 3));
+        assert_eq!(searcher.next(), SearchStep::Reject(0, 1));
+        assert_eq!(searcher.next_back(), SearchStep::Reject(2, 3));
+        assert_eq!(searcher.next(), SearchStep::Match(1, 1));
+        assert_eq!(searcher.next_back(), SearchStep::Match(2, 2));
+        assert_eq!(searcher.next(), SearchStep::Reject(1, 2));
+        assert_eq!(searcher.next_back(), SearchStep::Done);
+        assert_eq!(searcher.next(), SearchStep::Done);
     }
 }
 
@@ -2290,11 +2303,11 @@ generate_iterator_test! {
 
 #[test]
 fn different_str_pattern_forwarding_lifetimes() {
-    use std::str::pattern::Pattern;
+    use std::pattern::Pattern;
 
     fn foo<P>(p: P)
     where
-        for<'b> &'b P: Pattern,
+        for<'b> &'b P: Pattern<str>,
     {
         for _ in 0..3 {
             "asdf".find(&p);
