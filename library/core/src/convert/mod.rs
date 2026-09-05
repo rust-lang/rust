@@ -863,6 +863,20 @@ const impl AsMut<str> for str {
     }
 }
 
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+impl<T: ?Sized> AsRef<T> for ! {
+    fn as_ref(&self) -> &T {
+        match *self {}
+    }
+}
+
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+impl<T: ?Sized> AsMut<T> for ! {
+    fn as_mut(&mut self) -> &mut T {
+        match *self {}
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // THE NO-ERROR ERROR TYPE
 ////////////////////////////////////////////////////////////////////////////////
