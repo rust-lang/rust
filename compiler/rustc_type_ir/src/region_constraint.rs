@@ -661,6 +661,14 @@ fn pull_region_outlives_constraints_out_of_universe<
                         }
                     };
 
+                    // The constraint may already be entailed by the assumptions of the binder we are
+                    // leaving, e.g. `for<'a, 'b> where 'b: 'a { 'b: 'a }`. There is nothing to lift into
+                    // a smaller universe in that case, and looking for lower universe candidates would
+                    // wrongly result in `Or([])` whenever the placeholders have no lower universe bounds.
+                    if regions_outlived_by(region_1, assumptions).any(|r| r == region_2) {
+                        continue;
+                    }
+
                     let mut candidates = vec![];
 
                     for ub in regions_outlived_by(region_1, assumptions)
@@ -717,16 +725,26 @@ pub fn destructure_type_outlives_constraints_in_root<
         let mut destructured_constraints = Vec::new();
         for c in &and.0 {
             match c {
+                // Root constraints never go through `pull_region_outlives_constraints_out_of_universe`.
+                // A reflexive leaf may be the candidate which makes a root OR true, so discharge it here
+                // instead of requiring the remaining candidates to hold.
+                RegionOutlives(r1, r2, _) if r1 == r2 => {}
                 Ambiguity(_) | RegionOutlives(..) => {
                     destructured_constraints.push(Or::new_leaf(c.clone()))
                 }
-                PlaceholderTyOutlives(ty, r, span) => destructured_constraints.push(Or::new(
-                    regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).map(
-                        move |assumption_r| {
-                            And::new([RegionOutlives(assumption_r, *r, span.clone())])
-                        },
-                    ),
-                )),
+                PlaceholderTyOutlives(ty, r, span) => {
+                    let candidates = regions_outlived_by_placeholder(*ty, assumptions, infcx.cx())
+                        .collect::<Vec<_>>();
+                    if candidates.contains(r) {
+                        destructured_constraints.push(Or::new_true());
+                    } else {
+                        destructured_constraints.push(Or::new(candidates.into_iter().map(
+                            move |assumption_r| {
+                                And::new([RegionOutlives(assumption_r, *r, span.clone())])
+                            },
+                        )));
+                    }
+                }
                 AliasTyOutlivesViaEnv(bound_outlives, span) => {
                     destructured_constraints.push(
                         alias_outlives_candidates_from_assumptions(
@@ -992,7 +1010,6 @@ pub fn regions_outlived_by<I: Interner>(
     r: Region<I>,
     assumptions: &Assumptions<I>,
 ) -> impl Iterator<Item = Region<I>> {
-    // FIXME(-Zassumptions-on-binders): do we need to be adding the reflexive edge here?
     assumptions.region_outlives.reachable_from(r).into_iter().chain([r])
 }
 
