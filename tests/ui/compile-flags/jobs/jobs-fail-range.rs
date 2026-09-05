@@ -1,4 +1,4 @@
-//@ revisions: a b c d e f g h i j k l
+//@ revisions: a b c d e f g h i j k l m n
 //@ compile-flags: -Z unstable-options
 
 //@[a] compile-flags: -j 256
@@ -23,9 +23,13 @@
 //@[j] compile-flags: --jobs
 //@[k] compile-flags: -Zthreads
 //@[l] compile-flags: -Zno-parallel-backend
+//@[m] compile-flags: --reproducible
+//@[n] compile-flags: --reproducible nonsense
 //[i]~? RAW Argument to option 'j' missing
 //[j]~? RAW Argument to option 'jobs' missing
 //[k]~? ERROR unstable option `threads` requires a string
 //[l]~? ERROR `-Zno-parallel-backend` is removed, use `--jobs-backend=1` instead
+//[m]~? RAW Argument to option 'reproducible' missing
+//[n]~? ERROR `--reproducible`: expected of of `none`, `binaries`, `diagnostics`, or `binaries,diagnostics`
 
 fn main() {}
