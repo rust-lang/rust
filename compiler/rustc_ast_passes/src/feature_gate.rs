@@ -207,15 +207,33 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
         match i.kind {
             ast::ForeignItemKind::Fn(..) | ast::ForeignItemKind::Static(..) => {
-                let link_name = attr::first_attr_value_str_by_name(&i.attrs, sym::link_name);
-                let links_to_llvm = link_name.is_some_and(|val| val.as_str().starts_with("llvm."));
-                if links_to_llvm {
-                    gate!(
-                        self,
-                        link_llvm_intrinsics,
-                        i.span,
-                        "linking to LLVM intrinsics is experimental"
-                    );
+                let symbol_name = if let Some(link_name) =
+                    attr::first_attr_value_str_by_name(&i.attrs, sym::link_name)
+                {
+                    Some(link_name)
+                } else if let Some(link_name) = i.kind.ident() {
+                    Some(link_name.name)
+                } else {
+                    None
+                };
+
+                if let Some(symbol_name) = symbol_name {
+                    let name = symbol_name.as_str();
+                    if name.starts_with("llvm.") {
+                        gate!(
+                            self,
+                            link_llvm_intrinsics,
+                            i.span,
+                            "linking to LLVM intrinsics is experimental"
+                        );
+                    } else if name.starts_with("__enzyme_") {
+                        gate!(
+                            self,
+                            link_enzyme_intrinsics,
+                            i.span,
+                            "linking to Enzyme intrinsics is experimental"
+                        );
+                    }
                 }
             }
             ast::ForeignItemKind::TyAlias(..) => {
