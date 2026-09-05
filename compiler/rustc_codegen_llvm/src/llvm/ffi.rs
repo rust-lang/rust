@@ -2010,6 +2010,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustCreateDereferenceableAttr(C: &Context, bytes: u64) -> &Attribute;
     pub(crate) fn LLVMRustCreateDereferenceableOrNullAttr(C: &Context, bytes: u64) -> &Attribute;
     pub(crate) fn LLVMRustCreateByValAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
+    pub(crate) fn LLVMRustCreateByRefAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub(crate) fn LLVMRustCreateStructRetAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub(crate) fn LLVMRustCreateElementTypeAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub(crate) fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;

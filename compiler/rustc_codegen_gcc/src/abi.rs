@@ -178,19 +178,49 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     let ty = cast.gcc_type(cx);
                     apply_attrs(ty, &cast.attrs, argument_tys.len())
                 }
-                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: true } => {
+                PassMode::Indirect {
+                    attrs: _,
+                    meta_attrs: None,
+                    address_space: _,
+                    on_stack: true,
+                    by_ref,
+                } => {
+                    assert!(!by_ref);
                     // This is a "byval" argument, so we don't apply the `restrict` attribute on it.
                     on_stack_param_indices.insert(argument_tys.len());
                     arg.layout.gcc_type(cx)
                 }
+                PassMode::Indirect {
+                    attrs: _,
+                    meta_attrs: None,
+                    address_space: _,
+                    on_stack,
+                    by_ref: true,
+                } => {
+                    assert!(!on_stack);
+                    unimplemented!("unsupported by_ref argument")
+                }
                 PassMode::Direct(attrs) => {
                     apply_attrs(arg.layout.immediate_gcc_type(cx), &attrs, argument_tys.len())
                 }
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
+                PassMode::Indirect {
+                    attrs,
+                    meta_attrs: None,
+                    address_space: _,
+                    on_stack: false,
+                    by_ref: false,
+                } => {
                     apply_attrs(cx.type_ptr_to(arg.layout.gcc_type(cx)), &attrs, argument_tys.len())
                 }
-                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
+                PassMode::Indirect {
+                    attrs,
+                    meta_attrs: Some(meta_attrs),
+                    address_space: _,
+                    on_stack,
+                    by_ref,
+                } => {
                     assert!(!on_stack);
+                    assert!(!by_ref);
                     // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
                     // Any two ABI-compatible unsized types have the same metadata type and
                     // moreover the same metadata value leads to the same dynamic size and
