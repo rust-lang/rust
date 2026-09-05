@@ -6,9 +6,12 @@
 //@ ignore-backends: gcc
 
 #![allow(incomplete_features)]
+#![feature(panic_unwind)]
 #![feature(raw_dylib_elf)]
 #![no_std]
 #![no_main]
+
+extern crate unwind;
 
 use core::ffi::{c_char, c_int};
 
@@ -66,16 +69,5 @@ extern "C" fn main() -> ! {
 #[cfg(not(test))]
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo<'_>) -> ! {
-    exit(1);
-}
-
-#[unsafe(no_mangle)]
-extern "C" fn rust_eh_personality(
-    _version: i32,
-    _actions: i32,
-    _exception_class: u64,
-    _exception_object: *mut (),
-    _context: *mut (),
-) -> i32 {
     exit(1);
 }

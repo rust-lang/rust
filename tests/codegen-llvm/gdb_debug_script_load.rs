@@ -7,15 +7,13 @@
 //@ compile-flags: -g -C no-prepopulate-passes -Cpanic=abort
 
 #![feature(lang_items)]
+#![feature(panic_unwind)]
 #![no_std]
+
+extern crate unwind;
 
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
-
-#[no_mangle]
-extern "C" fn rust_eh_personality() {
     loop {}
 }
 
