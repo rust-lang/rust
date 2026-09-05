@@ -752,7 +752,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // NOTE(eddyb) actually, on second thought, those are always in the
             // function scope, which always exists.
             for var_debug_info in &self.mir.var_debug_info {
-                vars.insert(var_debug_info.source_info.scope);
+                vars.insert2(var_debug_info.source_info.scope);
             }
             Some(vars)
         } else {
