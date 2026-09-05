@@ -52,21 +52,22 @@ mod tests {
     // CHECK: define [2 x <1 x ptr>] @pair_ptrx1_t([2 x <1 x ptr>] {{.*}} %0)
     #[unsafe(no_mangle)] extern "C" fn pair_ptrx1_t(x: Pair<Simd<*const (), 1>>) -> Pair<Simd<*const (), 1>> { x }
 
-    // When it fits in a 128-bit register, it's passed directly.
+    // When the fields are not 64 or 128 bits in size, they do not qualify as a homogeneous
+    // aggregate, and passed as type-erased sequences of integers.
 
-    // CHECK: define [4 x <4 x i8>] @quad_int8x4_t([4 x <4 x i8>] {{.*}} %0)
+    // CHECK: define [2 x i64] @quad_int8x4_t([2 x i64] {{.*}} %0)
     #[unsafe(no_mangle)] extern "C" fn quad_int8x4_t(x: Quad<Simd<i8, 4>>) -> Quad<Simd<i8, 4>> { x }
 
-    // CHECK: define [4 x <2 x i16>] @quad_int16x2_t([4 x <2 x i16>] {{.*}} %0)
+    // CHECK: define [2 x i64] @quad_int16x2_t([2 x i64] {{.*}} %0)
     #[unsafe(no_mangle)] extern "C" fn quad_int16x2_t(x: Quad<Simd<i16, 2>>) -> Quad<Simd<i16, 2>> { x }
 
-    // CHECK: define [4 x <1 x i32>] @quad_int32x1_t([4 x <1 x i32>] {{.*}} %0)
+    // CHECK: define [2 x i64] @quad_int32x1_t([2 x i64] {{.*}} %0)
     #[unsafe(no_mangle)] extern "C" fn quad_int32x1_t(x: Quad<Simd<i32, 1>>) -> Quad<Simd<i32, 1>> { x }
 
-    // CHECK: define [4 x <2 x half>] @quad_float16x2_t([4 x <2 x half>] {{.*}} %0)
+    // CHECK: define [2 x i64] @quad_float16x2_t([2 x i64] {{.*}} %0)
     #[unsafe(no_mangle)] extern "C" fn quad_float16x2_t(x: Quad<Simd<f16, 2>>) -> Quad<Simd<f16, 2>> { x }
 
-    // CHECK: define [4 x <1 x float>] @quad_float32x1_t([4 x <1 x float>] {{.*}} %0)
+    // CHECK: define [2 x i64] @quad_float32x1_t([2 x i64] {{.*}} %0)
     #[unsafe(no_mangle)] extern "C" fn quad_float32x1_t(x: Quad<Simd<f32, 1>>) -> Quad<Simd<f32, 1>> { x }
 
     // When it doesn't quite fit, padding is added which does erase the type.
@@ -74,23 +75,23 @@ mod tests {
     // CHECK: define [2 x i64] @triple_int8x4_t
     #[unsafe(no_mangle)] extern "C" fn triple_int8x4_t(x: Triple<Simd<i8, 4>>) -> Triple<Simd<i8, 4>> { x }
 
-    // Other configurations are not passed by-value but indirectly.
+    // Other configurations passed directly when they qualify as a homogeneous aggregate.
 
-    // CHECK: define void @pair_int128x1_t
+    // CHECK: define [2 x <1 x i128>] @pair_int128x1_t([2 x <1 x i128>]
     #[unsafe(no_mangle)] extern "C" fn pair_int128x1_t(x: Pair<Simd<i128, 1>>) -> Pair<Simd<i128, 1>> { x }
 
-    // CHECK: define void @pair_float128x1_t
+    // CHECK: define [2 x <1 x fp128>] @pair_float128x1_t([2 x <1 x fp128>]
     #[unsafe(no_mangle)] extern "C" fn pair_float128x1_t(x: Pair<Simd<f128, 1>>) -> Pair<Simd<f128, 1>> { x }
 
-    // CHECK: define void @pair_int8x16_t
+    // CHECK: define [2 x <16 x i8>] @pair_int8x16_t([2 x <16 x i8>]
     #[unsafe(no_mangle)] extern "C" fn pair_int8x16_t(x: Pair<Simd<i8, 16>>) -> Pair<Simd<i8, 16>> { x }
 
-    // CHECK: define void @pair_int16x8_t
+    // CHECK: define [2 x <8 x i16>] @pair_int16x8_t([2 x <8 x i16>]
     #[unsafe(no_mangle)] extern "C" fn pair_int16x8_t(x: Pair<Simd<i16, 8>>) -> Pair<Simd<i16, 8>> { x }
 
-    // CHECK: define void @triple_int16x8_t
+    // CHECK: define [3 x <8 x i16>] @triple_int16x8_t([3 x <8 x i16>]
     #[unsafe(no_mangle)] extern "C" fn triple_int16x8_t(x: Triple<Simd<i16, 8>>) -> Triple<Simd<i16, 8>> { x }
 
-    // CHECK: define void @quad_int16x8_t
+    // CHECK: define [4 x <8 x i16>] @quad_int16x8_t([4 x <8 x i16>]
     #[unsafe(no_mangle)] extern "C" fn quad_int16x8_t(x: Quad<Simd<i16, 8>>) -> Quad<Simd<i16, 8>> { x }
 }
