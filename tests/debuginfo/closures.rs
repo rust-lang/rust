@@ -1,5 +1,6 @@
 //@ only-cdb
 //@ compile-flags:-g
+//@ min-cdb-version: 10.0.26100.2161
 
 // === CDB TESTS ===================================================================================
 // Generic functions cause ambigious breakpoints.
