@@ -353,8 +353,13 @@ pub trait Interner:
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
 
-    fn assumptions_on_binders(self) -> bool;
+    /// Whether any `-Zassumptions-on-binders` mode is enabled.
+    fn assumptions_on_binders_any(self) -> bool;
 
+    /// Whether the full `-Zassumptions-on-binders` mode is enabled.
+    fn assumptions_on_binders_full(self) -> bool;
+
+    /// Whether `-Zassumptions-on-binders=min_coroutines` is enabled.
     fn assumptions_on_binders_min_coroutines(self) -> bool;
 
     fn renormalize_rigid_aliases(self) -> bool;

@@ -1036,8 +1036,15 @@ pub enum AssumptionsOnBinders {
 }
 
 impl AssumptionsOnBinders {
-    pub fn is_enabled(self) -> bool {
+    /// Whether any kind of assumptions-on-binders handling is enabled. This is
+    /// `true` for both the full mode and the minimal coroutine mode.
+    pub fn any_is_enabled(self) -> bool {
         self != AssumptionsOnBinders::Disabled
+    }
+
+    /// Whether the full mode is enabled, deducing assumptions from every binder.
+    pub fn is_full(self) -> bool {
+        self == AssumptionsOnBinders::All
     }
 
     pub fn is_min_coroutines(self) -> bool {
@@ -2723,7 +2730,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     // `-Zassumptions-on-binders` requires the next trait solver globally. Normalize after
     // parsing so the effective config is independent of flag order and so consumers that
     // read `next_solver.globally` directly (e.g. feature-gate checks) see the right value.
-    if unstable_opts.assumptions_on_binders.is_enabled() {
+    if unstable_opts.assumptions_on_binders.any_is_enabled() {
         // `NextSolverConfig::default()` has `coherence: true`; the only way `coherence` is
         // false here is an explicit `-Znext-solver=no`.
         if !unstable_opts.next_solver.coherence {

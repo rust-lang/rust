@@ -181,7 +181,7 @@ where
     I: Interner,
 {
     let new_universe = delegate.create_next_universe();
-    if delegate.cx().assumptions_on_binders() {
+    if delegate.cx().assumptions_on_binders_any() {
         // FIXME(-Zassumptions-on-binders): Remove this temporary workaround once opaque types no
         // longer escape query responses with query-created placeholders. Region constraints
         // involving query-created placeholders were handled inside the query, but placeholders can

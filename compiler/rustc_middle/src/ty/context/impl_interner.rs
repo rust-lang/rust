@@ -379,8 +379,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.features()
     }
 
-    fn assumptions_on_binders(self) -> bool {
-        self.assumptions_on_binders()
+    fn assumptions_on_binders_any(self) -> bool {
+        self.assumptions_on_binders_any()
+    }
+
+    fn assumptions_on_binders_full(self) -> bool {
+        self.assumptions_on_binders_full()
     }
 
     fn assumptions_on_binders_min_coroutines(self) -> bool {

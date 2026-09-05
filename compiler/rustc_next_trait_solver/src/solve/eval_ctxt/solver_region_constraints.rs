@@ -34,7 +34,7 @@ where
         u: UniverseIndex,
         param_env: I::ParamEnv,
     ) -> Option<Assumptions<I>> {
-        assert!(self.cx().assumptions_on_binders());
+        assert!(self.cx().assumptions_on_binders_any());
 
         struct RawAssumptions<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
             ecx: &'a mut EvalCtxt<'b, D, I>,

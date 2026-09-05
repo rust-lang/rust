@@ -2827,10 +2827,20 @@ impl<'tcx> TyCtxt<'tcx> {
             || self.sess.opts.unstable_opts.typing_mode_post_typeck_until_borrowck
     }
 
-    pub fn assumptions_on_binders(self) -> bool {
-        self.sess.opts.unstable_opts.assumptions_on_binders.is_enabled()
+    /// Whether any `-Zassumptions-on-binders` mode is enabled. Use this to gate
+    /// the shared machinery, e.g. tracking region constraints in the solver.
+    pub fn assumptions_on_binders_any(self) -> bool {
+        self.sess.opts.unstable_opts.assumptions_on_binders.any_is_enabled()
     }
 
+    /// Whether the full `-Zassumptions-on-binders` mode is enabled, deducing
+    /// assumptions from every binder.
+    pub fn assumptions_on_binders_full(self) -> bool {
+        self.sess.opts.unstable_opts.assumptions_on_binders.is_full()
+    }
+
+    /// Whether `-Zassumptions-on-binders=min_coroutines` is enabled, deducing
+    /// assumptions only from coroutine-witness binders.
     pub fn assumptions_on_binders_min_coroutines(self) -> bool {
         self.sess.opts.unstable_opts.assumptions_on_binders.is_min_coroutines()
     }
