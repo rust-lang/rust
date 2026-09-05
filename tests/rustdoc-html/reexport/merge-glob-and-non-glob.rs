@@ -6,6 +6,7 @@
 #![no_core]
 #![no_std]
 #![crate_name = "foo"]
+#![allow(rustdoc::unportable_markdown)]
 
 // First we ensure we only have two items.
 //@ has 'foo/index.html'

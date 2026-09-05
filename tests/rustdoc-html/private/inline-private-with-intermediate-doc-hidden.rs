@@ -3,6 +3,7 @@
 // from the doc hidden re-export.
 
 #![crate_name = "foo"]
+#![allow(rustdoc::unportable_markdown)]
 
 //@ has 'foo/index.html'
 // There should only be one struct displayed.
