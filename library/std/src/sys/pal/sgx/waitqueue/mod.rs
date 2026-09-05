@@ -24,6 +24,7 @@ use super::abi::{thread, usercalls};
 use crate::num::NonZero;
 use crate::ops::{Deref, DerefMut};
 use crate::panic::{self, AssertUnwindSafe};
+use crate::ptr::NonNull;
 use crate::time::Duration;
 
 /// An queue entry in a `WaitQueue`.
@@ -128,26 +129,29 @@ impl WaitQueue {
     /// This function does not return until this thread has been awoken. When `before_wait` panics,
     /// this function will abort.
     pub fn wait<T, F: FnOnce()>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>, before_wait: F) {
-        // very unsafe: check requirements of UnsafeList::push
-        unsafe {
-            let mut entry = UnsafeListEntry::new(SpinMutex::new(WaitEntry {
-                tcs: thread::current(),
-                wake: false,
-            }));
-            let entry = guard.queue.inner.push(&mut entry);
-            drop(guard);
-            if let Err(_e) = panic::catch_unwind(AssertUnwindSafe(|| before_wait())) {
-                rtabort!("Panic before wait on wakeup event")
-            }
-            while !entry.lock().wake {
-                // `entry.wake` is only set in `notify_one` and `notify_all` functions. Both ensure
-                // the entry is removed from the queue _before_ setting this bool. There are no
-                // other references to `entry`.
-                // don't panic, this would invalidate `entry` during unwinding
-                let eventset = rtunwrap!(Ok, usercalls::wait(EV_UNPARK, WAIT_INDEFINITE));
-                rtassert!(eventset & EV_UNPARK == EV_UNPARK);
-            }
+        let mut entry =
+            UnsafeListEntry::new(SpinMutex::new(WaitEntry { tcs: thread::current(), wake: false }));
+        // `entry` is shadowed so that the mutable borrow created here can only
+        // be invalidated once the function returns and the entry is freed.
+        let entry = NonNull::from_mut(&mut entry);
+        // SAFETY: `entry` is fresh and thus cannot be part of a list yet. It
+        // permits mutable accesses to the entry fields and is not invalidated
+        // until this function returns. `entry` is removed from the list before
+        // that happens.
+        let entry = unsafe { guard.queue.inner.push(entry) };
+        drop(guard);
+        if let Err(_e) = panic::catch_unwind(AssertUnwindSafe(|| before_wait())) {
+            rtabort!("Panic before wait on wakeup event")
         }
+        while !entry.lock().wake {
+            // don't panic, this would invalidate `entry` during unwinding
+            let eventset = rtunwrap!(Ok, usercalls::wait(EV_UNPARK, WAIT_INDEFINITE));
+            rtassert!(eventset & EV_UNPARK == EV_UNPARK);
+        }
+
+        // `entry.wake` is only set in `notify_one` and `notify_all` functions.
+        // Both ensure the entry is removed from the queue _before_ setting this
+        // bool. Thus it is safe to return now, and destroy the entry.
     }
 
     /// Adds the calling thread to the `WaitVariable`'s wait queue, then wait
@@ -159,28 +163,35 @@ impl WaitQueue {
         timeout: Duration,
         before_wait: F,
     ) -> bool {
-        // very unsafe: check requirements of UnsafeList::push
-        unsafe {
-            let mut entry = UnsafeListEntry::new(SpinMutex::new(WaitEntry {
-                tcs: thread::current(),
-                wake: false,
-            }));
-            let entry_lock = lock.lock().queue.inner.push(&mut entry);
-            if let Err(_e) = panic::catch_unwind(AssertUnwindSafe(|| before_wait())) {
-                rtabort!("Panic before wait on wakeup event or timeout")
-            }
-            usercalls::wait_timeout(EV_UNPARK, timeout, || entry_lock.lock().wake);
-            // acquire the wait queue's lock first to avoid deadlock
-            // and ensure no other function can simultaneously access the list
-            // (e.g., `notify_one` or `notify_all`)
-            let mut guard = lock.lock();
-            let success = entry_lock.lock().wake;
-            if !success {
-                // nobody is waking us up, so remove our entry from the wait queue.
-                guard.queue.inner.remove(&mut entry);
-            }
-            success
+        let mut entry =
+            UnsafeListEntry::new(SpinMutex::new(WaitEntry { tcs: thread::current(), wake: false }));
+        // `entry` is shadowed so that the mutable borrow created here can only
+        // be invalidated once the function returns and the entry is freed.
+        let entry = NonNull::from_mut(&mut entry);
+        // SAFETY: `entry` is fresh and thus cannot be part of a list yet. It
+        // permits mutable accesses to the entry fields and is not invalidated
+        // until this function returns. `entry` is removed from the list before
+        // that happens.
+        let entry_lock = unsafe { lock.lock().queue.inner.push(entry) };
+        if let Err(_e) = panic::catch_unwind(AssertUnwindSafe(|| before_wait())) {
+            rtabort!("Panic before wait on wakeup event or timeout")
         }
+        usercalls::wait_timeout(EV_UNPARK, timeout, || entry_lock.lock().wake);
+        // acquire the wait queue's lock first to avoid deadlock
+        // and ensure no other function can simultaneously access the list
+        // (e.g., `notify_one` or `notify_all`)
+        let mut guard = lock.lock();
+        let success = entry_lock.lock().wake;
+        if success {
+            // another thread removed us from the list, so it is save to return
+            // and destroy the entry.
+        } else {
+            // nobody is waking us up, so remove our entry from the wait queue.
+            // SAFETY: `entry` is still part of the list.
+            unsafe { guard.queue.inner.remove(entry) };
+        }
+
+        success
     }
 
     /// Either find the next waiter on the wait queue, or return the mutex
@@ -191,22 +202,19 @@ impl WaitQueue {
     pub fn notify_one<T>(
         mut guard: SpinMutexGuard<'_, WaitVariable<T>>,
     ) -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>> {
-        // SAFETY: lifetime of the pop() return value is limited to the map
-        // closure (The closure return value is 'static). The underlying
-        // stack frame won't be freed until after the lock on the queue is released
-        // (i.e., `guard` is dropped).
-        unsafe {
-            let tcs = guard.queue.inner.pop().map(|entry| -> Tcs {
-                let mut entry_guard = entry.lock();
-                entry_guard.wake = true;
-                entry_guard.tcs
-            });
+        let tcs = guard.queue.inner.pop().map(|entry| -> Tcs {
+            // `entry` must not be accessed again after the lock is released
+            // since the wait functions may assume that the entry is removed
+            // from the list once `wake` is set.
+            let mut entry_guard = entry.lock();
+            entry_guard.wake = true;
+            entry_guard.tcs
+        });
 
-            if let Some(tcs) = tcs {
-                Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::Single(tcs) })
-            } else {
-                Err(guard)
-            }
+        if let Some(tcs) = tcs {
+            Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::Single(tcs) })
+        } else {
+            Err(guard)
         }
     }
 
@@ -218,25 +226,23 @@ impl WaitQueue {
     pub fn notify_all<T>(
         mut guard: SpinMutexGuard<'_, WaitVariable<T>>,
     ) -> Result<WaitGuard<'_, T>, SpinMutexGuard<'_, WaitVariable<T>>> {
-        // SAFETY: lifetime of the pop() return values are limited to the
-        // while loop body. The underlying stack frames won't be freed until
-        // after the lock on the queue is released (i.e., `guard` is dropped).
-        unsafe {
-            let mut count = 0;
-            while let Some(entry) = guard.queue.inner.pop() {
-                count += 1;
-                let mut entry_guard = entry.lock();
-                entry_guard.wake = true;
-            }
+        let mut count = 0;
+        while let Some(entry) = guard.queue.inner.pop() {
+            count += 1;
+            // `entry` must not be accessed again after the lock is released
+            // since the wait functions may assume that the entry is removed
+            // from the list once `wake` is set.
+            let mut entry_guard = entry.lock();
+            entry_guard.wake = true;
+        }
 
-            if let Some(count) = NonZero::new(count) {
-                Ok(WaitGuard {
-                    mutex_guard: Some(guard),
-                    notified_tcs: NotifiedTcs::All { _count: count },
-                })
-            } else {
-                Err(guard)
-            }
+        if let Some(count) = NonZero::new(count) {
+            Ok(WaitGuard {
+                mutex_guard: Some(guard),
+                notified_tcs: NotifiedTcs::All { _count: count },
+            })
+        } else {
+            Err(guard)
         }
     }
 }
