@@ -1,0 +1,54 @@
+error: `#[non_exhaustive]` has no effect on an unreachable item
+  --> $DIR/unused-non-exhaustive.rs:3:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-non-exhaustive.rs:1:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: `#[non_exhaustive]` has no effect on an unreachable item
+  --> $DIR/unused-non-exhaustive.rs:7:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+
+error: `#[non_exhaustive]` has no effect on an unreachable item
+  --> $DIR/unused-non-exhaustive.rs:13:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+
+error: `#[non_exhaustive]` has no effect on an unreachable item
+  --> $DIR/unused-non-exhaustive.rs:20:5
+   |
+LL |     #[non_exhaustive]
+   |     ^^^^^^^^^^^^^^^^^
+
+error: `#[non_exhaustive]` has no effect on a struct with non-public fields
+  --> $DIR/unused-non-exhaustive.rs:25:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+...
+LL |     private: (),
+   |     ^^^^^^^^^^^
+   |
+   = note: non-public fields already prevent the struct from being constructed or exhaustively matched by downstream crates
+
+error: `#[non_exhaustive]` has no effect on a struct with non-public fields
+  --> $DIR/unused-non-exhaustive.rs:32:1
+   |
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+LL |
+LL | pub struct PublicTupleStructWithPrivateField(pub (), ());
+   |                                                      ^^
+   |
+   = note: non-public fields already prevent the struct from being constructed or exhaustively matched by downstream crates
+
+error: aborting due to 6 previous errors
+

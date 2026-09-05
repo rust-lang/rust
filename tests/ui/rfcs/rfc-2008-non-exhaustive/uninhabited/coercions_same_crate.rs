@@ -2,9 +2,11 @@
 pub enum UninhabitedEnum {
 }
 
+#[expect(unused_attributes)]
 #[non_exhaustive]
 pub struct UninhabitedTupleStruct(!);
 
+#[expect(unused_attributes)]
 #[non_exhaustive]
 pub struct UninhabitedStruct {
     _priv: !,
