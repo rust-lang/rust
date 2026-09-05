@@ -1356,7 +1356,7 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
             let u = self.infcx.universe();
             self.infcx.insert_placeholder_assumptions(
                 u,
-                (!self.cx().assumptions_on_binders_min_coroutines()).then(Assumptions::empty),
+                self.cx().assumptions_on_binders_full().then(Assumptions::empty),
             );
             let b = self.infcx.instantiate_binder_with_infer(b);
             self.relate(a, b)
@@ -1366,7 +1366,7 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
             let u = self.infcx.universe();
             self.infcx.insert_placeholder_assumptions(
                 u,
-                (!self.cx().assumptions_on_binders_min_coroutines()).then(Assumptions::empty),
+                self.cx().assumptions_on_binders_full().then(Assumptions::empty),
             );
             let a = self.infcx.instantiate_binder_with_infer(a);
             self.relate(a, b)
