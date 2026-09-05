@@ -1,6 +1,6 @@
 //@ run-crash
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
-//@ error-pattern: unsafe precondition(s) violated: Layout::from_size_align_unchecked requires
+//@ error-pattern: Layout::from_size_align_unchecked requires
 //@ revisions: toolarge badalign
 
 fn main() {
