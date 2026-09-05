@@ -3539,14 +3539,14 @@ mod tests {
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_mulhi_epi16() {
+    fn test_mm_mulhi_epi16() {
         let (a, b) = (_mm_set1_epi16(1000), _mm_set1_epi16(-1001));
         let r = _mm_mulhi_epi16(a, b);
         assert_eq_m128i(r, _mm_set1_epi16(-16));
     }
 
     #[simd_test(enable = "sse2")]
-    const fn test_mm_mulhi_epu16() {
+    fn test_mm_mulhi_epu16() {
         let (a, b) = (_mm_set1_epi16(1000), _mm_set1_epi16(1001));
         let r = _mm_mulhi_epu16(a, b);
         assert_eq_m128i(r, _mm_set1_epi16(15));

@@ -4927,7 +4927,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_mulhi_epi16() {
+    fn test_mm256_mulhi_epi16() {
         let a = _mm256_set1_epi16(6535);
         let b = _mm256_set1_epi16(6535);
         let r = _mm256_mulhi_epi16(a, b);
@@ -4936,7 +4936,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_mulhi_epu16() {
+    fn test_mm256_mulhi_epu16() {
         let a = _mm256_set1_epi16(6535);
         let b = _mm256_set1_epi16(6535);
         let r = _mm256_mulhi_epu16(a, b);
