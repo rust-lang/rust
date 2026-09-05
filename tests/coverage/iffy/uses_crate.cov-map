@@ -1,0 +1,68 @@
+Function name: used_crate::used_from_bin_crate_and_lib_crate_generic_function::<alloc::vec::Vec<i32>>
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 1b, 01, 00, 4c, 01, 01, 05, 00, 0d, 01, 00, 48, 00, 4b, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/auxiliary/used_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 27, 1) to (start + 0, 76)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 72) to (start + 0, 75)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: used_crate::used_only_from_bin_crate_generic_function::<&alloc::vec::Vec<i32>>
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 13, 01, 00, 43, 01, 01, 05, 00, 0d, 01, 00, 3f, 00, 42, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/auxiliary/used_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 19, 1) to (start + 0, 67)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 63) to (start + 0, 66)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: used_crate::used_only_from_bin_crate_generic_function::<&str>
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 13, 01, 00, 43, 01, 01, 05, 00, 0d, 01, 00, 3f, 00, 42, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/auxiliary/used_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 19, 1) to (start + 0, 67)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 63) to (start + 0, 66)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: used_crate::used_with_same_type_from_bin_crate_and_lib_crate_generic_function::<&str>
+Raw bytes (24): 0x[01, 01, 00, 04, 01, 1f, 01, 00, 5b, 01, 01, 05, 00, 0d, 01, 00, 57, 00, 5a, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/auxiliary/used_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 31, 1) to (start + 0, 91)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 13)
+- Code(Counter(0)) at (prev + 0, 87) to (start + 0, 90)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
+Function name: uses_crate::main
+Raw bytes (64): 0x[01, 02, 00, 0c, 01, 0c, 01, 00, 0a, 01, 01, 05, 00, 20, 01, 01, 14, 00, 18, 01, 00, 19, 00, 1a, 01, 00, 1c, 00, 1d, 01, 00, 1f, 00, 20, 01, 00, 22, 00, 23, 01, 01, 05, 00, 45, 01, 01, 05, 00, 59, 01, 01, 05, 00, 4d, 01, 01, 05, 00, 62, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/uses_crate.rs
+Number of expressions: 0
+Number of file 0 mappings: 12
+- Code(Counter(0)) at (prev + 12, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 32)
+- Code(Counter(0)) at (prev + 1, 20) to (start + 0, 24)
+- Code(Counter(0)) at (prev + 0, 25) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 0, 28) to (start + 0, 29)
+- Code(Counter(0)) at (prev + 0, 31) to (start + 0, 32)
+- Code(Counter(0)) at (prev + 0, 34) to (start + 0, 35)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 69)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 89)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 77)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 98)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+
