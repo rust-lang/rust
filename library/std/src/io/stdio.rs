@@ -8,7 +8,8 @@ use crate::fmt;
 use crate::fs::File;
 use crate::io::prelude::*;
 use crate::io::{
-    self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines, SpecReadByte,
+    self, BorrowedCursor, BufReader, Empty, IoSlice, IoSliceMut, LineWriter, Lines, Repeat, Sink,
+    SpecReadByte, Take,
 };
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
@@ -1251,7 +1252,7 @@ pub impl(crate) trait IsTerminal {
 }
 
 macro_rules! impl_is_terminal {
-    ($($t:ty),*$(,)?) => {$(
+    (sys: $($t:ty),*$(,)?) => {$(
         #[stable(feature = "is_terminal", since = "1.70.0")]
         impl IsTerminal for $t {
             #[inline]
@@ -1259,10 +1260,27 @@ macro_rules! impl_is_terminal {
                 crate::sys::io::is_terminal(self)
             }
         }
-    )*}
+    )*};
+    (false: $($t:ty),*$(,)?) => {$(
+        #[stable(feature = "more_is_terminal", since = "CURRENT_RUSTC_VERSION")]
+        impl IsTerminal for $t {
+            #[inline]
+            fn is_terminal(&self) -> bool {
+                false
+            }
+        }
+    )*};
 }
 
-impl_is_terminal!(File, Stdin, StdinLock<'_>, Stdout, StdoutLock<'_>, Stderr, StderrLock<'_>);
+impl_is_terminal!(sys: File, Stdin, StdinLock<'_>, Stdout, StdoutLock<'_>, Stderr, StderrLock<'_>);
+impl_is_terminal!(false: Empty, Repeat, Sink);
+
+#[stable(feature = "more_is_terminal", since = "CURRENT_RUSTC_VERSION")]
+impl<T: IsTerminal> IsTerminal for Take<T> {
+    fn is_terminal(&self) -> bool {
+        self.inner.is_terminal()
+    }
+}
 
 #[unstable(
     feature = "print_internals",
