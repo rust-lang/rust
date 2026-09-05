@@ -68,7 +68,7 @@ LL |     let c: [i32, x];
 help: consider using `const` instead of `let`
    |
 LL -     let x = 5;
-LL +     const x: /* Type */ = 5;
+LL +     const x: usize = 5;
    |
 
 error[E0423]: cannot find value `i32` in this scope
