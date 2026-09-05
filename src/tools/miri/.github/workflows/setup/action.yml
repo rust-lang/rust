@@ -38,7 +38,7 @@ runs:
 
       - name: Install the tools we need
         if: steps.cache.outputs.cache-hit != 'true'
-        run: cargo install -f rustup-toolchain-install-master hyperfine
+        run: cargo install --locked -f rustup-toolchain-install-master hyperfine
         shell: bash
 
       - name: Install "master" toolchain
