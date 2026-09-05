@@ -1296,14 +1296,20 @@ where
             }
         }
 
-        self.probe_trait_candidate(source).enter(|ecx| {
+        let candidate = self.probe_trait_candidate(source).enter(|ecx| {
             let hidden_ty = cx.type_of(def_id.into()).instantiate(cx, args).skip_norm_wip();
             ecx.add_goal(
                 GoalSource::ImplWhereBound,
                 goal.with(cx, goal.predicate.with_replaced_self_ty(cx, hidden_ty)),
             )?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
+        });
+
+        match candidate {
+            Ok(candidate) if has_only_region_constraints(candidate.result) => Ok(candidate),
+            Ok(_) => self.forced_ambiguity(MaybeInfo::AMBIGUOUS),
+            Err(err) => Err(err),
+        }
     }
 
     // Return `Some` if there is an impl (built-in or user provided) that may
