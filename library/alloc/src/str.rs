@@ -17,11 +17,15 @@ pub use core::str::SplitAsciiWhitespace;
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use core::str::SplitInclusive;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // This re-export has its own stability.
 pub use core::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
 use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher, Utf8Pattern};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // This re-export has its own stability.
 pub use core::str::{Bytes, CharIndices, Chars, from_utf8, from_utf8_mut};
 #[stable(feature = "str_escape", since = "1.34.0")]
 pub use core::str::{EscapeDebug, EscapeDefault, EscapeUnicode};
@@ -31,10 +35,16 @@ pub use core::str::{FromStr, Utf8Error};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Lines, LinesAny};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // This re-export has its own stability.
 pub use core::str::{MatchIndices, RMatchIndices};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // This re-export has its own stability.
 pub use core::str::{Matches, RMatches};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // This re-export has its own stability.
 pub use core::str::{ParseBoolError, from_utf8_unchecked, from_utf8_unchecked_mut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplit, Split};

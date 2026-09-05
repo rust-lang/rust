@@ -6,10 +6,11 @@
 
 // No formatting: this file is nothing but re-exports, and their order is worth preserving.
 #![cfg_attr(rustfmt, rustfmt::skip)]
-
 // Re-exported core operators
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Prelude stability differs here.
 pub use crate::marker::{Send, Sized, Sync, Unpin};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
@@ -24,6 +25,8 @@ pub use crate::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 pub use crate::mem::drop;
 #[stable(feature = "size_of_prelude", since = "1.80.0")]
 #[doc(no_inline)]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Prelude stability differs here.
 pub use crate::mem::{align_of, align_of_val, size_of, size_of_val};
 
 // Re-exported types and traits
@@ -47,6 +50,8 @@ pub use crate::result::Result::{self, Err, Ok};
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 #[expect(deprecated)]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Prelude stability differs here.
 pub use core::prelude::v1::{
     assert, assert_eq, assert_ne, cfg, column, compile_error, concat, debug_assert, debug_assert_eq,
     debug_assert_ne, env, file, format_args, include, include_bytes, include_str, line, matches,
@@ -56,6 +61,8 @@ pub use core::prelude::v1::{
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Prelude stability differs here.
 pub use crate::{
     dbg, eprint, eprintln, format, is_x86_feature_detected, print, println, thread_local
 };
@@ -73,10 +80,13 @@ mod ambiguous_macros_only {
     #[expect(clippy::useless_attribute)]
     #[expect(exported_private_dependencies)]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+    #[allow(incompatible_reexport_stability)] // Prelude stability differs here.
     pub use crate::*;
 }
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Prelude stability differs here.
 pub use self::ambiguous_macros_only::{vec, panic};
 
 #[stable(feature = "cfg_select", since = "1.95.0")]
@@ -114,12 +124,16 @@ pub use core::prelude::v1::trace_macros;
 // Do not `doc(no_inline)` so that they become doc items on their own
 // (no public module for them to be re-exported from).
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Prelude stability differs here.
 pub use core::prelude::v1::{
     alloc_error_handler, bench, global_allocator, test, test_case,
 };
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Prelude stability differs here.
 pub use core::prelude::v1::derive;
 
 #[unstable(feature = "derive_const", issue = "118304")]

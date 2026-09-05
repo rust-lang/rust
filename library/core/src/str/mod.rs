@@ -42,6 +42,8 @@ pub use iter::SplitAsciiWhitespace;
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::SplitInclusive;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)] // Path stability is tracked separately.
 pub use iter::{Bytes, CharIndices, Chars, Lines, SplitWhitespace};
 #[stable(feature = "str_escape", since = "1.34.0")]
 pub use iter::{EscapeDebug, EscapeDefault, EscapeUnicode};

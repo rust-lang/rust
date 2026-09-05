@@ -8,5 +8,5 @@ pub(crate) mod macros;
 #[cfg(not(target_abi = "softfloat"))]
 mod vector;
 #[cfg(not(target_abi = "softfloat"))]
-#[unstable(feature = "stdarch_s390x", issue = "130869")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub use self::vector::*;

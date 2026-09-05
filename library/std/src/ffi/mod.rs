@@ -181,18 +181,33 @@ pub use core::ffi::{c_ptrdiff_t, c_size_t, c_ssize_t};
 pub use self::c_str::FromBytesUntilNulError;
 #[doc(inline)]
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use self::c_str::FromBytesWithNulError;
 #[doc(inline)]
 #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use self::c_str::FromVecWithNulError;
 #[doc(inline)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use self::c_str::IntoStringError;
 #[doc(inline)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use self::c_str::NulError;
 #[doc(inline)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use self::c_str::{CStr, CString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]

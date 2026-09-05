@@ -94,6 +94,9 @@
 
 use crate::io::{self, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, Write};
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use crate::os::fd::*;
 #[allow(unused_imports)] // not used on all targets
 use crate::sys::cvt;

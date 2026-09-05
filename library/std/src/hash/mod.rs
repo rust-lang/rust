@@ -85,7 +85,13 @@
 pub(crate) mod random;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use core::hash::*;
 
 #[stable(feature = "std_hash_exports", since = "1.76.0")]
+#[allow(clippy::useless_attribute)]
+#[allow(incompatible_reexport_stability)]
+// This re-export has its own stability.
 pub use self::random::{DefaultHasher, RandomState};
