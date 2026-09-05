@@ -6,7 +6,7 @@ use semver::Version;
 use crate::diagnostics::{CheckId, TidyCtx};
 
 pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("x_version").path(root));
+    let check = tidy_ctx.start_check(CheckId::new("x_version").path(root));
     let cargo_list = Command::new(cargo).args(["install", "--list"]).stdout(Stdio::piped()).spawn();
 
     let child = match cargo_list {
