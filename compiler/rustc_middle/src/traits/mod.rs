@@ -415,6 +415,10 @@ pub enum ObligationCauseCode<'tcx> {
     /// Requirement for a `const N: Ty` to implement `Ty: ConstParamTy`
     ConstParam(Ty<'tcx>),
 
+    /// Requirement for the type of a const item used in the type system to implement
+    /// `ConstParamTy`.
+    ConstItemTy(Ty<'tcx>),
+
     /// Obligations emitted during the normalization of a free type alias.
     TypeAlias(ObligationCauseCodeHandle<'tcx>, Span, DefId),
 
