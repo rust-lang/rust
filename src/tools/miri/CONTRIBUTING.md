@@ -252,7 +252,7 @@ and on macOS, `rm -rf ~/Library/Caches/org.rust-lang.miri`).
 
 Miri comes with a few benchmarks; you can run `./miri bench` to run them with the locally built
 Miri. Note: this will run `./miri install` as a side-effect. Also requires `hyperfine` to be
-installed (`cargo install hyperfine`).
+installed (`cargo install --locked hyperfine`).
 
 To compare the benchmark results with a baseline, do the following:
 - Before applying your changes, run `./miri bench --save-baseline=baseline.json`.

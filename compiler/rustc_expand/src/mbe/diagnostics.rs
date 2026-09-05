@@ -6,7 +6,6 @@ use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_macros::Subdiagnostic;
-use rustc_middle::bug;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
@@ -203,7 +202,7 @@ impl BestFailure {
 impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'matcher> {
     fn prepare(&mut self, which_matcher: WhichMatcher, matcher: &'matcher [MatcherLoc]) {
         if self.current.is_some() {
-            bug!("`Self::after_arm()` was not called to clean up context");
+            panic!("`Self::after_arm()` was not called to clean up context");
         }
 
         self.current = Some((which_matcher, matcher));
@@ -236,12 +235,12 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             }
             Failure => {
                 if self.best_failure.is_none() {
-                    bug!("A matching failure occurred but `Self::failure()` was not called");
+                    panic!("A matching failure occurred but `Self::failure()` was not called");
                 }
             }
             Ambiguity => {
                 if self.result.is_none() {
-                    bug!("An ambiguity error occurred but `Self::ambiguity()` was not called");
+                    panic!("An ambiguity error occurred but `Self::ambiguity()` was not called");
                 }
             }
             ErrorReported(guar) => self.result = Some((self.root_span, guar)),
@@ -253,7 +252,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
     fn failure(&mut self, parser: &Parser<'_>) {
         let Some((which_matcher, _)) = self.current else {
-            bug!("`Self::prepare()` was not called to initialize context");
+            panic!("`Self::prepare()` was not called to initialize context");
         };
 
         let mut token = parser.token;
@@ -290,7 +289,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
     fn ambiguity(&mut self, parser: &Parser<'_>) {
         let Some((_, matcher)) = self.current else {
-            bug!("`Self::prepare()` was not called to initialize context");
+            panic!("`Self::prepare()` was not called to initialize context");
         };
 
         #[expect(

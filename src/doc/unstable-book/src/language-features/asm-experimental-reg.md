@@ -14,6 +14,7 @@ This tracks support for additional registers in architectures where inline assem
 | ------------ | -------------- | --------- | -------------------- |
 | LoongArch | `vreg` | `$vr[0-31]` | `f` |
 | LoongArch | `xreg` | `$xr[0-31]` | `f` |
+| AArch64 | `preg` | `p[0-16]` | `Upa` |
 
 ## Register class supported types
 
@@ -21,6 +22,8 @@ This tracks support for additional registers in architectures where inline assem
 | ------------ | -------------- | -------------- | ------------- |
 | LoongArch | `vreg` | `lsx` | `i128`, `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2` |
 | LoongArch | `xreg` | `lasx` | `i128`, `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2`, <br> `i8x32`, `i16x16`, `i32x8`, `i64x4`, `f32x8`, `f64x4` |
+| AArch64 | `vreg` | `sve` | `i8xN`, `i16xB`, `i32xN`, `i64xN`, `f16xN`, `f32xN`, `f64xN` (scalable vector) |
+| AArch64 | `preg` | `sve` | `i1xN` (scalable vector predicate) |
 
 ## Register aliases
 
@@ -45,3 +48,4 @@ This tracks support for additional registers in architectures where inline assem
 | LoongArch | `vreg` | `u` | `$xr0` | `u` |
 | LoongArch | `xreg` | None | `$xr0` | `u` |
 | LoongArch | `xreg` | `w` | `$vr0` | `w` |
+| AArch64 | `vreg` | `z` | `z0` | `z` |
