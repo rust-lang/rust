@@ -1,4 +1,4 @@
-// Test for #161735: type-based search for Vec<T> -> Result<Box<_>, _> should find TryFrom<Vec<T>> for Box<[T; N]>
+// Test for #161735: Box<_> search matches Box<[T; N]>
 describe("search-issue-161735", () => {
     it("should parse Vec<T> -> Result<Box<[T; N]>, _> without error", () => {
         // This was failing with "Unexpected ; after T"
