@@ -606,12 +606,16 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     // We need to remove `--error-format` as cargo specifies that to be JSON,
     // but when we run here, cargo does not interpret the JSON any more. `--json`
     // then also needs to be dropped.
-    for arg in &info.args {
+    // We also need to remove `--force-warn=unused_crate_dependencies` as cargo is not there to
+    // process the output.
+    for arg in info.args {
         if let Some(suffix) = arg.strip_prefix("--error-format") {
             assert!(suffix.starts_with('='));
             // Drop this argument.
         } else if let Some(suffix) = arg.strip_prefix("--json") {
             assert!(suffix.starts_with('='));
+            // Drop this argument.
+        } else if arg == "--force-warn=unused_crate_dependencies" {
             // Drop this argument.
         } else {
             cmd.arg(arg);

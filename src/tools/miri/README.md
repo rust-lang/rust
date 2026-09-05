@@ -648,6 +648,7 @@ Definite bugs found:
 * [`VecDeque::splice` confusing physical and logical indices](https://github.com/rust-lang/rust/issues/151758)
 * [Data race in `oneshot` channel](https://github.com/faern/oneshot/issues/69)
 * [Memory leak in serde-yaml-bw](https://github.com/bourumir-wyngs/serde-yaml-bw/issues/197)
+* [Incorrect use of SSE4.1 intrinsic in SSE2 backend in chacha20](https://github.com/RustCrypto/stream-ciphers/issues/579)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
