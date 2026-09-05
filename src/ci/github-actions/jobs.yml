@@ -61,6 +61,14 @@ runners:
     os: ec2-arm64ami-c9g.4xlarge-aarch64-linux-$github.run_id-$github.run_attempt
     <<: *base-job
 
+  # Codebuild runners are provisioned in
+  # https://github.com/rust-lang/simpleinfra/blob/b7ddd5e6bec8a93ec30510cdddec02c5666fefe9/terragrunt/accounts/ci-prod/ci-runners/terragrunt.hcl#L2
+  - &job-linux-36c-codebuild
+    free_disk: true
+    codebuild: true
+    os: codebuild-ubuntu-22-36c-$github.run_id-$github.run_attempt
+    <<: *base-job
+    
 envs:
   production:
     &production
@@ -170,7 +178,7 @@ pr:
 # These jobs automatically inherit envs.try, to avoid repeating
 # it in each job definition.
 try:
-  - <<: [*job-dist-x86_64-linux, *job-linux-x86-32c-ec2]
+  - <<: [*job-dist-x86_64-linux, *job-linux-36c-codebuild]
     name: dist-x86_64-linux-quick
     env:
       IMAGE: dist-x86_64-linux
@@ -195,7 +203,7 @@ optional:
       IMAGE: pr-check-1
     <<: *job-linux-4c
   # Duplicate the try jobs here so that we can run them via jobs=...
-  - <<: [*job-dist-x86_64-linux, *job-linux-x86-32c-ec2]
+  - <<: [*job-dist-x86_64-linux, *job-linux-36c-codebuild]
     name: dist-x86_64-linux-quick
     env:
       IMAGE: dist-x86_64-linux
@@ -312,14 +320,14 @@ auto:
   - name: dist-x86_64-illumos
     <<: *job-linux-4c
 
-  - <<: [*job-dist-x86_64-linux, *job-linux-x86-16c-ec2]
+  - <<: [*job-dist-x86_64-linux, *job-linux-36c-codebuild]
 
   - name: dist-x86_64-linux-alt
     env:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist-alt.sh
-    <<: *job-linux-x86-8c-ec2
+    <<: *job-linux-36c-codebuild
 
   - name: dist-x86_64-musl
     env:
