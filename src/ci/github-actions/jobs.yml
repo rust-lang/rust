@@ -361,7 +361,7 @@ auto:
     free_disk: false
     <<: *job-linux-4c
 
-  - name: test-test-various
+  - name: test-various
     <<: *job-linux-4c
 
   # FIXME: temporarily disabled due to fuchsia server rate limits. See
