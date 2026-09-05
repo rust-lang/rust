@@ -2973,10 +2973,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
         let expr = expr.peel_drop_temps();
         match (&expr.kind, expected.kind(), checked_ty.kind()) {
-            // Handle `&T` to `&&T` call arguments directly.
+            // Handle call arguments that need another shared or mutable reference, such as
+            // `&T` to `&&T` or `&T` to `&mut &T`.
             // Keep ordinary `T` to `&T` cases on later path so its more
             // specific suggestions, such as `Option::as_ref()`, are preserved.
-            (_, &ty::Ref(_, exp, hir::Mutability::Not), _)
+            (_, &ty::Ref(_, exp, mutability), _)
                 if exp.is_ref()
                     && matches!(
                         self.tcx.parent_hir_node(expr.hir_id),
@@ -2989,17 +2990,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                     && self.can_eq(self.param_env, exp, checked_ty) =>
             {
+                let borrow = mutability.ref_prefix_str();
                 let sugg = if expr_needs_parens(expr) {
                     vec![
-                        (sp.shrink_to_lo(), "&(".to_string()),
+                        (sp.shrink_to_lo(), format!("{borrow}(")),
                         (sp.shrink_to_hi(), ")".to_string()),
                     ]
                 } else {
-                    vec![(sp.shrink_to_lo(), "&".to_string())]
+                    vec![(sp.shrink_to_lo(), borrow.to_string())]
                 };
                 return Some((
                     sugg,
-                    "consider borrowing here".to_string(),
+                    format!("consider {}borrowing here", mutability.mutably_str()),
                     Applicability::MachineApplicable,
                     false,
                 ));

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/suggest-extra-borrow-issue-78613.rs:19:31
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:21:31
    |
 LL |     let _ = haystack.contains(needle);
    |                      -------- ^^^^^^ expected `&&[&str]`, found `&[&str]`
@@ -16,7 +16,7 @@ LL |     let _ = haystack.contains(&needle);
    |                               +
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-extra-borrow-issue-78613.rs:23:22
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:25:22
    |
 LL |     takes_nested_ref(text);
    |     ---------------- ^^^^ expected `&&str`, found `&str`
@@ -36,7 +36,7 @@ LL |     takes_nested_ref(&text);
    |                      +
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-extra-borrow-issue-78613.rs:27:30
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:29:30
    |
 LL |     takes_generic_nested_ref(number);
    |     ------------------------ ^^^^^^ expected `&&_`, found `&{integer}`
@@ -56,7 +56,27 @@ LL |     takes_generic_nested_ref(&number);
    |                              +
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-extra-borrow-issue-78613.rs:30:25
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:33:26
+   |
+LL |     takes_nested_mut_ref(mutable_text);
+   |     -------------------- ^^^^^^^^^^^^ types differ in mutability
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut &_`
+                      found reference `&_`
+note: function defined here
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:10:4
+   |
+LL | fn takes_nested_mut_ref(_: &mut &str) {}
+   |    ^^^^^^^^^^^^^^^^^^^^ ------------
+help: consider mutably borrowing here
+   |
+LL |     takes_nested_mut_ref(&mut mutable_text);
+   |                          ++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:36:25
    |
 LL |     takes_ref(if true { 1 } else { 2 });
    |                         ^ expected `&i32`, found integer
@@ -67,7 +87,7 @@ LL |     takes_ref(if true { &1 } else { 2 });
    |                         +
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-extra-borrow-issue-78613.rs:30:36
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:36:36
    |
 LL |     takes_ref(if true { 1 } else { 2 });
    |                                    ^ expected `&i32`, found integer
@@ -78,7 +98,7 @@ LL |     takes_ref(if true { 1 } else { &2 });
    |                                    +
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-extra-borrow-issue-78613.rs:36:33
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:42:33
    |
 LL |     opt.map(|arg| takes_foo_ref(arg));
    |                   ------------- ^^^ expected `&Foo`, found `Foo`
@@ -86,7 +106,7 @@ LL |     opt.map(|arg| takes_foo_ref(arg));
    |                   arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/suggest-extra-borrow-issue-78613.rs:14:4
+  --> $DIR/suggest-extra-borrow-issue-78613.rs:16:4
    |
 LL | fn takes_foo_ref(_: &Foo) {}
    |    ^^^^^^^^^^^^^ -------
@@ -95,6 +115,6 @@ help: consider using `as_ref` instead
 LL |     opt.as_ref().map(|arg| takes_foo_ref(arg));
    |         +++++++++
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

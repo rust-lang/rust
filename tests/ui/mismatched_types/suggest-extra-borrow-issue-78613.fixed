@@ -7,6 +7,8 @@ fn takes_nested_ref(_: &&str) {}
 
 fn takes_generic_nested_ref<T>(_: &&T) {}
 
+fn takes_nested_mut_ref(_: &mut &str) {}
+
 fn takes_ref(_: &i32) {}
 
 struct Foo;
@@ -25,6 +27,10 @@ fn main() {
 
     let number = &1;
     takes_generic_nested_ref(&number);
+    //~^ ERROR mismatched types
+
+    let mut mutable_text = text;
+    takes_nested_mut_ref(&mut mutable_text);
     //~^ ERROR mismatched types
 
     takes_ref(if true { &1 } else { &2 });
