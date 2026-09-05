@@ -319,8 +319,7 @@ with the `--bless` option",
             elif types_match and names_match:
                 reordered = "\n    ".join(
                     (
-                        f"{m[1].name} offset: +{m[1].offset} -> {m[0].name} offset: \n\
-+{m[0].offset}"
+                        f"{m[1].name} offset: +{m[1].offset} -> {m[0].name} offset: +{m[0].offset}"
                     )
                     for m in mismatches
                 )
