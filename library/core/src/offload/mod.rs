@@ -133,7 +133,7 @@ macro_rules! offload {
 /// # Safety
 ///
 /// Implementations must guarantee that generated views are disjoint.
-#[unstable(feature = "offload", issue = "124509")]
+#[unstable(feature = "offload", issue = "131513")]
 pub unsafe trait PartitioningStrategy {
     /// Read-only view type for the partitioned memory region.
     type View<'a, T: 'a>;
@@ -163,8 +163,8 @@ pub unsafe trait PartitioningStrategy {
 }
 
 /// A memory region bound to a partitioning strategy.
-#[derive(Copy, Clone, Debug)]
-#[unstable(feature = "offload", issue = "124509")]
+#[derive(Debug)]
+#[unstable(feature = "offload", issue = "131513")]
 #[rustc_diagnostic_item = "offload_region"]
 pub struct Region<'a, T, S: PartitioningStrategy> {
     ptr: *mut T,
@@ -174,7 +174,7 @@ pub struct Region<'a, T, S: PartitioningStrategy> {
 
 /// Raw representation used to build a [`Region`] from common aggregate types.
 #[derive(Debug)]
-#[unstable(feature = "offload", issue = "124509")]
+#[unstable(feature = "offload", issue = "131513")]
 pub struct RawRegion<'a, T> {
     ptr: *mut T,
     len: usize,
@@ -193,7 +193,7 @@ impl<'a, T, const N: usize> From<&'a mut [T; N]> for RawRegion<'a, T> {
     }
 }
 
-#[unstable(feature = "offload", issue = "124509")]
+#[unstable(feature = "offload", issue = "131513")]
 impl<'a, T, S: PartitioningStrategy> Region<'a, T, S> {
     /// Creates a new partitioned region from data convertible into a [`RawRegion`].
     pub fn new<D>(data: D) -> Self
@@ -215,5 +215,11 @@ impl<'a, T, S: PartitioningStrategy> Region<'a, T, S> {
         // SAFETY: `self.ptr` points to `self.len` valid elements for lifetime `'a`.
         // The strategy guarantees that the returned view is disjoint.
         unsafe { S::get_mut(self.ptr, self.len) }
+    }
+
+    /// Reborrows the region, producing a new region that aliases the same memory with
+    /// the lifetime of the borrow.
+    pub fn reborrow(&mut self) -> Region<'_, T, S> {
+        Region { ptr: self.ptr, len: self.len, _marker: core::marker::PhantomData }
     }
 }
