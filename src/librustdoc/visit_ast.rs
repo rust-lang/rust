@@ -470,7 +470,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let tcx = self.cx.tcx;
 
         let def_id = item.owner_id.to_def_id();
-        let is_pub = tcx.visibility(def_id).is_public();
+        // Explanations: if the item is public, nothing more to check. If not, then we check if
+        // we're documenting private item. If we are, then we want all items, except if it's a
+        // `use`. In this case, we want to check if it's a reexport. To do so, we check if there is
+        // a `pub(...)` part with its `vis_span` field.
+        let is_pub = tcx.visibility(def_id).is_public()
+            || (self.cx.document_private()
+                && (!matches!(item.kind, hir::ItemKind::Use(..)) || !item.vis_span.is_empty()));
 
         if is_pub {
             self.store_path(item.owner_id.to_def_id());
