@@ -43,7 +43,7 @@ error: cannot use value of type `[u64]` for inline assembly
 LL |         asm!("{}", in(reg) v[..]);
    |                            ^^^^^
    |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `[u64]` for inline assembly
   --> $DIR/type-check-1.rs:23:29
@@ -51,7 +51,7 @@ error: cannot use value of type `[u64]` for inline assembly
 LL |         asm!("{}", out(reg) v[..]);
    |                             ^^^^^
    |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `[u64]` for inline assembly
   --> $DIR/type-check-1.rs:26:31
@@ -59,7 +59,7 @@ error: cannot use value of type `[u64]` for inline assembly
 LL |         asm!("{}", inout(reg) v[..]);
    |                               ^^^^^
    |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: aborting due to 8 previous errors
 
