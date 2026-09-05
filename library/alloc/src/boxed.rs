@@ -686,8 +686,6 @@ impl<T, A: Allocator> Box<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(box_take)]
-    ///
     /// let c = Box::new(5);
     ///
     /// // take the value out of the box
@@ -698,7 +696,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// let c = Box::write(uninit, 6);
     /// assert_eq!(*c, 6);
     /// ```
-    #[unstable(feature = "box_take", issue = "147212")]
+    #[stable(feature = "box_take", since = "CURRENT_RUSTC_VERSION")]
     pub fn take(boxed: Self) -> (T, Box<mem::MaybeUninit<T>, A>) {
         // SAFETY: Reading out an initialised value & leaving behind a
         // box with uninit contents.
