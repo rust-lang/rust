@@ -5123,7 +5123,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_sllv_epi32() {
+    fn test_mm_sllv_epi32() {
         let a = _mm_set1_epi32(2);
         let b = _mm_set1_epi32(1);
         let r = _mm_sllv_epi32(a, b);
@@ -5132,7 +5132,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_sllv_epi32() {
+    fn test_mm256_sllv_epi32() {
         let a = _mm256_set1_epi32(2);
         let b = _mm256_set1_epi32(1);
         let r = _mm256_sllv_epi32(a, b);
@@ -5141,7 +5141,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_sllv_epi64() {
+    fn test_mm_sllv_epi64() {
         let a = _mm_set1_epi64x(2);
         let b = _mm_set1_epi64x(1);
         let r = _mm_sllv_epi64(a, b);
@@ -5150,7 +5150,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_sllv_epi64() {
+    fn test_mm256_sllv_epi64() {
         let a = _mm256_set1_epi64x(2);
         let b = _mm256_set1_epi64x(1);
         let r = _mm256_sllv_epi64(a, b);
@@ -5191,7 +5191,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_srav_epi32() {
+    fn test_mm_srav_epi32() {
         let a = _mm_set1_epi32(4);
         let count = _mm_set1_epi32(1);
         let r = _mm_srav_epi32(a, count);
@@ -5200,7 +5200,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_srav_epi32() {
+    fn test_mm256_srav_epi32() {
         let a = _mm256_set1_epi32(4);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_srav_epi32(a, count);
@@ -5277,7 +5277,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_srlv_epi32() {
+    fn test_mm_srlv_epi32() {
         let a = _mm_set1_epi32(2);
         let count = _mm_set1_epi32(1);
         let r = _mm_srlv_epi32(a, count);
@@ -5286,7 +5286,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_srlv_epi32() {
+    fn test_mm256_srlv_epi32() {
         let a = _mm256_set1_epi32(2);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_srlv_epi32(a, count);
@@ -5295,7 +5295,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_srlv_epi64() {
+    fn test_mm_srlv_epi64() {
         let a = _mm_set1_epi64x(2);
         let count = _mm_set1_epi64x(1);
         let r = _mm_srlv_epi64(a, count);
@@ -5304,7 +5304,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_srlv_epi64() {
+    fn test_mm256_srlv_epi64() {
         let a = _mm256_set1_epi64x(2);
         let count = _mm256_set1_epi64x(1);
         let r = _mm256_srlv_epi64(a, count);
