@@ -81,3 +81,43 @@ extern "C" fn test_sllv_srlv(win: __m512i, x: __m512i, v: __m512i) -> __m512i {
     let w = _mm512_or_si512(win, _mm512_sllv_epi16(x, v));
     _mm512_srlv_epi16(w, _mm512_and_si512(w, _mm512_set1_epi16(7)))
 }
+
+// See <https://github.com/rust-lang/rust/issues/159474> for context.
+// CHECK-LABEL: test_mulhi_loop:
+#[no_mangle]
+#[target_feature(enable = "sse2")]
+extern "C" fn test_mulhi_loop(buf: &mut [__m128i], factor: i16) {
+    // CHECK: .cfi_startproc
+    let factor = _mm_set1_epi16(factor);
+    // CHECK-NOT: pmuludq
+    // CHECK: pmulhuw
+    // CHECK-NOT: pmuludq
+    for i in 0..buf.len() {
+        buf[i] = _mm_mulhi_epu16(buf[i], factor);
+    }
+    // CHECK: ret
+}
+
+// CHECK-LABEL: mul_and_shift:
+#[no_mangle]
+#[target_feature(enable = "sse2")]
+extern "C" fn mul_and_shift(a: __m128i, b: __m128i) -> __m128i {
+    // CHECK: .cfi_startproc
+    // CHECK-NEXT: pmulhuw
+    // CHECK-NEXT: psrlw
+    // CHECK-NEXT: ret
+    unsafe { _mm_srli_epi16(_mm_mulhi_epu16(a, b), 1) }
+}
+
+// See <https://github.com/rust-lang/rust/issues/130782> for context.
+// CHECK-LABEL: test_mulhi:
+#[no_mangle]
+#[target_feature(enable = "avx2")]
+extern "C" fn test_mulhi(a: __m256i) -> __m256i {
+    // CHECK: .cfi_startproc
+    // CHECK-NEXT: vpand
+    // CHECK-NEXT: vpmulhw
+    // CHECK-NEXT: ret
+    let a = _mm256_and_si256(a, _mm256_set1_epi16(0x7FFF));
+    _mm256_mulhi_epi16(a, _mm256_set1_epi16(1000))
+}
