@@ -1502,12 +1502,7 @@ pub const fn _mm512_maskz_mulhi_epu16(k: __mmask32, a: __m512i, b: __m512i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
-pub fn _mm256_mask_mulhi_epu16(
-    src: __m256i,
-    k: __mmask16,
-    a: __m256i,
-    b: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_mulhi_epu16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let mul = _mm256_mulhi_epu16(a, b).as_u16x16();
         transmute(simd_select_bitmask(k, mul, src.as_u16x16()))
@@ -1615,12 +1610,7 @@ pub const fn _mm512_maskz_mulhi_epi16(k: __mmask32, a: __m512i, b: __m512i) -> _
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
-pub fn _mm256_mask_mulhi_epi16(
-    src: __m256i,
-    k: __mmask16,
-    a: __m256i,
-    b: __m256i,
-) -> __m256i {
+pub fn _mm256_mask_mulhi_epi16(src: __m256i, k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
     unsafe {
         let mul = _mm256_mulhi_epi16(a, b).as_i16x16();
         transmute(simd_select_bitmask(k, mul, src.as_i16x16()))
