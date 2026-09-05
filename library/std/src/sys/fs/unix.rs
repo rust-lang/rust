@@ -1108,6 +1108,27 @@ impl DirEntry {
     pub fn file_name_os_str(&self) -> &OsStr {
         OsStr::from_bytes(self.name.as_bytes())
     }
+
+    pub fn open_with(&self, opts: &OpenOptions) -> io::Result<File> {
+        let dir = unsafe {
+            mem::ManuallyDrop::new(Dir(OwnedFd::from_raw_fd(cvt(dirfd(self.dir.dirp.0))?)))
+        };
+        dir.open_file_c(&self.name, opts, 0).map(FileDesc::from_inner).map(File)
+    }
+
+    pub fn remove_file(&self) -> io::Result<()> {
+        let dir = unsafe {
+            mem::ManuallyDrop::new(Dir(OwnedFd::from_raw_fd(cvt(dirfd(self.dir.dirp.0))?)))
+        };
+        dir.remove_c(&self.name, false)
+    }
+
+    pub fn remove_dir(&self) -> io::Result<()> {
+        let dir = unsafe {
+            mem::ManuallyDrop::new(Dir(OwnedFd::from_raw_fd(cvt(dirfd(self.dir.dirp.0))?)))
+        };
+        dir.remove_c(&self.name, true)
+    }
 }
 
 impl OpenOptions {
