@@ -2395,12 +2395,10 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.empty_path = true;
         if cnum == LOCAL_CRATE && !with_resolve_crate_name() {
-            if self.tcx.sess.at_least_rust_2018() {
-                // We add the `crate::` keyword on Rust 2018, only when desired.
-                if with_crate_prefix() {
-                    write!(self, "{}", kw::Crate)?;
-                    self.empty_path = false;
-                }
+            // We add the `crate::` keyword on Rust 2018, only when desired.
+            if with_crate_prefix() {
+                write!(self, "{}", kw::Crate)?;
+                self.empty_path = false;
             }
         } else {
             write!(self, "{}", self.tcx.crate_name(cnum))?;

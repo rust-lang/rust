@@ -10,7 +10,7 @@ LL |     a.ext();
    = help: items from traits can only be used if the trait is in scope
 help: trait `SettingsExt` which provides `ext` is implemented but not in scope; perhaps you want to import it
    |
-LL + use auto::SettingsExt;
+LL + use crate::auto::SettingsExt;
    |
 
 error: aborting due to 1 previous error
