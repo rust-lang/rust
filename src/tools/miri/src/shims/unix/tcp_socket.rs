@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::io;
 use std::io::Read;
-use std::net::{Ipv4Addr, Shutdown, SocketAddr, SocketAddrV4};
+use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
@@ -14,7 +14,7 @@ use rustc_target::spec::Os;
 use crate::shims::files::{EvalContextExt as _, FdNum, FileDescription, FileDescriptionRef};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::socket::{SocketFamily, UnixSocketFileDescription};
+use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
 
 /// On Linux a TCP socket is initally in the TCP_CLOSE state:
@@ -35,12 +35,10 @@ const INITIAL_TCP_SOCKET_READINESS: Readiness =
 #[derive(Debug)]
 enum SocketState {
     /// No syscall after `socket` has been made.
-    Initial,
-    /// The `bind` syscall has been called on the socket.
-    /// This is only reachable from the [`SocketState::Initial`] state.
-    Bound(SocketAddr),
+    Initial(socket2::Socket),
     /// The `listen` syscall has been called on the socket.
-    /// This is only reachable from the [`SocketState::Bound`] state.
+    /// This is reachable from the [`SocketState::Initial`] and the
+    /// [`SocketState::Listening`] states.
     Listening(TcpListener),
     /// The `connect` syscall has been called and we weren't yet able
     /// to ensure the connection is established. This is only reachable
@@ -59,17 +57,55 @@ enum SocketState {
     /// and thus nothing (except destroying the socket) should be
     /// supported when a socket is in this state.
     ConnectionFailed(TcpStream),
+    /// The socket state machine is transitioning between two states
+    /// which contain an underlying host socket. This state is never
+    /// observable, it's only needed as a placeholder state to safely
+    /// acquire ownership of the underlying host socket.
+    // FIXME: This would not be needed with `replace_with`, but sadly
+    // this isn't part of the standard library and we don't want to add
+    // an extra dependency for this.
+    None,
+}
+
+impl SocketState {
+    /// View the underlying host socket as a [`socket2::SockRef`].
+    ///
+    /// **Note**: Potentially blocking operations need to be performed on the
+    /// underlying [`TcpStream`] and [`TcpListener`] as it would break the mio
+    /// poll on Windows hosts when performed directly on the [`socket2::SockRef`].
+    fn as_socket_ref<'a>(&'a self) -> socket2::SockRef<'a> {
+        match self {
+            SocketState::Initial(socket) => socket.into(),
+            SocketState::Listening(listener) => listener.into(),
+            SocketState::Connecting(stream)
+            | SocketState::Connected(stream)
+            | SocketState::ConnectionFailed(stream) => stream.into(),
+            SocketState::None => unreachable!(),
+        }
+    }
+
+    /// Invoke `cb` with a [`socket2::SockRef`] to the underlying host socket.
+    ///
+    /// **Note**: Potentially blocking operations need to be performed on the
+    /// underlying [`TcpStream`] and [`TcpListener`] as it would break the mio
+    /// poll on Windows hosts when performed directly on the [`socket2::SockRef`].
+    fn with_socket_ref<'a, T>(&'a self, cb: impl FnOnce(socket2::SockRef<'a>) -> T) -> T {
+        let socket = self.as_socket_ref();
+        cb(socket)
+    }
 }
 
 #[derive(Debug)]
 pub(super) struct TcpSocket {
     /// Family of the socket, used to ensure socket only binds/connects to address of
     /// same family.
-    family: SocketFamily,
+    family: socket2::Domain,
     /// Current state of the inner socket.
     state: RefCell<SocketState>,
     /// Whether this fd is non-blocking or not.
     is_non_block: Cell<bool>,
+    /// Whether the socket is implicitly or explicitly bound to an address.
+    is_bound: Cell<bool>,
     /// The current blocking I/O readiness of the file description.
     io_readiness: RefCell<Readiness>,
     /// [`Some`] when the socket had an async error which has not yet been fetched via `SO_ERROR`.
@@ -91,17 +127,31 @@ pub(super) struct TcpSocket {
 }
 
 impl TcpSocket {
-    pub fn new(family: SocketFamily, is_non_block: bool) -> Self {
-        TcpSocket {
+    pub fn new(family: socket2::Domain, is_non_block: bool) -> io::Result<Self> {
+        let socket =
+            socket2::Socket::new(family, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?;
+        // The underlying host socket needs to be non-blocking. The actual
+        // blocking mode of the socket is stored in `is_non_block`.
+        socket.set_nonblocking(true)?;
+
+        // We don't add the newly created socket to the blocking I/O manager
+        // until we can create a mio TcpStream or TcpListener because
+        // `socket2::Socket` doesn't implement `mio::Source`.
+        // This is fine since the readiness of a TCP socket (at least under Linux)
+        // does have a static initial readiness until `connect` or `listen` is
+        // invoked on it.
+
+        Ok(TcpSocket {
             family,
-            state: RefCell::new(SocketState::Initial),
+            state: RefCell::new(SocketState::Initial(socket)),
             is_non_block: Cell::new(is_non_block),
+            is_bound: Cell::new(false),
             io_readiness: RefCell::new(INITIAL_TCP_SOCKET_READINESS),
             error: RefCell::new(None),
             read_timeout: Cell::new(None),
             write_timeout: Cell::new(None),
             watched: ReadinessWatched::default(),
-        }
+        })
     }
 }
 
@@ -251,45 +301,37 @@ impl UnixSocketFileDescription for TcpSocket {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
         ecx.ensure_not_failed(&self, "bind")?;
 
-        let mut state = self.state.borrow_mut();
+        let address_family = match &address {
+            SocketAddr::V4(_) => socket2::Domain::IPV4,
+            SocketAddr::V6(_) => socket2::Domain::IPV6,
+        };
 
-        match *state {
-            SocketState::Initial => {
-                let address_family = match &address {
-                    SocketAddr::V4(_) => SocketFamily::IPv4,
-                    SocketAddr::V6(_) => SocketFamily::IPv6,
-                };
-
-                if self.family != address_family {
-                    // Attempted to bind an address from a family that doesn't match
-                    // the family of the socket.
-                    let err = if matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android) {
-                        // Linux man page states that `EINVAL` is used when there is an address family mismatch.
-                        // See <https://man7.org/linux/man-pages/man2/bind.2.html>
-                        LibcError("EINVAL")
-                    } else {
-                        // POSIX man page states that `EAFNOSUPPORT` should be used when there is an address
-                        // family mismatch.
-                        // See <https://man7.org/linux/man-pages/man3/bind.3p.html>
-                        LibcError("EAFNOSUPPORT")
-                    };
-                    return interp_ok(Err(err));
-                }
-
-                *state = SocketState::Bound(address);
-            }
-            SocketState::Connecting(_) | SocketState::Connected(_) =>
-                throw_unsup_format!(
-                    "bind: tcp socket is already connected and binding a
-                   connected socket is unsupported"
-                ),
-            SocketState::Bound(_) | SocketState::Listening(_) =>
-                throw_unsup_format!(
-                    "bind: tcp socket is already bound and binding a socket \
-                   multiple times is unsupported"
-                ),
-            SocketState::ConnectionFailed(_) => unreachable!(),
+        if self.family != address_family {
+            // Attempted to bind an address from a family that doesn't match
+            // the family of the socket.
+            let err = if matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android) {
+                // Linux man page states that `EINVAL` is used when there is an address family mismatch.
+                // See <https://man7.org/linux/man-pages/man2/bind.2.html>
+                LibcError("EINVAL")
+            } else {
+                // POSIX man page states that `EAFNOSUPPORT` should be used when there is an address
+                // family mismatch.
+                // See <https://man7.org/linux/man-pages/man3/bind.3p.html>
+                LibcError("EAFNOSUPPORT")
+            };
+            return interp_ok(Err(err));
         }
+
+        let state = self.state.borrow();
+        let socket = state.as_socket_ref();
+
+        // `bind` is a non-blocking operation for TCP sockets.
+        if let Err(e) = socket.bind(&socket2::SockAddr::from(address)) {
+            return interp_ok(Err(IoError::HostError(e)));
+        }
+
+        // The socket has been explicitly bound to a local address.
+        self.is_bound.set(true);
 
         interp_ok(Ok(()))
     }
@@ -297,51 +339,119 @@ impl UnixSocketFileDescription for TcpSocket {
     fn listen<'tcx>(
         self: FileDescriptionRef<TcpSocket>,
         communicate_allowed: bool,
-        // Since the backlog value is just a performance hint we can ignore it.
-        _backlog: i32,
+        backlog: i32,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Result<(), IoError>> {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
         ecx.ensure_not_failed(&self, "listen")?;
 
-        let mut state = self.state.borrow_mut();
+        let state = self.state.borrow();
 
-        match *state {
-            SocketState::Bound(socket_addr) =>
-                match TcpListener::bind(socket_addr) {
-                    Ok(listener) => {
-                        *state = SocketState::Listening(listener);
-                        drop(state);
+        // We'll only attempt to invoke `listen` on the socket if it's not already
+        // connected because POSIX specifies that EINVAL should be returned in this
+        // case.
+        let socket = match &*state {
+            SocketState::Initial(_) | SocketState::Listening(_) => state.as_socket_ref(),
+            // POSIX states that connected sockets cannot start listening,
+            // so we can return early here to simplify the remaining shim.
+            SocketState::Connecting(_) | SocketState::Connected(_) =>
+                return interp_ok(Err(LibcError("EINVAL"))),
+            SocketState::ConnectionFailed(_) | SocketState::None => unreachable!(),
+        };
 
-                        // After invoking `listen` on a TCP socket, it transitions out of the
-                        // TCP_CLOSE state which affects the socket's readiness. Because we
-                        // register the socket afterwards to the blocking I/O manager, we just
-                        // clear its readiness here as the blocking I/O manager will update its
-                        // readiness accordingly.
-                        self.io_readiness.replace(Readiness::EMPTY);
-                        ecx.update_fd_readiness(self.clone(), ReadinessUpdateFlags::DEFAULT)?;
+        // Despite not being specified by POSIX, on most of our supported Unix-like platforms
+        // (confirmed on Linux, macOS, FreeBSD, and Solaris) TCP sockets get implicitly bound
+        // to the unspecified address at a random port when `listen` is invoked on an unbound
+        // socket. Thus, Miri models the same non-POSIX behavior and treats a socket as bound
+        // once `listen` has successfully been invoked on an unbound socket.
 
-                        // Register the socket to the blocking I/O manager because
-                        // we now have an associated host socket.
-                        ecx.machine.blocking_io.register(self);
-                    }
-                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
-                },
-            SocketState::Initial => {
-                throw_unsup_format!(
-                    "listen: listening on a tcp socket which isn't bound is unsupported"
-                )
+        if cfg!(windows) && !self.is_bound.get() {
+            // Implicitly binding a TCP socket by invoking `listen` on an
+            // unbound socket causes EINVAL on Windows hosts. We thus
+            // explicitly bind the socket to an unspecified address with
+            // a random port before listening.
+            //
+            // When the subsequent `listen` fails we behave incorrectly
+            // because a previously unbound socket is now bound. However,
+            // since `listen` can only fail for system resource errors
+            // (e.g., ENOBUFS) this isn't a problem in reality.
+
+            let address = if self.family == socket2::Domain::IPV4 {
+                SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, /* port */ 0))
+            } else {
+                SocketAddr::V6(SocketAddrV6::new(
+                    Ipv6Addr::UNSPECIFIED,
+                    /* port */ 0,
+                    /* flowinfo */ 0,
+                    /* scope_id */ 0,
+                ))
+            };
+
+            if let Err(e) = socket.bind(&socket2::SockAddr::from(address)) {
+                return interp_ok(Err(IoError::HostError(e)));
             }
-            SocketState::Listening(_) => {
-                throw_unsup_format!(
-                    "listen: listening on a tcp socket multiple times is unsupported"
-                )
-            }
-            SocketState::Connecting(_) | SocketState::Connected(_) => {
-                throw_unsup_format!("listen: listening on a connected tcp socket is unsupported")
-            }
-            SocketState::ConnectionFailed(_) => unreachable!(),
+
+            // We just explicitly bound the socket to a local address.
+            self.is_bound.set(true);
         }
+
+        if let Err(e) = socket.listen(backlog) {
+            return interp_ok(Err(IoError::HostError(e)));
+        }
+
+        // As mentioned above, we treat listening sockets as implicitly bound to a
+        // local address if they weren't already bound before the `listen` invocation.
+        self.is_bound.set(true);
+
+        if let SocketState::Listening(_) = &*state {
+            // The socket was already listening; we just changed the backlog.
+            // The socket is already registered to the blocking I/O manager
+            // and we also don't need to perform a state transition.
+            return interp_ok(Ok(()));
+        }
+
+        drop(state);
+
+        // Temporarily use dummy state to take ownership of the underlying socket.
+        let SocketState::Initial(socket) = self.state.replace(SocketState::None) else {
+            unreachable!()
+        };
+
+        // FIXME: Rustfmt has a bug where it incorrectly removes the outer braces of {{ .. }} inside
+        // a `cfg_select!` block. See <https://github.com/rust-lang/rustfmt/issues/7045>.
+        #[rustfmt::skip]
+        let listener = cfg_select! {
+            // Turn the `socket2::Socket` into a `mio::TcpListener`.
+            // We follow Tokio's TCP socket implementation:
+            // See <https://github.com/tokio-rs/tokio/blob/2120bee/tokio/src/net/tcp/socket.rs#L906-L925>
+            // SAFETY: mio specifies that it is safe to use `from_raw_fd` and
+            // `from_raw_socket` as long as it's ensured that the socket is non-blocking.
+            // Because we immediately make the socket non-blocking after creation, that
+            // is always guaranteed.
+
+            unix => {{
+                use std::os::fd::{IntoRawFd, FromRawFd};
+                let raw_fd = socket.into_raw_fd();
+                unsafe { TcpListener::from_raw_fd(raw_fd) }
+            }},
+            windows => {{
+                use std::os::windows::io::{IntoRawSocket, FromRawSocket};
+                let raw_socket = socket.into_raw_socket();
+                unsafe { TcpListener::from_raw_socket(raw_socket) }
+            }},
+            _ => unreachable!("unsupported host platform")
+        };
+
+        self.state.replace(SocketState::Listening(listener));
+
+        // Clear the "artificial" readiness as we are about to put the blocking
+        // I/O manager in charge of handling readiness.
+        self.io_readiness.replace(Readiness::EMPTY);
+        ecx.update_fd_readiness(self.clone(), ReadinessUpdateFlags::DEFAULT)?;
+
+        // Register the socket to the blocking I/O manager. Can only happen
+        // now that we have created a mio TcpListener.
+        ecx.machine.blocking_io.register(self);
 
         interp_ok(Ok(()))
     }
@@ -394,52 +504,110 @@ impl UnixSocketFileDescription for TcpSocket {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
         ecx.ensure_not_failed(&self, "connect")?;
 
-        match &*self.state.borrow() {
-            SocketState::Initial => { /* fall-through to below */ }
+        let state = self.state.borrow();
+
+        // We'll only attempt to invoke `connect` on the socket if it's not already
+        // connected or listening because POSIX specifies error codes which should
+        // be returned in those cases.
+        let socket = match &*state {
+            SocketState::Initial(socket) => socket,
+            SocketState::Listening(_) => {
+                let err = if matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android) {
+                    // Linux-like targets return EISCONN when attempting to invoke
+                    // `connect` on an already listening socket.
+                    // See <https://man7.org/linux/man-pages/man2/connect.2.html>
+                    LibcError("EISCONN")
+                } else {
+                    // POSIX specifies to return EOPNOTSUPP when attempting to invoke
+                    // `connect` on an already listening socket.
+                    // See <https://man7.org/linux/man-pages/man3/connect.3p.html>
+                    LibcError("EOPNOTSUPP")
+                };
+                return finish.call(ecx, Err(err));
+            }
+            // The socket is already connected.
+            // Subsequent connection attempts return EISCONN for TCP sockets.
+            SocketState::Connected(_) => return finish.call(ecx, Err(LibcError("EISCONN"))),
             // The socket is already in a connecting state.
+            // Subsequent connection attempts return EALREADY for TCP sockets.
             SocketState::Connecting(_) => return finish.call(ecx, Err(LibcError("EALREADY"))),
-            // We don't return EISCONN for already connected sockets, for which we're
-            // sure that the connection is established, since TCP sockets are usually
-            // allowed to be connected multiple times.
-            _ =>
-                throw_unsup_format!(
-                    "connect: connecting is only supported for tcp sockets which are neither \
-                   bound, listening nor already connected"
-                ),
+            SocketState::ConnectionFailed(_) | SocketState::None => unreachable!(),
+        };
+
+        let result = socket.connect(&socket2::SockAddr::from(address));
+
+        drop(state);
+
+        // Boolean whether the connection attempt "failed" because it could not be
+        // completed immediately without blocking.
+        let is_in_progress = result.as_ref().is_err_and(|e| {
+            // On Windows hosts non-blocking connects fail with EWOULDBLOCK when the connection cannot
+            // be established immediately, while on Unix-like hosts they fail with EINPROGRESS.
+            matches!(e.kind(), io::ErrorKind::WouldBlock | io::ErrorKind::InProgress)
+        });
+
+        if !is_in_progress && let Err(e) = result {
+            // There was a "real" error during connection establishment.
+            return finish.call(ecx, Err(IoError::HostError(e)));
         }
 
-        // This begins establishing the connection, but does not block until the stream is fully connected.
-        // We deal with that below.
-        match TcpStream::connect(address) {
-            Ok(stream) => {
-                *self.state.borrow_mut() = SocketState::Connecting(stream);
-
-                // After invoking `connect` on a TCP socket, it transitions out of the
-                // TCP_CLOSE state which affects the socket's readiness. Because we
-                // register the socket afterwards to the blocking I/O manager, we just
-                // clear its readiness here as the blocking I/O manager will update its
-                // readiness accordingly.
-                self.io_readiness.replace(Readiness::EMPTY);
-                ecx.update_fd_readiness(self.clone(), ReadinessUpdateFlags::DEFAULT)?;
-
-                // Register the socket to the blocking I/O manager because
-                // we now have an associated host socket.
-                ecx.machine.blocking_io.register(self.clone());
-            }
-            Err(e) => return finish.call(ecx, Err(IoError::HostError(e))),
+        // Temporarily use dummy state to take ownership of the underlying socket.
+        let SocketState::Initial(socket) = self.state.replace(SocketState::None) else {
+            unreachable!()
         };
+
+        // FIXME: Rustfmt has a bug where it incorrectly removes the outer braces of {{ .. }} inside
+        // a `cfg_select!` block. See <https://github.com/rust-lang/rustfmt/issues/7045>.
+        #[rustfmt::skip]
+        let stream = cfg_select! {
+            // Turn the `socket2::Socket` into a `mio::TcpStream`.
+            // We follow Tokio's TCP socket implementation:
+            // See <https://github.com/tokio-rs/tokio/blob/2120bee/tokio/src/net/tcp/socket.rs#L841-L869>
+            // SAFETY: mio specifies that it is safe to use `from_raw_fd` and
+            // `from_raw_socket` as long as it's ensured that the socket is non-blocking.
+            // Because we immediately make the socket non-blocking after creation, that
+            // is always guaranteed.
+
+             unix => {{
+                 use std::os::fd::{IntoRawFd, FromRawFd};
+                 let raw_fd = socket.into_raw_fd();
+                 unsafe { TcpStream::from_raw_fd(raw_fd) }
+             }},
+             windows => {{
+                 use std::os::windows::io::{IntoRawSocket, FromRawSocket};
+                 let raw_socket = socket.into_raw_socket();
+                 unsafe { TcpStream::from_raw_socket(raw_socket) }
+             }},
+             _ => unreachable!("unsupported host platform")
+         };
+
+        self.state.replace(SocketState::Connecting(stream));
+        // Connecting sockets are implicitly bound to a local address.
+        self.is_bound.set(true);
+
+        // Clear the "artificial" readiness as we are about to put the blocking
+        // I/O manager in charge of handling readiness.
+        self.io_readiness.replace(Readiness::EMPTY);
+        ecx.update_fd_readiness(self.clone(), ReadinessUpdateFlags::DEFAULT)?;
+
+        // Register the socket to the blocking I/O manager. Can only happen
+        // now that we have created a mio TcpStream.
+        ecx.machine.blocking_io.register(self.clone());
 
         if self.is_non_block.get() {
             // We have a non-blocking socket and thus don't want to block until
             // the connection is established.
 
-            // Since the [`TcpStream::connect`] function of mio hides the EINPROGRESS
-            // we just always return EINPROGRESS and check whether the connection succeeded
-            // once we want to use the connected socket.
-            finish.call(ecx, Err(LibcError("EINPROGRESS")))
+            if is_in_progress {
+                finish.call(ecx, Err(LibcError("EINPROGRESS")))
+            } else {
+                finish.call(ecx, Ok(()))
+            }
         } else {
             // The socket is in blocking mode and thus the connect call should block
-            // until the connection with the server is established.
+            // until the connection with the server is established. A potential
+            // EWOULDBLOCK or EINPROGRESS error code is ignored as we emulate a
+            // blocking socket.
 
             if self.write_timeout.get().is_some() {
                 // Some Unixes like Linux also apply the SO_SNDTIMEO socket option
@@ -647,19 +815,7 @@ impl UnixSocketFileDescription for TcpSocket {
                 let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.u32);
                 let ttl = ecx.read_scalar(&option_value)?.to_u32()?;
 
-                let result = match &*self.state.borrow() {
-                    SocketState::Initial | SocketState::Bound(_) =>
-                        throw_unsup_format!(
-                            "setsockopt: setting option IP_TTL on level IPPROTO_IP is only supported \
-                           on connected and listening tcp sockets"
-                        ),
-                    SocketState::Listening(listener) => listener.set_ttl(ttl),
-                    SocketState::Connecting(stream) | SocketState::Connected(stream) =>
-                        stream.set_ttl(ttl),
-                    SocketState::ConnectionFailed(_) => unreachable!(),
-                };
-
-                return match result {
+                return match self.state.borrow().with_socket_ref(|s| s.set_ttl_v4(ttl)) {
                     Ok(_) => interp_ok(Ok(())),
                     Err(e) => interp_ok(Err(IoError::HostError(e))),
                 };
@@ -679,18 +835,7 @@ impl UnixSocketFileDescription for TcpSocket {
                 let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
                 let nodelay = ecx.read_scalar(&option_value)?.to_i32()? != 0;
 
-                let result = match &*self.state.borrow() {
-                    SocketState::Initial | SocketState::Bound(_) | SocketState::Listening(_) =>
-                        throw_unsup_format!(
-                            "setsockopt: setting option TCP_NODELAY on level IPPROTO_TCP is only supported \
-                           on connected tcp sockets"
-                        ),
-                    SocketState::Connecting(stream) | SocketState::Connected(stream) =>
-                        stream.set_nodelay(nodelay),
-                    SocketState::ConnectionFailed(_) => unreachable!(),
-                };
-
-                return match result {
+                return match self.state.borrow().with_socket_ref(|s| s.set_tcp_nodelay(nodelay)) {
                     Ok(_) => interp_ok(Ok(())),
                     Err(e) => interp_ok(Err(IoError::HostError(e))),
                 };
@@ -772,19 +917,7 @@ impl UnixSocketFileDescription for TcpSocket {
             let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
 
             if option == opt_ip_ttl {
-                let ttl = match &*self.state.borrow() {
-                    SocketState::Initial | SocketState::Bound(_) =>
-                        throw_unsup_format!(
-                            "getsockopt: reading option IP_TTL on level IPPROTO_IP is only supported \
-                            on connected and listening tcp sockets"
-                        ),
-                    SocketState::Listening(listener) => listener.ttl(),
-                    SocketState::Connecting(stream) | SocketState::Connected(stream) =>
-                        stream.ttl(),
-                    SocketState::ConnectionFailed(_) => unreachable!(),
-                };
-
-                let ttl = match ttl {
+                let ttl = match self.state.borrow().with_socket_ref(|s| s.ttl_v4()) {
                     Ok(ttl) => ttl,
                     Err(e) => return interp_ok(Err(IoError::HostError(e))),
                 };
@@ -802,18 +935,7 @@ impl UnixSocketFileDescription for TcpSocket {
             let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
 
             if option == opt_tcp_nodelay {
-                let nodelay = match &*self.state.borrow() {
-                    SocketState::Initial | SocketState::Bound(_) | SocketState::Listening(_) =>
-                        throw_unsup_format!(
-                            "getsockopt: reading option TCP_NODELAY on level IPPROTO_TCP is only supported \
-                            on connected tcp sockets"
-                        ),
-                    SocketState::Connecting(stream) | SocketState::Connected(stream) =>
-                        stream.nodelay(),
-                    SocketState::ConnectionFailed(_) => unreachable!(),
-                };
-
-                let nodelay = match nodelay {
+                let nodelay = match self.state.borrow().with_socket_ref(|s| s.tcp_nodelay()) {
                     Ok(nodelay) => nodelay,
                     Err(e) => return interp_ok(Err(IoError::HostError(e))),
                 };
@@ -843,52 +965,45 @@ impl UnixSocketFileDescription for TcpSocket {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
         ecx.ensure_not_failed(&self, "getsockname")?;
 
+        if !self.is_bound.get() {
+            // Since Windows returns EINVAL when invoking `getsockname` on
+            // a socket which hasn't been bound yet, we need to manually
+            // return an unspecified address here.
+
+            let address = if self.family == socket2::Domain::IPV4 {
+                SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, /* port */ 0))
+            } else {
+                SocketAddr::V6(SocketAddrV6::new(
+                    Ipv6Addr::UNSPECIFIED,
+                    /* port */ 0,
+                    /* flowinfo */ 0,
+                    /* scope_id */ 0,
+                ))
+            };
+            return interp_ok(Ok(address));
+        }
+
         let state = self.state.borrow();
+        let socket = state.as_socket_ref();
 
-        let address = match &*state {
-            SocketState::Bound(address) => {
-                if address.port() == 0 {
-                    // The socket is bound to a zero-port which means it gets assigned a random
-                    // port. Since we don't yet have an underlying socket, we don't know what this
-                    // random port will be and thus this is unsupported.
-                    throw_unsup_format!(
-                        "getsockname: when the port is 0, getting the tcp socket address before \
-                        calling `listen` or `connect` is unsupported"
-                    )
-                }
+        if cfg!(windows)
+            && let SocketState::Connecting(_) = &*state
+        {
+            // FIXME: On Windows hosts `getsockname` returns `0.0.0.0:0` whilst the socket is connecting:
+            // <https://learn.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-getsockname#remarks>
+            // This is problematic because UNIX targets could expect a real local address even
+            // for a connecting non-blocking socket.
 
-                *address
+            static DEDUP: AtomicBool = AtomicBool::new(false);
+            if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                ecx.emit_diagnostic(NonHaltingDiagnostic::ConnectingSocketGetsockname);
             }
-            SocketState::Listening(listener) =>
-                match listener.local_addr() {
-                    Ok(address) => address,
-                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
-                },
-            SocketState::Connecting(stream) | SocketState::Connected(stream) => {
-                if cfg!(windows) && matches!(&*state, SocketState::Connecting(_)) {
-                    // FIXME: On Windows hosts `TcpStream::local_addr` returns `0.0.0.0:0` whilst
-                    // the socket is connecting:
-                    // <https://learn.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-getsockname#remarks>
-                    // This is problematic because UNIX targets could expect a real local address even
-                    // for a connecting non-blocking socket.
+        }
 
-                    static DEDUP: AtomicBool = AtomicBool::new(false);
-                    if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                        ecx.emit_diagnostic(NonHaltingDiagnostic::ConnectingSocketGetsockname);
-                    }
-                }
-                match stream.local_addr() {
-                    Ok(address) => address,
-                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
-                }
-            }
-            // For non-bound sockets the POSIX manual says the returned address is unspecified.
-            // Often this is 0.0.0.0:0 and thus we set it to this value.
-            SocketState::Initial => SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0)),
-            SocketState::ConnectionFailed(_) => unreachable!(),
-        };
-
-        interp_ok(Ok(address))
+        match socket.local_addr() {
+            Ok(address) => interp_ok(Ok(address.as_socket().unwrap())),
+            Err(e) => interp_ok(Err(IoError::HostError(e))),
+        }
     }
 
     fn getpeername<'tcx>(
@@ -1077,14 +1192,16 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let family = match addr {
-            SocketAddr::V4(_) => SocketFamily::IPv4,
-            SocketAddr::V6(_) => SocketFamily::IPv6,
+            SocketAddr::V4(_) => socket2::Domain::IPV4,
+            SocketAddr::V6(_) => socket2::Domain::IPV6,
         };
 
         let fd = this.machine.fds.new_ref(TcpSocket {
             family,
             state: RefCell::new(SocketState::Connected(stream)),
             is_non_block: Cell::new(is_client_sock_nonblock),
+            // Connected sockets are implicitly bound to a local address.
+            is_bound: Cell::new(true),
             io_readiness: RefCell::new(Readiness::EMPTY),
             error: RefCell::new(None),
             read_timeout: Cell::new(None),
@@ -1484,13 +1601,11 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // The connection is established.
 
                     // Temporarily use dummy state to take ownership of the stream.
-                    let mut state = socket.state.borrow_mut();
-                    let SocketState::Connecting(stream) = std::mem::replace(&mut*state, SocketState::Initial) else {
+                    let SocketState::Connecting(stream) = socket.state.replace(SocketState::None) else {
                         // At the start of the function we ensured that we're currently connecting.
                         unreachable!()
                     };
-                    *state = SocketState::Connected(stream);
-                    drop(state);
+                    socket.state.replace(SocketState::Connected(stream));
                     action.call(this, Ok(()))
                 }
             ),
@@ -1523,16 +1638,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// state because we know that `socket` can no longer successfully establish a
     /// connection.
     fn update_last_error(&self, socket: &FileDescriptionRef<TcpSocket>) {
-        let mut state = socket.state.borrow_mut();
+        let state = socket.state.borrow();
 
-        let new_error = match &*state {
-            SocketState::Listening(listener) =>
-                listener.take_error().expect("Reading SO_ERROR should not fail"),
-            SocketState::Connecting(stream) | SocketState::Connected(stream) =>
-                stream.take_error().expect("Reading SO_ERROR should not fail"),
-            SocketState::Initial | SocketState::Bound(_) | SocketState::ConnectionFailed(_) => None,
-        };
-
+        let new_error =
+            state.as_socket_ref().take_error().expect("Reading SO_ERROR should not fail");
         let Some(new_error) = new_error else { return };
 
         // Store the error such that we can return it when
@@ -1545,13 +1654,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // specification, the socket is now in an unspecified state.
             // We thus change the socket state to `ConnectionFailed`.
 
+            drop(state);
+
             // Temporarily use dummy state to take ownership of the stream.
-            let SocketState::Connecting(stream) =
-                std::mem::replace(&mut *state, SocketState::Initial)
-            else {
+            let SocketState::Connecting(stream) = socket.state.replace(SocketState::None) else {
                 unreachable!()
             };
-            *state = SocketState::ConnectionFailed(stream);
+            socket.state.replace(SocketState::ConnectionFailed(stream));
         }
     }
 }

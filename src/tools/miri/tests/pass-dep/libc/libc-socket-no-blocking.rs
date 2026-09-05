@@ -58,6 +58,9 @@ fn main() {
 
     test_getpeername_ipv4_nonblock();
     test_getpeername_ipv4_nonblock_no_peer();
+
+    test_listen_connecting();
+    test_connect_connecting();
 }
 
 /// Test that setting the O_NONBLOCK flag changes the blocking state of a socket.
@@ -231,9 +234,10 @@ fn test_connect_nonblock() {
 
     loop {
         // There should be no error during async connection.
-        let errno = net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_ERROR)
-            .unwrap();
-        assert_eq!(errno, 0);
+        let so_error =
+            net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_ERROR)
+                .unwrap();
+        assert_eq!(so_error, 0);
 
         let result = net::sockname_ipv4(|storage, len| unsafe {
             libc::getpeername(client_sockfd, storage, len)
@@ -769,9 +773,9 @@ fn test_getpeername_ipv4_nonblock_no_peer() {
     assert_eq!(err.kind(), ErrorKind::InProgress);
 
     // There should be no error during async connection.
-    let errno =
+    let so_error =
         net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_ERROR).unwrap();
-    assert_eq!(errno, 0);
+    assert_eq!(so_error, 0);
 
     // Since we're never accepting the connection, the socket should never be
     // successfully connected and thus we should be unable to read the peername.
@@ -781,4 +785,82 @@ fn test_getpeername_ipv4_nonblock_no_peer() {
         unreachable!()
     };
     assert_eq!(err.kind(), ErrorKind::NotConnected);
+}
+
+/// Test that `listen` returns EINVAL for a non-blocking IPv4
+/// socket which is stuck at connecting to a remote address.
+fn test_listen_connecting() {
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // We cannot attempt to connect to a localhost address because
+    // it could be the case that a socket from another test is
+    // currently listening on `localhost:12321` because we bind to
+    // random ports everywhere. For `192.0.2.1` we know that nothing is
+    // listening because it's a blackhole address:
+    // <https://www.rfc-editor.org/rfc/rfc5737>
+    // The port `12321` is just a random non-zero port because Windows
+    // and Apple hosts return EADDRNOTAVAIL when attempting to connect to
+    // a zero port.
+    let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
+
+    // Non-blocking connect should fail with EINPROGRESS.
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InProgress);
+
+    // There should be no error during async connection.
+    let so_error =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_ERROR).unwrap();
+    assert_eq!(so_error, 0);
+
+    // Connecting sockets cannot start listening, thus the operation should
+    // fail with EINVAL.
+    let err = unsafe { errno_result(libc::listen(client_sockfd, 16)).unwrap_err() };
+    // Check that it is the right error.
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
+/// Test that invoking `connect` on an already connecting client
+/// TCP socket returns EALREADY.
+fn test_connect_connecting() {
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // We cannot attempt to connect to a localhost address because
+    // it could be the case that a socket from another test is
+    // currently listening on `localhost:12321` because we bind to
+    // random ports everywhere. For `192.0.2.1` we know that nothing is
+    // listening because it's a blackhole address:
+    // <https://www.rfc-editor.org/rfc/rfc5737>
+    // The port `12321` is just a random non-zero port because Windows
+    // and Apple hosts return EADDRNOTAVAIL when attempting to connect to
+    // a zero port.
+    let addr = net::sock_addr_ipv4([192, 0, 2, 1], 12321);
+
+    // Non-blocking connect should fail with EINPROGRESS.
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InProgress);
+
+    // There should be no error during async connection.
+    let so_error =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_ERROR).unwrap();
+    assert_eq!(so_error, 0);
+
+    // Create a socket which listens on `addr`.
+    let (_, addr) = net::make_listener_ipv4().unwrap();
+
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    // The standard library doesn't provide an error kind for EALREADY;
+    // we thus cannot assert the correct error kind.
+    assert_eq!(err.raw_os_error(), Some(libc::EALREADY));
 }
