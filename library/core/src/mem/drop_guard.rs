@@ -11,7 +11,6 @@ use crate::ops::{Deref, DerefMut};
 ///
 /// ```rust
 /// # #![allow(unused)]
-/// #![feature(drop_guard)]
 ///
 /// use std::mem::DropGuard;
 ///
@@ -28,7 +27,7 @@ use crate::ops::{Deref, DerefMut};
 ///     // "Chashu likes tuna!!!"
 /// }
 /// ```
-#[unstable(feature = "drop_guard", issue = "144426")]
+#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
 #[doc(alias = "ScopeGuard")]
 #[doc(alias = "defer")]
 pub struct DropGuard<T, F>
@@ -49,14 +48,14 @@ where
     ///
     /// ```rust
     /// # #![allow(unused)]
-    /// #![feature(drop_guard)]
     ///
     /// use std::mem::DropGuard;
     ///
     /// let value = String::from("Chashu likes tuna");
     /// let guard = DropGuard::new(value, |s| println!("{s}"));
     /// ```
-    #[unstable(feature = "drop_guard", issue = "144426")]
+    #[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
     #[must_use]
     pub const fn new(inner: T, f: F) -> Self {
         Self { inner: ManuallyDrop::new(inner), f: ManuallyDrop::new(f) }
@@ -73,7 +72,6 @@ where
     ///
     /// ```rust
     /// # #![allow(unused)]
-    /// #![feature(drop_guard)]
     ///
     /// use std::mem::DropGuard;
     ///
@@ -81,7 +79,7 @@ where
     /// let guard = DropGuard::new(value, |s| println!("{s}"));
     /// assert_eq!(DropGuard::dismiss(guard), "Nori likes chicken");
     /// ```
-    #[unstable(feature = "drop_guard", issue = "144426")]
+    #[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
     #[inline]
     pub const fn dismiss(guard: Self) -> T
@@ -107,7 +105,7 @@ where
     }
 }
 
-#[unstable(feature = "drop_guard", issue = "144426")]
+#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T, F> Deref for DropGuard<T, F>
 where
@@ -120,7 +118,7 @@ where
     }
 }
 
-#[unstable(feature = "drop_guard", issue = "144426")]
+#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T, F> DerefMut for DropGuard<T, F>
 where
@@ -131,7 +129,7 @@ where
     }
 }
 
-#[unstable(feature = "drop_guard", issue = "144426")]
+#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_drop_guard", issue = "none")]
 const impl<T, F> Drop for DropGuard<T, F>
 where
@@ -148,7 +146,7 @@ where
     }
 }
 
-#[unstable(feature = "drop_guard", issue = "144426")]
+#[stable(feature = "drop_guard", since = "CURRENT_RUSTC_VERSION")]
 impl<T, F> Debug for DropGuard<T, F>
 where
     T: Debug,
