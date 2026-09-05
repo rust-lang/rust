@@ -3,7 +3,7 @@ use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::{mem, slice};
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
@@ -1753,7 +1753,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | Or => IsInFollow::Yes,
-                        Ident(name, IdentIsRaw::No) if name == kw::If || name == kw::In => {
+                        Ident(kw::If | kw::In, IdentKind::Normal | IdentKind::ForcedKeyword) => {
                             IsInFollow::Yes
                         }
                         _ => IsInFollow::No(TOKENS),
@@ -1767,7 +1767,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq => IsInFollow::Yes,
-                        Ident(name, IdentIsRaw::No) if name == kw::If || name == kw::In => {
+                        Ident(kw::If | kw::In, IdentKind::Normal | IdentKind::ForcedKeyword) => {
                             IsInFollow::Yes
                         }
                         _ => IsInFollow::No(TOKENS),
@@ -1795,7 +1795,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     TokenTree::Token(token) => match token.kind {
                         OpenBrace | OpenBracket | Comma | FatArrow | Colon | Eq | Gt | Shr
                         | Semi | Or => IsInFollow::Yes,
-                        Ident(name, IdentIsRaw::No) if name == kw::As || name == kw::Where => {
+                        Ident(kw::As | kw::Where, IdentKind::Normal | IdentKind::ForcedKeyword) => {
                             IsInFollow::Yes
                         }
                         _ => IsInFollow::No(TOKENS),
@@ -1823,7 +1823,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         Comma => IsInFollow::Yes,
-                        Ident(_, IdentIsRaw::Yes) => IsInFollow::Yes,
+                        Ident(_, IdentKind::Raw) => IsInFollow::Yes,
                         Ident(name, _) if name != kw::Priv => IsInFollow::Yes,
                         _ => {
                             if token.can_begin_type() {

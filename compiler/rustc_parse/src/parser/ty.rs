@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token, TokenKind};
+use rustc_ast::token::{self, IdentKind, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
@@ -1630,8 +1630,8 @@ impl<'a> Parser<'a> {
 
     /// Parses a single lifetime `'a` or panics.
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
-        if let Some((ident, is_raw)) = self.token.lifetime() {
-            if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved_lifetime() {
+        if let Some((ident, kind)) = self.token.lifetime() {
+            if kind == IdentKind::Normal && ident.without_first_quote().is_reserved_lifetime() {
                 self.dcx().emit_err(diagnostics::KeywordLifetime { span: ident.span });
             }
 

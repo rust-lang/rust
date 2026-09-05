@@ -1,7 +1,7 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
@@ -275,7 +275,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expected_ident_found(
         &mut self,
         recover: bool,
-    ) -> PResult<'a, (Ident, IdentIsRaw)> {
+    ) -> PResult<'a, (Ident, IdentKind)> {
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -303,11 +303,11 @@ impl<'a> Parser<'a> {
         let bad_token = self.token;
 
         // suggest prepending a keyword in identifier position with `r#`
-        let suggest_raw = if let Some((ident, IdentIsRaw::No)) = self.token.ident()
+        let suggest_raw = if let Some((ident, IdentKind::Normal)) = self.token.ident()
             && ident.is_raw_guess()
             && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
         {
-            recovered_ident = Some((ident, IdentIsRaw::Yes));
+            recovered_ident = Some((ident, IdentKind::Raw));
 
             // `Symbol::to_string()` is different from `Symbol::into_diag_arg()`,
             // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
@@ -333,7 +333,7 @@ impl<'a> Parser<'a> {
         let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, valid_portion)| {
             let (invalid, valid) = self.token.span.split_at(len as u32);
 
-            recovered_ident = Some((Ident::new(valid_portion, valid), IdentIsRaw::No));
+            recovered_ident = Some((Ident::new(valid_portion, valid), IdentKind::Normal));
 
             HelpIdentifierStartsWithNumber { num_span: invalid }
         });
@@ -637,9 +637,9 @@ impl<'a> Parser<'a> {
         // positive for a `cr#` that wasn't intended to start a c-string literal, but identifying
         // that in the parser requires unbounded lookahead, so we only add a hint to the existing
         // error rather than replacing it entirely.
-        if ((self.prev_token == TokenKind::Ident(sym::character('c'), IdentIsRaw::No)
+        if ((self.prev_token == TokenKind::Ident(sym::character('c'), IdentKind::Normal)
             && matches!(&self.token.kind, TokenKind::Literal(token::Lit { kind: token::Str, .. })))
-            || (self.prev_token == TokenKind::Ident(sym::cr, IdentIsRaw::No)
+            || (self.prev_token == TokenKind::Ident(sym::cr, IdentKind::Normal)
                 && matches!(
                     &self.token.kind,
                     TokenKind::Literal(token::Lit { kind: token::Str, .. }) | token::Pound

@@ -257,7 +257,7 @@ pub(crate) enum InvalidComparisonOperatorSub {
 pub(crate) struct InvalidLogicalOperator {
     #[primary_span]
     pub span: Span,
-    pub incorrect: String,
+    pub incorrect: Symbol,
     #[subdiagnostic]
     pub sub: InvalidLogicalOperatorSub,
 }
@@ -2712,6 +2712,14 @@ pub(crate) enum TopLevelOrPatternNotAllowed {
 #[derive(Diagnostic)]
 #[diag("`{$ident}` cannot be a raw identifier")]
 pub(crate) struct CannotBeRawIdent {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("`{$ident}` is not a valid keyword")]
+pub(crate) struct CannotBeForcedKeywordIdent {
     #[primary_span]
     pub span: Span,
     pub ident: Symbol,
