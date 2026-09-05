@@ -1896,7 +1896,7 @@ unsafe extern "C" {
         Length: size_t,
     ) -> &'ll Metadata;
 
-    pub(crate) fn LLVMDIBuilderCreateGlobalVariableExpression<'ll>(
+    pub(crate) fn LLVMRustDIBuilderCreateGlobalVariableExpression<'ll>(
         Builder: &DIBuilder<'ll>,
         Scope: Option<&'ll Metadata>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
@@ -1907,6 +1907,7 @@ unsafe extern "C" {
         LineNo: c_uint,
         Ty: &'ll Metadata,
         LocalToUnit: llvm::Bool,
+        IsDefined: llvm::Bool,
         Expr: &'ll Metadata,
         Decl: Option<&'ll Metadata>,
         AlignInBits: u32,
