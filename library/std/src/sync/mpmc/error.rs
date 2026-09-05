@@ -1,3 +1,4 @@
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 pub use crate::sync::mpsc::{RecvError, RecvTimeoutError, SendError, TryRecvError, TrySendError};
 use crate::{error, fmt};
 
@@ -7,7 +8,7 @@ use crate::{error, fmt};
 ///
 /// [`send_timeout`]: super::Sender::send_timeout
 #[derive(PartialEq, Eq, Clone, Copy)]
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 pub enum SendTimeoutError<T> {
     /// The message could not be sent because the channel is full and the operation timed out.
     ///
@@ -19,14 +20,14 @@ pub enum SendTimeoutError<T> {
     Disconnected(T),
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> fmt::Debug for SendTimeoutError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "SendTimeoutError(..)".fmt(f)
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> fmt::Display for SendTimeoutError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -36,10 +37,10 @@ impl<T> fmt::Display for SendTimeoutError<T> {
     }
 }
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> error::Error for SendTimeoutError<T> {}
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 impl<T> From<SendError<T>> for SendTimeoutError<T> {
     fn from(err: SendError<T>) -> SendTimeoutError<T> {
         match err {
