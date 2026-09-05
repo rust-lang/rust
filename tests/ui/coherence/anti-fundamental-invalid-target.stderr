@@ -1,0 +1,18 @@
+error: the `rustc_anti_fundamental` attribute cannot be used on structs
+  --> $DIR/anti-fundamental-invalid-target.rs:7:3
+   |
+LL | #[rustc_anti_fundamental]
+   |   ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the `rustc_anti_fundamental` attribute can only be applied to traits
+
+error: the `rustc_anti_fundamental` attribute cannot be used on functions
+  --> $DIR/anti-fundamental-invalid-target.rs:11:3
+   |
+LL | #[rustc_anti_fundamental]
+   |   ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the `rustc_anti_fundamental` attribute can only be applied to traits
+
+error: aborting due to 2 previous errors
+
