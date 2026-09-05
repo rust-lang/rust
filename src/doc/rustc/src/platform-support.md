@@ -35,18 +35,15 @@ target | notes
 [`aarch64-apple-darwin`](platform-support/apple-darwin.md) | ARM64 macOS (11.0+, Big Sur+)
 [`aarch64-pc-windows-msvc`](platform-support/windows-msvc.md) | ARM64 Windows MSVC
 [`aarch64-unknown-linux-gnu`](platform-support/aarch64-unknown-linux-gnu.md) | ARM64 Linux (kernel 4.1+, glibc 2.17+)
-[`i686-pc-windows-msvc`](platform-support/windows-msvc.md) | 32-bit MSVC (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
-`i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+, Pentium 4) [^x86_32-floats-return-ABI]
+[`i686-pc-windows-msvc`](platform-support/windows-msvc.md) | 32-bit MSVC (Windows 10+, Windows Server 2016+, Pentium 4) [^win32-msvc-alignment]
+`i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+, Pentium 4)
 [`x86_64-pc-windows-gnu`](platform-support/windows-gnu.md) | 64-bit MinGW (Windows 10+, Windows Server 2016+)
 [`x86_64-pc-windows-msvc`](platform-support/windows-msvc.md) | 64-bit MSVC (Windows 10+, Windows Server 2016+)
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
 
-[^x86_32-floats-return-ABI]: Due to limitations of the C ABI, floating-point support on `i686` targets is non-compliant: floating-point return values are passed via an x87 register, so NaN payload bits can be lost. Functions with the default Rust ABI are not affected. See [issue #115567][x86-32-float-return-issue].
-
 [^win32-msvc-alignment]: Due to non-standard behavior of MSVC, native C code on this target can cause types with an alignment of more than 4 bytes to be incorrectly aligned to only 4 bytes (this affects, e.g., `u64` and `i64`). Rust applies some mitigations to reduce the impact of this issue, but this can still cause unsoundness due to unsafe code that (correctly) assumes that references are always properly aligned. See [issue #112480](https://github.com/rust-lang/rust/issues/112480).
 
 [77071]: https://github.com/rust-lang/rust/issues/77071
-[x86-32-float-return-issue]: https://github.com/rust-lang/rust/issues/115567
 
 ## Tier 1
 
@@ -182,11 +179,11 @@ target | std | notes
 [`thumbv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * | Thumb-mode Bare Armv8-R, hardfloat
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux (kernel 3.2+, glibc 2.17, original Pentium) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux (musl 1.2.5, original Pentium) [^x86_32-floats-x87]
-[`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android ([Pentium 4 plus various extensions](https://developer.android.com/ndk/guides/abis.html#x86)) [^x86_32-floats-return-ABI]
-[`i686-pc-windows-gnu`](platform-support/windows-gnu.md) | ✓ | 32-bit MinGW (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
-[`i686-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | ✓ | 32-bit x86 MinGW (Windows 10+, Pentium 4), LLVM ABI [^x86_32-floats-return-ABI]
-[`i686-unknown-freebsd`](platform-support/freebsd.md) | ✓ | 32-bit x86 FreeBSD (Pentium 4) [^x86_32-floats-return-ABI]
-`i686-unknown-linux-musl` | ✓ | 32-bit Linux with musl 1.2.5 (Pentium 4) [^x86_32-floats-return-ABI]
+[`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android ([Pentium 4 plus various extensions](https://developer.android.com/ndk/guides/abis.html#x86))
+[`i686-pc-windows-gnu`](platform-support/windows-gnu.md) | ✓ | 32-bit MinGW (Windows 10+, Windows Server 2016+, Pentium 4) [^win32-msvc-alignment]
+[`i686-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | ✓ | 32-bit x86 MinGW (Windows 10+, Pentium 4), LLVM ABI
+[`i686-unknown-freebsd`](platform-support/freebsd.md) | ✓ | 32-bit x86 FreeBSD (Pentium 4)
+`i686-unknown-linux-musl` | ✓ | 32-bit Linux with musl 1.2.5 (Pentium 4)
 [`i686-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 32-bit UEFI (Pentium 4, softfloat) [^win32-msvc-alignment]
 [`loongarch32-unknown-none`](platform-support/loongarch-none.md) | * | LoongArch32 Bare-metal (ILP32D ABI)
 [`loongarch32-unknown-none-softfloat`](platform-support/loongarch-none.md) | * | LoongArch32 Bare-metal (ILP32S ABI)
@@ -337,22 +334,22 @@ target | std | host | notes
 [`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ |  | Hexagon Linux with musl 1.2.5
 [`hexagon-unknown-none-elf`](platform-support/hexagon-unknown-none-elf.md)| * |  | Bare Hexagon (v60+, HVX)
 [`hexagon-unknown-qurt`](platform-support/hexagon-unknown-qurt.md)| * |  | Hexagon QuRT
-[`i386-apple-ios`](platform-support/apple-ios.md) | ✓ |  | 32-bit x86 iOS (Penryn) [^x86_32-floats-return-ABI]
+[`i386-apple-ios`](platform-support/apple-ios.md) | ✓ |  | 32-bit x86 iOS (Penryn)
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86 (original Pentium) [^x86_32-floats-x87]
 [`i586-unknown-redox`](platform-support/redox.md) | ✓ |  | 32-bit x86 Redox OS (PentiumPro) [^x86_32-floats-x87]
-[`i686-apple-darwin`](platform-support/apple-darwin.md) | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+, Penryn) [^x86_32-floats-return-ABI]
+[`i686-apple-darwin`](platform-support/apple-darwin.md) | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+, Penryn)
 [`i686-oe-linux-gnu`](platform-support/oe-linux-gnu.md) | ✓ |  | 32-bit x86 OpenEmbedded/Yocto Linux (GNU)
-[`i686-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX SDP 7.0 (Pentium 4) [^x86_32-floats-return-ABI]
-`i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku (Pentium 4) [^x86_32-floats-return-ABI]
+[`i686-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX SDP 7.0 (Pentium 4)
+`i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku (Pentium 4)
 [`i686-unknown-helenos`](platform-support/helenos.md) | ✓ |  | HelenOS IA-32 (see docs for pending issues)
-[`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (Pentium 4) [^x86_32-floats-return-ABI]
-[`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 (Pentium 4) [^x86_32-floats-return-ABI]
-[`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD (Pentium 4) [^x86_32-floats-return-ABI]
-`i686-uwp-windows-gnu` | ✓ |  | [^x86_32-floats-return-ABI]
-[`i686-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  | [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
-[`i686-win7-windows-gnu`](platform-support/win7-windows-gnu.md) | ✓ |  | 32-bit Windows 7 support [^x86_32-floats-return-ABI]
-[`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |  | 32-bit Windows 7 support [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
-[`i686-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  | [^x86_32-floats-return-ABI]
+[`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (Pentium 4)
+[`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 (Pentium 4)
+[`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD (Pentium 4)
+`i686-uwp-windows-gnu` | ✓ |  |
+[`i686-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  | [^win32-msvc-alignment]
+[`i686-win7-windows-gnu`](platform-support/win7-windows-gnu.md) | ✓ |  | 32-bit Windows 7 support
+[`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |  | 32-bit Windows 7 support [^win32-msvc-alignment]
+[`i686-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`loongarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ |  | LoongArch64 OpenHarmony
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 [`m68k-unknown-none-elf`](platform-support/m68k-unknown-none-elf.md) |  |  | Motorola 680x0
