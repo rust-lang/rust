@@ -68,8 +68,14 @@ macro_rules! argument_new {
                 #[cfg(not(any(sanitize = "cfi", sanitize = "kcfi")))]
                 formatter: {
                     let f: fn(&$t, &mut Formatter<'_>) -> Result = $f;
+                    #[expect(
+                        clippy::missing_transmute_annotations,
+                        reason = "inside macro, types are unknown or too complex"
+                    )]
                     // SAFETY: This is only called with `value`, which has the right type.
-                    unsafe { core::mem::transmute(f) }
+                    unsafe {
+                        core::mem::transmute(f)
+                    }
                 },
                 #[cfg(any(sanitize = "cfi", sanitize = "kcfi"))]
                 formatter: |ptr: NonNull<()>, fmt: &mut Formatter<'_>| {
