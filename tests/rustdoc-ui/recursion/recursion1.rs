@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![crate_type = "lib"]
 
 mod m {

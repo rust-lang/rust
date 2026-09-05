@@ -2,7 +2,9 @@
 // It's to ensure that this code doesn't have infinite loop in rustdoc when
 // trying to retrieve type alias implementations.
 
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
+
+//@ check-pass
 
 pub type Boom = S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<S<u64, u8>, ()>, ()>, ()>, u8>, ()>, u8>, ()>, u8>, u8>, ()>, ()>, ()>, u8>, u8>, u8>, ()>, ()>, u8>, ()>, ()>, ()>, u8>, u8>, ()>, ()>, ()>, ()>, ()>, u8>, ()>, ()>, u8>, ()>, ()>, ()>, u8>, ()>, ()>, u8>, u8>, u8>, u8>, ()>, u8>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>, ()>;
 pub struct S<T, U>(T, U);

@@ -1,10 +1,19 @@
 use super::{DocKind, TestCx, remove_and_create_dir_all};
 use crate::util::ArgFileCommand;
 
+fn has_test_flag(flags: &[String]) -> bool {
+    flags.iter().any(|s| s == "--test")
+}
+
 impl TestCx<'_> {
     pub(super) fn run_rustdoc_html_test(&self) {
         assert!(self.variant.revision.is_none(), "revisions not supported in this test suite");
 
+        if has_test_flag(&self.props.compile_flags) || has_test_flag(&self.props.doc_flags) {
+            panic!(
+                "If you want to check `--test`, put this test into `rustdoc-ui` testsuite instead",
+            );
+        }
         let out_dir = self.output_base_dir();
         remove_and_create_dir_all(&out_dir).unwrap_or_else(|e| {
             panic!("failed to remove and recreate output directory `{out_dir}`: {e}")
