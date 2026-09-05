@@ -1576,6 +1576,55 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
     radix <= 16 && digits.len() <= size_of::<T>() * 2 - is_signed_ty as usize
 }
 
+/// Checks if all 8 bytes in `v` are ASCII decimal digits (`b'0'..=b'9'`).
+///
+/// Uses a SWAR (SIMD Within A Register) technique to check all 8 bytes
+/// without per-byte branching.
+#[cfg(not(target_pointer_width = "32"))]
+#[inline]
+const fn is_8digits(v: u64) -> bool {
+    let a = v.wrapping_add(0x4646_4646_4646_4646);
+    let b = v.wrapping_sub(0x3030_3030_3030_3030);
+    (a | b) & 0x8080_8080_8080_8080 == 0
+}
+
+/// Parses 8 ASCII decimal digits packed in a u64 into a numeric value.
+///
+/// Uses a SWAR technique with 3 multiplications to convert 8 digits at once.
+/// The caller must ensure all 8 bytes are ASCII digits, e.g. via [`is_8digits`].
+#[cfg(not(target_pointer_width = "32"))]
+#[inline]
+const fn parse_8digits(v: u64) -> u64 {
+    let mut v = v;
+    v = (v & 0x0f0f_0f0f_0f0f_0f0f).wrapping_mul(2561) >> 8;
+    v = (v & 0x00ff_00ff_00ff_00ff).wrapping_mul(6_553_601) >> 16;
+    v = (v & 0x0000_ffff_0000_ffff).wrapping_mul(42_949_672_960_001) >> 32;
+    v
+}
+
+/// Checks if all 4 bytes in `v` are ASCII decimal digits (`b'0'..=b'9'`).
+///
+/// Same SWAR technique as `is_8digits` but for 32-bit registers, so it can
+/// be used on platforms where 64-bit operations are expensive.
+#[inline]
+const fn is_4digits(v: u32) -> bool {
+    let a = v.wrapping_add(0x4646_4646);
+    let b = v.wrapping_sub(0x3030_3030);
+    (a | b) & 0x8080_8080 == 0
+}
+
+/// Parses 4 ASCII decimal digits packed in a u32 into a numeric value.
+///
+/// Uses a SWAR technique with 2 multiplications to convert 4 digits at once.
+/// The caller must ensure all 4 bytes are ASCII digits, e.g. via [`is_4digits`].
+#[inline]
+const fn parse_4digits(v: u32) -> u32 {
+    let mut v = v;
+    v = (v & 0x0f0f_0f0f).wrapping_mul(2561) >> 8;
+    v = (v & 0x00ff_00ff).wrapping_mul(6_553_601) >> 16;
+    v
+}
+
 #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
 #[cfg_attr(panic = "immediate-abort", inline)]
 #[cold]
@@ -1771,7 +1820,7 @@ macro_rules! from_str_int_impl {
                 <$int_ty>::from_ascii_bytes_radix_impl(src.as_ref(), radix)
             }
 
-            #[inline]
+            #[inline(always)]
             pub(super) const fn from_ascii_bytes_radix_impl(src: &[u8], radix: u32) -> Result<$int_ty, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
@@ -1807,52 +1856,93 @@ macro_rules! from_str_int_impl {
                     };
                 }
 
-                if can_not_overflow::<$int_ty>(radix, is_signed_ty, digits) {
-                    // If the len of the str is short compared to the range of the type
-                    // we are parsing into, then we can be certain that an overflow will not occur.
-                    // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
-                    // above is a faster (conservative) approximation of this.
-                    //
-                    // Consider radix 16 as it has the highest information density per digit and will thus overflow the earliest:
-                    // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
-                    // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
-                    macro_rules! run_unchecked_loop {
-                        ($unchecked_additive_op:tt) => {{
-                            while let [c, rest @ ..] = digits {
-                                result = result * (radix as $int_ty);
-                                let x = unwrap_or_PIE!((*c as char).to_digit(radix), InvalidDigit);
-                                result = result $unchecked_additive_op (x as $int_ty);
-                                digits = rest;
+                // SWAR fast path: process leading decimal digits in
+                // batches using SIMD-within-a-register. Only radix 10 and
+                // only types of more than 4 bytes (u32 max is 10 digits, so
+                // for smaller types this whole branch is dead code).
+                //
+                // We never batch more than 16 leading digits: that many
+                // decimal digits can never overflow `$int_ty`, so the batch
+                // arithmetic is safe to run unchecked even in debug builds.
+                //
+                // In the no-overflow branch, batching can only fire for
+                // inputs that exactly fill the bound (u64, 16 digits); the
+                // tail is then empty. In the checked branch, the batch
+                // shrinks the input and the remaining digits are validated
+                // by the checked loop, which still catches overflow for
+                // inputs longer than the type's range.
+                //
+                // On 64-bit+ platforms, use 8-digit batches (u64). On
+                // 32-bit platforms, u64 multiplication is emulated and
+                // slower than the per-byte loop, so only use 4-digit
+                // batches (u32).
+                let swar_min_len = if size_of::<$int_ty>() <= 4 {
+                    usize::MAX
+                } else {
+                    16
+                };
+                macro_rules! run_swar {
+                    () => {{
+                        if radix == 10 && digits.len() >= swar_min_len {
+                            match Self::swar_parse_decimal(is_positive, result, digits) {
+                                Ok((r, rest)) => {
+                                    result = r;
+                                    digits = rest;
+                                }
+                                Err(e) => return Err(e),
                             }
-                        }};
-                    }
+                        }
+                    }};
+                }
+
+                macro_rules! run_unchecked_loop {
+                    ($unchecked_additive_op:tt) => {{
+                        while let [c, rest @ ..] = digits {
+                            result = result * (radix as $int_ty);
+                            let x = unwrap_or_PIE!((*c as char).to_digit(radix), InvalidDigit);
+                            result = result $unchecked_additive_op (x as $int_ty);
+                            digits = rest;
+                        }
+                    }};
+                }
+                macro_rules! run_checked_loop {
+                    ($checked_additive_op:ident, $overflow_err:ident) => {{
+                        while let [c, rest @ ..] = digits {
+                            // When `radix` is passed in as a literal, rather than doing a slow `imul`
+                            // the compiler can use shifts if `radix` can be expressed as a
+                            // sum of powers of 2 (x*10 can be written as x*8 + x*2).
+                            // When the compiler can't use these optimisations,
+                            // the latency of the multiplication can be hidden by issuing it
+                            // before the result is needed to improve performance on
+                            // modern out-of-order CPU as multiplication here is slower
+                            // than the other instructions, we can get the end result faster
+                            // doing multiplication first and let the CPU spends other cycles
+                            // doing other computation and get multiplication result later.
+                            let mul = result.checked_mul(radix as $int_ty);
+                            let x = unwrap_or_PIE!((*c as char).to_digit(radix), InvalidDigit) as $int_ty;
+                            result = unwrap_or_PIE!(mul, $overflow_err);
+                            result = unwrap_or_PIE!(<$int_ty>::$checked_additive_op(result, x), $overflow_err);
+                            digits = rest;
+                        }
+                    }};
+                }
+
+                // If the len of the str is short compared to the range of the type
+                // we are parsing into, then we can be certain that an overflow will not occur.
+                // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
+                // above is a faster (conservative) approximation of this.
+                //
+                // Consider radix 16 as it has the highest information density per digit and will thus overflow the earliest:
+                // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
+                // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
+                if can_not_overflow::<$int_ty>(radix, is_signed_ty, digits) {
                     if is_positive {
                         run_unchecked_loop!(+)
                     } else {
                         run_unchecked_loop!(-)
                     };
                 } else {
-                    macro_rules! run_checked_loop {
-                        ($checked_additive_op:ident, $overflow_err:ident) => {{
-                            while let [c, rest @ ..] = digits {
-                                // When `radix` is passed in as a literal, rather than doing a slow `imul`
-                                // the compiler can use shifts if `radix` can be expressed as a
-                                // sum of powers of 2 (x*10 can be written as x*8 + x*2).
-                                // When the compiler can't use these optimisations,
-                                // the latency of the multiplication can be hidden by issuing it
-                                // before the result is needed to improve performance on
-                                // modern out-of-order CPU as multiplication here is slower
-                                // than the other instructions, we can get the end result faster
-                                // doing multiplication first and let the CPU spends other cycles
-                                // doing other computation and get multiplication result later.
-                                let mul = result.checked_mul(radix as $int_ty);
-                                let x = unwrap_or_PIE!((*c as char).to_digit(radix), InvalidDigit) as $int_ty;
-                                result = unwrap_or_PIE!(mul, $overflow_err);
-                                result = unwrap_or_PIE!(<$int_ty>::$checked_additive_op(result, x), $overflow_err);
-                                digits = rest;
-                            }
-                        }};
-                    }
+                    run_swar!();
                     if is_positive {
                         run_checked_loop!(checked_add, PosOverflow)
                     } else {
@@ -1860,6 +1950,72 @@ macro_rules! from_str_int_impl {
                     };
                 }
                 Ok(result)
+            }
+
+            /// SWAR (SIMD-within-a-register) helper for radix-10 parsing.
+            /// Parses up to 16 leading decimal digits in 8- and 4-digit
+            /// batches, returning the accumulated result and the remaining
+            /// digits. The caller then runs the checked loop on the tail.
+            ///
+            /// Batches are bounded so the unchecked batch arithmetic can
+            /// never overflow `$int_ty`, even in debug builds.
+            ///
+            /// Must stay inlinable (`#[inline]`, not outlined): an out-of-line
+            /// call here, even though it is only reachable on the long-input
+            /// path, makes LLVM set up a stack frame in the hot caller and
+            /// measurably slows short inputs that never reach the SWAR path.
+            #[inline]
+            pub(super) const fn swar_parse_decimal(
+                is_positive: bool,
+                mut result: $int_ty,
+                mut digits: &[u8],
+            ) -> Result<($int_ty, &[u8]), ParseIntError> {
+                use self::IntErrorKind::*;
+                use self::ParseIntError as PIE;
+
+                let mut remaining = match size_of::<$int_ty>() {
+                    1 => 0,
+                    2 => 4,
+                    4 => 8,
+                    _ => 16,
+                };
+
+                #[cfg(not(target_pointer_width = "32"))]
+                while remaining >= 8 {
+                    let [a, b, c, d, e, f, g, h, rest @ ..] = digits else { break };
+                    let chunk = u64::from_le_bytes([*a, *b, *c, *d, *e, *f, *g, *h]);
+                    if !is_8digits(chunk) {
+                        return Err(PIE { kind: InvalidDigit });
+                    }
+                    let parsed = parse_8digits(chunk) as $int_ty;
+                    result = result * (100_000_000u32 as $int_ty);
+                    if is_positive {
+                        result = result + parsed;
+                    } else {
+                        result = result - parsed;
+                    }
+                    digits = rest;
+                    remaining -= 8;
+                }
+
+                while remaining >= 4 {
+                    let [a, b, c, d, rest @ ..] = digits else { break };
+                    let chunk = u32::from_le_bytes([*a, *b, *c, *d]);
+                    if !is_4digits(chunk) {
+                        return Err(PIE { kind: InvalidDigit });
+                    }
+                    let parsed = parse_4digits(chunk) as $int_ty;
+                    result = result * (10_000u32 as $int_ty);
+                    if is_positive {
+                        result = result + parsed;
+                    } else {
+                        result = result - parsed;
+                    }
+                    digits = rest;
+                    remaining -= 4;
+                }
+
+                Ok((result, digits))
             }
         }
     )*}
