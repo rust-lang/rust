@@ -9,7 +9,8 @@ use rustc_infer::traits::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
 use rustc_next_trait_solver::solve::{
-    GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _, StalledOnCoroutines,
+    GoalEvaluation, GoalStalledOn, GoalStalledOnOpaques, HasChanged, SolverDelegateEvalExt as _,
+    StalledOnCoroutines,
 };
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -48,6 +49,17 @@ pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
     /// gets rolled back. Because of this we explicitly check that we only
     /// use the context in exactly this snapshot.
     usable_in_snapshot: usize,
+
+    last_stalled_goal_generation: u64,
+
+    /// Whether any trackable stalled obligation requires the opaque
+    /// type storage to remain empty.
+    stalled_on_empty_opaques: bool,
+
+    /// Whether every pending obligation can use the context-wide
+    /// stalled-goal fast path.
+    all_pending_trackable: bool,
+
     _errors: PhantomData<E>,
 }
 
@@ -133,11 +145,31 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
             "new trait solver fulfillment context created when \
             infcx is set up for old trait solver"
         );
+        let generation = infcx.stalled_goal_generation();
+
         FulfillmentCtxt {
             obligations: Default::default(),
             usable_in_snapshot: infcx.num_open_snapshots(),
+            last_stalled_goal_generation: generation,
+            stalled_on_empty_opaques: false,
+            all_pending_trackable: true,
             _errors: PhantomData,
         }
+    }
+
+    fn record_trackable_stalled_on(
+        stalled_on: &GoalStalledOn<TyCtxt<'tcx>>,
+        stalled_on_empty_opaques: &mut bool,
+    ) -> bool {
+        match stalled_on.opaques {
+            GoalStalledOnOpaques::No => {}
+            GoalStalledOnOpaques::Yes { num_opaques_in_storage: 0, .. } => {
+                *stalled_on_empty_opaques = true;
+            }
+            GoalStalledOnOpaques::Yes { .. } => return false,
+        }
+
+        true
     }
 
     fn inspect_evaluated_obligation(
@@ -176,10 +208,22 @@ where
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe(_) => {
+                    if let Some(stalled_on) = &stalled_on {
+                        if !Self::record_trackable_stalled_on(
+                            stalled_on,
+                            &mut self.stalled_on_empty_opaques,
+                        ) {
+                            self.all_pending_trackable = false;
+                        }
+                    } else {
+                        self.all_pending_trackable = false;
+                    }
+
                     self.obligations.register(obligation, stalled_on);
                 }
             }
         } else {
+            self.all_pending_trackable = false;
             self.obligations.register(obligation, None);
         }
     }
@@ -199,9 +243,35 @@ where
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = TraitErrors::NoErrors;
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+
+        let generation = infcx.stalled_goal_generation();
+
+        if self.obligations.pending.is_empty() {
+            self.last_stalled_goal_generation = generation;
+            self.stalled_on_empty_opaques = false;
+            self.all_pending_trackable = true;
+            return errors;
+        }
+
+        if !infcx.tcx.disable_trait_solver_fast_paths()
+            && self.all_pending_trackable
+            && self.last_stalled_goal_generation == generation
+        {
+            let opaques_unchanged = !self.stalled_on_empty_opaques
+                || infcx.inner.borrow_mut().opaque_types().is_empty();
+
+            if opaques_unchanged {
+                return errors;
+            }
+        }
+
         loop {
+            let pass_generation = infcx.stalled_goal_generation();
+
             let mut any_changed = false;
             let mut overflowed = false;
+            let mut all_pending_trackable = true;
+            let mut stalled_on_empty_opaques = false;
 
             self.obligations.pending.retain_mut(|(obligation, opt_stalled_on)| {
                 if overflowed {
@@ -213,6 +283,11 @@ where
                 if let Some(stalled_on) = opt_stalled_on
                     && delegate.goal_remains_stalled(stalled_on)
                 {
+                    if !Self::record_trackable_stalled_on(stalled_on, &mut stalled_on_empty_opaques)
+                    {
+                        all_pending_trackable = false;
+                    }
+
                     return true;
                 }
 
@@ -283,17 +358,33 @@ where
                         // Update `opt_stalled_on` goal, for the next retain_mut, because we are
                         // running until a fixpoint.
                         *opt_stalled_on = stalled_on;
+
+                        if let Some(stalled_on) = opt_stalled_on {
+                            if !Self::record_trackable_stalled_on(
+                                stalled_on,
+                                &mut stalled_on_empty_opaques,
+                            ) {
+                                all_pending_trackable = false;
+                            }
+                        } else {
+                            all_pending_trackable = false;
+                        }
+
                         true
                     }
                 }
             });
             if overflowed {
+                self.all_pending_trackable = false;
                 self.obligations.on_fulfillment_overflow(infcx);
                 // Only return true errors that we have accumulated while processing.
                 return errors;
             }
 
             if !any_changed {
+                self.all_pending_trackable = all_pending_trackable;
+                self.stalled_on_empty_opaques = stalled_on_empty_opaques;
+                self.last_stalled_goal_generation = pass_generation;
                 break;
             }
         }

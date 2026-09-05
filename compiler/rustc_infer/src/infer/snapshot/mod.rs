@@ -51,7 +51,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut inner = self.inner.borrow_mut();
 
         CombinedSnapshot {
-            undo_snapshot: inner.undo_log.start_snapshot(),
+            undo_snapshot: inner.start_snapshot(),
             region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
             universe: self.universe(),
         }
