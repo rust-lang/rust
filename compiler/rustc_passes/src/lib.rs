@@ -5,6 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![feature(deref_patterns)]
 #![feature(option_into_flat_iter)]
 // tidy-alphabetical-end
 
@@ -21,6 +22,7 @@ mod diagnostic_items;
 mod diagnostics;
 mod eii;
 pub mod entry;
+mod fake_doc_items;
 pub mod hir_id_validator;
 pub mod input_stats;
 mod lang_items;
@@ -44,5 +46,6 @@ pub fn provide(providers: &mut Providers) {
     stability::provide(providers);
     upvars::provide(providers);
     check_export::provide(providers);
+    fake_doc_items::provide(providers);
     providers.check_externally_implementable_items = eii::check_externally_implementable_items;
 }
