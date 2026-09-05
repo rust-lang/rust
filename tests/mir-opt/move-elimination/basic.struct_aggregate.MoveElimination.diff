@@ -1,0 +1,49 @@
+- // MIR for `struct_aggregate` before MoveElimination
++ // MIR for `struct_aggregate` after MoveElimination
+  
+  fn struct_aggregate() -> Pair {
+      let mut _0: Pair;
+      let _1: [u8; 8];
+      let mut _3: [u8; 8];
+      let mut _4: [u8; 8];
+      scope 1 {
+-         debug a => _1;
++         debug a => (_0.0: [u8; 8]);
+          let _2: [u8; 8];
+          scope 2 {
+-             debug b => _2;
++             debug b => (_0.1: [u8; 8]);
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = [const 1_u8; 8];
+-         StorageLive(_2);
+-         _2 = [const 2_u8; 8];
+-         StorageLive(_3);
+-         _3 = move _1;
+-         StorageLive(_4);
+-         _4 = move _2;
+-         _0 = Pair { a: move _3, b: move _4 };
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         StorageDead(_2);
+-         StorageDead(_1);
++         nop;
++         (_0.0: [u8; 8]) = [const 1_u8; 8];
++         nop;
++         (_0.1: [u8; 8]) = [const 2_u8; 8];
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  
