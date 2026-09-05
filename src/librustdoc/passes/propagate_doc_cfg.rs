@@ -104,7 +104,13 @@ impl CfgPropagator<'_, '_> {
                     &mut parent_attrs,
                     load_attrs(self.cx.tcx, parent_def_id.to_def_id()),
                 );
-                merge_attrs(self.cx.tcx, &[], Some((&parent_attrs, None)), &mut self.cfg_info);
+                merge_attrs(
+                    self.cx.tcx,
+                    &[],
+                    Some((&parent_attrs, None)),
+                    &mut self.cfg_info,
+                    None,
+                );
             }
         }
 
@@ -113,6 +119,7 @@ impl CfgPropagator<'_, '_> {
             item.attrs.other_attrs.as_slice(),
             Some((&attrs, None)),
             &mut self.cfg_info,
+            item.item_id.as_def_id(),
         );
         item.inner.cfg = cfg;
     }
@@ -160,6 +167,7 @@ impl DocFolder for CfgPropagator<'_, '_> {
                         std::iter::once(&attrs_iter),
                         tcx,
                         &mut self.cfg_info,
+                        None,
                     );
                 }
             }
