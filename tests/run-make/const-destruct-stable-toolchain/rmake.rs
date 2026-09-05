@@ -9,6 +9,7 @@ use run_make_support::{diff, rustc};
 fn main() {
     let out = rustc()
         .input("const-drop.rs")
+        .edition("2015")
         .env("RUSTC_BOOTSTRAP", "-1")
         .run_fail()
         .assert_stderr_not_contains("consider restricting type parameter `T`")
@@ -16,6 +17,7 @@ fn main() {
     diff().expected_file("const-drop-stable.stderr").actual_text("(rustc)", &out).run();
     let out = rustc()
         .input("const-drop.rs")
+        .edition("2015")
         .ui_testing()
         .run_fail()
         .assert_stderr_contains(
