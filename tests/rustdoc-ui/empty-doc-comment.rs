@@ -1,5 +1,7 @@
 // Ensure that empty doc comments don't panic.
 
+//@ check-pass
+
 /*!
 */
 

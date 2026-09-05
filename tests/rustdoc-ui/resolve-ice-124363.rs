@@ -1,3 +1,5 @@
+//@ check-pass
+
 /**
 */
 pub mod A {

@@ -3,6 +3,8 @@
 // As of this writing, we don't currently attempt to document proc-macros. However, we shouldn't
 // crash when we try.
 
+//@ check-pass
+
 extern crate proc_macro;
 
 pub use proc_macro::*;
