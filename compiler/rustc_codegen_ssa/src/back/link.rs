@@ -779,8 +779,7 @@ fn link_staticlib(
             && !ignored_for_lto(sess, crate_info, cnum);
 
         let native_libs = &crate_info.native_libraries[&cnum];
-        let bundled_filenames =
-            rmeta_link_cache.native_lib_filenames(&sess.target, path, native_libs);
+        let bundled_filenames = rmeta_link_cache.native_lib_filenames(path, native_libs);
         let relevant_libs: FxIndexSet<_> = native_libs
             .iter()
             .enumerate()
@@ -3409,7 +3408,7 @@ fn add_native_libs_from_crate(
             let native_libs = &crate_info.native_libraries[&cnum];
             let filenames =
                 if let Some(rlib_path) = crate_info.used_crate_source[&cnum].rlib.as_ref() {
-                    rmeta_link_cache.native_lib_filenames(&sess.target, rlib_path, native_libs)
+                    rmeta_link_cache.native_lib_filenames(rlib_path, native_libs)
                 } else {
                     Vec::new()
                 };
@@ -3564,11 +3563,7 @@ fn add_upstream_rust_crates(
                 if link_static_crate {
                     if let Some(rlib_path) = crate_info.used_crate_source[&cnum].rlib.as_ref() {
                         bundled_libs = rmeta_link_cache
-                            .native_lib_filenames(
-                                &sess.target,
-                                rlib_path,
-                                &crate_info.native_libraries[&cnum],
-                            )
+                            .native_lib_filenames(rlib_path, &crate_info.native_libraries[&cnum])
                             .into_iter()
                             .flatten()
                             .collect();
