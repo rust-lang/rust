@@ -1,6 +1,8 @@
 // This test verifies that we do not hit recursion limit trying to prove auto-trait bounds for
 // reasonably deep structures.
 
+//@ check-pass
+
 #![crate_type="rlib"]
 
 pub struct A01(A02);
