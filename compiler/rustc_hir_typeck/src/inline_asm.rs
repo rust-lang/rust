@@ -454,7 +454,11 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         &self.tcx().sess.target,
                         op.is_clobber(),
                     ) {
-                        let msg = format!("cannot use register `{}`: {}", reg.name(), msg);
+                        let reg_name = match op.explicit_reg_name() {
+                            Some(reg_name) => reg_name.as_str(),
+                            None => &reg.name(),
+                        };
+                        let msg = format!("cannot use register `{reg_name}`: {msg}");
                         self.fcx.dcx().span_err(op_sp, msg);
                         continue;
                     }
@@ -519,18 +523,18 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             }
 
             match op {
-                hir::InlineAsmOperand::In { reg, expr } => {
+                hir::InlineAsmOperand::In { reg, expr, .. } => {
                     self.check_asm_operand_type(idx, reg, expr, asm.template, true, None);
                 }
-                hir::InlineAsmOperand::Out { reg, late: _, expr } => {
+                hir::InlineAsmOperand::Out { reg, expr, .. } => {
                     if let Some(expr) = expr {
                         self.check_asm_operand_type(idx, reg, expr, asm.template, false, None);
                     }
                 }
-                hir::InlineAsmOperand::InOut { reg, late: _, expr } => {
+                hir::InlineAsmOperand::InOut { reg, expr, .. } => {
                     self.check_asm_operand_type(idx, reg, expr, asm.template, false, None);
                 }
-                hir::InlineAsmOperand::SplitInOut { reg, late: _, in_expr, out_expr } => {
+                hir::InlineAsmOperand::SplitInOut { reg, in_expr, out_expr, .. } => {
                     let in_ty =
                         self.check_asm_operand_type(idx, reg, in_expr, asm.template, true, None);
                     if let Some(out_expr) = out_expr {
