@@ -357,30 +357,26 @@
 
 // This needs to be up here in order to be usable in the child modules
 macro_rules! impl_fold_via_try_fold {
-    (fold -> try_fold) => {
-        impl_fold_via_try_fold! { @internal fold -> try_fold }
-    };
-    (rfold -> try_rfold) => {
-        impl_fold_via_try_fold! { @internal rfold -> try_rfold }
-    };
-    (spec_fold -> spec_try_fold) => {
-        impl_fold_via_try_fold! { @internal spec_fold -> spec_try_fold }
-    };
-    (spec_rfold -> spec_try_rfold) => {
-        impl_fold_via_try_fold! { @internal spec_rfold -> spec_try_rfold }
-    };
-    (@internal $fold:ident -> $try_fold:ident) => {
-        #[inline]
-        fn $fold<AAA, FFF>(mut self, init: AAA, fold: FFF) -> AAA
-        where
-            FFF: FnMut(AAA, Self::Item) -> AAA,
-        {
-            use crate::ops::NeverShortCircuit;
+      (const $fold:ident -> $try_fold:ident) => {
+          impl_fold_via_try_fold!(@internal [[const]] $fold -> $try_fold);
+      };
+      ($fold:ident -> $try_fold:ident) => {
+          impl_fold_via_try_fold!(@internal [] $fold -> $try_fold);
+      };
 
-            self.$try_fold(init, NeverShortCircuit::wrap_mut_2(fold)).0
-        }
-    };
-}
+      (@internal [$($constness:tt)*] $fold:ident -> $try_fold:ident) => {
+          #[inline]
+          fn $fold<AAA, FFF>(mut self, init: AAA, fold: FFF) -> AAA
+          where
+              FFF: $($constness)* FnMut(AAA, Self::Item) -> AAA
+                  + $($constness)* Destruct,
+          {
+              use crate::ops::NeverShortCircuit;
+
+              self.$try_fold(init, NeverShortCircuit::wrap_mut_2(fold)).0
+          }
+      };
+  }
 
 #[unstable(feature = "iter_array_chunks", issue = "100450")]
 pub use self::adapters::ArrayChunks;
