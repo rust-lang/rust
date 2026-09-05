@@ -14,9 +14,9 @@ use crate::unreachable_prop::remove_successors_from_switch;
 pub(super) struct MatchBranchSimplification;
 
 impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Enable only under -Zmir-opt-level=2 as this can make programs less debuggable.
-        PassPolicy::optimization(sess.mir_opt_level() >= 2)
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
