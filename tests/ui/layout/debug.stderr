@@ -498,7 +498,7 @@ error: layout_of(Option<bool>) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               u8 is 0..=2,
+               u8 is (..=1) | (255..),
            ),
            fields: Arbitrary {
                offsets: [
@@ -512,16 +512,16 @@ error: layout_of(Option<bool>) = Layout {
                Niche {
                    offset: Size(0 bytes),
                    value: u8,
-                   valid_range: 0..=2,
+                   valid_range: (..=1) | (255..),
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: u8 is 0..=2,
+               tag: u8 is (..=1) | (255..),
                tag_encoding: Niche {
                    untagged_variant: 1,
                    niche_variants: 0..=0,
-                   niche_start: 2,
+                   niche_start: 255,
                },
                tag_field: 0,
                variants: [
