@@ -1076,6 +1076,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 trait_prefix,
                 kind_origin,
             );
+            self.suggest_change_mut_ref_for_closure(&mut err, &obligation);
             self.note_obligation_cause(&mut err, &obligation);
             return Some(err.emit());
         }
@@ -3050,6 +3051,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
     }
 
+    fn suggest_change_mut_ref_for_closure(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        if let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
+            && let (_, Some(root_trait_pred)) =
+                obligation.cause.code().peel_derives_with_predicate()
+            && let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id)
+            && let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, _) = arg.kind
+        {
+            let mut obligation = obligation.clone();
+            // Error reporting may narrow the cause span to the borrow's operand.
+            // Use the whole argument so `suggest_change_mut` can replace the shared borrow.
+            obligation.cause.span = arg.span;
+            self.suggest_change_mut(&obligation, err, root_trait_pred);
+        }
+    }
+
     pub fn note_obligation_cause(
         &self,
         err: &mut Diag<'_>,
@@ -3593,7 +3613,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             _ => {}
         }
-
         self.dcx().create_err(err)
     }
 
