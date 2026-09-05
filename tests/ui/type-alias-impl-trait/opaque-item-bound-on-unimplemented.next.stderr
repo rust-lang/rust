@@ -1,0 +1,15 @@
+error[E0277]: my custom message
+  --> $DIR/opaque-item-bound-on-unimplemented.rs:20:19
+   |
+LL | fn construct() -> Ta {
+   |                   ^^ the trait `Marker` is not implemented for `u32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/opaque-item-bound-on-unimplemented.rs:15:1
+   |
+LL | trait Marker {}
+   | ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
