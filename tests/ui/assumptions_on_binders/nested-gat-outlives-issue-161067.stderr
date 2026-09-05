@@ -1,0 +1,12 @@
+error: missing required bound on `Out`
+  --> $DIR/nested-gat-outlives-issue-161067.rs:11:5
+   |
+LL |     type Out<'x, T>;
+   |     ^^^^^^^^^^^^^^^-
+   |                    |
+   |                    help: add the required where clause: `where T: 'x`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+
+error: aborting due to 1 previous error
