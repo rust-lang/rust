@@ -716,11 +716,15 @@ impl Item {
     /// * `ItemType::Primitive`
     /// * `ItemType::Keyword`
     /// * `ItemType::Attribute`
+    /// * `ItemType::Feature`
     ///
     /// They are considered fake because they only exist thanks to their
     /// `#[doc(primitive|keyword|attribute)]` attribute.
     pub(crate) fn is_fake_item(&self) -> bool {
-        matches!(self.type_(), ItemType::Primitive | ItemType::Keyword | ItemType::Attribute)
+        matches!(
+            self.type_(),
+            ItemType::Primitive | ItemType::Keyword | ItemType::Attribute | ItemType::Feature
+        )
     }
     pub(crate) fn is_stripped(&self) -> bool {
         match self.kind {
@@ -886,7 +890,10 @@ impl Item {
             // Primitives and Keywords are written in the source code as private modules.
             // The modules need to be private so that nobody actually uses them, but the
             // keywords and primitives that they are documenting are public.
-            ItemKind::KeywordItem | ItemKind::PrimitiveItem(_) | ItemKind::AttributeItem => {
+            ItemKind::KeywordItem
+            | ItemKind::PrimitiveItem(_)
+            | ItemKind::AttributeItem
+            | ItemKind::FeatureItem => {
                 return Some(Visibility::Public);
             }
             // Variant fields inherit their enum's visibility.
@@ -994,6 +1001,8 @@ pub(crate) enum ItemKind {
     /// This item represents an anonymous constant with a `#[doc(attribute = "...")]` attribute which is used
     /// to generate documentation for Rust builtin attributes.
     AttributeItem,
+    /// This item represents a `cfg` documented feature passed through the command line.
+    FeatureItem,
 }
 
 impl ItemKind {
@@ -1036,6 +1045,7 @@ impl ItemKind {
             | StrippedItem(_)
             | KeywordItem
             | AttributeItem
+            | FeatureItem
             | PlaceholderImplItem => [].iter(),
         }
     }

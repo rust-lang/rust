@@ -114,8 +114,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Make `Stability` work with non-self-describing formats
-pub const FORMAT_VERSION: u32 = 61;
+// Latest feature: Add support for (cfg) feature documentation
+pub const FORMAT_VERSION: u32 = 62;
 
 /// The root of the emitted JSON blob.
 ///
@@ -799,6 +799,11 @@ pub enum ItemKind {
     /// [`Item`]s of this kind only come from the core library and exist solely
     /// to carry documentation for the respective builtin attributes.
     Attribute,
+    /// A feature declaration.
+    ///
+    /// [`Item`]s of this kind come from the rustdoc `--feature-documentation` command line
+    /// argument.
+    Feature,
 }
 
 /// Specific fields of an item.
