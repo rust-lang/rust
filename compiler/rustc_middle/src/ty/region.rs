@@ -1,7 +1,6 @@
-use rustc_errors::MultiSpan;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Symbol, kw, sym};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
+use rustc_span::{Symbol, kw};
 pub use rustc_type_ir::RegionVid;
 use rustc_type_ir::{
     LateParamRegion as IrLateParamRegion, Region as IrRegion, RegionKind as IrRegionKind,
@@ -13,139 +12,6 @@ pub type Region<'tcx> = IrRegion<TyCtxt<'tcx>>;
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 pub type LateParamRegion<'tcx> = IrLateParamRegion<TyCtxt<'tcx>>;
 
-#[extension(pub trait RegionExt<'tcx>)]
-impl<'tcx> Region<'tcx> {
-    #[inline]
-    fn new_early_param(
-        tcx: TyCtxt<'tcx>,
-        early_bound_region: ty::EarlyParamRegion,
-    ) -> Region<'tcx> {
-        tcx.intern_region(ty::ReEarlyParam(early_bound_region))
-    }
-
-    #[inline]
-    fn new_late_param(tcx: TyCtxt<'tcx>, scope: DefId, kind: LateParamRegionKind) -> Region<'tcx> {
-        let data = LateParamRegion { scope, kind };
-        tcx.intern_region(ty::ReLateParam(data))
-    }
-
-    #[inline]
-    fn new_var(tcx: TyCtxt<'tcx>, v: ty::RegionVid) -> Region<'tcx> {
-        // Use a pre-interned one when possible.
-        tcx.lifetimes
-            .re_vars
-            .get(v.as_usize())
-            .copied()
-            .unwrap_or_else(|| tcx.intern_region(ty::ReVar(v)))
-    }
-
-    /// Constructs a `RegionKind::ReError` region.
-    #[track_caller]
-    fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Region<'tcx> {
-        tcx.intern_region(ty::ReError(guar))
-    }
-
-    /// Constructs a `RegionKind::ReError` region and registers a delayed bug to ensure it gets
-    /// used.
-    #[track_caller]
-    fn new_error_misc(tcx: TyCtxt<'tcx>) -> Region<'tcx> {
-        Region::new_error_with_message(
-            tcx,
-            DUMMY_SP,
-            "RegionKind::ReError constructed but no error reported",
-        )
-    }
-
-    /// Constructs a `RegionKind::ReError` region and registers a delayed bug with the given `msg`
-    /// to ensure it gets used.
-    #[track_caller]
-    fn new_error_with_message<S: Into<MultiSpan>>(
-        tcx: TyCtxt<'tcx>,
-        span: S,
-        msg: &'static str,
-    ) -> Region<'tcx> {
-        let reported = tcx.dcx().span_delayed_bug(span, msg);
-        Region::new_error(tcx, reported)
-    }
-
-    /// Avoid this in favour of more specific `new_*` methods, where possible,
-    /// to avoid the cost of the `match`.
-    fn new_from_kind(tcx: TyCtxt<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
-        match kind {
-            ty::ReEarlyParam(region) => Region::new_early_param(tcx, region),
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), region) => {
-                Region::new_bound(tcx, debruijn, region)
-            }
-            ty::ReBound(ty::BoundVarIndexKind::Canonical, region) => {
-                Region::new_canonical_bound(tcx, region.var)
-            }
-            ty::ReLateParam(ty::LateParamRegion { scope, kind }) => {
-                Region::new_late_param(tcx, scope, kind)
-            }
-            ty::ReStatic => tcx.lifetimes.re_static,
-            ty::ReVar(vid) => Region::new_var(tcx, vid),
-            ty::RePlaceholder(region) => Region::new_placeholder(tcx, region),
-            ty::ReErased => tcx.lifetimes.re_erased,
-            ty::ReError(reported) => Region::new_error(tcx, reported),
-        }
-    }
-
-    fn get_name(self, tcx: TyCtxt<'tcx>) -> Option<Symbol> {
-        match self.kind() {
-            ty::ReEarlyParam(ebr) => ebr.is_named().then_some(ebr.name),
-            ty::ReBound(_, br) => br.kind.get_name(tcx),
-            ty::ReLateParam(fr) => fr.kind.get_name(tcx),
-            ty::ReStatic => Some(kw::StaticLifetime),
-            ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(tcx),
-            _ => None,
-        }
-    }
-
-    fn get_name_or_anon(self, tcx: TyCtxt<'tcx>) -> Symbol {
-        match self.get_name(tcx) {
-            Some(name) => name,
-            None => sym::anon,
-        }
-    }
-
-    /// Is this region named by the user?
-    fn is_named(self, tcx: TyCtxt<'tcx>) -> bool {
-        match self.kind() {
-            ty::ReEarlyParam(ebr) => ebr.is_named(),
-            ty::ReBound(_, br) => br.kind.is_named(tcx),
-            ty::ReLateParam(fr) => fr.kind.is_named(tcx),
-            ty::ReStatic => true,
-            ty::ReVar(..) => false,
-            ty::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(tcx),
-            ty::ReErased => false,
-            ty::ReError(_) => false,
-        }
-    }
-
-    #[inline]
-    fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
-        match self.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) => debruijn >= index,
-            _ => false,
-        }
-    }
-
-    /// Given some item `binding_item`, check if this region is a generic parameter introduced by it
-    /// or one of the parent generics. Returns the `DefId` of the parameter definition if so.
-    fn opt_param_def_id(self, tcx: TyCtxt<'tcx>, binding_item: DefId) -> Option<DefId> {
-        match self.kind() {
-            ty::ReEarlyParam(ebr) => {
-                Some(tcx.generics_of(binding_item).region_param(ebr, tcx).def_id)
-            }
-            ty::ReLateParam(ty::LateParamRegion {
-                kind: ty::LateParamRegionKind::Named(def_id),
-                ..
-            }) => Some(def_id),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(StableHash)]
 pub struct EarlyParamRegion {
@@ -154,6 +20,12 @@ pub struct EarlyParamRegion {
 }
 
 impl EarlyParamRegion {
+    #[inline]
+    pub fn get_name(&self) -> Option<Symbol> {
+        if self.is_named() { Some(self.name) } else { None }
+    }
+
+    #[inline]
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn is_named(&self) -> bool {
@@ -164,6 +36,20 @@ impl EarlyParamRegion {
 impl rustc_type_ir::inherent::ParamLike for EarlyParamRegion {
     fn index(self) -> u32 {
         self.index
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::RegionName<TyCtxt<'tcx>> for EarlyParamRegion {
+    #[inline]
+    fn get_name(&self, _tcx: TyCtxt<'tcx>) -> Option<Symbol> {
+        self.get_name()
+    }
+
+    #[inline]
+    /// Does this early bound region have a name? Early bound regions normally
+    /// always have names except when using anonymous lifetimes (`'_`).
+    fn is_named(&self, _tcx: TyCtxt<'tcx>) -> bool {
+        self.is_named()
     }
 }
 
@@ -234,6 +120,24 @@ impl LateParamRegionKind {
             LateParamRegionKind::Named(id) => Some(id),
             _ => None,
         }
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::RegionName<TyCtxt<'tcx>> for LateParamRegionKind {
+    #[inline]
+    fn get_name(&self, tcx: TyCtxt<'tcx>) -> Option<Symbol> {
+        self.get_name(tcx)
+    }
+
+    #[inline]
+    fn is_named(&self, tcx: TyCtxt<'tcx>) -> bool {
+        self.is_named(tcx)
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::DefIdGetter<TyCtxt<'tcx>> for LateParamRegionKind {
+    fn get_def_id(self) -> Option<DefId> {
+        self.get_id()
     }
 }
 
