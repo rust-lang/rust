@@ -12,8 +12,9 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
     self as hir, Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind,
-    GenericBound, HirId, LoopSource, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind,
-    TyKind, WherePredicateKind, expr_needs_parens, is_range_literal,
+    GenericBound, GenericParam, GenericParamKind, GenericParamSource, HirId, LifetimeParamKind,
+    LoopSource, Node, ParamName, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind, TyKind,
+    WherePredicateKind, expr_needs_parens, is_range_literal,
 };
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
@@ -731,10 +732,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let suggestion = format!("impl Fn({inputs_str}){output_str}");
+        // collect all higher-ranked lifetimes
+        let hr_lifetimes = fn_ptr_ty
+            .generic_params
+            .iter()
+            .filter_map(|param| {
+                if let GenericParam {
+                    kind: GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit },
+                    source: GenericParamSource::Binder,
+                    name: ParamName::Plain(name),
+                    ..
+                } = param
+                {
+                    Some(name.as_str())
+                } else {
+                    None
+                }
+            })
+            .format(", ")
+            .to_string();
+
+        let for_clause = if !hr_lifetimes.is_empty() {
+            format!(" for<{}>", hr_lifetimes)
+        } else {
+            String::new()
+        };
+
+        let suggestion = format!("impl{for_clause} Fn({inputs_str}){output_str}");
         err.span_suggestion(
             ret_ty.span,
-            "change the return type to return a type-erased closure instead",
+            "consider changing the return type to a type-erased closure instead",
             suggestion,
             Applicability::MaybeIncorrect,
         );
