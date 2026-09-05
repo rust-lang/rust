@@ -915,11 +915,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         self.get_const_int(self.type_i8(), n)
     }
 
-    pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
-        let name = SmallCStr::new(name);
-        unsafe { llvm::LLVMGetNamedFunction((**self).borrow().llmod, name.as_ptr()) }
-    }
-
     pub(crate) fn get_md_kind_id(&self, name: &str) -> llvm::MetadataKindId {
         unsafe {
             llvm::LLVMGetMDKindIDInContext(
