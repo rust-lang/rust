@@ -22,7 +22,7 @@ use crate::solve::{
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
     self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex,
-    Region, RegionKind, TraitRef, search_graph,
+    Region, RegionKind, RegionVid, TraitRef, search_graph,
 };
 
 /// The central trait in the shared abstraction layer, specifying all implementation-specific
@@ -211,16 +211,31 @@ pub trait Interner:
     /// Do not uplift, the underlying types differ between r-a and rustc.
     ///
     /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
-    type EarlyParamRegion: ParamLike;
+    type EarlyParamRegion: ParamLike + RegionName<Self>;
     /// (2026/08/13)
     /// Do not uplift, the underlying types differ between r-a and rustc.
     ///
     /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
     #[cfg(feature = "nightly")]
-    type LateParamRegionKind: Clone + Copy + Debug + PartialEq + Eq + Hash + StableHash;
+    type LateParamRegionKind: Clone
+        + Copy
+        + Debug
+        + PartialEq
+        + Eq
+        + Hash
+        + StableHash
+        + DefIdGetter<Self>
+        + RegionName<Self>;
 
     #[cfg(not(feature = "nightly"))]
-    type LateParamRegionKind: Clone + Copy + Debug + PartialEq + Eq + Hash;
+    type LateParamRegionKind: Clone
+        + Copy
+        + Debug
+        + PartialEq
+        + Eq
+        + Hash
+        + DefIdGetter<Self>
+        + RegionName<Self>;
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
 
@@ -266,8 +281,11 @@ pub trait Interner:
         self,
         def_id: Self::LocalOpaqueTyId,
     ) -> ty::EarlyBinder<Self, Self::Ty>;
-    fn is_type_const(self, def_id: Self::DefId) -> bool;
-    fn const_of_item(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Const>;
+    fn is_direct_const(self, alias: ty::AliasConstKind<Self>) -> bool;
+    fn const_of_item(
+        self,
+        alias: ty::AliasConstKind<Self>,
+    ) -> Option<ty::EarlyBinder<Self, Self::Const>>;
     fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
     fn def_span(self, def_id: Self::DefId) -> Self::Span;
@@ -491,6 +509,7 @@ pub trait Interner:
     fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
+    fn span_delayed_bug(self, span: Self::Span, msg: impl ToString) -> Self::ErrorGuaranteed;
 
     fn is_general_coroutine(self, coroutine_def_id: Self::CoroutineId) -> bool;
     fn coroutine_is_async(self, coroutine_def_id: Self::CoroutineId) -> bool;
@@ -527,6 +546,8 @@ pub trait Interner:
     fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<Self>>;
 
     fn get_re_static_lifetime(self) -> Region<Self>;
+
+    fn intern_re_var(self, rv: RegionVid) -> Region<Self>;
 
     fn intern_region(self, region_kind: RegionKind<Self>) -> Region<Self>;
 

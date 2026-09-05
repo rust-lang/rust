@@ -65,7 +65,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, DocLinkResMap};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
 use rustc_index::IndexVec;
@@ -79,7 +79,6 @@ use rustc_target::spec::PanicStrategy;
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
-use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
 use crate::middle::dead_code::DeadCodeLivenessSummary;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -87,6 +86,9 @@ use crate::middle::deduced_param_attrs::DeducedParamAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
+use crate::middle::resolve::{
+    AstOwner, DocLinkResMap, ModChild, ResolverAstLowering, ResolverGlobalCtxt,
+};
 use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
 use crate::middle::stability::DeprecationEntry;
 use crate::mir::interpret::{
@@ -186,16 +188,16 @@ rustc_queries! {
         desc { "get the value of an environment variable" }
     }
 
-    query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
+    query resolutions(_: ()) -> &'tcx ResolverGlobalCtxt {
         desc { "getting the resolver outputs" }
     }
 
     query resolver_for_lowering_raw(_: ()) -> (
         // Those two fields are consumed by `index_ast`.
         // We want them to be eventually dropped after lowering.
-        &'tcx Steal<ty::ResolverAstLowering<'tcx>>,
+        &'tcx Steal<ResolverAstLowering<'tcx>>,
         &'tcx Steal<ast::Crate>,
-        &'tcx ty::ResolverGlobalCtxt,
+        &'tcx ResolverGlobalCtxt,
     ) {
         eval_always
         no_hash
@@ -206,8 +208,8 @@ rustc_queries! {
         // There is only a single `ResolverAstLowering` for all owners.
         // We want to drop it once the whole HIR has been lowered.
         // We rely on reference counting to know when all definitions have been stolen.
-        Arc<ty::ResolverAstLowering<'tcx>>,
-        ast::AstOwner,
+        Arc<ResolverAstLowering<'tcx>>,
+        AstOwner,
     )>> {
         arena_cache
         eval_always
@@ -279,14 +281,22 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Returns the const of the RHS of a (free or assoc) const item, if it is a `type const`.
+    /// Returns the const of the RHS of a (free or assoc) const item, if it is a `type const`, or if
+    /// it is a directly represented `const` (i.e. a const with a `direct_const_arg!` RHS, or a
+    /// const that `feature(macroless_generic_const_args)` has decided is direct).
     ///
     /// When a const item is used in a type-level expression, like in equality for an assoc const
     /// projection, this allows us to retrieve the typesystem-appropriate representation of the
     /// const value.
     ///
-    /// This query will ICE if given a const that is not marked with `type const`.
-    query const_of_item(def_id: DefId) -> ty::EarlyBinder<'tcx, ty::Const<'tcx>> {
+    /// Returns `None` if the constant does not have a directly represented RHS. This does not
+    /// necessarily mean the constant is invalid to use in the type system, as is the case for a
+    /// `type const` in a trait definition without a RHS.
+    ///
+    /// # Panics
+    ///
+    /// This query will panic if the given definition isn't a const item (free or associated const).
+    query const_of_item(def_id: DefId) -> Option<ty::EarlyBinder<'tcx, ty::Const<'tcx>>> {
         desc { "computing the type-level value for `{}`", tcx.def_path_str(def_id)  }
         cache_on_disk
         separate_provide_extern
@@ -2157,9 +2167,9 @@ rustc_queries! {
         desc { "listing captured lifetimes for opaque `{}`", tcx.def_path_str(def_id) }
     }
 
-    /// For an opaque type or trait associated type, return the list of potentially live
-    /// (identity) generic args from the set of outlives bounds on that alias. Callers should
-    /// instantiate the returned args with the concrete args of the alias.
+    /// For an opaque type or trait associated type, return the indices of potentially live
+    /// generic args from the set of outlives bounds on that alias. Callers should use the
+    /// indices with the concrete args of the alias.
     /// ```ignore (illustrative)
     /// // Edition 2024: all args are captured
     /// fn foo<'a, 'b, T: 'static>(&'a &'b T) -> impl Sized + 'a {}
@@ -2171,17 +2181,17 @@ rustc_queries! {
     ///   - `foo` outlives `'a`, but we know that `'b: 'a` holds, so `'b` is *also* potentially live
     ///     (and so is `T`, since `T: 'static` implies `T: 'a`)
     ///   - `bar` outlives `'static`, so we know that no args are potentially live and we can return an empty set
-    ///   - `baz` has no outlives bound, so return `None` and let the caller decide what to do
-    query live_args_for_alias_from_outlives_bounds(kind: ty::AliasTyKind<'tcx>) -> &'tcx Option<ty::EarlyBinder<'tcx, Vec<ty::GenericArg<'tcx>>>> {
+    ///   - `baz` has no outlives bound, so all args are potentially live
+    query live_args_for_alias_from_outlives_bounds(kind: ty::AliasTyKind<'tcx>) -> &'tcx rustc_index::bit_set::DenseBitSet<u32> {
         arena_cache
         desc { "identifying live args for alias `{:?}`", kind }
     }
 
-    /// For each region param of an alias, the identity args that are known to
+    /// For each region param of an alias, the indices of the identity args that are known to
     /// outlive it given only the alias's declared where-clauses. Used for liveness:
     /// these are the only args whose regions the underlying type of the alias
     /// could capture while satisfying an outlives bound on that param.
-    query args_known_to_outlive_alias_params(def_id: DefId) -> &'tcx ty::EarlyBinder<'tcx, Vec<(ty::Region<'tcx>, Vec<ty::GenericArg<'tcx>>)>> {
+    query args_known_to_outlive_alias_params(def_id: DefId) -> &'tcx Vec<(usize, rustc_index::bit_set::DenseBitSet<u32>)> {
         arena_cache
         desc { "computing the args known to outlive each region param of alias `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern

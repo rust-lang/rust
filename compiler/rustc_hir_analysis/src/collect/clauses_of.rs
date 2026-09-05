@@ -7,8 +7,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
 use rustc_middle::ty::{
-    self, GenericClauses, ImplTraitInTraitData, RegionExt, Ty, TyCtxt, TypeVisitable, TypeVisitor,
-    Upcast,
+    self, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
@@ -267,63 +266,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
     trace!(?clauses);
     // Add inline `<T: Foo>` bounds and bounds in the where clause.
     for predicate in hir_generics.predicates {
-        match predicate.kind {
-            hir::WherePredicateKind::BoundPredicate(bound_pred) => {
-                let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
-                let bound_vars = tcx.late_bound_vars(predicate.hir_id);
-
-                // This is a `where Ty:` (sic!).
-                if bound_pred.bounds.is_empty() {
-                    if let ty::Param(_) = ty.kind() {
-                        // We can skip the predicate because type parameters are trivially WF.
-                    } else {
-                        // Keep the type around in a dummy predicate. That way, it's not a complete
-                        // noop (see #53696) and `Ty` is still checked for WF.
-
-                        let span = bound_pred.bounded_ty.span;
-                        let clause = ty::Binder::bind_with_vars(
-                            ty::ClauseKind::WellFormed(ty.into()),
-                            bound_vars,
-                        );
-                        clauses.insert((clause.upcast(tcx), span));
-                    }
-                }
-
-                let mut bounds = Vec::new();
-                icx.lowerer().lower_bounds(
-                    ty,
-                    bound_pred.bounds,
-                    &mut bounds,
-                    bound_vars,
-                    PredicateFilter::All,
-                    OverlappingAsssocItemConstraints::Allowed,
-                );
-                clauses.extend(bounds);
-            }
-
-            hir::WherePredicateKind::RegionPredicate(region_pred) => {
-                let r1 = icx
-                    .lowerer()
-                    .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
-                clauses.extend(region_pred.bounds.iter().map(|bound| {
-                    let (r2, span) = match bound {
-                        hir::GenericBound::Outlives(lt) => (
-                            icx.lowerer().lower_lifetime(lt, RegionInferReason::RegionPredicate),
-                            lt.ident.span,
-                        ),
-                        bound => {
-                            span_bug!(
-                                bound.span(),
-                                "lifetime param bounds must be outlives, but found {bound:?}"
-                            )
-                        }
-                    };
-                    let clause =
-                        ty::ClauseKind::RegionOutlives(ty::OutlivesClause(r1, r2)).upcast(tcx);
-                    (clause, span)
-                }))
-            }
-        }
+        where_predicate_clauses(&icx, predicate, &mut clauses);
     }
 
     if tcx.features().generic_const_exprs() {
@@ -371,6 +314,70 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
     }
 
     ty::GenericClauses { parent: generics.parent, clauses: tcx.arena.alloc_from_iter(clauses) }
+}
+
+pub(super) fn where_predicate_clauses<'tcx>(
+    icx: &ItemCtxt<'tcx>,
+    predicate: &hir::WherePredicate<'_>,
+    clauses: &mut FxIndexSet<(ty::Clause<'tcx>, Span)>,
+) {
+    let tcx = icx.tcx;
+    match predicate.kind {
+        hir::WherePredicateKind::BoundPredicate(bound_pred) => {
+            let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
+            let bound_vars = tcx.late_bound_vars(predicate.hir_id);
+
+            // This is a `where Ty:` (sic!).
+            if bound_pred.bounds.is_empty() {
+                if let ty::Param(_) = ty.kind() {
+                    // We can skip the predicate because type parameters are trivially WF.
+                } else {
+                    // Keep the type around in a dummy predicate. That way, it's not a complete
+                    // noop (see #53696) and `Ty` is still checked for WF.
+
+                    let span = bound_pred.bounded_ty.span;
+                    let clause = ty::Binder::bind_with_vars(
+                        ty::ClauseKind::WellFormed(ty.into()),
+                        bound_vars,
+                    );
+                    clauses.insert((clause.upcast(tcx), span));
+                }
+            }
+
+            let mut bounds = Vec::new();
+            icx.lowerer().lower_bounds(
+                ty,
+                bound_pred.bounds,
+                &mut bounds,
+                bound_vars,
+                PredicateFilter::All,
+                OverlappingAsssocItemConstraints::Allowed,
+            );
+            clauses.extend(bounds);
+        }
+
+        hir::WherePredicateKind::RegionPredicate(region_pred) => {
+            let r1 = icx
+                .lowerer()
+                .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
+            clauses.extend(region_pred.bounds.iter().map(|bound| {
+                let (r2, span) = match bound {
+                    hir::GenericBound::Outlives(lt) => (
+                        icx.lowerer().lower_lifetime(lt, RegionInferReason::RegionPredicate),
+                        lt.ident.span,
+                    ),
+                    bound => {
+                        span_bug!(
+                            bound.span(),
+                            "lifetime param bounds must be outlives, but found {bound:?}"
+                        )
+                    }
+                };
+                let clause = ty::ClauseKind::RegionOutlives(ty::OutlivesClause(r1, r2)).upcast(tcx);
+                (clause, span)
+            }))
+        }
+    }
 }
 
 /// Opaques have duplicated lifetimes and we need to compute bidirectional outlives clauses to
@@ -444,7 +451,7 @@ fn const_evaluatable_clauses_of<'tcx>(
                 }
 
                 // Skip type consts as mGCA doesn't support evaluatable clauses.
-                if alias_const.kind.is_type_const(self.tcx) {
+                if alias_const.kind.is_direct_const(self.tcx) {
                     return;
                 }
 

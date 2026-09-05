@@ -1382,20 +1382,6 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-fn should_encode_const_of_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: DefKind) -> bool {
-    // AssocConst ==> assoc item has value
-    tcx.is_type_const(def_id)
-        && (!matches!(def_kind, DefKind::AssocConst { .. }) || assoc_item_has_value(tcx, def_id))
-}
-
-fn assoc_item_has_value<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    let assoc_item = tcx.associated_item(def_id);
-    match assoc_item.container {
-        ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
-        ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
-    }
-}
-
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
@@ -1632,7 +1618,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::AnonConst = def_kind {
                 record!(self.tables.anon_const_kind[def_id] <- self.tcx.anon_const_kind(def_id));
             }
-            if should_encode_const_of_item(self.tcx, def_id, def_kind) {
+            if let DefKind::Const { .. } | DefKind::AssocConst { .. } = def_kind {
                 record!(self.tables.const_of_item[def_id] <- self.tcx.const_of_item(def_id));
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)

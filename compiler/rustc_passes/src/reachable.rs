@@ -209,7 +209,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         }
                     }
                     // For `type const` we want to evaluate the RHS.
-                    hir::ItemKind::Const(_, _, _, init @ hir::ConstItemRhs::TypeConst(_)) => {
+                    hir::ItemKind::Const(_, _, _, init @ hir::ConstItemRhs::Direct(_)) => {
                         self.visit_const_item_rhs(init);
                     }
                     hir::ItemKind::Const(_, _, _, init) => {

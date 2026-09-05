@@ -85,7 +85,10 @@ pub mod stable_later {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules = "use stable path instead"]
+#[rustc_allowed_through_unstable_modules(
+    message = "use stable path instead",
+    module = "stable_module",
+)]
 pub mod stable_earlier1 {
     //@ has stability/stable_earlier1/struct.StableInUnstable.html \
     //      '//div[@class="main-heading"]//span[@class="since"]' '1.0.0'
