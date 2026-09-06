@@ -1576,53 +1576,123 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
     radix <= 16 && digits.len() <= size_of::<T>() * 2 - is_signed_ty as usize
 }
 
-/// Checks if all 8 bytes in `v` are ASCII decimal digits (`b'0'..=b'9'`).
+/// SIMD-within-a-register helpers for radix-10 parsing.
 ///
-/// Uses a SWAR (SIMD Within A Register) technique to check all 8 bytes
-/// without per-byte branching.
-#[cfg(not(target_pointer_width = "32"))]
-#[inline]
-const fn is_8digits(v: u64) -> bool {
-    let a = v.wrapping_add(0x4646_4646_4646_4646);
-    let b = v.wrapping_sub(0x3030_3030_3030_3030);
-    (a | b) & 0x8080_8080_8080_8080 == 0
-}
+/// Kept outside the integer-type macro so the SWAR implementation is not
+/// duplicated for every `FromStr` instantiation, and so it is only emitted
+/// for the types that actually dispatch here.
+mod decimal_swar {
+    use super::{IntErrorKind, ParseIntError};
 
-/// Parses 8 ASCII decimal digits packed in a u64 into a numeric value.
-///
-/// Uses a SWAR technique with 3 multiplications to convert 8 digits at once.
-/// The caller must ensure all 8 bytes are ASCII digits, e.g. via [`is_8digits`].
-#[cfg(not(target_pointer_width = "32"))]
-#[inline]
-const fn parse_8digits(v: u64) -> u64 {
-    let mut v = v;
-    v = (v & 0x0f0f_0f0f_0f0f_0f0f).wrapping_mul(2561) >> 8;
-    v = (v & 0x00ff_00ff_00ff_00ff).wrapping_mul(6_553_601) >> 16;
-    v = (v & 0x0000_ffff_0000_ffff).wrapping_mul(42_949_672_960_001) >> 32;
-    v
-}
+    /// Checks if all bytes in `v` are ASCII decimal digits (`b'0'..=b'9'`).
+    ///
+    /// For each byte `c`, two tests must both clear the high bit:
+    /// - `c + 0x46` overflows only when `c > 0xb9`, which is true for all
+    ///   non-digits above `'9'` (0x39) and false for digits `0x30..=0x39`.
+    ///   Adding `'F'` (0x46) maps `'0'..='9'` to `0x76..=0x7f`, all with
+    ///   the high bit clear.
+    /// - `c - '0'` (0x30) underflows only when `c < 0x30`, which is true
+    ///   for all non-digits below `'0'`.
+    ///
+    /// ORing the two results and testing the high bit catches any byte
+    /// that fails either test.
+    #[inline]
+    pub(super) const fn is_digits(v: usize) -> bool {
+        let a = v.wrapping_add(usize::repeat_u8(0x46));
+        let b = v.wrapping_sub(usize::repeat_u8(0x30));
+        (a | b) & usize::repeat_u8(0x80) == 0
+    }
 
-/// Checks if all 4 bytes in `v` are ASCII decimal digits (`b'0'..=b'9'`).
-///
-/// Same SWAR technique as `is_8digits` but for 32-bit registers, so it can
-/// be used on platforms where 64-bit operations are expensive.
-#[inline]
-const fn is_4digits(v: u32) -> bool {
-    let a = v.wrapping_add(0x4646_4646);
-    let b = v.wrapping_sub(0x3030_3030);
-    (a | b) & 0x8080_8080 == 0
-}
+    /// Parses 8 ASCII decimal digits packed in a u64 into a numeric value.
+    ///
+    /// The caller must ensure all 8 bytes are ASCII digits, e.g. via [`is_digits`].
+    #[cfg(not(target_pointer_width = "32"))]
+    #[inline]
+    pub(super) const fn parse_8digits(v: u64) -> u64 {
+        let mut v = v;
+        v = (v & 0x0f0f_0f0f_0f0f_0f0f).wrapping_mul(2561) >> 8;
+        v = (v & 0x00ff_00ff_00ff_00ff).wrapping_mul(6_553_601) >> 16;
+        v = (v & 0x0000_ffff_0000_ffff).wrapping_mul(42_949_672_960_001) >> 32;
+        v
+    }
 
-/// Parses 4 ASCII decimal digits packed in a u32 into a numeric value.
-///
-/// Uses a SWAR technique with 2 multiplications to convert 4 digits at once.
-/// The caller must ensure all 4 bytes are ASCII digits, e.g. via [`is_4digits`].
-#[inline]
-const fn parse_4digits(v: u32) -> u32 {
-    let mut v = v;
-    v = (v & 0x0f0f_0f0f).wrapping_mul(2561) >> 8;
-    v = (v & 0x00ff_00ff).wrapping_mul(6_553_601) >> 16;
-    v
+    /// Parses 4 ASCII decimal digits packed in a u32 into a numeric value.
+    ///
+    /// The caller must ensure all 4 bytes are ASCII digits, e.g. via [`is_digits`].
+    #[cfg(target_pointer_width = "32")]
+    #[inline]
+    pub(super) const fn parse_4digits(v: u32) -> u32 {
+        let mut v = v;
+        v = (v & 0x0f0f_0f0f).wrapping_mul(2561) >> 8;
+        v = (v & 0x00ff_00ff).wrapping_mul(6_553_601) >> 16;
+        v
+    }
+
+    /// Parses up to 16 leading decimal digits in batches, returning the
+    /// accumulated result and the remaining digits.
+    ///
+    /// The arithmetic is done in `i64` so the same code works for `u64`,
+    /// `i64`, `u128` and `i128`. 16 decimal digits can never overflow
+    /// `i64`/`u64`, so the batch arithmetic is safe to run unchecked even
+    /// in debug builds.
+    #[cfg(not(target_pointer_width = "32"))]
+    #[inline]
+    pub(super) const fn parse_decimal_i64(
+        is_positive: bool,
+        mut result: i64,
+        mut digits: &[u8],
+    ) -> Result<(i64, &[u8]), ParseIntError> {
+        let mut remaining = 16;
+
+        while remaining >= 8 {
+            let [a, b, c, d, e, f, g, h, rest @ ..] = digits else { break };
+            let chunk = u64::from_le_bytes([*a, *b, *c, *d, *e, *f, *g, *h]);
+            if !is_digits(chunk as usize) {
+                return Err(ParseIntError { kind: IntErrorKind::InvalidDigit });
+            }
+            let parsed = parse_8digits(chunk) as i64;
+            result = result.wrapping_mul(100_000_000);
+            if is_positive {
+                result = result.wrapping_add(parsed);
+            } else {
+                result = result.wrapping_sub(parsed);
+            }
+            digits = rest;
+            remaining -= 8;
+        }
+
+        Ok((result, digits))
+    }
+
+    #[cfg(target_pointer_width = "32")]
+    #[inline]
+    pub(super) const fn parse_decimal_i64(
+        is_positive: bool,
+        mut result: i64,
+        mut digits: &[u8],
+    ) -> Result<(i64, &[u8]), ParseIntError> {
+        // 32-bit platforms avoid 64-bit multiplication, so use 4-digit batches.
+        let mut remaining = 16;
+
+        while remaining >= 4 {
+            let [a, b, c, d, rest @ ..] = digits else { break };
+            let chunk = u32::from_le_bytes([*a, *b, *c, *d]);
+            if !is_digits(chunk as usize) {
+                return Err(ParseIntError { kind: IntErrorKind::InvalidDigit });
+            }
+            let parsed = parse_4digits(chunk) as i64;
+            result = result.wrapping_mul(10_000);
+            if is_positive {
+                result = result.wrapping_add(parsed);
+            } else {
+                result = result.wrapping_sub(parsed);
+            }
+            digits = rest;
+            remaining -= 4;
+        }
+
+        Ok((result, digits))
+    }
 }
 
 #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
@@ -1637,9 +1707,37 @@ const fn from_ascii_bytes_radix_panic(radix: u32) -> ! {
     )
 }
 
-macro_rules! from_str_int_impl {
-    ($signedness:ident $($int_ty:ty)+) => {$(
-        #[stable(feature = "rust1", since = "1.0.0")]
+macro_rules! define_swar_min_len {
+    ($int_ty:ty, true) => {
+        const SWAR_MIN_LEN: usize = 16;
+    };
+    ($int_ty:ty, false) => {};
+}
+
+macro_rules! maybe_define_swar {
+    ($int_ty:ty, true) => {
+        /// Parses up to 16 leading radix-10 digits in batches.
+        ///
+        /// This thin wrapper dispatches to `decimal_swar`, which lives outside
+        /// the per-type macro so its body is not duplicated for types that
+        /// never reach it.
+        #[inline]
+        pub(super) const fn swar_parse_decimal(
+            is_positive: bool,
+            result: $int_ty,
+            digits: &[u8],
+        ) -> Result<($int_ty, &[u8]), ParseIntError> {
+            match decimal_swar::parse_decimal_i64(is_positive, result as i64, digits) {
+                Ok((r, rest)) => Ok((r as $int_ty, rest)),
+                Err(e) => Err(e),
+            }
+        }
+    };
+    ($int_ty:ty, false) => {};
+}
+
+macro_rules! from_str_int_impl_inner {
+    ($signedness:ident $int_ty:ty, $swar:tt) => {        #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         const impl FromStr for $int_ty {
             type Err = ParseIntError;
@@ -1858,32 +1956,20 @@ macro_rules! from_str_int_impl {
 
                 // SWAR fast path: process leading decimal digits in
                 // batches using SIMD-within-a-register. Only radix 10 and
-                // only types of more than 4 bytes (u32 max is 10 digits, so
-                // for smaller types this whole branch is dead code).
+                // only for types of at least 8 bytes; smaller types use the
+                // no-SWAR macro arm and never see this code.
                 //
                 // We never batch more than 16 leading digits: that many
-                // decimal digits can never overflow `$int_ty`, so the batch
-                // arithmetic is safe to run unchecked even in debug builds.
-                //
-                // In the no-overflow branch, batching can only fire for
-                // inputs that exactly fill the bound (u64, 16 digits); the
-                // tail is then empty. In the checked branch, the batch
-                // shrinks the input and the remaining digits are validated
-                // by the checked loop, which still catches overflow for
-                // inputs longer than the type's range.
-                //
-                // On 64-bit+ platforms, use 8-digit batches (u64). On
-                // 32-bit platforms, u64 multiplication is emulated and
-                // slower than the per-byte loop, so only use 4-digit
-                // batches (u32).
-                let swar_min_len = if size_of::<$int_ty>() <= 4 {
-                    usize::MAX
-                } else {
-                    16
-                };
+                // decimal digits can never overflow `u64`/`u128`, so the
+                // batch arithmetic is safe to run unchecked even in debug
+                // builds. The tail after the batches is validated by the
+                // checked loop, which still catches overflow for inputs
+                // longer than the type's range.
+                define_swar_min_len!($int_ty, $swar);
+
                 macro_rules! run_swar {
-                    () => {{
-                        if radix == 10 && digits.len() >= swar_min_len {
+                    (true) => {{
+                        if radix == 10 && digits.len() >= SWAR_MIN_LEN {
                             match Self::swar_parse_decimal(is_positive, result, digits) {
                                 Ok((r, rest)) => {
                                     result = r;
@@ -1893,6 +1979,7 @@ macro_rules! from_str_int_impl {
                             }
                         }
                     }};
+                    (false) => {{}};
                 }
 
                 macro_rules! run_unchecked_loop {
@@ -1942,7 +2029,7 @@ macro_rules! from_str_int_impl {
                         run_unchecked_loop!(-)
                     };
                 } else {
-                    run_swar!();
+                    run_swar!($swar);
                     if is_positive {
                         run_checked_loop!(checked_add, PosOverflow)
                     } else {
@@ -1952,74 +2039,21 @@ macro_rules! from_str_int_impl {
                 Ok(result)
             }
 
-            /// SWAR (SIMD-within-a-register) helper for radix-10 parsing.
-            /// Parses up to 16 leading decimal digits in 8- and 4-digit
-            /// batches, returning the accumulated result and the remaining
-            /// digits. The caller then runs the checked loop on the tail.
-            ///
-            /// Batches are bounded so the unchecked batch arithmetic can
-            /// never overflow `$int_ty`, even in debug builds.
-            ///
-            /// Must stay inlinable (`#[inline]`, not outlined): an out-of-line
-            /// call here, even though it is only reachable on the long-input
-            /// path, makes LLVM set up a stack frame in the hot caller and
-            /// measurably slows short inputs that never reach the SWAR path.
-            #[inline]
-            pub(super) const fn swar_parse_decimal(
-                is_positive: bool,
-                mut result: $int_ty,
-                mut digits: &[u8],
-            ) -> Result<($int_ty, &[u8]), ParseIntError> {
-                use self::IntErrorKind::*;
-                use self::ParseIntError as PIE;
-
-                let mut remaining = match size_of::<$int_ty>() {
-                    1 => 0,
-                    2 => 4,
-                    4 => 8,
-                    _ => 16,
-                };
-
-                #[cfg(not(target_pointer_width = "32"))]
-                while remaining >= 8 {
-                    let [a, b, c, d, e, f, g, h, rest @ ..] = digits else { break };
-                    let chunk = u64::from_le_bytes([*a, *b, *c, *d, *e, *f, *g, *h]);
-                    if !is_8digits(chunk) {
-                        return Err(PIE { kind: InvalidDigit });
-                    }
-                    let parsed = parse_8digits(chunk) as $int_ty;
-                    result = result * (100_000_000u32 as $int_ty);
-                    if is_positive {
-                        result = result + parsed;
-                    } else {
-                        result = result - parsed;
-                    }
-                    digits = rest;
-                    remaining -= 8;
-                }
-
-                while remaining >= 4 {
-                    let [a, b, c, d, rest @ ..] = digits else { break };
-                    let chunk = u32::from_le_bytes([*a, *b, *c, *d]);
-                    if !is_4digits(chunk) {
-                        return Err(PIE { kind: InvalidDigit });
-                    }
-                    let parsed = parse_4digits(chunk) as $int_ty;
-                    result = result * (10_000u32 as $int_ty);
-                    if is_positive {
-                        result = result + parsed;
-                    } else {
-                        result = result - parsed;
-                    }
-                    digits = rest;
-                    remaining -= 4;
-                }
-
-                Ok((result, digits))
-            }
+            maybe_define_swar!($int_ty, $swar);
         }
-    )*}
+    };
 }
 
-from_str_int_impl! { signed isize i8 i16 i32 i64 i128 }
-from_str_int_impl! { unsigned usize u8 u16 u32 u64 u128 }
+macro_rules! from_str_int_impl {
+    ($signedness:ident $($int_ty:ty)+) => {
+        $( from_str_int_impl_inner! { $signedness $int_ty, true } )+
+    };
+    ($signedness:ident @no_swar $($int_ty:ty)+) => {
+        $( from_str_int_impl_inner! { $signedness $int_ty, false } )+
+    };
+}
+
+from_str_int_impl! { signed i64 i128 }
+from_str_int_impl! { signed @no_swar isize i8 i16 i32 }
+from_str_int_impl! { unsigned u64 u128 }
+from_str_int_impl! { unsigned @no_swar usize u8 u16 u32 }
