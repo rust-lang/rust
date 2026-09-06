@@ -27,7 +27,8 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, ExternalRegionConstraints, Goal,
-    NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
+    NestedNormalizationGoals, QueryInput, RawExternalConstraintsData, Response,
+    VisibleForLeakCheck, inspect,
 };
 
 pub mod canonicalizer;
@@ -56,7 +57,7 @@ pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
-    hidden_types_of_opaques: &[(I::Ty, ty::OpaqueHiddenTyBound<I>)],
+    opaque_hidden_type_bounds: &[(I::Ty, ty::OpaqueHiddenTyBound<I>)],
     typing_mode: TypingMode<I>,
 ) -> (ThinVec<I::GenericArg>, I::CanonicalInput)
 where
@@ -70,7 +71,7 @@ where
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
             hidden_types_of_opaques_in_body: delegate
                 .cx()
-                .mk_opaque_hidden_ty_bounds_in_body(hidden_types_of_opaques),
+                .mk_opaque_hidden_ty_bounds_in_body(opaque_hidden_type_bounds),
         },
     );
 
@@ -84,13 +85,21 @@ where
 pub(super) fn canonicalize_response<D, I>(
     delegate: &D,
     max_input_universe: ty::UniverseIndex,
-    value: Response<I>,
+    var_values: CanonicalVarValues<I>,
+    certainty: Certainty,
+    external_constraints: RawExternalConstraintsData<I>,
 ) -> ty::Canonical<I, Response<I>>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    Canonicalizer::canonicalize_query_response(delegate, max_input_universe, value)
+    Canonicalizer::canonicalize_query_response(
+        delegate,
+        max_input_universe,
+        var_values,
+        certainty,
+        external_constraints,
+    )
 }
 
 /// After calling a canonical query, we apply the constraints returned
@@ -123,7 +132,7 @@ where
     let ExternalConstraintsData {
         region_constraints,
         opaque_types,
-        hidden_types_of_opaques,
+        opaque_hidden_type_bounds,
         normalization_nested_goals,
     } = &*external_constraints;
 
@@ -145,8 +154,8 @@ where
             delegate.register_solver_region_constraint(r.clone(), span)
         }
     };
-    register_new_opaque_types(delegate, opaque_types, span);
-    delegate.add_opaque_hidden_ty_bounds_in_storage(hidden_types_of_opaques);
+    register_new_opaque_types(delegate, opaque_types.as_slice(), span);
+    delegate.add_opaque_hidden_ty_bounds_in_storage(opaque_hidden_type_bounds.as_slice());
 
     (normalization_nested_goals.clone(), certainty)
 }

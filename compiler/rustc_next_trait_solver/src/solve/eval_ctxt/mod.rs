@@ -24,7 +24,7 @@ use rustc_type_ir::{
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
 
-use super::has_only_region_constraints_or_opaque_hidden_ty_bounds;
+use super::{RawExternalConstraintsData, has_only_region_constraints_or_opaque_hidden_ty_bounds};
 use crate::canonical::{
     canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
     response_no_constraints_raw,
@@ -41,10 +41,9 @@ use crate::solve::fast_path::compute_goal_fast_path_cold;
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT, Goal,
-    GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
-    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
-    VisibleForLeakCheck, inspect,
+    CanonicalResponse, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluation, GoalSource,
+    GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause, NestedNormalizationGoals,
+    NoSolution, QueryInput, QueryResult, SucceededInErased, VisibleForLeakCheck, inspect,
 };
 
 pub mod fast_path;
@@ -1722,16 +1721,16 @@ where
             });
         }
 
-        external_constraints.hidden_types_of_opaques.retain(|(hidden_ty, _)| hidden_ty.is_ty_var());
+        external_constraints
+            .opaque_hidden_type_bounds
+            .retain(|(hidden_ty, _)| hidden_ty.is_ty_var());
 
         let canonical = canonicalize_response(
             self.delegate,
             self.max_input_universe,
-            Response {
-                var_values,
-                certainty,
-                external_constraints: self.cx().mk_external_constraints(external_constraints),
-            },
+            var_values,
+            certainty,
+            external_constraints,
         );
 
         Ok(canonical)
@@ -1765,7 +1764,7 @@ where
         &self,
         certainty: Certainty,
         normalization_nested_goals: NestedNormalizationGoals<I>,
-    ) -> ExternalConstraintsData<I> {
+    ) -> RawExternalConstraintsData<I> {
         // We only return region constraints once the certainty is `Yes`. This
         // is necessary as we may drop nested goals on ambiguity, which may result
         // in unconstrained inference variables in the region constraints. It also
@@ -1799,17 +1798,17 @@ where
         // to the `var_values`.
         let initial_entries = &self.initial_opaque_types_storage_num_entries;
         let opaque_types = self.delegate.clone_opaque_types_added_since(initial_entries);
-        let hidden_types_of_opaques =
+        let opaque_hidden_type_bounds =
             self.delegate.clone_opaque_hidden_ty_bounds_added_since(initial_entries);
 
         if self.typing_mode().is_erased_not_coherence() {
-            assert!(opaque_types.is_empty() && hidden_types_of_opaques.is_empty());
+            assert!(opaque_types.is_empty() && opaque_hidden_type_bounds.is_empty());
         }
 
-        ExternalConstraintsData {
+        RawExternalConstraintsData {
             region_constraints,
             opaque_types,
-            hidden_types_of_opaques,
+            opaque_hidden_type_bounds,
             normalization_nested_goals,
         }
     }
