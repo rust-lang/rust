@@ -2871,7 +2871,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [round_ties_even_f16, [a]]
+      - FnCall: [round_ties_even, [a]]
 
 
   - name: "vrnda{neon_type.no}"
@@ -2920,7 +2920,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [roundf16, [a], []]
+      - FnCall: [round, [a], []]
 
   - name: "vrndn{neon_type.no}"
     doc: "Floating-point round to integral, to nearest with ties to even"
@@ -3020,7 +3020,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [floorf16, [a], []]
+      - FnCall: [floor, [a], []]
 
 
 
@@ -3069,7 +3069,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [ceilf16, [a], []]
+      - FnCall: [ceil, [a], []]
 
   - name: "vrnd{neon_type.no}"
     doc: "Floating-point round to integral, toward zero"
@@ -3116,7 +3116,7 @@ intrinsics:
     types:
       - [f16, 'h_']
     compose:
-      - FnCall: [truncf16, [a], []]
+      - FnCall: [trunc, [a], []]
 
 
   - name: "vrndi{neon_type.no}"

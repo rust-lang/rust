@@ -311,9 +311,7 @@ macro_rules! float_impl {
         $fma_fn:ident,
         $fma_intrinsic:ident,
         $floor_fn:ident,
-        $floor_intrinsic:ident,
-        $roundeven_fn:ident,
-        $roundeven_intrinsic:ident
+        $roundeven_fn:ident
     ) => {
         impl Float for $ty {
             type Int = $ity;
@@ -447,7 +445,7 @@ macro_rules! float_impl {
             fn floor(self) -> Self {
                 cfg_select_nofmt! {
                     intrinsics_enabled => {
-                        core::intrinsics::$floor_intrinsic(self)
+                        core::intrinsics::floor(self)
                     }
                     _ => {
                         super::super::$floor_fn(self)
@@ -457,7 +455,7 @@ macro_rules! float_impl {
             fn roundeven(self) -> Self {
                 cfg_select_nofmt! {
                     intrinsics_enabled => {
-                        core::intrinsics::$roundeven_intrinsic(self)
+                        core::intrinsics::round_ties_even(self)
                     }
                     _ => {
                         super::super::$roundeven_fn(self)
@@ -484,9 +482,7 @@ float_impl!(
     fmaf16,
     fmaf16,
     floorf16,
-    floorf16,
-    roundevenf16,
-    round_ties_even_f16
+    roundevenf16
 );
 float_impl!(
     f32,
@@ -499,9 +495,7 @@ float_impl!(
     fmaf,
     fmaf32,
     floorf,
-    floorf32,
-    roundevenf,
-    round_ties_even_f32
+    roundevenf
 );
 float_impl!(
     f64,
@@ -514,9 +508,7 @@ float_impl!(
     fma,
     fmaf64,
     floor,
-    floorf64,
-    roundeven,
-    round_ties_even_f64
+    roundeven
 );
 #[cfg(f128_enabled)]
 float_impl!(
@@ -530,9 +522,7 @@ float_impl!(
     fmaf128,
     fmaf128,
     floorf128,
-    floorf128,
-    roundevenf128,
-    round_ties_even_f128
+    roundevenf128
 );
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */
