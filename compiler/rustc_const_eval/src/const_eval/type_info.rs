@@ -3,7 +3,6 @@ mod adt;
 use std::borrow::Cow;
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_ast::Mutability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
@@ -134,23 +133,14 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                                 self.project_downcast_named(&field_dest, sym::Str)?;
                             variant
                         }
-                        ty::Ref(_, ty, mutability) => {
-                            let (variant, variant_place) =
+                        ty::Ref(_, _, _) => {
+                            let (variant, _) =
                                 self.project_downcast_named(&field_dest, sym::Reference)?;
-                            let reference_place =
-                                self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            self.write_reference_type_info(reference_place, *ty, *mutability)?;
-
                             variant
                         }
-                        ty::RawPtr(ty, mutability) => {
-                            let (variant, variant_place) =
+                        ty::RawPtr(_, _) => {
+                            let (variant, _variant_place) =
                                 self.project_downcast_named(&field_dest, sym::Pointer)?;
-                            let pointer_place =
-                                self.project_field(&variant_place, FieldIdx::ZERO)?;
-
-                            self.write_pointer_type_info(pointer_place, *ty, *mutability)?;
-
                             variant
                         }
                         ty::Dynamic(predicates, region) => {
@@ -160,16 +150,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             self.write_dyn_trait_type_info(dyn_place, *predicates, *region)?;
                             variant
                         }
-                        ty::FnPtr(sig, fn_header) => {
-                            let (variant, variant_place) =
+                        ty::FnPtr(_, _) => {
+                            let (variant, _) =
                                 self.project_downcast_named(&field_dest, sym::FnPtr)?;
-                            let fn_ptr_place =
-                                self.project_field(&variant_place, FieldIdx::ZERO)?;
-
-                            // FIXME: handle lifetime bounds
-                            let sig = sig.skip_binder();
-
-                            self.write_fn_ptr_type_info(fn_ptr_place, &sig, fn_header)?;
                             variant
                         }
                         ty::Foreign(_)
@@ -301,31 +284,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         interp_ok(())
     }
 
-    pub(crate) fn write_reference_type_info(
-        &mut self,
-        place: impl Writeable<'tcx, CtfeProvenance>,
-        ty: Ty<'tcx>,
-        mutability: Mutability,
-    ) -> InterpResult<'tcx> {
-        // Iterate over all fields of `type_info::Reference`.
-        for (field_idx, field) in
-            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
-        {
-            let field_place = self.project_field(&place, field_idx)?;
-
-            match field.name {
-                // Write the `TypeId` of the reference's inner type to the `ty` field.
-                sym::pointee => self.write_type_id(ty, &field_place)?,
-                // Write the boolean representing the reference's mutability to the `mutable` field.
-                sym::mutable => {
-                    self.write_scalar(Scalar::from_bool(mutability.is_mut()), &field_place)?
-                }
-                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
-            }
-        }
-        interp_ok(())
-    }
-
     pub(crate) fn write_type_id_generics(
         &mut self,
         place: &impl Writeable<'tcx, CtfeProvenance>,
@@ -383,7 +341,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             let field_place = self.project_field(&place, field_idx)?;
 
             match field.name {
-                sym::unsafety => {
+                sym::is_unsafe => {
                     self.write_scalar(Scalar::from_bool(!fn_sig_kind.is_safe()), &field_place)?;
                 }
                 sym::abi => match fn_sig_kind.abi() {
@@ -437,32 +395,6 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         ),
                         &field_place,
                     )?;
-                }
-                other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
-            }
-        }
-
-        interp_ok(())
-    }
-
-    pub(crate) fn write_pointer_type_info(
-        &mut self,
-        place: impl Writeable<'tcx, CtfeProvenance>,
-        ty: Ty<'tcx>,
-        mutability: Mutability,
-    ) -> InterpResult<'tcx> {
-        // Iterate over all fields of `type_info::Pointer`.
-        for (field_idx, field) in
-            place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
-        {
-            let field_place = self.project_field(&place, field_idx)?;
-
-            match field.name {
-                // Write the `TypeId` of the pointer's inner type to the `ty` field.
-                sym::pointee => self.write_type_id(ty, &field_place)?,
-                // Write the boolean representing the pointer's mutability to the `mutable` field.
-                sym::mutable => {
-                    self.write_scalar(Scalar::from_bool(mutability.is_mut()), &field_place)?
                 }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }
