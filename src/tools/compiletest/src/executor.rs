@@ -12,11 +12,11 @@ use std::num::NonZero;
 use std::sync::{Arc, mpsc};
 use std::{env, hint, mem, panic, thread};
 
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::common::{Config, Debugger, TestPaths};
 use crate::output_capture::{self, ConsoleOut};
-use crate::panic_hook;
+use crate::{error, help, panic_hook};
 
 mod deadline;
 mod json;
@@ -287,9 +287,21 @@ fn filter_tests(opts: &Config, tests: Vec<CollectedTest>) -> Vec<CollectedTest> 
         }
     };
 
-    // Remove tests that don't match the test filter
+    // Remove tests that don't match the test filter, tracking which filters matched
+    // so that filters matching nothing can be reported.
     if !opts.filters.is_empty() {
-        filtered.retain(|test| opts.filters.iter().any(|filter| matches_filter(test, filter)));
+        let mut matched = vec![false; opts.filters.len()];
+        filtered.retain(|test| {
+            let mut keep = false;
+            for (filter, matched) in opts.filters.iter().zip(&mut matched) {
+                if matches_filter(test, filter) {
+                    *matched = true;
+                    keep = true;
+                }
+            }
+            keep
+        });
+        check_filters_matched(opts, &matched);
     }
 
     // Skip tests that match any of the skip filters
@@ -298,6 +310,58 @@ fn filter_tests(opts: &Config, tests: Vec<CollectedTest>) -> Vec<CollectedTest> 
     }
 
     filtered
+}
+
+/// Errors if a filter matched no tests but names a file that exists inside the test
+/// suite, which is almost always a mistake: only .rs files are collected as tests, so
+/// `./x test tests/ui/some-test.stderr` would otherwise run zero tests and report
+/// success. See <https://github.com/rust-lang/rust/issues/126601>.
+///
+/// A filter that matches nothing and names no existing file is left alone.
+fn check_filters_matched(opts: &Config, matched: &[bool]) {
+    for (filter, matched) in opts.filters.iter().zip(matched) {
+        if *matched {
+            continue;
+        }
+
+        let filter = Utf8Path::new(filter);
+        if !opts.src_test_suite_root.join(filter).is_file() {
+            continue;
+        }
+
+        match explain_not_a_test(filter) {
+            Some(explanation) => {
+                error!("`{filter}` is not a test");
+                help!("{explanation}");
+            }
+            None => {
+                error!("`{filter}` exists, but did not match any tests");
+            }
+        }
+        panic!("test filter matched no tests");
+    }
+}
+
+/// Explains why a file that exists inside a test suite is not itself a test.
+///
+/// Returns `None` if there is no explanation more specific than "it matched nothing".
+pub(crate) fn explain_not_a_test(filter: &Utf8Path) -> Option<String> {
+    if filter.components().any(|component| component.as_str() == "auxiliary") {
+        return Some(
+            "files in `auxiliary` directories are support files for other tests, \
+             not tests themselves"
+                .to_string(),
+        );
+    }
+
+    if filter.extension().is_some_and(|extension| extension != "rs") {
+        return Some(format!(
+            "only `.rs` files are tests; did you mean `{}`?",
+            filter.with_extension("rs")
+        ));
+    }
+
+    None
 }
 
 /// Determines the number of tests to run concurrently.

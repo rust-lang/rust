@@ -1,6 +1,8 @@
+use camino::Utf8Path;
 use semver::Version;
 
 use crate::debuggers::{LldbVersion, extract_gdb_version, extract_lldb_version};
+use crate::executor::explain_not_a_test;
 use crate::is_test;
 
 #[test]
@@ -94,4 +96,17 @@ fn string_enums() {
     // Invalid conversions
     let animal = "nya".parse::<Animal>();
     assert_eq!("unknown `Animal` variant: `nya`", animal.unwrap_err());
+}
+
+#[test]
+fn explain_not_a_test_paths() {
+    let explain = |path: &str| explain_not_a_test(Utf8Path::new(path));
+
+    assert!(explain("parser/foo.stderr").unwrap().contains("did you mean `parser/foo.rs`?"));
+    assert!(explain("foo.fixed").unwrap().contains("did you mean `foo.rs`?"));
+
+    // Auxiliary files are real `.rs` files that are still never collected as tests.
+    assert!(explain("mgca/auxiliary/non_local_const.rs").unwrap().contains("auxiliary"));
+
+    assert_eq!(explain("parser/foo.rs"), None);
 }
