@@ -85,6 +85,27 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>),
 ) -> AllocId {
+    let ptrauth_assert_not_c_abi_fn_ptr = |instance: ty::Instance<'tcx>| {
+        if tcx.sess.pointer_authentication_fn_ptr_type_discrimination() {
+            let sig = tcx
+                .instantiate_and_normalize_erasing_regions(
+                    instance.args,
+                    ty::TypingEnv::fully_monomorphized(),
+                    tcx.fn_sig(instance.def_id()),
+                )
+                .skip_binder();
+
+            assert!(
+                !matches!(
+                    sig.abi(),
+                    rustc_abi::ExternAbi::C { .. } | rustc_abi::ExternAbi::System { .. }
+                ),
+                "vtable entry unexpectedly has a C ABI function pointer type: {:?}",
+                instance
+            );
+        }
+    };
+
     let (ty, poly_trait_ref) = key;
 
     let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
@@ -123,6 +144,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
             VtblEntry::MetadataDropInPlace => {
                 if ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
                     let instance = ty::Instance::resolve_drop_glue(tcx, ty);
+                    ptrauth_assert_not_c_abi_fn_ptr(instance);
                     let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
                     let fn_ptr = Pointer::from(fn_alloc_id);
                     Scalar::from_pointer(fn_ptr, &tcx)
@@ -134,6 +156,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
             VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size),
             VtblEntry::Vacant => continue,
             VtblEntry::Method(instance) => {
+                ptrauth_assert_not_c_abi_fn_ptr(instance);
                 // Prepare the fn ptr we write into the vtable.
                 let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
                 let fn_ptr = Pointer::from(fn_alloc_id);
