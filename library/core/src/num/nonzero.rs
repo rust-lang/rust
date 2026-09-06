@@ -1249,9 +1249,17 @@ macro_rules! nonzero_integer {
                     " `+` "
                 }
             }]
-            /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
-            /// also represent an error.
+            /// sign followed by only digits.
+            ///
+            /// # Errors
+            ///
+            /// Leading and trailing non-digit characters (including whitespace) represent an error.
+            /// Underscores (which are accepted in Rust literals) also represent an error.
+            ///
+            /// # See also
+            ///
+            /// For parsing numbers in other bases, such as binary or hexadecimal,
+            /// see [`from_ascii_bytes_radix`][Self::from_ascii_bytes_radix].
             ///
             /// # Examples
             ///
@@ -1298,9 +1306,7 @@ macro_rules! nonzero_integer {
                     " `+` "
                 }
             }]
-            /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
-            /// also represent an error.
+            /// sign followed by only digits.
             ///
             /// Digits are a subset of these characters, depending on `radix`:
             ///
@@ -1308,9 +1314,19 @@ macro_rules! nonzero_integer {
             /// - `a-z`
             /// - `A-Z`
             ///
+            /// # Errors
+            ///
+            /// Leading and trailing non-digit characters (including whitespace) represent an error.
+            /// Underscores (which are accepted in Rust literals) also represent an error.
+            ///
             /// # Panics
             ///
             /// This method panics if `radix` is not in the range from 2 to 36.
+            ///
+            /// # See also
+            ///
+            /// If the characters to be parsed is in base 10 (decimal),
+            /// [`from_ascii_bytes`][Self::from_ascii_bytes] can also be used.
             ///
             /// # Examples
             ///
@@ -1370,9 +1386,7 @@ macro_rules! nonzero_integer {
                     " `+` "
                 }
             }]
-            /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
-            /// also represent an error.
+            /// sign followed by only digits.
             ///
             /// Digits are a subset of these characters, depending on `radix`:
             ///
@@ -1380,9 +1394,19 @@ macro_rules! nonzero_integer {
             /// - `a-z`
             /// - `A-Z`
             ///
+            /// # Errors
+            ///
+            /// Leading and trailing non-digit characters (including whitespace) represent an error.
+            /// Underscores (which are accepted in Rust literals) also represent an error.
+            ///
             /// # Panics
             ///
             /// This method panics if `radix` is not in the range from 2 to 36.
+            ///
+            /// # See also
+            ///
+            /// If the string to be parsed is in base 10 (decimal),
+            /// [`from_str`][Self::from_str] or [`str::parse`] can also be used.
             ///
             /// # Examples
             ///
@@ -1414,6 +1438,52 @@ macro_rules! nonzero_integer {
         #[stable(feature = "nonzero_parse", since = "1.35.0")]
         impl FromStr for NonZero<$Int> {
             type Err = ParseIntError;
+
+            /// Parses a non-zero integer from a string slice with decimal digits.
+            ///
+            /// The characters are expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits.
+            ///
+            /// # Errors
+            ///
+            /// Leading and trailing non-digit characters (including whitespace) represent an error.
+            /// Underscores (which are accepted in Rust literals) also represent an error.
+            ///
+            /// # See also
+            ///
+            /// For parsing numbers in other bases, such as binary or hexadecimal,
+            /// see [`from_str_radix`][Self::from_str_radix].
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # use std::num::NonZero;
+            /// use std::str::FromStr;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_str(\"+10\"), Ok(NonZero::new(10)?));")]
+            /// # Some(())
+            /// # }
+            /// ```
+            ///
+            /// Trailing space returns error:
+            ///
+            /// ```
+            /// # use std::num::NonZero;
+            /// # use std::str::FromStr;
+            /// #
+            #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_str(\"1 \").is_err());")]
+            /// ```
             fn from_str(src: &str) -> Result<Self, Self::Err> {
                 Self::from_str_radix(src, 10)
             }
