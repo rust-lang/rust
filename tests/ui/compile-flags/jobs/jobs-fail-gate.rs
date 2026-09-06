@@ -1,4 +1,4 @@
-//@ revisions: a b c d e f
+//@ revisions: a b c d e f g
 
 //@[a] compile-flags: -j 2
 //@[b] compile-flags: --jobs 2
@@ -13,5 +13,8 @@
 
 //@[f] compile-flags: --jobs-linker 2
 //[f]~? RAW the `-Z unstable-options` flag must also be passed to enable the flag `jobs-linker`
+
+//@[g] compile-flags: --reproducible=yes
+//[g]~? RAW the `-Z unstable-options` flag must also be passed to enable the flag `reproducible`
 
 fn main() {}
