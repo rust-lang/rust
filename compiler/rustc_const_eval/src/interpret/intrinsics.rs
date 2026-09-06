@@ -612,10 +612,32 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::maximumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::Maximum, dest)?,
 
-            sym::copysignf16 => self.float_copysign_intrinsic::<Half>(args, dest)?,
-            sym::copysignf32 => self.float_copysign_intrinsic::<Single>(args, dest)?,
-            sym::copysignf64 => self.float_copysign_intrinsic::<Double>(args, dest)?,
-            sym::copysignf128 => self.float_copysign_intrinsic::<Quad>(args, dest)?,
+            sym::copysign => {
+                let arg1 = self.read_immediate(&args[0])?;
+                let arg2 = self.read_immediate(&args[1])?;
+                let ty::Float(float_ty) = arg1.layout.ty.kind() else {
+                    span_bug!(
+                        self.cur_span(),
+                        "non-float type for float intrinsic: {}",
+                        arg1.layout.ty,
+                    );
+                };
+                let out_val = match float_ty {
+                    FloatTy::F16 => {
+                        self.binop_float_intrinsic::<Half>(intrinsic_name, arg1, arg2)?
+                    }
+                    FloatTy::F32 => {
+                        self.binop_float_intrinsic::<Single>(intrinsic_name, arg1, arg2)?
+                    }
+                    FloatTy::F64 => {
+                        self.binop_float_intrinsic::<Double>(intrinsic_name, arg1, arg2)?
+                    }
+                    FloatTy::F128 => {
+                        self.binop_float_intrinsic::<Quad>(intrinsic_name, arg1, arg2)?
+                    }
+                };
+                self.write_scalar(out_val, dest)?;
+            }
 
             sym::fabs => {
                 let arg = self.read_immediate(&args[0])?;
@@ -1207,6 +1229,24 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
+    fn binop_float_intrinsic<F>(
+        &self,
+        name: Symbol,
+        arg1: ImmTy<'tcx, M::Provenance>,
+        arg2: ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = arg1.to_scalar().to_float()?;
+        let y: F = arg2.to_scalar().to_float()?;
+        match name {
+            // bitwise, no NaN adjustments
+            sym::copysign => interp_ok(x.copy_sign(y).into()),
+            _ => bug!("not a unary float intrinsic: {}", name),
+        }
+    }
+
     fn float_minmax<F>(
         &self,
         a: Scalar<M::Provenance>,
@@ -1247,21 +1287,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let res =
             self.float_minmax::<F>(self.read_scalar(&args[0])?, self.read_scalar(&args[1])?, op)?;
         self.write_scalar(res, dest)?;
-        interp_ok(())
-    }
-
-    fn float_copysign_intrinsic<F>(
-        &mut self,
-        args: &[OpTy<'tcx, M::Provenance>],
-        dest: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, ()>
-    where
-        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
-    {
-        let a: F = self.read_scalar(&args[0])?.to_float()?;
-        let b: F = self.read_scalar(&args[1])?.to_float()?;
-        // bitwise, no NaN adjustments
-        self.write_scalar(a.copy_sign(b), dest)?;
         interp_ok(())
     }
 

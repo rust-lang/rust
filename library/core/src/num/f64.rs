@@ -1800,7 +1800,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn copysign(self, sign: f64) -> f64 {
-        intrinsics::copysignf64(self, sign)
+        intrinsics::copysign(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.

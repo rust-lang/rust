@@ -75,8 +75,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::maximumf32 => return float_intrinsic(cx, cx.type_f32(), "fmaximumf"),
         sym::maximumf64 => return float_intrinsic(cx, cx.type_f64(), "fmaximum"),
         sym::maximumf128 => return float_intrinsic(cx, cx.type_f128(), "fmaximumf128"),
-        sym::copysignf32 => "copysignf",
-        sym::copysignf64 => "copysign",
         sym::floorf32 => "floorf",
         sym::floorf64 => "floor",
         sym::ceilf32 => "ceilf",
@@ -101,31 +99,30 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     name: Symbol,
 ) -> Function<'gcc> {
     let f128_type = cx.type_f128();
-    let func_name = match name {
-        sym::ceilf128 => "ceilf128",
-        sym::cos => "cosf128",
-        sym::fabs => "fabsf128",
-        sym::exp => "expf128",
-        sym::exp2 => "exp2f128",
-        sym::floorf128 => "floorf128",
-        sym::log => "logf128",
-        sym::log2 => "log2f128",
-        sym::log10 => "log10f128",
-        sym::truncf128 => "truncf128",
-        sym::roundf128 => "roundf128",
-        sym::round_ties_even_f128 => "roundevenf128",
-        sym::sin => "sinf128",
-        sym::sqrtf128 => "sqrtf128",
-        _ => span_bug!(span, "used get_simple_function_f128 for non-unary f128 intrinsic"),
+    let (func_name, args): (&str, &[gccjit::Type<'_>]) = match name {
+        sym::copysign => ("copysignf128", &[f128_type, f128_type]),
+        sym::ceilf128 => ("ceilf128", &[f128_type]),
+        sym::cos => ("cosf128", &[f128_type]),
+        sym::fabs => ("fabsf128", &[f128_type]),
+        sym::exp => ("expf128", &[f128_type]),
+        sym::exp2 => ("exp2f128", &[f128_type]),
+        sym::floorf128 => ("floorf128", &[f128_type]),
+        sym::log => ("logf128", &[f128_type]),
+        sym::log2 => ("log2f128", &[f128_type]),
+        sym::log10 => ("log10f128", &[f128_type]),
+        sym::truncf128 => ("truncf128", &[f128_type]),
+        sym::roundf128 => ("roundf128", &[f128_type]),
+        sym::round_ties_even_f128 => ("roundevenf128", &[f128_type]),
+        sym::sin => ("sinf128", &[f128_type]),
+        sym::sqrtf128 => ("sqrtf128", &[f128_type]),
+        _ => span_bug!(span, "used get_simple_function_f128 for unsupported f128 intrinsic"),
     };
-    cx.context.new_function(
-        None,
-        FunctionType::Extern,
-        f128_type,
-        &[cx.context.new_parameter(None, f128_type, "a")],
-        func_name,
-        false,
-    )
+    let args: Vec<_> = args
+        .iter()
+        .enumerate()
+        .map(|(index, typ)| cx.context.new_parameter(None, *typ, format!("param{}", index)))
+        .collect();
+    cx.context.new_function(None, FunctionType::Extern, f128_type, &args, func_name, false)
 }
 
 fn f16_builtin<'gcc, 'tcx>(
@@ -136,7 +133,7 @@ fn f16_builtin<'gcc, 'tcx>(
     let f32_type = cx.type_f32();
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
-        sym::copysignf16 => "__builtin_copysignf",
+        sym::copysign => "__builtin_copysignf",
         sym::cos => "cosf",
         sym::exp => "expf",
         sym::exp2 => "exp2f",
@@ -216,7 +213,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 )
             }
             sym::ceilf16
-            | sym::copysignf16
             | sym::floorf16
             | sym::powf16
             | sym::roundf16
@@ -232,25 +228,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 if self.cx.supports_f128_type =>
             {
                 let func = get_simple_function_f128(span, self, name);
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
-            sym::copysignf128 if self.cx.supports_f128_type => {
-                let f128_type = self.cx.type_f128();
-                let func = self.cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    f128_type,
-                    &[
-                        self.cx.context.new_parameter(None, f128_type, "a"),
-                        self.cx.context.new_parameter(None, f128_type, "b"),
-                    ],
-                    "copysignf128",
-                    false,
-                );
                 self.cx.context.new_call(
                     self.location,
                     func,
@@ -412,20 +389,24 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     }
                 }
             }
-            sym::fabs
+            sym::copysign
+            | sym::fabs
             | sym::exp
             | sym::exp2
             | sym::log
             | sym::log10
             | sym::log2
             | sym::sin
-            | sym::cos => 'float_unop: {
+            | sym::cos => 'float_op: {
                 let ty = args[0].layout.ty;
                 let ty::Float(float_ty) = *ty.kind() else {
-                    span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
+                    span_bug!(span, "expected float type for {:?} intrinsic: {:?}", name, ty);
                 };
                 use ty::FloatTy::*;
                 let func = match (name, float_ty) {
+                    (sym::copysign, F32) => self.context.get_builtin_function("copysignf"),
+                    (sym::copysign, F64) => self.context.get_builtin_function("copysign"),
+
                     (sym::fabs, F32) => self.context.get_builtin_function("fabsf"),
                     (sym::fabs, F64) => self.context.get_builtin_function("fabs"),
 
@@ -452,7 +433,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                     (_, F32 | F64) => unreachable!(),
 
-                    (_, F16) => break 'float_unop f16_builtin(self, name, args),
+                    (_, F16) => break 'float_op f16_builtin(self, name, args),
                     (_, F128) => {
                         if !self.cx.supports_f128_type {
                             // Fall back to default body
