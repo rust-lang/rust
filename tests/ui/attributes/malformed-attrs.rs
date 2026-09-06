@@ -198,6 +198,7 @@ mod yooo {
 
 #[non_exhaustive = 1]
 //~^ ERROR malformed
+//~^^ WARN `#[non_exhaustive]` has no effect on an unreachable item
 enum Slenum {
 
 }

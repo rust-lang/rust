@@ -354,6 +354,8 @@ impl TypeId {
     /// get the name of an enum variant or check whether it is non_exhaustive.
     ///
     /// ```
+    /// # #![allow(unused_attributes)]
+    ///
     /// #![feature(type_info)]
     /// use std::any::TypeId;
     ///

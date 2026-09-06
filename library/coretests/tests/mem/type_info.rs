@@ -82,6 +82,7 @@ fn test_structs() {
     }
 
     const {
+        #[expect(unused_attributes)]
         #[non_exhaustive]
         struct NonExhaustive {
             a: u8,
@@ -168,6 +169,7 @@ fn test_enums() {
         enum E {
             Some(u32),
             None,
+            #[expect(unused_attributes)]
             #[non_exhaustive]
             Foomp {
                 a: (),
