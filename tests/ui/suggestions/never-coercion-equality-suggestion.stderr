@@ -1,0 +1,91 @@
+error[E0308]: mismatched types
+  --> $DIR/never-coercion-equality-suggestion.rs:10:8
+   |
+LL |     if value = diverging() {}
+   |        ^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if value == diverging() {}
+   |               +
+
+error[E0308]: mismatched types
+  --> $DIR/never-coercion-equality-suggestion.rs:16:8
+   |
+LL |     if value = diverging() {}
+   |        ^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if value == diverging() {}
+   |               +
+
+error[E0308]: mismatched types
+  --> $DIR/never-coercion-equality-suggestion.rs:21:8
+   |
+LL |     if flag && flag = diverging() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if flag && flag == diverging() {}
+   |                      +
+
+error[E0308]: mismatched types
+  --> $DIR/never-coercion-equality-suggestion.rs:24:8
+   |
+LL |     if flag || flag = diverging() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if flag || flag == diverging() {}
+   |                      +
+
+error[E0308]: mismatched types
+  --> $DIR/never-coercion-equality-suggestion.rs:29:8
+   |
+LL |     if value = diverging() && flag {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if value == diverging() && flag {}
+   |               +
+
+error[E0308]: mismatched types
+  --> $DIR/never-coercion-equality-suggestion.rs:32:8
+   |
+LL |     if value = diverging() || flag {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if value == diverging() || flag {}
+   |               +
+
+error[E0308]: mismatched types
+  --> $DIR/never-coercion-equality-suggestion.rs:38:8
+   |
+LL |     if value = String::new() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if value == String::new() {}
+   |               +
+
+error[E0308]: mismatched types
+  --> $DIR/never-coercion-equality-suggestion.rs:44:8
+   |
+LL |     if left = right {}
+   |        ^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if left == right {}
+   |              +
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
