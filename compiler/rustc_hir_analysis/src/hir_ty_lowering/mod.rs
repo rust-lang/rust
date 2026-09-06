@@ -3308,7 +3308,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     hir_ty.span,
-                    true,
+                    ty::IncludingSized::Yes,
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
                 self_ty

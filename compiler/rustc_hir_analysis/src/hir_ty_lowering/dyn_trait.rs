@@ -86,7 +86,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .collect::<Vec<_>>(),
             ImpliedBoundsContext::AssociatedTypeOrImplTrait,
             span,
-            false,
+            ty::IncludingSized::No,
         );
         // self.add_implicit_move_bound(
         //     &mut user_written_bounds,

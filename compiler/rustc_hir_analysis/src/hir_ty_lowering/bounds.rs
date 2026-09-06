@@ -10,8 +10,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{PolyTraitRef, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, Upcast,
+    self as ty, IncludingSized, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw};
 use rustc_trait_selection::traits;
@@ -146,7 +146,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_bounds: &[hir::GenericBound<'_>],
         context: ImpliedBoundsContext<'_>,
         span: Span,
-        including_sized: bool,
+        including_sized: IncludingSized,
     ) {
         // Skip adding any default bounds if `#![rustc_no_implicit_bounds]`
         if find_attr!(self.tcx(), crate, RustcNoImplicitBounds) {
@@ -155,9 +155,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         self.add_implicit_move_bound(bounds, self_ty, hir_bounds, context, span);
         self.add_default_traits(bounds, self_ty, hir_bounds, context, span);
-        if including_sized {
-            self.add_implicit_sizedness_bounds(bounds, self_ty, hir_bounds, context, span);
-        }
+        match including_sized {
+            IncludingSized::Yes => {
+                self.add_implicit_sizedness_bounds(bounds, self_ty, hir_bounds, context, span)
+            }
+            IncludingSized::No => (),
+        };
     }
 
     /// Adds sizedness bounds to a trait, trait alias, parameter, opaque type or associated type.

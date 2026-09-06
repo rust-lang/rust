@@ -61,7 +61,7 @@ fn associated_type_bounds<'tcx>(
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                    true,
+                    ty::IncludingSized::Yes,
                 );
 
                 // Also collect `where Self::Assoc: Trait` from the parent trait's where clauses.
@@ -382,7 +382,7 @@ fn opaque_type_bounds<'tcx>(
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                    true,
+                    ty::IncludingSized::Yes,
                 );
             }
             //`ConstIfConst` is only interested in `[const]` bounds.

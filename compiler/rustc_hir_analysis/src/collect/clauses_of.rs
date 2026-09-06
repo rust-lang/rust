@@ -214,7 +214,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
             self_bounds,
             ImpliedBoundsContext::TraitDef(def_id),
             span,
-            true,
+            ty::IncludingSized::Yes,
         );
         clauses.extend(bounds);
     }
@@ -247,7 +247,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
                     &[],
                     ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
-                    true,
+                    ty::IncludingSized::Yes,
                 );
                 trace!(?bounds);
                 clauses.extend(bounds);
@@ -697,7 +697,7 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
                 superbounds,
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
-                true,
+                ty::IncludingSized::Yes,
             );
         }
         //`ConstIfConst` is only interested in `[const]` bounds.
@@ -993,7 +993,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                             &[],
                             ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                             param.span,
-                            true,
+                            ty::IncludingSized::Yes,
                         );
                     }
                     hir::GenericParamKind::Lifetime { .. }
