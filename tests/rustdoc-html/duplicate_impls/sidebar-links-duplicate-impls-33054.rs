@@ -10,6 +10,7 @@
 //@ has foo/impls/bar/trait.Bar.html
 //@ has - '//h3[@class="code-header"]' 'impl Bar for Foo'
 //@ count - '//*[@class="struct"]' 1
+#[path = "auxiliary/impls.rs"]
 pub mod impls;
 
 #[doc(inline)]
