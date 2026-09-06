@@ -1586,16 +1586,24 @@ mod decimal_swar {
 
     /// Checks if all bytes in `v` are ASCII decimal digits (`b'0'..=b'9'`).
     ///
-    /// For each byte `c`, two tests must both clear the high bit:
-    /// - `c + 0x46` overflows only when `c > 0xb9`, which is true for all
-    ///   non-digits above `'9'` (0x39) and false for digits `0x30..=0x39`.
-    ///   Adding `'F'` (0x46) maps `'0'..='9'` to `0x76..=0x7f`, all with
-    ///   the high bit clear.
-    /// - `c - '0'` (0x30) underflows only when `c < 0x30`, which is true
-    ///   for all non-digits below `'0'`.
+    /// The per-byte range test is turned into a high-bit test so that all
+    /// bytes are checked with a single branch:
     ///
-    /// ORing the two results and testing the high bit catches any byte
-    /// that fails either test.
+    /// - `c - b'0'` wraps around, setting the high bit, for every byte
+    ///   below `'0'` (and for `0xb0..=0xff`, see below).
+    /// - For the upper bound we need a constant `k` with `'9' + k < 0x80`
+    ///   and `':' + k >= 0x80`, so that a single bit separates the last
+    ///   digit from the first non-digit above it. `0x7f - 0x39 = 0x46` is
+    ///   the unique such constant: `'9' + 0x46 = 0x7f` and `':' + 0x46 =
+    ///   0x80`. (Adding `'9'` itself would put `':'` at 0x73 with the
+    ///   high bit still clear, and the test would never fire.)
+    ///
+    /// The addition flags `0x3a..=0xb9`; past that the sum wraps past
+    /// `0x100`, which leaves the high bit clear again, but those bytes
+    /// are caught by the subtraction (`c - b'0' >= 0x80`). Between the
+    /// two tests every non-digit byte is flagged and no digit ever is.
+    ///
+    /// This is the same check `dec2flt`'s `is_8digits` performs.
     #[inline]
     pub(super) const fn is_digits(v: usize) -> bool {
         let a = v.wrapping_add(usize::repeat_u8(0x46));
@@ -1603,9 +1611,27 @@ mod decimal_swar {
         (a | b) & usize::repeat_u8(0x80) == 0
     }
 
-    /// Parses 8 ASCII decimal digits packed in a u64 into a numeric value.
+    /// Parses 8 ASCII decimal digits packed in a `u64` into their numeric
+    /// value (little-endian: the first digit is the least significant
+    /// byte).
     ///
-    /// The caller must ensure all 8 bytes are ASCII digits, e.g. via [`is_digits`].
+    /// Three multiply-shift steps fold neighboring groups together. A
+    /// step that merges groups of `g` digits multiplies by
+    /// `10^g * 2^(8g) + 1`, which adds each group's value to the group
+    /// above it times `10^g`; the shift slides the results down, and the
+    /// masks keep only the cleanly merged groups (the multiplies also
+    /// leave overlapping garbage in between):
+    ///
+    /// - `& 0x0f` strips the `0x3` high nibble of each ASCII digit,
+    ///   leaving groups of one digit each,
+    /// - `* 2561 >> 8` (`2561 = 10 * 256 + 1`) leaves two-digit values,
+    /// - `* 6_553_601 >> 16` (`= 100 * 65_536 + 1`) leaves four-digit
+    ///   values,
+    /// - `* 42_949_672_960_001 >> 32` (`= 10_000 * 2^32 + 1`) leaves the
+    ///   final eight-digit value.
+    ///
+    /// The caller must ensure all 8 bytes are ASCII digits, e.g. via
+    /// [`is_digits`].
     #[cfg(not(target_pointer_width = "32"))]
     #[inline]
     pub(super) const fn parse_8digits(v: u64) -> u64 {
@@ -1616,9 +1642,18 @@ mod decimal_swar {
         v
     }
 
-    /// Parses 4 ASCII decimal digits packed in a u32 into a numeric value.
+    /// Parses 4 ASCII decimal digits packed in a `u32` into their numeric
+    /// value (little-endian: the first digit is the least significant
+    /// byte).
     ///
-    /// The caller must ensure all 4 bytes are ASCII digits, e.g. via [`is_digits`].
+    /// The same folding scheme as [`parse_8digits`], stopped one step
+    /// early since only four digits are needed: `& 0x0f` strips the `0x3`
+    /// high nibble of each ASCII digit, `* 2561 >> 8` (`2561 =
+    /// 10 * 256 + 1`) leaves two-digit values, and `* 6_553_601 >> 16`
+    /// (`= 100 * 65_536 + 1`) leaves the four-digit value.
+    ///
+    /// The caller must ensure all 4 bytes are ASCII digits, e.g. via
+    /// [`is_digits`].
     #[cfg(target_pointer_width = "32")]
     #[inline]
     pub(super) const fn parse_4digits(v: u32) -> u32 {
