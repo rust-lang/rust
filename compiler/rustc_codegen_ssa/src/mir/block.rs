@@ -1644,9 +1644,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::Goto { target } => {
-                helper.funclet_br(self, bx, target, mergeable_succ(), &terminator.attributes)
-            }
+            mir::TerminatorKind::Goto { target } => helper.funclet_br(
+                self,
+                bx,
+                target,
+                mergeable_succ(),
+                terminator.attributes.as_ref().map(|v| v.as_slice()).unwrap_or_default(),
+            ),
 
             mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {
                 self.codegen_switchint_terminator(helper, bx, discr, targets);
