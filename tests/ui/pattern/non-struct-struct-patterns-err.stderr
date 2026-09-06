@@ -1,0 +1,117 @@
+error[E0308]: mismatched types
+  --> $DIR/non-struct-struct-patterns-err.rs:7:9
+   |
+LL |     match 3_i32 {
+   |           ----- this expression has type `i32`
+LL |         u64 { .. } => x += 1,
+   |         ^^^^^^^^^^ expected `i32`, found `u64`
+
+error[E0308]: mismatched types
+  --> $DIR/non-struct-struct-patterns-err.rs:12:9
+   |
+LL |     match "hello world" {
+   |           ------------- this expression has type `&str`
+LL |         char { .. } => x += 1,
+   |         ^^^^^^^^^^^ expected `str`, found `char`
+
+error[E0308]: mismatched types
+  --> $DIR/non-struct-struct-patterns-err.rs:19:9
+   |
+LL |     match (false,) {
+   |           -------- this expression has type `(bool,)`
+LL |         Unit { .. } => x += 1,
+   |         ^^^^^^^^^^^ expected `(bool,)`, found `()`
+   |
+   = note:  expected tuple `(bool,)`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/non-struct-struct-patterns-err.rs:24:10
+   |
+LL |     match &3_i32 {
+   |           ------ this expression has type `&i32`
+LL |         &&&&i32 { .. } => x += 1,
+   |          ^^^^^^^^^^^^^ expected `i32`, found `&_`
+   |
+   = note:   expected type `i32`
+           found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/non-struct-struct-patterns-err.rs:29:9
+   |
+LL |     match Some(false) {
+   |           ----------- this expression has type `Option<bool>`
+LL |         Result { .. } => x += 1,
+   |         ^^^^^^^^^^^^^ expected `Option<bool>`, found `Result<_, _>`
+   |
+   = note: expected enum `Option<bool>`
+              found enum `Result<_, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/non-struct-struct-patterns-err.rs:35:13
+   |
+LL |     fn foo<T, U>(input: T, input_2: U, x: &mut usize) {
+   |            -  - found type parameter
+   |            |
+   |            expected type parameter
+LL |         match input {
+   |               ----- this expression has type `T`
+LL |             U { .. } => *x += 1,
+   |             ^^^^^^^^ expected type parameter `T`, found type parameter `U`
+   |
+   = note: expected type parameter `T`
+              found type parameter `U`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+
+error[E0308]: mismatched types
+  --> $DIR/non-struct-struct-patterns-err.rs:40:13
+   |
+LL |     fn foo<T, U>(input: T, input_2: U, x: &mut usize) {
+   |            -  - expected type parameter
+   |            |
+   |            found type parameter
+...
+LL |         match input_2 {
+   |               ------- this expression has type `U`
+LL |             T { .. } => *x += 1,
+   |             ^^^^^^^^ expected type parameter `U`, found type parameter `T`
+   |
+   = note: expected type parameter `U`
+              found type parameter `T`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+
+error[E0308]: mismatched types
+  --> $DIR/non-struct-struct-patterns-err.rs:52:17
+   |
+LL |     trait Trait {
+   |     ----------- expected this type parameter
+...
+LL |             match self {
+   |                   ---- this expression has type `&Self`
+LL |                 Self::Assoc { .. } => *x += 1,
+   |                 ^^^^^^^^^^^^^^^^^^ expected type parameter `Self`, found associated type
+   |
+   = note: expected type parameter `Self`
+             found associated type `<Self as main::Trait>::Assoc`
+   = note: you might be missing a type parameter or trait bound
+
+error[E0308]: mismatched types
+  --> $DIR/non-struct-struct-patterns-err.rs:57:17
+   |
+LL |     trait Trait {
+   |     ----------- found this type parameter
+...
+LL |             match assoc {
+   |                   ----- this expression has type `<Self as main::Trait>::Assoc`
+LL |                 Self { .. } => *x += 1,
+   |                 ^^^^^^^^^^^ expected associated type, found type parameter `Self`
+   |
+   = note: expected associated type `<Self as main::Trait>::Assoc`
+               found type parameter `Self`
+   = note: you might be missing a type parameter or trait bound
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

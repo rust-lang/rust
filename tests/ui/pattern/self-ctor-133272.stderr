@@ -6,7 +6,7 @@ LL |         let S { ref Self } = todo!();
    |             |
    |             while parsing the fields for this pattern
 
-error[E0422]: cannot find struct, variant or union type `S` in this scope
+error[E0425]: cannot find type or enum variant `S` in this scope
   --> $DIR/self-ctor-133272.rs:17:13
    |
 LL |         let S { ref Self } = todo!();
@@ -14,4 +14,4 @@ LL |         let S { ref Self } = todo!();
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0422`.
+For more information about this error, try `rustc --explain E0425`.
