@@ -349,7 +349,7 @@ impl SingleAttributeParser for RustcEditionRedirectParser {
     const PATH: &[Symbol] = &[sym::rustc_edition_redirect];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Use)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "2024");
-    const STABILITY: AttributeStability = unstable!(edition_redirect);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let value = cx.expect_name_value(args, cx.attr_span, Some(sym::rustc_edition_redirect))?;

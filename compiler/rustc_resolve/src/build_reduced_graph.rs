@@ -12,13 +12,13 @@ use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, DUMMY_NODE_ID, Delegation,
     DelegationSource, Fn, ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem,
-    StmtKind, TraitAlias, TyAlias,
+    StmtKind, TraitAlias, TyAlias, attr,
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, EditionRedirect, MacroUseArgs};
+use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -29,7 +29,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{CRATE_MOD_ID, ModId};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::{Ident, Span, Symbol, kw, sym};
-use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -40,10 +39,10 @@ use crate::imports::{ImportData, ImportKind, NameResolution, NameResolutionRef};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
-    BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
-    ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind, ModuleOrUniformRoot,
-    ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used, VisResolutionError,
-    diagnostics,
+    BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, EditionRedirectDecl,
+    ExternModule, ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind,
+    ModuleOrUniformRoot, ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used,
+    VisResolutionError, diagnostics,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -401,32 +400,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Record primary definitions.
         let mut define_extern = |ns| {
             let orig_ident_span = orig_ident.span;
-            let edition_redirects = if edition_redirects.is_empty() {
-                // Fast path when there are no edition redirects.
-                &[]
-            } else {
-                let edition_redirects = edition_redirects
-                    .iter()
-                    .map(|redirect| crate::EditionRedirectDecl {
-                        edition: redirect.edition,
-                        // Model this as a one-step reexport under the original
-                        // child's name: the target supplies the resolution, while
-                        // the child supplies its visibility and provenance.
-                        target: self.arenas.alloc_decl(DeclData {
-                            kind: DeclKind::Def(redirect.target.expect_non_local()),
-                            ambiguity: CmCell::new(None),
-                            initial_vis: vis,
-                            ambiguity_vis_max: CmCell::new(None),
-                            ambiguity_vis_min: CmCell::new(None),
-                            span,
-                            expansion,
-                            parent_module: Some(parent.to_module()),
-                            edition_redirects: &[],
-                        }),
-                    })
-                    .collect::<SmallVec<[_; 1]>>();
-                self.arenas.alloc_edition_redirects(&edition_redirects)
-            };
+            let edition_redirects = edition_redirects
+                .iter()
+                .map(|redirect| EditionRedirectDecl {
+                    edition: redirect.edition,
+                    // Model this as a one-step reexport under the original child's name: the
+                    // target supplies the resolution, while the child supplies its visibility,
+                    // span, and parent module.
+                    target: self.arenas.alloc_decl(DeclData {
+                        kind: DeclKind::Def(redirect.target.expect_non_local()),
+                        ambiguity: CmCell::new(None),
+                        initial_vis: vis,
+                        ambiguity_vis_max: CmCell::new(None),
+                        ambiguity_vis_min: CmCell::new(None),
+                        span,
+                        expansion,
+                        parent_module: Some(parent.to_module()),
+                    }),
+                })
+                .collect::<Box<[_]>>();
             let decl = self.arenas.alloc_decl(DeclData {
                 kind: DeclKind::Def(res),
                 ambiguity: CmCell::new(ambig),
@@ -436,10 +428,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 span,
                 expansion,
                 parent_module: Some(parent.to_module()),
-                edition_redirects,
             });
-            let resolution =
-                self.arenas.alloc_name_resolution(NameResolution::new(Some(decl), orig_ident_span));
+            let resolution = self.arenas.alloc_name_resolution(NameResolution::new(
+                Some(decl),
+                edition_redirects,
+                orig_ident_span,
+            ));
 
             let key =
                 BindingKey::new_disambiguated(ident, ns, || (child_index + 1).try_into().unwrap());
@@ -571,12 +565,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         root_span: Span,
         root_id: NodeId,
         vis: Visibility,
-        edition_redirect: Option<EditionRedirect>,
     ) {
         let current_module = self.parent_scope.module.expect_local();
         let import = self.r.arenas.alloc_import(ImportData {
             kind,
-            edition_redirect,
             parent_scope: self.parent_scope,
             module_path,
             imported_module: CmCell::new(None),
@@ -593,13 +585,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
         self.r.indeterminate_imports.push((import, None, 0));
         match import.kind {
-            ImportKind::Single { target, .. } => {
+            ImportKind::Single { target, edition_redirect, .. } => {
                 // Don't add underscore imports to `single_imports`
                 // because they cannot define any usable names.
                 //
                 // Same with edition redirects: these redirects are attached to
                 // an existing name and don't introduce one themselves.
-                if target.name != kw::Underscore && import.edition_redirect.is_none() {
+                if target.name != kw::Underscore && edition_redirect.is_none() {
                     self.r.per_ns_mut(|this, ns| {
                         let key = BindingKey::new(IdentKey::new(target), ns);
                         this.resolution_or_default(current_module.to_module(), key, target.span)
@@ -756,17 +748,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     return;
                 }
 
-                let kind = ImportKind::Single {
-                    source: source.ident,
-                    target: ident,
-                    decls: Default::default(),
-                    nested,
-                    id,
-                    def_id: feed.def_id(),
-                };
-
                 let edition_redirect = if !nested
-                    && ast::attr::contains_name(&item.attrs, sym::rustc_edition_redirect)
+                    && attr::contains_name(&item.attrs, sym::rustc_edition_redirect)
                     && let Some(Attribute::Parsed(AttributeKind::RustcEditionRedirect(redirect))) =
                         AttributeParser::parse_limited_sym(
                             self.r.tcx.sess,
@@ -778,31 +761,23 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     None
                 };
 
-                self.add_import(
-                    module_path,
-                    kind,
-                    use_tree.span(),
-                    item,
-                    root_span,
-                    item.id,
-                    vis,
+                let kind = ImportKind::Single {
+                    source: source.ident,
+                    target: ident,
+                    decls: Default::default(),
+                    nested,
                     edition_redirect,
-                );
+                    id,
+                    def_id: feed.def_id(),
+                };
+
+                self.add_import(module_path, kind, use_tree.span(), item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Glob(_) => {
                 if !ast::attr::contains_name(&item.attrs, sym::prelude_import) {
                     let kind =
                         ImportKind::Glob { max_vis: CmCell::new(None), id, def_id: feed.def_id() };
-                    self.add_import(
-                        prefix,
-                        kind,
-                        use_tree.span(),
-                        item,
-                        root_span,
-                        item.id,
-                        vis,
-                        None,
-                    );
+                    self.add_import(prefix, kind, use_tree.span(), item, root_span, item.id, vis);
                 } else {
                     // Resolve the prelude import early.
                     let path_res =
@@ -1104,7 +1079,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 id: item.id,
                 def_id: local_def_id,
             },
-            edition_redirect: None,
             root_id: item.id,
             parent_scope,
             imported_module: CmCell::new(module),
@@ -1237,7 +1211,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let macro_use_import = |this: &Self, span, warn_private| {
             this.r.arenas.alloc_import(ImportData {
                 kind: ImportKind::MacroUse { warn_private },
-                edition_redirect: None,
                 root_id: item.id,
                 parent_scope: this.parent_scope,
                 imported_module: CmCell::new(Some(ModuleOrUniformRoot::Module(module))),
@@ -1416,7 +1389,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             if is_macro_export {
                 let import = self.r.arenas.alloc_import(ImportData {
                     kind: ImportKind::MacroExport,
-                    edition_redirect: None,
                     root_id: item.id,
                     parent_scope: ParentScope {
                         module: self.r.graph_root.to_module(),

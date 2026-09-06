@@ -1,4 +1,4 @@
-#![feature(allow_internal_unstable, edition_redirect, staged_api)]
+#![feature(allow_internal_unstable, rustc_attrs, staged_api)]
 #![stable(feature = "edition_redirect_stability", since = "1.0.0")]
 
 #[doc(hidden)]

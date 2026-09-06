@@ -38,10 +38,10 @@ use crate::diagnostics::{
 };
 use crate::ref_mut::{CmCell, CmRefCell};
 use crate::{
-    AmbiguityError, BindingKey, Decl, DeclData, DeclKind, Determinacy, Finalize, IdentKey,
-    ImportSuggestion, ImportSummary, LocalEditionRedirect, LocalModule, ModuleOrUniformRoot,
-    ParentScope, PathResult, PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used,
-    module_to_string, names_to_string,
+    AmbiguityError, BindingKey, Decl, DeclData, DeclKind, Determinacy, EditionRedirectDecl,
+    Finalize, IdentKey, ImportSuggestion, ImportSummary, LocalEditionRedirect, LocalModule,
+    ModuleOrUniformRoot, ParentScope, PathResult, PerNS, Res, ResolutionError, Resolver, ScopeSet,
+    Segment, Used, module_to_string, names_to_string,
 };
 
 /// A potential import declaration in the process of being planted into a module.
@@ -85,6 +85,10 @@ pub(crate) enum ImportKind<'ra> {
         decls: PerNS<CmCell<PendingDecl<'ra>>>,
         /// Did this import result from a nested import? i.e. `use foo::{bar, baz};`
         nested: bool,
+        /// If present, this import supplies one edition-specific alternative for its target name.
+        /// It is resolved and checked like an ordinary import, but is not visible in the current
+        /// crate.
+        edition_redirect: Option<EditionRedirect>,
         /// The ID of the `UseTree` that imported this `Import`.
         ///
         /// In the case where the `Import` was expanded from a "nested" use tree,
@@ -126,7 +130,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use ImportKind::*;
         match self {
-            Single { source, target, decls, nested, id, def_id } => f
+            Single { source, target, decls, nested, edition_redirect, id, def_id } => f
                 .debug_struct("Single")
                 .field("source", source)
                 .field("target", target)
@@ -136,6 +140,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                     &decls.clone().map(|b| b.into_inner().decl().map(|_| format_args!(".."))),
                 )
                 .field("nested", nested)
+                .field("edition_redirect", edition_redirect)
                 .field("id", id)
                 .field("def_id", def_id)
                 .finish(),
@@ -213,10 +218,6 @@ pub(crate) struct ImportData<'ra> {
     ///
     /// This is `None` if the feature flag for `diagnostic::on_unknown` is disabled.
     pub on_unknown_attr: Option<OnUnknownData>,
-
-    /// If present, this import supplies one edition-specific alternative for its target name.
-    /// It is resolved and checked like an ordinary import, but is not visible in the current crate.
-    pub edition_redirect: Option<EditionRedirect>,
 }
 
 /// `Interned` is used because values of this type have "identity" and compare as unequal even if
@@ -274,6 +275,9 @@ impl<'ra> ImportData<'ra> {
     }
 }
 
+// Keep `non_glob_decl` private outside this module so every access must
+// explicitly choose whether to apply edition redirects or assert that none are
+// present.
 mod name_resolution {
     use super::*;
 
@@ -285,35 +289,40 @@ mod name_resolution {
         pub single_imports: FxIndexSet<Import<'ra>>,
         /// The non-glob declaration for this name, if it is known to exist.
         non_glob_decl: Option<Decl<'ra>>,
+        /// Fully resolved cross-crate redirects attached to `non_glob_decl`.
+        edition_redirects: Box<[EditionRedirectDecl<'ra>]>,
         /// The glob declaration for this name, if it is known to exist.
         pub glob_decl: Option<Decl<'ra>> = None,
         pub orig_ident_span: Span,
     }
 
     impl<'ra> NameResolution<'ra> {
-        pub(crate) fn new(non_glob_decl: Option<Decl<'ra>>, orig_ident_span: Span) -> Self {
+        pub(crate) fn new(
+            non_glob_decl: Option<Decl<'ra>>,
+            edition_redirects: Box<[EditionRedirectDecl<'ra>]>,
+            orig_ident_span: Span,
+        ) -> Self {
             NameResolution {
                 single_imports: FxIndexSet::default(),
                 non_glob_decl,
+                edition_redirects,
                 orig_ident_span,
                 ..
             }
         }
 
         pub(crate) fn non_glob_decl(&self) -> Option<Decl<'ra>> {
-            self.non_glob_decl.map(|decl| {
-                assert!(decl.edition_redirects.is_empty());
-                decl
-            })
+            assert!(self.edition_redirects.is_empty());
+            self.non_glob_decl
         }
 
         pub(crate) fn non_glob_decl_redir(&self, span: Span) -> Option<Decl<'ra>> {
             self.non_glob_decl.map(|decl| {
-                if decl.edition_redirects.is_empty() {
+                if self.edition_redirects.is_empty() {
                     return decl;
                 }
                 let edition = span.edition();
-                match decl.edition_redirects.iter().find(|redirect| edition <= redirect.edition) {
+                match self.edition_redirects.iter().find(|redirect| edition <= redirect.edition) {
                     Some(redirect) => redirect.target,
                     None => decl,
                 }
@@ -341,8 +350,8 @@ impl<'ra> NameResolution<'ra> {
     /// code breakage in practice.
     /// FIXME: relationship between this function and similar `DeclData::determined` is unclear.
     pub(crate) fn determined_decl(&self) -> Option<Decl<'ra>> {
-        if self.non_glob_decl().is_some() {
-            self.non_glob_decl()
+        if let non_glob_decl @ Some(..) = self.non_glob_decl() {
+            non_glob_decl
         } else if self.glob_decl.is_some() && self.single_imports.is_empty() {
             self.glob_decl
         } else {
@@ -351,8 +360,7 @@ impl<'ra> NameResolution<'ra> {
     }
 
     pub(crate) fn determined_decl_redir(&self, span: Span) -> Option<Decl<'ra>> {
-        let non_glob_decl = self.non_glob_decl_redir(span);
-        if non_glob_decl.is_some() {
+        if let non_glob_decl @ Some(..) = self.non_glob_decl_redir(span) {
             non_glob_decl
         } else if self.glob_decl.is_some() && self.single_imports.is_empty() {
             self.glob_decl
@@ -540,7 +548,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ambiguity_vis_min: CmCell::new(None),
             expansion: import.parent_scope.expansion,
             parent_module: Some(import.parent_scope.module),
-            edition_redirects: &[],
         })
     }
 
@@ -794,11 +801,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if !(is_indeterminate || decls.iter().all(|d| d.get().decl().is_none())) {
                 return; // Has resolution, do not create the dummy binding
             }
-            if import.edition_redirect.is_some() {
-                let dummy_decl = self.new_import_decl(self.dummy_decl, import);
-                self.record_use(target, dummy_decl, Used::Other);
-                return;
-            }
             let dummy_decl = self.dummy_decl;
             let dummy_decl = self.new_import_decl(dummy_decl, import);
             self.per_ns_mut(|this, ns| {
@@ -903,7 +905,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match (&import.kind, resolution_kind) {
                 (
-                    ImportKind::Single { source, target, decls, .. },
+                    ImportKind::Single { source, target, decls, edition_redirect, .. },
                     ImportResolutionKind::Single(import_decls),
                 ) => {
                     self.per_ns_mut(|this, ns| {
@@ -923,7 +925,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     .emit();
                                 }
                                 let ident = IdentKey::new(*target);
-                                if let Some(redirect) = import.edition_redirect {
+                                if let Some(redirect) = edition_redirect {
                                     // Redirect imports are checked like ordinary imports, but their
                                     // aliases are not visible while compiling this crate. They are
                                     // combined with the ordinary binding when metadata is produced.
@@ -950,9 +952,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // Don't remove underscores and edition
                                 // redirects from `single_imports`, they were
                                 // never added.
-                                if target.name != kw::Underscore
-                                    && import.edition_redirect.is_none()
-                                {
+                                if target.name != kw::Underscore && edition_redirect.is_none() {
                                     let key = BindingKey::new(IdentKey::new(*target), ns);
                                     this.update_local_resolution(
                                         import.parent_scope.module.expect_local(),
@@ -1011,9 +1011,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut module_children = Default::default();
         let mut ambig_module_children = Default::default();
-        for index in 0..self.local_modules.len() {
-            let module = self.local_modules[index];
-            self.finalize_resolutions_in(module, &mut module_children, &mut ambig_module_children);
+        for module in &self.local_modules {
+            self.finalize_resolutions_in(*module, &mut module_children, &mut ambig_module_children);
         }
         self.module_children = module_children;
         self.ambig_module_children = ambig_module_children;

@@ -1,4 +1,4 @@
-#![feature(edition_redirect)]
+#![feature(rustc_attrs)]
 
 pub struct NotAUse;
 

@@ -1,6 +1,6 @@
 //@ edition: 2024
 
-#![feature(edition_redirect)]
+#![feature(rustc_attrs)]
 #![allow(internal_features)]
 
 pub struct Old;
