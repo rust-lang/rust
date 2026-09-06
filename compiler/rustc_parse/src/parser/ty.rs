@@ -12,10 +12,12 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::diagnostics::{
-    self, AttributeOnEmptyType, AttributeOnType, DynAfterMut, ExpectedFnPathFoundFnKeyword,
-    ExpectedMutOrConstInRawPointerType, FnPtrWithGenerics, FnPtrWithGenericsSugg,
-    HelpUseLatestEdition, InvalidCVariadicType, InvalidDynKeyword, LifetimeAfterMut,
-    NeedPlusAfterTraitObjectLifetime, NestedCVariadicType, ReturnTypesUseThinArrow,
+    self, AttributeOnEmptyType, AttributeOnType, CStyleReferenceMut,
+    CStyleReferenceMutLifetimeSugg, CStyleReferenceMutPlainSugg, DynAfterMut,
+    ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType, FnPtrWithGenerics,
+    FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidCVariadicType, InvalidDynKeyword,
+    LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
+    ReturnTypesUseThinArrow,
 };
 use crate::parser::{FnContext, FnParseMode, FrontMatterParsingMode};
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
@@ -408,6 +410,8 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| *t == token::Star)
         {
             self.parse_ty_c_style_pointer()?
+        } else if self.is_c_style_reference_start() {
+            self.parse_ty_c_style_reference()?
         } else if self.check_path() {
             self.parse_path_start_ty(lo, allow_plus, ty_generics)?
         } else if self.can_begin_bound() {
@@ -439,7 +443,11 @@ impl<'a> Parser<'a> {
 
         // Try to recover from use of `+` with incorrect priority.
         match allow_plus {
-            AllowPlus::Yes => self.maybe_recover_from_bad_type_plus(&ty)?,
+            AllowPlus::Yes => {
+                self.maybe_recover_from_bad_type_plus(&ty)?;
+                // Try to recover from `T&`.
+                ty = self.maybe_recover_from_c_style_reference(ty);
+            }
             AllowPlus::No => self.maybe_report_ambiguous_plus(impl_dyn_multi, &ty),
         }
         if let RecoverQuestionMark::Yes = recover_question_mark {
@@ -622,6 +630,47 @@ impl<'a> Parser<'a> {
         }
         // This is unreachable because we always get into if above and return from it
         unreachable!("this could never happen")
+    }
+
+    /// Parses a reference with a C-style typo
+    /// Only for `mut`
+    fn parse_ty_c_style_reference(&mut self) -> PResult<'a, TyKind> {
+        let kw_span = self.token.span;
+        let mutbl = self.parse_mutability();
+        let ref_span = self.token.span;
+
+        self.bump(); // `&`
+
+        let (lifetime, err) = if self.token.is_lifetime() {
+            let lifetime = self.expect_lifetime();
+            (
+                Some(lifetime),
+                CStyleReferenceMut::WithLifetime {
+                    span: kw_span,
+                    sugg: CStyleReferenceMutLifetimeSugg {
+                        remove: kw_span.until(ref_span),
+                        insert: lifetime.ident.span.shrink_to_hi(),
+                    },
+                },
+            )
+        } else {
+            (
+                None,
+                CStyleReferenceMut::Plain {
+                    span: kw_span,
+                    sugg: CStyleReferenceMutPlainSugg {
+                        remove: ref_span,
+                        insert: kw_span.shrink_to_lo(),
+                    },
+                },
+            )
+        };
+
+        let ty = self.parse_ty_no_question_mark_recover()?;
+
+        self.dcx().emit_err(err);
+
+        return Ok(TyKind::Ref(lifetime, MutTy { ty, mutbl }));
     }
 
     /// Parses a raw pointer type: `*[const | mut] $type`.

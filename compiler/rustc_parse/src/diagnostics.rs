@@ -4700,3 +4700,88 @@ pub(crate) struct SuggestIntroduceTypeParameter {
     pub span: Span,
     pub parameters: String,
 }
+
+#[derive(Diagnostic)]
+pub(crate) enum CStyleReferenceMut {
+    #[diag("`mut` must be written after the lifetime")]
+    WithLifetime {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        sugg: CStyleReferenceMutLifetimeSugg,
+    },
+    #[diag("reference types must be written as `&mut T`")]
+    Plain {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        sugg: CStyleReferenceMutPlainSugg,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("put `mut` after the lifetime", applicability = "machine-applicable")]
+pub(crate) struct CStyleReferenceMutLifetimeSugg {
+    #[suggestion_part(code = "")]
+    pub remove: Span,
+    #[suggestion_part(code = " mut")]
+    pub insert: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("put the `&` before `mut`", applicability = "machine-applicable")]
+pub(crate) struct CStyleReferenceMutPlainSugg {
+    #[suggestion_part(code = "")]
+    pub remove: Span,
+    #[suggestion_part(code = "&")]
+    pub insert: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("reference types must be written as `&T`")]
+pub(crate) struct CStyleReference {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: CStyleReferenceSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("put the `&` before the type", applicability = "machine-applicable")]
+pub(crate) struct CStyleReferenceSugg {
+    #[suggestion_part(code = "")]
+    pub remove: Span,
+    #[suggestion_part(code = "&")]
+    pub insert: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("reference types must be written as `&{$mutbl}expr`")]
+pub(crate) struct CStyleReferenceExpr {
+    #[primary_span]
+    pub span: Span,
+    pub mutbl: String,
+    #[subdiagnostic]
+    pub sugg: Option<CStyleReferenceExprSugg>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CStyleReferenceExprSugg {
+    #[multipart_suggestion("put the `&` before the `expr`", applicability = "machine-applicable")]
+    Shared {
+        #[suggestion_part(code = "")]
+        removal: Span,
+        #[suggestion_part(code = "&")]
+        insert: Span,
+    },
+    #[multipart_suggestion(
+        "put the `&mut` before the `expr`",
+        applicability = "machine-applicable"
+    )]
+    Mut {
+        #[suggestion_part(code = "")]
+        removal: Span,
+        #[suggestion_part(code = "&mut ")]
+        insert: Span,
+    },
+}

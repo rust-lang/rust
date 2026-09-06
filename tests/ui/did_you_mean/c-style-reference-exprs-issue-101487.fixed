@@ -1,0 +1,47 @@
+// Tests for https://github.com/rust-lang/rust/issues/101487
+// `&` should go before the expression in C-style references
+//@ run-rustfix
+
+#![allow(unused)]
+
+static N: i32 = 0;
+fn func2() -> &'static i32 {
+    &N
+    //~^ ERROR reference types must be written as `&expr`
+    //~| HELP put the `&` before the `expr`
+}
+
+macro_rules! m {
+    ($e:expr) => { $e };
+    ($($t:tt)*) => { 0 };
+}
+fn func1(num: &mut i32) {}
+
+fn main() {
+    let x = 12;
+    let _ptr = &x;
+    //~^ ERROR reference types must be written as `&expr`
+    //~| HELP put the `&` before the `expr`
+
+    let mut y = 34;
+    func1(&mut y );
+    //~^ ERROR reference types must be written as `&mut expr`
+    //~| HELP put the `&mut` before the `expr`
+
+    let arr = [&x, &y];
+    //~^ ERROR reference types must be written as `&expr`
+    //~| HELP put the `&` before the `expr`
+    //~| ERROR reference types must be written as `&expr`
+    //~| HELP put the `&` before the `expr`
+
+    // Normal bitwise operations, should not have any errors
+    let b = x & y;
+
+    m!(x & y);
+
+    let _ptr2 = &x;
+    let c = x & *_ptr2;
+    let d = x & !y;
+    let e = x & (y);
+    let f = x & &y;
+}

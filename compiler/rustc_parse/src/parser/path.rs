@@ -927,7 +927,7 @@ impl<'a> Parser<'a> {
         } else if self.check_const_arg() {
             // Parse const argument.
             GenericArg::Const(self.parse_const_arg()?)
-        } else if self.check_type() {
+        } else if self.check_type() || self.is_c_style_reference_start() {
             // Parse type argument.
 
             // Proactively create a parser snapshot enabling us to rewind and try to reparse the

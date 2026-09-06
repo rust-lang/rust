@@ -278,6 +278,13 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
+            // Look for C-style reference expressions like
+            // `x&`, `x &mut` and recover
+            if self.prev_token == token::And && self.may_recover() && !self.token.can_begin_expr() {
+                lhs = self.recover_from_c_style_reference(lhs);
+                continue;
+            }
+
             let op_span = op.span;
             let op = op.node;
             // Special cases:
