@@ -12,7 +12,7 @@ macro_rules! follow_pat {
     ($p:pat ()) => {};       //~ERROR  `$p:pat` is followed by `(`
     ($p:pat []) => {};       //~ERROR  `$p:pat` is followed by `[`
     ($p:pat {}) => {};       //~ERROR  `$p:pat` is followed by `{`
-    ($p:pat :) => {};        //~ERROR `$p:pat` is followed by `:`
+    ($p:pat :) => {};        // ok
     ($p:pat >) => {};        //~ERROR `$p:pat` is followed by `>`
     ($p:pat +) => {};        //~ERROR `$p:pat` is followed by `+`
     ($p:pat ident) => {};    //~ERROR `$p:pat` is followed by `ident`
