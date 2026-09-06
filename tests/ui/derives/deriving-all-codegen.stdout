@@ -46,7 +46,7 @@ impl ::core::fmt::Debug for Empty {
 #[automatically_derived]
 impl ::core::default::Default for Empty {
     #[inline]
-    fn default() -> Empty { Empty {} }
+    fn default() -> Empty { Empty }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Empty {

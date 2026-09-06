@@ -1,13 +1,13 @@
 use ast::HasAttrs;
 use rustc_ast::mut_visit::MutVisitor;
-use rustc_ast::visit::BoundKind;
+use rustc_ast::visit::{BoundKind, Visitor};
 use rustc_ast::{
     self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind, MetaItem,
     TraitBoundModifiers, VariantData, WherePredicate,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::E0802;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_macros::Diagnostic;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -22,15 +22,13 @@ pub(crate) fn expand_deriving_coerce_pointee(
     cx: &ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
 ) {
-    item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
+    DetectNonGenericPointeeAttr { cx }.visit_item(item);
 
-    let (name_ident, generics) = if let Annotatable::Item(aitem) = item
-        && let ItemKind::Struct(ident, g, struct_data) = &aitem.kind
-    {
+    let (name_ident, generics) = if let ItemKind::Struct(ident, g, struct_data) = &item.kind {
         if !matches!(
             struct_data,
             VariantData::Struct { fields, recovered: _ } | VariantData::Tuple(fields, _)
@@ -104,7 +102,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
         let trait_path =
             cx.path_all(span, true, path!(span, core::marker::CoercePointeeValidated), vec![]);
         let trait_ref = cx.trait_ref(trait_path);
-        push(Annotatable::Item(
+        push(
             cx.item(
                 span,
                 attrs.clone(),
@@ -144,7 +142,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                     items: ThinVec::new(),
                 }),
             ),
-        ));
+        );
     }
     let mut add_impl_block = |generics, trait_symbol, trait_args| {
         let mut parts = path!(span, core::ops);
@@ -167,7 +165,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 items: ThinVec::new(),
             }),
         );
-        push(Annotatable::Item(item));
+        push(item);
     };
 
     // Create unsized `self`, that is, one where the `#[pointee]` type arg is replaced with `__S`. For
