@@ -235,7 +235,7 @@ where
 /// - tanhf, tanh, atanf, atan, atan2f, atan2
 /// - exp, exp2
 /// - log, log2, log10
-/// - powf32, powf64
+/// - powf
 /// - erff, erf, erfcf, erfc
 /// - hypotf, hypot
 ///

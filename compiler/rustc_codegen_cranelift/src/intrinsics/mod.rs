@@ -327,11 +327,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64, types::F64), // compiler-builtins
         sym::powif128 => ("__powitf2", 2, fx.tcx.types.f128, types::F128), // compiler-builtins
 
-        sym::powf16 => return false, // has a fallback via f32
-        sym::powf32 => ("powf", 2, fx.tcx.types.f32, types::F32),
-        sym::powf64 => ("pow", 2, fx.tcx.types.f64, types::F64),
-        sym::powf128 => ("powf128", 2, fx.tcx.types.f128, types::F128),
-
         sym::fmaf16 => return false, // has a fallback via f64
         sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
@@ -1129,13 +1124,14 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, old);
         }
 
-        sym::copysign => {
+        sym::copysign | sym::powf => {
             intrinsic_args!(fx, args => (arg1, arg2); intrinsic);
             let layout = arg1.layout();
             let ty::Float(float_ty) = layout.ty.kind() else {
                 span_bug!(
                     source_info.span,
-                    "expected float type for fabs intrinsic: {:?}",
+                    "expected float type for {:?} intrinsic: {:?}",
+                    intrinsic,
                     layout.ty
                 );
             };
@@ -1145,6 +1141,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let y = arg2.load_scalar(fx);
             let res = match (intrinsic, float_ty) {
                 (sym::copysign, F32 | F64) => Codegen(fx.bcx.ins().fcopysign(x, y)),
+
+                (sym::powf, F32) => Fallback("powf"),
+                (sym::powf, F64) => Fallback("pow"),
+                (sym::powf, F128) => Fallback("powf128"),
 
                 (_, F16) => {
                     // We use the intrinsic fallback bodies for the rest

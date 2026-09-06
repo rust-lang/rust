@@ -60,8 +60,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     let gcc_name = match name {
         sym::powif32 => "__builtin_powif",
         sym::powif64 => "__builtin_powi",
-        sym::powf32 => "powf",
-        sym::powf64 => "pow",
         sym::fmaf32 => "fmaf",
         sym::fmaf64 => "fma",
         // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
@@ -73,7 +71,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::maximumf32 => return float_intrinsic(cx, cx.type_f32(), "fmaximumf"),
         sym::maximumf64 => return float_intrinsic(cx, cx.type_f64(), "fmaximum"),
         sym::maximumf128 => return float_intrinsic(cx, cx.type_f128(), "fmaximumf128"),
-        sym::powf128 => return float_intrinsic(cx, cx.type_f128(), "powf128"),
         sym::abort => "abort",
         _ => return None,
     };
@@ -102,6 +99,7 @@ fn get_simple_function_f128<'gcc, 'tcx>(
         sym::round_ties_even => ("roundevenf128", &[f128_type]),
         sym::sin => ("sinf128", &[f128_type]),
         sym::sqrt => ("sqrtf128", &[f128_type]),
+        sym::powf => ("powf128", &[f128_type, f128_type]),
         _ => span_bug!(span, "used get_simple_function_f128 for unsupported f128 intrinsic"),
     };
     let args: Vec<_> = args
@@ -129,7 +127,7 @@ fn f16_builtin<'gcc, 'tcx>(
         sym::log => "logf",
         sym::log2 => "log2f",
         sym::log10 => "log10f",
-        sym::powf16 => "__builtin_powf",
+        sym::powf => "__builtin_powf",
         sym::round => "__builtin_roundf",
         sym::round_ties_even => "__builtin_rintf",
         sym::sin => "sinf",
@@ -199,7 +197,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::powf16 => f16_builtin(self, name, args),
             sym::fmaf128 => {
                 let f128_type = self.cx.type_f128();
                 let func = self.cx.context.new_function(
@@ -358,6 +355,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             sym::copysign
             | sym::fabs
             | sym::sqrt
+            | sym::powf
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -384,6 +382,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                     (sym::sqrt, F32) => self.context.get_builtin_function("sqrtf"),
                     (sym::sqrt, F64) => self.context.get_builtin_function("sqrt"),
+
+                    (sym::powf, F32) => self.context.get_builtin_function("powf"),
+                    (sym::powf, F64) => self.context.get_builtin_function("pow"),
 
                     (sym::floor, F32) => self.context.get_builtin_function("floorf"),
                     (sym::floor, F64) => self.context.get_builtin_function("floor"),

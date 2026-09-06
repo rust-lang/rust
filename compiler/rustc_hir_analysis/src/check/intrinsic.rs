@@ -146,10 +146,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::offload_get_num_devices
         | sym::offset_of
         | sym::overflow_checks
-        | sym::powf16
-        | sym::powf32
-        | sym::powf64
-        | sym::powf128
+        | sym::powf
         | sym::powif16
         | sym::powif32
         | sym::powif64
@@ -394,11 +391,6 @@ pub(crate) fn check_intrinsic_type(
         sym::powif64 => (0, 0, vec![tcx.types.f64, tcx.types.i32], tcx.types.f64),
         sym::powif128 => (0, 0, vec![tcx.types.f128, tcx.types.i32], tcx.types.f128),
 
-        sym::powf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::powf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::powf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::powf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
-
         sym::fmaf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::fmaf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32, tcx.types.f32], tcx.types.f32),
         sym::fmaf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64, tcx.types.f64], tcx.types.f64),
@@ -452,7 +444,7 @@ pub(crate) fn check_intrinsic_type(
         sym::maximumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
         sym::maximumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
-        sym::copysign => (1, 0, vec![param(0), param(0)], param(0)),
+        sym::copysign | sym::powf => (1, 0, vec![param(0), param(0)], param(0)),
 
         sym::volatile_load | sym::unaligned_volatile_load => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0))

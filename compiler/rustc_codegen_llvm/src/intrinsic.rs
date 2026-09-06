@@ -61,11 +61,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
         sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
 
-        sym::powf16 => ("llvm.pow", &[bx.type_f16()]),
-        sym::powf32 => ("llvm.pow", &[bx.type_f32()]),
-        sym::powf64 => ("llvm.pow", &[bx.type_f64()]),
-        sym::powf128 => ("llvm.pow", &[bx.type_f128()]),
-
         sym::fmaf16 => ("llvm.fma", &[bx.type_f16()]),
         sym::fmaf32 => ("llvm.fma", &[bx.type_f32()]),
         sym::fmaf64 => ("llvm.fma", &[bx.type_f64()]),
@@ -531,6 +526,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::copysign
             | sym::fabs
             | sym::sqrt
+            | sym::powf
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -557,6 +553,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::copysign => "llvm.copysign",
                     sym::fabs => "llvm.fabs",
                     sym::sqrt => "llvm.sqrt",
+                    sym::powf => "llvm.pow",
                     sym::floor => "llvm.floor",
                     sym::ceil => "llvm.ceil",
                     sym::trunc => "llvm.trunc",
