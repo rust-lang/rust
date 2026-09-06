@@ -5,7 +5,7 @@ pub use rustc_middle::traits::query::type_op::ProvePredicate;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
-use crate::traits::{ObligationCtxt, sizedness_fast_path};
+use crate::traits::{ObligationCtxt, implicit_fast_path};
 
 impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
     type QueryResponse = ();
@@ -14,7 +14,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         tcx: TyCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
-        if sizedness_fast_path(tcx, key.value.predicate, key.param_env) {
+        if implicit_fast_path(tcx, key.value.predicate, key.param_env) {
             return Some(());
         }
 

@@ -1168,12 +1168,13 @@ pub(crate) enum GenericBound {
 
 impl GenericBound {
     pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifiers::NONE)
+        Self::lang_item_with(cx, LangItem::Sized, hir::TraitBoundModifiers::NONE)
     }
 
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(
+        Self::lang_item_with(
             cx,
+            LangItem::Sized,
             hir::TraitBoundModifiers {
                 polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
                 constness: hir::BoundConstness::Never,
@@ -1181,8 +1182,23 @@ impl GenericBound {
         )
     }
 
-    fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
-        let did = cx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
+    pub(crate) fn maybe_move(cx: &mut DocContext<'_>) -> GenericBound {
+        Self::lang_item_with(
+            cx,
+            LangItem::Move,
+            hir::TraitBoundModifiers {
+                polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
+                constness: hir::BoundConstness::Never,
+            },
+        )
+    }
+
+    fn lang_item_with(
+        cx: &mut DocContext<'_>,
+        item: LangItem,
+        modifiers: hir::TraitBoundModifiers,
+    ) -> GenericBound {
+        let did = cx.tcx.require_lang_item(item, DUMMY_SP);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
         let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
@@ -1199,6 +1215,10 @@ impl GenericBound {
 
     pub(crate) fn is_meta_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
         self.is_bounded_by_lang_item(tcx, LangItem::MetaSized)
+    }
+
+    pub(crate) fn is_move_bound(&self, tcx: TyCtxt<'_>) -> bool {
+        self.is_bounded_by_lang_item(tcx, LangItem::Move)
     }
 
     fn is_bounded_by_lang_item(&self, tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
