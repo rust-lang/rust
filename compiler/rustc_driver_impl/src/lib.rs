@@ -118,15 +118,15 @@ pub const EXIT_FAILURE: i32 = 1;
 pub const DEFAULT_BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
 
-pub trait Callbacks {
+pub trait Callbacks<'a> {
     /// Called before creating the compiler instance
-    fn config(&mut self, _config: &mut interface::Config) {}
+    fn config(&mut self, _config: &mut interface::Config<'a>) {}
     /// Called after parsing the crate root. Submodules are not yet parsed when
     /// this callback is called. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_crate_root_parsing(
         &mut self,
-        _compiler: &interface::Compiler,
+        _compiler: &interface::Compiler<'_>,
         _krate: &mut ast::Crate,
     ) -> Compilation {
         Compilation::Continue
@@ -135,7 +135,7 @@ pub trait Callbacks {
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_expansion<'tcx>(
         &mut self,
-        _compiler: &interface::Compiler,
+        _compiler: &interface::Compiler<'_>,
         _tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         Compilation::Continue
@@ -144,7 +144,7 @@ pub trait Callbacks {
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_analysis<'tcx>(
         &mut self,
-        _compiler: &interface::Compiler,
+        _compiler: &interface::Compiler<'_>,
         _tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         Compilation::Continue
@@ -156,10 +156,10 @@ pub struct TimePassesCallbacks {
     time_passes: Option<TimePassesFormat>,
 }
 
-impl Callbacks for TimePassesCallbacks {
+impl Callbacks<'_> for TimePassesCallbacks {
     // JUSTIFICATION: the session doesn't exist at this point.
     #[allow(rustc::bad_opt_access)]
-    fn config(&mut self, config: &mut interface::Config) {
+    fn config(&mut self, config: &mut interface::Config<'_>) {
         // If a --print=... option has been given, we don't print the "total"
         // time because it will mess up the --print output. See #64339.
         //
@@ -170,7 +170,7 @@ impl Callbacks for TimePassesCallbacks {
 }
 
 /// This is the primary entry point for rustc.
-pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
+pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks<'_> + Send)) {
     let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
@@ -544,7 +544,7 @@ fn show_colored_md_content(content: &str) {
     safe_print!("{content}");
 }
 
-fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
+fn process_rlink(sess: &Session, compiler: &interface::Compiler<'_>) {
     assert!(sess.opts.unstable_opts.link_only);
     let dcx = sess.dcx();
     if let Input::File(file) = &sess.io.input {
