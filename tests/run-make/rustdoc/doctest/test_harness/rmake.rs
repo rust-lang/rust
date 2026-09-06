@@ -19,6 +19,7 @@ fn main() {
     rustc().input(runtool_path).run();
 
     let output = rustdoc()
+        .edition("2015")
         .input(doctests_path)
         .arg("--test")
         // for the outer test suite
