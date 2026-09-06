@@ -3,7 +3,7 @@ use core::iter::{
     TrustedRandomAccessNoCoerce,
 };
 use core::marker::PhantomData;
-use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
+use core::mem::{DropGuard, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::num::NonZero;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Deref;
@@ -589,23 +589,11 @@ impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
     fn drop(&mut self) {
-        struct DropGuard<'a, T, A: Allocator>(&'a mut IntoIter<T, A>);
-
-        impl<T, A: Allocator> Drop for DropGuard<'_, T, A> {
-            fn drop(&mut self) {
-                // ignore-tidy-undocumented-unsafe
-                unsafe {
-                    self.0.dealloc_only();
-                }
-            }
-        }
-
-        let guard = DropGuard(self);
+        // ignore-tidy-undocumented-unsafe
+        let mut guard = DropGuard::new(self, |this| unsafe { this.dealloc_only() });
         // destroy the remaining elements
         // ignore-tidy-undocumented-unsafe
-        unsafe {
-            ptr::drop_in_place(guard.0.as_raw_mut_slice());
-        }
+        unsafe { ptr::drop_in_place(guard.as_raw_mut_slice()) }
         // now `guard` will be dropped and do the rest
     }
 }
