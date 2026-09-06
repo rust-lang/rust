@@ -632,7 +632,7 @@ impl<I: Interner> ExternalRegionConstraints<I> {
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: ExternalRegionConstraints<I>,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
-    pub hidden_types_of_opaques: Vec<(I::Ty, Vec<ty::OpaqueHiddenTyBound<I>>)>,
+    pub hidden_types_of_opaques: Vec<(I::Ty, ty::OpaqueHiddenTyBound<I>)>,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
@@ -1005,7 +1005,7 @@ pub enum GoalStalledOnOpaques<I: Interner> {
     No,
     Yes {
         num_opaques_in_storage: usize,
-        num_bounds_for_hidden_tys_in_storage: usize,
+        num_hidden_ty_bounds_in_storage: usize,
         previously_succeeded_in_erased: SucceededInErased<I>,
     },
 }

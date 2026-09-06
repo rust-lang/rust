@@ -24,7 +24,7 @@ use rustc_type_ir::{
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
 
-use super::has_only_region_constraints_or_opaques;
+use super::has_only_region_constraints_or_opaque_hidden_ty_bounds;
 use crate::canonical::{
     canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
     response_no_constraints_raw,
@@ -542,15 +542,9 @@ where
             }
         }
 
-        for chunk in input.hidden_types_of_opaques_in_body.as_slice().chunk_by(|a, b| a.0 == b.0) {
-            let Some((hidden_ty, _)) = chunk.first() else {
-                continue;
-            };
-            delegate.add_hidden_type_of_opaque_in_storage(
-                *hidden_ty,
-                chunk.iter().map(|(_, bound)| *bound),
-            );
-        }
+        delegate.add_opaque_hidden_ty_bounds_in_storage(
+            input.hidden_types_of_opaques_in_body.as_slice(),
+        );
 
         let initial_opaque_types_storage_num_entries = delegate.opaque_types_storage_num_entries();
         if cfg!(debug_assertions) && delegate.typing_mode_raw().is_erased_not_coherence() {
@@ -806,8 +800,7 @@ where
 
         drop(tracing_span);
 
-        let has_only_opaques = has_only_region_constraints_or_opaques(response);
-        let num_entries_before_normalization = self.delegate.opaque_types_storage_num_entries();
+        let before_instantiate_response = self.delegate.num_opaque_hidden_type_bounds();
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
@@ -822,10 +815,8 @@ where
         // entries actually changed.
         //
         // FIXME: Add a test for this
-        let has_changed = if !has_only_opaques
-            // FIXME: Creating and comparing this is expensive. Should flatten
-            // `hidden_types_of_opaques` in the storage.
-            || self.delegate.opaque_types_storage_num_entries() != num_entries_before_normalization
+        let has_changed = if !has_only_region_constraints_or_opaque_hidden_ty_bounds(response)
+            || self.delegate.num_opaque_hidden_type_bounds() != before_instantiate_response
         {
             HasChanged::Yes
         } else {
@@ -901,7 +892,7 @@ where
 
         let num_opaques_in_storage =
             canonical_goal.canonical.value.predefined_opaques_in_body.len();
-        let num_bounds_for_hidden_tys_in_storage =
+        let num_hidden_ty_bounds_in_storage =
             canonical_goal.canonical.value.hidden_types_of_opaques_in_body.len();
 
         GoalStalledOn {
@@ -910,7 +901,7 @@ where
             stalled_maybe_info: maybe_info,
             opaques: GoalStalledOnOpaques::Yes {
                 num_opaques_in_storage,
-                num_bounds_for_hidden_tys_in_storage,
+                num_hidden_ty_bounds_in_storage,
                 previously_succeeded_in_erased,
             },
         }
@@ -1424,6 +1415,12 @@ where
         bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<I>>,
     ) {
         self.delegate.add_hidden_type_of_opaque_in_storage(hidden_ty, bounds);
+    }
+    pub(super) fn add_opaque_hidden_type_bounds_in_storage(
+        &self,
+        bounds: &[(I::Ty, ty::OpaqueHiddenTyBound<I>)],
+    ) {
+        self.delegate.add_opaque_hidden_ty_bounds_in_storage(bounds);
     }
 
     pub(super) fn add_item_bounds_for_hidden_type(

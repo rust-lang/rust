@@ -674,16 +674,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_types_storage`");
         }
     }
-    for chunk in opaque_hidden_ty_bounds_in_body.chunk_by(|a, b| a.0 == b.0) {
-        let Some((hidden_ty, _)) = chunk.first() else {
-            continue;
-        };
-
-        infcx.add_hidden_type_of_opaque_in_storage(
-            *hidden_ty,
-            chunk.iter().map(|(_, bound)| *bound),
-        );
-    }
+    infcx.add_opaque_hidden_type_bounds_in_storage(opaque_hidden_ty_bounds_in_body);
     let prev_opaque_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
 
     // We accept not-yet-defined opaque types in the autoderef

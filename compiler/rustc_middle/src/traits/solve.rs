@@ -78,19 +78,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
                 .iter()
                 .map(|opaque| opaque.try_fold_with(folder))
                 .collect::<Result<_, F::Error>>()?,
-            hidden_types_of_opaques: self
-                .hidden_types_of_opaques
-                .iter()
-                .map(|(hidden_ty, bounds)| -> Result<_, F::Error> {
-                    Ok((
-                        (*hidden_ty).try_fold_with(folder)?,
-                        bounds
-                            .iter()
-                            .map(|bound| (*bound).try_fold_with(folder))
-                            .collect::<Result<_, F::Error>>()?,
-                    ))
-                })
-                .collect::<Result<_, F::Error>>()?,
+            hidden_types_of_opaques: self.hidden_types_of_opaques.clone().try_fold_with(folder)?,
             normalization_nested_goals: self
                 .normalization_nested_goals
                 .clone()

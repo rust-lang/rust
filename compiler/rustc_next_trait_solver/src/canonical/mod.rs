@@ -146,12 +146,7 @@ where
         }
     };
     register_new_opaque_types(delegate, opaque_types, span);
-    for (hidden_ty, bounds) in hidden_types_of_opaques {
-        let hidden_ty = delegate.resolve_vars_if_possible(*hidden_ty);
-        if hidden_ty.is_ty_var() {
-            delegate.add_hidden_type_of_opaque_in_storage(hidden_ty, bounds.iter().copied());
-        }
-    }
+    delegate.add_opaque_hidden_ty_bounds_in_storage(hidden_types_of_opaques);
 
     (normalization_nested_goals.clone(), certainty)
 }

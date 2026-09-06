@@ -216,6 +216,9 @@ impl<'tcx> InferCtxt<'tcx> {
         let ty::Infer(ty::TyVar(vid)) = *hidden_ty.kind() else {
             return;
         };
+        if self.try_resolve_ty_var(vid).is_ok() {
+            return;
+        }
 
         let ty_sub_vid = self.sub_unification_table_root_var(vid);
         let inner = &mut *self.inner.borrow_mut();
@@ -244,6 +247,18 @@ impl<'tcx> InferCtxt<'tcx> {
             .unwrap_or(hidden_ty);
 
         inner.opaque_types().add_hidden_type_of_opaque(hidden_ty, bounds);
+    }
+
+    pub fn add_opaque_hidden_type_bounds_in_storage(
+        &self,
+        bounds: &[(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)],
+    ) {
+        for chunk in bounds.chunk_by(|a, b| a.0 == b.0) {
+            self.add_hidden_type_of_opaque_in_storage(
+                chunk[0].0,
+                chunk.iter().map(|(_, bound)| *bound),
+            );
+        }
     }
 
     /// Insert a hidden type into the opaque type storage, equating it
