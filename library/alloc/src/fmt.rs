@@ -595,6 +595,8 @@
 pub use core::fmt::Alignment;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::Error;
+#[stable(feature = "fmt_numbuffer", since = "CURRENT_RUSTC_VERSION")]
+pub use core::fmt::NumBuffer;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Arguments, write};
 #[stable(feature = "rust1", since = "1.0.0")]
