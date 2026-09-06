@@ -188,6 +188,13 @@ impl<'a> Parser<'a> {
             self.recover_from_postfix_inc_op(&lhs, starts_stmt)?;
             self.recover_from_postfix_dec_op(&lhs, starts_stmt)?;
 
+            // Look for C-style reference expressions like
+            // `x&`, `x &mut` and recover
+            if self.prev_token == token::And && self.may_recover() && !self.token.can_begin_expr() {
+                lhs = self.recover_from_c_style_reference(lhs);
+                continue;
+            }
+
             let min_prec = match op.node.fixity() {
                 Fixity::Right => Bound::Included(prec),
                 Fixity::Left | Fixity::None => Bound::Excluded(prec),

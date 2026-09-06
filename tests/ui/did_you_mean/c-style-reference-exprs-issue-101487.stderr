@@ -1,0 +1,62 @@
+error: reference types must be written as `&expr`
+  --> $DIR/c-style-reference-exprs-issue-101487.rs:9:5
+   |
+LL |     N&
+   |     ^^
+   |
+help: put the `&` before the `expr`
+   |
+LL -     N&
+LL +     &N
+   |
+
+error: reference types must be written as `&expr`
+  --> $DIR/c-style-reference-exprs-issue-101487.rs:22:16
+   |
+LL |     let _ptr = x&;
+   |                ^^
+   |
+help: put the `&` before the `expr`
+   |
+LL -     let _ptr = x&;
+LL +     let _ptr = &x;
+   |
+
+error: reference types must be written as `&mut expr`
+  --> $DIR/c-style-reference-exprs-issue-101487.rs:27:11
+   |
+LL |     func1(y &mut);
+   |           ^^^^^^
+   |
+help: put the `&mut` before the `expr`
+   |
+LL -     func1(y &mut);
+LL +     func1(&mut y );
+   |
+
+error: reference types must be written as `&expr`
+  --> $DIR/c-style-reference-exprs-issue-101487.rs:31:16
+   |
+LL |     let arr = [x&, y&];
+   |                ^^
+   |
+help: put the `&` before the `expr`
+   |
+LL -     let arr = [x&, y&];
+LL +     let arr = [&x, y&];
+   |
+
+error: reference types must be written as `&expr`
+  --> $DIR/c-style-reference-exprs-issue-101487.rs:31:20
+   |
+LL |     let arr = [x&, y&];
+   |                    ^^
+   |
+help: put the `&` before the `expr`
+   |
+LL -     let arr = [x&, y&];
+LL +     let arr = [x&, &y];
+   |
+
+error: aborting due to 5 previous errors
+
