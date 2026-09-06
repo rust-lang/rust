@@ -1,5 +1,5 @@
-use rustc_ast::{MetaItem, Safety};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_ast::Safety;
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
 
@@ -10,9 +10,8 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let trait_def = TraitDef {
@@ -24,7 +23,7 @@ pub(crate) fn expand_deriving_ord(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: sym::cmp,
-            generics: Bounds::empty(),
+            generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![(self_ref(), sym::other)],
             ret_ty: Path(path_std!(cmp::Ordering)),
@@ -38,10 +37,10 @@ pub(crate) fn expand_deriving_ord(
         document: true,
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
-pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);
     let equal_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
     let cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
