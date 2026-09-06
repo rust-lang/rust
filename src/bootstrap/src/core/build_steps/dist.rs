@@ -2603,6 +2603,10 @@ fn maybe_install_llvm(
     ),
 )]
 pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
+    if !builder.llvm_enabled(target) {
+        return;
+    }
+
     let dst_libdir = sysroot.join("lib/rustlib").join(target).join("lib");
 
     // We need to figure out the link mode from a LLVM, if it is provided, but without forcing it
@@ -2631,6 +2635,10 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
     ),
 )]
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
+    if !builder.llvm_enabled(target) {
+        return;
+    }
+
     let dst_libdir = sysroot.join(builder.libdir_relative(Compiler::new(1, target)));
 
     // We need to figure out the link mode from a LLVM, if it is provided, but without forcing it
