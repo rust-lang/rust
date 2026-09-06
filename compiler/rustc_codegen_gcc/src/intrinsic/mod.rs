@@ -60,11 +60,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     let gcc_name = match name {
         sym::powif32 => "__builtin_powif",
         sym::powif64 => "__builtin_powi",
-        sym::fmaf32 => "fmaf",
-        sym::fmaf64 => "fma",
-        // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
-        sym::fmuladdf32 => "fmaf", // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f32
-        sym::fmuladdf64 => "fma",  // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f64
         sym::minimumf32 => return float_intrinsic(cx, cx.type_f32(), "fminimumf"),
         sym::minimumf64 => return float_intrinsic(cx, cx.type_f64(), "fminimum"),
         sym::minimumf128 => return float_intrinsic(cx, cx.type_f128(), "fminimumf128"),
@@ -100,6 +95,7 @@ fn get_simple_function_f128<'gcc, 'tcx>(
         sym::sin => ("sinf128", &[f128_type]),
         sym::sqrt => ("sqrtf128", &[f128_type]),
         sym::powf => ("powf128", &[f128_type, f128_type]),
+        sym::fma => ("fmaf128", &[f128_type, f128_type, f128_type]),
         _ => span_bug!(span, "used get_simple_function_f128 for unsupported f128 intrinsic"),
     };
     let args: Vec<_> = args
@@ -189,26 +185,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         self.cx.context.new_parameter(None, ty, "b"),
                     ],
                     func_name,
-                    false,
-                );
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
-            sym::fmaf128 => {
-                let f128_type = self.cx.type_f128();
-                let func = self.cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    f128_type,
-                    &[
-                        self.cx.context.new_parameter(None, f128_type, "a"),
-                        self.cx.context.new_parameter(None, f128_type, "b"),
-                        self.cx.context.new_parameter(None, f128_type, "c"),
-                    ],
-                    "fmaf128",
                     false,
                 );
                 self.cx.context.new_call(
@@ -356,6 +332,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::fabs
             | sym::sqrt
             | sym::powf
+            | sym::fma
+            | sym::fmuladd
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -385,6 +363,21 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                     (sym::powf, F32) => self.context.get_builtin_function("powf"),
                     (sym::powf, F64) => self.context.get_builtin_function("pow"),
+
+                    (sym::fma, F32) => self.context.get_builtin_function("fmaf"),
+                    (sym::fma, F64) => self.context.get_builtin_function("fma"),
+
+                    // FIXME: calling `fma` from libc without FMA target feature uses expensive
+                    // software emulation.
+                    // FIXME: use gcc intrinsics analogous to llvm.fmuladd.f32/f64.
+                    (sym::fmuladd, F32) => self.context.get_builtin_function("fmaf"),
+                    (sym::fmuladd, F64) => self.context.get_builtin_function("fma"),
+
+                    // These have no `f16` builtin and no `fmuladdf128`; use the fallback bodies.
+                    (sym::fma | sym::fmuladd, F16) | (sym::fmuladd, F128) => {
+                        let fallback = Instance::new_raw(instance.def_id(), instance.args);
+                        return IntrinsicResult::Fallback(fallback);
+                    }
 
                     (sym::floor, F32) => self.context.get_builtin_function("floorf"),
                     (sym::floor, F64) => self.context.get_builtin_function("floor"),

@@ -104,15 +104,9 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::field_representing_type_name
         | sym::field_representing_type_offset
         | sym::floor
-        | sym::fmaf16
-        | sym::fmaf32
-        | sym::fmaf64
-        | sym::fmaf128
+        | sym::fma
         | sym::fmul_algebraic
-        | sym::fmuladdf16
-        | sym::fmuladdf32
-        | sym::fmuladdf64
-        | sym::fmuladdf128
+        | sym::fmuladd
         | sym::forget
         | sym::frem_algebraic
         | sym::fsub_algebraic
@@ -391,19 +385,7 @@ pub(crate) fn check_intrinsic_type(
         sym::powif64 => (0, 0, vec![tcx.types.f64, tcx.types.i32], tcx.types.f64),
         sym::powif128 => (0, 0, vec![tcx.types.f128, tcx.types.i32], tcx.types.f128),
 
-        sym::fmaf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::fmaf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::fmaf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::fmaf128 => {
-            (0, 0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
-        }
-
-        sym::fmuladdf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::fmuladdf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::fmuladdf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::fmuladdf128 => {
-            (0, 0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
-        }
+        sym::fma | sym::fmuladd => (1, 0, vec![param(0), param(0), param(0)], param(0)),
 
         sym::exp
         | sym::exp2

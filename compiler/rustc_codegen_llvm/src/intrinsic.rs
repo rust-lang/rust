@@ -61,16 +61,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
         sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
 
-        sym::fmaf16 => ("llvm.fma", &[bx.type_f16()]),
-        sym::fmaf32 => ("llvm.fma", &[bx.type_f32()]),
-        sym::fmaf64 => ("llvm.fma", &[bx.type_f64()]),
-        sym::fmaf128 => ("llvm.fma", &[bx.type_f128()]),
-
-        sym::fmuladdf16 => ("llvm.fmuladd", &[bx.type_f16()]),
-        sym::fmuladdf32 => ("llvm.fmuladd", &[bx.type_f32()]),
-        sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
-        sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
-
         sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
         sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
@@ -527,6 +517,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::fabs
             | sym::sqrt
             | sym::powf
+            | sym::fma
+            | sym::fmuladd
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -554,6 +546,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::fabs => "llvm.fabs",
                     sym::sqrt => "llvm.sqrt",
                     sym::powf => "llvm.pow",
+                    sym::fma => "llvm.fma",
+                    sym::fmuladd => "llvm.fmuladd",
                     sym::floor => "llvm.floor",
                     sym::ceil => "llvm.ceil",
                     sym::trunc => "llvm.trunc",

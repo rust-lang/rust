@@ -1994,7 +1994,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn mul_add(self, a: f128, b: f128) -> f128 {
-        intrinsics::fmaf128(self, a, b)
+        intrinsics::fma(self, a, b)
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.

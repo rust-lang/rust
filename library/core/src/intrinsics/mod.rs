@@ -1267,47 +1267,31 @@ intrinsic_dispatch_on_type! {
     f128 => { libm::maybe_available::log2f128(x) }
 }
 
-/// Returns `a * b + c` without rounding the intermediate result for `f16` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f16::mul_add`](../../std/primitive.f16.html#method.mul_add)
-#[rustc_intrinsic_const_stable_indirect]
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmaf16(a: f16, b: f16, c: f16) -> f16 {
+intrinsic_dispatch_on_type! {
+    /// Returns `a * b + c` without rounding the intermediate result.
+    ///
+    /// The stabilized versions of this intrinsic are available on the float primitives via the
+    /// `mul_add` method. For example,
+    /// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add).
+    #[rustc_nounwind]
+    #[inline]
+    #[rustc_intrinsic_const_stable_indirect]
+    #[rustc_intrinsic]
+    // The fallback bodies call into `libm`, which is not available at compile time. This is fine
+    // because const-eval implements this intrinsic itself and never runs the fallback body.
+    #[rustc_do_not_const_check]
+    pub const fn fma<T: bounds::FloatPrimitive>(a: T, b: T, c: T) -> T;
+
     // NOTE: f32 does not have sufficient precision, so use f64 instead.
     // see also https://github.com/llvm/llvm-project/issues/128450#issuecomment-2727540179.
-    fmaf64(a as f64, b as f64, c as f64) as f16
+    f16 => { fma(a as f64, b as f64, c as f64) as f16 }
+    f32 => { libm::fmaf(a, b, c) }
+    f64 => { libm::fma(a, b, c) }
+    f128 => { libm::fmaf128(a, b, c) }
 }
-/// Returns `a * b + c` without rounding the intermediate result for `f32` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-/// Returns `a * b + c` without rounding the intermediate result for `f64` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-/// Returns `a * b + c` without rounding the intermediate result for `f128` values.
-///
-/// The stabilized version of this intrinsic is
-/// [`f128::mul_add`](../../std/primitive.f128.html#method.mul_add)
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 
-/// Returns `a * b + c` for `f16` values, non-deterministically executing
-/// either a fused multiply-add or two operations with rounding of the
-/// intermediate result.
+/// Returns `a * b + c`, non-deterministically executing either a fused multiply-add or two
+/// operations with rounding of the intermediate result.
 ///
 /// The operation is fused if the code generator determines that target
 /// instruction set has support for a fused operation, and that the fused
@@ -1316,57 +1300,10 @@ pub const fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 /// is selected, and that may depend on optimization level and context, for
 /// example.
 #[inline]
-#[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf16(a: f16, b: f16, c: f16) -> f16 {
-    a * b + c
-}
-/// Returns `a * b + c` for `f32` values, non-deterministically executing
-/// either a fused multiply-add or two operations with rounding of the
-/// intermediate result.
-///
-/// The operation is fused if the code generator determines that target
-/// instruction set has support for a fused operation, and that the fused
-/// operation is more efficient than the equivalent, separate pair of mul
-/// and add instructions. It is unspecified whether or not a fused operation
-/// is selected, and that may depend on optimization level and context, for
-/// example.
-#[inline]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmuladdf32(a: f32, b: f32, c: f32) -> f32 {
-    a * b + c
-}
-/// Returns `a * b + c` for `f64` values, non-deterministically executing
-/// either a fused multiply-add or two operations with rounding of the
-/// intermediate result.
-///
-/// The operation is fused if the code generator determines that target
-/// instruction set has support for a fused operation, and that the fused
-/// operation is more efficient than the equivalent, separate pair of mul
-/// and add instructions. It is unspecified whether or not a fused operation
-/// is selected, and that may depend on optimization level and context, for
-/// example.
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64 {
-    a * b + c
-}
-/// Returns `a * b + c` for `f128` values, non-deterministically executing
-/// either a fused multiply-add or two operations with rounding of the
-/// intermediate result.
-///
-/// The operation is fused if the code generator determines that target
-/// instruction set has support for a fused operation, and that the fused
-/// operation is more efficient than the equivalent, separate pair of mul
-/// and add instructions. It is unspecified whether or not a fused operation
-/// is selected, and that may depend on optimization level and context, for
-/// example.
-#[inline]
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const fn fmuladdf128(a: f128, b: f128, c: f128) -> f128 {
+pub const fn fmuladd<T: const bounds::FloatPrimitive>(a: T, b: T, c: T) -> T {
     a * b + c
 }
 

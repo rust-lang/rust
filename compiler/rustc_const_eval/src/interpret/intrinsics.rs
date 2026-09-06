@@ -657,21 +657,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(out_val, dest)?;
             }
 
-            sym::fmaf16 => self.float_muladd_intrinsic::<Half>(args, dest, MulAddType::Fused)?,
-            sym::fmaf32 => self.float_muladd_intrinsic::<Single>(args, dest, MulAddType::Fused)?,
-            sym::fmaf64 => self.float_muladd_intrinsic::<Double>(args, dest, MulAddType::Fused)?,
-            sym::fmaf128 => self.float_muladd_intrinsic::<Quad>(args, dest, MulAddType::Fused)?,
-            sym::fmuladdf16 => {
-                self.float_muladd_intrinsic::<Half>(args, dest, MulAddType::Nondeterministic)?
-            }
-            sym::fmuladdf32 => {
-                self.float_muladd_intrinsic::<Single>(args, dest, MulAddType::Nondeterministic)?
-            }
-            sym::fmuladdf64 => {
-                self.float_muladd_intrinsic::<Double>(args, dest, MulAddType::Nondeterministic)?
-            }
-            sym::fmuladdf128 => {
-                self.float_muladd_intrinsic::<Quad>(args, dest, MulAddType::Nondeterministic)?
+            sym::fma | sym::fmuladd => {
+                let mul_add = if intrinsic_name == sym::fma {
+                    MulAddType::Fused
+                } else {
+                    MulAddType::Nondeterministic
+                };
+                let ty = args[0].layout.ty;
+                let ty::Float(float_ty) = ty.kind() else {
+                    span_bug!(self.cur_span(), "non-float type for float intrinsic: {ty}");
+                };
+                match float_ty {
+                    FloatTy::F16 => self.float_muladd_intrinsic::<Half>(args, dest, mul_add)?,
+                    FloatTy::F32 => self.float_muladd_intrinsic::<Single>(args, dest, mul_add)?,
+                    FloatTy::F64 => self.float_muladd_intrinsic::<Double>(args, dest, mul_add)?,
+                    FloatTy::F128 => self.float_muladd_intrinsic::<Quad>(args, dest, mul_add)?,
+                }
             }
 
             sym::va_copy => {
