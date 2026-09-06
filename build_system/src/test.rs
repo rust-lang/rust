@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs::{File, read_to_string, remove_dir_all};
 use std::io::{BufRead, BufReader};
@@ -14,6 +14,15 @@ use crate::utils::{
     run_command, run_command_with_env, run_command_with_output_and_env,
     run_command_with_output_and_env_no_err, rustc_version_info, split_args, walk_dir,
 };
+
+/// Exit code of `y.sh test` when the tests ran and reported failures, as opposed to the build
+/// system failing to run them at all. CI relies on the distinction: the suites of known-failing
+/// tests are expected to report failures, but a broken build system must never pass silently.
+pub const TESTS_FAILED_EXIT_CODE: i32 = 2;
+
+/// The error returned for that case. `main` compares against it to pick the exit code, so no other
+/// error may use this message.
+pub const TESTS_FAILED_ERROR: &str = "the test suite reported failures";
 
 type Env = HashMap<String, String>;
 type Runner = fn(&Env, &TestArg) -> Result<(), String>;
@@ -1221,8 +1230,57 @@ where
         &"--bypass-ignore-backends",
     ];
 
-    run_command_with_output_and_env(&command, Some(&rust_path), Some(&env))?;
-    Ok(())
+    run_test_command(&command, &rust_path, &env)
+}
+
+/// Reads the list of tests at `list_path`, checking that each of them still exists in the rust
+/// checkout at `rust_path` and that none is listed twice.
+///
+/// Both problems make a line a no-op: the test it names is neither kept nor removed, so the test
+/// suite silently drifts away from what the list claims to describe.
+fn read_test_list(rust_path: &Path, list_path: &str) -> Result<Vec<String>, String> {
+    let content = std::fs::read_to_string(list_path)
+        .map_err(|error| format!("Failed to read `{list_path}`: {error:?}"))?;
+
+    let mut tests = Vec::new();
+    let mut seen = HashSet::new();
+    let mut missing = Vec::new();
+    let mut duplicated = Vec::new();
+
+    for line in content.lines().map(|line| line.trim()).filter(|line| !line.is_empty()) {
+        if !seen.insert(line) {
+            duplicated.push(line);
+            continue;
+        }
+        if !rust_path.join(line.trim_end_matches('/')).exists() {
+            missing.push(line);
+        }
+        tests.push(line.to_string());
+    }
+
+    if missing.is_empty() && duplicated.is_empty() {
+        return Ok(tests);
+    }
+
+    let mut error = format!("`{list_path}` is out of date:\n");
+    if !missing.is_empty() {
+        error.push_str(&format!(
+            "\nThese tests no longer exist in `{rust_path}`:\n{missing}\n",
+            rust_path = rust_path.display(),
+            missing = missing.join("\n"),
+        ));
+    }
+    if !duplicated.is_empty() {
+        error.push_str(&format!(
+            "\nThese tests are listed more than once:\n{}\n",
+            duplicated.join("\n")
+        ));
+    }
+    error.push_str(
+        "\nEvery line must name a test that exists, exactly once, otherwise the line filters \
+         nothing. Delete the stale lines, or update them to the test's current path.",
+    );
+    Err(error)
 }
 
 /// Checks that every test listed in `list_path` survived the filtering done by
@@ -1281,14 +1339,29 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         Some("tests/failing-ui-tests.txt"),
     );
 
-    run_make_result.and(run_make_cargo_result).and(ui_result)
+    combine_test_results([run_make_result, run_make_cargo_result, ui_result])
+}
+
+/// Combines the results of several test suites, letting a build system error win over a test
+/// failure so that a broken build system is never reported to CI as the failures those suites
+/// expect.
+fn combine_test_results<const N: usize>(results: [Result<(), String>; N]) -> Result<(), String> {
+    let mut tests_failed = false;
+    for result in results {
+        match result {
+            Ok(()) => {}
+            Err(error) if error == TESTS_FAILED_ERROR => tests_failed = true,
+            Err(error) => return Err(error),
+        }
+    }
+    if tests_failed { Err(TESTS_FAILED_ERROR.to_string()) } else { Ok(()) }
 }
 
 fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
     test_rustc_inner(
         env,
         args,
-        remove_files_callback("tests/failing-ui-tests.txt", "ui"),
+        remove_files_callback("tests/failing-ui-tests.txt"),
         false,
         "ui",
         None,
@@ -1296,7 +1369,7 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
     test_rustc_inner(
         env,
         args,
-        remove_files_callback("tests/failing-run-make-tests.txt", "run-make"),
+        remove_files_callback("tests/failing-run-make-tests.txt"),
         false,
         "run-make",
         None,
@@ -1304,7 +1377,7 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
     test_rustc_inner(
         env,
         args,
-        remove_files_callback("tests/failing-run-make-tests.txt", "run-make-cargo"),
+        remove_files_callback("tests/failing-run-make-tests.txt"),
         false,
         "run-make-cargo",
         None,
@@ -1315,7 +1388,7 @@ fn test_failing_ui_pattern_tests(env: &Env, args: &TestArg) -> Result<(), String
     test_rustc_inner(
         env,
         args,
-        remove_files_callback("tests/failing-ice-tests.txt", "ui"),
+        remove_files_callback("tests/failing-ice-tests.txt"),
         true,
         "ui",
         None,
@@ -1358,7 +1431,20 @@ fn run_ui_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         command.push(test_name);
     }
 
-    run_command_with_output_and_env(&command, Some(&rust_path), Some(&env))?;
+    run_test_command(&command, &rust_path, &env)
+}
+
+/// Runs the command that actually runs a test suite, mapping its failure to `TESTS_FAILED_ERROR`.
+fn run_test_command(
+    command: &[&dyn AsRef<OsStr>],
+    rust_path: &Path,
+    env: &Env,
+) -> Result<(), String> {
+    if let Err(error) = run_command_with_output_and_env(command, Some(rust_path), Some(env)) {
+        // The failures themselves were already streamed to the console.
+        eprintln!("{error}");
+        return Err(TESTS_FAILED_ERROR.to_string());
+    }
     Ok(())
 }
 
@@ -1367,8 +1453,8 @@ fn retain_files_callback<'a>(
     test_type: &'a str,
 ) -> impl Fn(&Path) -> Result<bool, String> + 'a {
     move |rust_path| {
-        let files = std::fs::read_to_string(file_path).unwrap_or_default();
-        let first_file_name = files.lines().next().unwrap_or("");
+        let tests = read_test_list(rust_path, file_path)?;
+        let first_file_name = tests.first().map(String::as_str).unwrap_or("");
         // If the first line ends with a `/`, we treat all lines in the file as a directory.
         if first_file_name.ends_with('/') {
             // Treat as directory
@@ -1410,53 +1496,31 @@ fn retain_files_callback<'a>(
         }
 
         // Putting back only the failing ones.
-        if let Ok(files) = std::fs::read_to_string(file_path) {
-            for file in files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty()) {
-                run_command(&[&"git", &"checkout", &"--", &file], Some(rust_path))?;
-            }
-        } else {
-            println!("Failed to read `{file_path}`, not putting back failing {test_type} tests");
+        for test in &tests {
+            run_command(&[&"git", &"checkout", &"--", test], Some(rust_path))?;
         }
 
         Ok(true)
     }
 }
 
-fn remove_files_callback<'a>(
-    file_path: &'a str,
-    test_type: &'a str,
-) -> impl Fn(&Path) -> Result<bool, String> + 'a {
+fn remove_files_callback(file_path: &str) -> impl Fn(&Path) -> Result<bool, String> + '_ {
     move |rust_path| {
-        let files = std::fs::read_to_string(file_path).unwrap_or_default();
-        let first_file_name = files.lines().next().unwrap_or("");
+        let tests = read_test_list(rust_path, file_path)?;
+        let first_file_name = tests.first().map(String::as_str).unwrap_or("");
         // If the first line ends with a `/`, we treat all lines in the file as a directory.
         if first_file_name.ends_with('/') {
             // Removing the failing tests.
-            if let Ok(files) = std::fs::read_to_string(file_path) {
-                for file in
-                    files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty())
-                {
-                    let path = rust_path.join(file);
-                    if let Err(e) = remove_dir_all(&path) {
-                        println!("Failed to remove directory `{}`: {}", path.display(), e);
-                    }
-                }
-            } else {
-                println!(
-                    "Failed to read `{file_path}`, not putting back failing {test_type} tests"
-                );
+            for test in &tests {
+                let path = rust_path.join(test);
+                remove_dir_all(&path).map_err(|error| {
+                    format!("Failed to remove directory `{}`: {error}", path.display())
+                })?;
             }
         } else {
             // Removing the failing tests.
-            if let Ok(files) = std::fs::read_to_string(file_path) {
-                for file in
-                    files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty())
-                {
-                    let path = rust_path.join(file);
-                    remove_file(&path)?;
-                }
-            } else {
-                println!("Failed to read `{file_path}`, not putting back failing ui tests");
+            for test in &tests {
+                remove_file(&rust_path.join(test))?;
             }
         }
         Ok(true)
@@ -1562,4 +1626,59 @@ pub fn run() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_test_list(directory: &Path, content: &str) -> PathBuf {
+        let list_path = directory.join("failing-tests.txt");
+        std::fs::write(&list_path, content).unwrap();
+        list_path
+    }
+
+    #[test]
+    fn test_combine_test_results() {
+        let tests_failed = || Err(TESTS_FAILED_ERROR.to_string());
+        let build_error = || Err("could not clone rust".to_string());
+
+        assert_eq!(combine_test_results([Ok(()), Ok(())]), Ok(()));
+        assert_eq!(combine_test_results([Ok(()), tests_failed()]), tests_failed());
+        assert_eq!(combine_test_results([Ok(()), build_error()]), build_error());
+        // A build system error wins, whichever suite reported it.
+        assert_eq!(combine_test_results([tests_failed(), build_error()]), build_error());
+        assert_eq!(combine_test_results([build_error(), tests_failed()]), build_error());
+    }
+
+    #[test]
+    fn test_read_test_list() {
+        let rust_path = std::env::temp_dir().join("cg_gcc_read_test_list");
+        let _ = remove_dir_all(&rust_path);
+        create_dir(rust_path.join("tests/ui")).unwrap();
+        std::fs::write(rust_path.join("tests/ui/alive.rs"), "").unwrap();
+
+        let list_path = write_test_list(&rust_path, "\ntests/ui/alive.rs\n  \n");
+        let list_path = list_path.display().to_string();
+        assert_eq!(
+            read_test_list(&rust_path, &list_path),
+            Ok(vec!["tests/ui/alive.rs".to_string()])
+        );
+
+        write_test_list(&rust_path, "tests/ui/alive.rs\ntests/ui/gone.rs\n");
+        let error = read_test_list(&rust_path, &list_path).unwrap_err();
+        assert!(error.contains("no longer exist"), "{error}");
+        assert!(error.contains("tests/ui/gone.rs"), "{error}");
+
+        write_test_list(&rust_path, "tests/ui/alive.rs\ntests/ui/alive.rs\n");
+        let error = read_test_list(&rust_path, &list_path).unwrap_err();
+        assert!(error.contains("listed more than once"), "{error}");
+        assert!(error.contains("tests/ui/alive.rs"), "{error}");
+
+        // Directories are listed with a trailing `/`.
+        write_test_list(&rust_path, "tests/ui/\n");
+        assert_eq!(read_test_list(&rust_path, &list_path), Ok(vec!["tests/ui/".to_string()]));
+
+        remove_dir_all(&rust_path).unwrap();
+    }
 }
