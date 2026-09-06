@@ -1,0 +1,11 @@
+   LL|       |#![feature(rustc_attrs)]
+   LL|       |//@ edition: 2024
+   LL|       |
+   LL|       |// Check that instrumenting a crate with a comptime function doesn't ICE.
+   LL|       |// (The function itself doesn't need to be instrumented, and probably shouldn't be.)
+   LL|       |
+   LL|       |#[rustc_comptime]
+   LL|       |fn comptime_fn() {}
+   LL|       |
+   LL|      1|fn main() {}
+
