@@ -1327,7 +1327,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
                 let parent_intersection = specialized.rows[child_intersection].parent_row;
                 // Note: self-intersection can happen with or-patterns.
                 if parent_intersection != parent_row_id {
-                    parent_row.intersects_at_least.insert(parent_intersection);
+                    parent_row.intersects_at_least.insert2(parent_intersection);
                 }
             }
         }
