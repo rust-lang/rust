@@ -1,4 +1,5 @@
 //@ edition: 2021
+//@ min-llvm-version: 23
 
 //@ aux-build: executor.rs
 extern crate executor;

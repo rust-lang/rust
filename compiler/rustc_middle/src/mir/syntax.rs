@@ -104,12 +104,13 @@ pub enum AnalysisPhase {
     /// * [`TerminatorKind::FalseEdge`]
     /// * [`StatementKind::FakeRead`]
     /// * [`StatementKind::AscribeUserType`]
-    /// * [`StatementKind::Coverage`] with [`CoverageKind::BlockMarker`] or
-    ///   [`CoverageKind::SpanMarker`]
+    /// * [`StatementKind::Coverage`] with [`CoverageKind::is_removed_after_analysis`]
     /// * [`Rvalue::Ref`] with `BorrowKind::Fake`
     /// * [`CastKind::PointerCoercion`] with any of the following:
     ///   * [`PointerCoercion::ArrayToPointer`]
     ///   * [`PointerCoercion::MutToConstPointer`]
+    ///
+    /// [`CoverageKind::is_removed_after_analysis`]: crate::mir::coverage::CoverageKind::is_removed_after_analysis
     ///
     /// Furthermore, `Deref` projections must be the first projection within any place (if they
     /// appear at all)

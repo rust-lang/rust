@@ -48,6 +48,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, source_info);
                 this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
+                    this.push_coverage_point_for_expr(block, source_info, hir_id);
                     this.expr_into_dest(destination, block, value)
                 })
             }
@@ -117,6 +118,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // There is no `else` arm, so we know both arms have type `()`.
                     // Generate the implicit `else {}` by assigning unit.
                     let correct_si = this.source_info(expr_span.shrink_to_hi());
+                    this.push_coverage_point_for_implicit_else(false_block, correct_si, expr);
                     this.cfg.push_assign_unit(false_block, correct_si, destination, this.tcx);
                 }
 

@@ -2,7 +2,7 @@
    LL|       |
    LL|       |#[rustfmt::skip]
    LL|      1|fn main() {
-   LL|      1|    let result
+   LL|       |    let result
    LL|       |        =
    LL|      1|            loop
    LL|      1|        {
