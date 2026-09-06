@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:7:20
+  --> $DIR/coerce-suggestions.rs:8:20
    |
 LL |     let x: usize = String::new();
    |            -----   ^^^^^^^^^^^^^ expected `usize`, found `String`
@@ -7,7 +7,7 @@ LL |     let x: usize = String::new();
    |            expected due to this
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:9:19
+  --> $DIR/coerce-suggestions.rs:10:19
    |
 LL |     let x: &str = String::new();
    |            ----   ^^^^^^^^^^^^^ expected `&str`, found `String`
@@ -20,7 +20,7 @@ LL |     let x: &str = &String::new();
    |                   +
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:12:10
+  --> $DIR/coerce-suggestions.rs:13:10
    |
 LL |     test(&y);
    |     ---- ^^ types differ in mutability
@@ -34,9 +34,55 @@ note: function defined here
    |
 LL | fn test(_x: &mut String) {}
    |    ^^^^ ---------------
+help: consider using `&mut` instead
+   |
+LL |     test(&mut y);
+   |           +++
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:14:11
+  --> $DIR/coerce-suggestions.rs:15:10
+   |
+LL |     test(&raw const y);
+   |     ---- ^^^^^^^^^^^^ expected `&mut String`, found `*const String`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut String`
+                    found raw pointer `*const String`
+note: function defined here
+  --> $DIR/coerce-suggestions.rs:1:4
+   |
+LL | fn test(_x: &mut String) {}
+   |    ^^^^ ---------------
+help: consider using `&mut` instead
+   |
+LL -     test(&raw const y);
+LL +     test(&mut y);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-suggestions.rs:17:10
+   |
+LL |     test(&raw mut y);
+   |     ---- ^^^^^^^^^^ expected `&mut String`, found `*mut String`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut String`
+                    found raw pointer `*mut String`
+note: function defined here
+  --> $DIR/coerce-suggestions.rs:1:4
+   |
+LL | fn test(_x: &mut String) {}
+   |    ^^^^ ---------------
+help: consider using `&mut` instead
+   |
+LL -     test(&raw mut y);
+LL +     test(&mut y);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-suggestions.rs:19:11
    |
 LL |     test2(&y);
    |     ----- ^^ types differ in mutability
@@ -52,11 +98,52 @@ LL | fn test2(_x: &mut i32) {}
    |    ^^^^^ ------------
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-suggestions.rs:17:9
+  --> $DIR/coerce-suggestions.rs:22:9
    |
 LL |     s = format!("foo");
    |         ^^^^^^^^^^^^^^ expected `&mut String`, found `String`
 
-error: aborting due to 5 previous errors
+error[E0308]: mismatched types
+  --> $DIR/coerce-suggestions.rs:25:11
+   |
+LL |     test3(&raw const s);
+   |     ----- ^^^^^^^^^^^^ types differ in mutability
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected raw pointer `*mut String`
+              found raw pointer `*const String`
+note: function defined here
+  --> $DIR/coerce-suggestions.rs:5:4
+   |
+LL | fn test3(_x: *mut String) {}
+   |    ^^^^^ ---------------
+help: consider using `&raw mut` instead
+   |
+LL -     test3(&raw const s);
+LL +     test3(&raw mut s);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-suggestions.rs:27:11
+   |
+LL |     test3(&s);
+   |     ----- ^^ types differ in mutability
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected raw pointer `*mut String`
+                found reference `&String`
+note: function defined here
+  --> $DIR/coerce-suggestions.rs:5:4
+   |
+LL | fn test3(_x: *mut String) {}
+   |    ^^^^^ ---------------
+help: consider using `&mut` instead
+   |
+LL |     test3(&mut s);
+   |            +++
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
