@@ -687,88 +687,54 @@ impl<'a, 'tcx> BlobDecoder for CacheDecoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>
-{
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>
-{
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsmTemplatePiece] {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Spanned<MonoItem<'tcx>>] {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx crate::traits::specialization_graph::Graph
-{
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx rustc_ast::tokenstream::TokenStream {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-macro_rules! impl_ref_decoder {
-    (<$tcx:tt> $($ty:ty,)*) => {
-        $(impl<'a, $tcx> Decodable<CacheDecoder<'a, $tcx>> for &$tcx [$ty] {
-            #[inline]
-            fn decode(d: &mut CacheDecoder<'a, $tcx>) -> Self {
-                RefDecodable::decode(d)
+/// Implements [`Decodable`] for `&'tcx T`, where [`T: RefDecodable`](RefDecodable)
+/// and T is foreign, i.e. _not_ defined in this crate (`rustc_middle`).
+/// Note that slices/tuples/collections of local types are considered foreign types.
+///
+/// Due to orphan-rule restrictions, these foreign impls cannot use a blanket
+/// [`D: TyDecoder`](TyDecoder), and must instead implement [`Decodable`] for a
+/// specific decoder, which in this case is [`CacheDecoder`].
+///
+/// For types defined in this crate, add an entry to
+/// `impl_decodable_via_ref_decodable_for_local_type!` instead.
+macro_rules! impl_decodable_via_ref_decodable_for_foreign_type {
+    (
+        $(
+            &'tcx $T:ty,
+        )*
+    ) => {
+        $(
+            impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx $T {
+                fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Self {
+                    RefDecodable::decode(decoder)
+                }
             }
-        })*
-    };
+        )*
+    }
 }
 
-impl_ref_decoder! {<'tcx>
-    Span,
-    rustc_hir::Attribute,
-    rustc_span::Ident,
-    ty::Variance,
-    rustc_span::def_id::DefId,
-    rustc_span::def_id::LocalDefId,
-    (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
-    rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
+impl_decodable_via_ref_decodable_for_foreign_type! {
+    // tidy-alphabetical-start
+    &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>,
+    &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>,
+    &'tcx UnordSet<LocalDefId>,
+    &'tcx [(
+        rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>,
+        rustc_middle::middle::exported_symbols::SymbolExportInfo
+    )],
+    &'tcx [(ty::Clause<'tcx>, Span)],
+    &'tcx [DefId],
+    &'tcx [LocalDefId],
+    &'tcx [Span],
+    &'tcx [Spanned<MonoItem<'tcx>>],
+    &'tcx [rustc_ast::InlineAsmTemplatePiece],
+    &'tcx [rustc_attr_ir::Attribute],
+    &'tcx [rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs],
+    &'tcx [rustc_span::Ident],
+    &'tcx [ty::Variance],
+    &'tcx rustc_ast::tokenstream::TokenStream,
+    &'tcx rustc_middle::traits::specialization_graph::Graph,
+    // tidy-alphabetical-end
 }
 
 //- ENCODING -------------------------------------------------------------------
