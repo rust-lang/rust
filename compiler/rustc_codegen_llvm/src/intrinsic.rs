@@ -56,11 +56,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
     args: &[OperandRef<'tcx, &'ll Value>],
 ) -> Option<&'ll Value> {
     let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
-        sym::sqrtf16 => ("llvm.sqrt", &[bx.type_f16()]),
-        sym::sqrtf32 => ("llvm.sqrt", &[bx.type_f32()]),
-        sym::sqrtf64 => ("llvm.sqrt", &[bx.type_f64()]),
-        sym::sqrtf128 => ("llvm.sqrt", &[bx.type_f128()]),
-
         sym::powif16 => ("llvm.powi", &[bx.type_f16(), bx.type_i32()]),
         sym::powif32 => ("llvm.powi", &[bx.type_f32(), bx.type_i32()]),
         sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
@@ -535,6 +530,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
             sym::copysign
             | sym::fabs
+            | sym::sqrt
             | sym::floor
             | sym::ceil
             | sym::trunc
@@ -560,6 +556,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let llvm_name = match name {
                     sym::copysign => "llvm.copysign",
                     sym::fabs => "llvm.fabs",
+                    sym::sqrt => "llvm.sqrt",
                     sym::floor => "llvm.floor",
                     sym::ceil => "llvm.ceil",
                     sym::trunc => "llvm.trunc",

@@ -322,11 +322,6 @@ fn codegen_float_intrinsic_call<'tcx>(
     ret: CPlace<'tcx>,
 ) -> bool {
     let (name, arg_count, ty, clif_ty) = match intrinsic {
-        sym::sqrtf16 => return false, // has a fallback via f32
-        sym::sqrtf32 => ("sqrtf", 1, fx.tcx.types.f32, types::F32),
-        sym::sqrtf64 => ("sqrt", 1, fx.tcx.types.f64, types::F64),
-        sym::sqrtf128 => ("sqrtf128", 1, fx.tcx.types.f128, types::F128),
-
         sym::powif16 => ("__powisf2", 2, fx.tcx.types.f16, types::F16), // compiler-builtins
         sym::powif32 => ("__powisf2", 2, fx.tcx.types.f32, types::F32), // compiler-builtins
         sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64, types::F64), // compiler-builtins
@@ -387,7 +382,6 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::fmaf32 | sym::fmaf64 | sym::fmuladdf32 | sym::fmuladdf64 => {
             fx.bcx.ins().fma(args[0], args[1], args[2])
         }
-        sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
 
         // These intrinsics aren't supported natively by Cranelift.
         // Lower them to a libcall.
@@ -1172,6 +1166,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         }
 
         sym::fabs
+        | sym::sqrt
         | sym::floor
         | sym::ceil
         | sym::trunc
@@ -1199,6 +1194,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let x = arg.load_scalar(fx);
             let res = match (intrinsic, float_ty) {
                 (sym::fabs, F32 | F64) => Codegen(fx.bcx.ins().fabs(x)),
+
+                (sym::sqrt, F32 | F64) => Codegen(fx.bcx.ins().sqrt(x)),
+                (sym::sqrt, F128) => Fallback("sqrtf128"),
 
                 (sym::floor, F32 | F64) => Codegen(fx.bcx.ins().floor(x)),
                 (sym::floor, F128) => Fallback("floorf128"),
