@@ -5,10 +5,10 @@ use hir::def::DefKind;
 use rustc_ast::{self as ast, Delegation, DelegationSource, NodeId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
+use rustc_middle::ty;
 use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_middle::{span_bug, ty};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span, span_bug};
 
 use crate::delegation::generics::GenericsGenerationResults;
 use crate::delegation::resolution::resolver::DelegationResolver;

@@ -16,8 +16,7 @@ use rustc_middle::ty::{
     self, FieldInfo, Term, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Unnormalized,
     Upcast,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
 use tracing::{debug, instrument};
 
 use super::{

@@ -11,10 +11,11 @@ use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
-use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::diagnostics::report_lit_error;
-use rustc_span::{ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, sym};
+use rustc_span::{
+    ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, span_bug, sym,
+};
 use thin_vec::{ThinVec, thin_vec};
 mod closure;
 

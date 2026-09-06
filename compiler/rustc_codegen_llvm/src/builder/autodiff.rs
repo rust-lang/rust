@@ -9,8 +9,9 @@ use rustc_codegen_ssa::mir::place::PlaceValue;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::RustcAutodiff;
+use rustc_middle::ty;
 use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
-use rustc_middle::{bug, ty};
+use rustc_span::bug;
 use rustc_target::callconv::PassMode;
 use tracing::debug;
 

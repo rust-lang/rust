@@ -5,10 +5,10 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_index::Idx;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
-use rustc_middle::bug;
 use rustc_middle::mir::{BasicBlock, Location};
 use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::BorrowIndex;

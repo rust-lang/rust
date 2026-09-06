@@ -8,14 +8,13 @@ use std::iter;
 
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, AssocContainer, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef,
     Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
     Unnormalized,
 };
-use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
+use rustc_span::{DUMMY_SP, bug};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 

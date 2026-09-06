@@ -10,8 +10,8 @@ use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
-use rustc_middle::{bug, mir, span_bug, ty};
-use rustc_span::DUMMY_SP;
+use rustc_middle::{mir, ty};
+use rustc_span::{DUMMY_SP, bug, span_bug};
 use tracing::field::Empty;
 use tracing::trace;
 

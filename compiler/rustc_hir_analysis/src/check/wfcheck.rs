@@ -28,9 +28,8 @@ use rustc_middle::ty::{
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
     Upcast,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::{DUMMY_SP, Span, bug, span_bug, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::{
     OutlivesEnvironmentBuildExt, region_known_to_outlive, ty_known_to_outlive,

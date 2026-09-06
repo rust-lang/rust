@@ -5,7 +5,7 @@ use rustc_lint_defs::builtin::FFI_UNWIND_CALLS;
 use rustc_middle::mir::*;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::{self, TyCtxt, layout};
-use rustc_middle::{bug, span_bug};
+use rustc_span::{bug, span_bug};
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 

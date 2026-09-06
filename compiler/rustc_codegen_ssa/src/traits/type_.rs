@@ -1,7 +1,7 @@
 use rustc_abi::{AddressSpace, Float, Integer, Primitive, Reg, Scalar};
-use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
+use rustc_span::bug;
 use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi};
 
 use super::BackendTypes;

@@ -18,8 +18,7 @@ use rustc_middle::ty::{
     self, ExistentialPredicate, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt,
     elaborate,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug, span_bug};
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;

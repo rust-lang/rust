@@ -9,7 +9,6 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::bug;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::resolve::{AmbigModChild, ModChild};
 use rustc_middle::middle::stability::DeprecationEntry;
@@ -22,7 +21,7 @@ use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
 use rustc_span::def_id::ModId;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::{Span, Symbol, kw};
+use rustc_span::{Span, Symbol, bug, kw};
 
 use super::{Decodable, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};

@@ -11,13 +11,12 @@ use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::span_bug;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, Unnormalized,
 };
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, span_bug};
 use rustc_trait_selection::error_reporting::traits::ambiguity::{
     CandidateSource, compute_applicable_impls_for_diagnostics,
 };

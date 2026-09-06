@@ -6,9 +6,9 @@ use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
 use rustc_middle::middle::resolve::PartialRes;
-use rustc_middle::{span_bug, ty};
+use rustc_middle::ty;
 use rustc_session::diagnostics::add_feature_diagnostics;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, span_bug, sym};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 

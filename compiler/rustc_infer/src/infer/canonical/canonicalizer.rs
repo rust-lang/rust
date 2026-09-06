@@ -8,11 +8,11 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_index::Idx;
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, BoundVar, Flags, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypingModeEqWrapper,
 };
+use rustc_span::bug;
 use smallvec::SmallVec;
 use tracing::debug;
 

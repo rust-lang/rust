@@ -5,6 +5,8 @@ LL |     unsafe { const_deallocate(std::ptr::null_mut(), 0, 0) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
+error: the compiler unexpectedly panicked. This is a bug
+
 query stack during panic:
 end of query stack
 error: aborting due to 1 previous error

@@ -9,8 +9,9 @@ use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, DerivedTypeCodegenMethods, TypeMembershipCodegenMethods,
 };
+use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, ty};
+use rustc_span::bug;
 
 use crate::common::TypeReflection;
 use crate::context::{CodegenCx, new_array_type};

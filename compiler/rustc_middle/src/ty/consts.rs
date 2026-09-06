@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_data_structures::intern::Interned;
 use rustc_macros::StableHash;
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 

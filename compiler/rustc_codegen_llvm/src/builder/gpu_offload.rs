@@ -7,8 +7,8 @@ use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
-use rustc_middle::bug;
 use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata, OffloadSize};
+use rustc_span::bug;
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;

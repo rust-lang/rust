@@ -10,7 +10,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource, PatKind,
 };
-use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
@@ -20,7 +19,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, TypeckResults,
 };
 use rustc_next_trait_solver::solve::TyOrConstInferVar;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, bug, sym};
 use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;

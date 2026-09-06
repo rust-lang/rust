@@ -8,10 +8,9 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Destination, Node, find_attr};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, span_bug};
 
 use crate::diagnostics::{
     BreakInsideClosure, BreakInsideCoroutine, BreakNonLoop, ConstContinueBadLabel,
