@@ -1,9 +1,3 @@
-// Caveats - gdb prints any 8-bit value (meaning rust i8 and u8 values)
-// as its numerical value along with its associated ASCII char, there
-// doesn't seem to be any way around this. Also, gdb doesn't know
-// about UTF-32 character encoding and will print a rust char as only
-// its numerical value.
-
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
@@ -45,6 +39,7 @@
 //@ gdb-check:$14 = 2.5
 //@ gdb-command:print f64
 //@ gdb-check:$15 = 3.5
+// FIXME(f128): gdb doesn't support Rust `f128` yet.
 //@ gdb-command:print s
 //@ gdb-check:$16 = "Hello, World!"
 
@@ -99,13 +94,16 @@
 //@ cdb-check:f32              : 2.500000 [Type: float]
 //@ cdb-command:dx f64
 //@ cdb-check:f64              : 3.500000 [Type: double]
+//@ cdb-command:dx f128
+//@ cdb-check:f128             : 0x1.2p+2 [Type: f128]
+//@ cdb-check:bits             : 0x40012000000000000000000000000000
 //@ cdb-command:.enable_unicode 1
 // FIXME(#88840): The latest version of the Windows SDK broke the visualizer for str.
 //@ cdb-command:dx  s
 //@ cdb-check:s                : [...] [Type: ref$<str$>]
 
 #![allow(unused_variables)]
-#![feature(f16)]
+#![feature(f16, f128)]
 
 fn main() {
     let b: bool = false;
@@ -123,6 +121,7 @@ fn main() {
     let f16: f16 = 1.5;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
+    let f128: f128 = 4.5;
     let s: &str = "Hello, World!";
     _zzz(); // #break
 }
