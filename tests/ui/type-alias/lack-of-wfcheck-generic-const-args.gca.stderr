@@ -1,16 +1,16 @@
-error[E0191]: the value of the associated constant `N` in `HasAssocConst` must be specified
-  --> $DIR/lack-of-wfcheck-generic-const-args.rs:19:25
+error[E0191]: the value of the associated constant `N` in `HasNonTypeAssocConst` must be specified
+  --> $DIR/lack-of-wfcheck-generic-const-args.rs:13:20
    |
-LL | type DynIncompat1 = dyn HasAssocConst;
-   |                         ^^^^^^^^^^^^^
+LL | type TyAlias = dyn HasNonTypeAssocConst;
+   |                    ^^^^^^^^^^^^^^^^^^^^
 ...
-LL |     const N: usize;
-   |     -------------- `N` defined here
+LL |     /*non-type */const N: usize;
+   |                  -------------- `N` defined here
    |
 help: specify the associated constant
    |
-LL | type DynIncompat1 = dyn HasAssocConst<N = /* CONST */>;
-   |                                      +++++++++++++++++
+LL | type TyAlias = dyn HasNonTypeAssocConst<N = /* CONST */>;
+   |                                        +++++++++++++++++
 
 error: aborting due to 1 previous error
 
