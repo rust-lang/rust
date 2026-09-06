@@ -3,7 +3,7 @@ use crate::io;
 use crate::os::unix::ffi::OsStringExt;
 use crate::sys::io::errno;
 
-pub fn hostname() -> io::Result<OsString> {
+pub(crate) fn hostname() -> io::Result<OsString> {
     // Query the system for the maximum host name length.
     let host_name_max = match unsafe { libc::sysconf(libc::_SC_HOST_NAME_MAX) } {
         // If this fails (possibly because there is no maximum length), then

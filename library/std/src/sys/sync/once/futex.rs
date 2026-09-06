@@ -32,19 +32,19 @@ const QUEUED: Primitive = 4;
 
 const STATE_MASK: Primitive = 0b11;
 
-pub struct OnceState {
+pub(crate) struct OnceState {
     poisoned: bool,
     set_state_to: Cell<Primitive>,
 }
 
 impl OnceState {
     #[inline]
-    pub fn is_poisoned(&self) -> bool {
+    pub(crate) fn is_poisoned(&self) -> bool {
         self.poisoned
     }
 
     #[inline]
-    pub fn poison(&self) {
+    pub(crate) fn poison(&self) {
         self.set_state_to.set(POISONED);
     }
 }
@@ -65,23 +65,23 @@ impl<'a> Drop for CompletionGuard<'a> {
     }
 }
 
-pub struct Once {
+pub(crate) struct Once {
     state_and_queued: Futex,
 }
 
 impl Once {
     #[inline]
-    pub const fn new() -> Once {
+    pub(crate) const fn new() -> Once {
         Once { state_and_queued: Futex::new(INCOMPLETE) }
     }
 
     #[inline]
-    pub const fn new_complete() -> Once {
+    pub(crate) const fn new_complete() -> Once {
         Once { state_and_queued: Futex::new(COMPLETE) }
     }
 
     #[inline]
-    pub fn is_completed(&self) -> bool {
+    pub(crate) fn is_completed(&self) -> bool {
         // Use acquire ordering to make all initialization changes visible to the
         // current thread.
         self.state_and_queued.load(Acquire) == COMPLETE
@@ -108,7 +108,7 @@ impl Once {
 
     #[cold]
     #[track_caller]
-    pub fn wait(&self, ignore_poisoning: bool) {
+    pub(crate) fn wait(&self, ignore_poisoning: bool) {
         let mut state_and_queued = self.state_and_queued.load(Acquire);
         loop {
             let state = state_and_queued & STATE_MASK;
@@ -143,7 +143,7 @@ impl Once {
 
     #[cold]
     #[track_caller]
-    pub fn call(&self, ignore_poisoning: bool, f: &mut dyn FnMut(&public::OnceState)) {
+    pub(crate) fn call(&self, ignore_poisoning: bool, f: &mut dyn FnMut(&public::OnceState)) {
         let mut state_and_queued = self.state_and_queued.load(Acquire);
         loop {
             let state = state_and_queued & STATE_MASK;

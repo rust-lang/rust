@@ -260,15 +260,15 @@ pub(crate) struct LocalPointer {
 }
 
 impl LocalPointer {
-    pub const fn __new() -> LocalPointer {
+    pub(crate) const fn __new() -> LocalPointer {
         LocalPointer { key: LazyKey::new(None) }
     }
 
-    pub fn get(&'static self) -> *mut () {
+    pub(crate) fn get(&'static self) -> *mut () {
         unsafe { get(self.key.force()) as *mut () }
     }
 
-    pub fn set(&'static self, p: *mut ()) {
+    pub(crate) fn set(&'static self, p: *mut ()) {
         unsafe { set(self.key.force(), p as *mut u8) }
     }
 }

@@ -1,15 +1,15 @@
 #![cfg_attr(test, allow(dead_code))]
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-pub use self::imp::init;
+pub(crate) use self::imp::init;
 use self::imp::{drop_handler, make_handler};
 
-pub struct Handler {
+pub(crate) struct Handler {
     data: *mut libc::c_void,
 }
 
 impl Handler {
-    pub unsafe fn new() -> Handler {
+    pub(crate) unsafe fn new() -> Handler {
         make_handler(false)
     }
 
@@ -157,7 +157,7 @@ mod imp {
 
     /// # Safety
     /// Must be called only once, on the main thread, during program startup.
-    pub unsafe fn init() {
+    pub(crate) unsafe fn init() {
         PAGE_SIZE.store(conf::page_size(), Ordering::Relaxed);
 
         // SAFETY:
@@ -249,7 +249,7 @@ mod imp {
         libc::stack_t { ss_sp: stackp, ss_flags: 0, ss_size: sigstack_size }
     }
 
-    pub fn make_handler(main_thread: bool) -> Handler {
+    pub(crate) fn make_handler(main_thread: bool) -> Handler {
         if cfg!(panic = "immediate-abort") || !NEED_ALTSTACK.load(Ordering::Acquire) {
             return Handler::null();
         }
@@ -294,7 +294,7 @@ mod imp {
     /// # Safety
     /// Must only be called with a pointer returned by `make_handler`, and only
     /// once per `Handler`.
-    pub unsafe fn drop_handler(data: *mut libc::c_void) {
+    pub(crate) unsafe fn drop_handler(data: *mut libc::c_void) {
         if !data.is_null() {
             let sigstack_size = sigstack_size();
             let page_size = PAGE_SIZE.load(Ordering::Relaxed);

@@ -27,11 +27,11 @@ mod thread_name_string {
     }
 
     impl ThreadNameString {
-        pub fn as_cstr(&self) -> &CStr {
+        pub(crate) fn as_cstr(&self) -> &CStr {
             &self.inner
         }
 
-        pub fn as_str(&self) -> &str {
+        pub(crate) fn as_str(&self) -> &str {
             // SAFETY: `ThreadNameString` is guaranteed to be UTF-8.
             unsafe { str::from_utf8_unchecked(self.inner.to_bytes()) }
         }

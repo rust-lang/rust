@@ -31,10 +31,10 @@ use crate::sync::atomic::{Atomic, AtomicPtr, AtomicU32};
 use crate::sys::c;
 use crate::sys::thread_local::guard;
 
-pub type Key = u32;
+pub(crate) type Key = u32;
 type Dtor = unsafe extern "C" fn(*mut u8);
 
-pub struct LazyKey {
+pub(crate) struct LazyKey {
     /// The key value shifted up by one. Since TLS_OUT_OF_INDEXES == u32::MAX
     /// is not a valid key value, this allows us to use zero as sentinel value
     /// without risking overflow.
@@ -54,7 +54,7 @@ fn fail() -> ! {
 
 impl LazyKey {
     #[inline]
-    pub const fn new(dtor: Option<Dtor>) -> LazyKey {
+    pub(crate) const fn new(dtor: Option<Dtor>) -> LazyKey {
         LazyKey {
             key: AtomicU32::new(0),
             dtor,
@@ -64,7 +64,7 @@ impl LazyKey {
     }
 
     #[inline]
-    pub fn force(&'static self) -> Key {
+    pub(crate) fn force(&'static self) -> Key {
         if self.dtor.is_some() {
             // Needs to be called on all threads where the key might have a non-null value!
             // Otherwise, `run_dtors` might not be called on this thread.
@@ -148,7 +148,7 @@ unsafe impl Send for LazyKey {}
 unsafe impl Sync for LazyKey {}
 
 #[inline]
-pub unsafe fn set(key: Key, val: *mut u8) {
+pub(crate) unsafe fn set(key: Key, val: *mut u8) {
     let r = unsafe { c::TlsSetValue(key, val.cast()) };
     // According to MS documentation, `TlsSetValue` returns zero "if it fails"
     if r != c::TRUE {
@@ -157,7 +157,7 @@ pub unsafe fn set(key: Key, val: *mut u8) {
 }
 
 #[inline]
-pub unsafe fn get(key: Key) -> *mut u8 {
+pub(crate) unsafe fn get(key: Key) -> *mut u8 {
     unsafe { c::TlsGetValue(key).cast() }
 }
 
@@ -180,7 +180,7 @@ unsafe fn register_dtor(key: &'static LazyKey) {
 }
 
 /// This will and must only be run by the destructor callback in [`guard`].
-pub unsafe fn run_dtors() {
+pub(crate) unsafe fn run_dtors() {
     for _ in 0..5 {
         let mut any_run = false;
 

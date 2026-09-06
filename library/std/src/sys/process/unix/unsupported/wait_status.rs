@@ -15,7 +15,7 @@ use crate::num::NonZero;
 /// These platforms aren't Unix, but are simply pretending to be for porting convenience.
 /// So, we provide a faithful pretence here.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
-pub struct ExitStatus {
+pub(crate) struct ExitStatus {
     wait_status: c_int,
 }
 
@@ -33,7 +33,7 @@ impl fmt::Display for ExitStatus {
 }
 
 impl ExitStatus {
-    pub fn code(&self) -> Option<i32> {
+    pub(crate) fn code(&self) -> Option<i32> {
         // Linux and FreeBSD both agree that values linux 0x80
         // count as "WIFEXITED" even though this is quite mad.
         // Likewise the macros disregard all the high bits, so are happy to declare
@@ -43,7 +43,7 @@ impl ExitStatus {
     }
 
     #[allow(unused)]
-    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+    pub(crate) fn exit_ok(&self) -> Result<(), ExitStatusError> {
         // This assumes that WIFEXITED(status) && WEXITSTATUS==0 corresponds to status==0. This is
         // true on all actual versions of Unix, is widely assumed, and is specified in SuS
         // https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html. If it is not
@@ -55,25 +55,25 @@ impl ExitStatus {
         }
     }
 
-    pub fn signal(&self) -> Option<i32> {
+    pub(crate) fn signal(&self) -> Option<i32> {
         let signal = self.wait_status & 0x007f;
         if signal > 0 && signal < 0x7f { Some(signal) } else { None }
     }
 
-    pub fn core_dumped(&self) -> bool {
+    pub(crate) fn core_dumped(&self) -> bool {
         self.signal().is_some() && (self.wait_status & 0x80) != 0
     }
 
-    pub fn stopped_signal(&self) -> Option<i32> {
+    pub(crate) fn stopped_signal(&self) -> Option<i32> {
         let w = self.wait_status;
         if (w & 0xff) == 0x7f { Some((w & 0xff00) >> 8) } else { None }
     }
 
-    pub fn continued(&self) -> bool {
+    pub(crate) fn continued(&self) -> bool {
         self.wait_status == 0xffff
     }
 
-    pub fn into_raw(&self) -> c_int {
+    pub(crate) fn into_raw(&self) -> c_int {
         self.wait_status
     }
 }

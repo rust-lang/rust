@@ -2,15 +2,15 @@ cfg_select! {
     // Tier 1
     any(target_os = "linux", target_os = "android") => {
         mod linux;
-        pub use linux::{fill_bytes, hashmap_random_keys};
+        pub(crate) use linux::{fill_bytes, hashmap_random_keys};
     }
     target_os = "windows" => {
         mod windows;
-        pub use windows::fill_bytes;
+        pub(crate) use windows::fill_bytes;
     }
     target_vendor = "apple" => {
         mod apple;
-        pub use apple::fill_bytes;
+        pub(crate) use apple::fill_bytes;
         // Others, in alphabetical ordering.
     }
     any(
@@ -120,7 +120,7 @@ cfg_select! {
     target_os = "vexos",
     target_os = "l4re",
 )))]
-pub fn hashmap_random_keys() -> (u64, u64) {
+pub(crate) fn hashmap_random_keys() -> (u64, u64) {
     let mut buf = [0; 16];
     fill_bytes(&mut buf);
     let k1 = u64::from_ne_bytes(buf[..8].try_into().unwrap());

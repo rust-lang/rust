@@ -6,11 +6,11 @@
 cfg_select! {
     unix => {
         mod unix;
-        pub use self::unix::*;
+        pub(crate) use self::unix::*;
     }
     windows => {
         mod windows;
-        pub use self::windows::*;
+        pub(crate) use self::windows::*;
     }
     target_os = "solid_asp3" => {
         mod solid;

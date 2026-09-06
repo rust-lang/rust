@@ -24,16 +24,16 @@ cfg_select! {
 pub(super) use libc as netc;
 
 use super::{socket_addr_from_c, socket_addr_to_c};
-pub use crate::sys::{cvt, cvt_r};
+pub(crate) use crate::sys::{cvt, cvt_r};
 
 #[expect(non_camel_case_types)]
-pub type wrlen_t = size_t;
+pub(crate) type wrlen_t = size_t;
 
-pub struct Socket(FileDesc);
+pub(crate) struct Socket(FileDesc);
 
-pub fn init() {}
+pub(crate) fn init() {}
 
-pub fn cvt_gai(err: c_int) -> io::Result<()> {
+pub(crate) fn cvt_gai(err: c_int) -> io::Result<()> {
     if err == 0 {
         return Ok(());
     }
@@ -63,7 +63,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 }
 
 impl Socket {
-    pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
+    pub(crate) fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         cfg_select! {
             any(
                 target_os = "android",
@@ -113,7 +113,7 @@ impl Socket {
     }
 
     #[cfg(not(any(target_os = "vxworks", target_os = "wasi")))]
-    pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
+    pub(crate) fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
         unsafe {
             let mut fds = [0, 0];
 
@@ -155,7 +155,7 @@ impl Socket {
         unimplemented!()
     }
 
-    pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
+    pub(crate) fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = socket_addr_to_c(addr);
         loop {
             let result = unsafe { libc::connect(self.as_raw_fd(), addr.as_ptr(), len) };
@@ -171,7 +171,7 @@ impl Socket {
         }
     }
 
-    pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
+    pub(crate) fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
         let r = unsafe {
             let (addr, len) = socket_addr_to_c(addr);
@@ -247,7 +247,7 @@ impl Socket {
         }
     }
 
-    pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t) -> io::Result<Socket> {
+    pub(crate) fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t) -> io::Result<Socket> {
         // Unfortunately the only known way right now to accept a socket and
         // atomically set the CLOEXEC flag is to use the `accept4` syscall on
         // platforms that support it. On Linux, this was added in 2.6.28,
@@ -277,12 +277,12 @@ impl Socket {
         }
     }
 
-    pub fn duplicate(&self) -> io::Result<Socket> {
+    pub(crate) fn duplicate(&self) -> io::Result<Socket> {
         self.0.duplicate().map(Socket)
     }
 
     #[cfg(not(target_os = "wasi"))]
-    pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
+    pub(crate) fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
         let len = cmp::min(buf.len(), super::MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
             libc::send(self.as_raw_fd(), buf.as_ptr() as *const c_void, len, flags)
@@ -305,28 +305,28 @@ impl Socket {
         Ok(())
     }
 
-    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut buf = BorrowedBuf::from(buf);
         self.recv_with_flags(buf.unfilled(), 0)?;
         Ok(buf.len())
     }
 
-    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut buf = BorrowedBuf::from(buf);
         self.recv_with_flags(buf.unfilled(), MSG_PEEK)?;
         Ok(buf.len())
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
+    pub(crate) fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.recv_with_flags(buf, 0)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    pub(crate) fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
     }
 
     #[inline]
-    pub fn is_read_vectored(&self) -> bool {
+    pub(crate) fn is_read_vectored(&self) -> bool {
         self.0.is_read_vectored()
     }
 
@@ -354,41 +354,41 @@ impl Socket {
         Ok((n as usize, unsafe { socket_addr_from_c(storage.as_ptr(), addrlen as usize)? }))
     }
 
-    pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+    pub(crate) fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.recv_from_with_flags(buf, 0)
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
-    pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+    pub(crate) fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
         let n = cvt(unsafe { libc::recvmsg(self.as_raw_fd(), msg, libc::MSG_CMSG_CLOEXEC) })?;
         Ok(n as usize)
     }
 
-    pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+    pub(crate) fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.recv_from_with_flags(buf, MSG_PEEK)
     }
 
     #[cfg(not(target_os = "wasi"))]
-    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+    pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+    pub(crate) fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
     #[inline]
-    pub fn is_write_vectored(&self) -> bool {
+    pub(crate) fn is_write_vectored(&self) -> bool {
         self.0.is_write_vectored()
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
-    pub fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
+    pub(crate) fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
         let n = cvt(unsafe { libc::sendmsg(self.as_raw_fd(), msg, 0) })?;
         Ok(n as usize)
     }
 
-    pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
+    pub(crate) fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
         let timeout = match dur {
             Some(dur) => {
                 if dur.as_secs() == 0 && dur.subsec_nanos() == 0 {
@@ -411,7 +411,7 @@ impl Socket {
         unsafe { setsockopt(self, libc::SOL_SOCKET, kind, timeout) }
     }
 
-    pub fn timeout(&self, kind: libc::c_int) -> io::Result<Option<Duration>> {
+    pub(crate) fn timeout(&self, kind: libc::c_int) -> io::Result<Option<Duration>> {
         let raw: libc::timeval = unsafe { getsockopt(self, libc::SOL_SOCKET, kind)? };
         if raw.tv_sec == 0 && raw.tv_usec == 0 {
             Ok(None)
@@ -422,7 +422,7 @@ impl Socket {
         }
     }
 
-    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+    pub(crate) fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         let how = match how {
             Shutdown::Write => libc::SHUT_WR,
             Shutdown::Read => libc::SHUT_RD,
@@ -433,7 +433,7 @@ impl Socket {
     }
 
     #[cfg(not(target_os = "cygwin"))]
-    pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
+    pub(crate) fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
         let linger = libc::linger {
             l_onoff: linger.is_some() as c_int,
             l_linger: cmp::min(linger.unwrap_or_default().as_secs(), c_int::MAX as u64) as c_int,
@@ -453,50 +453,50 @@ impl Socket {
         unsafe { setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger) }
     }
 
-    pub fn linger(&self) -> io::Result<Option<Duration>> {
+    pub(crate) fn linger(&self) -> io::Result<Option<Duration>> {
         let val: libc::linger = unsafe { getsockopt(self, libc::SOL_SOCKET, SO_LINGER)? };
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
-    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+    pub(crate) fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
         unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_KEEPALIVE, keepalive as c_int) }
     }
 
-    pub fn keepalive(&self) -> io::Result<bool> {
+    pub(crate) fn keepalive(&self) -> io::Result<bool> {
         let raw: c_int = unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_KEEPALIVE)? };
         Ok(raw != 0)
     }
 
-    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+    pub(crate) fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY, nodelay as c_int) }
     }
 
-    pub fn nodelay(&self) -> io::Result<bool> {
+    pub(crate) fn nodelay(&self) -> io::Result<bool> {
         let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY)? };
         Ok(raw != 0)
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
-    pub fn set_quickack(&self, quickack: bool) -> io::Result<()> {
+    pub(crate) fn set_quickack(&self, quickack: bool) -> io::Result<()> {
         unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK, quickack as c_int) }
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
-    pub fn quickack(&self) -> io::Result<bool> {
+    pub(crate) fn quickack(&self) -> io::Result<bool> {
         let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK)? };
         Ok(raw != 0)
     }
 
     // bionic libc makes no use of this flag
     #[cfg(target_os = "linux")]
-    pub fn set_deferaccept(&self, accept: Duration) -> io::Result<()> {
+    pub(crate) fn set_deferaccept(&self, accept: Duration) -> io::Result<()> {
         let val = cmp::min(accept.as_secs(), c_int::MAX as u64) as c_int;
         unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT, val) }
     }
 
     #[cfg(target_os = "linux")]
-    pub fn deferaccept(&self) -> io::Result<Duration> {
+    pub(crate) fn deferaccept(&self) -> io::Result<Duration> {
         let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT)? };
         Ok(Duration::from_secs(raw as _))
     }
@@ -550,12 +550,12 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
-    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
+    pub(crate) fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int) }
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
-    pub fn passcred(&self) -> io::Result<bool> {
+    pub(crate) fn passcred(&self) -> io::Result<bool> {
         let passcred: libc::c_int =
             unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)? };
         Ok(passcred != 0)
@@ -593,7 +593,7 @@ impl Socket {
     }
 
     #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "vita")))]
-    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+    pub(crate) fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_int;
         cvt(unsafe { libc::ioctl(self.as_raw_fd(), libc::FIONBIO, &mut nonblocking) }).map(drop)
     }
@@ -612,7 +612,7 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
-    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
+    pub(crate) fn set_mark(&self, mark: u32) -> io::Result<()> {
         #[cfg(target_os = "linux")]
         let option = libc::SO_MARK;
         #[cfg(target_os = "freebsd")]
@@ -622,12 +622,12 @@ impl Socket {
         unsafe { setsockopt(self, libc::SOL_SOCKET, option, mark as libc::c_int) }
     }
 
-    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+    pub(crate) fn take_error(&self) -> io::Result<Option<io::Error>> {
         let raw: c_int = unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR)? };
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
-    pub fn as_raw(&self) -> RawFd {
+    pub(crate) fn as_raw(&self) -> RawFd {
         self.as_raw_fd()
     }
 }

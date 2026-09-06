@@ -7,21 +7,21 @@ use crate::{fmt, mem, ptr};
 /// This type manages an array of C-string pointers terminated by a null
 /// pointer. The pointer to the array (as returned by `as_ptr`) can be used as
 /// a value of `argv` or `environ`.
-pub struct CStringArray {
+pub(crate) struct CStringArray {
     ptrs: Vec<*const c_char>,
 }
 
 impl CStringArray {
     /// Creates a new `CStringArray` with enough capacity to hold `capacity`
     /// strings.
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub(crate) fn with_capacity(capacity: usize) -> Self {
         let mut result = CStringArray { ptrs: Vec::with_capacity(capacity + 1) };
         result.ptrs.push(ptr::null());
         result
     }
 
     /// Replace the string at position `index`.
-    pub fn write(&mut self, index: usize, item: CString) {
+    pub(crate) fn write(&mut self, index: usize, item: CString) {
         let argc = self.ptrs.len() - 1;
         let ptr = &mut self.ptrs[..argc][index];
         let old = mem::replace(ptr, item.into_raw());
@@ -33,7 +33,7 @@ impl CStringArray {
     }
 
     /// Push an additional string to the array.
-    pub fn push(&mut self, item: CString) {
+    pub(crate) fn push(&mut self, item: CString) {
         let argc = self.ptrs.len() - 1;
         // Amend the array by another null pointer first, to ensure that the
         // array is null-terminated even when the `push` panics, in which case
@@ -44,12 +44,12 @@ impl CStringArray {
     }
 
     /// Returns a pointer to the C-string array managed by this type.
-    pub fn as_ptr(&self) -> *const *const c_char {
+    pub(crate) fn as_ptr(&self) -> *const *const c_char {
         self.ptrs.as_ptr()
     }
 
     /// Returns an iterator over all `CStr`s contained in this array.
-    pub fn iter(&self) -> CStringIter<'_> {
+    pub(crate) fn iter(&self) -> CStringIter<'_> {
         CStringIter { iter: self.ptrs[..self.ptrs.len() - 1].iter() }
     }
 }
@@ -89,7 +89,7 @@ impl Drop for CStringArray {
 
 /// An iterator over all `CStr`s contained in a `CStringArray`.
 #[derive(Clone)]
-pub struct CStringIter<'a> {
+pub(crate) struct CStringIter<'a> {
     iter: crate::slice::Iter<'a, *const c_char>,
 }
 

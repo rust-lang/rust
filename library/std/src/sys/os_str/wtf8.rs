@@ -79,82 +79,82 @@ impl Clone for Buf {
 
 impl Buf {
     #[inline]
-    pub fn into_encoded_bytes(self) -> Vec<u8> {
+    pub(crate) fn into_encoded_bytes(self) -> Vec<u8> {
         self.inner.into_bytes()
     }
 
     #[inline]
-    pub unsafe fn from_encoded_bytes_unchecked(s: Vec<u8>) -> Self {
+    pub(crate) unsafe fn from_encoded_bytes_unchecked(s: Vec<u8>) -> Self {
         unsafe { Self { inner: Wtf8Buf::from_bytes_unchecked(s) } }
     }
 
     #[inline]
-    pub fn into_string(self) -> Result<String, Buf> {
+    pub(crate) fn into_string(self) -> Result<String, Buf> {
         self.inner.into_string().map_err(|buf| Buf { inner: buf })
     }
 
     #[inline]
-    pub const fn from_string(s: String) -> Buf {
+    pub(crate) const fn from_string(s: String) -> Buf {
         Buf { inner: Wtf8Buf::from_string(s) }
     }
 
     #[inline]
-    pub fn with_capacity(capacity: usize) -> Buf {
+    pub(crate) fn with_capacity(capacity: usize) -> Buf {
         Buf { inner: Wtf8Buf::with_capacity(capacity) }
     }
 
     #[inline]
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.inner.clear()
     }
 
     #[inline]
-    pub fn capacity(&self) -> usize {
+    pub(crate) fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
     #[inline]
-    pub fn push_slice(&mut self, s: &Slice) {
+    pub(crate) fn push_slice(&mut self, s: &Slice) {
         self.inner.push_wtf8(&s.inner)
     }
 
     #[inline]
-    pub fn push_str(&mut self, s: &str) {
+    pub(crate) fn push_str(&mut self, s: &str) {
         self.inner.push_str(s);
     }
 
     #[inline]
-    pub fn reserve(&mut self, additional: usize) {
+    pub(crate) fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional)
     }
 
     #[inline]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+    pub(crate) fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.inner.try_reserve(additional)
     }
 
     #[inline]
-    pub fn reserve_exact(&mut self, additional: usize) {
+    pub(crate) fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
     }
 
     #[inline]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+    pub(crate) fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.inner.try_reserve_exact(additional)
     }
 
     #[inline]
-    pub fn shrink_to_fit(&mut self) {
+    pub(crate) fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit()
     }
 
     #[inline]
-    pub fn shrink_to(&mut self, min_capacity: usize) {
+    pub(crate) fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &Slice {
+    pub(crate) fn as_slice(&self) -> &Slice {
         // SAFETY: Slice is just a wrapper for Wtf8,
         // and self.inner.as_slice() returns &Wtf8.
         // Therefore, transmuting &Wtf8 to &Slice is safe.
@@ -162,7 +162,7 @@ impl Buf {
     }
 
     #[inline]
-    pub fn as_mut_slice(&mut self) -> &mut Slice {
+    pub(crate) fn as_mut_slice(&mut self) -> &mut Slice {
         // SAFETY: Slice is just a wrapper for Wtf8,
         // and self.inner.as_mut_slice() returns &mut Wtf8.
         // Therefore, transmuting &mut Wtf8 to &mut Slice is safe.
@@ -172,28 +172,28 @@ impl Buf {
     }
 
     #[inline]
-    pub fn leak<'a>(self) -> &'a mut Slice {
+    pub(crate) fn leak<'a>(self) -> &'a mut Slice {
         unsafe { mem::transmute(self.inner.leak()) }
     }
 
     #[inline]
-    pub fn into_box(self) -> Box<Slice> {
+    pub(crate) fn into_box(self) -> Box<Slice> {
         unsafe { mem::transmute(self.inner.into_box()) }
     }
 
     #[inline]
-    pub fn from_box(boxed: Box<Slice>) -> Buf {
+    pub(crate) fn from_box(boxed: Box<Slice>) -> Buf {
         let inner: Box<Wtf8> = unsafe { mem::transmute(boxed) };
         Buf { inner: Wtf8Buf::from_box(inner) }
     }
 
     #[inline]
-    pub fn into_arc(&self) -> Arc<Slice> {
+    pub(crate) fn into_arc(&self) -> Arc<Slice> {
         self.as_slice().into_arc()
     }
 
     #[inline]
-    pub fn into_rc(&self) -> Rc<Slice> {
+    pub(crate) fn into_rc(&self) -> Rc<Slice> {
         self.as_slice().into_rc()
     }
 
@@ -205,7 +205,7 @@ impl Buf {
     /// The length must be at an `OsStr` boundary, according to
     /// `Slice::check_public_boundary`.
     #[inline]
-    pub unsafe fn truncate_unchecked(&mut self, len: usize) {
+    pub(crate) unsafe fn truncate_unchecked(&mut self, len: usize) {
         self.inner.truncate(len);
     }
 
@@ -222,7 +222,7 @@ impl Buf {
     /// either `self` must not end with a leading surrogate half, or `other`
     /// must not start with a trailing surrogate half.
     #[inline]
-    pub unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
+    pub(crate) unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
         unsafe {
             self.inner.extend_from_slice_unchecked(other);
         }
@@ -231,95 +231,95 @@ impl Buf {
 
 impl Slice {
     #[inline]
-    pub fn as_encoded_bytes(&self) -> &[u8] {
+    pub(crate) fn as_encoded_bytes(&self) -> &[u8] {
         self.inner.as_bytes()
     }
 
     #[inline]
-    pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
+    pub(crate) unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
         unsafe { mem::transmute(Wtf8::from_bytes_unchecked(s)) }
     }
 
     #[inline]
-    pub fn try_check_public_boundary(&self, index: usize) -> Option<()> {
+    pub(crate) fn try_check_public_boundary(&self, index: usize) -> Option<()> {
         self.inner.try_check_utf8_boundary(index).ok()
     }
 
     #[track_caller]
     #[inline]
-    pub fn check_public_boundary(&self, index: usize) {
+    pub(crate) fn check_public_boundary(&self, index: usize) {
         self.inner.check_utf8_boundary(index);
     }
 
     #[inline]
-    pub fn from_str(s: &str) -> &Slice {
+    pub(crate) fn from_str(s: &str) -> &Slice {
         unsafe { mem::transmute(Wtf8::from_str(s)) }
     }
 
     #[inline]
-    pub fn to_str(&self) -> Result<&str, crate::str::Utf8Error> {
+    pub(crate) fn to_str(&self) -> Result<&str, crate::str::Utf8Error> {
         self.inner.as_str()
     }
 
     #[inline]
-    pub fn to_string_lossy(&self) -> Cow<'_, str> {
+    pub(crate) fn to_string_lossy(&self) -> Cow<'_, str> {
         self.inner.to_string_lossy()
     }
 
     #[inline]
-    pub fn to_owned(&self) -> Buf {
+    pub(crate) fn to_owned(&self) -> Buf {
         Buf { inner: self.inner.to_owned() }
     }
 
     #[inline]
-    pub fn clone_into(&self, buf: &mut Buf) {
+    pub(crate) fn clone_into(&self, buf: &mut Buf) {
         self.inner.clone_into(&mut buf.inner)
     }
 
     #[inline]
-    pub fn empty_box() -> Box<Slice> {
+    pub(crate) fn empty_box() -> Box<Slice> {
         unsafe { mem::transmute(Wtf8::empty_box()) }
     }
 
     #[inline]
-    pub fn into_arc(&self) -> Arc<Slice> {
+    pub(crate) fn into_arc(&self) -> Arc<Slice> {
         let arc = self.inner.into_arc();
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Slice) }
     }
 
     #[inline]
-    pub fn into_rc(&self) -> Rc<Slice> {
+    pub(crate) fn into_rc(&self) -> Rc<Slice> {
         let rc = self.inner.into_rc();
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
     }
 
     #[inline]
-    pub fn make_ascii_lowercase(&mut self) {
+    pub(crate) fn make_ascii_lowercase(&mut self) {
         self.inner.make_ascii_lowercase()
     }
 
     #[inline]
-    pub fn make_ascii_uppercase(&mut self) {
+    pub(crate) fn make_ascii_uppercase(&mut self) {
         self.inner.make_ascii_uppercase()
     }
 
     #[inline]
-    pub fn to_ascii_lowercase(&self) -> Buf {
+    pub(crate) fn to_ascii_lowercase(&self) -> Buf {
         Buf { inner: self.inner.to_ascii_lowercase() }
     }
 
     #[inline]
-    pub fn to_ascii_uppercase(&self) -> Buf {
+    pub(crate) fn to_ascii_uppercase(&self) -> Buf {
         Buf { inner: self.inner.to_ascii_uppercase() }
     }
 
     #[inline]
-    pub fn is_ascii(&self) -> bool {
+    pub(crate) fn is_ascii(&self) -> bool {
         self.inner.is_ascii()
     }
 
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
+    pub(crate) fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
     }
 }

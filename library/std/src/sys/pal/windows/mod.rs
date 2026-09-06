@@ -1,4 +1,5 @@
 #![allow(missing_docs, nonstandard_style)]
+#![allow(unreachable_pub)]
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::{OsStr, OsString};
@@ -10,27 +11,27 @@ use crate::sys::pal::windows::api::wide_str;
 use crate::time::Duration;
 
 #[macro_use]
-pub mod compat;
+pub(crate) mod compat;
 
-pub mod api;
+pub(crate) mod api;
 
-pub mod c;
-pub mod handle;
-pub mod time;
+pub(crate) mod c;
+pub(crate) mod handle;
+pub(crate) mod time;
 cfg_select! {
     // We don't care about printing nice error messages for panic=immediate-abort
     all(not(target_vendor = "uwp"), not(panic = "immediate-abort")) => {
-        pub mod stack_overflow;
+        pub(crate) mod stack_overflow;
     }
     _ => {
         pub mod stack_overflow_uwp;
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }
-pub mod winsock;
+pub(crate) mod winsock;
 
 /// Map a [`Result<T, WinError>`] to [`io::Result<T>`].
-pub trait IoResult<T> {
+pub(crate) trait IoResult<T> {
     fn io_result(self) -> io::Result<T>;
 }
 impl<T> IoResult<T> for Result<T, api::WinError> {
@@ -41,7 +42,7 @@ impl<T> IoResult<T> for Result<T, api::WinError> {
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
+pub(crate) unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
     unsafe {
         stack_overflow::init();
 
@@ -55,11 +56,11 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
 // NOTE: this is not guaranteed to run, for example when the program aborts, and
 //       is not guaranteed to run on the main thread (#161018 was caused by that
 //       mistaken assumption).
-pub unsafe fn cleanup() {
+pub(crate) unsafe fn cleanup() {
     winsock::cleanup();
 }
 
-pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
+pub(crate) fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
     let ptr = haystack.as_ptr();
     let mut start = haystack;
 
@@ -88,7 +89,7 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
     None
 }
 
-pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
+pub(crate) fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> io::Result<Vec<u16>> {
         // Most paths are ASCII, so reserve capacity for as much as there are bytes
         // in the OsStr plus one for the null-terminating character. We are not
@@ -130,7 +131,7 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
 // Once the syscall has completed (errors bail out early) the second closure is
 // passed the data which has been read from the syscall. The return value
 // from this closure is then the return value of the function.
-pub fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> io::Result<T>
+pub(crate) fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> io::Result<T>
 where
     F1: FnMut(*mut u16, u32) -> u32,
     F2: FnOnce(&[u16]) -> T,
@@ -194,11 +195,11 @@ where
     }
 }
 
-pub fn os2path(s: &[u16]) -> PathBuf {
+pub(crate) fn os2path(s: &[u16]) -> PathBuf {
     PathBuf::from(OsString::from_wide(s))
 }
 
-pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
+pub(crate) fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
     match unrolled_find_u16s(0, v) {
         // don't include the 0
         Some(i) => &v[..i],
@@ -206,7 +207,7 @@ pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
     }
 }
 
-pub fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
+pub(crate) fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
     if s.as_ref().encode_wide().any(|b| b == 0) {
         Err(io::const_error!(io::ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
@@ -214,7 +215,7 @@ pub fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
     }
 }
 
-pub trait IsZero {
+pub(crate) trait IsZero {
     fn is_zero(&self) -> bool;
 }
 
@@ -228,16 +229,16 @@ macro_rules! impl_is_zero {
 
 impl_is_zero! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
 
-pub fn cvt<I: IsZero>(i: I) -> io::Result<I> {
+pub(crate) fn cvt<I: IsZero>(i: I) -> io::Result<I> {
     if i.is_zero() { Err(io::Error::last_os_error()) } else { Ok(i) }
 }
 
 #[allow(dead_code)]
-pub fn cvt_nz<I: IsZero>(i: I) -> crate::io::Result<()> {
+pub(crate) fn cvt_nz<I: IsZero>(i: I) -> crate::io::Result<()> {
     if i.is_zero() { Ok(()) } else { Err(crate::io::Error::last_os_error()) }
 }
 
-pub fn dur2timeout(dur: Duration) -> u32 {
+pub(crate) fn dur2timeout(dur: Duration) -> u32 {
     // Note that a duration is a (u64, u32) (seconds, nanoseconds) pair, and the
     // timeouts in windows APIs are typically u32 milliseconds. To translate, we
     // have two pieces to take care of:
@@ -262,7 +263,7 @@ pub fn dur2timeout(dur: Duration) -> u32 {
 ///
 /// <https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail>
 #[cfg(not(miri))] // inline assembly does not work in Miri
-pub fn abort_internal() -> ! {
+pub(crate) fn abort_internal() -> ! {
     unsafe {
         cfg_select! {
             any(target_arch = "x86", target_arch = "x86_64") => {

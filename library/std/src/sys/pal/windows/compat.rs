@@ -110,7 +110,7 @@ impl Module {
     ///
     /// This should only be use for modules that exist for the lifetime of std
     /// (e.g. kernel32 and ntdll).
-    pub unsafe fn new(name: &CStr) -> Option<Self> {
+    pub(crate) unsafe fn new(name: &CStr) -> Option<Self> {
         // SAFETY: A CStr is always null terminated.
         unsafe {
             let module = c::GetModuleHandleA(name.as_ptr().cast::<u8>());
@@ -119,7 +119,7 @@ impl Module {
     }
 
     // Try to get the address of a function.
-    pub fn proc_address(self, name: &CStr) -> Option<NonNull<c_void>> {
+    pub(crate) fn proc_address(self, name: &CStr) -> Option<NonNull<c_void>> {
         unsafe {
             // SAFETY:
             // `self.0` will always be a valid module.
@@ -137,7 +137,7 @@ macro_rules! compat_fn_with_fallback {
         $(#[$meta:meta])*
         $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) -> $rettype:ty $fallback_body:block
     )*) => (
-        pub static $module: &CStr = $name;
+        pub(crate) static $module: &CStr = $name;
     $(
         $(#[$meta])*
         pub mod $symbol {

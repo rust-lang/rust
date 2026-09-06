@@ -8,12 +8,12 @@ use crate::mem::ManuallyDrop;
 use crate::os::fd::FromRawFd;
 use crate::sys::fd::FileDesc;
 
-pub struct Stdin;
-pub struct Stdout;
-pub struct Stderr;
+pub(crate) struct Stdin;
+pub(crate) struct Stdout;
+pub(crate) struct Stderr;
 
 impl Stdin {
-    pub const fn new() -> Stdin {
+    pub(crate) const fn new() -> Stdin {
         Stdin
     }
 }
@@ -38,7 +38,7 @@ impl io::Read for Stdin {
 }
 
 impl Stdout {
-    pub const fn new() -> Stdout {
+    pub(crate) const fn new() -> Stdout {
         Stdout
     }
 }
@@ -64,7 +64,7 @@ impl io::Write for Stdout {
 }
 
 impl Stderr {
-    pub const fn new() -> Stderr {
+    pub(crate) const fn new() -> Stderr {
         Stderr
     }
 }
@@ -89,12 +89,12 @@ impl io::Write for Stderr {
     }
 }
 
-pub fn is_ebadf(err: &io::Error) -> bool {
+pub(crate) fn is_ebadf(err: &io::Error) -> bool {
     err.raw_os_error() == Some(EBADF as i32)
 }
 
-pub const STDIN_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
+pub(crate) const STDIN_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
 
-pub fn panic_output() -> Option<impl io::Write> {
+pub(crate) fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
 }

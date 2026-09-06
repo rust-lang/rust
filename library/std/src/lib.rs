@@ -241,6 +241,7 @@
 // Lints:
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
+#![cfg_attr(any(target_os = "linux", target_os = "windows"), warn(unreachable_pub))]
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]

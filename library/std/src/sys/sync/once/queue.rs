@@ -64,11 +64,11 @@ use crate::{fmt, mem, ptr, sync as public};
 
 type StateAndQueue = *mut ();
 
-pub struct Once {
+pub(crate) struct Once {
     state_and_queue: Atomic<*mut ()>,
 }
 
-pub struct OnceState {
+pub(crate) struct OnceState {
     poisoned: bool,
     set_state_on_drop_to: Cell<StateAndQueue>,
 }
@@ -117,17 +117,17 @@ fn to_state(current: StateAndQueue) -> usize {
 
 impl Once {
     #[inline]
-    pub const fn new() -> Once {
+    pub(crate) const fn new() -> Once {
         Once { state_and_queue: AtomicPtr::new(ptr::without_provenance_mut(INCOMPLETE)) }
     }
 
     #[inline]
-    pub const fn new_complete() -> Once {
+    pub(crate) const fn new_complete() -> Once {
         Once { state_and_queue: AtomicPtr::new(ptr::without_provenance_mut(COMPLETE)) }
     }
 
     #[inline]
-    pub fn is_completed(&self) -> bool {
+    pub(crate) fn is_completed(&self) -> bool {
         // An `Acquire` load is enough because that makes all the initialization
         // operations visible to us, and, this being a fast path, weaker
         // ordering helps with performance. This `Acquire` synchronizes with
@@ -156,7 +156,7 @@ impl Once {
 
     #[cold]
     #[track_caller]
-    pub fn wait(&self, ignore_poisoning: bool) {
+    pub(crate) fn wait(&self, ignore_poisoning: bool) {
         let mut current = self.state_and_queue.load(Acquire);
         loop {
             let state = to_state(current);
@@ -186,7 +186,7 @@ impl Once {
     // without some allocation overhead.
     #[cold]
     #[track_caller]
-    pub fn call(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&public::OnceState)) {
+    pub(crate) fn call(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&public::OnceState)) {
         let mut current = self.state_and_queue.load(Acquire);
         loop {
             let state = to_state(current);
@@ -343,12 +343,12 @@ impl Drop for WaiterQueue<'_> {
 
 impl OnceState {
     #[inline]
-    pub fn is_poisoned(&self) -> bool {
+    pub(crate) fn is_poisoned(&self) -> bool {
         self.poisoned
     }
 
     #[inline]
-    pub fn poison(&self) {
+    pub(crate) fn poison(&self) {
         self.set_state_on_drop_to.set(ptr::without_provenance_mut(POISONED));
     }
 }

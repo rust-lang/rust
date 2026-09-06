@@ -2,14 +2,14 @@ use crate::sync::atomic::Atomic;
 use crate::time::Duration;
 
 /// An atomic for use as a futex that is at least 32-bits but may be larger
-pub type Futex = Atomic<Primitive>;
+pub(crate) type Futex = Atomic<Primitive>;
 /// Must be the underlying type of Futex
-pub type Primitive = u32;
+pub(crate) type Primitive = u32;
 
 /// An atomic for use as a futex that is at least 8-bits but may be larger.
-pub type SmallFutex = Atomic<SmallPrimitive>;
+pub(crate) type SmallFutex = Atomic<SmallPrimitive>;
 /// Must be the underlying type of SmallFutex
-pub type SmallPrimitive = u32;
+pub(crate) type SmallPrimitive = u32;
 
 /// Waits for a `futex_wake` operation to wake us.
 ///
@@ -17,7 +17,7 @@ pub type SmallPrimitive = u32;
 ///
 /// Returns false on timeout, and true in all other cases.
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
-pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
+pub(crate) fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
     use crate::ptr::null;
     use crate::sync::atomic::Ordering::Relaxed;
     use crate::sys::pal::time::Timespec;
@@ -91,7 +91,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 ///
 /// On some platforms, this always returns false.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn futex_wake(futex: &Atomic<u32>) -> bool {
+pub(crate) fn futex_wake(futex: &Atomic<u32>) -> bool {
     let ptr = futex as *const Atomic<u32>;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
     unsafe { libc::syscall(libc::SYS_futex, ptr, op, 1) > 0 }
@@ -99,7 +99,7 @@ pub fn futex_wake(futex: &Atomic<u32>) -> bool {
 
 /// Wakes up all threads that are waiting on `futex_wait` on this futex.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn futex_wake_all(futex: &Atomic<u32>) {
+pub(crate) fn futex_wake_all(futex: &Atomic<u32>) {
     let ptr = futex as *const Atomic<u32>;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
     unsafe {

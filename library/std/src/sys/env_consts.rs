@@ -181,25 +181,25 @@ pub mod os {
 }
 
 #[cfg(target_os = "linux")]
-pub mod os {
-    pub const FAMILY: &str = "unix";
-    pub const OS: &str = "linux";
-    pub const DLL_PREFIX: &str = "lib";
-    pub const DLL_SUFFIX: &str = ".so";
-    pub const DLL_EXTENSION: &str = "so";
-    pub const EXE_SUFFIX: &str = "";
-    pub const EXE_EXTENSION: &str = "";
+pub(crate) mod os {
+    pub(crate) const FAMILY: &str = "unix";
+    pub(crate) const OS: &str = "linux";
+    pub(crate) const DLL_PREFIX: &str = "lib";
+    pub(crate) const DLL_SUFFIX: &str = ".so";
+    pub(crate) const DLL_EXTENSION: &str = "so";
+    pub(crate) const EXE_SUFFIX: &str = "";
+    pub(crate) const EXE_EXTENSION: &str = "";
 }
 
 #[cfg(target_os = "macos")]
-pub mod os {
-    pub const FAMILY: &str = "unix";
-    pub const OS: &str = "macos";
-    pub const DLL_PREFIX: &str = "lib";
-    pub const DLL_SUFFIX: &str = ".dylib";
-    pub const DLL_EXTENSION: &str = "dylib";
-    pub const EXE_SUFFIX: &str = "";
-    pub const EXE_EXTENSION: &str = "";
+pub(crate) mod os {
+    pub(crate) const FAMILY: &str = "unix";
+    pub(crate) const OS: &str = "macos";
+    pub(crate) const DLL_PREFIX: &str = "lib";
+    pub(crate) const DLL_SUFFIX: &str = ".dylib";
+    pub(crate) const DLL_EXTENSION: &str = "dylib";
+    pub(crate) const EXE_SUFFIX: &str = "";
+    pub(crate) const EXE_EXTENSION: &str = "";
 }
 
 #[cfg(target_os = "netbsd")]
@@ -401,14 +401,14 @@ pub mod os {
 }
 
 #[cfg(target_os = "windows")]
-pub mod os {
-    pub const FAMILY: &str = "windows";
-    pub const OS: &str = "windows";
-    pub const DLL_PREFIX: &str = "";
-    pub const DLL_SUFFIX: &str = ".dll";
-    pub const DLL_EXTENSION: &str = "dll";
-    pub const EXE_SUFFIX: &str = ".exe";
-    pub const EXE_EXTENSION: &str = "exe";
+pub(crate) mod os {
+    pub(crate) const FAMILY: &str = "windows";
+    pub(crate) const OS: &str = "windows";
+    pub(crate) const DLL_PREFIX: &str = "";
+    pub(crate) const DLL_SUFFIX: &str = ".dll";
+    pub(crate) const DLL_EXTENSION: &str = "dll";
+    pub(crate) const EXE_SUFFIX: &str = ".exe";
+    pub(crate) const EXE_EXTENSION: &str = "exe";
 }
 
 #[cfg(target_os = "zkvm")]

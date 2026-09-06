@@ -12,7 +12,7 @@ use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 ///
 /// This is basically a `LazyLock<Key>`, but avoids blocking and circular
 /// dependencies with the rest of `std`.
-pub struct LazyKey {
+pub(crate) struct LazyKey {
     /// Inner static TLS key (internals).
     key: Atomic<usize>,
     /// Destructor for the TLS value.
@@ -30,12 +30,12 @@ const KEY_SENTVAL: usize = 0;
 const KEY_SENTVAL: usize = libc::PTHREAD_KEYS_MAX + 1;
 
 impl LazyKey {
-    pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> LazyKey {
+    pub(crate) const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> LazyKey {
         LazyKey { key: AtomicUsize::new(KEY_SENTVAL), dtor }
     }
 
     #[inline]
-    pub fn force(&self) -> super::Key {
+    pub(crate) fn force(&self) -> super::Key {
         match self.key.load(Ordering::Acquire) {
             KEY_SENTVAL => self.lazy_init() as super::Key,
             n => n as super::Key,

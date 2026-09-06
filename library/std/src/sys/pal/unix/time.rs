@@ -7,7 +7,7 @@ use crate::time::Duration;
 const NSEC_PER_SEC: u64 = 1_000_000_000;
 
 #[allow(dead_code)] // Used for pthread condvar timeouts
-pub const TIMESPEC_MAX: libc::timespec = {
+pub(crate) const TIMESPEC_MAX: libc::timespec = {
     let mut ts = unsafe { mem::zeroed::<libc::timespec>() };
     ts.tv_sec = <libc::time_t>::MAX;
     ts.tv_nsec = 1_000_000_000 - 1;
@@ -29,22 +29,22 @@ pub(crate) struct Timespec {
 }
 
 impl Timespec {
-    pub const MAX: Timespec = unsafe { Self::new_unchecked(i64::MAX, 1_000_000_000 - 1) };
+    pub(crate) const MAX: Timespec = unsafe { Self::new_unchecked(i64::MAX, 1_000_000_000 - 1) };
 
     // As described below, on Apple OS, dates before epoch are represented differently.
     // This is not an issue here however, because we are using tv_sec = i64::MIN,
     // which will cause the compatibility wrapper to not be executed at all.
-    pub const MIN: Timespec = unsafe { Self::new_unchecked(i64::MIN, 0) };
+    pub(crate) const MIN: Timespec = unsafe { Self::new_unchecked(i64::MIN, 0) };
 
     const unsafe fn new_unchecked(tv_sec: i64, tv_nsec: i64) -> Timespec {
         Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds::new_unchecked(tv_nsec as u32) } }
     }
 
-    pub const fn zero() -> Timespec {
+    pub(crate) const fn zero() -> Timespec {
         unsafe { Self::new_unchecked(0, 0) }
     }
 
-    pub const fn new(tv_sec: i64, tv_nsec: i64) -> Result<Timespec, io::Error> {
+    pub(crate) const fn new(tv_sec: i64, tv_nsec: i64) -> Result<Timespec, io::Error> {
         // On Apple OS, dates before epoch are represented differently than on other
         // Unix platforms: e.g. 1/10th of a second before epoch is represented as `seconds=-1`
         // and `nanoseconds=100_000_000` on other platforms, but is `seconds=0` and
@@ -72,7 +72,7 @@ impl Timespec {
     }
 
     #[allow(dead_code)]
-    pub fn now(clock: libc::clockid_t) -> Timespec {
+    pub(crate) fn now(clock: libc::clockid_t) -> Timespec {
         use crate::mem::MaybeUninit;
         use crate::sys::cvt;
 
@@ -109,7 +109,7 @@ impl Timespec {
         Timespec::new(t.tv_sec as i64, t.tv_nsec as i64).unwrap()
     }
 
-    pub fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
+    pub(crate) fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
         // When a >= b, the difference fits in u64.
         fn sub_ge_to_unsigned(a: i64, b: i64) -> u64 {
             debug_assert!(a >= b);
@@ -142,7 +142,7 @@ impl Timespec {
         }
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
+    pub(crate) fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = self.tv_sec.checked_add_unsigned(other.as_secs())?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
@@ -155,7 +155,7 @@ impl Timespec {
         Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
+    pub(crate) fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = self.tv_sec.checked_sub_unsigned(other.as_secs())?;
 
         // Similar to above, nanos can't overflow.
@@ -168,7 +168,7 @@ impl Timespec {
     }
 
     #[allow(dead_code)]
-    pub fn to_timespec(&self) -> Option<libc::timespec> {
+    pub(crate) fn to_timespec(&self) -> Option<libc::timespec> {
         Some({
             let mut ts = libc::timespec::default();
             ts.tv_sec = self.tv_sec.try_into().ok()?;
@@ -197,7 +197,7 @@ impl Timespec {
         target_pointer_width = "32",
         not(target_arch = "riscv32")
     ))]
-    pub fn to_timespec64(&self) -> __timespec64 {
+    pub(crate) fn to_timespec64(&self) -> __timespec64 {
         __timespec64::new(self.tv_sec, self.tv_nsec.as_inner() as _)
     }
 }

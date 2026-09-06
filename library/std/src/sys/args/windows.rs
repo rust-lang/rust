@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod tests;
 
-pub use super::common::Args;
+pub(crate) use super::common::Args;
 use crate::ffi::{OsStr, OsString};
 use crate::num::NonZero;
 use crate::os::windows::prelude::*;
@@ -18,7 +18,7 @@ use crate::sys::paths::current_exe;
 use crate::sys::{AsInner, c, to_u16s};
 use crate::{io, iter, ptr};
 
-pub fn args() -> Args {
+pub(crate) fn args() -> Args {
     // SAFETY: `GetCommandLineW` returns a pointer to a null terminated UTF-16
     // string so it's safe for `WStrUnits` to use.
     unsafe {

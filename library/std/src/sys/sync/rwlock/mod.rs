@@ -13,7 +13,7 @@ cfg_select! {
         all(target_os = "wasi", target_env = "p3"),
     ) => {
         mod futex;
-        pub use futex::RwLock;
+        pub(crate) use futex::RwLock;
     }
     any(
         target_family = "unix",
@@ -23,7 +23,7 @@ cfg_select! {
         target_os = "teeos",
     ) => {
         mod queue;
-        pub use queue::RwLock;
+        pub(crate) use queue::RwLock;
     }
     target_os = "solid_asp3" => {
         mod solid;

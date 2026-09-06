@@ -14,7 +14,7 @@ use crate::sys::path::{WCStr, with_native_path};
 use crate::sys::{AsInner, FromInner, IntoInner, IoResult, c, to_u16s};
 use crate::{fmt, fs, io, ptr};
 
-pub struct Dir {
+pub(crate) struct Dir {
     handle: Handle,
 }
 
@@ -62,7 +62,7 @@ unsafe fn nt_create_file(
 }
 
 impl Dir {
-    pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<Self> {
+    pub(crate) fn open(path: &Path, opts: &OpenOptions) -> io::Result<Self> {
         with_native_path(path, &|path| Self::open_with_native(path, opts))
     }
 
@@ -81,12 +81,12 @@ impl Dir {
         self.open_file_native(&path, opts, false).map(|handle| File { handle })
     }
 
-    pub fn remove_file(&self, path: &Path) -> io::Result<()> {
+    pub(crate) fn remove_file(&self, path: &Path) -> io::Result<()> {
         let path = to_u16s_without_nul(path)?;
         self.remove_native(&path, false)
     }
 
-    pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
+    pub(crate) fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
         let is_dir = from.is_dir();
         let from = to_u16s_without_nul(from)?;
         let to = to_u16s_without_nul(to)?;
@@ -214,7 +214,7 @@ impl Dir {
         .io_result()
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub(crate) fn metadata(&self) -> io::Result<FileAttr> {
         // Reuse the implementation for files, which should work for all handles.
         let handle = self.handle.as_raw_handle();
         let f = core::mem::ManuallyDrop::new(File {

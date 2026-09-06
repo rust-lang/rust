@@ -5,7 +5,7 @@
 cfg_select! {
     any(target_family = "unix", target_os = "wasi") => {
         mod unix;
-        pub use unix::*;
+        pub(crate) use unix::*;
     }
     target_os = "hermit" => {
         mod hermit;

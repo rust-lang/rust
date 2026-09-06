@@ -5,7 +5,7 @@ use crate::{env, fmt};
 
 /// Stores a set of changes to an environment
 #[derive(Clone, Default)]
-pub struct CommandEnv {
+pub(crate) struct CommandEnv {
     clear: bool,
     saw_path: bool,
     vars: BTreeMap<EnvKey, Option<OsString>>,
@@ -21,7 +21,7 @@ impl fmt::Debug for CommandEnv {
 
 impl CommandEnv {
     // Capture the current environment with these changes applied
-    pub fn capture(&self) -> BTreeMap<EnvKey, OsString> {
+    pub(crate) fn capture(&self) -> BTreeMap<EnvKey, OsString> {
         let mut result = BTreeMap::<EnvKey, OsString>::new();
         if !self.clear {
             for (k, v) in env::vars_os() {
@@ -38,22 +38,22 @@ impl CommandEnv {
         result
     }
 
-    pub fn is_unchanged(&self) -> bool {
+    pub(crate) fn is_unchanged(&self) -> bool {
         !self.clear && self.vars.is_empty()
     }
 
-    pub fn capture_if_changed(&self) -> Option<BTreeMap<EnvKey, OsString>> {
+    pub(crate) fn capture_if_changed(&self) -> Option<BTreeMap<EnvKey, OsString>> {
         if self.is_unchanged() { None } else { Some(self.capture()) }
     }
 
     // The following functions build up changes
-    pub fn set(&mut self, key: &OsStr, value: &OsStr) {
+    pub(crate) fn set(&mut self, key: &OsStr, value: &OsStr) {
         let key = EnvKey::from(key);
         self.maybe_saw_path(&key);
         self.vars.insert(key, Some(value.to_owned()));
     }
 
-    pub fn remove(&mut self, key: &OsStr) {
+    pub(crate) fn remove(&mut self, key: &OsStr) {
         let key = EnvKey::from(key);
         self.maybe_saw_path(&key);
         if self.clear {
@@ -63,16 +63,16 @@ impl CommandEnv {
         }
     }
 
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.clear = true;
         self.vars.clear();
     }
 
-    pub fn does_clear(&self) -> bool {
+    pub(crate) fn does_clear(&self) -> bool {
         self.clear
     }
 
-    pub fn have_changed_path(&self) -> bool {
+    pub(crate) fn have_changed_path(&self) -> bool {
         self.saw_path || self.clear
     }
 
@@ -82,14 +82,14 @@ impl CommandEnv {
         }
     }
 
-    pub fn iter(&self) -> CommandEnvs<'_> {
+    pub(crate) fn iter(&self) -> CommandEnvs<'_> {
         let iter = self.vars.iter();
         CommandEnvs { iter }
     }
 }
 
 #[derive(Debug)]
-pub struct CommandEnvs<'a> {
+pub(crate) struct CommandEnvs<'a> {
     iter: crate::collections::btree_map::Iter<'a, EnvKey, Option<OsString>>,
 }
 

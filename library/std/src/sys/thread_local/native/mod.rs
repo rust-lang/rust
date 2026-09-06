@@ -125,15 +125,15 @@ pub(crate) struct LocalPointer {
 }
 
 impl LocalPointer {
-    pub const fn __new() -> LocalPointer {
+    pub(crate) const fn __new() -> LocalPointer {
         LocalPointer { p: Cell::new(ptr::null_mut()) }
     }
 
-    pub fn get(&self) -> *mut () {
+    pub(crate) fn get(&self) -> *mut () {
         self.p.get()
     }
 
-    pub fn set(&self, p: *mut ()) {
+    pub(crate) fn set(&self, p: *mut ()) {
         self.p.set(p)
     }
 }
