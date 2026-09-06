@@ -245,7 +245,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::offload_get_num_devices => {
                 let (fn_decl, fn_ty) = declare_omp_get_num_devices(self.cx);
 
-                let llval = self.call(fn_ty, None, None, fn_decl, &[], None, None);
+                let llval = self.call(fn_ty, None, None, fn_decl, ReturnSlot::Direct, &[], None, None);
 
                 return IntrinsicResult::Operand(OperandValue::Immediate(llval));
             }
@@ -1354,7 +1354,7 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
 ) -> &'ll Value {
     if !bx.sess().panic_strategy().unwinds() {
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.call(try_func_ty, None, None, try_func, &[data], None, None);
+        bx.call(try_func_ty, None, None, try_func, ReturnSlot::Direct, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         bx.const_bool(false)
@@ -1452,7 +1452,18 @@ fn codegen_msvc_try<'ll, 'tcx>(
         let ptr_align = bx.tcx().data_layout.pointer_align().abi;
         let slot = bx.alloca(ptr_size, ptr_align);
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None, None);
+        bx.invoke(
+            try_func_ty,
+            None,
+            None,
+            try_func,
+            ReturnSlot::Direct,
+            &[data],
+            normal,
+            catchswitch,
+            None,
+            None,
+        );
 
         bx.switch_to_block(normal);
         bx.ret(bx.const_bool(false));
@@ -1500,7 +1511,16 @@ fn codegen_msvc_try<'ll, 'tcx>(
         let funclet = bx.catch_pad(cs, &[tydesc, flags, slot]);
         let ptr = bx.load(bx.type_ptr(), slot, ptr_align);
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, &[data, ptr], Some(&funclet), None);
+        bx.call(
+            catch_ty,
+            None,
+            None,
+            catch_func,
+            ReturnSlot::Direct,
+            &[data, ptr],
+            Some(&funclet),
+            None,
+        );
         bx.catch_ret(&funclet, caught);
 
         // The flag value of 64 indicates a "catch-all".
@@ -1508,7 +1528,16 @@ fn codegen_msvc_try<'ll, 'tcx>(
         let flags = bx.const_i32(64);
         let null = bx.const_null(bx.type_ptr());
         let funclet = bx.catch_pad(cs, &[null, flags, null]);
-        bx.call(catch_ty, None, None, catch_func, &[data, null], Some(&funclet), None);
+        bx.call(
+            catch_ty,
+            None,
+            None,
+            catch_func,
+            ReturnSlot::Direct,
+            &[data, null],
+            Some(&funclet),
+            None,
+        );
         bx.catch_ret(&funclet, caught);
 
         bx.switch_to_block(caught);
@@ -1517,7 +1546,16 @@ fn codegen_msvc_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        llfn,
+        ReturnSlot::Direct,
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
     ret
 }
 
@@ -1564,7 +1602,18 @@ fn codegen_wasm_try<'ll, 'tcx>(
         //   }
         //
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None, None);
+        bx.invoke(
+            try_func_ty,
+            None,
+            None,
+            try_func,
+            ReturnSlot::Direct,
+            &[data],
+            normal,
+            catchswitch,
+            None,
+            None,
+        );
 
         bx.switch_to_block(normal);
         bx.ret(bx.const_bool(false));
@@ -1580,7 +1629,16 @@ fn codegen_wasm_try<'ll, 'tcx>(
         let _sel = bx.call_intrinsic("llvm.wasm.get.ehselector", &[], &[funclet.cleanuppad()]);
 
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, &[data, ptr], Some(&funclet), None);
+        bx.call(
+            catch_ty,
+            None,
+            None,
+            catch_func,
+            ReturnSlot::Direct,
+            &[data, ptr],
+            Some(&funclet),
+            None,
+        );
         bx.catch_ret(&funclet, caught);
 
         bx.switch_to_block(caught);
@@ -1589,7 +1647,16 @@ fn codegen_wasm_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        llfn,
+        ReturnSlot::Direct,
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
     ret
 }
 
@@ -1630,7 +1697,18 @@ fn codegen_gnu_try<'ll, 'tcx>(
         let data = llvm::get_param(bx.llfn(), 1);
         let catch_func = llvm::get_param(bx.llfn(), 2);
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None, None);
+        bx.invoke(
+            try_func_ty,
+            None,
+            None,
+            try_func,
+            ReturnSlot::Direct,
+            &[data],
+            then,
+            catch,
+            None,
+            None,
+        );
 
         bx.switch_to_block(then);
         bx.ret(bx.const_bool(false));
@@ -1648,13 +1726,22 @@ fn codegen_gnu_try<'ll, 'tcx>(
         bx.add_clause(vals, tydesc);
         let ptr = bx.extract_value(vals, 0);
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, &[data, ptr], None, None);
+        bx.call(catch_ty, None, None, catch_func, ReturnSlot::Direct, &[data, ptr], None, None);
         bx.ret(bx.const_bool(true));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        llfn,
+        ReturnSlot::Direct,
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
     ret
 }
 
