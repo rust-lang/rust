@@ -32,7 +32,8 @@ pub(crate) fn opts() -> TargetOptions {
         is_like_solaris: true,
         linker_flavor: LinkerFlavor::Unix(Cc::Yes),
         limit_rdylib_exports: false, // Linker doesn't support this
-        frame_pointer: FramePointer::Always,
+        // required by illumos tooling
+        frame_pointer: FramePointer::NonLeaf,
         eh_frame_header: false,
         late_link_args,
 
