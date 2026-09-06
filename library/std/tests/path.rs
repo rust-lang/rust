@@ -1617,6 +1617,37 @@ pub fn test_stem_ext() {
 
     t!("..x.y.z", file_stem: Some("..x.y"), extension: Some("z"));
 
+    // up to three leading dots are part of the stem
+    t!(".x", file_stem: Some(".x"), extension: None);
+
+    t!("..x", file_stem: Some("..x"), extension: None);
+
+    t!("...x", file_stem: Some("...x"), extension: None);
+
+    t!("...", file_stem: Some("..."), extension: None);
+
+    t!("..x.y", file_stem: Some("..x"), extension: Some("y"));
+
+    // past three, `...` is a file name that can carry an extension
+    t!("....x", file_stem: Some("..."), extension: Some("x"));
+
+    t!("....", file_stem: Some("..."), extension: Some(""));
+
+    t!(".....x", file_stem: Some("...."), extension: Some("x"));
+
+    // dots after the start of the file name split as they always have
+    t!("x.y", file_stem: Some("x"), extension: Some("y"));
+
+    t!("x..y", file_stem: Some("x."), extension: Some("y"));
+
+    t!("x...y", file_stem: Some("x.."), extension: Some("y"));
+
+    t!(".x..y", file_stem: Some(".x."), extension: Some("y"));
+
+    t!("..x..y", file_stem: Some("..x."), extension: Some("y"));
+
+    t!("...x...y", file_stem: Some("...x.."), extension: Some("y"));
+
     t!("", file_stem: None, extension: None);
 }
 
@@ -1658,7 +1689,22 @@ pub fn test_prefix_ext() {
 
     t!(".x.y.z", file_prefix: Some(".x"), extension: Some("z"));
 
-    t!("..x.y.z", file_prefix: Some("."), extension: Some("z"));
+    t!("..x.y.z", file_prefix: Some("..x"), extension: Some("z"));
+
+    // up to three leading dots are part of the prefix
+    t!("..x", file_prefix: Some("..x"), extension: None);
+
+    t!("...x.y", file_prefix: Some("...x"), extension: Some("y"));
+
+    t!("...", file_prefix: Some("..."), extension: None);
+
+    // past three, `...` is a file name that can carry an extension
+    t!("....x", file_prefix: Some("..."), extension: Some("x"));
+
+    // dots after the start of the file name split as they always have
+    t!("x..y.z", file_prefix: Some("x"), extension: Some("z"));
+
+    t!("..x..y.z", file_prefix: Some("..x"), extension: Some("z"));
 
     t!("", file_prefix: None, extension: None);
 }
@@ -1886,6 +1932,24 @@ pub fn test_set_extension() {
     tfe!("..", "foo", "..", false);
     tfe!("foo/..", "bar", "foo/..", false);
     tfe!("/", "foo", "/", false);
+
+    // up to three leading dots are part of the stem, so they are kept along with the file name
+    tfe!("..foo", "txt", "..foo.txt", true);
+    tfe!("..foo", "", "..foo", true);
+    tfe!("...foo", "txt", "...foo.txt", true);
+    tfe!("bar/..foo", "txt", "bar/..foo.txt", true);
+    tfe!("/bar/..foo", "txt", "/bar/..foo.txt", true);
+    tfe!("..foo.bar", "txt", "..foo.txt", true);
+    tfe!("...", "txt", "....txt", true);
+    tfe!("....foo", "txt", "....txt", true);
+    tfe!("....", "txt", "....txt", true);
+
+    // dots after the start of the file name split as they always have
+    tfe!("foo.bar.baz", "txt", "foo.bar.txt", true);
+    tfe!("foo..bar", "txt", "foo..txt", true);
+    tfe!("foo..bar", "", "foo.", true);
+    tfe!(".foo..bar", "txt", ".foo..txt", true);
+    tfe!("bar/foo..baz", "txt", "bar/foo..txt", true);
 }
 
 #[test]
@@ -1947,6 +2011,24 @@ pub fn test_with_extension() {
     twe!("..", "foo", "..");
     twe!("foo/..", "bar", "foo/..");
     twe!("/", "foo", "/");
+
+    // up to three leading dots are part of the stem, so they are kept along with the file name
+    twe!("..foo", "txt", "..foo.txt");
+    twe!("..foo", "", "..foo");
+    twe!("...foo", "txt", "...foo.txt");
+    twe!("bar/..foo", "txt", "bar/..foo.txt");
+    twe!("/bar/..foo", "txt", "/bar/..foo.txt");
+    twe!("..foo.bar", "txt", "..foo.txt");
+    twe!("...", "txt", "....txt");
+    twe!("....foo", "txt", "....txt");
+    twe!("....", "txt", "....txt");
+
+    // dots after the start of the file name split as they always have
+    twe!("foo.bar.baz", "txt", "foo.bar.txt");
+    twe!("foo..bar", "txt", "foo..txt");
+    twe!("foo..bar", "", "foo.");
+    twe!(".foo..bar", "txt", ".foo..txt");
+    twe!("bar/foo..baz", "txt", "bar/foo..txt");
 
     // New extension is smaller than file name
     twe!("aaa_aaa_aaa", "bbb_bbb", "aaa_aaa_aaa.bbb_bbb");
