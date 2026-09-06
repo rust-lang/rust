@@ -1674,7 +1674,7 @@ impl<'a> Parser<'a> {
         operand_expr: &Expr,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, ()> {
+    ) -> Diag<'a> {
         let standalone = if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr };
         let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
@@ -1685,7 +1685,7 @@ impl<'a> Parser<'a> {
         operand_expr: &Expr,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, ()> {
+    ) -> Diag<'a> {
         let kind = IncDecRecovery {
             standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Inc,
@@ -1699,7 +1699,7 @@ impl<'a> Parser<'a> {
         operand_expr: &Expr,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, ()> {
+    ) -> Diag<'a> {
         let kind = IncDecRecovery {
             standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Dec,
@@ -1713,7 +1713,13 @@ impl<'a> Parser<'a> {
         base: &Expr,
         kind: IncDecRecovery,
         op_span: Span,
-    ) -> PResult<'a, ()> {
+    ) -> Diag<'a> {
+        // FIXME: Don't return an error diag, emit the diag here *and* return a new expr of the form
+        //        `$base += 1` / `$base -= 1` (taking `base: Expr` by value) for *proper* recovery.
+        //        (Just emitting the diag would be insufficient since callers would most likely just
+        //        use `$base` as the recovered AST node which would lead to annoying follow-up diags
+        //        like "variable doesn't need to be mutable" getting emitted in some cases.)
+
         let mut err = self.dcx().struct_span_err(
             op_span,
             format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
@@ -1733,8 +1739,7 @@ impl<'a> Parser<'a> {
             IsStandalone::Subexpr => {
                 let Ok(base_src) = self.span_to_snippet(base.span) else {
                     err.help(format!("use `{}= 1` instead", kind.op.chr()));
-                    err.emit();
-                    return Ok(());
+                    return err;
                 };
                 match kind.fixity {
                     UnaryFixity::Pre => {
@@ -1750,7 +1755,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        Err(err)
+        err
     }
 
     fn prefix_inc_dec_suggest(

@@ -191,8 +191,7 @@ impl<'a> Parser<'a> {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `+`
                 self.bump();
-                self.recover_from_postfix_increment(&lhs, op_span, starts_stmt)?;
-                continue;
+                return Err(self.recover_from_postfix_increment(&lhs, op_span, starts_stmt));
             }
 
             if self.prev_token == token::Minus
@@ -203,8 +202,7 @@ impl<'a> Parser<'a> {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `-`
                 self.bump();
-                self.recover_from_postfix_decrement(&lhs, op_span, starts_stmt)?;
-                continue;
+                return Err(self.recover_from_postfix_decrement(&lhs, op_span, starts_stmt));
             }
 
             let op_span = op.span;
@@ -486,9 +484,8 @@ impl<'a> Parser<'a> {
                 this.bump();
                 this.bump();
 
-                let operand_expr = this.parse_expr_dot_or_call(attrs)?;
-                this.recover_from_prefix_increment(&operand_expr, pre_span, starts_stmt)?;
-                Ok(operand_expr)
+                let operand = this.parse_expr_dot_or_call(attrs)?;
+                return Err(this.recover_from_prefix_increment(&operand, pre_span, starts_stmt));
             }
             token::Ident(..)
                 if this.token.is_keyword(kw::Move)
@@ -499,7 +496,7 @@ impl<'a> Parser<'a> {
             token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
-            _ => return this.parse_expr_dot_or_call(attrs),
+            _ => this.parse_expr_dot_or_call(attrs),
         }
     }
 
