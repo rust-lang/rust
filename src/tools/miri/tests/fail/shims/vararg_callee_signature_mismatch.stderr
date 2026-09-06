@@ -1,5 +1,5 @@
-error: Undefined Behavior: ABI mismatch: `open` is a variadic function, but the caller is using a non-variadic signature
-  --> tests/fail/shims/non_vararg_signature_mismatch.rs:LL:CC
+error: Undefined Behavior: ABI mismatch: `open` is a c-variadic function, but the caller is using a non-variadic signature
+  --> tests/fail/shims/vararg_callee_signature_mismatch.rs:LL:CC
    |
 LL |         open(c_path.as_ptr(), /* value does not matter */ 0)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
