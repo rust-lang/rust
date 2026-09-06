@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 use std::{io, ops, str};
 
 use regex::Regex;
@@ -12,7 +12,7 @@ use rustc_hir::attrs::{BorrowckGraphvizFormatKind, RustcMirKind};
 use rustc_hir::find_attr;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{
-    self, BasicBlock, Body, Location, MirDumper, graphviz_safe_def_name, traversal,
+    self, BasicBlock, Body, Location, MirDumper, TerminatorEdges, graphviz_safe_def_name, traversal,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -20,9 +20,7 @@ use rustc_span::def_id::DefId;
 use tracing::debug;
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
-use super::{
-    Analysis, CallReturnPlaces, Direction, Results, ResultsCursor, ResultsVisitor, visit_results,
-};
+use super::{Analysis, Direction, Results, ResultsCursor, ResultsVisitor, visit_results};
 
 /// Writes a DOT file containing the results of a dataflow analysis if the user requested it via
 /// `rustc_mir` attributes and `-Z dump-mir-dataflow`. The `Result` in and the `Results` out are
@@ -43,7 +41,7 @@ where
     let def_id = body.source.def_id();
     let attrs = RustcMirAttrs::parse(tcx, def_id);
 
-    let file = try {
+    let mut file = try {
         match attrs.output_path(A::NAME) {
             Some(path) => {
                 debug!("printing dataflow results for {:?} to {}", def_id, path.display());
@@ -61,11 +59,7 @@ where
                 dumper.set_disambiguator(disambiguator).create_dump_file("dot", body)?
             }
         }
-    };
-    let mut file = match file {
-        Ok(f) => f,
-        Err(e) => return Err(e),
-    };
+    }?;
 
     let style = attrs.formatter.unwrap_or(OutputStyle::AfterOnly);
 
@@ -77,14 +71,8 @@ where
     if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
         render_opts.push(dot::RenderOption::DarkTheme);
     }
-    let r = with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts));
-
-    let lhs = try {
-        r?;
-        file.write_all(&buf)?;
-    };
-
-    lhs
+    with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts))?;
+    file.write_all(&buf)
 }
 
 #[derive(Default)]
@@ -297,7 +285,7 @@ where
         //   +-+----------------------------------+------------+
         // B |                MIR                 |   STATE    |
         //   +-+----------------------------------+------------+
-        // C | | (on entry)                       | {_0,_2,_3} |
+        // C | | (on start)                       | {_0,_2,_3} |
         //   +-+----------------------------------+------------+
         // D |0| StorageLive(_7)                  |            |
         //   +-+----------------------------------+------------+
@@ -367,16 +355,20 @@ where
         // FIXME: These should really be printed as part of each outgoing edge rather than the node
         // for the basic block itself. That way, we could display terminator-specific effects for
         // backward dataflow analyses as well as effects for `SwitchInt` terminators.
-        match terminator.kind {
-            mir::TerminatorKind::Call { destination, .. } => {
-                self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.cursor.get().clone();
+
+        match terminator.edges() {
+            TerminatorEdges::AssignOnReturn { return_, place, .. } if !return_.is_empty() => {
+                let label = match place {
+                    mir::CallReturnPlaces::Call(_) | mir::CallReturnPlaces::InlineAsm(_) => {
+                        "(on successful return)"
+                    }
+                    mir::CallReturnPlaces::Yield(_) => "(on yield resume)",
+                };
+
+                self.write_row(w, "", label, |this, w, fmt| {
+                    let state_before_effect = this.cursor.get().clone();
                     this.cursor.apply_custom_effect(|analysis, state| {
-                        analysis.apply_call_return_effect(
-                            state,
-                            block,
-                            CallReturnPlaces::Call(destination),
-                        );
+                        analysis.apply_call_return_effect(state, block, place);
                     });
 
                     write!(
@@ -386,59 +378,7 @@ where
                         fmt = fmt,
                         diff = diff_pretty(
                             this.cursor.get(),
-                            &state_on_unwind,
-                            this.cursor.analysis()
-                        ),
-                    )
-                })?;
-            }
-
-            mir::TerminatorKind::Yield { resume_arg, .. } => {
-                self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
-                    let state_on_coroutine_drop = this.cursor.get().clone();
-                    this.cursor.apply_custom_effect(|analysis, state| {
-                        analysis.apply_call_return_effect(
-                            state,
-                            block,
-                            CallReturnPlaces::Yield(resume_arg),
-                        );
-                    });
-
-                    write!(
-                        w,
-                        r#"<td balign="left" colspan="{colspan}" {fmt} align="left">{diff}</td>"#,
-                        colspan = this.style.num_state_columns(),
-                        fmt = fmt,
-                        diff = diff_pretty(
-                            this.cursor.get(),
-                            &state_on_coroutine_drop,
-                            this.cursor.analysis()
-                        ),
-                    )
-                })?;
-            }
-
-            mir::TerminatorKind::InlineAsm { ref targets, ref operands, .. }
-                if !targets.is_empty() =>
-            {
-                self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.cursor.get().clone();
-                    this.cursor.apply_custom_effect(|analysis, state| {
-                        analysis.apply_call_return_effect(
-                            state,
-                            block,
-                            CallReturnPlaces::InlineAsm(operands),
-                        );
-                    });
-
-                    write!(
-                        w,
-                        r#"<td balign="left" colspan="{colspan}" {fmt} align="left">{diff}</td>"#,
-                        colspan = this.style.num_state_columns(),
-                        fmt = fmt,
-                        diff = diff_pretty(
-                            this.cursor.get(),
-                            &state_on_unwind,
+                            &state_before_effect,
                             this.cursor.analysis()
                         ),
                     )
@@ -446,7 +386,7 @@ where
             }
 
             _ => {}
-        };
+        }
 
         write!(w, "</table>")?;
 
@@ -581,7 +521,7 @@ where
         f: impl FnOnce(&mut Self, &mut W, &str) -> io::Result<()>,
     ) -> io::Result<()> {
         let bg = self.toggle_background();
-        let valign = if mir.starts_with("(on ") && mir != "(on entry)" { "bottom" } else { "top" };
+        let valign = if mir.starts_with("(on ") && mir != "(on start)" { "bottom" } else { "top" };
 
         let fmt = format!("valign=\"{}\" sides=\"tl\" {}", valign, bg.attr());
 
@@ -656,7 +596,7 @@ impl<'a, 'tcx, A: Analysis<'tcx>> StateDiffCollector<'a, 'tcx, A> {
     }
 }
 
-impl<'a, 'tcx, A: Analysis<'tcx>> ResultsVisitor<'tcx, A> for StateDiffCollector<'a, 'tcx, A>
+impl<'a, 'tcx, A> ResultsVisitor<'tcx, A> for StateDiffCollector<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -706,13 +646,6 @@ where
     }
 }
 
-macro_rules! regex {
-    ($re:literal $(,)?) => {{
-        static RE: OnceLock<regex::Regex> = OnceLock::new();
-        RE.get_or_init(|| Regex::new($re).unwrap())
-    }};
-}
-
 fn diff_pretty<T, C>(new: T, old: T, ctxt: &C) -> String
 where
     T: DebugWithContext<C>,
@@ -721,7 +654,7 @@ where
         return String::new();
     }
 
-    let re = regex!("\t?\u{001f}([+-])");
+    static RE: LazyLock<regex::Regex> = LazyLock::new(|| Regex::new("\t?\u{001f}([+-])").unwrap());
 
     let raw_diff = format!("{:#?}", DebugDiffWithAdapter { new, old, ctxt });
     let raw_diff = dot::escape_html(&raw_diff);
@@ -730,7 +663,7 @@ where
     let raw_diff = raw_diff.replace('\n', r#"<br align="left"/>"#);
 
     let mut inside_font_tag = false;
-    let html_diff = re.replace_all(&raw_diff, |captures: &regex::Captures<'_>| {
+    let html_diff = RE.replace_all(&raw_diff, |captures: &regex::Captures<'_>| {
         let mut ret = String::new();
         if inside_font_tag {
             ret.push_str(r#"</font>"#);
