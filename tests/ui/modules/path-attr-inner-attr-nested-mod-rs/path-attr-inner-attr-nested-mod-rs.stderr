@@ -1,8 +1,0 @@
-error: circular modules: $DIR/name/name/mod.rs -> $DIR/name/name/mod.rs
-  --> $DIR/name/mod.rs:5:1
-   |
-LL | mod name;
-   | ^^^^^^^^^
-
-error: aborting due to 1 previous error
-
