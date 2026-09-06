@@ -10,7 +10,6 @@ tests/ui/simd/intrinsic/generic-arithmetic-saturating-2.rs
 tests/ui/simd/intrinsic/generic-arithmetic-2.rs
 tests/ui/panics/default-backtrace-ice.rs
 tests/ui/mir/lint/storage-live.rs
-tests/ui/layout/valid_range_oob.rs
 tests/ui/higher-ranked/trait-bounds/future.rs
 tests/ui/consts/const-eval/const-eval-query-stack.rs
 tests/ui/simd/masked-load-store.rs
@@ -28,13 +27,11 @@ tests/ui/lto/thin-lto-global-allocator.rs
 tests/ui/lto/msvc-imp-present.rs
 tests/ui/lto/dylib-works.rs
 tests/ui/lto/all-crates.rs
-tests/ui/issues/issue-47364.rs
+tests/ui/codegen/no-segfault-with-multiple-codegen-units.rs
 tests/ui/functions-closures/parallel-codegen-closures.rs
 tests/ui/sepcomp/sepcomp-unwind.rs
 tests/ui/extern/issue-64655-extern-rust-must-allow-unwind.rs
 tests/ui/extern/issue-64655-allow-unwind-when-calling-panic-directly.rs
-tests/ui/unwind-no-uwtable.rs
+tests/ui/panics/unwind-force-no-unwind-tables.rs
 tests/ui/delegation/fn-header.rs
 tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
-tests/ui/simd/masked-load-store.rs
-tests/ui/rfcs/rfc-2632-const-trait-impl/effects/minicore.rs
