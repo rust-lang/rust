@@ -60,7 +60,7 @@ pub fn result_match(x: Result<u64, i64>) -> u16 {
 #[no_mangle]
 pub fn option_bool_match(x: Option<bool>) -> char {
     // CHECK: %[[RAW:.+]] = load i8, ptr %x
-    // CHECK: %[[IS_NONE:.+]] = icmp eq i8 %[[RAW]], 2
+    // CHECK: %[[IS_NONE:.+]] = icmp eq i8 %[[RAW]], -1
     // CHECK: %[[OPT_DISCR:.+]] = select i1 %[[IS_NONE]], i64 0, i64 1
     // CHECK: %[[OPT_DISCR_T:.+]] = trunc nuw i64 %[[OPT_DISCR]] to i1
     // CHECK: br i1 %[[OPT_DISCR_T]], label %[[BB_SOME:.+]], label %[[BB_NONE:.+]]

@@ -1,0 +1,8 @@
+error: backend_repr: Scalar(u64 is ..)
+  --> $DIR/nonnull-guaranteed-windows.rs:10:1
+   |
+LL | type OptSocket = Option<std::os::windows::io::OwnedSocket>;
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

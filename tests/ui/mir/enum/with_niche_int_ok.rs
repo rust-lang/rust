@@ -16,8 +16,8 @@ enum Nested {
 }
 
 fn main() {
-    let _val: Nested = unsafe { std::mem::transmute::<u32, Nested>(0) };
-    let _val: Nested = unsafe { std::mem::transmute::<u32, Nested>(1) };
-    let _val: Nested = unsafe { std::mem::transmute::<u32, Nested>(2) };
-    let _val: Nested = unsafe { std::mem::transmute::<u32, Nested>(3) };
+    let _val: Nested = unsafe { std::mem::transmute::<i32, Nested>(0) };
+    let _val: Nested = unsafe { std::mem::transmute::<i32, Nested>(1) };
+    let _val: Nested = unsafe { std::mem::transmute::<i32, Nested>(-2) };
+    let _val: Nested = unsafe { std::mem::transmute::<i32, Nested>(-1) };
 }
