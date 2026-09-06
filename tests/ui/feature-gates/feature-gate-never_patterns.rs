@@ -31,7 +31,7 @@ fn main() {
     match Some(0) {
         None => {}
         Some(_),
-        //~^ ERROR unexpected `,` in pattern
+        //~^ ERROR `match` arm with no body
     }
     match Some(0) {
         None => {}
@@ -59,7 +59,7 @@ fn main() {
 
     // Check that the gate operates even behind `cfg`.
     match Some(0) {
-        None => {}
+        _ => {}
         #[cfg(false)]
         Some(_)
         //~^ ERROR `match` arm with no body
