@@ -1,13 +1,15 @@
 use std::marker::PhantomData;
-use std::ops::{Bound, Range, RangeBounds};
+use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use std::rc::Rc;
+use std::slice::GetDisjointMutError::{IndexOutOfBounds, OverlappingIndices};
 use std::{fmt, iter, slice};
 
 use Chunk::*;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
+use smallvec::SmallVec;
 
-use crate::{Idx, IndexVec};
+use crate::Idx;
 
 #[cfg(test)]
 mod tests;
@@ -76,16 +78,91 @@ fn inclusive_start_end<T: Idx>(
 ///
 #[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
 #[derive(Eq, PartialEq, Hash)]
-pub struct DenseBitSet<T> {
+pub struct DenseBitSet<T, S = Vec<Word>> {
     domain_size: usize,
-    words: Vec<Word>,
+    words: S,
     marker: PhantomData<T>,
 }
 
-impl<T> DenseBitSet<T> {
+impl<T, S> DenseBitSet<T, S> {
     /// Gets the domain size.
     pub fn domain_size(&self) -> usize {
         self.domain_size
+    }
+}
+
+pub trait DenseBitSetStorage: AsRef<[Word]> + Deref<Target = [Word]> {}
+pub trait DenseBitSetStorageMut:
+    DenseBitSetStorage + AsMut<[Word]> + DerefMut<Target = [Word]>
+{
+}
+
+impl DenseBitSetStorage for Vec<Word> {}
+impl DenseBitSetStorageMut for Vec<Word> {}
+impl<'a> DenseBitSetStorage for &'a [Word] {}
+impl<'a> DenseBitSetStorage for &'a mut [Word] {}
+impl<'a> DenseBitSetStorageMut for &'a mut [Word] {}
+
+impl<const N: usize> DenseBitSetStorage for SmallVec<[Word; N]> {}
+impl<const N: usize> DenseBitSetStorageMut for SmallVec<[Word; N]> {}
+
+// workaround because arrays don't implement DerefMut
+#[repr(transparent)]
+pub struct ArrayStorage<const N: usize> {
+    inner: [Word; N],
+}
+impl<const N: usize> AsRef<[Word]> for ArrayStorage<N> {
+    #[inline]
+    fn as_ref(&self) -> &[Word] {
+        &self.inner
+    }
+}
+
+impl<const N: usize> AsMut<[Word]> for ArrayStorage<N> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [Word] {
+        &mut self.inner
+    }
+}
+
+impl<const N: usize> Deref for ArrayStorage<N> {
+    type Target = [Word];
+    #[inline]
+    fn deref(&self) -> &[Word] {
+        self.inner.as_ref()
+    }
+}
+
+impl<const N: usize> DerefMut for ArrayStorage<N> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.inner.as_mut()
+    }
+}
+
+impl<const N: usize> DenseBitSetStorage for ArrayStorage<N> {}
+impl<const N: usize> DenseBitSetStorageMut for ArrayStorage<N> {}
+
+impl<'a, T: Idx> DenseBitSet<T, &'a [Word]> {
+    fn from_slice(domain_size: usize, storage: &'a [Word]) -> DenseBitSet<T, &'a [Word]> {
+        // todo assert storage has space?
+        DenseBitSet { domain_size, words: storage, marker: PhantomData }
+    }
+
+    /// Iterates over the indices of set bits in a sorted order.
+    #[inline]
+    pub fn into_iter(self) -> BitIter<'a, T> {
+        BitIter::new(self.words)
+    }
+}
+
+impl<'a, T: Idx> DenseBitSet<T, &'a mut [Word]> {
+    fn from_slice_mut(
+        domain_size: usize,
+        storage: &'a mut [Word],
+    ) -> DenseBitSet<T, &'a mut [Word]> {
+        // todo assert storage has space?
+        DenseBitSet { domain_size, words: storage, marker: PhantomData }
     }
 }
 
@@ -106,18 +183,9 @@ impl<T: Idx> DenseBitSet<T> {
         result.clear_excess_bits();
         result
     }
+}
 
-    /// Clear all elements.
-    #[inline]
-    pub fn clear(&mut self) {
-        self.words.fill(0);
-    }
-
-    /// Clear excess bits in the final word.
-    fn clear_excess_bits(&mut self) {
-        clear_excess_bits_in_final_word(self.domain_size, &mut self.words);
-    }
-
+impl<T: Idx, S: DenseBitSetStorage> DenseBitSet<T, S> {
     /// Count the number of set bits in the set.
     pub fn count(&self) -> usize {
         count_ones(&self.words)
@@ -133,65 +201,15 @@ impl<T: Idx> DenseBitSet<T> {
 
     /// Is `self` is a (non-strict) superset of `other`?
     #[inline]
-    pub fn superset(&self, other: &DenseBitSet<T>) -> bool {
+    pub fn superset<OS: DenseBitSetStorage>(&self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
+        self.words.iter().zip(&*other.words).all(|(a, b)| (a & b) == *b)
     }
 
     /// Is the set empty?
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.words.iter().all(|a| *a == 0)
-    }
-
-    /// Insert `elem`. Returns whether the set has changed.
-    #[inline]
-    pub fn insert(&mut self, elem: T) -> bool {
-        assert!(
-            elem.index() < self.domain_size,
-            "inserting element at index {} but domain size is {}",
-            elem.index(),
-            self.domain_size,
-        );
-        let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
-        let word = *word_ref;
-        let new_word = word | mask;
-        *word_ref = new_word;
-        new_word != word
-    }
-
-    #[inline]
-    pub fn insert_range(&mut self, elems: impl RangeBounds<T>) {
-        let Some((start, end)) = inclusive_start_end(elems, self.domain_size) else {
-            return;
-        };
-
-        let (start_word_index, start_mask) = word_index_and_mask(start);
-        let (end_word_index, end_mask) = word_index_and_mask(end);
-
-        // Set all words in between start and end (exclusively of both).
-        for word_index in (start_word_index + 1)..end_word_index {
-            self.words[word_index] = !0;
-        }
-
-        if start_word_index != end_word_index {
-            // Start and end are in different words, so we handle each in turn.
-            //
-            // We set all leading bits. This includes the start_mask bit.
-            self.words[start_word_index] |= !(start_mask - 1);
-            // And all trailing bits (i.e. from 0..=end) in the end word,
-            // including the end.
-            self.words[end_word_index] |= end_mask | (end_mask - 1);
-        } else {
-            self.words[start_word_index] |= end_mask | (end_mask - start_mask);
-        }
-    }
-
-    /// Sets all bits to true.
-    pub fn insert_all(&mut self) {
-        self.words.fill(!0);
-        self.clear_excess_bits();
     }
 
     /// Checks whether any bit in the given range is a 1.
@@ -218,18 +236,6 @@ impl<T: Idx> DenseBitSet<T> {
                 false
             }
         }
-    }
-
-    /// Returns `true` if the set has changed.
-    #[inline]
-    pub fn remove(&mut self, elem: T) -> bool {
-        assert!(elem.index() < self.domain_size);
-        let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
-        let word = *word_ref;
-        let new_word = word & !mask;
-        *word_ref = new_word;
-        new_word != word
     }
 
     /// Iterates over the indices of set bits in a sorted order.
@@ -282,9 +288,84 @@ impl<T: Idx> DenseBitSet<T> {
 
         None
     }
+}
+
+impl<T: Idx, S: DenseBitSetStorageMut> DenseBitSet<T, S> {
+    /// Clear all elements.
+    #[inline]
+    pub fn clear(&mut self) {
+        self.words.fill(0);
+    }
+
+    /// Clear excess bits in the final word.
+    fn clear_excess_bits(&mut self) {
+        clear_excess_bits_in_final_word(self.domain_size, &mut self.words);
+    }
+
+    /// Insert `elem`. Returns whether the set has changed.
+    #[inline]
+    pub fn insert(&mut self, elem: T) -> bool {
+        assert!(
+            elem.index() < self.domain_size,
+            "inserting element at index {} but domain size is {}",
+            elem.index(),
+            self.domain_size,
+        );
+        let (word_index, mask) = word_index_and_mask(elem);
+        let word_ref = &mut self.words[word_index];
+        let word = *word_ref;
+        let new_word = word | mask;
+        *word_ref = new_word;
+        new_word != word
+    }
+
+    #[inline]
+    pub fn insert_range(&mut self, elems: impl RangeBounds<T>) {
+        let Some((start, end)) = inclusive_start_end(elems, self.domain_size) else {
+            return;
+        };
+
+        let (start_word_index, start_mask) = word_index_and_mask(start);
+        let (end_word_index, end_mask) = word_index_and_mask(end);
+
+        // Set all words in between start and end (exclusively of both).
+        for word_index in (start_word_index + 1)..end_word_index {
+            self.words[word_index] = !0;
+        }
+
+        if start_word_index != end_word_index {
+            // Start and end are in different words, so we handle each in turn.
+            //
+            // We set all leading bits. This includes the start_mask bit.
+            self.words[start_word_index] |= !(start_mask - 1);
+            // And all trailing bits (i.e. from 0..=end) in the end word,
+            // including the end.
+            self.words[end_word_index] |= end_mask | (end_mask - 1);
+        } else {
+            self.words[start_word_index] |= end_mask | (end_mask - start_mask);
+        }
+    }
+
+    /// Sets all bits to true.
+    pub fn insert_all(&mut self) {
+        self.words.fill(!0);
+        self.clear_excess_bits();
+    }
+
+    /// Returns `true` if the set has changed.
+    #[inline]
+    pub fn remove(&mut self, elem: T) -> bool {
+        assert!(elem.index() < self.domain_size);
+        let (word_index, mask) = word_index_and_mask(elem);
+        let word_ref = &mut self.words[word_index];
+        let word = *word_ref;
+        let new_word = word & !mask;
+        *word_ref = new_word;
+        new_word != word
+    }
 
     /// Sets `self = self | !other`.
-    pub fn union_not(&mut self, other: &DenseBitSet<T>) {
+    pub fn union_not<OS: DenseBitSetStorage>(&mut self, other: &DenseBitSet<T, OS>) {
         assert_eq!(self.domain_size, other.domain_size);
 
         // FIXME(Zalathar): If we were to forcibly _set_ all excess bits before
@@ -299,21 +380,21 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     /// Returns true if `self` was modified.
-    pub fn union(&mut self, other: &DenseBitSet<T>) -> bool {
+    pub fn union<OS: DenseBitSetStorage>(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         update_words(&mut self.words, &other.words, |a, b| a | b)
     }
 
     /// Returns true if `self` was modified.
-    pub fn subtract(&mut self, other: &DenseBitSet<T>) -> bool {
+    pub fn subtract<OS: DenseBitSetStorage>(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
         update_words(&mut self.words, &other.words, |a, b| a & !b)
     }
 
     /// Returns true if `self` was modified.
-    pub fn intersect(&mut self, other: &DenseBitSet<T>) -> bool {
+    pub fn intersect<OS: DenseBitSetStorage>(&mut self, other: &DenseBitSet<T, OS>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        update_words(&mut self.words, &other.words, |a, b| a & b)
+        update_words(&mut *self.words, &other.words, |a, b| a & b)
     }
 }
 
@@ -323,7 +404,7 @@ impl<T: Idx> From<GrowableBitSet<T>> for DenseBitSet<T> {
     }
 }
 
-impl<T> Clone for DenseBitSet<T> {
+impl<T, S: Clone> Clone for DenseBitSet<T, S> {
     fn clone(&self) -> Self {
         DenseBitSet {
             domain_size: self.domain_size,
@@ -338,13 +419,13 @@ impl<T> Clone for DenseBitSet<T> {
     }
 }
 
-impl<T: Idx> fmt::Debug for DenseBitSet<T> {
+impl<T: Idx, S: DenseBitSetStorage> fmt::Debug for DenseBitSet<T, S> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
     }
 }
 
-impl<T: Idx> ToString for DenseBitSet<T> {
+impl<T: Idx, S: DenseBitSetStorage> ToString for DenseBitSet<T, S> {
     fn to_string(&self) -> String {
         let mut result = String::new();
         let mut sep = '[';
@@ -353,7 +434,7 @@ impl<T: Idx> ToString for DenseBitSet<T> {
 
         // i tracks how many bits we have printed so far.
         let mut i = 0;
-        for word in &self.words {
+        for word in &*self.words {
             let mut word = *word;
             for _ in 0..WORD_BYTES {
                 // for each byte in `word`:
@@ -502,6 +583,18 @@ enum Chunk {
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 crate::static_assert_size!(Chunk, 16);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(MixedBitSet<usize>, 32);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(DenseBitSet<usize>, 32);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(DenseBitSet<usize, usize>, 16);
+
+#[cfg(target_pointer_width = "64")]
+crate::static_assert_size!(DenseBitSet<usize, [Word;2]>, 24);
 
 impl<T> ChunkedBitSet<T> {
     pub fn domain_size(&self) -> usize {
@@ -1512,19 +1605,60 @@ where
     C: Idx,
 {
     num_columns: usize,
-    rows: IndexVec<R, Option<DenseBitSet<C>>>,
+    // rows: IndexVec<R, Option<DenseBitSet<C>>>,
+
+    // flat array of rows (as opposed to a vec of vecs)
+    // every row uses num_words based on num_columns
+    data: Vec<Word>,
+
+    marker: PhantomData<(R, C)>,
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Creates a new empty sparse bit matrix with no rows or columns.
     pub fn new(num_columns: usize) -> Self {
-        Self { num_columns, rows: IndexVec::new() }
+        Self { num_columns, data: Vec::new(), marker: PhantomData }
     }
 
-    fn ensure_row(&mut self, row: R) -> &mut DenseBitSet<C> {
+    fn ensure_row(&mut self, row: R) -> DenseBitSet<C, &mut [Word]> {
         // Instantiate any missing rows up to and including row `row` with an empty `DenseBitSet`.
         // Then replace row `row` with a full `DenseBitSet` if necessary.
-        self.rows.get_or_insert_with(row, || DenseBitSet::new_empty(self.num_columns))
+        let row_index = row.index();
+        let desired_num_rows = row_index + 1;
+        let num_words_per_row = num_words(self.num_columns);
+        let desired_len = desired_num_rows * num_words_per_row;
+
+        if self.data.len() < desired_len {
+            self.data.resize(desired_len, 0);
+        }
+
+        let start_index = row_index * num_words_per_row;
+        let end_index = (row_index + 1) * num_words_per_row;
+        let row_storage = &mut self.data[start_index..end_index];
+
+        DenseBitSet::from_slice_mut(self.num_columns, row_storage)
+    }
+
+    pub fn row(&self, row: R) -> Option<DenseBitSet<C, &[Word]>> {
+        let row_index = row.index();
+        let num_words_per_row = num_words(self.num_columns);
+
+        let start_index = row_index * num_words_per_row;
+        let end_index = (row_index + 1) * num_words_per_row;
+        let row_storage = self.data.get(start_index..end_index)?;
+
+        Some(DenseBitSet::from_slice(self.num_columns, row_storage))
+    }
+
+    fn row_mut(&mut self, row: R) -> Option<DenseBitSet<C, &mut [Word]>> {
+        let row_index = row.index();
+        let num_words_per_row = num_words(self.num_columns);
+
+        let start_index = row_index * num_words_per_row;
+        let end_index = (row_index + 1) * num_words_per_row;
+        let row_storage = self.data.get_mut(start_index..end_index)?;
+
+        Some(DenseBitSet::from_slice_mut(self.num_columns, row_storage))
     }
 
     /// Sets the cell at `(row, column)` to true. Put another way, insert
@@ -1541,8 +1675,8 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     ///
     /// Returns `true` if this changed the matrix.
     pub fn remove(&mut self, row: R, column: C) -> bool {
-        match self.rows.get_mut(row) {
-            Some(Some(row)) => row.remove(column),
+        match self.row_mut(row) {
+            Some(mut row) => row.remove(column),
             _ => false,
         }
     }
@@ -1550,7 +1684,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Sets all columns at `row` to false. Has no effect if `row` does
     /// not exist.
     pub fn clear(&mut self, row: R) {
-        if let Some(Some(row)) = self.rows.get_mut(row) {
+        if let Some(mut row) = self.row_mut(row) {
             row.clear();
         }
     }
@@ -1571,16 +1705,32 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// `write` can reach everything that `read` can (and
     /// potentially more).
     pub fn union_rows(&mut self, read: R, write: R) -> bool {
-        if read == write || self.row(read).is_none() {
+        if read == write || self.num_columns == 0 || self.row(read).is_none() {
             return false;
         }
 
         self.ensure_row(write);
-        if let (Some(read_row), Some(write_row)) = self.rows.pick2_mut(read, write) {
-            write_row.union(read_row)
-        } else {
-            unreachable!()
-        }
+
+        let num_word_per_row = num_words(self.num_columns);
+
+        let read_start = read.index() * num_word_per_row;
+        let write_start = write.index() * num_word_per_row;
+        let (ai, bi) = (
+            read_start..read_start + num_word_per_row,
+            write_start..write_start + num_word_per_row,
+        );
+
+        let (read_row, mut write_row) = match self.data.get_disjoint_mut([ai.clone(), bi.clone()]) {
+            Ok([a, b]) => (
+                DenseBitSet::<R, _>::from_slice_mut(self.num_columns, a),
+                DenseBitSet::<R, _>::from_slice_mut(self.num_columns, b),
+            ),
+            Err(OverlappingIndices) => panic!("Indices {ai:?} and {bi:?} are not disjoint!"),
+            Err(IndexOutOfBounds) => {
+                panic!("Some indices among ({ai:?}, {bi:?}) are out of bounds")
+            }
+        };
+        write_row.union(&read_row)
     }
 
     /// Insert all bits in the given row.
@@ -1589,18 +1739,24 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     }
 
     pub fn rows(&self) -> impl Iterator<Item = R> {
-        self.rows.indices()
+        let num_words_per_row = num_words(self.num_columns);
+
+        let len = if num_words_per_row == 0 { 0 } else { self.data.len() / num_words_per_row };
+
+        // fixme copypasta from SliceIndex::indices()
+        let _ = R::new(len);
+        (0..len).map(|n| R::new(n))
     }
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
     pub fn iter(&self, row: R) -> impl Iterator<Item = C> {
-        self.row(row).into_iter().flat_map(|r| r.iter())
+        self.row(row).into_iter().flat_map(|r| r.into_iter())
     }
 
-    pub fn row(&self, row: R) -> Option<&DenseBitSet<C>> {
-        self.rows.get(row)?.as_ref()
-    }
+    // pub fn row(&self, row: R) -> Option<&DenseBitSet<C>> {
+    //     self.rows.get(row)?.as_ref()
+    // }
 }
 
 #[inline]
