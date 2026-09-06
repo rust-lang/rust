@@ -11,6 +11,7 @@ cfg_select! {
         target_os = "hermit",
         target_os = "motor",
         all(target_os = "wasi", target_env = "p3"),
+        target_os = "vexos",
     ) => {
         mod futex;
         pub use futex::RwLock;
