@@ -7,9 +7,10 @@ use super::{SolverRegionConstraint, SolverRegionConstraintStorage};
 
 #[test]
 fn true_constraint_keeps_query_response_empty() {
-    // Mirrors `register_solver_region_constraint`: anding a trivially true
-    // constraint into an empty store has to leave the store trivially true,
-    // as the resulting query response would otherwise no longer be empty.
+    // Mirrors `register_solver_region_constraint`, which registers unconditionally:
+    // anding a trivially true constraint into an empty store has to leave the store
+    // trivially true, as the resulting query response would otherwise no longer be
+    // empty. This relies on `And`/`Or` being kept in canonical form.
     let mut storage = SolverRegionConstraintStorage::<'static>::new();
     storage.overwrite(SolverRegionConstraint::build_and(
         SolverRegionConstraint::new_true(),
