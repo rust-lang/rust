@@ -9,14 +9,6 @@ LL |     baz(|_| ());
    = help: the trait `for<'a> FnOnce(&'a ())` is not implemented for closure `{closure@$DIR/closure-mismatch.rs:12:9: 12:12}`
    = note: expected a closure with signature `for<'a> fn(&'a ())`
               found a closure with signature `fn(&())`
-note: this is a known limitation of the trait solver that will be lifted in the future
-  --> $DIR/closure-mismatch.rs:12:9
-   |
-LL |     baz(|_| ());
-   |     ----^^^----
-   |     |   |
-   |     |   the trait solver is unable to infer the generic types that should be inferred from this argument
-   |     add turbofish arguments to this call to specify the types manually, even if it's redundant
 note: required for `{closure@$DIR/closure-mismatch.rs:12:9: 12:12}` to implement `Foo`
   --> $DIR/closure-mismatch.rs:7:18
    |
@@ -41,14 +33,6 @@ LL |     baz(|x| ());
    = help: the trait `for<'a> FnOnce(&'a ())` is not implemented for closure `{closure@$DIR/closure-mismatch.rs:16:9: 16:12}`
    = note: expected a closure with signature `for<'a> fn(&'a ())`
               found a closure with signature `fn(&())`
-note: this is a known limitation of the trait solver that will be lifted in the future
-  --> $DIR/closure-mismatch.rs:16:9
-   |
-LL |     baz(|x| ());
-   |     ----^^^----
-   |     |   |
-   |     |   the trait solver is unable to infer the generic types that should be inferred from this argument
-   |     add turbofish arguments to this call to specify the types manually, even if it's redundant
 note: required for `{closure@$DIR/closure-mismatch.rs:16:9: 16:12}` to implement `Foo`
   --> $DIR/closure-mismatch.rs:7:18
    |

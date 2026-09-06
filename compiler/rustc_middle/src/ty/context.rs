@@ -55,8 +55,8 @@ use crate::hir::{ProjectedMaybeOwner, ProjectedOwnerInfo};
 use crate::ich::StableHashState;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
-use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
+use crate::middle::resolve::{ModChild, ResolverAstLowering};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
@@ -68,7 +68,6 @@ use crate::traits::solve::{
     PredefinedOpaques,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
-use crate::ty::region::RegionExt;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, FnSigKind,
     GenericArg, GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo,
@@ -1029,15 +1028,26 @@ impl<'tcx> TyCtxt<'tcx> {
         self.is_lang_item(self.parent(def_id), LangItem::AsyncDropInPlace)
     }
 
-    pub fn type_const_span(self, def_id: DefId) -> Option<Span> {
-        if !self.is_type_const(def_id) {
-            return None;
-        }
-        Some(self.def_span(def_id))
+    /// Returns true if the const is guaranteed to have a directly represented RHS. This is either
+    /// because it has a directly represented RHS, or is a trait definition that is marked as
+    /// requiring its implementation to have a directly represented RHS.
+    ///
+    /// Note: Be very careful with using this method - under `generic_const_args`, a trait can
+    /// declare a regular const, but an `impl` could implement it with a directly represented const
+    /// (a la refinement). This method would return false in such a case.
+    pub fn is_direct_const(self, def_id: DefId) -> bool {
+        debug_assert_matches!(
+            self.def_kind(def_id),
+            DefKind::Const { .. } | DefKind::AssocConst { .. }
+        );
+        self.is_type_const_syntax(def_id) || self.const_of_item(def_id).is_some()
     }
 
-    /// Check if the given `def_id` is a `type const` (mgca)
-    pub fn is_type_const(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+    /// Check if the given `def_id` is declared with `type const` syntax (mgca)
+    ///
+    /// This is NOT the same as whether the `def_id` can be represented in/used by the type system.
+    /// For that, you probably want to ask `is_direct_const()` or `const_of_item().is_some()`.
+    pub fn is_type_const_syntax(self, def_id: impl IntoQueryKey<DefId>) -> bool {
         let def_id = def_id.into_query_key();
         match self.def_kind(def_id) {
             DefKind::Const { is_type_const } | DefKind::AssocConst { is_type_const } => {
@@ -2878,7 +2888,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn resolver_for_lowering(
         self,
-    ) -> (&'tcx Steal<ty::ResolverAstLowering<'tcx>>, &'tcx Steal<ast::Crate>) {
+    ) -> (&'tcx Steal<ResolverAstLowering<'tcx>>, &'tcx Steal<ast::Crate>) {
         let (resolver, krate, _) = self.resolver_for_lowering_raw(());
         (resolver, krate)
     }

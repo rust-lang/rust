@@ -61,9 +61,23 @@ note: constraint from here
    |
 LL |         forall<'a> where 'b: 'a {
    |         ^^^^^^
-   = note: expected: RegionOutlives('c/#1, 'c/#1, $DIR/test-infra-fails-properly.rs:63:17: 63:23 (#0))
-   = note: actual: RegionOutlives('c/#1, 'static, $DIR/test-infra-fails-properly.rs:58:9: 58:15 (#0))
+   = note: expected: RegionOutlives(
+               'c/#1,
+               'c/#1,
+               $DIR/test-infra-fails-properly.rs:63:17: 63:23 (#0),
+           )
+   = note: actual: RegionOutlives(
+               'c/#1,
+               'static,
+               $DIR/test-infra-fails-properly.rs:58:9: 58:15 (#0),
+           )
 
-error: aborting due to 8 previous errors
+error: bound type test binder constraint must be alias (it's a AliasTyOutlivesViaEnv)
+  --> $DIR/test-infra-fails-properly.rs:72:15
+   |
+LL |         for<> T: 'a
+   |               ^
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

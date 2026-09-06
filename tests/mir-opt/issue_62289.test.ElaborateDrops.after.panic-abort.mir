@@ -55,7 +55,7 @@ fn test() -> Option<Vec<u32>> {
         _11 = copy ((_5 as Continue).0: u32);
         _4 = copy _11;
         StorageDead(_11);
-        ((((*_3).1: std::mem::ManuallyDrop<[u32; 1]>).0: std::mem::MaybeDangling<[u32; 1]>).0: [u32; 1]) = [move _4];
+        (((*_3).1: std::mem::ManuallyDrop<[u32; 1]>).0: [u32; 1]) = [move _4];
         StorageDead(_4);
         _2 = move _3;
         goto -> bb7;

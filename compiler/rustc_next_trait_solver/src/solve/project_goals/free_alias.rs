@@ -37,8 +37,10 @@ where
                 let free = self.normalize(GoalSource::Misc, goal.param_env, free)?;
                 free.into()
             }
-            ty::AliasTermKind::FreeConst { def_id } if cx.is_type_const(def_id.into()) => {
-                let free = cx.const_of_item(def_id.into()).instantiate(cx, free_alias.args);
+            ty::AliasTermKind::FreeConst { def_id }
+                if let Some(free) = cx.const_of_item(ty::AliasConstKind::Free { def_id }) =>
+            {
+                let free = free.instantiate(cx, free_alias.args);
                 let free = self.normalize(GoalSource::Misc, goal.param_env, free)?;
 
                 free.into()

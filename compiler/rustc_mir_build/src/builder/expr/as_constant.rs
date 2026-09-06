@@ -3,6 +3,7 @@
 use rustc_abi::Size;
 use rustc_ast as ast;
 use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -71,7 +72,17 @@ pub(crate) fn as_constant_inner<'tcx>(
         }
         ExprKind::NamedConst { def_id, args, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
-            if tcx.is_type_const(def_id) {
+            // Under generic_const_args, `def_id` might be a regular const declared in a trait, but
+            // is `impl`d as a directly represented const. We do not know whether it is here, so we
+            // must use type system normalization for all consts under generic_const_args.
+            // FIXME(generic_const_args): there's a lot to consider here! `Const::Ty` uses valtrees
+            // and `Const::Unevaluated` does not, we should revisit this before stabilization.
+            if tcx.features().generic_const_args()
+                || matches!(
+                    tcx.def_kind(def_id),
+                    DefKind::Const { .. } | DefKind::AssocConst { .. }
+                ) && tcx.is_direct_const(def_id)
+            {
                 let uneval = ty::AliasConst::new(
                     tcx,
                     ty::AliasConstKind::new_from_def_id(

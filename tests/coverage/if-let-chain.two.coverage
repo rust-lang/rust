@@ -1,0 +1,40 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |//@ revisions: none one two
+   LL|       |//@[one] ignore-coverage-map
+   LL|       |//@[two] ignore-coverage-map
+   LL|       |
+   LL|       |// Basic test for if-let chains.
+   LL|       |
+   LL|      1|fn if_let_chain(opt_opt_msg: Option<Option<&str>>) {
+   LL|      1|    if let Some(opt_msg) = opt_opt_msg
+   LL|      1|        && let Some(msg) = opt_msg
+   LL|      1|    {
+   LL|      1|        say(msg);
+   LL|      1|    }
+                  ^0
+   LL|       |
+   LL|      1|    if let Some(opt_msg) = opt_opt_msg
+   LL|      1|        && let Some(msg) = opt_msg
+   LL|       |    {
+   LL|      1|        say(msg)
+   LL|      0|    }
+   LL|       |
+   LL|      1|    say("goodbye");
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    let opt_opt_msg = cfg_select!(
+   LL|       |        none => None,
+   LL|       |        one => Some(None),
+   LL|       |        two => Some(Some("hello")),
+   LL|       |    );
+   LL|       |    if_let_chain(opt_opt_msg);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(msg: &str) {
+   LL|       |    println!("{msg}");
+   LL|       |}
+

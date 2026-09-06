@@ -1,5 +1,5 @@
 error[E0658]: register class `vreg` can only be used as a clobber in stable
-  --> $DIR/feature-gate-asm_experimental_reg.rs:21:41
+  --> $DIR/feature-gate-asm_experimental_reg.rs:60:41
    |
 LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
    |                                         ^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: register class `vreg` can only be used as a clobber in stable
-  --> $DIR/feature-gate-asm_experimental_reg.rs:21:54
+  --> $DIR/feature-gate-asm_experimental_reg.rs:60:54
    |
 LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
    |                                                      ^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: type `i8x16` cannot be used with this register class in stable
-  --> $DIR/feature-gate-asm_experimental_reg.rs:21:51
+  --> $DIR/feature-gate-asm_experimental_reg.rs:60:51
    |
 LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
    |                                                   ^
@@ -29,7 +29,7 @@ LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: type `i8x16` cannot be used with this register class in stable
-  --> $DIR/feature-gate-asm_experimental_reg.rs:21:63
+  --> $DIR/feature-gate-asm_experimental_reg.rs:60:63
    |
 LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
    |                                                               ^

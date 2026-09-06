@@ -349,9 +349,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 .fold_with(self)
                 .into()
         } else {
-            infcx
-                .tcx
-                .const_of_item(def_id)
+            project::const_of_item_or_delayed_bug(infcx.tcx, def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
@@ -469,7 +467,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
         if tcx.features().generic_const_exprs()
             // Normalize type_const items even with feature `generic_const_exprs`.
-            && !matches!(ct.kind(), ty::ConstKind::Alias(_, alias_const) if alias_const.kind.is_type_const(tcx))
+            && !matches!(ct.kind(), ty::ConstKind::Alias(_, alias_const) if alias_const.kind.is_direct_const(tcx))
             || !needs_normalization(self.selcx.infcx, &ct)
         {
             return ct;

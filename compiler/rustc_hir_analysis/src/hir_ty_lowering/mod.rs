@@ -44,7 +44,7 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
-    RegionExt, Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
+    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
     const_lit_matches_ty, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
@@ -3153,7 +3153,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
-        if tcx.is_type_const(def_id) || tcx.features().generic_const_args() {
+        if tcx.is_type_const_syntax(def_id) || tcx.features().generic_const_args() {
             Ok(())
         } else {
             let mut err = self.dcx().struct_span_err(

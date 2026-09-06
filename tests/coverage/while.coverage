@@ -1,7 +1,34 @@
-   LL|      1|fn main() {
-   LL|      1|    let num = 9;
-   LL|      1|    while num >= 10 {
-   LL|      0|        // loop body
-   LL|      0|    }
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |
+   LL|       |// Basic test for `while` expressions.
+   LL|       |
+   LL|      1|fn while_with_tail_expr() {
+   LL|      1|    let mut x = 5;
+   LL|      6|    while x > 0 {
+   LL|      5|        x -= 1;
+   LL|      5|        say("decreased x")
+   LL|       |    }
+   LL|      1|    say("goodbye");
    LL|      1|}
+   LL|       |
+   LL|      1|fn while_with_tail_stmt() {
+   LL|      1|    let mut x = 5;
+   LL|      6|    while x > 0 {
+   LL|      5|        x -= 1;
+   LL|      5|        say("decreased x");
+   LL|      5|    }
+   LL|      1|    say("goodbye");
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    while_with_tail_expr();
+   LL|       |    while_with_tail_stmt();
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(msg: &str) {
+   LL|       |    println!("{msg}");
+   LL|       |}
 

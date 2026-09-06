@@ -1,13 +1,13 @@
 error[E0284]: type annotations needed for `([(); _], [(); 10])`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:32:9
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:31:9
    |
 LL |     let (mut arr, mut arr_with_weird_len) = free();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ------ type must be known at this point
    |
 note: required by a const generic parameter in `free`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:27:9
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:26:9
    |
-LL | fn free<const N: usize>() -> ([(); N], [(); FREE::<N>]) {
+LL | fn free<const N: usize>() -> ([(); N], [(); core::direct_const_arg!(FREE::<N>)]) {
    |         ^^^^^^^^^^^^^^ required by this const generic parameter in `free`
 help: consider giving this pattern a type, where the value of const parameter `N` is specified
    |
@@ -15,7 +15,7 @@ LL |     let (mut arr, mut arr_with_weird_len): ([_; N], _) = free();
    |                                          +++++++++++++
 
 error[E0271]: type mismatch resolving `FREE<10> == 2`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:38:45
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:37:45
    |
 LL |     let (mut arr, mut arr_with_weird_len) = free();
    |                                             ^^^^^^ expected `2`, found `10`
@@ -24,16 +24,16 @@ LL |     let (mut arr, mut arr_with_weird_len) = free();
               found constant `10`
 
 error[E0284]: type annotations needed for `([(); _], [(); 10])`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:49:9
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:48:9
    |
 LL |     let (mut arr, mut arr_with_weird_len) = proj();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ------ type must be known at this point
    |
    = note: cannot satisfy `<S as Trait>::PROJ<_> == 10`
 note: required by a const generic parameter in `proj`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:44:9
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:43:9
    |
-LL | fn proj<const N: usize>() -> ([(); N], [(); <S as Trait>::PROJ::<N>]) {
+LL | fn proj<const N: usize>() -> ([(); N], [(); core::direct_const_arg!(<S as Trait>::PROJ::<N>)]) {
    |         ^^^^^^^^^^^^^^ required by this const generic parameter in `proj`
 help: consider giving this pattern a type, where the value of const parameter `N` is specified
    |
@@ -41,7 +41,7 @@ LL |     let (mut arr, mut arr_with_weird_len): ([_; N], _) = proj();
    |                                          +++++++++++++
 
 error[E0271]: type mismatch resolving `<S as Trait>::PROJ<10> == 2`
-  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:55:45
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:54:45
    |
 LL |     let (mut arr, mut arr_with_weird_len) = proj();
    |                                             ^^^^^^ expected `2`, found `10`

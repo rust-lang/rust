@@ -35,9 +35,9 @@
   </Type>
 
   <Type Name="core::mem::manually_drop::ManuallyDrop&lt;*&gt;">
-    <DisplayString>{value.__0}</DisplayString>
+    <DisplayString>{value}</DisplayString>
     <Expand>
-      <ExpandedItem>value.__0</ExpandedItem>
+      <ExpandedItem>value</ExpandedItem>
     </Expand>
   </Type>
 

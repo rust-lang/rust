@@ -29,7 +29,6 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHashe
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 pub use rustc_span::AttrId;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::{
     ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
     sym,
@@ -4081,6 +4080,8 @@ pub struct TestBinderBody {
     pub foralls: ThinVec<TestBinderForall>,
     pub exists: ThinVec<TestBinderExists>,
     pub constraints: Vec<TestBinderConstraint>,
+    /// These are not where clauses, but rather predicates within the body to be proven
+    pub predicates: Vec<WhereClause>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4114,11 +4115,24 @@ pub enum TestBinderConstraint {
         #[visitable(extra = LifetimeCtxt::Bound)]
         rhs: Lifetime,
     },
-    Type {
+    PlaceholderOutlives {
         lhs: Box<Ty>,
         #[visitable(extra = LifetimeCtxt::Bound)]
         rhs: Lifetime,
     },
+    AliasOutlives {
+        bound_type_constraint: TestBinderBoundTypeConstraint,
+    },
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct TestBinderBoundTypeConstraint {
+    pub span: Span,
+    pub node_id: NodeId,
+    pub params: ThinVec<GenericParam>,
+    pub lhs: Box<Ty>,
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub rhs: Lifetime,
 }
 
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.
@@ -4445,24 +4459,6 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;
-
-/// Fragment of the AST according to "HIR owner" semantics.
-///
-/// This is used to map each `LocalDefId` to its content's AST.
-#[derive(Debug)]
-pub enum AstOwner {
-    /// This definition does not correspond to a HIR owner.
-    NonOwner,
-    /// This definition corresponds to a nested `use` tree.
-    /// The `LocalDefId` points to its HIR owner.
-    NestedUseTree(LocalDefId),
-    Crate(Box<Crate>),
-    Item(Box<Item>),
-    TraitItem(Box<AssocItem>),
-    ImplItem(Box<AssocItem>),
-    ForeignItem(Box<ForeignItem>),
-}
-
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {

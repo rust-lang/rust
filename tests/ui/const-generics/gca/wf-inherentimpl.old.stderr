@@ -1,5 +1,5 @@
 error: `generic_const_args` requires -Znext-solver=globally to be enabled
-  --> $DIR/wf-inherentimpl.rs:7:12
+  --> $DIR/wf-inherentimpl.rs:6:12
    |
 LL | #![feature(generic_const_args, min_generic_const_args)]
    |            ^^^^^^^^^^^^^^^^^^
