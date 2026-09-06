@@ -82,6 +82,7 @@ impl TraitWithAssocType for i32 {
     fn get_value(&self) -> i64 { *self as i64 }
 }
 
+#[repr(C)]
 struct Struct<T: TraitWithAssocType> {
     b: T,
     b1: T::Type,
