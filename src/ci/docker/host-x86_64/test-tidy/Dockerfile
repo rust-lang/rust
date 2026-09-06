@@ -31,7 +31,7 @@ ENV PATH="/node/bin:${PATH}"
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-COPY host-x86_64/pr-check-1/validate-toolstate.sh /scripts/
+COPY host-x86_64/test-pr-check-1/validate-toolstate.sh /scripts/
 
 # python3 resolves to python3.12 on Ubuntu 24.04
 ENV SCRIPT="python3 ../x.py test src/tools/tidy tidyselftest --extra-checks=py,cpp,js,spellcheck"
