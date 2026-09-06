@@ -11,13 +11,13 @@ LL |             forall { }
    |                    ^ expected one of `!`, `(`, `+`, `::`, `:`, or `<`
 
 error: expected lifetime, found keyword `for`
-  --> $DIR/test-infra-fails-properly.rs:41:12
+  --> $DIR/test-infra-fails-properly.rs:42:12
    |
 LL |         T: for<'b> Trait<'b>,
    |            ^^^ expected lifetime
 
 error[E0658]: only lifetime parameters can be used in this context
-  --> $DIR/test-infra-fails-properly.rs:48:16
+  --> $DIR/test-infra-fails-properly.rs:49:16
    |
 LL |         forall<T> where T: 'a {
    |                ^
@@ -33,13 +33,13 @@ LL |         'a: 'b
    |         ^^^^^^
 
 error: the lhs of a ty outlives must be a placeholder
-  --> $DIR/test-infra-fails-properly.rs:34:9
+  --> $DIR/test-infra-fails-properly.rs:35:9
    |
 LL |         dyn for<'b> Trait<'b>: 'a,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: it is a (dyn for<'b> Trait<'b> + 'static)
-   = note: and here it is `Debug`ged :3 dyn [Binder { value: Trait(Trait<'b>), bound_vars: [Region(BrNamed(DefId(0:15 ~ test_infra_fails_properly[2377]::{test_binder_constraints#1}::'b)))] }, Binder { value: AutoTrait(DefId(2:43572 ~ core[ec28]::marker::Move)), bound_vars: [] }] + 'static
+   = note: and here it is `Debug`ged :3 dyn [Binder { value: Trait(Trait<'b>), bound_vars: [Region(BrNamed(DefId(0:11 ~ test_infra_fails_properly[2377]::{test_binder_constraints#1}::'b)))] }, Binder { value: AutoTrait(DefId(core::marker::Move)), bound_vars: [] }] + 'static
 
 error: the lhs of a forall where clause must be an alias, placeholder, or lifetime
   --> $DIR/test-infra-fails-properly.rs:48:9
@@ -69,6 +69,7 @@ note: constraint from here
    |
 LL |         forall<'a> where 'b: 'a {
    |         ^^^^^^
+<<<<<<< HEAD
    = note: expected: or {
                'c/#1: 'b/#0,
                'b/#0: 'c/#1,
@@ -77,6 +78,18 @@ LL |         forall<'a> where 'b: 'a {
                'c/#1: 'b/#0,
                'c/#1: 'static,
            }
+=======
+   = note: expected: RegionOutlives(
+               'b/#0,
+               'c/#1,
+               $DIR/test-infra-fails-properly.rs:64:17: 64:23 (#0),
+           )
+   = note: actual: RegionOutlives(
+               'c/#1,
+               'static,
+               $DIR/test-infra-fails-properly.rs:59:9: 59:15 (#0),
+           )
+>>>>>>> 8d0d61d25 (normalize hash and type id instead of reblessing ad nauseam)
 
 error: bound type test binder constraint must be alias (it's a AliasTyOutlivesViaEnv)
   --> $DIR/test-infra-fails-properly.rs:73:15
