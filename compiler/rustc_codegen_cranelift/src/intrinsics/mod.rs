@@ -455,6 +455,13 @@ fn codegen_float_intrinsic_call<'tcx>(
     true
 }
 
+/// Used to distinguish fallbacks of float intrinsics. For some we have a codegen fallback,
+/// while for others we fallback to an external libcall.
+enum IntrinsicFallback {
+    Fallback(&'static str),
+    Codegen(Value),
+}
+
 fn codegen_regular_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
@@ -1176,24 +1183,16 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let ty::Float(float_ty) = layout.ty.kind() else {
                 span_bug!(
                     source_info.span,
-                    "expected float type for fabs intrinsic: {:?}",
+                    "expected float type for {:?} intrinsic: {:?}",
+                    intrinsic,
                     layout.ty
                 );
             };
-            enum IntrinsicFallback {
-                Fallback(&'static str),
-                Codegen(Value),
-            }
             use FloatTy::*;
             use IntrinsicFallback::*;
             let x = arg.load_scalar(fx);
             let res = match (intrinsic, float_ty) {
                 (sym::fabs, F32 | F64) => Codegen(fx.bcx.ins().fabs(x)),
-                // FIXME(bytecodealliance/wasmtime#8312): Use `fabsf16` once Cranelift
-                // backend lowerings are implemented.
-                (sym::fabs, F16) => Codegen(codegen_f16_f128::abs_f16(fx, x)),
-                (sym::fabs, F128) => Codegen(codegen_f16_f128::abs_f128(fx, x)),
-
                 (sym::exp, F32) => Fallback("expf"),
                 (sym::exp, F64) => Fallback("exp"),
                 (sym::exp, F128) => Fallback("expf128"),
@@ -1222,8 +1221,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 (sym::cos, F64) => Fallback("cos"),
                 (sym::cos, F128) => Fallback("cosf128"),
 
-                (_, F16) => {
-                    // We implement fallbacks for other f16 intrinsics via f32
+                (sym::fabs, F128) | (_, F16) => {
+                    // FIXME(bytecodealliance/wasmtime#8312): Use the native operations once
+                    // Cranelift backend lowerings for `f16` are implemented.
+                    // We use the intrinsic fallback bodies for the rest
                     return Err(Instance::new_raw(instance.def_id(), instance.args));
                 }
 
