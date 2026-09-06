@@ -5,7 +5,7 @@ use crate::spec::{
 pub(crate) fn target() -> Target {
     let base = base::solid::opts();
     Target {
-        llvm_target: "armv7a-none-eabihf".into(),
+        llvm_target: "arm-none-eabihf".into(),
         metadata: TargetMetadata {
             description: Some("Arm SOLID with TOPPERS/ASP3, hardfloat".into()),
             tier: Some(3),
@@ -19,7 +19,7 @@ pub(crate) fn target() -> Target {
             cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             linker: Some("arm-kmc-eabi-gcc".into()),
-            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
+            features: "+v7,+db,+dsp,+aclass,+perfmon,+vfp3d16,+thumb2".into(),
             relocation_model: RelocModel::Static,
             disable_redzone: true,
             max_atomic_width: Some(64),
