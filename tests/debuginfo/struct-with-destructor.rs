@@ -35,11 +35,13 @@
 
 #![allow(unused_variables)]
 
+#[repr(C)]
 struct NoDestructor {
     x: i32,
     y: i64
 }
 
+#[repr(C)]
 struct WithDestructor {
     x: i32,
     y: i64
@@ -49,11 +51,13 @@ impl Drop for WithDestructor {
     fn drop(&mut self) {}
 }
 
+#[repr(C)]
 struct NoDestructorGuarded {
     a: NoDestructor,
     guard: i64
 }
 
+#[repr(C)]
 struct WithDestructorGuarded {
     a: WithDestructor,
     guard: i64
