@@ -21,7 +21,8 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::normalize::needs_normalization;
 use crate::traits::{
-    BoundVarReplacer, Normalized, ObligationCause, PlaceholderReplacer, ScrubbedTraitError,
+    BoundVarReplacer, FulfillmentError, FulfillmentErrorCode, Normalized, ObligationCause,
+    PlaceholderReplacer,
 };
 
 #[extension(pub trait QueryNormalizeExt<'tcx>)]
@@ -76,7 +77,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         };
 
         if self.infcx.next_trait_solver() {
-            match crate::solve::deeply_normalize_with_skipped_universes::<_, ScrubbedTraitError<'tcx>>(
+            match crate::solve::deeply_normalize_with_skipped_universes::<_, FulfillmentError<'tcx>>(
                 self,
                 Unnormalized::new_wip(value),
                 universes,
@@ -84,8 +85,24 @@ impl<'a, 'tcx> At<'a, 'tcx> {
                 Ok(value) => {
                     return Ok(Normalized { value, obligations: PredicateObligations::new() });
                 }
-                Err(_errors) => {
-                    return Err(NoSolution);
+                Err(errors) => {
+                    // We're imitating the old solver's behavior of eagerly reporting overflow
+                    // errors here. Otherwise we might silently ignore such errors. See #161542.
+                    if let Some((overflowed_obligation, suggest_higher_limit)) =
+                        errors.into_iter().find_map(|e| match e.code {
+                            FulfillmentErrorCode::Ambiguity {
+                                overflow: Some(suggest_higher_limit),
+                            } => Some((e.root_obligation, suggest_higher_limit)),
+                            _ => None,
+                        })
+                    {
+                        self.infcx.err_ctxt().report_overflow_obligation(
+                            &overflowed_obligation,
+                            suggest_higher_limit,
+                        );
+                    } else {
+                        return Err(NoSolution);
+                    }
                 }
             }
         }
