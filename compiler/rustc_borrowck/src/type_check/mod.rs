@@ -187,6 +187,7 @@ pub(crate) fn type_check<'tcx>(
         typeck.infcx.destructure_solver_region_constraints_for_borrowck(
             &mut converter,
             typeck.known_type_outlives_obligations,
+            typeck.region_bound_pairs,
             universal_region_relations.outlives.clone(),
         );
     }
