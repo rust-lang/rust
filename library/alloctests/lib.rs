@@ -53,7 +53,6 @@
 #![feature(trusted_random_access)]
 #![feature(try_reserve_kind)]
 #![feature(try_trait_v2)]
-#![feature(unwrap_infallible)]
 #![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //
