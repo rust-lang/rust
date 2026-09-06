@@ -122,8 +122,8 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.backend_repr),
             },
-            PassMode::Cast { ref cast, pad_i32 } => {
-                assert!(!pad_i32, "padding support not yet implemented");
+            PassMode::Cast { ref cast, pad_i32_count } => {
+                assert_eq!(pad_i32_count, 0, "padding support not yet implemented");
                 cast_target_to_abi_params(cast).into_iter().map(|(_, param)| param).collect()
             }
             PassMode::Indirect { attrs, meta_attrs: None, on_stack } => {

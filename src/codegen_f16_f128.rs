@@ -265,10 +265,6 @@ pub(crate) fn codegen_cast(
             fx.bcx.ins().ireduce(to_ty, val)
         };
 
-        if let Some(false) = fx.tcx.sess.opts.unstable_opts.saturating_float_casts {
-            return val;
-        }
-
         let is_not_nan = fcmp(fx, FloatCC::Equal, from, from);
         let zero = type_zero_value(&mut fx.bcx, to_ty);
         fx.bcx.ins().select(is_not_nan, val, zero)
