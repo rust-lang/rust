@@ -83,6 +83,7 @@ where
             max_input_universe,
             initial_opaque_types_storage_num_entries: outer
                 .initial_opaque_types_storage_num_entries,
+            opaque_bounds_scheduled: outer.opaque_bounds_scheduled.clone(),
             search_graph: outer.search_graph,
             nested_goals: propagated_nested_goals,
             origin_span: outer.origin_span,

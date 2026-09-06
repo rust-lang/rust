@@ -456,6 +456,14 @@ pub enum GoalSource {
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
+
+    /// Opaque equations whose item-bound obligations are already part of
+    /// the enclosing proof.
+    ///
+    /// This is separate from `predefined_opaques_in_body`: an opaque
+    /// equation may be available without its item bounds being part of
+    /// the current proof.
+    pub opaque_bounds_scheduled: I::PredefinedOpaques,
 }
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
