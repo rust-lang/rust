@@ -208,6 +208,8 @@ macro_rules! impl_visitable {
     (|&$lt:lifetime $self:ident: $self_ty:ty, $vis:ident: &mut $vis_ty:ident| $block:block) => {
         impl<$lt, $vis_ty: Visitor<$lt>> Visitable<$lt, $vis_ty> for $self_ty {
             type Extra = ();
+
+            #[inline]
             fn visit(&$lt $self, $vis: &mut $vis_ty, _extra: Self::Extra) -> V::Result {
                 $block
             }
@@ -218,6 +220,8 @@ macro_rules! impl_visitable {
      $extra:ident: $extra_ty:ty| $block:block) => {
         impl<$lt, $vis_ty: Visitor<$lt>> Visitable<$lt, $vis_ty> for $self_ty {
             type Extra = $extra_ty;
+
+            #[inline]
             fn visit(&$lt $self, $vis: &mut $vis_ty, $extra: Self::Extra) -> V::Result {
                 $block
             }

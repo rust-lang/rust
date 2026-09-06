@@ -160,6 +160,8 @@ macro_rules! impl_visitable {
     (|&mut $self:ident: $self_ty:ty, $vis:ident: &mut $vis_ty:ident| $block:block) => {
         impl<$vis_ty: MutVisitor> MutVisitable<$vis_ty> for $self_ty {
             type Extra = ();
+
+            #[inline]
             fn visit_mut(&mut $self, $vis: &mut $vis_ty, _extra: Self::Extra) -> V::Result {
                 $block
             }
@@ -170,6 +172,8 @@ macro_rules! impl_visitable {
       $extra:ident: $extra_ty:ty| $block:block) => {
         impl<$vis_ty: MutVisitor> MutVisitable<$vis_ty> for $self_ty {
             type Extra = $extra_ty;
+
+            #[inline]
             fn visit_mut(&mut $self, $vis: &mut $vis_ty, $extra: Self::Extra) -> V::Result {
                 $block
             }
@@ -205,6 +209,7 @@ macro_rules! impl_visitable_list {
         {
             type Extra = <T as MutVisitable<V>>::Extra;
 
+            #[inline]
             fn visit_mut(&mut self, visitor: &mut V, extra: Self::Extra) {
                 for i in self {
                     i.visit_mut(visitor, extra);
