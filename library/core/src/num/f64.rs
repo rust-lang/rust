@@ -1056,7 +1056,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn max(self, other: f64) -> f64 {
-        intrinsics::maximum_number_nsz_f64(self, other)
+        intrinsics::maximum_number_nsz(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -1083,7 +1083,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn min(self, other: f64) -> f64 {
-        intrinsics::minimum_number_nsz_f64(self, other)
+        intrinsics::minimum_number_nsz(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -1110,7 +1110,7 @@ impl f64 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn maximum(self, other: f64) -> f64 {
-        intrinsics::maximumf64(self, other)
+        intrinsics::maximum(self, other)
     }
 
     /// Returns the minimum of the two numbers, propagating NaN.
@@ -1137,7 +1137,7 @@ impl f64 {
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub const fn minimum(self, other: f64) -> f64 {
-        intrinsics::minimumf64(self, other)
+        intrinsics::minimum(self, other)
     }
 
     /// Calculates the midpoint (average) between `self` and `rhs`.

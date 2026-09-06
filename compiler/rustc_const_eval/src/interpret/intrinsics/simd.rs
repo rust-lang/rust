@@ -832,10 +832,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let left = left.to_scalar();
         let right = right.to_scalar();
         interp_ok(match float_ty {
-            FloatTy::F16 => self.float_minmax::<Half>(left, right, op)?,
-            FloatTy::F32 => self.float_minmax::<Single>(left, right, op)?,
-            FloatTy::F64 => self.float_minmax::<Double>(left, right, op)?,
-            FloatTy::F128 => self.float_minmax::<Quad>(left, right, op)?,
+            FloatTy::F16 => self.float_minmax::<Half>(left.to_float()?, right.to_float()?, op)?,
+            FloatTy::F32 => self.float_minmax::<Single>(left.to_float()?, right.to_float()?, op)?,
+            FloatTy::F64 => self.float_minmax::<Double>(left.to_float()?, right.to_float()?, op)?,
+            FloatTy::F128 => self.float_minmax::<Quad>(left.to_float()?, right.to_float()?, op)?,
         })
     }
 

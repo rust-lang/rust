@@ -61,20 +61,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
         sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
 
-        sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
-        sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
-        // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
-        // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
-        //sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
-        //
-        sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
-        sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
-        // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
-        // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
-        //sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
-        //
         _ => return None,
     };
     Some(bx.call_intrinsic(
@@ -139,17 +125,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let llval = match name {
             _ if simple.is_some() => simple.unwrap(),
             // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
-            sym::minimum_number_nsz_f16
-            | sym::minimum_number_nsz_f32
-            | sym::minimum_number_nsz_f64
-            | sym::minimum_number_nsz_f128
-            | sym::maximum_number_nsz_f16
-            | sym::maximum_number_nsz_f32
-            | sym::maximum_number_nsz_f64
-            | sym::maximum_number_nsz_f128
-                if llvm_version >= (22, 0, 0) =>
-            {
-                let intrinsic_name = if name.as_str().starts_with("min") {
+            sym::minimum_number_nsz | sym::maximum_number_nsz if llvm_version >= (22, 0, 0) => {
+                let intrinsic_name = if name == sym::minimum_number_nsz {
                     "llvm.minimumnum"
                 } else {
                     "llvm.maximumnum"
@@ -530,7 +507,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::log10
             | sym::log2
             | sym::sin
-            | sym::cos => {
+            | sym::cos
+            | sym::minimum
+            | sym::maximum => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
                     span_bug!(
@@ -564,6 +543,18 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::log2 => "llvm.log2",
                     sym::sin => "llvm.sin",
                     sym::cos => "llvm.cos",
+
+                    // FIXME: LLVM currently mis-compiles `llvm.minimum`/`llvm.maximum` for `f64` and
+                    // `f128`; use the fallback bodies for those until
+                    // llvm/llvm-project#{139380,139381,140445} are fixed.
+                    sym::minimum | sym::maximum
+                        if matches!(f, ty::FloatTy::F64 | ty::FloatTy::F128) =>
+                    {
+                        let fallback = ty::Instance::new_raw(instance.def_id(), instance.args);
+                        return IntrinsicResult::Fallback(fallback);
+                    }
+                    sym::minimum => "llvm.minimum",
+                    sym::maximum => "llvm.maximum",
                     _ => bug!(),
                 };
                 self.call_intrinsic(

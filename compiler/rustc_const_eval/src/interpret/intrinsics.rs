@@ -568,51 +568,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
-            sym::minimum_number_nsz_f16 => {
-                self.float_minmax_intrinsic::<Half>(args, MinMax::MinimumNumberNsz, dest)?
-            }
-            sym::minimum_number_nsz_f32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::MinimumNumberNsz, dest)?
-            }
-            sym::minimum_number_nsz_f64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::MinimumNumberNsz, dest)?
-            }
-            sym::minimum_number_nsz_f128 => {
-                self.float_minmax_intrinsic::<Quad>(args, MinMax::MinimumNumberNsz, dest)?
-            }
-
-            sym::minimumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Minimum, dest)?,
-            sym::minimumf32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::Minimum, dest)?
-            }
-            sym::minimumf64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::Minimum, dest)?
-            }
-            sym::minimumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::Minimum, dest)?,
-
-            sym::maximum_number_nsz_f16 => {
-                self.float_minmax_intrinsic::<Half>(args, MinMax::MaximumNumberNsz, dest)?
-            }
-            sym::maximum_number_nsz_f32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::MaximumNumberNsz, dest)?
-            }
-            sym::maximum_number_nsz_f64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::MaximumNumberNsz, dest)?
-            }
-            sym::maximum_number_nsz_f128 => {
-                self.float_minmax_intrinsic::<Quad>(args, MinMax::MaximumNumberNsz, dest)?
-            }
-
-            sym::maximumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Maximum, dest)?,
-            sym::maximumf32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::Maximum, dest)?
-            }
-            sym::maximumf64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::Maximum, dest)?
-            }
-            sym::maximumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::Maximum, dest)?,
-
-            sym::copysign => {
+            sym::minimum
+            | sym::maximum
+            | sym::minimum_number_nsz
+            | sym::maximum_number_nsz
+            | sym::copysign => {
                 let arg1 = self.read_immediate(&args[0])?;
                 let arg2 = self.read_immediate(&args[1])?;
                 let ty::Float(float_ty) = arg1.layout.ty.kind() else {
@@ -1153,21 +1113,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match name {
             // bitwise, no NaN adjustments
             sym::copysign => interp_ok(x.copy_sign(y).into()),
+
+            sym::minimum => self.float_minmax(x, y, MinMax::Minimum),
+            sym::maximum => self.float_minmax(x, y, MinMax::Maximum),
+            sym::minimum_number_nsz => self.float_minmax(x, y, MinMax::MinimumNumberNsz),
+            sym::maximum_number_nsz => self.float_minmax(x, y, MinMax::MaximumNumberNsz),
+
             _ => bug!("not a unary float intrinsic: {}", name),
         }
     }
 
-    fn float_minmax<F>(
-        &self,
-        a: Scalar<M::Provenance>,
-        b: Scalar<M::Provenance>,
-        op: MinMax,
-    ) -> InterpResult<'tcx, Scalar<M::Provenance>>
+    fn float_minmax<F>(&self, a: F, b: F, op: MinMax) -> InterpResult<'tcx, Scalar<M::Provenance>>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
-        let a: F = a.to_float()?;
-        let b: F = b.to_float()?;
         let res = if matches!(op, MinMax::MinimumNumberNsz | MinMax::MaximumNumberNsz) && a == b {
             // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
             // Let the machine decide which one to return.
@@ -1183,21 +1142,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         interp_ok(res.into())
-    }
-
-    fn float_minmax_intrinsic<F>(
-        &mut self,
-        args: &[OpTy<'tcx, M::Provenance>],
-        op: MinMax,
-        dest: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, ()>
-    where
-        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
-    {
-        let res =
-            self.float_minmax::<F>(self.read_scalar(&args[0])?, self.read_scalar(&args[1])?, op)?;
-        self.write_scalar(res, dest)?;
-        interp_ok(())
     }
 
     fn float_round<F>(

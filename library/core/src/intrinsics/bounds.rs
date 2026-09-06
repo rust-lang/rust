@@ -48,6 +48,7 @@ impl<T: PointeeSized, U: PointeeSized> ChangePointee<U> for *const T {
 pub const unsafe trait FloatPrimitive:
     Sized
     + Copy
+    + [const] PartialOrd
     + [const] core::ops::Mul<Output = Self>
     + [const] core::ops::Add<Output = Self>
 {
@@ -57,6 +58,9 @@ pub const unsafe trait FloatPrimitive:
     const SIGN_MASK: Self::UInt;
     fn to_bits(self) -> Self::UInt;
     fn from_bits(bits: Self::UInt) -> Self;
+    fn is_nan(self) -> bool;
+    fn is_sign_positive(self) -> bool;
+    fn is_sign_negative(self) -> bool;
 }
 
 #[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
@@ -70,6 +74,18 @@ const unsafe impl FloatPrimitive for f16 {
     #[inline]
     fn from_bits(bits: Self::UInt) -> Self {
         f16::from_bits(bits)
+    }
+    #[inline]
+    fn is_nan(self) -> bool {
+        f16::is_nan(self)
+    }
+    #[inline]
+    fn is_sign_positive(self) -> bool {
+        f16::is_sign_positive(self)
+    }
+    #[inline]
+    fn is_sign_negative(self) -> bool {
+        f16::is_sign_negative(self)
     }
 }
 
@@ -85,6 +101,18 @@ const unsafe impl FloatPrimitive for f32 {
     fn from_bits(bits: Self::UInt) -> Self {
         f32::from_bits(bits)
     }
+    #[inline]
+    fn is_nan(self) -> bool {
+        f32::is_nan(self)
+    }
+    #[inline]
+    fn is_sign_positive(self) -> bool {
+        f32::is_sign_positive(self)
+    }
+    #[inline]
+    fn is_sign_negative(self) -> bool {
+        f32::is_sign_negative(self)
+    }
 }
 
 #[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
@@ -99,6 +127,18 @@ const unsafe impl FloatPrimitive for f64 {
     fn from_bits(bits: Self::UInt) -> Self {
         f64::from_bits(bits)
     }
+    #[inline]
+    fn is_nan(self) -> bool {
+        f64::is_nan(self)
+    }
+    #[inline]
+    fn is_sign_positive(self) -> bool {
+        f64::is_sign_positive(self)
+    }
+    #[inline]
+    fn is_sign_negative(self) -> bool {
+        f64::is_sign_negative(self)
+    }
 }
 
 #[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
@@ -112,6 +152,18 @@ const unsafe impl FloatPrimitive for f128 {
     #[inline]
     fn from_bits(bits: Self::UInt) -> Self {
         f128::from_bits(bits)
+    }
+    #[inline]
+    fn is_nan(self) -> bool {
+        f128::is_nan(self)
+    }
+    #[inline]
+    fn is_sign_positive(self) -> bool {
+        f128::is_sign_positive(self)
+    }
+    #[inline]
+    fn is_sign_negative(self) -> bool {
+        f128::is_sign_negative(self)
     }
 }
 
