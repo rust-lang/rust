@@ -62,8 +62,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::maximumf32 => return float_intrinsic(cx, cx.type_f32(), "fmaximumf"),
         sym::maximumf64 => return float_intrinsic(cx, cx.type_f64(), "fmaximum"),
         sym::maximumf128 => return float_intrinsic(cx, cx.type_f128(), "fmaximumf128"),
-        sym::copysignf32 => "copysignf",
-        sym::copysignf64 => "copysign",
         _ => return None,
     };
     Some(cx.context.get_builtin_function(gcc_name))
@@ -76,6 +74,7 @@ fn get_simple_function_f128<'gcc, 'tcx>(
 ) -> Function<'gcc> {
     let f128_type = cx.type_f128();
     let (func_name, args): (&str, &[gccjit::Type<'_>]) = match name {
+        sym::copysign => ("copysignf128", &[f128_type, f128_type]),
         sym::ceil => ("ceilf128", &[f128_type]),
         sym::cos => ("cosf128", &[f128_type]),
         sym::fabs => ("fabsf128", &[f128_type]),
@@ -110,7 +109,7 @@ fn f16_builtin<'gcc, 'tcx>(
     let f32_type = cx.type_f32();
     let builtin_name = match name {
         sym::ceil => "__builtin_ceilf",
-        sym::copysignf16 => "__builtin_copysignf",
+        sym::copysign => "__builtin_copysignf",
         sym::cos => "cosf",
         sym::exp => "expf",
         sym::exp2 => "exp2f",
@@ -178,26 +177,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         self.cx.context.new_parameter(None, ty, "b"),
                     ],
                     func_name,
-                    false,
-                );
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
-            sym::copysignf16 => f16_builtin(self, name, args),
-            sym::copysignf128 if self.cx.supports_f128_type => {
-                let f128_type = self.cx.type_f128();
-                let func = self.cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    f128_type,
-                    &[
-                        self.cx.context.new_parameter(None, f128_type, "a"),
-                        self.cx.context.new_parameter(None, f128_type, "b"),
-                    ],
-                    "copysignf128",
                     false,
                 );
                 self.cx.context.new_call(
@@ -317,7 +296,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     }
                 }
             }
-            sym::fabs
+            sym::copysign
+            | sym::fabs
             | sym::sqrt
             | sym::powf
             | sym::fma
@@ -337,10 +317,13 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::powi => 'float_op: {
                 let ty = args[0].layout.ty;
                 let ty::Float(float_ty) = *ty.kind() else {
-                    span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
+                    span_bug!(span, "expected float type for {:?} intrinsic: {:?}", name, ty);
                 };
                 use ty::FloatTy::*;
                 let func = match (name, float_ty) {
+                    (sym::copysign, F32) => self.context.get_builtin_function("copysignf"),
+                    (sym::copysign, F64) => self.context.get_builtin_function("copysign"),
+
                     (sym::fabs, F32) => self.context.get_builtin_function("fabsf"),
                     (sym::fabs, F64) => self.context.get_builtin_function("fabs"),
 

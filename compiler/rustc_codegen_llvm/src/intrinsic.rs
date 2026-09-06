@@ -70,11 +70,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::maximumf64 if fixed_minmax => ("llvm.maximum", &[bx.type_f64()]),
         sym::maximumf128 if fixed_minmax => ("llvm.maximum", &[bx.type_f128()]),
 
-        sym::copysignf16 => ("llvm.copysign", &[bx.type_f16()]),
-        sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),
-        sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
-        sym::copysignf128 => ("llvm.copysign", &[bx.type_f128()]),
-
         _ => return None,
     };
     Some(bx.call_intrinsic(
@@ -498,7 +493,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
-            sym::fabs
+            sym::copysign
+            | sym::fabs
             | sym::sqrt
             | sym::powf
             | sym::fma
@@ -527,6 +523,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 };
                 let llty = self.type_float_from_ty(*f);
                 let llvm_name = match name {
+                    sym::copysign => "llvm.copysign",
                     sym::fabs => "llvm.fabs",
                     sym::sqrt => "llvm.sqrt",
                     sym::powf => "llvm.pow",
